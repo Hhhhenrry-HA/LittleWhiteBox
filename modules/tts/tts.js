@@ -8,7 +8,15 @@ import { TtsStorage } from "../../core/server-storage.js";
 import { initAfterAiGate, notifyAfterAiHint, registerAfterAiHandler } from "../../core/after-ai-gate.js";
 import { extractSpeakText, parseTtsSegments, DEFAULT_SKIP_TAGS, normalizeEmotion, splitTtsSegmentsForFree } from "./tts-text.js";
 import { TtsPlayer } from "./tts-player.js";
-import { playTransientVoice, stopTransientVoice } from "./tts-playback-runtime.js";
+import { playTransientVoice } from "./tts-playback-runtime.js";
+import {
+    cleanupMessageVoiceUi,
+    enhanceMessageVoiceTextNodes,
+    hasMessageVoiceMarker,
+    hydrateMessageVoiceBubbles,
+    initMessageVoiceUi,
+    stopMessageVoicePlayback,
+} from './tts-message-voice.js';
 import { synthesizeV3, FREE_DEFAULT_VOICE } from "./tts-api.js";
 import { 
     ensureTtsPanel, 
@@ -72,11 +80,8 @@ function scheduleNdRerender(mesText) {
         
         for (const el of pending) {
             if (!el.isConnected) continue;
-            TTS_DIRECTIVE_REGEX.lastIndex = 0;
-            // Tests existing message HTML only.
-            // eslint-disable-next-line no-unsanitized/property
-            if (TTS_DIRECTIVE_REGEX.test(el.innerHTML)) {
-                enhanceTtsDirectives(el);
+            if (hasTtsMessageMarkup(el)) {
+                enhanceTtsMessageContent(el);
             }
         }
     }, 50);
@@ -155,11 +160,8 @@ function setupDirectiveObserver() {
                 continue;
             }
             
-            TTS_DIRECTIVE_REGEX.lastIndex = 0;
-            // Tests existing message HTML only.
-            // eslint-disable-next-line no-unsanitized/property
-            if (TTS_DIRECTIVE_REGEX.test(mesText.innerHTML)) {
-                enhanceTtsDirectives(mesText);
+            if (hasTtsMessageMarkup(mesText)) {
+                enhanceTtsMessageContent(mesText);
             }
             processedDirectives.add(mesText);
             directiveObserver.unobserve(mesText);
@@ -175,11 +177,8 @@ function observeDirective(mesText) {
     // 已在视口附近，立即处理
     const rect = mesText.getBoundingClientRect();
     if (rect.top < window.innerHeight + 300 && rect.bottom > -300) {
-        TTS_DIRECTIVE_REGEX.lastIndex = 0;
-        // Tests existing message HTML only.
-        // eslint-disable-next-line no-unsanitized/property
-        if (TTS_DIRECTIVE_REGEX.test(mesText.innerHTML)) {
-            enhanceTtsDirectives(mesText);
+        if (hasTtsMessageMarkup(mesText)) {
+            enhanceTtsMessageContent(mesText);
         }
         processedDirectives.add(mesText);
         return;
@@ -800,24 +799,45 @@ function buildTtsTagHtml(parsed, rawParams) {
 
 function enhanceTtsDirectives(container) {
     if (!container) return;
-    
-    // Rewrites already-rendered message HTML; no new HTML source is introduced here.
-    // eslint-disable-next-line no-unsanitized/property
-    const html = container.innerHTML;
-    TTS_DIRECTIVE_REGEX.lastIndex = 0;
-    if (!TTS_DIRECTIVE_REGEX.test(html)) return;
-    
-    TTS_DIRECTIVE_REGEX.lastIndex = 0;
-    const enhanced = html.replace(TTS_DIRECTIVE_REGEX, (match, params) => {
-        const parsed = parseDirectiveParams(params);
-        return buildTtsTagHtml(parsed, params);
+
+    const documentTarget = container.ownerDocument;
+    if (!documentTarget?.createTreeWalker) return;
+    const textNodes = [];
+    const walker = documentTarget.createTreeWalker(container, 4);
+    while (walker.nextNode()) textNodes.push(walker.currentNode);
+    textNodes.forEach((node) => {
+        if (node.parentElement?.closest('code, pre, script, style, textarea, .xb-tts-tag, .xb-voice-bubble')) return;
+        const current = node.nodeValue || '';
+        const candidates = current.matchAll(/\[tts:([^\]]*)\]/gi);
+        const replacement = documentTarget.createDocumentFragment();
+        let cursor = 0;
+        let changed = false;
+        for (const candidate of candidates) {
+            replacement.append(documentTarget.createTextNode(current.slice(cursor, candidate.index)));
+            const template = documentTarget.createElement('template');
+            const params = candidate[1] || '';
+            // Only fixed markup generated from this exact TTS directive is parsed as HTML.
+            // eslint-disable-next-line no-unsanitized/property
+            template.innerHTML = buildTtsTagHtml(parseDirectiveParams(params), params);
+            replacement.append(template.content.cloneNode(true));
+            cursor = candidate.index + candidate[0].length;
+            changed = true;
+        }
+        if (!changed) return;
+        replacement.append(documentTarget.createTextNode(current.slice(cursor)));
+        node.replaceWith(replacement);
     });
-    
-    if (enhanced !== html) {
-        // Replaces existing message HTML with enhanced tokens only.
-        // eslint-disable-next-line no-unsanitized/property
-        container.innerHTML = enhanced;
-    }
+}
+
+function hasTtsMessageMarkup(container) {
+    TTS_DIRECTIVE_REGEX.lastIndex = 0;
+    return TTS_DIRECTIVE_REGEX.test(container?.textContent || '') || hasMessageVoiceMarker(container);
+}
+
+function enhanceTtsMessageContent(container) {
+    enhanceTtsDirectives(container);
+    enhanceMessageVoiceTextNodes(container, isModuleEnabled());
+    hydrateMessageVoiceBubbles(container);
 }
 
 function enhanceAllTtsDirectives() {
@@ -856,6 +876,11 @@ function onGenerationEnd() {
 
 function renderExistingMessageUIs() {
     if (!isModuleEnabled()) return;
+
+    document.querySelectorAll('#chat .mes .mes_text').forEach((mesText) => {
+        enhanceMessageVoiceTextNodes(mesText, true);
+        hydrateMessageVoiceBubbles(mesText);
+    });
     
     const context = getContext();
     const chat = context.chat || [];
@@ -889,7 +914,7 @@ function prepareCharacterMessageUi(messageId) {
 
     const mesText = messageEl.querySelector('.mes_text');
     if (mesText) {
-        enhanceTtsDirectives(mesText);
+        enhanceTtsMessageContent(mesText);
         processedDirectives.add(mesText);
     }
 
@@ -939,6 +964,7 @@ function onChatChanged() {
     messageStateMap.clear();
     removeAllTtsPanels();
     resetFloatingState();
+    stopMessageVoicePlayback();
     
     setTimeout(() => {
         if (!isCurrentLifecycle(operationEpoch)) return;
@@ -1296,11 +1322,14 @@ export async function initTts() {
     player = new TtsPlayer();
     initTtsPanelStyles();
     moduleInitialized = true;
+    initMessageVoiceUi({ isEnabled: isModuleEnabled });
     initAfterAiGate();
     afterAiGateDispose?.();
     afterAiGateDispose = registerAfterAiHandler(MODULE_ID, ({ chatId, messageId }) => {
         if (!isModuleEnabled()) return;
         if (String(getContext()?.chatId || '') !== String(chatId || '')) return;
+        const message = document.querySelector(`#chat .mes[mesid="${messageId}"] .mes_text`);
+        if (message) enhanceTtsMessageContent(message);
         if (!config?.autoSpeak) return;
         void speakMessage(messageId, { mode: 'auto' });
     });
@@ -1422,6 +1451,8 @@ export async function initTts() {
     };
 
     events.on(event_types.CHARACTER_MESSAGE_RENDERED, onCharacterMessageRendered);
+    events.on(event_types.MESSAGE_RECEIVED, data => notifyTtsAfterAi(data, 'message_received'));
+    events.on(event_types.USER_MESSAGE_RENDERED, handleDirectiveEnhance);
     events.on(event_types.CHAT_CHANGED, onChatChanged);
     events.on(event_types.MESSAGE_EDITED, handleDirectiveEnhance);
     events.on(event_types.MESSAGE_UPDATED, handleDirectiveEnhance);
@@ -1601,7 +1632,7 @@ export function cleanupTts() {
     afterAiGateDispose?.();
     afterAiGateDispose = null;
     clearAllFreeQueues();
-    stopTransientVoice();
+    cleanupMessageVoiceUi();
     cleanupNovelDrawObserver();
     cleanupDirectiveObserver();
     if (player) {
@@ -1621,4 +1652,3 @@ export function cleanupTts() {
     cacheCounters.misses = 0;
     delete window.xiaobaixTts;
 }
-

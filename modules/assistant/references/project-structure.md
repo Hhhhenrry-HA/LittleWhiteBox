@@ -181,13 +181,11 @@ LittleWhiteBox/
 │   │   ├── ena-planner.html                # 剧情规划 UI
 │   │   └── ena-planner.js                  # 剧情规划主逻辑（发送前拦截，用户输入增强）
 │   │
-│   ├── fourth-wall/                       # 四次元壁产品层：消息增强、媒体协议与提示词
-│   │   ├── fourth-wall.html                # 四次元壁 UI
-│   │   ├── fourth-wall.js                  # 四次元壁主逻辑
-│   │   ├── fw-image-protocol.js            # `[img:]` 提示协议与 iframe 消息适配；生成能力归 draw
-│   │   ├── fw-message-enhancer.js          # 消息增强逻辑
-│   │   ├── fw-prompt.js                    # 提示词构造
-│   │   └── fw-voice.js                     # 四次元壁语音输出格式指南；播放能力归 tts
+│   ├── xiaobai-os/                        # 普通 SillyTavern 的独立 OS 壳与 APP 宿主
+│   │   ├── apps/fourth-wall/               # 四次元壁领域、Host Controller、Agent 与 Vue UI
+│   │   ├── host/                           # 设置/聊天仓库、迁移、生命周期与 iframe 桥
+│   │   ├── shell/                          # OS 桌面壳与 iframe 入口
+│   │   └── tests/                          # 迁移、隔离、生命周期和 APP 行为测试
 │   │
 │   ├── ebook/                             # 小白电纸书 App：书架、书本入口、创作台、章节阅读器
 │   │   ├── ebook.html                      # 电纸书 iframe 入口，加载 dist/ebook-app.js
@@ -228,6 +226,8 @@ LittleWhiteBox/
 │   │   │   ├── data/                       # 跨 Provider 共用画图数据资源
 │   │   │   │   └── danbooru-chars.dat      # Danbooru 角色数据
 │   │   │   ├── draw-common.js              # 占位符、锚点、角色 Prompt、图片 DOM 渲染与错误分类
+│   │   │   ├── chat-message-image-markup.js # 普通聊天 `[img:]` 的安全文本节点投影
+│   │   │   ├── chat-message-images.js      # 普通聊天图片槽、懒加载、生成与清理生命周期
 │   │   │   ├── draw-agent.js               # 从共享 Agent 主预设发起单次场景 Tool Calling
 │   │   │   ├── draw-settings.js            # 共享角色、世界书与图库设置读写
 │   │   │   ├── generated-image-runtime.js  # 不可变生成计划、参数感知缓存、同请求合并与消费者级取消
@@ -385,6 +385,7 @@ LittleWhiteBox/
 │   │   ├── tts-overlay.html                # TTS iframe 设置页
 │   │   ├── tts-panel.js                    # 浮动面板逻辑
 │   │   ├── tts-playback-runtime.js         # 消息气泡等入口共用的互斥播放、停止与资源回收
+│   │   ├── tts-message-voice.js            # 普通聊天 `[voice:]` 气泡投影与播放状态
 │   │   ├── tts-player.js                   # 播放器
 │   │   ├── tts-text.js                     # 文本处理
 │   │   ├── tts-voices.js                   # 音色数据
