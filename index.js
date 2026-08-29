@@ -19,7 +19,7 @@ import {
     initXiaobaiOs,
     prepareXiaobaiOsSettings,
     setXiaobaiOsEnabled,
-} from "./modules/xiaobai-os/index.js";
+} from "./modules/xiaobai-os/dist/xiaobai-os-host.js";
 import { configureButtonCollapseRuntime, initButtonCollapse } from "./widgets/button-collapse.js";
 import { initVariablesPanel, cleanupVariablesPanel, configureVariablesPanelRuntime } from "./modules/variables/variables-panel.js";
 import { initStreamingGeneration } from "./modules/streaming-generation.js";
@@ -95,6 +95,10 @@ const xiaobaiOsSettingsReady = prepareXiaobaiOsSettings().catch((error) => {
     console.error('[LittleWhiteBox] 准备小白 OS 设置失败:', error);
     return null;
 });
+
+function isXiaobaiOsSaveUnconfirmed(error) {
+    return error?.code === 'SAVE_UNCONFIRMED' || error?.uncertain === true;
+}
 settings.audio ||= {};
 settings.audio.enabled = true;
 settings.wrapperIframe = true;
@@ -738,6 +742,25 @@ async function setupSettings() {
                     moduleCleanupFunctions.delete('xiaobaiOs');
                 }
             } catch (error) {
+                if (isXiaobaiOsSaveUnconfirmed(error)) {
+                    const effectiveEnabled = settings.xiaobaiOs?.enabled === true;
+                    try {
+                        if (effectiveEnabled) {
+                            const initialized = await initXiaobaiOs();
+                            if (!initialized) throw new Error('xiaobai_os_initialization_cancelled');
+                            registerModuleCleanup('xiaobaiOs', cleanupXiaobaiOs);
+                        } else {
+                            cleanupXiaobaiOs();
+                            moduleCleanupFunctions.delete('xiaobaiOs');
+                        }
+                    } catch (runtimeError) {
+                        console.error('[LittleWhiteBox] 应用未确认的小白 OS 设置失败:', runtimeError);
+                    }
+                    $(this).prop('checked', effectiveEnabled);
+                    console.warn('[LittleWhiteBox] 小白 OS 设置保存结果未确认:', error);
+                    toastr.warning(`小白 OS 已按当前选择运行，但服务端保存结果未确认：${error?.message || error}`);
+                    return;
+                }
                 $(this).prop('checked', settings.xiaobaiOs?.enabled === true);
                 console.error('[LittleWhiteBox] 切换小白 OS 失败:', error);
                 toastr.error(`切换小白 OS 失败：${error?.message || error}`);
@@ -967,8 +990,14 @@ async function setupSettings() {
                 cleanupXiaobaiOs();
                 moduleCleanupFunctions.delete('xiaobaiOs');
             } catch (error) {
-                if (osToggle) osToggle.checked = settings.xiaobaiOs?.enabled === true;
-                console.error('[LittleWhiteBox] 重置小白 OS 失败:', error);
+                if (isXiaobaiOsSaveUnconfirmed(error) && settings.xiaobaiOs?.enabled === false) {
+                    cleanupXiaobaiOs();
+                    moduleCleanupFunctions.delete('xiaobaiOs');
+                    console.warn('[LittleWhiteBox] 小白 OS 重置保存结果未确认:', error);
+                } else {
+                    if (osToggle) osToggle.checked = settings.xiaobaiOs?.enabled === true;
+                    console.error('[LittleWhiteBox] 重置小白 OS 失败:', error);
+                }
             }
             const previousDrawProvider = settings.drawProvider;
             drawProviderTransitionGeneration++;

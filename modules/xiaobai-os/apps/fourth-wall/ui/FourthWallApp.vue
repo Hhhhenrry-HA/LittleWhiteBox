@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, toRaw } from 'vue';
 import type { XiaobaiOsAppProps } from '../../../shell/app-src/app-registry.js';
 import FourthWallConversation from './FourthWallConversation.vue';
 import FourthWallPromptEditor from './FourthWallPromptEditor.vue';
@@ -9,11 +9,13 @@ import type {
     FourthWallClientState,
     FourthWallGenerationState,
     FourthWallGlobalSettings,
-} from './types.js';
+} from '../types.js';
 import './fourth-wall.css';
 
+const PERSISTENT_REQUEST_TIMEOUT_MS = 35_000;
+
 const props = defineProps<XiaobaiOsAppProps>();
-const state = ref(structuredClone(props.initialState as FourthWallClientState));
+const state = ref(structuredClone(toRaw(props.initialState as FourthWallClientState)));
 const draft = ref('');
 const settingsOpen = ref(false);
 const promptOpen = ref(false);
@@ -45,7 +47,7 @@ async function requestState(type: string, payload: object): Promise<void> {
     saving.value = true;
     errorMessage.value = '';
     try {
-        state.value = unwrapState(await props.bridge.request(type, payload));
+        state.value = unwrapState(await props.bridge.request(type, payload, PERSISTENT_REQUEST_TIMEOUT_MS));
     } catch (error) {
         errorMessage.value = error instanceof Error ? error.message : String(error);
     } finally {
@@ -111,6 +113,15 @@ function updateChat(patch: FourthWallChatState['settings']): void {
 
 function updateGlobal(patch: Partial<FourthWallGlobalSettings>): void {
     void requestState('fourth-wall/update-global-settings', { ...binding(), patch });
+}
+
+async function openAgentSettings(): Promise<void> {
+    errorMessage.value = '';
+    try {
+        await props.bridge.request('fourth-wall/open-agent-settings', binding());
+    } catch (error) {
+        errorMessage.value = error instanceof Error ? error.message : String(error);
+    }
 }
 
 onMounted(() => {
@@ -216,7 +227,7 @@ onBeforeUnmount(() => unsubscribe());
             @rename-session="(sessionId, name) => requestState('fourth-wall/rename-session', { ...binding(sessionId), name })"
             @delete-session="sessionId => requestState('fourth-wall/delete-session', binding(sessionId))"
             @open-prompts="promptOpen = true"
-            @open-agent="props.bridge.request('fourth-wall/open-agent-settings', binding())"
+            @open-agent="openAgentSettings"
         />
         <FourthWallPromptEditor
             v-if="promptOpen"

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { FourthWallSession } from './types.js';
+import type { FourthWallSession } from '../types.js';
 
 defineProps<{
     sessions: FourthWallSession[];

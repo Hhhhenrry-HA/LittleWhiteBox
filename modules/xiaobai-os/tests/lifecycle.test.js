@@ -4,7 +4,7 @@ import { parseHTML } from 'linkedom';
 
 import { createXiaobaiOsLifecycle } from '../host/lifecycle.js';
 
-function createHarness() {
+function createHarness({ appRuntime = {} } = {}) {
     const { document, window } = parseHTML(`<!doctype html><html><head></head><body>
         <div id="send-controls"><button id="message_preview_btn"></button><button id="send_but"></button></div>
     </body></html>`);
@@ -50,6 +50,7 @@ function createHarness() {
             deactivate: (id, reason) => runtimeCalls.push(['deactivate', id, reason]),
             startBackground: () => runtimeCalls.push(['startBackground']),
             stopBackground: () => runtimeCalls.push(['stopBackground']),
+            ...appRuntime,
         },
     });
     return {
@@ -108,6 +109,71 @@ test('trusted frame ready receives a fresh snapshot and unknown apps stay inacti
     await options.onReady(options.bridge);
     assert.equal(harness.posts[0].type, 'os/init');
     assert.deepEqual(harness.posts[0].payload.apps, [{ id: 'fourth-wall', name: '四次元壁' }]);
+});
+
+test('leaving an app route invalidates an activation that is still pending', async () => {
+    let finishActivation;
+    const harness = createHarness({
+        appRuntime: {
+            activate: () => new Promise(resolve => { finishActivation = resolve; }),
+        },
+    });
+    harness.lifecycle.init();
+    harness.lifecycle.open();
+    const options = harness.bridgeOptions();
+    const pending = options.onMessage({
+        type: 'app/activate',
+        requestId: 'activate-1',
+        payload: { appId: 'fourth-wall' },
+    }, options.bridge);
+
+    await Promise.resolve();
+    await options.onMessage({ type: 'app/deactivate', requestId: 'deactivate-1' }, options.bridge);
+    finishActivation({ stale: true });
+    await pending;
+
+    assert.equal(harness.posts.some(item => item.type === 'app/activation-result' && item.payload.ok === true), false);
+    assert.equal(
+        harness.posts.some(item => item.type === 'app/activation-result' && item.payload.error === 'activation_cancelled'),
+        true,
+    );
+});
+
+test('an async app request cannot settle as success after the same app is reopened', async () => {
+    let finishRequest;
+    const harness = createHarness({
+        appRuntime: {
+            activate: async () => ({}),
+            handleMessage: () => new Promise(resolve => { finishRequest = resolve; }),
+        },
+    });
+    harness.lifecycle.init();
+    harness.lifecycle.open();
+    const options = harness.bridgeOptions();
+    await options.onMessage({
+        type: 'app/activate',
+        requestId: 'activate-1',
+        payload: { appId: 'fourth-wall' },
+    }, options.bridge);
+    const pending = options.onMessage({
+        type: 'fourth-wall/refresh',
+        requestId: 'stale-request',
+        payload: {},
+    }, options.bridge);
+    await Promise.resolve();
+    await options.onMessage({ type: 'app/deactivate' }, options.bridge);
+    await options.onMessage({
+        type: 'app/activate',
+        requestId: 'activate-2',
+        payload: { appId: 'fourth-wall' },
+    }, options.bridge);
+
+    finishRequest({ stale: true });
+    await pending;
+
+    const response = harness.posts.find(item => item.requestId === 'stale-request');
+    assert.equal(response.type, 'fourth-wall/result');
+    assert.deepEqual(response.payload, { ok: false, error: 'app_inactive' });
 });
 
 test('chat changes close the foreground window without unloading the launcher', () => {

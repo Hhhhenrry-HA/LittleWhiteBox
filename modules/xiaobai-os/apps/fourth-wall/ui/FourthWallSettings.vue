@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { reactive } from 'vue';
+import { reactive, toRaw } from 'vue';
 import FourthWallSessions from './FourthWallSessions.vue';
-import type { FourthWallChatState, FourthWallGlobalSettings } from './types.js';
+import type { FourthWallChatState, FourthWallGlobalSettings } from '../types.js';
 
 const props = defineProps<{
     chat: FourthWallChatState;
@@ -21,18 +21,18 @@ const emit = defineEmits<{
     openAgent: [];
 }>();
 
-const chatDraft = reactive(structuredClone(props.chat.settings));
-const globalDraft = reactive(structuredClone(props.global));
+const chatDraft = reactive(structuredClone(toRaw(props.chat.settings)));
+const globalDraft = reactive(structuredClone(toRaw(props.global)));
 
 function saveChat(): void {
-    emit('updateChat', structuredClone(chatDraft));
+    emit('updateChat', structuredClone(toRaw(chatDraft)));
 }
 
 function saveCapabilities(): void {
     emit('updateGlobal', {
-        image: structuredClone(globalDraft.image),
-        voice: structuredClone(globalDraft.voice),
-        commentary: structuredClone(globalDraft.commentary),
+        image: structuredClone(toRaw(globalDraft.image)),
+        voice: structuredClone(toRaw(globalDraft.voice)),
+        commentary: structuredClone(toRaw(globalDraft.commentary)),
     });
 }
 </script>

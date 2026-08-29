@@ -74,6 +74,7 @@ test('cancelling a commentary task discards a late model result', async () => {
     const pending = runtime.handleEvent({ kind: 'ai_message' });
     await Promise.resolve();
     await Promise.resolve();
+    await Promise.resolve();
     assert.equal(generationStarted, true);
     assert.equal(runtime.cancel(), true);
     resolveGeneration('late comment');
@@ -81,4 +82,27 @@ test('cancelling a commentary task discards a late model result', async () => {
     assert.equal(await pending, false);
     assert.equal(commits, 0);
     assert.equal(hides, 1);
+});
+
+test('cancelling while asynchronous capture prepares data prevents generation', async () => {
+    let finishCapture;
+    let generations = 0;
+    const runtime = createFourthWallCommentaryRuntime({
+        getSettings: () => ({ enabled: true, probability: 99 }),
+        capture: () => new Promise(resolve => { finishCapture = resolve; }),
+        generate: async () => { generations += 1; return 'must not run'; },
+        commit: async () => {},
+        random: () => 0,
+        now: () => 200000,
+        setTimer: immediateTimer,
+        clearTimer: () => {},
+    });
+
+    const pending = runtime.handleEvent({ kind: 'ai_message' });
+    await Promise.resolve();
+    assert.equal(runtime.cancel(), true);
+    finishCapture({ chatIdentity: 'chat:a' });
+
+    assert.equal(await pending, false);
+    assert.equal(generations, 0);
 });

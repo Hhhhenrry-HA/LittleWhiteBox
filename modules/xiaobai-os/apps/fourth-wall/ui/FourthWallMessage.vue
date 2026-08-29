@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import type { XiaobaiOsFrameBridge } from '../../../shell/app-src/frame-bridge.js';
-import type { FourthWallMessageData } from './types.js';
+import type { FourthWallMessageData } from '../types.js';
 
 interface Segment {
     kind: 'text' | 'image' | 'voice';
@@ -83,6 +83,10 @@ function unwrap<T>(response: unknown): T {
     return (response as { result: T }).result;
 }
 
+function isCurrentMedia(index: number, requestId: string): boolean {
+    return activeMediaIds.has(requestId) && media[index]?.requestId === requestId;
+}
+
 async function loadImage(segment: Segment, index: number): Promise<void> {
     if (media[index]?.status === 'loading' || media[index]?.status === 'ready') {
         return;
@@ -101,8 +105,11 @@ async function loadImage(segment: Segment, index: number): Promise<void> {
             { ...binding, tags: segment.value, mediaRequestId },
             30_000,
         ));
+        if (!isCurrentMedia(index, mediaRequestId)) {
+            return;
+        }
         if (!checked.available) {
-            media[index] = { status: 'unavailable', message: '画图能力未启用' };
+            media[index] = { status: 'unavailable', message: '画图能力未启用', requestId: mediaRequestId };
             return;
         }
         let source = checked.cached || '';
@@ -113,6 +120,9 @@ async function loadImage(segment: Segment, index: number): Promise<void> {
                 { ...binding, tags: segment.value, mediaRequestId },
                 180_000,
             ));
+            if (!isCurrentMedia(index, mediaRequestId)) {
+                return;
+            }
             source = generated.base64;
         }
         media[index] = {
@@ -120,7 +130,13 @@ async function loadImage(segment: Segment, index: number): Promise<void> {
             source: /^(?:data:|blob:|https?:)/i.test(source) ? source : `data:image/png;base64,${source}`,
         };
     } catch (error) {
-        media[index] = { status: 'error', message: error instanceof Error ? error.message : String(error) };
+        if (isCurrentMedia(index, mediaRequestId)) {
+            media[index] = {
+                status: 'error',
+                message: error instanceof Error ? error.message : String(error),
+                requestId: mediaRequestId,
+            };
+        }
     } finally {
         activeMediaIds.delete(mediaRequestId);
     }
@@ -132,6 +148,9 @@ async function playVoice(segment: Segment, index: number): Promise<void> {
         return;
     }
     const current = media[index];
+    if (current?.status === 'loading') {
+        return;
+    }
     if (current?.status === 'playing' && current.requestId) {
         props.bridge.post('fourth-wall/voice-stop', {
             chatIdentity: props.chatIdentity,
@@ -152,8 +171,14 @@ async function playVoice(segment: Segment, index: number): Promise<void> {
             emotion: segment.emotion,
         });
     } catch (error) {
+        if (isCurrentMedia(index, mediaRequestId)) {
+            media[index] = {
+                status: 'error',
+                message: error instanceof Error ? error.message : String(error),
+                requestId: mediaRequestId,
+            };
+        }
         activeMediaIds.delete(mediaRequestId);
-        media[index] = { status: 'error', message: error instanceof Error ? error.message : String(error) };
     }
 }
 

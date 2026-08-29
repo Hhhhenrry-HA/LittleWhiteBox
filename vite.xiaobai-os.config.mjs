@@ -2,6 +2,8 @@ import path from 'node:path';
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 
+const xiaobaiOsRoot = path.resolve('modules/xiaobai-os');
+
 function createEslintDisableBannerPlugin() {
     return {
         name: 'xiaobai-os-eslint-disable-banner',
@@ -42,11 +44,31 @@ function createAgentCompatibilityPlugin() {
     };
 }
 
+function createHostExternalPlugin() {
+    return {
+        name: 'xiaobai-os-host-externals',
+        enforce: 'pre',
+        resolveId(source, importer) {
+            if (!importer || !source.startsWith('.')) return null;
+            const resolved = path.resolve(path.dirname(importer), source);
+            const relativeToOs = path.relative(xiaobaiOsRoot, resolved);
+            const belongsToOs = relativeToOs === ''
+                || (!relativeToOs.startsWith('..') && !path.isAbsolute(relativeToOs));
+            return belongsToOs ? null : { id: resolved, external: true };
+        },
+    };
+}
+
 export default defineConfig(({ mode }) => {
     const buildAgent = mode === 'xiaobai-os-agent';
+    const buildHost = mode === 'xiaobai-os-host';
+    const buildShell = !buildAgent && !buildHost;
+    const outputDirectory = path.resolve('modules/xiaobai-os/dist');
     return {
         plugins: [
-            ...(buildAgent ? [createAgentCompatibilityPlugin()] : [vue()]),
+            ...(buildAgent ? [createAgentCompatibilityPlugin()] : []),
+            ...(buildHost ? [createHostExternalPlugin()] : []),
+            ...(buildShell ? [vue()] : []),
             createEslintDisableBannerPlugin(),
         ],
         define: {
@@ -54,19 +76,34 @@ export default defineConfig(({ mode }) => {
             global: 'globalThis',
         },
         build: {
-            emptyOutDir: !buildAgent,
-            outDir: path.resolve('modules/xiaobai-os/dist'),
+            emptyOutDir: buildShell,
+            outDir: outputDirectory,
             lib: {
-                entry: path.resolve(buildAgent
-                    ? 'modules/xiaobai-os/apps/fourth-wall/agent/fourth-wall-agent.js'
-                    : 'modules/xiaobai-os/shell/app-src/main.ts'),
+                entry: path.resolve(
+                    buildAgent
+                        ? 'modules/xiaobai-os/apps/fourth-wall/agent/fourth-wall-agent.ts'
+                        : buildHost
+                            ? 'modules/xiaobai-os/index.ts'
+                            : 'modules/xiaobai-os/shell/app-src/main.ts',
+                ),
                 formats: ['es'],
-                fileName: () => buildAgent ? 'fourth-wall-agent.js' : 'xiaobai-os-app.js',
+                fileName: () => {
+                    if (buildAgent) return 'fourth-wall-agent.js';
+                    if (buildHost) return 'xiaobai-os-host.js';
+                    return 'xiaobai-os-app.js';
+                },
                 cssFileName: 'xiaobai-os-app',
             },
             rollupOptions: {
                 output: {
                     manualChunks: undefined,
+                    paths: buildHost
+                        ? (id) => {
+                            if (!path.isAbsolute(id)) return id;
+                            const relative = path.relative(outputDirectory, id).replace(/\\/g, '/');
+                            return relative.startsWith('.') ? relative : `./${relative}`;
+                        }
+                        : undefined,
                 },
             },
             modulePreload: false,

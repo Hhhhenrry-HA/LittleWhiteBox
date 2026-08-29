@@ -84,6 +84,36 @@ test('new voice playback stops the old handle and ignores its stale state', () =
 
     assert.deepEqual(stopped, ['voice-1']);
     assert.deepEqual(plays.map(item => [item.text, item.emotion]), [['first', 'happy'], ['second', '']]);
-    assert.deepEqual(states, [{ requestId: 'voice-2', state: 'ended', duration: 123, message: undefined }]);
+    assert.deepEqual(states, [
+        { requestId: 'voice-1', state: 'stopped' },
+        { requestId: 'voice-2', state: 'ended', duration: 123, message: undefined },
+    ]);
     assert.equal(protocol.stop('voice-2'), false);
+});
+
+test('a synchronous TTS startup failure does not leave a phantom active request', () => {
+    const states = [];
+    let attempts = 0;
+    const protocol = createFourthWallVoiceProtocol({
+        getFacade: () => ({
+            isEnabled: () => true,
+            playTransient() {
+                attempts += 1;
+                if (attempts === 1) {
+                    throw new Error('startup failed');
+                }
+                return { stop() {} };
+            },
+        }),
+    });
+
+    assert.throws(
+        () => protocol.play({ requestId: 'voice-failed', text: 'first', onState: state => states.push(state) }),
+        /startup failed/,
+    );
+    assert.deepEqual(
+        protocol.play({ requestId: 'voice-ok', text: 'second', onState: state => states.push(state) }),
+        { started: true, requestId: 'voice-ok' },
+    );
+    assert.deepEqual(states, []);
 });

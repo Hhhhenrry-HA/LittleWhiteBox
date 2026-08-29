@@ -6,6 +6,7 @@ import {
     createDefaultFourthWallGlobalSettings,
 } from '../apps/fourth-wall/domain/defaults.js';
 import { buildFourthWallPrompt } from '../apps/fourth-wall/domain/prompt.js';
+import { projectGenerationProgress, projectGenerationResult } from '../apps/fourth-wall/domain/response-projection.js';
 import {
     addSession,
     appendMessage,
@@ -98,4 +99,30 @@ test('prompt limits main chat layers and fourth-wall turns independently', () =>
     assert.equal(built.msg3.includes('meta two'), false);
     assert.equal(built.msg3.includes('meta three'), true);
     assert.equal(built.msg3.includes('meta four'), true);
+});
+
+test('generation projection removes protocol tags and tolerates sparse provider thoughts', () => {
+    assert.deepEqual(
+        projectGenerationProgress({ text: '<thinking>draft</thinking><msg>partial</msg>' }),
+        { text: 'partial', thinking: 'draft' },
+    );
+    assert.deepEqual(
+        projectGenerationResult({
+            text: '<thinking>done</thinking><msg>answer</msg>',
+            thoughts: [null, { label: 'fallback', text: 'unused' }],
+        }),
+        { text: 'answer', thinking: 'done' },
+    );
+    assert.deepEqual(
+        projectGenerationProgress({ text: '<thinking>still reasoning' }),
+        { text: '', thinking: 'still reasoning' },
+    );
+    assert.deepEqual(
+        projectGenerationResult({ text: '<thinking>reasoning only</thinking>' }),
+        { text: '(no response)', thinking: 'reasoning only' },
+    );
+    assert.deepEqual(
+        projectGenerationProgress({ text: 'plain provider text' }),
+        { text: 'plain provider text', thinking: '' },
+    );
 });

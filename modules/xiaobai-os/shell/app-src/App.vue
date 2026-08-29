@@ -27,11 +27,13 @@ const activeState = ref<unknown>(null);
 const errorMessage = ref('');
 let previousFocus: HTMLElement | null = null;
 let unsubscribe = () => {};
+let navigationGeneration = 0;
 
 const availableApps = computed(() => xiaobaiOsApps.filter(app => availableIds.value.has(app.id)));
 const isHome = computed(() => activeApp.value === null);
 
 function applyInit(payload: InitPayload): void {
+    navigationGeneration += 1;
     theme.value = payload.theme === 'dark' ? 'dark' : 'light';
     availableIds.value = new Set((payload.apps || []).map(app => String(app.id)));
     characterAvatar.value = String(payload.chat?.characterAvatar || '');
@@ -54,29 +56,36 @@ function handleHostMessage(message: FrameMessage): void {
 }
 
 async function openApp(app: XiaobaiOsAppDefinition): Promise<void> {
+    const generation = ++navigationGeneration;
     errorMessage.value = '';
     try {
         const response = await bridge.request('app/activate', { appId: app.id }) as { appId?: string; state?: unknown };
+        if (generation !== navigationGeneration) {
+            return;
+        }
         if (response.appId !== app.id) {
             throw new Error('app_activation_mismatch');
         }
         activeState.value = response.state ?? null;
         activeApp.value = app;
     } catch (error) {
+        if (generation !== navigationGeneration) {
+            return;
+        }
         activeApp.value = null;
         errorMessage.value = error instanceof Error ? error.message : String(error);
     }
 }
 
 function goHome(): void {
-    if (activeApp.value) {
-        bridge.post('app/deactivate', { appId: activeApp.value.id });
-    }
+    navigationGeneration += 1;
+    bridge.post('app/deactivate', { appId: activeApp.value?.id || '' });
     activeApp.value = null;
     activeState.value = null;
 }
 
 function close(): void {
+    navigationGeneration += 1;
     bridge.post('os/close');
 }
 
@@ -117,6 +126,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+    navigationGeneration += 1;
     unsubscribe();
     bridge.dispose();
     previousFocus?.focus();

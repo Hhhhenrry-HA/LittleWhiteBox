@@ -102,3 +102,18 @@ test('does not expose a failed settings mutation', async () => {
     await assert.rejects(repository.setEnabled(false), /settings save failed/);
     assert.deepEqual(repository.read(), before);
 });
+
+test('keeps a settings candidate whose server save result is unconfirmed', async () => {
+    const settings = await loadFixture();
+    let unconfirmed = false;
+    const repository = createSettingsRepository(createAdapter(settings, async () => {
+        if (unconfirmed) {
+            throw Object.assign(new Error('read-back failed'), { code: 'SAVE_UNCONFIRMED', uncertain: true });
+        }
+    }));
+    await repository.prepare();
+    unconfirmed = true;
+
+    await assert.rejects(repository.setEnabled(false), error => error.code === 'SAVE_UNCONFIRMED');
+    assert.equal(repository.read().enabled, false);
+});

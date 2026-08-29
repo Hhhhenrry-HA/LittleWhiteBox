@@ -1,9 +1,11 @@
-import {
-    DEFAULT_BOTTOM,
-    DEFAULT_CONFIRM,
-    DEFAULT_META_PROTOCOL,
-    DEFAULT_TOPUSER,
-} from './defaults.js';
+import { DEFAULT_BOTTOM, DEFAULT_CONFIRM, DEFAULT_META_PROTOCOL, DEFAULT_TOPUSER } from './defaults.js';
+import type {
+    FourthWallBuiltPrompt,
+    FourthWallChatSnapshot,
+    FourthWallCommentaryPromptInput,
+    FourthWallMessageData,
+    FourthWallPromptInput,
+} from '../types.js';
 
 export const IMG_GUIDELINE = `## 模拟图片
 如果需要发图、照片给对方时，可以在聊天文本中穿插以下格式行，进行图片模拟：
@@ -35,7 +37,7 @@ const COMMENTARY_PROTOCOL = `
 只输出一个<msg>...</msg>块。
 </meta_protocol>`;
 
-function cleanContent(value) {
+function cleanContent(value: unknown): string {
     return String(value || '')
         .replace(/<think>[\s\S]*?<\/think>\s*/gi, '')
         .replace(/<thinking>[\s\S]*?<\/thinking>\s*/gi, '')
@@ -47,43 +49,51 @@ function cleanContent(value) {
         .trim();
 }
 
-function formatTimestamp(timestamp) {
-    if (!timestamp) return '';
+function formatTimestamp(timestamp: number): string {
+    if (!timestamp) {
+        return '';
+    }
     const date = new Date(timestamp);
-    const pad = value => String(value).padStart(2, '0');
+    const pad = (value: number) => String(value).padStart(2, '0');
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-function formatInterval(milliseconds) {
-    if (!milliseconds || milliseconds <= 0) return '0分钟';
+function formatInterval(milliseconds: number): string {
+    if (!milliseconds || milliseconds <= 0) {
+        return '0分钟';
+    }
     const minutes = Math.floor(milliseconds / 60000);
-    if (minutes < 60) return `${minutes}分钟`;
+    if (minutes < 60) {
+        return `${minutes}分钟`;
+    }
     const hours = Math.floor(minutes / 60);
     const remainingMinutes = minutes % 60;
-    if (hours < 24) return remainingMinutes ? `${hours}小时${remainingMinutes}分钟` : `${hours}小时`;
+    if (hours < 24) {
+        return remainingMinutes ? `${hours}小时${remainingMinutes}分钟` : `${hours}小时`;
+    }
     const days = Math.floor(hours / 24);
     const remainingHours = hours % 24;
     return remainingHours ? `${days}天${remainingHours}小时` : `${days}天`;
 }
 
-function replaceNames(value, userName, characterName) {
+function replaceNames(value: unknown, userName: string, characterName: string): string {
     return String(value || '')
         .replace(/{{USER_NAME}}/g, userName)
         .replace(/{{CHAR_NAME}}/g, characterName);
 }
 
-function formatMainChat(snapshot, maximumLayers) {
+function formatMainChat(snapshot: FourthWallChatSnapshot | null, maximumLayers: number): string {
     return (snapshot?.messages || [])
         .slice(-maximumLayers)
-        .map(message => `${message.isUser ? '对方(你)' : '自己(我)'}:\n${cleanContent(message.text)}`)
-        .filter(line => !line.endsWith('\n'))
+        .map((message) => `${message.isUser ? '对方(你)' : '自己(我)'}:\n${cleanContent(message.text)}`)
+        .filter((line) => !line.endsWith('\n'))
         .join('\n');
 }
 
-function formatMetaHistory(history, maximumTurns) {
-    let lastAiTimestamp = null;
+function formatMetaHistory(history: FourthWallMessageData[], maximumTurns: number): string {
+    let lastAiTimestamp: number | null = null;
     return (history || [])
-        .filter(message => String(message?.content || '').trim())
+        .filter((message) => String(message?.content || '').trim())
         .slice(-maximumTurns * 2)
         .map((message) => {
             const timestamp = formatTimestamp(message.ts);
@@ -91,7 +101,9 @@ function formatMetaHistory(history, maximumTurns) {
             if (message.role === 'user' && lastAiTimestamp && message.ts) {
                 prefix = timestamp ? `[${timestamp}|间隔${formatInterval(message.ts - lastAiTimestamp)}] ` : '';
             }
-            if (message.role === 'ai') lastAiTimestamp = message.ts;
+            if (message.role === 'ai') {
+                lastAiTimestamp = message.ts;
+            }
             return `${prefix}${message.role === 'user' ? '对方(你)' : '自己(我)'}:\n${cleanContent(message.content)}`;
         })
         .join('\n');
@@ -104,18 +116,20 @@ export function buildFourthWallPrompt({
     settings,
     globalSettings,
     commentary = false,
-}) {
+}: FourthWallPromptInput): FourthWallBuiltPrompt {
     const userName = String(chatSnapshot?.userName || 'User');
     const characterName = String(chatSnapshot?.characterName || 'Assistant');
-    const templates = globalSettings?.promptTemplates || {};
+    const templates: Partial<typeof globalSettings.promptTemplates> = globalSettings?.promptTemplates || {};
     const maximumLayers = Number.isInteger(settings?.maxChatLayers) ? settings.maxChatLayers : 9999;
     const maximumTurns = Number.isInteger(settings?.maxMetaTurns) ? settings.maxMetaTurns : 9999;
-    let protocol = commentary
-        ? COMMENTARY_PROTOCOL
-        : String(templates.metaProtocol || DEFAULT_META_PROTOCOL);
+    let protocol = commentary ? COMMENTARY_PROTOCOL : String(templates.metaProtocol || DEFAULT_META_PROTOCOL);
     protocol = replaceNames(protocol, userName, characterName);
-    if (globalSettings?.image?.enablePrompt) protocol += `\n\n${IMG_GUIDELINE}`;
-    if (globalSettings?.voice?.enabled) protocol += `\n\n${VOICE_GUIDELINE}`;
+    if (globalSettings?.image?.enablePrompt) {
+        protocol += `\n\n${IMG_GUIDELINE}`;
+    }
+    if (globalSettings?.voice?.enabled) {
+        protocol += `\n\n${VOICE_GUIDELINE}`;
+    }
 
     return {
         msg1: replaceNames(templates.topuser || DEFAULT_TOPUSER, userName, characterName),
@@ -128,15 +142,17 @@ Developer:以下是你们的皮下聊天记录：
 <meta_history>
 ${formatMetaHistory(history, maximumTurns)}
 </meta_history>
-${protocol}`.replace(/\|/g, '｜').trim(),
+${protocol}`
+            .replace(/\|/g, '｜')
+            .trim(),
         msg4: String(templates.bottom || DEFAULT_BOTTOM).replace(/{{USER_INPUT}}/g, String(userInput || '')),
     };
 }
 
-export function buildFourthWallCommentaryPrompt(input) {
+export function buildFourthWallCommentaryPrompt(input: FourthWallCommentaryPromptInput): FourthWallBuiltPrompt | null {
     const built = buildFourthWallPrompt({ ...input, userInput: '', commentary: true });
     const targetText = String(input.targetText || '');
-    const prompts = {
+    const prompts: Record<FourthWallCommentaryPromptInput['type'], string> = {
         ai_message: '剧本还在继续中，我刚说完最后一轮RP，忍不住想皮下吐槽一句自己的RP。直接输出<msg>内容</msg>：',
         edit_own: `我发现你悄悄编辑了自己的台词：「${targetText}」。必须皮下吐槽一句，直接输出<msg>内容</msg>：`,
         edit_ai: `我发现你居然偷偷改了我的台词：「${targetText}」。必须皮下吐槽一句，直接输出<msg>内容</msg>：`,

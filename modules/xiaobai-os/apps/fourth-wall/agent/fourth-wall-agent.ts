@@ -1,11 +1,9 @@
 import { normalizeAgentConfig, normalizeAgentSettings } from '../../../../agent-core/config.js';
-import {
-    createAgentAdapter,
-    resolveActiveProviderConfig,
-} from '../../../../agent-core/provider-config.js';
+import { createAgentAdapter, resolveActiveProviderConfig } from '../../../../agent-core/provider-config.js';
 import { createAgentSettingsPanel } from '../../../../agent-core/ui/settings-panel.js';
 import { buildAgentSettingsPanelMarkup } from '../../../../agent-core/ui/settings-markup.js';
 import { setHostChatCompletionsRequestHeadersProvider } from '../../../../../shared/host-llm/chat-completions/client.js';
+import type { FourthWallBuiltPrompt, FourthWallGenerationResult } from '../types.js';
 
 const SYSTEM_PROMPT = [
     '你是小白X“四次元壁”的交流生成器。',
@@ -13,30 +11,55 @@ const SYSTEM_PROMPT = [
     '严格遵循后续提示词里的输出格式，优先输出可被解析的 <thinking> 与 <msg> 内容。',
 ].join('\n');
 
-function buildMessages(prompt = {}, options = {}) {
+interface AgentMessage {
+    role: 'user' | 'assistant';
+    content: string;
+}
+
+interface FourthWallAgentOptions {
+    config?: unknown;
+    builtPrompt?: Partial<FourthWallBuiltPrompt>;
+    stream?: boolean;
+    disableAssistantPrefill?: boolean;
+    signal?: AbortSignal;
+    onStreamProgress?: (snapshot: FourthWallGenerationResult) => void;
+}
+
+function buildMessages(
+    prompt: Partial<FourthWallBuiltPrompt> = {},
+    options: { disableAssistantPrefill?: boolean } = {},
+): AgentMessage[] {
+    const finalUserPrompt = [
+        prompt.msg3 ? String(prompt.msg3).trim() : '',
+        options.disableAssistantPrefill && prompt.msg4 ? String(prompt.msg4).trim() : '',
+    ]
+        .filter(Boolean)
+        .join('\n\n');
     return [
         prompt.msg1 ? { role: 'user', content: String(prompt.msg1).trim() } : null,
         prompt.msg2 ? { role: 'assistant', content: String(prompt.msg2).trim() } : null,
-        prompt.msg3 ? { role: 'user', content: String(prompt.msg3).trim() } : null,
+        finalUserPrompt ? { role: 'user', content: finalUserPrompt } : null,
         prompt.msg4 && !options.disableAssistantPrefill
             ? { role: 'assistant', content: String(prompt.msg4).trim() }
             : null,
-    ].filter(Boolean);
+    ].filter((message): message is AgentMessage => message !== null);
 }
 
-export function configureFourthWallAgent(options = {}) {
+export function configureFourthWallAgent(
+    options: {
+        requestHeadersProvider?: (() => Record<string, string>) | null;
+    } = {},
+): void {
     setHostChatCompletionsRequestHeadersProvider(
         typeof options.requestHeadersProvider === 'function' ? options.requestHeadersProvider : null,
     );
 }
 
-export {
-    buildAgentSettingsPanelMarkup,
-    createAgentSettingsPanel,
-    normalizeAgentConfig,
-};
+export { buildAgentSettingsPanelMarkup, createAgentSettingsPanel, normalizeAgentConfig };
 
-export async function generateFourthWallResponse(options = {}) {
+export async function generateFourthWallResponse(
+    options: FourthWallAgentOptions = {},
+): Promise<FourthWallGenerationResult> {
     const config = normalizeAgentSettings(options.config || {});
     const providerConfig = resolveActiveProviderConfig(config);
     const adapter = createAgentAdapter(providerConfig, {

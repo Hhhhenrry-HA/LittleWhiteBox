@@ -1,6 +1,6 @@
 # 普通酒馆小白 OS
 
-- 状态：第一阶段实现完成，已接入普通 SillyTavern 运行时
+- 状态：第一阶段代码完成，运行时源码已统一为严格 TypeScript/Vue
 - 产品宿主：普通 SillyTavern 聊天界面
 - 最近确认：2026-08-29
 
@@ -20,7 +20,7 @@ modules/tavern
 ## 当前文档
 
 - [终态设计与开发规划](./docs/target-design-and-roadmap.md)
-- [第一阶段施工方案](./docs/phase-1-implementation-plan.md)
+- [第一阶段实施说明](./docs/phase-1-implementation-plan.md)
 
 ## 不可破坏的边界
 
@@ -43,4 +43,4 @@ modules/tavern
 - 迁移正式线已有普通四次元壁数据，删除旧入口和旧实现，不留双读兼容壳。
 - 地图、钱包、银行、赌场、任务和宠物不在第一阶段创建入口。
 
-运行时代码、迁移器、四次元壁 APP 与自动化测试均由本目录独立拥有。
+宿主、迁移器和四次元壁 APP 的手写运行时源码均为 TypeScript/Vue；浏览器只加载`dist/`构建产物。自动化行为测试由本目录独立拥有，并通过`tsx`直接验证 TypeScript 源码。

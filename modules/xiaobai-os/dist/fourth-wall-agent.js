@@ -22426,6 +22426,9 @@ var EP = [
 ].join(`
 `);
 function CP(e = {}, t = {}) {
+  const n = [e.msg3 ? String(e.msg3).trim() : "", t.disableAssistantPrefill && e.msg4 ? String(e.msg4).trim() : ""].filter(Boolean).join(`
+
+`);
   return [
     e.msg1 ? {
       role: "user",
@@ -22435,15 +22438,15 @@ function CP(e = {}, t = {}) {
       role: "assistant",
       content: String(e.msg2).trim()
     } : null,
-    e.msg3 ? {
+    n ? {
       role: "user",
-      content: String(e.msg3).trim()
+      content: n
     } : null,
     e.msg4 && !t.disableAssistantPrefill ? {
       role: "assistant",
       content: String(e.msg4).trim()
     } : null
-  ].filter(Boolean);
+  ].filter((r) => r !== null);
 }
 function PP(e = {}) {
   c0(typeof e.requestHeadersProvider == "function" ? e.requestHeadersProvider : null);

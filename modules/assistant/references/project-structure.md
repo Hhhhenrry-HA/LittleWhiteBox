@@ -181,10 +181,11 @@ LittleWhiteBox/
 │   │   ├── ena-planner.html                # 剧情规划 UI
 │   │   └── ena-planner.js                  # 剧情规划主逻辑（发送前拦截，用户输入增强）
 │   │
-│   ├── xiaobai-os/                        # 普通 SillyTavern 的独立 OS 壳与 APP 宿主
-│   │   ├── apps/fourth-wall/               # 四次元壁领域、Host Controller、Agent 与 Vue UI
-│   │   ├── host/                           # 设置/聊天仓库、迁移、生命周期与 iframe 桥
-│   │   ├── shell/                          # OS 桌面壳与 iframe 入口
+│   ├── xiaobai-os/                        # 普通 SillyTavern 的独立 TypeScript OS 壳与 APP 宿主
+│   │   ├── index.ts                        # 宿主组合入口，构建为 dist/xiaobai-os-host.js
+│   │   ├── apps/fourth-wall/               # TypeScript 领域/Controller/Agent 与 Vue UI
+│   │   ├── host/                           # TypeScript 设置/聊天仓库、迁移、生命周期与 iframe 桥
+│   │   ├── shell/                          # Vue + TypeScript OS 桌面壳与 iframe 入口
 │   │   └── tests/                          # 迁移、隔离、生命周期和 APP 行为测试
 │   │
 │   ├── ebook/                             # 小白电纸书 App：书架、书本入口、创作台、章节阅读器

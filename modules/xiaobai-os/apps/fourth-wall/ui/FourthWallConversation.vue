@@ -2,7 +2,7 @@
 import { computed, nextTick, ref, watch } from 'vue';
 import type { XiaobaiOsFrameBridge } from '../../../shell/app-src/frame-bridge.js';
 import FourthWallMessage from './FourthWallMessage.vue';
-import type { FourthWallGenerationState, FourthWallMessageData } from './types.js';
+import type { FourthWallGenerationState, FourthWallMessageData } from '../types.js';
 
 const props = defineProps<{
     history: FourthWallMessageData[];

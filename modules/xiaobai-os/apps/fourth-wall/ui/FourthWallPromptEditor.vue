@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { reactive } from 'vue';
-import type { FourthWallGlobalSettings } from './types.js';
+import { reactive, toRaw } from 'vue';
+import type { FourthWallGlobalSettings } from '../types.js';
 
 const props = defineProps<{
     templates: FourthWallGlobalSettings['promptTemplates'];
@@ -12,10 +12,10 @@ const emit = defineEmits<{
     restore: [];
 }>();
 
-const draft = reactive(structuredClone(props.templates));
+const draft = reactive(structuredClone(toRaw(props.templates)));
 
 function save(): void {
-    emit('save', structuredClone(draft));
+    emit('save', structuredClone(toRaw(draft)));
 }
 </script>
 

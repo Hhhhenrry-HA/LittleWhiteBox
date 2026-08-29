@@ -1,3 +1,5 @@
-# Fourth Wall
+# 四次元壁 APP
 
-The Fourth Wall app owns its chat-domain state, prompt construction, foreground generation, commentary, media protocols and UI. Persistent writes go through the Xiaobai OS settings and current-chat repositories; the iframe receives serializable app state but never shared Agent API secrets.
+四次元壁拥有自己的聊天状态、Prompt、前台生成、实时吐槽、媒体协议和 UI。跨层契约集中在`types.ts`，领域与宿主运行时使用 TypeScript，界面使用 Vue + TypeScript。
+
+所有持久写入必须经过小白 OS 的设置仓库或当前聊天仓库；iframe 只接收可序列化 APP 状态，不接收共享 Agent API 密钥。

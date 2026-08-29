@@ -67,6 +67,42 @@ test('rejects a mutation when chat identity changes before save and restores the
     assert.deepEqual(repository.readCurrentChatFourthWall(), before);
 });
 
+test('a queued mutation stays bound to the chat that issued it', async () => {
+    const { chats, identities, repository, state } = createHarness();
+    await repository.prepareCurrentChatFourthWall();
+    let releaseSave;
+    let markSaveStarted;
+    const saveStarted = new Promise(resolve => { markSaveStarted = resolve; });
+    const saveGate = new Promise(resolve => { releaseSave = resolve; });
+    state.saveImpl = async () => {
+        markSaveStarted();
+        await saveGate;
+    };
+
+    const first = repository.mutateCurrentChatFourthWall((next) => {
+        next.sessions[0].name = 'first A write';
+        return next;
+    });
+    await saveStarted;
+    let queuedActionRan = false;
+    const queued = repository.mutateCurrentChatFourthWall((next) => {
+        queuedActionRan = true;
+        next.sessions[0].name = 'must not reach B';
+        return next;
+    });
+    const queuedRejection = assert.rejects(queued, error => error.code === 'CHAT_CHANGED');
+
+    state.identity = identities.b;
+    releaseSave();
+    await first;
+    await queuedRejection;
+
+    assert.equal(queuedActionRan, false);
+    assert.deepEqual(chats.get('character:b'), {});
+    state.identity = identities.a;
+    assert.equal(repository.readCurrentChatFourthWall().sessions[0].name, 'first A write');
+});
+
 test('restores the previous branch when a mutation save fails', async () => {
     const { repository, state } = createHarness();
     await repository.prepareCurrentChatFourthWall();
@@ -79,6 +115,21 @@ test('restores the previous branch when a mutation save fails', async () => {
     }), /save failed/);
 
     assert.deepEqual(repository.readCurrentChatFourthWall(), before);
+});
+
+test('keeps the candidate when the server save result cannot be confirmed', async () => {
+    const { repository, state } = createHarness();
+    await repository.prepareCurrentChatFourthWall();
+    state.saveImpl = async () => {
+        throw Object.assign(new Error('read-back failed'), { code: 'SAVE_UNCONFIRMED', uncertain: true });
+    };
+
+    await assert.rejects(repository.mutateCurrentChatFourthWall((next) => {
+        next.sessions[0].name = 'pending confirmation';
+        return next;
+    }), error => error.code === 'SAVE_UNCONFIRMED');
+
+    assert.equal(repository.readCurrentChatFourthWall().sessions[0].name, 'pending confirmation');
 });
 
 test('rejects an unknown chat schema without changing or saving it', async () => {

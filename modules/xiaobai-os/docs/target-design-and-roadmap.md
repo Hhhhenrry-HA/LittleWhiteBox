@@ -1,6 +1,6 @@
 # 普通酒馆小白 OS 终态设计与开发规划
 
-- 状态：产品定位与架构边界已确认，供分阶段施工
+- 状态：产品定位与架构边界已确认；第一阶段已按 TypeScript 边界实施
 - 适用范围：普通 SillyTavern / LittleWhiteBox 扩展
 - 不适用范围：`modules/tavern/**`小白酒馆
 - 确认日期：2026-08-29
@@ -50,14 +50,14 @@ modules/xiaobai-os                  modules/tavern
 - Tavern APP 读取普通聊天`chat_metadata`中的小白 OS 数据。
 - 为了视觉相似而 import Tavern Vue 组件、Controller、领域类型或 CSS。
 
-视觉可以参考并独立实现；代码所有权必须分开。施工时通过 ESLint 的受限 import 规则固定双向边界，不用运行时判断弥补架构越界。
+视觉可以参考并独立实现；代码所有权必须分开。现由 ESLint 的受限 import 规则同时禁止 OS 源码导入 Tavern、Tavern 源码导入 OS，不用运行时判断弥补架构越界。
 
 ## 3. 功能所有权与依赖方向
 
 ```text
 index.js（扩展总入口）
-    ↓ 一个注册入口
-xiaobai-os/index.js
+    ↓ 加载宿主构建产物
+dist/xiaobai-os-host.js ← xiaobai-os/index.ts
     ├─ host：SillyTavern 上下文、设置、当前聊天元数据、事件
     ├─ shell：桌面、导航、设备窗口、APP 生命周期
     └─ apps/fourth-wall
@@ -100,14 +100,14 @@ OS 壳不拥有任何四次元壁会话、钱包余额、地图节点或宠物�
 ```text
 modules/xiaobai-os/
 ├─ README.md
-├─ index.js
+├─ index.ts
 ├─ host/
-│  ├─ lifecycle.js
-│  ├─ sillytavern-context.js
-│  ├─ settings-repository.js
-│  ├─ chat-metadata-repository.js
-│  ├─ legacy-migration.js
-│  └─ frame-bridge.js
+│  ├─ lifecycle.ts
+│  ├─ sillytavern-context.ts
+│  ├─ settings-repository.ts
+│  ├─ chat-metadata-repository.ts
+│  ├─ legacy-migration.ts
+│  └─ frame-bridge.ts
 ├─ shell/
 │  ├─ xiaobai-os.html
 │  └─ app-src/
@@ -118,6 +118,7 @@ modules/xiaobai-os/
 │     └─ styles/
 ├─ apps/
 │  └─ fourth-wall/
+│     ├─ types.ts
 │     ├─ domain/
 │     ├─ host/
 │     ├─ agent/
@@ -126,6 +127,10 @@ modules/xiaobai-os/
 ├─ tests/
 │  └─ fixtures/
 ├─ dist/
+│  ├─ xiaobai-os-host.js
+│  ├─ xiaobai-os-app.js
+│  ├─ xiaobai-os-app.css
+│  └─ fourth-wall-agent.js
 ├─ docs/
 │  ├─ target-design-and-roadmap.md
 │  └─ phase-1-implementation-plan.md
@@ -141,7 +146,7 @@ modules/tts/
 
 普通聊天媒体增强不属于 OS。`[img:]`图片投影由 Draw 拥有，`[voice:]`语音气泡由 TTS 拥有；两者各自跟随所属功能开关运行。
 
-目录只是终态边界。第一阶段按施工方案逐步建立，不先创建空文件树。
+OS 运行时手写源码使用 TypeScript/Vue，并由独立`tsconfig.xiaobai-os.json`执行严格类型检查。`dist/*.js`是浏览器构建产物；目录外的普通聊天 Draw/TTS 能力维持其各自现有技术栈。
 
 ## 5. 普通酒馆的楼层与上下文语义
 
@@ -237,9 +242,9 @@ chat_metadata.extensions.LittleWhiteBox.xiaobaiOs = {
 - iframe ready、待发送消息、主题观察器和窗口尺寸。
 - 当前生成请求、AbortController、流式文本和 request ID。
 - APP 内弹窗、编辑框、滚动位置、展开状态和 toast。
-- 实时吐槽的当前聊天冷却时间、延迟计时器和气泡元素。
+- 实时吐槽在本次 OS 运行期内的冷却时间、延迟计时器和气泡元素。
 
-前台 APP 状态在离开 APP、关闭 OS 窗口、聊天切换或功能卸载时销毁。实时吐槽的后台订阅和当前聊天冷却在 OS 开关保持开启时继续存在；切换聊天时取消旧聊天任务并重建当前聊天冷却，关闭 OS 开关或 LittleWhiteBox 时彻底销毁。
+前台 APP 状态在离开 APP、关闭 OS 窗口、聊天切换或功能卸载时销毁。实时吐槽的后台订阅和运行期冷却在 OS 开关保持开启时继续存在；切换聊天只取消旧聊天任务，不重置冷却，关闭 OS 开关或 LittleWhiteBox 时才彻底销毁并清零。
 
 ## 7. 生命周期契约
 
@@ -261,7 +266,7 @@ chat_metadata.extensions.LittleWhiteBox.xiaobaiOs = {
 1. 捕获当前聊天 identity。
 2. 对当前聊天执行一次升级边界迁移。
 3. 迁移或读取成功后才激活 APP；没有聊天时显示明确空状态，不创建元数据。
-4. 所有异步请求绑定聊天 identity 和 request ID。
+4. 可能跨越页面、会话或聊天边界的异步工作都绑定对应的 activation、聊天 identity、会话或媒体句柄；前台生成和媒体请求另有不可复用的 request ID。
 
 ### 离开 APP 或关闭 OS 窗口
 
@@ -304,7 +309,7 @@ chat_metadata.extensions.LittleWhiteBox.xiaobaiOs = {
 - 旧“关闭模块”操作删除；系统开关只在扩展设置中控制。
 - 旧拖拽悬浮球删除，吐槽气泡改为锚定发送栏 OS 图标。
 - 关闭 OS 窗口、离开 APP 或切换聊天会取消进行中的前台请求；打开 OS、切换聊天或停用功能会取消旧的吐槽请求，避免迟到结果写入错误界面或聊天。
-- 会话数据保存失败时不得显示成功；保留内存现场并向用户报告，禁止用空数据覆盖。
+- 会话数据保存失败时不得显示成功。保存前已明确失败时恢复旧内存对象；SillyTavern 已尝试保存但服务端读回无法确认时保留候选现场并报告“保存结果未确认”，禁止用旧对象覆盖可能已成功的远端写入。
 
 ## 9. 正式线旧数据迁移
 
@@ -346,7 +351,7 @@ chat_metadata.extensions.LittleWhiteBox.xiaobaiOs.apps.fourthWall
 1. 以真实旧格式 fixture 验证当前聊天 ID、`settings`、`sessions`、`activeSessionId`和历史消息。
 2. 在内存中构造完整现行对象并执行当前模型不变量检查。
 3. 用 SillyTavern 立即元数据保存入口提交新对象并删除旧分支。
-4. 保存拒绝时恢复原内存对象，保留旧数据并显示错误。
+4. 保存前明确拒绝时恢复原内存对象和旧分支；保存已发起但读回未确认时保留内存候选与迁移后的分支，等待用户重试或刷新核实。
 5. 成功后当前 repository 只返回现行结构，不在日常读写中双读。
 
 旧`fw.history`到`fw.sessions`的更早转换已经存在于当前上游运行时。迁移 fixture 需要分别覆盖当前 sessions 格式和仍可能存在的 history 格式；两者在升级入口转换，现行类型不携带`history`根字段。
@@ -355,9 +360,9 @@ chat_metadata.extensions.LittleWhiteBox.xiaobaiOs.apps.fourthWall
 
 ## 10. 普通聊天媒体能力归位
 
-当前`modules/fourth-wall/fw-message-enhancer.js`实际处理普通主聊天里的图片和语音标记，而且扩展启动时即会初始化。它不是四次元壁 APP UI 的一部分。
+迁移前的`modules/fourth-wall/fw-message-enhancer.js`同时处理普通主聊天图片和语音标记，但它不属于四次元壁 APP。第一阶段已按能力所有权将两部分分别归位。
 
-第一阶段按能力所有权拆回 Draw 与 TTS：
+现行边界：
 
 - `[img:]`的标记解析、图片槽、懒加载、生成、重试和取消归 Draw。
 - `[voice:]`的标记解析、语音气泡、播放状态和停止归 TTS。
@@ -371,12 +376,12 @@ chat_metadata.extensions.LittleWhiteBox.xiaobaiOs.apps.fourthWall
 ## 11. 错误与并发边界
 
 - 同一四次元壁 APP 同时只允许一个前台生成请求。
-- 每个请求携带不可复用的 request ID、chat identity 和 session ID。
+- 前台生成携带不可复用的 request ID、chat identity 和 session ID；图片、语音按各自媒体 request ID 隔离；吐槽按捕获的聊天、消息与会话快照提交。
 - 关闭、切聊和重答先使旧 request ID 失效，再 Abort。
 - 迟到的流式片段、Agent 完成、图片、语音和吐槽结果只能被丢弃，不能写当前聊天。
 - iframe 只接受预期 origin、预期`contentWindow`和`LittleWhiteBox-XiaobaiOS`来源标记。
 - iframe 重载后由 host 重新发送当前快照，不重放旧命令。
-- 不支持的数据版本、迁移失败和保存失败必须在 UI 显示；不得自动重置。
+- 不支持的数据版本、迁移失败、保存失败和保存结果未确认必须在 UI 显示；不得自动重置或伪报成功。
 - Agent、画图或 TTS 不可用时，只禁用对应动作并说明原因，不伪造成功结果。
 
 ## 12. 开发路线
@@ -389,7 +394,7 @@ chat_metadata.extensions.LittleWhiteBox.xiaobaiOs.apps.fourthWall
 - 将普通聊天图片/语音增强分别归位到 Draw/TTS。
 - 删除旧四次元壁入口、悬浮球和目录。
 
-第一阶段详细步骤见[施工方案](./phase-1-implementation-plan.md)。
+第一阶段实际边界、源码结构和验收项见[实施说明](./phase-1-implementation-plan.md)。
 
 ### 第二阶段：地图
 
