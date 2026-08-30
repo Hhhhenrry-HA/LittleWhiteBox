@@ -20,7 +20,7 @@ Economy（账户规则、不可变流水、幂等、冲正、回滚）
 任务 ──托管/奖励──┐
 商店 ──购买/退款──┤
 银行 ──存取/结算──┼── 只能通过 Economy 产生资金变化
-赌场 ──下注/派彩──┤
+游戏 ──下注/派彩──┤
 宠物 ──礼物/事件──┤
 地图 ──未来明确的费用或收益──┘
 ```
@@ -39,7 +39,7 @@ Economy（账户规则、不可变流水、幂等、冲正、回滚）
 - 钱包只读取余额和流水，不直接修改余额。
 - 商店把商品状态版本与扣款放在同一个 Dexie transaction。
 - 任务把托管、退款、完成奖励与任务版本放在同一个 Dexie transaction。
-- 银行把产品/游戏状态、活动记录与资金转移放在同一个 Dexie transaction；赌场是银行 APP 内的游戏区，不拥有第二套余额。
+- 银行把产品/游戏状态、活动记录与资金转移放在同一个 Dexie transaction；游戏是银行 APP 内的游戏区，不拥有第二套余额。
 - 宠物是小白酒馆的全局 Companion，但礼物和剧情事件的资金效果仍落到来源会话 Economy。
 - accepted rollback 在同一 IndexedDB transaction 中共同恢复任务、商店、银行和 Economy。
 
@@ -96,7 +96,7 @@ apps/wallet
 
 - Economy 拥有货币交易规则和账本。
 - 钱包拥有余额/流水的呈现，不拥有交易规则。
-- 任务、商店、银行和宠物各自拥有自己的状态、Prompt、工具、UI 与错误语义。
+- 任务、商店、银行、游戏和宠物各自拥有自己的状态、Prompt、工具、UI 与错误语义。
 - 业务 APP 可以依赖 Economy 的公开命令；Economy 不依赖任何业务 APP。
 - 信息和四次元壁不依赖 Economy。
 - 地图拥有地点与移动语义；只有真实费用或收益才调用 Economy，地图数据不能塞进账本。
@@ -112,7 +112,7 @@ apps/wallet
 | 任务 | 发布、接受、推进、结算状态 | 托管、退款、报酬 | 任务状态与关联流水一起回滚 |
 | 商店 | 商品、库存、效果 | 购买、退款 | 库存版本与关联流水一起回滚 |
 | 银行 | 存款、产品、结算状态 | 存取、收益、费用 | 头寸版本与关联流水一起回滚 |
-| 赌场 | 银行内的纯游戏状态机 | 下注托管、派彩、损失 | 对局与关联流水一起回滚 |
+| 游戏 | 独立纯游戏状态机与活动记录 | 下注托管、派彩、损失 | 对局与关联流水一起回滚 |
 | 宠物 | 每个普通聊天自己的宠物状态和历史 | 礼物、藏币、发现零钱等 | 宠物版本与关联流水一起回滚 |
 | 地图 | 地点、连接、当前位置 | 仅未来明确的通行费或收益 | 地图版本与关联流水一起回滚 |
 
@@ -128,6 +128,10 @@ modules/xiaobai-os/
 │  ├─ chat-data-store.ts            # 唯一根级读/写/确认队列
 │  ├─ story-adapter.ts               # 普通聊天快照与持久读回契约
 │  ├─ story-fingerprint.ts          # 普通聊天规范化与前缀 SHA-256
+│  ├─ story-write-gate.ts           # 剧情保存未确认期间的临时写门
+│  ├─ story-action-runner.ts        # 绑定 identity/fingerprint 的根 action
+│  ├─ story-reconciliation-runtime.ts # 多领域剧情对账调度
+│  ├─ production-composition.ts     # 唯一业务组装入口
 │  └─ sillytavern-context.ts        # SillyTavern 适配
 ├─ domains/
 │  └─ economy/
@@ -136,8 +140,6 @@ modules/xiaobai-os/
 │     ├─ ledger.ts
 │     ├─ timeline.ts
 │     ├─ repository.ts
-│     ├─ story-write-gate.ts
-│     ├─ story-reconciliation-runtime.ts
 │     └─ README.md
 └─ apps/
    ├─ fourth-wall/

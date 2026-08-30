@@ -24,6 +24,7 @@ export type XiaobaiOsBranchValidator = (value: unknown, path: string) => void;
 export interface XiaobaiOsChatDataValidators {
     apps?: Readonly<Record<string, XiaobaiOsBranchValidator>>;
     domains?: Readonly<Record<string, XiaobaiOsBranchValidator>>;
+    root?: XiaobaiOsBranchValidator;
 }
 
 export interface RootMutationMetadataEffect {
@@ -124,6 +125,7 @@ function assertValidRoot(
     }
     validateBranches(value.apps, validators.apps, 'xiaobaiOs.apps');
     validateBranches(value.domains, validators.domains, 'xiaobaiOs.domains');
+    validators.root?.(value, 'xiaobaiOs');
 }
 
 function createWriteQueue() {

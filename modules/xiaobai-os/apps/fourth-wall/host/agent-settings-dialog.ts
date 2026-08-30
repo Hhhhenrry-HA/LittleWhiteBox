@@ -79,6 +79,7 @@ export function createFourthWallAgentSettingsDialog({
     let state: AgentDialogState | null = null;
     let saveResetTimer: number | null = null;
     let openGeneration = 0;
+    let previousFocus: HTMLElement | null = null;
 
     function close(): void {
         openGeneration += 1;
@@ -93,6 +94,8 @@ export function createFourthWallAgentSettingsDialog({
             windowTarget.clearTimeout(saveResetTimer);
         }
         saveResetTimer = null;
+        previousFocus?.focus();
+        previousFocus = null;
     }
 
     function showToast(message: unknown): void {
@@ -213,6 +216,7 @@ export function createFourthWallAgentSettingsDialog({
     }
 
     function createShell(): void {
+        previousFocus = documentTarget.activeElement as HTMLElement | null;
         overlay = documentTarget.createElement('div');
         overlay.id = DIALOG_ID;
         overlay.className = 'xiaobaix-os-agent-overlay';
@@ -221,6 +225,7 @@ export function createFourthWallAgentSettingsDialog({
         dialog.setAttribute('role', 'dialog');
         dialog.setAttribute('aria-modal', 'true');
         dialog.setAttribute('aria-label', '四次元壁 Agent API 配置');
+        dialog.tabIndex = -1;
         const header = documentTarget.createElement('header');
         header.innerHTML = '<div><strong>Agent API 配置</strong><small>四次元壁使用小白 Agent 的共享配置</small></div>';
         const closeButton = documentTarget.createElement('button');
@@ -236,6 +241,29 @@ export function createFourthWallAgentSettingsDialog({
         overlay.addEventListener('click', (event) => {
             if (event.target === overlay) {
                 close();
+            }
+        });
+        overlay.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                close();
+                return;
+            }
+            if (event.key !== 'Tab' || !overlay) {return;}
+            const focusable = Array.from(overlay.querySelectorAll<HTMLElement>(
+                'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+            ));
+            const first = focusable[0];
+            const last = focusable.at(-1);
+            if (!first || !last) {
+                event.preventDefault();
+                dialog.focus();
+            } else if (event.shiftKey && documentTarget.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && documentTarget.activeElement === last) {
+                event.preventDefault();
+                first.focus();
             }
         });
         documentTarget.body.append(overlay);

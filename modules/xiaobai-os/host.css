@@ -2,23 +2,29 @@
     align-items: center;
     background: transparent;
     border: 0;
-    border-radius: 8px;
+    border-radius: 5px;
     color: var(--SmartThemeBodyColor, currentColor);
     cursor: pointer;
     display: inline-flex;
     flex: 0 0 auto;
-    font-size: 19px;
-    height: 32px;
+    font-size: var(--bottomFormIconSize, 28.5px);
+    height: var(--bottomFormBlockSize, 34.5px);
     justify-content: center;
-    margin: 0 3px;
-    opacity: .86;
+    margin: 0;
+    opacity: .7;
     padding: 0;
-    transition: background-color 140ms ease, opacity 140ms ease, transform 140ms ease;
-    width: 32px;
+    transition: opacity var(--animation-duration-2x, 200ms) ease, filter var(--animation-duration-2x, 200ms) ease, transform 140ms ease;
+    width: var(--bottomFormBlockSize, 34.5px);
+}
+
+.xiaobaix-os-button>svg {
+    display: block;
+    height: .84em;
+    width: .84em;
 }
 
 .xiaobaix-os-button:hover {
-    background: color-mix(in srgb, currentColor 10%, transparent);
+    filter: brightness(1.2);
     opacity: 1;
 }
 
@@ -71,7 +77,7 @@
     justify-content: center;
     padding: 18px;
     position: fixed;
-    z-index: 10030;
+    z-index: 30010;
 }
 
 .xiaobaix-os-agent-dialog {
@@ -192,7 +198,7 @@
     transform: translateX(-50%);
 }
 
-@media (max-width: 600px) {
+@media (max-width: 760px) {
     .xiaobaix-os-agent-overlay {
         align-items: stretch;
         padding: 0;
@@ -200,7 +206,11 @@
 
     .xiaobaix-os-agent-dialog {
         border-radius: 0;
+        box-sizing: border-box;
+        height: 100dvh;
         max-height: 100dvh;
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-top: env(safe-area-inset-top);
         width: 100vw;
     }
 }

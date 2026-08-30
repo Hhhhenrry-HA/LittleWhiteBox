@@ -3,7 +3,7 @@
 - 状态：已施工并完成 Review 与真实浏览器验收
 - 设计依据：[经济平台终态设计](./economy-platform-target-design.md)
 - 本阶段交付：根级数据写入边界、普通剧情锚点、Economy 核心、钱包 APP、剧情回滚
-- 不交付：信息、地图、任务、商店、银行/赌场和宠物的页面、类型或占位实现
+- 不交付：信息、地图、任务、商店、银行/游戏和宠物的页面、类型或占位实现
 
 ## 0. 实施结果
 
@@ -63,6 +63,10 @@ modules/xiaobai-os/
 │  ├─ settings-repository.ts
 │  ├─ lifecycle.ts
 │  ├─ frame-bridge.ts
+│  ├─ story-write-gate.ts
+│  ├─ story-action-runner.ts
+│  ├─ story-reconciliation-runtime.ts
+│  ├─ production-composition.ts
 │  └─ sillytavern-context.ts
 ├─ domains/economy/
 │  ├─ types.ts
@@ -70,8 +74,6 @@ modules/xiaobai-os/
 │  ├─ ledger.ts
 │  ├─ timeline.ts
 │  ├─ repository.ts
-│  ├─ story-write-gate.ts
-│  ├─ story-reconciliation-runtime.ts
 │  └─ README.md
 ├─ apps/fourth-wall/
 │  ├─ types.ts
@@ -470,7 +472,7 @@ git diff --check
 第一阶段不顺手加入：
 
 - 手动改余额、管理员铸币或调账界面。
-- 任务、商店、银行、赌场、宠物、地图的占位图标。
+- 任务、商店、银行、游戏、宠物、地图的占位图标。
 - 为未来领域预建表、版本、Prompt、工具或 Controller 分支。
 - 余额 checkpoint、缓存表、跨聊天总资产或全局宠物。
 - 小白酒馆数据导入、同步或双向桥。

@@ -11,6 +11,7 @@ Economy 是普通 SillyTavern 小白 OS 的共享经济领域，只拥有账户�
 - `ledger.ts`：纯内存开户、记账、批次、冲正和投影。
 - `timeline.ts`：按剧情前缀裁掉第一笔失效 action 及全部后缀。
 - `repository.ts`：选择`domains.economy`并经 OS 根 store 原子提交。
-- `story-write-gate.ts`与`story-reconciliation-runtime.ts`：等待 SillyTavern 剧情持久化、冻结写入并触发回滚。
+
+剧情写门、action runner 和多领域对账运行时位于`host/`。它们拥有 SillyTavern 生命周期与根写入编排；Economy 只提供账本规则、时间线和 repository 接口。
 
 删除 Economy 前必须先删除或迁移全部真实消费者，再删除本目录、composition 注册和`domains.economy`数据。不得留下余额副本、旧 API 或兼容壳。

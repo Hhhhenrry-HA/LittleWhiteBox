@@ -1,8 +1,30 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createEconomyStoryReconciliationRuntime } from '../domains/economy/story-reconciliation-runtime.js';
-import { createStoryWriteGate } from '../domains/economy/story-write-gate.js';
+import { createStoryReconciliationRuntime } from '../host/story-reconciliation-runtime.js';
+import { createStoryActionRunner } from '../host/story-action-runner.js';
+import { createStoryWriteGate } from '../host/story-write-gate.js';
+
+function createTestStoryRuntime(adapter, repository, gate, options) {
+    const root = { schemaVersion: 2, apps: {}, domains: { test: {} } };
+    const store = {
+        readCurrent: () => repository.hasCurrent() ? root : null,
+        async mutateCurrent(mutation, mutationOptions = {}) {
+            const snapshot = adapter.captureCurrent();
+            const plan = await mutation(root, { identityKey: snapshot?.identityKey || '' });
+            await mutationOptions.beforeCommit?.();
+            return plan.result;
+        },
+    };
+    return createStoryReconciliationRuntime(adapter, store, gate, [{
+        key: 'test',
+        hasData: () => repository.hasCurrent(),
+        reconcile(current, fingerprint) {
+            repository.reconcileCurrent(fingerprint);
+            return { root: current, impact: null };
+        },
+    }], options);
+}
 
 function deferred() {
     let resolve;
@@ -12,10 +34,6 @@ function deferred() {
         reject = rejectPromise;
     });
     return { promise, reject, resolve };
-}
-
-function tick() {
-    return new Promise(resolve => globalThis.setImmediate(resolve));
 }
 
 async function waitUntil(predicate, attempts = 100) {
@@ -36,7 +54,7 @@ test('story events return immediately, freeze economy writes and release only af
     let storyHandler = null;
     let reconciliations = 0;
     const gate = createStoryWriteGate();
-    const runtime = createEconomyStoryReconciliationRuntime({
+    const runtime = createTestStoryRuntime({
         captureCurrent: () => structuredClone(snapshot),
         readPersistedCurrent: () => persisted.promise,
         subscribeChanges(handler) {
@@ -51,7 +69,7 @@ test('story events return immediately, freeze economy writes and release only af
     runtime.startBackground();
     assert.equal(storyHandler(), undefined);
     assert.equal(runtime.getState().status, 'reconciling');
-    assert.throws(() => gate.assertWritable(identityKey), /economy_story_reconciliation_required/);
+    assert.throws(() => gate.assertWritable(identityKey), /story_reconciliation_required/);
 
     persisted.resolve(structuredClone(snapshot));
     await waitUntil(() => runtime.getState().status === 'ready');
@@ -72,7 +90,7 @@ test('a newer story event invalidates a late reconciliation from the previous sn
     let current = first;
     let storyHandler = null;
     const gate = createStoryWriteGate();
-    const runtime = createEconomyStoryReconciliationRuntime({
+    const runtime = createTestStoryRuntime({
         captureCurrent: () => structuredClone(current),
         readPersistedCurrent: () => reads.shift().promise,
         subscribeChanges(handler) {
@@ -90,9 +108,7 @@ test('a newer story event invalidates a late reconciliation from the previous sn
     storyHandler();
     firstRead.resolve(structuredClone(first));
     secondRead.resolve(structuredClone(second));
-    await tick();
-    await tick();
-    await tick();
+    await waitUntil(() => runtime.getState().status === 'ready');
 
     assert.deepEqual(reconciledTexts, ['版本二']);
     assert.equal(runtime.getState().status, 'ready');
@@ -114,7 +130,7 @@ test('an identity jump releases the previous chat gate even without a chat-chang
     let current = chatA;
     let storyHandler = null;
     const gate = createStoryWriteGate();
-    const runtime = createEconomyStoryReconciliationRuntime({
+    const runtime = createTestStoryRuntime({
         captureCurrent: () => structuredClone(current),
         readPersistedCurrent: () => reads.shift().promise,
         subscribeChanges(handler) {
@@ -128,12 +144,12 @@ test('an identity jump releases the previous chat gate even without a chat-chang
 
     runtime.startBackground();
     storyHandler();
-    assert.throws(() => gate.assertWritable(chatA.identityKey), /economy_story_reconciliation_required/);
+    assert.throws(() => gate.assertWritable(chatA.identityKey), /story_reconciliation_required/);
 
     current = chatB;
     storyHandler();
     assert.doesNotThrow(() => gate.assertWritable(chatA.identityKey));
-    assert.throws(() => gate.assertWritable(chatB.identityKey), /economy_story_reconciliation_required/);
+    assert.throws(() => gate.assertWritable(chatB.identityKey), /story_reconciliation_required/);
 
     secondRead.resolve(structuredClone(chatB));
     await waitUntil(() => runtime.getState().status === 'ready');
@@ -149,7 +165,7 @@ test('a persistence timeout keeps writes frozen and an explicit retry can recove
     let persisted = stale;
     let clock = 0;
     const gate = createStoryWriteGate();
-    const runtime = createEconomyStoryReconciliationRuntime({
+    const runtime = createTestStoryRuntime({
         captureCurrent: () => structuredClone(current),
         readPersistedCurrent: async () => structuredClone(persisted),
         subscribeChanges: () => () => {},
@@ -171,10 +187,59 @@ test('a persistence timeout keeps writes frozen and an explicit retry can recove
 
     const blocked = await runtime.reconcileNow();
     assert.equal(blocked.status, 'blocked');
-    assert.throws(() => gate.assertWritable(identityKey), /economy_story_reconciliation_required/);
+    assert.throws(() => gate.assertWritable(identityKey), /story_reconciliation_required/);
 
     persisted = current;
     const recovered = await runtime.reconcileNow();
     assert.equal(recovered.status, 'ready');
     assert.doesNotThrow(() => gate.assertWritable(identityKey));
+});
+
+test('a story-bound write reconciles every registered domain before its command runs', async () => {
+    const snapshot = {
+        identityKey: 'character:1:chat-moved',
+        messages: [{ role: 'user', name: '主人', text: '移动后的剧情' }],
+    };
+    let root = {
+        schemaVersion: 2,
+        apps: {},
+        domains: { first: { story: '旧剧情' }, second: { story: '旧剧情' } },
+    };
+    const adapter = {
+        captureCurrent: () => structuredClone(snapshot),
+        readPersistedCurrent: async () => structuredClone(snapshot),
+        subscribeChanges: () => () => {},
+    };
+    const store = {
+        readCurrent: () => structuredClone(root),
+        getWriteState: () => 'ready',
+        async mutateCurrent(command, options = {}) {
+            const plan = await command(structuredClone(root), { identityKey: snapshot.identityKey });
+            await options.beforeCommit?.();
+            root = structuredClone(plan.next);
+            return plan.result;
+        },
+    };
+    const gate = createStoryWriteGate();
+    const reconciled = [];
+    const runtime = createStoryReconciliationRuntime(adapter, store, gate, ['first', 'second'].map(key => ({
+        key,
+        hasData: current => current?.domains[key] !== undefined,
+        reconcile(current, fingerprint) {
+            reconciled.push(key);
+            const next = structuredClone(current);
+            next.domains[key].story = fingerprint.messages[0].text;
+            return { root: next, impact: null };
+        },
+    })));
+    const runner = createStoryActionRunner(store, adapter, gate, runtime.reconcileNow);
+
+    const result = await runner.run((current) => {
+        assert.equal(current.domains.first.story, '移动后的剧情');
+        assert.equal(current.domains.second.story, '移动后的剧情');
+        return { next: current, result: 'committed' };
+    });
+
+    assert.equal(result, 'committed');
+    assert.deepEqual(reconciled, ['first', 'second']);
 });

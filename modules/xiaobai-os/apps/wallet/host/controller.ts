@@ -1,9 +1,9 @@
 import type { EconomyRepository } from '../../../domains/economy/repository.js';
 import type { EconomyTransaction, EconomyTransactionPage } from '../../../domains/economy/types.js';
 import type {
-    EconomyStoryReconciliationRuntime,
-    EconomyStoryReconciliationState,
-} from '../../../domains/economy/story-reconciliation-runtime.js';
+    StoryReconciliationRuntime,
+    StoryReconciliationState,
+} from '../../../host/story-reconciliation-runtime.js';
 import type {
     XiaobaiOsAppActivationContext,
     XiaobaiOsAppRuntime,
@@ -29,7 +29,7 @@ interface WalletActivation {
 
 interface WalletControllerDependencies {
     economy: EconomyRepository;
-    storyRuntime: EconomyStoryReconciliationRuntime;
+    storyRuntime: StoryReconciliationRuntime;
     getChatIdentity: () => XiaobaiOsChatIdentity | { key?: unknown } | string | null;
 }
 
@@ -81,7 +81,7 @@ function projectPage(page: EconomyTransactionPage): WalletTransactionPageView {
 
 function resolveStatus(
     writeState: ReturnType<EconomyRepository['getWriteState']>,
-    storyState: EconomyStoryReconciliationState,
+    storyState: StoryReconciliationState,
     chatIdentity: string,
     hasLedger: boolean,
 ): { status: WalletStatus; message: string } {
@@ -188,7 +188,7 @@ export function createWalletController({
         activation = null;
     }
 
-    function handleStoryState(next: EconomyStoryReconciliationState): void {
+    function handleStoryState(next: StoryReconciliationState): void {
         const current = activation;
         if (!current || next.identityKey !== current.chatIdentity || currentChatIdentity() !== current.chatIdentity) {return;}
         try {

@@ -185,9 +185,16 @@ LittleWhiteBox/
 │   │   ├── index.ts                        # 宿主组合入口，构建为 dist/xiaobai-os-host.js
 │   │   ├── apps/fourth-wall/               # 独立四次元壁会话/Controller/Agent 与 Vue UI
 │   │   ├── apps/wallet/                    # Economy 的只读余额、流水投影与 Vue UI
-│   │   ├── domains/economy/                # 账本不变量、幂等/冲正、剧情门与回滚
-│   │   ├── host/                           # 根写队列、ST 剧情/持久化适配、迁移、生命周期与 iframe 桥
+│   │   ├── apps/shop/                      # Shop 应用服务、Prompt/宿主适配与 Vue UI
+│   │   ├── apps/bank/                      # Bank 应用服务、资金编排、宿主适配与 Vue UI
+│   │   ├── apps/game/                      # Game 应用服务、资金编排、宿主适配与 Vue UI
+│   │   ├── domains/economy/                # 账本不变量、幂等/冲正与剧情回滚规则
+│   │   ├── domains/shop/                   # 商品目录、事件链、效果投影与 Prompt
+│   │   ├── domains/bank/                   # 存单、理财、头寸、金融活动与纯领域规则
+│   │   ├── domains/game/                   # 三款游戏、私有随机状态、活动与纯领域规则
+│   │   ├── host/                           # 根写队列、剧情门/对账、ST 适配、生命周期与 iframe 桥
 │   │   ├── shell/                          # Vue + TypeScript OS 桌面壳与 iframe 入口
+│   │   ├── docs/                           # 已实现阶段及各 APP 的终态设计与施工说明
 │   │   └── tests/                          # 迁移、保存状态机、剧情回滚、隔离、生命周期和 APP 行为测试
 │   │
 │   ├── ebook/                             # 小白电纸书 App：书架、书本入口、创作台、章节阅读器

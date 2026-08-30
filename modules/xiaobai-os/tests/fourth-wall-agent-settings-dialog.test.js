@@ -42,3 +42,19 @@ test('closing while the Agent bridge loads prevents stale config work and subscr
     assert.equal(subscriptions, 0);
     assert.equal(document.getElementById('xiaobaix-os-agent-settings'), null);
 });
+
+test('an Agent bridge loading failure stays visible and is returned to the caller', async () => {
+    const { document, window } = parseHTML('<!doctype html><html><body></body></html>');
+    const dialog = createFourthWallAgentSettingsDialog({
+        documentTarget: document,
+        windowTarget: window,
+        loadAgentBridge: async () => {throw new Error('bundle unavailable');},
+        loadConfig: async () => ({}),
+        saveConfig: async () => ({ ok: true, config: {} }),
+    });
+
+    assert.equal(await dialog.open(), false);
+    assert.match(document.querySelector('.xiaobaix-os-agent-body').textContent, /bundle unavailable/);
+    assert.equal(dialog.isOpen(), true);
+    dialog.close();
+});

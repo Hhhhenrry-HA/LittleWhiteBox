@@ -1,10 +1,5 @@
-import {
-    buildStoryFingerprint,
-    storyMessagesEqual,
-    type StoryFingerprint,
-    type StorySnapshot,
-} from '../../host/story-fingerprint.js';
-import type { StoryWriteGate } from './story-write-gate.js';
+import type { StoryFingerprint } from '../../host/story-fingerprint.js';
+import type { StoryActionRunner } from '../../host/story-action-runner.js';
 import type { XiaobaiOsChatData, XiaobaiOsStoryAnchor } from '../../types.js';
 import type {
     ConfirmResult,
@@ -54,10 +49,7 @@ export interface EconomyRepository {
 interface EconomyRepositoryDependencies {
     now?: () => number;
     createId?: () => string;
-    story?: {
-        captureCurrent: () => StorySnapshot | null;
-        gate: StoryWriteGate;
-    };
+    actionRunner?: StoryActionRunner;
 }
 
 function emptyRoot(): XiaobaiOsChatData {
@@ -73,7 +65,7 @@ function readLedger(root: XiaobaiOsChatData | null): EconomyLedgerV1 | null {
 
 export function createEconomyRepository(
     store: XiaobaiOsChatDataStore,
-    { now = Date.now, createId, story }: EconomyRepositoryDependencies = {},
+    { now = Date.now, createId, actionRunner }: EconomyRepositoryDependencies = {},
 ): EconomyRepository {
     const ledgerDependencies = { now, ...(createId ? { createId } : {}) };
 
@@ -133,40 +125,11 @@ export function createEconomyRepository(
         }, options);
     }
 
-    async function captureCommandStory(): Promise<{ snapshot: StorySnapshot; fingerprint: StoryFingerprint }> {
-        if (!story) {
+    function requireActionRunner(): StoryActionRunner {
+        if (!actionRunner) {
             throw new Error('economy_story_access_unavailable');
         }
-        const snapshot = story.captureCurrent();
-        if (!snapshot) {
-            throw new Error('economy_chat_unavailable');
-        }
-        story.gate.assertWritable(snapshot.identityKey);
-        const fingerprint = await buildStoryFingerprint(snapshot);
-        assertCommandStoryCurrent(snapshot);
-        return { snapshot, fingerprint };
-    }
-
-    function assertCommandStoryCurrent(snapshot: StorySnapshot): void {
-        story?.gate.assertWritable(snapshot.identityKey);
-        const live = story?.captureCurrent();
-        if (
-            !live ||
-            live.identityKey !== snapshot.identityKey ||
-            !storyMessagesEqual(live.messages, snapshot.messages)
-        ) {
-            throw new Error('story_changed_during_economy_command');
-        }
-    }
-
-    function commandCommitGuard(snapshot: StorySnapshot, options: RootMutationOptions): RootMutationOptions {
-        return {
-            async beforeCommit() {
-                assertCommandStoryCurrent(snapshot);
-                await options.beforeCommit?.();
-                assertCommandStoryCurrent(snapshot);
-            },
-        };
+        return actionRunner;
     }
 
     function actionAnchor(
@@ -185,15 +148,11 @@ export function createEconomyRepository(
         inputs: readonly Omit<PostTransactionInput, 'anchor'>[],
         options: RootMutationOptions = {},
     ): Promise<EconomyPostActionResult> {
-        const { snapshot, fingerprint } = await captureCommandStory();
-        return store.mutateCurrent((current, context) => {
-            if (context.identityKey !== snapshot.identityKey) {
-                throw new Error('story_snapshot_chat_mismatch');
-            }
+        return requireActionRunner().run((current, _rootContext, storyContext) => {
             const next = current ? structuredClone(current) : emptyRoot();
             const existing = ensureEconomy(readLedger(current) || undefined, ledgerDependencies);
-            const reconciled = reconcileLedgerWithStory(existing, fingerprint).ledger;
-            const anchor = actionAnchor(reconciled, inputs, fingerprint.latestAnchor);
+            const reconciled = reconcileLedgerWithStory(existing, storyContext.fingerprint).ledger;
+            const anchor = actionAnchor(reconciled, inputs, storyContext.anchor);
             const result = postAction(
                 reconciled,
                 inputs.map((input) => ({ ...input, anchor })),
@@ -201,7 +160,7 @@ export function createEconomyRepository(
             );
             next.domains.economy = result.ledger;
             return { next, result };
-        }, commandCommitGuard(snapshot, options));
+        }, options);
     }
 
     async function postCurrent(
@@ -220,25 +179,21 @@ export function createEconomyRepository(
         input: Omit<ReverseTransactionInput, 'anchor'>,
         options: RootMutationOptions = {},
     ): Promise<EconomyPostResult> {
-        const { snapshot, fingerprint } = await captureCommandStory();
-        return store.mutateCurrent((current, context) => {
-            if (context.identityKey !== snapshot.identityKey) {
-                throw new Error('story_snapshot_chat_mismatch');
-            }
+        return requireActionRunner().run((current, _rootContext, storyContext) => {
             const ledger = readLedger(current);
             if (!current || !ledger) {throw new Error('economy_not_opened');}
-            const reconciled = reconcileLedgerWithStory(ledger, fingerprint).ledger;
+            const reconciled = reconcileLedgerWithStory(ledger, storyContext.fingerprint).ledger;
             const existing = reconciled.transactions.find(
                 (transaction) => transaction.idempotencyKey === input.idempotencyKey,
             );
             const result = reverseTransaction(reconciled, {
                 ...input,
-                anchor: structuredClone(existing?.anchor || fingerprint.latestAnchor),
+                anchor: structuredClone(existing?.anchor || storyContext.anchor),
             }, ledgerDependencies);
             const next = structuredClone(current);
             next.domains.economy = result.ledger;
             return { next, result };
-        }, commandCommitGuard(snapshot, options));
+        }, options);
     }
 
     return Object.freeze({

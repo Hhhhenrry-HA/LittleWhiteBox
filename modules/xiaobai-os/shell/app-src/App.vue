@@ -30,7 +30,6 @@ let unsubscribe = () => {};
 let navigationGeneration = 0;
 
 const availableApps = computed(() => xiaobaiOsApps.filter(app => availableIds.value.has(app.id)));
-const isHome = computed(() => activeApp.value === null);
 
 function applyInit(payload: InitPayload): void {
     navigationGeneration += 1;
@@ -150,11 +149,10 @@ onBeforeUnmount(() => {
         <XiaobaiOsDevice
             v-else
             :apps="availableApps"
-            :active-component="activeApp?.component || null"
+            :active-app="activeApp"
             :active-state="activeState"
             :bridge="bridge"
             :character-avatar="characterAvatar"
-            :is-home="isHome"
             @open-app="openApp"
             @back="goHome"
             @home="goHome"

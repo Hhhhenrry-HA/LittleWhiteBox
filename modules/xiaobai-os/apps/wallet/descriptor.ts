@@ -3,5 +3,5 @@ import type { XiaobaiOsAppDescriptor } from '../../types.js';
 export const WALLET_APP_DESCRIPTOR: Readonly<XiaobaiOsAppDescriptor> = Object.freeze({
     id: 'wallet',
     name: '钱包',
-    accent: '#9b642c',
+    accent: '#a9660f',
 });

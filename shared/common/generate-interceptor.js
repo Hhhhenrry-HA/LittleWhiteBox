@@ -14,6 +14,7 @@ export const GENERATE_INTERCEPTOR_ORDER = Object.freeze({
     DRAW: 100,
     STORY_SUMMARY: 200,
     ENA_PLANNER: 300,
+    XIAOBAI_OS_SHOP: 400,
 });
 
 const handlers = new Map();

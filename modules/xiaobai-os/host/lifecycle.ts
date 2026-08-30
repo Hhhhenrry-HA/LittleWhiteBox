@@ -47,6 +47,31 @@ function isRecord(value: unknown): value is UnknownRecord {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
+const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
+
+/** Bento launcher mark: one primary window tile plus two stacked widget tiles. */
+const LAUNCHER_ICON_TILES: readonly Readonly<Record<string, string>>[] = [
+    { x: '2.5', y: '2.5', width: '11', height: '19', rx: '3.5' },
+    { x: '15.5', y: '2.5', width: '6', height: '8.5', rx: '2.5', opacity: '.6' },
+    { x: '15.5', y: '13', width: '6', height: '8.5', rx: '2.5', opacity: '.85' },
+];
+
+function createLauncherIcon(documentTarget: Document): SVGSVGElement {
+    const icon = documentTarget.createElementNS(SVG_NAMESPACE, 'svg');
+    icon.setAttribute('viewBox', '0 0 24 24');
+    icon.setAttribute('fill', 'currentColor');
+    icon.setAttribute('aria-hidden', 'true');
+    icon.setAttribute('focusable', 'false');
+    for (const tile of LAUNCHER_ICON_TILES) {
+        const rect = documentTarget.createElementNS(SVG_NAMESPACE, 'rect');
+        for (const [name, value] of Object.entries(tile)) {
+            rect.setAttribute(name, value);
+        }
+        icon.append(rect);
+    }
+    return icon;
+}
+
 function createLauncherButton(documentTarget: Document): HTMLButtonElement {
     const button = documentTarget.createElement('button');
     button.id = BUTTON_ID;
@@ -56,10 +81,7 @@ function createLauncherButton(documentTarget: Document): HTMLButtonElement {
     button.setAttribute('aria-label', '打开小白 OS');
     button.setAttribute('aria-haspopup', 'dialog');
     button.setAttribute('aria-controls', OVERLAY_ID);
-    const icon = documentTarget.createElement('i');
-    icon.className = 'fa-solid fa-mobile-screen-button';
-    icon.setAttribute('aria-hidden', 'true');
-    button.append(icon);
+    button.append(createLauncherIcon(documentTarget));
     return button;
 }
 

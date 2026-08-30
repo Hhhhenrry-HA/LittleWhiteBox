@@ -20,21 +20,16 @@ const statusLabel = computed(() => ({
 </script>
 
 <template>
-    <section class="wallet-balance-card" aria-labelledby="wallet-balance-title">
-        <div class="wallet-balance-watermark" aria-hidden="true">白</div>
+    <section class="wallet-balance wallet-ui-rise" aria-labelledby="wallet-balance-title">
         <header>
-            <span class="wallet-seal" aria-hidden="true">币</span>
-            <div>
-                <p id="wallet-balance-title">当前结余</p>
-                <small>{{ currency }} · 私人账簿</small>
-            </div>
+            <p id="wallet-balance-title">当前结余</p>
+            <span class="wallet-balance-chip">
+                <i :class="`is-${status}`" aria-hidden="true" />{{ statusLabel }}
+            </span>
         </header>
         <div class="wallet-balance-value" :aria-label="`${formattedBalance} ${currency}`">
-            <span>¤</span>{{ formattedBalance }}
+            <span aria-hidden="true">¤</span>{{ formattedBalance }}
         </div>
-        <footer>
-            <span>NO. XBO-01</span>
-            <span class="wallet-balance-state"><i :class="`is-${status}`" />{{ statusLabel }}</span>
-        </footer>
+        <footer>{{ currency }}</footer>
     </section>
 </template>

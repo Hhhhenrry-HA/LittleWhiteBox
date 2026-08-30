@@ -2,8 +2,12 @@
 import { computed, onBeforeUnmount, onMounted, ref, toRaw } from 'vue';
 import type { XiaobaiOsAppProps } from '../../../shell/app-src/app-registry.js';
 import type { WalletClientState, WalletTransactionPageView } from '../types.js';
+import WalletAppHeader from './WalletAppHeader.vue';
 import WalletBalanceCard from './WalletBalanceCard.vue';
+import WalletIconButton from './WalletIconButton.vue';
+import WalletNotice, { type WalletNoticeTone } from './WalletNotice.vue';
 import WalletTransactionList from './WalletTransactionList.vue';
+import './wallet-ui.css';
 import './wallet.css';
 
 const REQUEST_TIMEOUT_MS = 35_000;
@@ -19,6 +23,19 @@ let requestGeneration = 0;
 const requiresConfirmation = computed(() => state.value.status === 'unconfirmed');
 const actionBusy = computed(() => refreshing.value || state.value.status === 'reconciling' || state.value.status === 'saving');
 const refreshDisabled = computed(() => actionBusy.value || requiresConfirmation.value || state.value.status === 'conflict');
+const noticeVisible = computed(() => Boolean(state.value.message || errorMessage.value));
+
+const noticeTone = computed<WalletNoticeTone>(() => {
+    if (errorMessage.value || state.value.status === 'conflict' || state.value.status === 'blocked') {return 'danger';}
+    if (requiresConfirmation.value) {return 'warning';}
+    return 'info';
+});
+
+const noticeTitle = computed(() => {
+    if (state.value.status === 'conflict') {return '账本发生冲突';}
+    if (state.value.status === 'blocked') {return '账本暂停';}
+    return '账本状态';
+});
 
 function binding(): { chatIdentity: string } {
     return { chatIdentity: state.value.chatIdentity };
@@ -108,50 +125,47 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <main class="wallet-app">
-        <header class="wallet-header">
-            <div>
-                <span class="wallet-header-kicker">XIAOBAI LEDGER</span>
-                <h1>钱包</h1>
-            </div>
-            <button type="button" class="wallet-refresh" title="重新读取账本" :disabled="refreshDisabled" @click="refresh">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M18.2 9A7 7 0 0 0 6.1 6.7L4 9m16 6-2.1 2.3A7 7 0 0 1 5.8 15" /></svg>
-                <span class="sr-only">重新读取账本</span>
-            </button>
-        </header>
+    <main class="wallet-ui-app wallet-app">
+        <WalletAppHeader kicker="Wallet" title="钱包">
+            <template #actions>
+                <WalletIconButton label="重新读取账本" :disabled="refreshDisabled" :busy="refreshing" @activate="refresh">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M18.2 9A7 7 0 0 0 6.1 6.7L4 9m16 6-2.1 2.3A7 7 0 0 1 5.8 15" /></svg>
+                </WalletIconButton>
+            </template>
+        </WalletAppHeader>
 
-        <div class="wallet-scroll">
+        <div class="wallet-ui-scroll">
             <WalletBalanceCard :balance="state.balance" :currency="state.currency" :status="state.status" />
 
-            <aside v-if="state.message || errorMessage" class="wallet-notice" :class="`is-${state.status}`" role="status">
-                <span aria-hidden="true">{{ state.status === 'ready' ? '!' : '※' }}</span>
-                <div>
-                    <strong>{{ state.status === 'conflict' ? '账本发生冲突' : state.status === 'blocked' ? '账本暂停' : '账本状态' }}</strong>
-                    <p>{{ errorMessage || state.message }}</p>
-                    <button v-if="requiresConfirmation" type="button" :disabled="refreshing" @click="confirmSave">
-                        {{ refreshing ? '正在核实…' : '核实保存结果' }}
-                    </button>
-                    <button v-else-if="state.status === 'blocked'" type="button" :disabled="refreshing" @click="refresh">
-                        {{ refreshing ? '正在读取…' : '重新读取' }}
-                    </button>
-                </div>
-            </aside>
+            <WalletNotice
+                v-if="noticeVisible"
+                class="wallet-notice"
+                :tone="noticeTone"
+                :title="noticeTitle"
+                :message="errorMessage || state.message"
+            >
+                <button v-if="requiresConfirmation" type="button" class="wallet-ui-text-button" :disabled="refreshing" @click="confirmSave">
+                    {{ refreshing ? '正在核实…' : '核实保存结果' }}
+                </button>
+                <button v-else-if="state.status === 'blocked'" type="button" class="wallet-ui-text-button" :disabled="refreshing" @click="refresh">
+                    {{ refreshing ? '正在读取…' : '重新读取' }}
+                </button>
+            </WalletNotice>
 
             <section class="wallet-ledger" aria-labelledby="wallet-ledger-title">
-                <header>
-                    <div>
-                        <span>收支簿</span>
-                        <h2 id="wallet-ledger-title">流水明细</h2>
-                    </div>
+                <div class="wallet-ui-section-title">
+                    <h2 id="wallet-ledger-title">流水明细</h2>
                     <small>{{ state.transactionCount }} 笔</small>
-                </header>
-                <WalletTransactionList
-                    :transactions="state.transactions"
-                    :has-more="state.hasMore"
-                    :loading-more="loadingMore"
-                    :error="loadMoreError"
-                    @load-more="loadMore"
-                />
+                </div>
+                <div class="wallet-ui-card">
+                    <WalletTransactionList
+                        :transactions="state.transactions"
+                        :has-more="state.hasMore"
+                        :loading-more="loadingMore"
+                        :error="loadMoreError"
+                        @load-more="loadMore"
+                    />
+                </div>
             </section>
         </div>
     </main>

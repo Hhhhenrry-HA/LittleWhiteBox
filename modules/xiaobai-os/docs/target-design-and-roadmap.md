@@ -1,6 +1,6 @@
 # 普通酒馆小白 OS 终态设计与开发规划
 
-- 状态：OS 壳、四次元壁、Economy 与钱包均已实施
+- 状态：OS 壳、四次元壁、Economy、钱包、商店、银行与游戏均已实施
 - 适用范围：普通 SillyTavern / LittleWhiteBox 扩展
 - 不适用范围：`modules/tavern/**`小白酒馆
 - 确认日期：2026-08-30
@@ -62,10 +62,13 @@ dist/xiaobai-os-host.js ← xiaobai-os/index.ts
     ├─ shell：桌面、导航、设备窗口、APP 生命周期
     ├─ apps/fourth-wall：会话 / Prompt / generation / media / UI
     ├─ domains/economy：账户规则 / 流水 / 幂等 / 冲正 / 回滚
-    └─ apps/wallet：Economy 的只读余额与流水投影
+    ├─ apps/wallet：Economy 的只读余额与流水投影
+    ├─ domains/shop + apps/shop：商品 / 库存 / 效果 / Prompt / UI
+    ├─ domains/bank + apps/bank：存单 / 理财 / 头寸 / 结算 / UI
+    └─ domains/game + apps/game：纯规则游戏 / 私有状态 / 结算 / UI
 ```
 
-任务、商店、银行/赌场、宠物和地图进入时各自拥有领域目录，只通过 Economy 的公开命令产生资金副作用。Economy 不依赖这些 APP，钱包也不成为它们的 Controller。
+商店、银行与游戏各自拥有领域目录，只通过 Economy 的公开能力产生资金副作用。未来的任务、宠物和地图也必须遵守同一方向；Economy 不依赖这些 APP，钱包也不成为它们的 Controller。
 
 ### OS 壳拥有
 
@@ -113,7 +116,11 @@ modules/xiaobai-os/
 │  ├─ story-adapter.ts
 │  ├─ story-fingerprint.ts
 │  ├─ legacy-migration.ts
-│  └─ frame-bridge.ts
+│  ├─ frame-bridge.ts
+│  ├─ story-write-gate.ts
+│  ├─ story-action-runner.ts
+│  ├─ story-reconciliation-runtime.ts
+│  └─ production-composition.ts
 ├─ shell/
 │  ├─ xiaobai-os.html
 │  └─ app-src/
@@ -130,20 +137,61 @@ modules/xiaobai-os/
 │  │  ├─ agent/
 │  │  ├─ ui/
 │  │  └─ README.md
-│  └─ wallet/
+│  ├─ wallet/
+│  │  ├─ descriptor.ts
+│  │  ├─ host/
+│  │  ├─ ui/
+│  │  └─ README.md
+│  ├─ shop/
+│  │  ├─ descriptor.ts
+│  │  ├─ application/
+│  │  ├─ host/
+│  │  ├─ ui/
+│  │  └─ README.md
+│  ├─ bank/
+│  │  ├─ descriptor.ts
+│  │  ├─ application/
+│  │  ├─ host/
+│  │  ├─ ui/
+│  │  └─ README.md
+│  └─ game/
 │     ├─ descriptor.ts
+│     ├─ application/
 │     ├─ host/
 │     ├─ ui/
 │     └─ README.md
 ├─ domains/
-│  └─ economy/
+│  ├─ economy/
+│  │  ├─ types.ts
+│  │  ├─ invariants.ts
+│  │  ├─ ledger.ts
+│  │  ├─ timeline.ts
+│  │  ├─ repository.ts
+│  │  └─ README.md
+│  ├─ shop/
+│  │  ├─ types.ts
+│  │  ├─ catalog.ts
+│  │  ├─ invariants.ts
+│  │  ├─ timeline.ts
+│  │  ├─ prompt.ts
+│  │  └─ README.md
+│  ├─ bank/
+│  │  ├─ types.ts
+│  │  ├─ products.ts
+│  │  ├─ money.ts
+│  │  ├─ random.ts
+│  │  ├─ invariants.ts
+│  │  ├─ timeline.ts
+│  │  ├─ view.ts
+│  │  └─ README.md
+│  └─ game/
 │     ├─ types.ts
+│     ├─ money.ts
+│     ├─ random.ts
+│     ├─ games/
 │     ├─ invariants.ts
-│     ├─ ledger.ts
 │     ├─ timeline.ts
-│     ├─ repository.ts
-│     ├─ story-write-gate.ts
-│     ├─ story-reconciliation-runtime.ts
+│     ├─ view.ts
 │     └─ README.md
 ├─ tests/
 │  └─ fixtures/
@@ -156,7 +204,13 @@ modules/xiaobai-os/
 │  ├─ target-design-and-roadmap.md
 │  ├─ phase-1-implementation-plan.md
 │  ├─ economy-platform-target-design.md
-│  └─ economy-platform-phase-1-implementation-plan.md
+│  ├─ economy-platform-phase-1-implementation-plan.md
+│  ├─ shop-app-target-design.md
+│  ├─ shop-app-implementation-plan.md
+│  ├─ bank-app-target-design.md
+│  ├─ bank-app-implementation-plan.md
+│  ├─ game-app-target-design.md
+│  └─ game-app-implementation-plan.md
 └─ host.css
 
 modules/draw/shared/
@@ -429,23 +483,27 @@ chat_metadata.extensions.LittleWhiteBox.xiaobaiOs.apps.fourthWall
 
 终态边界见[经济平台终态设计](./economy-platform-target-design.md)，具体施工顺序与验收见[经济平台与钱包第一阶段施工方案](./economy-platform-phase-1-implementation-plan.md)。
 
-### 第三阶段：任务
+### 第三阶段：商店（已完成）
 
-任务作为第一个真实经济消费者，自己拥有发布、接受、推进、结算和领域版本；托管、退款与报酬通过 Economy，在同一次 OS 根提交与同一回滚中确认。
+商店自己拥有25件固定商品、线性事件链、库存/效果投影和主RP Prompt投影；购买通过Economy，与purchase event原子提交和共同回滚。购买与使用分离，使用后从下一次Assistant回复开始生效；重答、swipe和continue不重复消耗。钱包不解释商品状态。
 
-### 第四阶段：商店
+终态边界见[商店 APP 终态设计](./shop-app-target-design.md)，施工顺序与验收见[商店 APP 施工方案](./shop-app-implementation-plan.md)。
 
-商店自己拥有商品、库存和效果；购买/退款通过 Economy，与库存版本原子提交和共同回滚。钱包不解释商品状态。
+### 第四阶段：银行与游戏（已完成）
 
-### 第五阶段：银行 + 赌场
+银行拥有存款产品、理财产品、线性事件链、头寸投影和金融结算历史。游戏是独立领域与独立 APP，拥有三款纯规则游戏、私有随机状态和游戏活动；它不依赖或嵌入 Bank。存取、金融结算、下注和派彩都通过 Economy，并与各自领域事件原子提交和共同回滚；两者都不调用模型，也不向主 RP 注入内容。
 
-银行自己拥有存款产品、头寸和结算状态；赌场作为银行 APP 内的纯游戏区，不单独建立第二套余额。存取、结算、下注和派彩都通过 Economy，与银行领域版本原子提交和共同回滚。
+终态边界分别见[银行 APP 终态设计](./bank-app-target-design.md)与[游戏 APP 终态设计](./game-app-target-design.md)，施工和验收分别见[银行 APP 施工方案](./bank-app-implementation-plan.md)与[游戏 APP 施工方案](./game-app-implementation-plan.md)。
 
-### 第六阶段：宠物
+### 后续阶段：任务（暂缓，需单独完成自动状态机设计）
 
-普通酒馆固定为每个聊天一只宠物，不复制 Tavern 全局 Companion。宠物自己拥有成长、互动和事件历史；礼物、藏币或发现零钱等资金事实通过 Economy，并与宠物版本共同回滚。
+任务不是手动“核对进度”的页面，而是一套随普通主剧情自动维护的状态机。它必须自己拥有发布、接受、自动推进、完成/失败判断、结算和领域版本；托管、退款与报酬通过 Economy，在同一次 OS 根提交与同一回滚中确认。自动维护的事件时序、模型调用边界、迟到结果和重答/swipe语义未完整定稿前，不创建任务代码或入口。
 
-### 第七阶段：地图
+### 后续阶段：不明物（暂缓，产品终态未确认）
+
+当前Tavern不明物方案不直接作为普通OS终态。普通酒馆的数据所有权、成长时钟、主剧情关系和经济循环重新确认前，不复制实现、不预建类型，也不注册占位入口。
+
+### 后续阶段：地图
 
 地图自己拥有地点、连接、当前位置与移动语义，只读写普通聊天数据，不使用 Tavern Atlas/Map State。只有产品明确存在通行费或收益时才调用 Economy；不能为了“都围绕钱包”把地图状态塞进账本。
 
@@ -468,6 +526,6 @@ chat_metadata.extensions.LittleWhiteBox.xiaobaiOs.apps.fourthWall
 3. 删除全局和聊天数据中的`apps.<app>`。
 4. 删除该 APP 专属构建入口和测试。
 
-共享领域不是某个 APP 的附属数据：删除钱包时，若任务、商店、银行、宠物或地图仍消费 Economy，则保留`domains.economy`；删除 Economy 前必须先删除或迁移全部真实消费者。详细的数据保留和流水处理规则见[经济平台终态设计](./economy-platform-target-design.md#15-删除路径)。
+共享领域不是某个 APP 的附属数据：删除钱包时，若商店、银行或未来任务等真实领域仍消费 Economy，则保留`domains.economy`；删除 Economy 前必须先删除或迁移全部真实消费者。详细的数据保留和流水处理规则见[经济平台终态设计](./economy-platform-target-design.md#15-删除路径)。
 
 不保留旧类型、旧 API、空注册、永久迁移器或重定向壳。

@@ -1,28 +1,38 @@
-import type { XiaobaiOsAppRuntime } from '../../types.js';
-import type { XiaobaiOsStoryAdapter } from '../../host/story-adapter.js';
+import type { XiaobaiOsAppRuntime, XiaobaiOsChatData } from '../types.js';
+import type { XiaobaiOsChatDataStore } from './chat-data-store.js';
+import type { XiaobaiOsStoryAdapter } from './story-adapter.js';
 import {
     buildStoryFingerprint,
     storyMessagesEqual,
+    type StoryFingerprint,
     type StorySnapshot,
-} from '../../host/story-fingerprint.js';
-import type { EconomyRepository } from './repository.js';
+} from './story-fingerprint.js';
 import type { StoryWriteGate } from './story-write-gate.js';
 
-export type EconomyStoryReconciliationStatus = 'ready' | 'reconciling' | 'blocked';
+export type StoryReconciliationStatus = 'ready' | 'reconciling' | 'blocked';
 
-export interface EconomyStoryReconciliationState {
+export interface StoryReconciliationState {
     identityKey: string;
-    status: EconomyStoryReconciliationStatus;
+    status: StoryReconciliationStatus;
     message: string;
 }
 
-export interface EconomyStoryReconciliationRuntime extends Pick<
+export interface StoryDomainReconciler<TImpact = unknown> {
+    key: string;
+    hasData: (root: XiaobaiOsChatData | null) => boolean;
+    reconcile: (
+        root: XiaobaiOsChatData,
+        fingerprint: StoryFingerprint,
+    ) => { root: XiaobaiOsChatData; impact: TImpact };
+}
+
+export interface StoryReconciliationRuntime extends Pick<
     XiaobaiOsAppRuntime,
     'startBackground' | 'stopBackground' | 'handleChatChanged' | 'cancelAll'
 > {
-    reconcileNow: () => Promise<EconomyStoryReconciliationState>;
-    getState: () => EconomyStoryReconciliationState;
-    subscribe: (listener: (state: EconomyStoryReconciliationState) => void) => () => void;
+    reconcileNow: () => Promise<StoryReconciliationState>;
+    getState: () => StoryReconciliationState;
+    subscribe: (listener: (state: StoryReconciliationState) => void) => () => void;
 }
 
 interface RuntimeOptions {
@@ -59,10 +69,11 @@ function describeError(error: unknown): string {
     return error instanceof Error ? error.message : String(error || 'unknown_error');
 }
 
-export function createEconomyStoryReconciliationRuntime(
+export function createStoryReconciliationRuntime(
     adapter: XiaobaiOsStoryAdapter,
-    economy: EconomyRepository,
+    store: XiaobaiOsChatDataStore,
     storyGate: StoryWriteGate,
+    reconcilers: readonly StoryDomainReconciler[],
     {
         retryDelayMs = 250,
         timeoutMs = 15_000,
@@ -70,16 +81,16 @@ export function createEconomyStoryReconciliationRuntime(
         setTimer = globalThis.setTimeout,
         clearTimer = globalThis.clearTimeout,
     }: RuntimeOptions = {},
-): EconomyStoryReconciliationRuntime {
-    const listeners = new Set<(state: EconomyStoryReconciliationState) => void>();
-    let state: EconomyStoryReconciliationState = { identityKey: '', status: 'ready', message: '' };
+): StoryReconciliationRuntime {
+    const listeners = new Set<(state: StoryReconciliationState) => void>();
+    let state: StoryReconciliationState = { identityKey: '', status: 'ready', message: '' };
     let unsubscribe: (() => void) | null = null;
     let generation = 0;
     let activeWait: ReturnType<typeof waitForTimer> | null = null;
-    let currentTask: Promise<EconomyStoryReconciliationState> | null = null;
+    let currentTask: Promise<StoryReconciliationState> | null = null;
     let activeGate: { identityKey: string; token: number } | null = null;
 
-    function publish(next: EconomyStoryReconciliationState): EconomyStoryReconciliationState {
+    function publish(next: StoryReconciliationState): StoryReconciliationState {
         state = Object.freeze({ ...next });
         for (const listener of listeners) {listener(state);}
         return state;
@@ -105,12 +116,47 @@ export function createEconomyStoryReconciliationRuntime(
         releaseActiveGate();
     }
 
+    function hasStoryData(): boolean {
+        const root = store.readCurrent();
+        return reconcilers.some((reconciler) => reconciler.hasData(root));
+    }
+
+    async function reconcilePersistedStory(
+        snapshot: StorySnapshot,
+        fingerprint: StoryFingerprint,
+    ): Promise<void> {
+        await store.mutateCurrent((current, context) => {
+            if (context.identityKey !== snapshot.identityKey) {
+                throw new Error('story_fingerprint_chat_mismatch');
+            }
+            if (!current) {return { next: current, result: undefined };}
+            let root = structuredClone(current);
+            for (const reconciler of reconcilers) {
+                if (reconciler.hasData(root)) {
+                    root = reconciler.reconcile(root, fingerprint).root;
+                }
+            }
+            return { next: root, result: undefined };
+        }, {
+            beforeCommit() {
+                const live = adapter.captureCurrent();
+                if (
+                    !live
+                    || live.identityKey !== snapshot.identityKey
+                    || !storyMessagesEqual(live.messages, snapshot.messages)
+                ) {
+                    throw new Error('story_changed_during_reconciliation');
+                }
+            },
+        });
+    }
+
     async function runReconciliation(
         snapshot: StorySnapshot,
         taskGeneration: number,
         gateToken: number,
-    ): Promise<EconomyStoryReconciliationState> {
-        publish({ identityKey: snapshot.identityKey, status: 'reconciling', message: '剧情已变化，正在核对账本' });
+    ): Promise<StoryReconciliationState> {
+        publish({ identityKey: snapshot.identityKey, status: 'reconciling', message: '剧情已变化，正在核对小白 OS 数据' });
         const deadline = now() + timeoutMs;
         try {
             let persisted: StorySnapshot | null = null;
@@ -128,19 +174,7 @@ export function createEconomyStoryReconciliationRuntime(
             if (!persisted) {throw new Error('story_persistence_confirmation_timeout');}
             const fingerprint = await buildStoryFingerprint(persisted);
             if (taskGeneration !== generation) {return state;}
-            await economy.reconcileCurrent(fingerprint, {
-                beforeCommit() {
-                    const live = adapter.captureCurrent();
-                    if (
-                        taskGeneration !== generation ||
-                        !live ||
-                        live.identityKey !== snapshot.identityKey ||
-                        !storyMessagesEqual(live.messages, snapshot.messages)
-                    ) {
-                        throw new Error('story_changed_during_reconciliation');
-                    }
-                },
-            });
+            await reconcilePersistedStory(snapshot, fingerprint);
             if (taskGeneration !== generation) {return state;}
             if (activeGate?.identityKey === snapshot.identityKey && activeGate.token === gateToken) {
                 releaseActiveGate();
@@ -153,18 +187,18 @@ export function createEconomyStoryReconciliationRuntime(
             return publish({
                 identityKey: snapshot.identityKey,
                 status: 'blocked',
-                message: `账本核对暂停：${describeError(error)}`,
+                message: `剧情核对暂停：${describeError(error)}`,
             });
         }
     }
 
-    function reconcileNow(): Promise<EconomyStoryReconciliationState> {
+    function reconcileNow(): Promise<StoryReconciliationState> {
         const snapshot = adapter.captureCurrent();
         if (!snapshot) {
             cancel();
             return Promise.resolve(publish({ identityKey: '', status: 'blocked', message: '请先打开一个聊天' }));
         }
-        if (!economy.hasCurrent()) {
+        if (!hasStoryData()) {
             cancel();
             storyGate.clear(snapshot.identityKey);
             return Promise.resolve(publish({ identityKey: snapshot.identityKey, status: 'ready', message: '' }));
@@ -181,25 +215,24 @@ export function createEconomyStoryReconciliationRuntime(
         return currentTask;
     }
 
-    function handleStoryChange(): void {
+    function beginStoryReconciliation(clearAllGates: boolean): void {
         cancel();
+        if (clearAllGates) {storyGate.clear();}
         const snapshot = adapter.captureCurrent();
         const gateToken = snapshot ? blockStory(snapshot.identityKey) : 0;
-        let hasEconomy = false;
+        let hasData = false;
         try {
-            hasEconomy = economy.hasCurrent();
+            hasData = hasStoryData();
         } catch (error) {
             publish({
                 identityKey: snapshot?.identityKey || '',
                 status: 'blocked',
-                message: `账本读取失败：${describeError(error)}`,
+                message: `剧情数据读取失败：${describeError(error)}`,
             });
             return;
         }
-        if (!hasEconomy) {
-            if (snapshot) {
-                releaseActiveGate();
-            }
+        if (!hasData) {
+            if (snapshot) {releaseActiveGate();}
             publish({ identityKey: snapshot?.identityKey || '', status: 'ready', message: '' });
             return;
         }
@@ -212,6 +245,10 @@ export function createEconomyStoryReconciliationRuntime(
             if (taskGeneration === generation) {currentTask = null;}
         });
         void currentTask;
+    }
+
+    function handleStoryChange(): void {
+        beginStoryReconciliation(false);
     }
 
     function startBackground(): void {
@@ -227,23 +264,17 @@ export function createEconomyStoryReconciliationRuntime(
     }
 
     function handleChatChanged(): void {
-        cancel();
-        storyGate.clear();
-        const snapshot = adapter.captureCurrent();
-        publish({ identityKey: snapshot?.identityKey || '', status: 'ready', message: '' });
+        beginStoryReconciliation(true);
     }
 
     return Object.freeze({
         startBackground,
         stopBackground,
         handleChatChanged,
-        cancelAll() {
-            cancel();
-            storyGate.clear();
-        },
+        cancelAll: cancel,
         reconcileNow,
         getState: () => state,
-        subscribe(listener: (next: EconomyStoryReconciliationState) => void) {
+        subscribe(listener: (next: StoryReconciliationState) => void) {
             listeners.add(listener);
             return () => listeners.delete(listener);
         },

@@ -2,12 +2,15 @@
     color-scheme: light dark;
     font-family: Inter, "Segoe UI Variable", "Segoe UI", "HarmonyOS Sans SC", MiSans, "Microsoft YaHei UI", "Noto Sans SC", sans-serif;
     font-synthesis: none;
-    --xiaobai-os-accent: #4b78ff;
-    --xiaobai-os-screen: #f3f1ec;
-    --xiaobai-os-surface: rgba(255, 255, 255, .88);
-    --xiaobai-os-ink: #17191d;
-    --xiaobai-os-muted: #777a82;
-    --xiaobai-os-divider: rgba(28, 31, 38, .11);
+
+    /* Shared shell palette. Feature-specific geometry and identity stay with
+       the app that owns them. */
+    --xiaobai-os-accent: #3b6ef5;
+    --xiaobai-os-screen: #eef0f5;
+    --xiaobai-os-surface: #fff;
+    --xiaobai-os-ink: #12151c;
+    --xiaobai-os-muted: #767d8c;
+    --xiaobai-os-divider: rgba(16, 20, 32, .09);
 }
 
 * {
@@ -50,11 +53,12 @@ button {
 }
 
 .xiaobai-os-shell.theme-dark {
-    --xiaobai-os-screen: #111214;
-    --xiaobai-os-surface: rgba(28, 29, 32, .9);
-    --xiaobai-os-ink: #f1efe9;
-    --xiaobai-os-muted: #a2a2a7;
-    --xiaobai-os-divider: rgba(255, 255, 255, .11);
+    --xiaobai-os-accent: #6b8dff;
+    --xiaobai-os-screen: #0e1014;
+    --xiaobai-os-surface: #191c22;
+    --xiaobai-os-ink: #f2f4f8;
+    --xiaobai-os-muted: #838b9a;
+    --xiaobai-os-divider: rgba(255, 255, 255, .1);
 }
 
 .xiaobai-os-device {
@@ -276,7 +280,7 @@ button {
 
 .xiaobai-os-navigation {
     align-items: center;
-    background: color-mix(in srgb, var(--xiaobai-os-surface) 94%, transparent);
+    background: var(--xiaobai-os-surface);
     border-top: 1px solid var(--xiaobai-os-divider);
     display: grid;
     grid-template-columns: 44px 1fr 44px;

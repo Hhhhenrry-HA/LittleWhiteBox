@@ -71,7 +71,7 @@ function saveCapabilities(): void {
             </section>
             <section class="fourth-wall-settings-section is-actions">
                 <button type="button" @click="emit('openPrompts')">提示词模板</button>
-                <button type="button" @click="emit('openAgent')">Agent API 配置</button>
+                <button type="button" aria-haspopup="dialog" @click="emit('openAgent')">Agent API 配置</button>
             </section>
         </div>
     </aside>

@@ -1,4 +1,4 @@
-/** Blocks Economy mutations while the current story is being reconciled. */
+/** Blocks story-bound domain writes while the current story is being reconciled. */
 export interface StoryWriteGate {
     block: (identityKey: string) => number;
     release: (identityKey: string, token: number) => void;
@@ -30,7 +30,7 @@ export function createStoryWriteGate(): StoryWriteGate {
         },
         assertWritable(identityKey: string): void {
             if (states.has(identityKey)) {
-                throw new Error('economy_story_reconciliation_required');
+                throw new Error('story_reconciliation_required');
             }
         },
         clear(identityKey?: string): void {

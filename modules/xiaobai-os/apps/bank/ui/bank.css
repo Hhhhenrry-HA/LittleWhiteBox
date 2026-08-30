@@ -1,0 +1,233 @@
+.bank-app {
+    --bank-ink: #eef0e6;
+    --bank-muted: #91a49a;
+    --bank-jade: #0d594c;
+    --bank-jade-bright: #1b806b;
+    --bank-jade-dark: #072d29;
+    --bank-brass: #c4a765;
+    --bank-brass-bright: #e0c984;
+    --bank-panel: #0b211f;
+    background:
+        linear-gradient(135deg, rgba(196, 167, 101, .025) 25%, transparent 25%) 0 0 / 22px 22px,
+        radial-gradient(circle at 82% 5%, rgba(27, 128, 107, .2), transparent 29%),
+        linear-gradient(170deg, #071917, #06110f 72%);
+    color: var(--bank-ink);
+    display: grid;
+    font-family: "Microsoft YaHei UI", "Noto Sans SC", sans-serif;
+    grid-template-rows: auto auto auto minmax(0, 1fr);
+    height: 100%;
+    overflow: hidden;
+}
+
+.bank-header {
+    align-items: end;
+    border-bottom: 1px solid rgba(196, 167, 101, .2);
+    display: grid;
+    gap: 12px;
+    grid-template-columns: minmax(0, 1fr) auto 38px;
+    padding: 46px 18px 13px;
+    position: relative;
+}
+
+.bank-header::after { background: linear-gradient(90deg, var(--bank-brass), transparent); bottom: -1px; content: ""; height: 1px; left: 18px; opacity: .8; position: absolute; width: 72px; }
+.bank-header-kicker,
+.bank-section-heading > div > span,
+.bank-dialog-kicker { color: var(--bank-brass); font-size: 8px; font-weight: 800; letter-spacing: .2em; }
+.bank-header h1,
+.bank-section-heading h2,
+.bank-dialog h2 { font-family: "Noto Serif SC", "Songti SC", serif; }
+.bank-header h1 { font-size: 22px; letter-spacing: .12em; margin: 2px 0 0; }
+.bank-header-balance { border-left: 1px solid rgba(196, 167, 101, .22); display: grid; padding-left: 12px; }
+.bank-header-balance small { color: var(--bank-muted); font-size: 8px; }
+.bank-header-balance strong { color: var(--bank-brass-bright); font: 700 14px/1.5 "DIN Alternate", Bahnschrift, sans-serif; white-space: nowrap; }
+.bank-refresh { background: rgba(7, 45, 41, .55); border: 1px solid rgba(196, 167, 101, .38); border-radius: 50%; color: var(--bank-brass); cursor: pointer; height: 36px; padding: 8px; width: 36px; }
+.bank-refresh svg { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
+.bank-refresh:disabled { cursor: default; opacity: .35; }
+
+.bank-navigation { background: rgba(2, 12, 11, .55); border-bottom: 1px solid rgba(196, 167, 101, .13); display: grid; grid-template-columns: repeat(5, 1fr); padding: 0 12px; }
+.bank-navigation button { background: transparent; border: 0; border-bottom: 2px solid transparent; color: var(--bank-muted); cursor: pointer; font-size: 11px; height: 44px; letter-spacing: .08em; position: relative; }
+.bank-navigation button.is-active { border-color: var(--bank-brass); color: var(--bank-brass-bright); }
+.bank-navigation i { background: #7e3f30; border-radius: 9px; color: #fff4dd; font-size: 8px; font-style: normal; margin-left: 4px; padding: 1px 5px; }
+
+.bank-notice { align-items: start; background: #18231e; border-bottom: 1px solid rgba(196, 167, 101, .24); display: grid; font-size: 10px; gap: 10px; grid-template-columns: 27px 1fr; padding: 10px 18px; }
+.bank-notice > span { border: 1px solid var(--bank-brass); color: var(--bank-brass); display: grid; font-family: "Songti SC", serif; height: 25px; place-items: center; transform: rotate(-3deg); width: 25px; }
+.bank-notice strong { font-family: "Noto Serif SC", "Songti SC", serif; }
+.bank-notice p { color: var(--bank-muted); line-height: 1.45; margin: 2px 0 0; }
+.bank-notice button { background: transparent; border: 0; border-bottom: 1px solid currentColor; color: var(--bank-brass-bright); cursor: pointer; font-size: 10px; margin-top: 5px; padding: 2px 0; }
+.bank-notice.is-conflict,
+.bank-notice.is-blocked { background: #291d18; border-color: rgba(175, 83, 57, .45); }
+
+.bank-scroll { min-height: 0; overflow: hidden auto; padding: 18px 15px 32px; scrollbar-color: rgba(196, 167, 101, .45) transparent; }
+.bank-section-heading { align-items: end; display: flex; justify-content: space-between; padding: 0 2px 13px; }
+.bank-section-heading h2 { font-size: 19px; letter-spacing: .08em; margin: 2px 0 0; }
+.bank-section-heading > small { color: var(--bank-muted); font-size: 9px; }
+.bank-section-intro { border-left: 2px solid rgba(196, 167, 101, .5); color: var(--bank-muted); font-size: 10px; line-height: 1.65; margin: 0 1px 14px; padding: 1px 0 1px 10px; }
+
+.bank-vault { position: relative; }
+.bank-vault-door { border: 1px solid rgba(196, 167, 101, .1); border-radius: 50%; height: 180px; opacity: .22; pointer-events: none; position: absolute; right: -76px; top: -60px; width: 180px; }
+.bank-vault-ring { border: 6px double rgba(196, 167, 101, .5); border-radius: 50%; display: flex; height: 132px; inset: 23px; justify-content: space-around; padding-top: 8px; position: absolute; width: 132px; }
+.bank-vault-ring span { color: var(--bank-brass); font: 9px Georgia, serif; }
+.bank-vault-ring i { background: var(--bank-brass); height: 13px; transform: rotate(40deg); width: 1px; }
+.bank-vault-heading { position: relative; }
+.bank-balance-panel { background: linear-gradient(125deg, rgba(27, 128, 107, .28), transparent 48%), #0a2420; border: 1px solid rgba(196, 167, 101, .28); box-shadow: inset 0 0 0 5px rgba(0, 0, 0, .13), 0 16px 34px rgba(0, 0, 0, .22); display: grid; min-height: 132px; padding: 20px; position: relative; }
+.bank-balance-panel::before,
+.bank-balance-panel::after { border-color: var(--bank-brass); border-style: solid; content: ""; height: 12px; opacity: .65; position: absolute; width: 12px; }
+.bank-balance-panel::before { border-width: 1px 0 0 1px; left: 9px; top: 9px; }
+.bank-balance-panel::after { border-width: 0 1px 1px 0; bottom: 9px; right: 9px; }
+.bank-balance-panel > span { color: var(--bank-muted); font-size: 9px; letter-spacing: .16em; }
+.bank-balance-panel > strong { color: var(--bank-brass-bright); font: 750 34px/1.15 "DIN Alternate", Bahnschrift, sans-serif; letter-spacing: .02em; }
+.bank-balance-panel > strong small { font-size: 15px; margin-right: 7px; opacity: .75; }
+.bank-balance-panel > div { align-items: center; border-top: 1px solid rgba(196, 167, 101, .16); color: var(--bank-muted); display: flex; font-size: 9px; justify-content: space-between; padding-top: 10px; }
+.bank-balance-panel > div i { color: var(--bank-jade-bright); font-size: 7px; font-style: normal; letter-spacing: .16em; }
+.bank-vault-metrics { display: grid; gap: 9px; grid-template-columns: 1fr 1fr; margin: 10px 0; }
+.bank-vault-metrics article { background: rgba(11, 33, 31, .88); border: 1px solid rgba(196, 167, 101, .14); display: grid; min-height: 88px; padding: 12px; }
+.bank-vault-metrics article > span { color: var(--bank-muted); font-size: 9px; }
+.bank-vault-metrics strong { color: var(--bank-ink); font: 650 17px "DIN Alternate", Bahnschrift, sans-serif; }
+.bank-vault-metrics small { color: #647b72; font-size: 8px; }
+.bank-vault-metrics .is-claimable { border-color: rgba(196, 167, 101, .42); }
+.bank-vault-metrics .is-claimable strong { color: var(--bank-brass-bright); }
+.bank-claim-button { align-items: center; background: linear-gradient(90deg, #725d2d, #9a7e3b); border: 1px solid var(--bank-brass-bright); color: #fff8e8; cursor: pointer; display: flex; justify-content: space-between; min-height: 48px; padding: 9px 14px; width: 100%; }
+.bank-claim-button span { font: 650 12px "Noto Serif SC", "Songti SC", serif; letter-spacing: .08em; }
+.bank-claim-button small { color: #e8d7ab; font-size: 8px; }
+.bank-claim-button:disabled { cursor: default; filter: grayscale(.7); opacity: .45; }
+.bank-vault-portals { border: 1px solid rgba(196, 167, 101, .14); margin-top: 14px; }
+.bank-vault-portals button { align-items: center; background: rgba(7, 27, 25, .72); border: 0; border-bottom: 1px solid rgba(196, 167, 101, .12); color: var(--bank-ink); cursor: pointer; display: grid; gap: 10px; grid-template-columns: 34px minmax(0, 1fr) auto 12px; min-height: 57px; padding: 10px 12px; text-align: left; width: 100%; }
+.bank-vault-portals button:last-child { border-bottom: 0; }
+.bank-vault-portals strong { font: 600 12px "Noto Serif SC", "Songti SC", serif; }
+.bank-vault-portals small { color: var(--bank-muted); font-size: 8px; }
+.bank-vault-portals i { color: var(--bank-brass); font-size: 18px; font-style: normal; }
+.bank-portal-mark,
+.bank-position-mark,
+.bank-record-mark { border: 1px solid rgba(196, 167, 101, .5); color: var(--bank-brass); display: grid; font-family: "Songti SC", serif; height: 32px; place-items: center; width: 32px; }
+
+.bank-product-grid { display: grid; gap: 11px; }
+.bank-product-card { background: linear-gradient(140deg, rgba(27, 128, 107, .1), transparent 38%), var(--bank-panel); border: 1px solid rgba(196, 167, 101, .2); box-shadow: 0 10px 25px rgba(0, 0, 0, .18); overflow: hidden; padding: 14px; position: relative; }
+.bank-product-card::after { background: var(--bank-brass); content: ""; height: 2px; opacity: .7; position: absolute; right: 0; top: 0; width: 42px; }
+.bank-product-card > header { align-items: center; display: grid; gap: 10px; grid-template-columns: 28px minmax(0, 1fr) auto; }
+.bank-product-index { color: #54746a; font: 700 10px Georgia, serif; }
+.bank-product-card h3 { font: 650 15px "Noto Serif SC", "Songti SC", serif; letter-spacing: .06em; margin: 2px 0 0; }
+.bank-product-card header small { color: var(--bank-muted); font-size: 8px; }
+.bank-product-seal { border: 1px solid var(--bank-brass); color: var(--bank-brass); display: grid; font-family: "Songti SC", serif; height: 28px; place-items: center; transform: rotate(3deg); width: 28px; }
+.bank-fund-card > p { color: var(--bank-muted); font-size: 9px; line-height: 1.55; margin: 10px 0 0 38px; }
+.bank-risk-badge { border: 1px solid #497265; color: #8ab6a8; font-size: 8px; padding: 4px 6px; }
+.bank-risk-badge.is-medium { border-color: #89743c; color: #cbb270; }
+.bank-risk-badge.is-high { border-color: #834b3c; color: #d18d78; }
+.bank-rate-block { align-items: end; border-bottom: 1px dashed rgba(196, 167, 101, .14); border-top: 1px dashed rgba(196, 167, 101, .14); display: grid; grid-template-columns: 1fr auto; margin-top: 13px; padding: 11px 0; }
+.bank-rate-block span { color: var(--bank-muted); font-size: 9px; }
+.bank-rate-block strong { color: var(--bank-brass-bright); font: 700 20px "DIN Alternate", Bahnschrift, sans-serif; grid-row: span 2; }
+.bank-rate-block small { color: #54746a; font-size: 8px; margin-top: 3px; }
+.bank-product-terms { margin: 7px 0 11px; }
+.bank-product-terms div { display: flex; font-size: 9px; justify-content: space-between; padding: 3px 0; }
+.bank-product-terms dt { color: #6f867d; }
+.bank-product-terms dd { color: var(--bank-muted); margin: 0; }
+.bank-product-card > button { align-items: center; background: rgba(13, 89, 76, .26); border: 1px solid var(--bank-jade-bright); color: #a6d3c4; cursor: pointer; display: flex; font-size: 10px; justify-content: space-between; min-height: 38px; padding: 8px 11px; width: 100%; }
+.bank-product-card > button span { color: var(--bank-brass); font-size: 17px; }
+.bank-product-card > button:disabled { border-color: #344943; color: #63746e; cursor: default; opacity: .6; }
+
+.bank-small-claim { background: rgba(126, 100, 44, .24); border: 1px solid var(--bank-brass); color: var(--bank-brass-bright); cursor: pointer; font-size: 9px; min-height: 30px; padding: 5px 8px; }
+.bank-small-claim:disabled { cursor: default; opacity: .4; }
+.bank-position-group { border: 1px solid rgba(196, 167, 101, .16); margin-bottom: 13px; }
+.bank-position-group > header { align-items: center; background: rgba(13, 89, 76, .11); border-bottom: 1px solid rgba(196, 167, 101, .14); display: flex; justify-content: space-between; padding: 10px 12px; }
+.bank-position-group > header h3 { font: 650 12px "Noto Serif SC", "Songti SC", serif; margin: 0; }
+.bank-position-group > header span { color: var(--bank-brass); font-size: 9px; }
+.bank-position-card { background: rgba(7, 27, 25, .7); border-bottom: 1px dashed rgba(196, 167, 101, .14); padding: 12px; }
+.bank-position-card:last-child { border-bottom: 0; }
+.bank-position-top { align-items: center; display: grid; gap: 9px; grid-template-columns: 34px minmax(0, 1fr) auto; }
+.bank-position-top h4 { font: 650 12px "Noto Serif SC", "Songti SC", serif; margin: 0 0 3px; }
+.bank-position-top small { color: var(--bank-muted); font-size: 8px; }
+.bank-position-status { color: #86aa9e; font-size: 8px; }
+.bank-position-status.is-due { color: var(--bank-brass-bright); }
+.bank-position-card dl { display: grid; gap: 8px; grid-template-columns: 1fr 1fr; margin: 11px 0 0 43px; }
+.bank-position-card dl div { display: grid; gap: 2px; }
+.bank-position-card dt { color: #657b73; font-size: 8px; }
+.bank-position-card dd { color: var(--bank-brass); font: 600 11px "DIN Alternate", Bahnschrift, sans-serif; margin: 0; }
+.bank-position-card dd.is-loss { color: #cc8d78; }
+.bank-withdraw-button { background: transparent; border: 0; border-bottom: 1px solid #9c6552; color: #c88a75; cursor: pointer; display: block; font-size: 9px; margin: 10px 0 0 auto; padding: 3px 0; }
+.bank-withdraw-button:disabled { cursor: default; opacity: .4; }
+.bank-due-note { color: #6f867d; display: block; font-size: 8px; margin: 10px 0 0 43px; }
+.bank-fund-result { align-items: center; background: rgba(196, 167, 101, .06); display: grid; grid-template-columns: 1fr auto; margin: 11px 0 0 43px; padding: 9px; }
+.bank-fund-result span { color: var(--bank-muted); font-size: 8px; }
+.bank-fund-result strong { color: #7bc0a7; font: 700 15px "DIN Alternate", Bahnschrift, sans-serif; }
+.bank-fund-result strong.is-negative { color: #d18471; }
+.bank-fund-result small { color: var(--bank-brass); font-size: 9px; grid-column: 1 / -1; margin-top: 4px; }
+.bank-sealed-copy { border-left: 1px solid #42675c; color: #738a81; font-size: 8px; line-height: 1.5; margin: 11px 0 0 43px; padding-left: 8px; }
+
+.bank-empty-state { border: 1px dashed rgba(196, 167, 101, .2); color: var(--bank-muted); display: grid; margin-top: 8px; min-height: 165px; padding: 24px; place-items: center; text-align: center; }
+.bank-empty-state > span { border: 1px solid rgba(196, 167, 101, .35); color: var(--bank-brass); display: grid; font-family: "Songti SC", serif; height: 38px; place-items: center; width: 38px; }
+.bank-empty-state strong { color: var(--bank-ink); font: 600 12px "Noto Serif SC", "Songti SC", serif; }
+.bank-empty-state p { font-size: 9px; line-height: 1.5; margin: 0; }
+.bank-record-list { border: 1px solid rgba(196, 167, 101, .15); }
+.bank-record-row { align-items: start; background: rgba(7, 27, 25, .72); border-bottom: 1px dashed rgba(196, 167, 101, .14); display: grid; gap: 9px; grid-template-columns: 32px minmax(0, 1fr) auto; padding: 12px; }
+.bank-record-main header { align-items: center; display: flex; gap: 7px; }
+.bank-record-main header strong { font: 600 11px "Noto Serif SC", "Songti SC", serif; }
+.bank-record-main header span { color: var(--bank-muted); font-size: 8px; }
+.bank-record-main dl { display: flex; gap: 12px; margin: 6px 0 4px; }
+.bank-record-main dl div { display: flex; font-size: 8px; gap: 4px; }
+.bank-record-main dt { color: #61766e; }
+.bank-record-main dd { color: var(--bank-muted); margin: 0; }
+.bank-record-main > small { color: #50645d; font-size: 7px; }
+.bank-record-net { color: #77bda4; font: 700 12px "DIN Alternate", Bahnschrift, sans-serif; text-align: right; }
+.bank-record-net.is-negative { color: #cc806b; }
+.bank-record-net.is-flat { color: var(--bank-muted); }
+.bank-record-net small { color: #61766e; display: block; font: 7px "Microsoft YaHei UI", sans-serif; margin-top: 3px; }
+.bank-load-more { background: rgba(13, 89, 76, .13); border: 0; border-top: 1px solid rgba(196, 167, 101, .14); color: var(--bank-brass); cursor: pointer; font-size: 9px; min-height: 42px; width: 100%; }
+.bank-load-more:disabled { cursor: default; opacity: .45; }
+.bank-record-end { color: #52675f; font-size: 8px; margin: 0; padding: 13px; text-align: center; }
+.bank-inline-error { color: #d48974; font-size: 9px; padding: 0 12px; }
+
+.bank-dialog { background: rgba(1, 7, 6, .82); border: 0; color: var(--bank-ink); display: grid; height: 100%; inset: 0; margin: 0; max-height: none; max-width: none; padding: 18px; place-items: center; position: fixed; width: 100%; z-index: 20; }
+.bank-dialog-card { background: linear-gradient(145deg, rgba(13, 89, 76, .18), transparent 38%), #091c1a; border: 1px solid rgba(196, 167, 101, .48); box-shadow: 0 26px 70px rgba(0, 0, 0, .65); max-height: calc(100% - 24px); overflow: hidden auto; padding: 22px; position: relative; width: min(100%, 330px); }
+.bank-dialog-card::before { border: 1px solid rgba(196, 167, 101, .12); content: ""; inset: 6px; pointer-events: none; position: absolute; }
+.bank-dialog h2 { font-size: 20px; letter-spacing: .08em; margin: 3px 0 0; }
+.bank-dialog-subject { align-items: center; border-bottom: 1px solid rgba(196, 167, 101, .18); border-top: 1px solid rgba(196, 167, 101, .18); display: flex; gap: 11px; margin: 16px 0; padding: 11px 0; }
+.bank-dialog-subject > span { border: 1px solid var(--bank-brass); color: var(--bank-brass); display: grid; font-family: "Songti SC", serif; height: 35px; place-items: center; transform: rotate(-2deg); width: 35px; }
+.bank-dialog-subject strong { display: block; font: 650 13px "Noto Serif SC", "Songti SC", serif; }
+.bank-dialog-subject small { color: var(--bank-muted); font-size: 8px; }
+.bank-dialog-field { display: grid; gap: 6px; }
+.bank-dialog-field > span { color: var(--bank-brass); font-size: 9px; }
+.bank-dialog-field > div { align-items: center; background: #061210; border: 1px solid rgba(196, 167, 101, .3); display: grid; grid-template-columns: 30px 1fr; }
+.bank-dialog-field i { color: var(--bank-brass); font-style: normal; text-align: center; }
+.bank-dialog-field input { background: transparent; border: 0; border-left: 1px solid rgba(196, 167, 101, .18); color: var(--bank-ink); font: 650 16px "DIN Alternate", Bahnschrift, sans-serif; min-height: 44px; outline: none; padding: 9px 10px; width: 100%; }
+.bank-dialog-field > div:focus-within { border-color: var(--bank-brass); box-shadow: 0 0 0 2px rgba(196, 167, 101, .1); }
+.bank-dialog-field > small { color: #62766e; font-size: 8px; }
+.bank-dialog-validation,
+.bank-dialog-error { color: #da8d78; font-size: 9px; margin: 7px 0 0; }
+.bank-dialog-summary { background: rgba(196, 167, 101, .06); border-left: 2px solid var(--bank-brass); margin: 14px 0 0; padding: 8px 10px; }
+.bank-dialog-summary div { display: flex; font-size: 9px; justify-content: space-between; padding: 3px 0; }
+.bank-dialog-summary dt { color: var(--bank-muted); }
+.bank-dialog-summary dd { color: var(--bank-brass-bright); margin: 0; }
+.bank-dialog-warning { background: rgba(13, 89, 76, .13); border-left: 2px solid var(--bank-jade-bright); color: var(--bank-muted); font-size: 9px; line-height: 1.6; margin: 14px 0 0; padding: 9px 10px; }
+.bank-dialog-warning.is-loss { background: rgba(145, 71, 50, .1); border-color: #a05b45; color: #c8aaa0; }
+.bank-dialog-warning strong { color: #e5b39f; }
+.bank-dialog-actions { display: grid; gap: 9px; grid-template-columns: 1fr 1fr; margin-top: 18px; }
+.bank-dialog-actions button { background: transparent; border: 1px solid #40534d; color: var(--bank-muted); cursor: pointer; min-height: 44px; }
+.bank-dialog-actions button.is-primary { background: #685528; border-color: var(--bank-brass); color: #fff5d9; }
+.bank-dialog-actions button:disabled { cursor: default; opacity: .4; }
+
+.bank-sr-only { clip: rect(0 0 0 0); clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
+.bank-app button { transition: border-color 150ms ease, color 150ms ease, background-color 150ms ease, opacity 150ms ease; }
+.bank-app button:focus-visible { outline: 2px solid var(--bank-brass-bright); outline-offset: 2px; }
+.bank-app button:not(:disabled):hover { border-color: var(--bank-brass-bright); }
+
+@media (min-width: 720px) {
+    .bank-scroll { padding-left: max(22px, calc((100% - 760px) / 2)); padding-right: max(22px, calc((100% - 760px) / 2)); }
+    .bank-product-grid { grid-template-columns: repeat(3, 1fr); }
+    .bank-vault-metrics { grid-template-columns: 1fr 1fr; }
+    .bank-header { padding-left: max(24px, calc((100% - 780px) / 2)); padding-right: max(24px, calc((100% - 780px) / 2)); }
+    .bank-navigation { padding-left: max(24px, calc((100% - 780px) / 2)); padding-right: max(24px, calc((100% - 780px) / 2)); }
+}
+
+@media (max-width: 350px), (max-height: 650px) {
+    .bank-header { padding-left: 13px; padding-right: 13px; padding-top: 40px; }
+    .bank-header h1 { font-size: 19px; }
+    .bank-scroll { padding-left: 10px; padding-right: 10px; }
+    .bank-product-card { padding: 12px; }
+    .bank-dialog { padding: 9px; }
+    .bank-dialog-card { padding: 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bank-app *,
+    .bank-app *::before,
+    .bank-app *::after { scroll-behavior: auto !important; transition: none !important; }
+}

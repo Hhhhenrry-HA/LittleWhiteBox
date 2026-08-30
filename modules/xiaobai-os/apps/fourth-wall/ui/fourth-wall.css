@@ -86,6 +86,16 @@
     width: 34px;
 }
 
+.fourth-wall-header-actions button svg {
+    fill: none;
+    height: 17px;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
+    width: 17px;
+}
+
 .fourth-wall-app button:disabled {
     cursor: default;
     opacity: .4;

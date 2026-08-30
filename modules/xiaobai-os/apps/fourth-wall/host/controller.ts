@@ -759,8 +759,9 @@ export function createFourthWallController({
         }
         if (action === 'open-agent-settings') {
             const current = assertActivation(payload);
-            await openAgentSettings();
+            const opened = await openAgentSettings();
             assertSameActivation(current, payload);
+            if (!opened) {throw new Error('Agent API 配置无法打开');}
             return { opened: true };
         }
         throw new Error('unsupported_fourth_wall_action');
