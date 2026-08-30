@@ -6,13 +6,22 @@ import type {
     FourthWallChatState,
     FourthWallGlobalSettings,
     FourthWallMessageData,
-    XiaobaiOsChatData,
-    XiaobaiOsSettings,
 } from '../apps/fourth-wall/types.js';
+import type {
+    XiaobaiOsChatData as XiaobaiOsChatDataRoot,
+    XiaobaiOsSettings as XiaobaiOsSettingsRoot,
+} from '../types.js';
+
+type XiaobaiOsSettings = XiaobaiOsSettingsRoot<{ fourthWall: FourthWallGlobalSettings }>;
+type XiaobaiOsChatData = XiaobaiOsChatDataRoot<
+    { fourthWall?: FourthWallChatState; [appId: string]: unknown },
+    Record<string, unknown>
+>;
 
 type UnknownRecord = Record<string, unknown>;
 
-export const XIAOBAI_OS_SCHEMA_VERSION = 1 as const;
+export const XIAOBAI_OS_SETTINGS_SCHEMA_VERSION = 1 as const;
+export const XIAOBAI_OS_CHAT_SCHEMA_VERSION = 2 as const;
 
 export const LEGACY_FOURTH_WALL_SETTING_KEYS = Object.freeze([
     'fourthWall',
@@ -142,7 +151,7 @@ function validateMessage(
     }
 }
 
-function validateFourthWallChatState(value: unknown, path: string): asserts value is FourthWallChatState {
+export function validateFourthWallChatState(value: unknown, path: string): asserts value is FourthWallChatState {
     const state = requireRecord(value, path);
     if (Object.hasOwn(state, 'history')) {
         fail('INVALID_CURRENT_DATA', `${path}.history`, 'is a legacy field');
@@ -186,7 +195,7 @@ function validateFourthWallChatState(value: unknown, path: string): asserts valu
 
 export function createDefaultXiaobaiOsSettings(): XiaobaiOsSettings {
     return {
-        schemaVersion: XIAOBAI_OS_SCHEMA_VERSION,
+        schemaVersion: XIAOBAI_OS_SETTINGS_SCHEMA_VERSION,
         enabled: false,
         apps: {
             fourthWall: createDefaultFourthWallGlobalSettings(),
@@ -194,19 +203,10 @@ export function createDefaultXiaobaiOsSettings(): XiaobaiOsSettings {
     };
 }
 
-export function createDefaultXiaobaiOsChatData(createdAt = Date.now()): XiaobaiOsChatData {
-    return {
-        schemaVersion: XIAOBAI_OS_SCHEMA_VERSION,
-        apps: {
-            fourthWall: createDefaultFourthWallChatState(createdAt),
-        },
-    };
-}
-
 export function validateXiaobaiOsSettings(value: unknown): value is XiaobaiOsSettings {
     const root = requireRecord(value, 'xiaobaiOs');
-    if (root.schemaVersion !== XIAOBAI_OS_SCHEMA_VERSION) {
-        fail('UNSUPPORTED_SETTINGS_VERSION', 'xiaobaiOs.schemaVersion', `must equal ${XIAOBAI_OS_SCHEMA_VERSION}`);
+    if (root.schemaVersion !== XIAOBAI_OS_SETTINGS_SCHEMA_VERSION) {
+        fail('UNSUPPORTED_SETTINGS_VERSION', 'xiaobaiOs.schemaVersion', `must equal ${XIAOBAI_OS_SETTINGS_SCHEMA_VERSION}`);
     }
     requireBoolean(root.enabled, 'xiaobaiOs.enabled');
     const apps = requireRecord(root.apps, 'xiaobaiOs.apps');
@@ -216,13 +216,11 @@ export function validateXiaobaiOsSettings(value: unknown): value is XiaobaiOsSet
 
 export function validateXiaobaiOsChatData(value: unknown): value is XiaobaiOsChatData {
     const root = requireRecord(value, 'xiaobaiOs');
-    if (root.schemaVersion !== XIAOBAI_OS_SCHEMA_VERSION) {
-        fail('UNSUPPORTED_CHAT_VERSION', 'xiaobaiOs.schemaVersion', `must equal ${XIAOBAI_OS_SCHEMA_VERSION}`);
+    if (root.schemaVersion !== XIAOBAI_OS_CHAT_SCHEMA_VERSION) {
+        fail('UNSUPPORTED_CHAT_VERSION', 'xiaobaiOs.schemaVersion', `must equal ${XIAOBAI_OS_CHAT_SCHEMA_VERSION}`);
     }
-    const apps = requireRecord(root.apps, 'xiaobaiOs.apps');
-    if (apps.fourthWall !== undefined) {
-        validateFourthWallChatState(apps.fourthWall, 'xiaobaiOs.apps.fourthWall');
-    }
+    requireRecord(root.apps, 'xiaobaiOs.apps');
+    requireRecord(root.domains, 'xiaobaiOs.domains');
     return true;
 }
 
@@ -259,7 +257,7 @@ export function migrateLegacySettings(extensionSettings: unknown): {
             : requireRecord(source.fourthWallPromptTemplates, 'fourthWallPromptTemplates', 'INVALID_LEGACY_DATA');
 
     const value = {
-        schemaVersion: XIAOBAI_OS_SCHEMA_VERSION,
+        schemaVersion: XIAOBAI_OS_SETTINGS_SCHEMA_VERSION,
         enabled: hasFourthWall
             ? legacyBoolean(fourthWall?.enabled, false, 'fourthWall.enabled')
             : legacyBoolean(dynamicPrompt?.enabled, false, 'dynamicPrompt.enabled'),
@@ -408,11 +406,13 @@ export function migrateLegacyFourthWallChat(
             : sessions[0]?.id;
     const fourthWall = { settings, sessions, activeSessionId: activeSessionId || '' };
     const value: XiaobaiOsChatData = {
-        schemaVersion: XIAOBAI_OS_SCHEMA_VERSION,
+        schemaVersion: XIAOBAI_OS_CHAT_SCHEMA_VERSION,
         apps: { fourthWall },
+        domains: {},
     };
     try {
         validateXiaobaiOsChatData(value);
+        validateFourthWallChatState(fourthWall, 'xiaobaiOs.apps.fourthWall');
     } catch (error) {
         if (error instanceof XiaobaiOsDataError && error.code === 'INVALID_CURRENT_DATA') {
             throw new XiaobaiOsDataError('INVALID_LEGACY_DATA', error.message, error.path);

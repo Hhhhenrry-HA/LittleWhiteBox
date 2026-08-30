@@ -1,9 +1,9 @@
 # 普通酒馆小白 OS 终态设计与开发规划
 
-- 状态：产品定位与架构边界已确认；第一阶段已按 TypeScript 边界实施
+- 状态：OS 壳、四次元壁、Economy 与钱包均已实施
 - 适用范围：普通 SillyTavern / LittleWhiteBox 扩展
 - 不适用范围：`modules/tavern/**`小白酒馆
-- 确认日期：2026-08-29
+- 确认日期：2026-08-30
 
 ## 1. 产品定义
 
@@ -58,13 +58,14 @@ modules/xiaobai-os                  modules/tavern
 index.js（扩展总入口）
     ↓ 加载宿主构建产物
 dist/xiaobai-os-host.js ← xiaobai-os/index.ts
-    ├─ host：SillyTavern 上下文、设置、当前聊天元数据、事件
+    ├─ host：SillyTavern 适配、根数据写入、APP runtime 路由、剧情指纹
     ├─ shell：桌面、导航、设备窗口、APP 生命周期
-    └─ apps/fourth-wall
-          ├─ domain / Prompt / 会话
-          ├─ generation / commentary / media 协议
-          └─ UI
+    ├─ apps/fourth-wall：会话 / Prompt / generation / media / UI
+    ├─ domains/economy：账户规则 / 流水 / 幂等 / 冲正 / 回滚
+    └─ apps/wallet：Economy 的只读余额与流水投影
 ```
+
+任务、商店、银行/赌场、宠物和地图进入时各自拥有领域目录，只通过 Economy 的公开命令产生资金副作用。Economy 不依赖这些 APP，钱包也不成为它们的 Controller。
 
 ### OS 壳拥有
 
@@ -72,9 +73,10 @@ dist/xiaobai-os-host.js ← xiaobai-os/index.ts
 - 发送栏 OS 图标。
 - 设备窗口、桌面、系统导航和当前 APP 路由。
 - APP 注册表及`activate/deactivate`生命周期。
-- APP 可选后台服务的启停；第一阶段只有四次元壁实时吐槽使用该生命周期。
+- APP/领域可选后台服务的启停；当前包括四次元壁实时吐槽与 Economy 剧情对账。
 - 宿主 iframe 的建立、可信消息边界和主题同步。
 - 聊天切换、扩展停用和页面卸载时的统一取消。
+- OS 根聊天数据的单一写入队列与保存结果确认；壳不解释各 APP/domain 分支内容。
 
 OS 壳不拥有任何四次元壁会话、钱包余额、地图节点或宠物状态。
 
@@ -100,12 +102,16 @@ OS 壳不拥有任何四次元壁会话、钱包余额、地图节点或宠物�
 ```text
 modules/xiaobai-os/
 ├─ README.md
+├─ types.ts
 ├─ index.ts
 ├─ host/
 │  ├─ lifecycle.ts
+│  ├─ app-runtime-registry.ts
 │  ├─ sillytavern-context.ts
 │  ├─ settings-repository.ts
-│  ├─ chat-metadata-repository.ts
+│  ├─ chat-data-store.ts
+│  ├─ story-adapter.ts
+│  ├─ story-fingerprint.ts
 │  ├─ legacy-migration.ts
 │  └─ frame-bridge.ts
 ├─ shell/
@@ -117,12 +123,27 @@ modules/xiaobai-os/
 │     ├─ components/
 │     └─ styles/
 ├─ apps/
-│  └─ fourth-wall/
-│     ├─ types.ts
-│     ├─ domain/
+│  ├─ fourth-wall/
+│  │  ├─ types.ts
+│  │  ├─ domain/
+│  │  ├─ host/
+│  │  ├─ agent/
+│  │  ├─ ui/
+│  │  └─ README.md
+│  └─ wallet/
+│     ├─ descriptor.ts
 │     ├─ host/
-│     ├─ agent/
 │     ├─ ui/
+│     └─ README.md
+├─ domains/
+│  └─ economy/
+│     ├─ types.ts
+│     ├─ invariants.ts
+│     ├─ ledger.ts
+│     ├─ timeline.ts
+│     ├─ repository.ts
+│     ├─ story-write-gate.ts
+│     ├─ story-reconciliation-runtime.ts
 │     └─ README.md
 ├─ tests/
 │  └─ fixtures/
@@ -133,7 +154,9 @@ modules/xiaobai-os/
 │  └─ fourth-wall-agent.js
 ├─ docs/
 │  ├─ target-design-and-roadmap.md
-│  └─ phase-1-implementation-plan.md
+│  ├─ phase-1-implementation-plan.md
+│  ├─ economy-platform-target-design.md
+│  └─ economy-platform-phase-1-implementation-plan.md
 └─ host.css
 
 modules/draw/shared/
@@ -159,7 +182,7 @@ OS 运行时手写源码使用 TypeScript/Vue，并由独立`tsconfig.xiaobai-os
 - 四次元壁每次请求读取当时的主聊天窗口，不持久化对普通楼层的长期引用，因此无需伪造稳定 Floor ID。
 - 皮下会话历史是四次元壁自己的消息序列，不是普通聊天楼层，也不是 Tavern Phone 消息。
 
-地图等未来 APP 若需要长期锚定剧情楼层，必须在对应阶段单独设计锚点、编辑、删除、swipe 和分支语义，不能借用 Tavern accepted snapshot，也不能沿用四次元壁的即时上下文规则。
+Economy 使用 OS host 的“楼层 + 当前可见剧情前缀 SHA-256”锚点处理编辑、swipe、删除、移动、分支和漏事件重载。未来领域若需随剧情回滚，可复用这一宿主剧情事实，但必须自己定义领域版本如何裁切；不能借用 Tavern accepted snapshot，也不能沿用四次元壁的即时上下文规则。
 
 ## 6. 状态模型
 
@@ -195,13 +218,13 @@ extension_settings.LittleWhiteBox.xiaobaiOs = {
 
 ### 6.2 当前聊天持久数据
 
-所有者：四次元壁 APP。
+所有者：OS 根 chat data store 拥有保存协议与单一写队列；四次元壁和 Economy 分别拥有自己的数据分支。
 
-为何持久化：皮下会话和历史需要随普通聊天保存，并在刷新或再次进入聊天后恢复。
+为何持久化：皮下会话、历史和资金事实属于当前普通聊天，需要随聊天导出、分支与删除，并在刷新或再次进入聊天后恢复。
 
 ```js
 chat_metadata.extensions.LittleWhiteBox.xiaobaiOs = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     apps: {
         fourthWall: {
             settings: {
@@ -221,18 +244,22 @@ chat_metadata.extensions.LittleWhiteBox.xiaobaiOs = {
             activeSessionId: 'default',
         },
     },
+    domains: {},
 };
 ```
 
 `chat_metadata`本身就是当前聊天的元数据，不得再使用`chat_metadata[chatId]`作为现行结构。
 
+`apps.fourthWall`和`domains.economy`均为可选分支：上例表示只进入过四次元壁的聊天。进入四次元壁不创建 Economy，打开桌面也不开户。Economy 只在首次打开钱包或第一个真实经济消费者提交动作时创建；一旦出现，第一笔交易必须是固定开户流水，余额不持久化，只由`transactions`投影。当前测试线尚未进入 upstream 的 OS chat schema v1 在 Economy 施工时直接重整为 v2，不保留日常兼容分支；upstream 四次元壁旧数据仍由升级入口直接转换到 v2。
+
 生命周期：
 
 - 只有当前聊天存在且用户首次进入四次元壁时，才创建默认数据。
 - 新建、重命名、删除会话和消息提交后保存当前聊天元数据。
+- 首次进入钱包固定写入一笔 100 小白币开户流水；之后所有资金变化只由拥有业务语义的领域经 Economy 提交。
 - 切换聊天只释放内存引用，不复制数据到新聊天。
 - 删除普通聊天时，数据随聊天文件自然删除。
-- 删除四次元壁 APP 时，删除`apps.fourthWall`；若 OS 根已空则连根删除。
+- 删除四次元壁 APP 时只删除`apps.fourthWall`；删除钱包 APP 不等于删除仍被其他消费者使用的 Economy。
 
 ### 6.3 临时运行态
 
@@ -396,25 +423,31 @@ chat_metadata.extensions.LittleWhiteBox.xiaobaiOs.apps.fourthWall
 
 第一阶段实际边界、源码结构和验收项见[实施说明](./phase-1-implementation-plan.md)。
 
-### 第二阶段：地图
+### 第二阶段：Economy + 钱包（已完成）
 
-施工前先确认普通 SillyTavern 的剧情锚点、编辑、swipe、消息删除和分支语义。地图只读写普通聊天自己的元数据，不使用 Tavern Atlas/Map State。
+已建立 OS 根级单写队列、普通剧情指纹、Economy 纯领域与通用 APP runtime registry，并交付只读钱包 APP。每聊天独立开户 100 小白币；流水是唯一资金事实。实现未 import Tavern Economy，也没有创建第二份余额、checkpoint 或 IndexedDB 账本。
 
-### 第三阶段：Economy + 钱包
+终态边界见[经济平台终态设计](./economy-platform-target-design.md)，具体施工顺序与验收见[经济平台与钱包第一阶段施工方案](./economy-platform-phase-1-implementation-plan.md)。
 
-先设计普通聊天账户、不可变流水、幂等 action ID、剧情回滚和删除策略，再交付钱包 APP。不得 import Tavern Economy。
+### 第三阶段：任务
 
-### 第四阶段：商店 + 银行/赌场
+任务作为第一个真实经济消费者，自己拥有发布、接受、推进、结算和领域版本；托管、退款与报酬通过 Economy，在同一次 OS 根提交与同一回滚中确认。
 
-银行和赌场建立在普通 Economy 上；赌场作为银行 APP 内的游戏区，不单独建立第二套余额。商店拥有自己的商品和库存领域。
+### 第四阶段：商店
 
-### 第五阶段：任务
+商店自己拥有商品、库存和效果；购买/退款通过 Economy，与库存版本原子提交和共同回滚。钱包不解释商品状态。
 
-任务需先定义普通聊天中的发布、接受、推进、结算和回滚依据，不复用 Tavern Phone 边界或 Task Timeline。
+### 第五阶段：银行 + 赌场
+
+银行自己拥有存款产品、头寸和结算状态；赌场作为银行 APP 内的纯游戏区，不单独建立第二套余额。存取、结算、下注和派彩都通过 Economy，与银行领域版本原子提交和共同回滚。
 
 ### 第六阶段：宠物
 
-施工前先确定宠物属于全局用户还是每个普通聊天。所有权确定后再设计成长、互动、消费和删除生命周期。
+普通酒馆固定为每个聊天一只宠物，不复制 Tavern 全局 Companion。宠物自己拥有成长、互动和事件历史；礼物、藏币或发现零钱等资金事实通过 Economy，并与宠物版本共同回滚。
+
+### 第七阶段：地图
+
+地图自己拥有地点、连接、当前位置与移动语义，只读写普通聊天数据，不使用 Tavern Atlas/Map State。只有产品明确存在通行费或收益时才调用 Economy；不能为了“都围绕钱包”把地图状态塞进账本。
 
 “信息”APP 暂不列入默认路线，因为普通 SillyTavern 主聊天已经承担主要通讯功能；若未来有独立联系人/异步消息需求，再单独立项。
 
@@ -434,5 +467,7 @@ chat_metadata.extensions.LittleWhiteBox.xiaobaiOs.apps.fourthWall
 2. 删除 APP registry 的一条注册。
 3. 删除全局和聊天数据中的`apps.<app>`。
 4. 删除该 APP 专属构建入口和测试。
+
+共享领域不是某个 APP 的附属数据：删除钱包时，若任务、商店、银行、宠物或地图仍消费 Economy，则保留`domains.economy`；删除 Economy 前必须先删除或迁移全部真实消费者。详细的数据保留和流水处理规则见[经济平台终态设计](./economy-platform-target-design.md#15-删除路径)。
 
 不保留旧类型、旧 API、空注册、永久迁移器或重定向壳。

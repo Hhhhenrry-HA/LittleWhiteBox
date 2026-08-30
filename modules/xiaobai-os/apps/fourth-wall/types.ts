@@ -40,33 +40,6 @@ export interface FourthWallGlobalSettings {
     promptTemplates: FourthWallPromptTemplates;
 }
 
-export interface XiaobaiOsSettings {
-    schemaVersion: number;
-    enabled: boolean;
-    apps: {
-        fourthWall: FourthWallGlobalSettings;
-    };
-}
-
-export interface XiaobaiOsChatApps {
-    fourthWall?: FourthWallChatState;
-    [appId: string]: unknown;
-}
-
-export interface XiaobaiOsChatData {
-    schemaVersion: number;
-    apps: XiaobaiOsChatApps;
-}
-
-export interface XiaobaiOsChatIdentity {
-    key: string;
-    kind: 'group' | 'character';
-    ownerId: string;
-    chatId: string;
-}
-
-export type XiaobaiOsChatIdentityInput = XiaobaiOsChatIdentity | string;
-
 export interface FourthWallMainChatMessage {
     index: number;
     name: string;

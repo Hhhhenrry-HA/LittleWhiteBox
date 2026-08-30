@@ -69,6 +69,42 @@ function createSseResponse(events = [], delimiter = '\n\n') {
     };
 }
 
+test('openai-compatible streaming exposes provider JSON failures as readable messages', async () => {
+    const adapter = new OpenAICompatibleAdapter({
+        apiKey: 'invalid-key',
+        baseUrl: 'https://openai-compatible.example/v1',
+        model: 'test-model',
+    });
+    const rawBody = JSON.stringify({
+        error: {
+            code: '',
+            message: '无效的令牌，请检查 API Key。',
+            type: 'new_api_error',
+        },
+    });
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => ({
+        ok: false,
+        status: 401,
+        text: async () => rawBody,
+    });
+
+    try {
+        await assert.rejects(() => adapter.chat({
+            messages: [{ role: 'user', content: 'hello' }],
+            onStreamProgress() {},
+        }), (error) => {
+            assert.equal(error.message, '无效的令牌，请检查 API Key。');
+            assert.equal(error.status, 401);
+            assert.equal(error.body, rawBody);
+            assert.doesNotMatch(error.message, /new_api_error|\{"error"/);
+            return true;
+        });
+    } finally {
+        globalThis.fetch = originalFetch;
+    }
+});
+
 test('openai-compatible adapter hides incomplete tagged tool blocks from display text', () => {
     assert.equal(
         stripTaggedToolCallsForDisplay('我先查一下。\n<tool_call>{"name":"Read","arguments":{"filePath":"book/state.md"}'),

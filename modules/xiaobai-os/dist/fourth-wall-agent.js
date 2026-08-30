@@ -17,7 +17,7 @@ function hs(e = "") {
 function Qe(e = "") {
   return String(e || "").trim().replace(/\/+$/, "") || "https://api.tavily.com";
 }
-var wP = Object.freeze([
+var bP = Object.freeze([
   Object.freeze({
     value: "inherit",
     label: "跟随模型默认"
@@ -19640,7 +19640,16 @@ async function Vb(e, t) {
     u && u !== "[DONE]" && t(JSON.parse(u));
   }
 }
-var Jb = class {
+function Jb(e, t) {
+  const n = String(e || "").trim();
+  if (n && (n.startsWith("{") || n.startsWith("["))) try {
+    const r = JSON.parse(n), o = r?.error?.message || r?.message;
+    if (typeof o == "string" && o.trim()) return o.trim();
+  } catch {
+  }
+  return n || `OpenAI 兼容流式请求失败（HTTP ${t}）`;
+}
+var Kb = class {
   constructor(e) {
     this.config = e, this.client = new W({
       apiKey: e.apiKey,
@@ -19705,8 +19714,8 @@ var Jb = class {
       signal: e.signal
     });
     if (!o.ok) {
-      const g = await o.text().catch(() => ""), _ = new Error(g || `openai_compatible_stream_http_${o.status}`);
-      throw _.status = o.status, _;
+      const g = await o.text().catch(() => ""), _ = new Error(Jb(g, o.status));
+      throw _.status = o.status, _.body = g, _;
     }
     const i = { role: "assistant" };
     let s = "stop", u = this.config.model;
@@ -19803,7 +19812,7 @@ var Jb = class {
     };
   }
 };
-function Kb(e) {
+function Wb(e) {
   if (e !== void 0)
     try {
       return JSON.parse(JSON.stringify(e));
@@ -19812,7 +19821,7 @@ function Kb(e) {
     }
 }
 function cl(e) {
-  const t = Kb(Array.isArray(e) ? e : []);
+  const t = Wb(Array.isArray(e) ? e : []);
   return Array.isArray(t) ? (t.forEach((n) => {
     !n || typeof n != "object" || Array.isArray(n) || (n.type === "function_call" && delete n.parsed_arguments, n.type === "message" && Array.isArray(n.content) && n.content.forEach((r) => {
       !r || typeof r != "object" || Array.isArray(r) || delete r.parsed;
@@ -19823,7 +19832,7 @@ function ug(e, t) {
   return {
     type: "message",
     role: e,
-    content: Wb(t)
+    content: zb(t)
   };
 }
 function pi(e) {
@@ -19832,7 +19841,7 @@ function pi(e) {
     content: typeof e == "string" ? e : ""
   };
 }
-function Wb(e) {
+function zb(e) {
   if (typeof e == "string") return [{
     type: "input_text",
     text: e
@@ -19871,7 +19880,7 @@ function Ld(e, t = [], n = {}) {
     }
   });
 }
-function zb(e = []) {
+function Yb(e = []) {
   const t = [];
   return (e || []).forEach((n) => {
     !n || typeof n != "object" || n.type === "reasoning" && (Ld(t, n.content, {
@@ -19883,13 +19892,13 @@ function zb(e = []) {
     }));
   }), t;
 }
-function Yb(e) {
+function Xb(e) {
   const t = [String(e.systemPrompt || "").trim(), ...(e.messages || []).filter((n) => n.role === "system").map((n) => String(n.content || "").trim())].filter(Boolean);
   return t.length ? [...new Set(t)].join(`
 
 `) : "";
 }
-function Xb(e) {
+function Qb(e) {
   if (typeof e?.output_text == "string" && e.output_text.trim()) return e.output_text.trim();
   const t = [];
   return (Array.isArray(e?.output) ? e.output : []).forEach((n) => {
@@ -19911,12 +19920,12 @@ function Xb(e) {
   }), t.join(`
 `).trim();
 }
-function Qb(e) {
+function Zb(e) {
   if (e && typeof e == "object" && !Array.isArray(e) && !Object.prototype.hasOwnProperty.call(e, "choices") && Array.isArray(e.output)) return;
   const t = /* @__PURE__ */ new Error("当前端点返回的不是 Responses API，请改用 OpenAI 兼容。");
   throw t.name = "OpenAIResponsesEndpointMismatchError", t.code = "OPENAI_RESPONSES_ENDPOINT_MISMATCH", t;
 }
-function Zb(e) {
+function jb(e) {
   const t = [];
   for (const n of e.messages || [])
     if (n.role !== "system") {
@@ -19955,7 +19964,7 @@ function Zb(e) {
     }
   return t;
 }
-function jb(e) {
+function e0(e) {
   const t = [];
   for (const n of e.messages || []) {
     if (n.role === "system") {
@@ -20000,18 +20009,18 @@ function jb(e) {
   }
   return t;
 }
-function e0(e) {
+function t0(e) {
   try {
     return new URL(String(e || "https://api.openai.com/v1")).hostname === "api.openai.com";
   } catch {
     return !1;
   }
 }
-function t0(e) {
+function n0(e) {
   const t = String(e?.message || e || "").toLowerCase();
   return t.includes("instructions") || t.includes("unsupported") || t.includes("unknown parameter") || t.includes("invalid input");
 }
-function n0(e, t) {
+function r0(e, t) {
   typeof e.onStreamProgress == "function" && e.onStreamProgress({
     ...typeof t.text == "string" ? { text: t.text } : {},
     ...Array.isArray(t.thoughts) ? { thoughts: t.thoughts } : {}
@@ -20021,7 +20030,7 @@ function cs(e, t) {
   const [n = "0", r = "0"] = String(e || "").split(":"), [o = "0", i = "0"] = String(t || "").split(":");
   return Number(n) - Number(o) || Number(r) - Number(i);
 }
-var r0 = class {
+var o0 = class {
   constructor(e) {
     this.config = e, this.client = new W({
       apiKey: e.apiKey,
@@ -20034,8 +20043,8 @@ var r0 = class {
   buildRequestBody(e, t = !1, n = ie("openai-responses", this.config, e.reasoning)) {
     const r = n, o = {
       model: this.config.model,
-      instructions: t ? void 0 : Yb(e) || void 0,
-      input: t ? jb(e) : Zb(e),
+      instructions: t ? void 0 : Xb(e) || void 0,
+      input: t ? e0(e) : jb(e),
       ...Array.isArray(e.tools) && e.tools.length ? {
         tools: e.tools.map((i) => ({
           type: "function",
@@ -20090,17 +20099,17 @@ var r0 = class {
         effectiveConfig: g.effectiveConfig
       }))
     }), o = (m) => (m && typeof m == "object" && (m.requestInspection = r()), m), i = (m) => {
-      Qb(m);
+      Zb(m);
       const g = m.output;
       return {
         output: g,
-        thoughts: Z(t) ? zb(g) : [],
+        thoughts: Z(t) ? Yb(g) : [],
         toolCalls: g.filter((_) => _.type === "function_call" && _.name).map((_, v) => ({
           id: _.call_id || `response-tool-${v + 1}`,
           name: _.name || "",
           arguments: _.arguments || "{}"
         })),
-        text: Xb(m)
+        text: Qb(m)
       };
     }, s = (m, g, _) => {
       const v = this.inspectRequest(e, {
@@ -20126,7 +20135,7 @@ var r0 = class {
       try {
         const v = this.client.responses.stream(_, { signal: e.signal }), C = /* @__PURE__ */ new Map(), b = /* @__PURE__ */ new Map(), P = /* @__PURE__ */ new Map(), R = () => {
           const D = [];
-          Z(t) && (Array.from(b.entries()).sort(([A], [U]) => cs(A, U)).forEach(([, A]) => mi(D, "推理文本", A)), Array.from(P.entries()).sort(([A], [U]) => cs(A, U)).forEach(([, A]) => mi(D, "推理摘要", A))), n0(e, {
+          Z(t) && (Array.from(b.entries()).sort(([A], [U]) => cs(A, U)).forEach(([, A]) => mi(D, "推理文本", A)), Array.from(P.entries()).sort(([A], [U]) => cs(A, U)).forEach(([, A]) => mi(D, "推理摘要", A))), r0(e, {
             text: Array.from(C.entries()).sort(([A], [U]) => cs(A, U)).map(([, A]) => A).join(`
 `).trim(),
             thoughts: D
@@ -20145,12 +20154,12 @@ var r0 = class {
       } catch (v) {
         throw o(v);
       }
-    }, d = !e0(this.config.baseUrl), f = typeof e.onStreamProgress == "function" ? c : u;
+    }, d = !t0(this.config.baseUrl), f = typeof e.onStreamProgress == "function" ? c : u;
     let h, p;
     try {
       h = await f(!1, "initial"), p = i(h);
     } catch (m) {
-      if (!d || !t0(m)) throw o(m);
+      if (!d || !n0(m)) throw o(m);
       h = await f(!0, "legacy_system_error");
       try {
         p = i(h);
@@ -20178,7 +20187,7 @@ var r0 = class {
     };
   }
 };
-async function o0(e, t) {
+async function i0(e, t) {
   const n = e.body?.getReader?.();
   if (!n) throw new Error("host_chat_completions_stream_missing_body");
   const r = new TextDecoder();
@@ -20201,21 +20210,21 @@ async function o0(e, t) {
   const u = o.trim();
   u && s(u);
 }
-var Gt = "openai", dl = "claude", fl = "makersuite", i0 = "/api/backends/chat-completions/status", s0 = "/api/backends/chat-completions/generate", cg = Object.freeze({
+var Gt = "openai", dl = "claude", fl = "makersuite", s0 = "/api/backends/chat-completions/status", a0 = "/api/backends/chat-completions/generate", cg = Object.freeze({
   [dl]: "https://api.anthropic.com/v1",
   [fl]: "https://generativelanguage.googleapis.com"
 }), zn = null;
-function a0(e) {
+function l0(e) {
   return String(e || "").trim().replace(/\/+$/, "");
 }
-function l0(e = "") {
+function u0(e = "") {
   return Sa(e) === "openai";
 }
-function u0(e, t) {
-  const n = a0(e);
+function c0(e, t) {
+  const n = l0(e);
   return t === "claude" ? !n || /\/v\d[\w.-]*$/i.test(n) ? n : `${n}/v1` : t === "makersuite" ? n.replace(/\/v\d[\w.-]*$/i, "") : n;
 }
-function c0(e) {
+function d0(e) {
   zn = typeof e == "function" ? e : null;
 }
 async function dg(e = zn) {
@@ -20226,7 +20235,7 @@ async function dg(e = zn) {
     Accept: "application/json"
   };
 }
-function d0(e = {}) {
+function f0(e = {}) {
   const t = {};
   return Object.entries(e || {}).forEach(([n, r]) => {
     t[n] = /authorization|cookie|csrf|token|api[-_]?key/i.test(n) ? "[redacted]" : r;
@@ -20234,9 +20243,9 @@ function d0(e = {}) {
 }
 async function hl(e = {}, t = !1, n = zn) {
   const r = await dg(n), o = {
-    url: s0,
+    url: a0,
     method: "POST",
-    headers: d0(r),
+    headers: f0(r),
     body: {
       ...e,
       stream: !!t
@@ -20247,16 +20256,16 @@ async function hl(e = {}, t = !1, n = zn) {
     enumerable: !1
   }), o;
 }
-async function f0(e = {}, t = !1) {
+async function h0(e = {}, t = !1) {
   return await hl(e, t);
 }
-function h0(e = "") {
+function p0(e = "") {
   return /^\s*(?:<!DOCTYPE\s+html\b|<html\b)/i.test(String(e || ""));
 }
-function p0(e = "") {
+function m0(e = "") {
   return /invalid csrf token/i.test(String(e || ""));
 }
-function m0() {
+function g0() {
   return "酒馆当前页面的 CSRF token 已失效，请按 F5 刷新并重新进入酒馆后再试。";
 }
 function Ud(e = "", t = 10) {
@@ -20266,11 +20275,11 @@ function Ud(e = "", t = 10) {
 function Fd(e = "") {
   return String(e || "").replace(/&nbsp;|&#160;/gi, " ").replace(/&amp;/gi, "&").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">").replace(/&quot;/gi, '"').replace(/&#39;|&apos;/gi, "'").replace(/&#x([0-9a-f]+);?/gi, (t, n) => Ud(n, 16)).replace(/&#([0-9]+);?/g, (t, n) => Ud(n));
 }
-function g0(e = "") {
+function y0(e = "") {
   const t = String(e || ""), n = Fd((t.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i) || [])[1] || "").replace(/\s+/g, " ").trim(), r = Fd(t.replace(/<script\b[\s\S]*?<\/script>/gi, " ").replace(/<style\b[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim(), o = n || r;
   return o.length > 240 ? `${o.slice(0, 237)}...` : o;
 }
-function y0(e = null) {
+function _0(e = null) {
   const t = Number(e?.status), n = String(e?.statusText || "").trim();
   let r = "";
   try {
@@ -20284,37 +20293,49 @@ function y0(e = null) {
     contentType: r
   };
 }
-function _0(e = {}) {
+function v0(e = {}) {
   return e.status ? `HTTP ${e.status}${e.statusText ? ` ${e.statusText}` : ""}` : "";
 }
+function A0(e = "") {
+  const t = String(e || "").trim();
+  if (!t || t[0] !== "{" && t[0] !== "[") return "";
+  try {
+    const n = JSON.parse(t), r = n?.error?.message;
+    if (typeof r == "string" && r.trim()) return r.trim();
+    if (typeof n?.message == "string" && n.message.trim()) return n.message.trim();
+  } catch {
+    return "";
+  }
+  return "";
+}
 function On(e = "", t = "", n = null) {
-  if (p0(e)) return m0();
-  const r = y0(n);
-  if (h0(e) || /\btext\/html\b/i.test(r.contentType)) {
-    const o = _0(r), i = g0(e);
+  if (m0(e)) return g0();
+  const r = _0(n);
+  if (p0(e) || /\btext\/html\b/i.test(r.contentType)) {
+    const o = v0(r), i = y0(e);
     return [
       "酒馆后端返回了非 JSON 的 HTML 页面",
       o ? `（${o}）` : "",
       i ? `：${i}` : ""
     ].join("");
   }
-  return String(e || t || "").trim();
+  return A0(e) || String(e || t || "").trim();
 }
 function fg(e = {}, t = Gt) {
-  const n = u0(e.baseUrl, t), r = String(e.apiKey || "").trim(), o = cg[t] || "", i = n || (r ? o : ""), s = { chat_completion_source: t || "openai" };
+  const n = c0(e.baseUrl, t), r = String(e.apiKey || "").trim(), o = cg[t] || "", i = n || (r ? o : ""), s = { chat_completion_source: t || "openai" };
   return i && (s.reverse_proxy = i), r && (s.proxy_password = r), s;
 }
-function v0(e = {}) {
+function T0(e = {}) {
   return Object.keys(e).forEach((t) => {
     (e[t] === void 0 || e[t] === "") && delete e[t];
   }), e;
 }
-function A0(e = {}, t = Gt) {
+function S0(e = {}, t = Gt) {
   return fg(e, t);
 }
 function pl(e = {}, t = {}, n = [], r = !1, o = Gt) {
-  const i = t.maxTokens, s = o === "openai" && l0(e.model);
-  return v0({
+  const i = t.maxTokens, s = o === "openai" && u0(e.model);
+  return T0({
     ...fg(e, o),
     stream: !!r,
     messages: n,
@@ -20327,13 +20348,13 @@ function pl(e = {}, t = {}, n = [], r = !1, o = Gt) {
     use_sysprompt: o === "openai" ? void 0 : !0
   });
 }
-function T0(e = {}, t = {}, n = [], r = !1) {
+function E0(e = {}, t = {}, n = [], r = !1) {
   return pl(e, t, n, r, Gt);
 }
-function S0(e = {}, t = {}, n = [], r = !1) {
+function C0(e = {}, t = {}, n = [], r = !1) {
   return pl(e, t, n, r, dl);
 }
-function E0(e = {}, t = {}, n = [], r = !1) {
+function w0(e = {}, t = {}, n = [], r = !1) {
   return pl(e, t, n, r, fl);
 }
 function ml(e) {
@@ -20341,11 +20362,11 @@ function ml(e) {
   if (typeof t != "function") throw new Error("当前运行环境没有可用的 fetch，无法调用酒馆后端。");
   return t;
 }
-async function C0(e = {}, t = Gt, n = {}, r = {}) {
-  const o = await ml(r.fetch)(i0, {
+async function I0(e = {}, t = Gt, n = {}, r = {}) {
+  const o = await ml(r.fetch)(s0, {
     method: "POST",
     headers: await dg(r.requestHeadersProvider),
-    body: JSON.stringify(A0(e, t)),
+    body: JSON.stringify(S0(e, t)),
     signal: n.signal
   }), i = await o.text();
   let s = null;
@@ -20362,12 +20383,12 @@ async function C0(e = {}, t = Gt, n = {}, r = {}) {
   return [...new Set(u)];
 }
 async function gl(e = {}, t = Gt, n = {}) {
-  return await C0(e, t, n, { requestHeadersProvider: zn });
+  return await I0(e, t, n, { requestHeadersProvider: zn });
 }
-async function w0(e = {}, t = {}) {
+async function b0(e = {}, t = {}) {
   return await gl(e, Gt, t);
 }
-async function I0(e = {}, t = {}, n = {}) {
+async function P0(e = {}, t = {}, n = {}) {
   const r = await hl(e, !1, n.requestHeadersProvider);
   typeof t.onRequest == "function" && t.onRequest(r);
   const o = await ml(n.fetch)(r.url, {
@@ -20389,10 +20410,10 @@ async function I0(e = {}, t = {}, n = {}) {
   }
   return s;
 }
-async function b0(e = {}, t = {}) {
-  return await I0(e, t, { requestHeadersProvider: zn });
+async function R0(e = {}, t = {}) {
+  return await P0(e, t, { requestHeadersProvider: zn });
 }
-async function P0(e = {}, t, n = {}, r = {}) {
+async function x0(e = {}, t, n = {}, r = {}) {
   const o = await hl(e, !0, r.requestHeadersProvider);
   typeof n.onRequest == "function" && n.onRequest(o);
   const i = await ml(r.fetch)(o.url, {
@@ -20405,7 +20426,7 @@ async function P0(e = {}, t, n = {}, r = {}) {
     const s = await i.text().catch(() => ""), u = new Error(On(s, `酒馆后端流式生成失败：HTTP ${i.status}`, i));
     throw u.status = i.status, u.body = s, u;
   }
-  typeof n.onResponseAccepted == "function" && n.onResponseAccepted(), await o0(i, (s) => {
+  typeof n.onResponseAccepted == "function" && n.onResponseAccepted(), await i0(i, (s) => {
     if (s?.error) {
       const u = On(s.error?.message || s.message || JSON.stringify(s.error), "酒馆后端流式生成失败");
       throw new Error(u);
@@ -20413,24 +20434,24 @@ async function P0(e = {}, t, n = {}, r = {}) {
     t(s);
   });
 }
-async function R0(e = {}, t, n = {}) {
-  return await P0(e, t, n, { requestHeadersProvider: zn });
+async function M0(e = {}, t, n = {}) {
+  return await x0(e, t, n, { requestHeadersProvider: zn });
 }
-var x0 = Object.freeze([
+var N0 = Object.freeze([
   "buildHostChatCompletionGenerateRequest",
   "createHostChatCompletion",
   "streamHostChatCompletion"
 ]);
 function Ui(e) {
-  if (!e || !x0.every((t) => typeof e[t] == "function")) throw new TypeError("酒馆渠道必须注入有效的 Host Client。");
+  if (!e || !N0.every((t) => typeof e[t] == "function")) throw new TypeError("酒馆渠道必须注入有效的 Host Client。");
   return e;
 }
 var yl = Object.freeze({
-  buildHostChatCompletionGenerateRequest: f0,
+  buildHostChatCompletionGenerateRequest: h0,
   fetchHostChatCompletionsModels: gl,
-  fetchHostOpenAICompatibleModels: w0,
-  createHostChatCompletion: b0,
-  streamHostChatCompletion: R0
+  fetchHostOpenAICompatibleModels: b0,
+  createHostChatCompletion: R0,
+  streamHostChatCompletion: M0
 });
 function ln(e) {
   if (e !== void 0)
@@ -20440,25 +20461,25 @@ function ln(e) {
       return;
     }
 }
-function M0(e) {
+function k0(e) {
   const t = String(e || "").trim();
   if (!t || t === "auto") return "auto";
   if (t === "required") return "any";
   if (t === "none") return "none";
   throw new Error(`酒馆托管 Claude 不支持 tool_choice：${t}。仅支持 auto/required/none。`);
 }
-function N0(e = {}, t = {}, n = ie("sillytavern-claude", e, t.reasoning)) {
+function D0(e = {}, t = {}, n = ie("sillytavern-claude", e, t.reasoning)) {
   if (!(Array.isArray(t.tools) && t.tools.length > 0)) return {
     toolChoice: void 0,
     reasoningDisabledForForcedTool: !1
   };
-  const r = M0(t.toolChoice), o = n.profileId === "sillytavern-claude-manual" || n.profileId === "sillytavern-claude-adaptive-conditional";
+  const r = k0(t.toolChoice), o = n.profileId === "sillytavern-claude-manual" || n.profileId === "sillytavern-claude-adaptive-conditional";
   return {
     toolChoice: r,
     reasoningDisabledForForcedTool: r === "any" && n.mode === "on" && o
   };
 }
-var k0 = "当前模型使用手动 thinking，与强制 Tool 调用冲突；本次请求已因强制 Tool 关闭 Reasoning。";
+var $0 = "当前模型使用手动 thinking，与强制 Tool 调用冲突；本次请求已因强制 Tool 关闭 Reasoning。";
 function Do(e = {}, t = {}, n = {}, r) {
   const o = r || ie("sillytavern-claude", e, t.reasoning);
   return n.reasoningDisabledForForcedTool ? {
@@ -20467,14 +20488,14 @@ function Do(e = {}, t = {}, n = {}, r) {
     output: "hide"
   } : o;
 }
-function D0(e = {}, t = {}, n = {}) {
+function L0(e = {}, t = {}, n = {}) {
   return Ot(e, {
     reasoning: n,
     effort: n.mode === "on" ? n.effort : "",
     controlFields: t.controlFields || {}
   });
 }
-function $0(e = {}, t = {}) {
+function U0(e = {}, t = {}) {
   return { toolChoice: String(t.toolChoice || "") };
 }
 function hg(e = "") {
@@ -20492,7 +20513,7 @@ function hg(e = "") {
     };
   }
 }
-function L0(e = []) {
+function F0(e = []) {
   return (Array.isArray(e) ? e : []).map((t) => {
     const n = String(t?.function?.name || "").trim();
     if (!n) return null;
@@ -20509,15 +20530,15 @@ function L0(e = []) {
     };
   }).filter(Boolean);
 }
-function U0(e = []) {
+function O0(e = []) {
   const t = Array.isArray(e) ? ln(e) : null;
   return Array.isArray(t) && t.length ? t : null;
 }
-function F0(e = {}) {
+function q0(e = {}) {
   const t = Array.isArray(e.messages) ? e.messages : [], n = [];
   t.forEach((o) => {
     if (!o || typeof o != "object") return;
-    const i = ln(o) || {}, s = U0(i?.providerPayload?.anthropicContent), u = L0(i.tool_calls);
+    const i = ln(o) || {}, s = O0(i?.providerPayload?.anthropicContent), u = F0(i.tool_calls);
     delete i.providerPayload, i.role === "assistant" && s && u.length ? (delete i.tool_calls, i.content = s.filter((c) => c?.type !== "tool_use").concat(u)) : i.role === "assistant" && s && (delete i.tool_calls, i.content = s), n.push(i);
   });
   const r = typeof e.systemPrompt == "string" ? e.systemPrompt : "";
@@ -20526,7 +20547,7 @@ function F0(e = {}) {
     content: r
   }), n;
 }
-function O0(e = []) {
+function B0(e = []) {
   return (Array.isArray(e) ? e : []).map((t) => {
     if (!t || typeof t != "object") return null;
     if (t.type === "text") return {
@@ -20570,7 +20591,7 @@ function O0(e = []) {
     } : ln(t) || null;
   }).filter(Boolean);
 }
-function q0(e = []) {
+function G0(e = []) {
   return e.map((t) => !t || typeof t != "object" ? null : t.type === "tool_use" && t.name ? {
     type: "tool_use",
     id: t.id,
@@ -20578,7 +20599,7 @@ function q0(e = []) {
     input: ln(t.input) || {}
   } : ln(t) || null).filter(Boolean);
 }
-function B0(e = []) {
+function H0(e = []) {
   const t = Array.isArray(e) ? e : [], n = t.filter((i) => i?.type === "text").map((i) => i.text || "").join(`
 `), r = t.filter((i) => i?.type === "thinking" || i?.type === "redacted_thinking").map((i) => ({
     label: i.type === "thinking" ? "思考块" : "已脱敏思考块",
@@ -20598,7 +20619,7 @@ function B0(e = []) {
   };
 }
 function pg(e = [], t = {}) {
-  const n = O0(e), r = n.filter((o) => o.type === "tool_use" && o.name).map((o, i) => ({
+  const n = B0(e), r = n.filter((o) => o.type === "tool_use" && o.name).map((o, i) => ({
     id: o.id || `st-claude-tool-${i + 1}`,
     name: o.name,
     arguments: o.invalidInputJson !== void 0 ? o.invalidInputJson : JSON.stringify(o.input || {})
@@ -20614,10 +20635,10 @@ function pg(e = [], t = {}) {
     finishReason: t.finishReason || "stop",
     model: t.model || "",
     provider: "sillytavern-claude",
-    providerPayload: n.length ? { anthropicContent: q0(n) } : void 0
+    providerPayload: n.length ? { anthropicContent: G0(n) } : void 0
   };
 }
-function G0(e, t) {
+function V0(e, t) {
   typeof e.onStreamProgress == "function" && e.onStreamProgress({
     ...typeof t.text == "string" ? { text: t.text } : {},
     ...Array.isArray(t.thoughts) ? { thoughts: t.thoughts } : {},
@@ -20625,7 +20646,7 @@ function G0(e, t) {
     ...t.toolCallDraft ? { toolCallDraft: !0 } : {}
   });
 }
-function H0(e, t, n = {}) {
+function J0(e, t, n = {}) {
   const r = [];
   let o = "stop", i = n.model || "";
   const s = (c, d = {}) => {
@@ -20635,8 +20656,8 @@ function H0(e, t, n = {}) {
       ...d
     } : r[f] = { ...d }, r[f];
   }, u = () => {
-    const c = B0(r);
-    G0(e, {
+    const c = H0(r);
+    V0(e, {
       text: c.text,
       thoughts: Z(t) ? c.thoughts : [],
       ...Array.isArray(c.toolCalls) ? { toolCalls: c.toolCalls } : {},
@@ -20665,15 +20686,15 @@ function H0(e, t, n = {}) {
     }
   };
 }
-var V0 = class {
+var K0 = class {
   constructor(e, t = yl) {
     this.config = e, this.hostClient = Ui(t);
   }
   buildMessages(e) {
-    return F0(e);
+    return q0(e);
   }
   resolveToolProtocol(e, t) {
-    return N0(this.config, e, t);
+    return D0(this.config, e, t);
   }
   buildPayload(e, t = this.resolveToolProtocol(e), n = Do(this.config, e, t)) {
     const r = typeof e.onStreamProgress == "function", o = this.buildMessages(e), i = {
@@ -20684,7 +20705,7 @@ var V0 = class {
         ...this.config,
         provider: "sillytavern-claude"
       }, n) ? void 0 : e.temperature
-    }, s = S0(this.config, i, o, r);
+    }, s = C0(this.config, i, o, r);
     return n.mode === "on" ? (s.reasoning_effort = n.effort, s.include_reasoning = Z(n)) : n.mode === "off" ? (s.reasoning_effort = "auto", s.include_reasoning = !1) : (s.reasoning_effort = "auto", s.include_reasoning = Z(n)), s;
   }
   async inspectRequest(e, t = {}) {
@@ -20702,13 +20723,13 @@ var V0 = class {
       transport: "sillytavern-chat-completions",
       request: an(e),
       effectiveConfig: {
-        ...$0(n, t),
-        ...D0(n, {
+        ...U0(n, t),
+        ...L0(n, {
           ...t,
           controlFields: o
         }, r)
       },
-      ...t.reasoningDisabledForForcedTool ? { notices: [k0] } : {}
+      ...t.reasoningDisabledForForcedTool ? { notices: [$0] } : {}
     };
   }
   async chat(e) {
@@ -20719,7 +20740,7 @@ var V0 = class {
     };
     try {
       if (n) {
-        const d = H0(e, o, this.config);
+        const d = J0(e, o, this.config);
         return await this.hostClient.streamHostChatCompletion(i, (f) => {
           d.accept(f);
         }, {
@@ -20770,13 +20791,13 @@ function qn(e) {
   const t = _l(e) || {};
   return t.role = t.role || "model", t.parts = Array.isArray(t.parts) ? t.parts : [], t;
 }
-function J0(e) {
+function W0(e) {
   const t = Array.isArray(e?.providerPayload?.googleContents) ? e.providerPayload.googleContents : [];
   if (t.length) return t.map((o) => qn(o)).filter((o) => Array.isArray(o.parts) && o.parts.length);
   const n = e?.providerPayload?.googleContent, r = qn(n);
   return r.parts.length ? [r] : [];
 }
-function K0(e = {}) {
+function z0(e = {}) {
   const t = String(e?.mimeType || "").trim(), n = String(e?.data || "").trim();
   if (!t || !n) return null;
   const r = `data:${t};base64,${n}`;
@@ -20791,7 +20812,7 @@ function K0(e = {}) {
     audio_url: { url: r }
   } : null;
 }
-function W0(e = {}, t = 0) {
+function Y0(e = {}, t = 0) {
   const n = qn(e);
   if (!n.parts.length) return null;
   const r = {
@@ -20819,21 +20840,21 @@ function W0(e = {}, t = 0) {
       });
       return;
     }
-    const u = K0(s.inlineData);
+    const u = z0(s.inlineData);
     u && r.content.push(u);
   }), i.length && r.content.push({
     type: "tool_calls",
     tool_calls: i
   }), o && r.content.some((s) => s?.type === "text") && (r.signature = o), r.content.length ? r : null;
 }
-function z0(e = {}) {
+function X0(e = {}) {
   const t = Array.isArray(e.messages) ? e.messages : [], n = [];
   t.forEach((o) => {
     if (!o || typeof o != "object") return;
-    const i = J0(o);
+    const i = W0(o);
     if (o.role === "assistant" && i.length) {
       i.forEach((u, c) => {
-        const d = W0(u, c);
+        const d = Y0(u, c);
         d && n.push(d);
       });
       return;
@@ -20867,11 +20888,11 @@ function _g(e = {}) {
     arguments: JSON.stringify(t.args || {})
   }));
 }
-function Y0(e, t) {
+function Q0(e, t) {
   const n = String(t || ""), r = String(e || "");
   return n ? !r || n.startsWith(r) ? n : r.endsWith(n) ? r : `${r}${n}` : r;
 }
-function X0(e = [], t = []) {
+function Z0(e = [], t = []) {
   const n = Array.isArray(e) ? [...e] : [];
   return t.forEach((r) => {
     const o = [
@@ -20893,7 +20914,7 @@ function vg(e) {
     googleContents: [t]
   } : void 0;
 }
-function Q0(e = {}, t = {}) {
+function j0(e = {}, t = {}) {
   const n = mg(e), r = e?.choices?.[0]?.message?.content || "";
   return {
     text: gg(n) || r,
@@ -20905,7 +20926,7 @@ function Q0(e = {}, t = {}) {
     providerPayload: vg(n)
   };
 }
-function Z0(e, t) {
+function eP(e, t) {
   typeof e.onStreamProgress == "function" && e.onStreamProgress({
     ...typeof t.text == "string" ? { text: t.text } : {},
     ...Array.isArray(t.thoughts) ? { thoughts: t.thoughts } : {},
@@ -20913,16 +20934,16 @@ function Z0(e, t) {
     ...t.toolCallDraft ? { toolCallDraft: !0 } : {}
   });
 }
-function j0(e, t, n = {}) {
+function tP(e, t, n = {}) {
   let r = "", o = [], i = [], s = "STOP", u = n.model || "";
   const c = [];
   return {
     accept(d = {}) {
       u = d.model || d.modelVersion || u, s = d?.candidates?.[0]?.finishReason || s;
       const f = mg(d);
-      f.parts.length && c.push(..._l(f.parts) || []), r = Y0(r, gg(f)), o = X0(o, _g(f));
+      f.parts.length && c.push(..._l(f.parts) || []), r = Q0(r, gg(f)), o = Z0(o, _g(f));
       const h = Z(t) ? yg(f) : [];
-      h.length && (i = h), Z0(e, {
+      h.length && (i = h), eP(e, {
         text: r,
         thoughts: i,
         ...o.length ? {
@@ -20948,15 +20969,15 @@ function j0(e, t, n = {}) {
     }
   };
 }
-var eP = class {
+var nP = class {
   constructor(e, t = yl) {
     this.config = e, this.hostClient = Ui(t);
   }
   buildMessages(e) {
-    return z0(e);
+    return X0(e);
   }
   buildPayload(e, t = ie("sillytavern-google", this.config, e.reasoning)) {
-    const n = t, r = typeof e.onStreamProgress == "function", o = this.buildMessages(e), i = E0(this.config, e, o, r);
+    const n = t, r = typeof e.onStreamProgress == "function", o = this.buildMessages(e), i = w0(this.config, e, o, r);
     return n.mode === "on" ? (i.reasoning_effort = n.effort, i.include_reasoning = Z(n)) : n.mode === "off" ? (i.reasoning_effort = "min", i.include_reasoning = !1) : (i.reasoning_effort = "auto", i.include_reasoning = Z(n)), i;
   }
   async inspectRequest(e, t = {}) {
@@ -20988,7 +21009,7 @@ var eP = class {
     };
     try {
       if (n) {
-        const s = j0(e, t, this.config);
+        const s = tP(e, t, this.config);
         return await this.hostClient.streamHostChatCompletion(r, (u) => {
           s.accept(u);
         }, {
@@ -21000,7 +21021,7 @@ var eP = class {
         };
       }
       return {
-        ...Q0(await this.hostClient.createHostChatCompletion(r, {
+        ...j0(await this.hostClient.createHostChatCompletion(r, {
           signal: e.signal,
           onRequest: i
         }), {
@@ -21014,7 +21035,7 @@ var eP = class {
     }
   }
 };
-function tP(e, t, n) {
+function rP(e, t, n) {
   typeof e.onStreamProgress == "function" && e.onStreamProgress({
     ...typeof t.text == "string" ? { text: t.text } : {},
     ...Array.isArray(t.thoughts) ? { thoughts: Z(n) ? t.thoughts : [] } : {},
@@ -21029,11 +21050,11 @@ function ds(e, t = []) {
     cleanedText: t.length ? n.cleaned : en(n.cleaned)
   };
 }
-function nP(e) {
+function oP(e) {
   const t = String(e?.message || e || "");
   return /Cannot read properties of null \(reading ['"]function['"]\)/i.test(t) || /reading ['"]function['"]/i.test(t) || /badresponsestatuscode/i.test(t);
 }
-var rP = class {
+var iP = class {
   constructor(e, t = yl) {
     this.config = e, this.hostClient = Ui(t);
   }
@@ -21048,7 +21069,7 @@ var rP = class {
         provider: "sillytavern-openai-compatible"
       }, r) ? void 0 : e.temperature
     };
-    return ig(T0(this.config, t ? {
+    return ig(E0(this.config, t ? {
       ...i,
       tools: void 0,
       toolChoice: void 0
@@ -21083,7 +21104,7 @@ var rP = class {
       const m = p?.choices?.[0] || {};
       ca(o, m), m.finish_reason && (i = m.finish_reason);
       const g = kn(o), { thinkTagged: _, cleanedText: v } = ds(Nn(o), g), C = g.length ? g : sa(_.cleaned);
-      tP(e, {
+      rP(e, {
         text: v,
         thoughts: Z(n) ? Lt(o, m).concat(_.thoughts) : [],
         ...C.length ? { toolCalls: C } : {},
@@ -21147,7 +21168,7 @@ var rP = class {
     try {
       return await o(i);
     } catch (s) {
-      if (e.allowToolProtocolFallback === !1 || n || !r || !nP(s)) throw s;
+      if (e.allowToolProtocolFallback === !1 || n || !r || !oP(s)) throw s;
     }
     return typeof e.onToolProtocolFallback == "function" && e.onToolProtocolFallback({
       provider: "sillytavern-openai-compatible",
@@ -21162,7 +21183,7 @@ var rP = class {
 }, {
   value: "tagged-json",
   label: "Tagged JSON 兼容模式"
-}]), oP = Object.freeze([
+}]), sP = Object.freeze([
   {
     value: "openai-responses",
     label: "OpenAI Responses"
@@ -21192,7 +21213,7 @@ var rP = class {
     label: "Google AI"
   }
 ]);
-function iP(e = "") {
+function aP(e = "") {
   return e === "sillytavern-openai-compatible" || e === "sillytavern-claude" || e === "sillytavern-google";
 }
 function Ve(e, t = 1) {
@@ -21206,9 +21227,9 @@ function Bd(e = {}) {
   return Fn(e) ? Ve(e.temperature, 1) : void 0;
 }
 function Gd(e = "", t = {}) {
-  return t && typeof t == "object" && t[e] ? t[e] : oP.find((n) => n.value === e)?.label || e || "未配置";
+  return t && typeof t == "object" && t[e] ? t[e] : sP.find((n) => n.value === e)?.label || e || "未配置";
 }
-function sP(e = {}, t = {}) {
+function lP(e = {}, t = {}) {
   const n = ms(e || {});
   if (t.role === "delegate" && n.delegateConfig) {
     const d = n.delegateConfig.provider || "openai-compatible", f = (n.delegateConfig.modelConfigs || In())[d] || In()[d] || {}, h = {
@@ -21258,26 +21279,26 @@ function sP(e = {}, t = {}) {
 function fs(e, t, n) {
   return Object.hasOwn(n, "hostClient") ? new e(t, Ui(n.hostClient)) : new e(t);
 }
-function aP(e = {}, t = {}) {
-  if (!e.apiKey && !iP(e.provider)) throw new Error(t.missingApiKeyMessage || "请先填写当前模型配置的 API Key。");
+function uP(e = {}, t = {}) {
+  if (!e.apiKey && !aP(e.provider)) throw new Error(t.missingApiKeyMessage || "请先填写当前模型配置的 API Key。");
   switch (eh(e.reasoning || {}), e.provider) {
     case "sillytavern-openai-compatible":
-      return fs(rP, e, t);
+      return fs(iP, e, t);
     case "sillytavern-claude":
-      return fs(V0, e, t);
+      return fs(K0, e, t);
     case "sillytavern-google":
-      return fs(eP, e, t);
+      return fs(nP, e, t);
     case "openai-responses":
-      return new r0(e);
+      return new o0(e);
     case "anthropic":
       return new l_(e);
     case "google":
       return new sI(e);
     default:
-      return new Jb(e);
+      return new Kb(e);
   }
 }
-var lP = { chat: { exclude: [
+var cP = { chat: { exclude: [
   "embedding",
   "embed",
   "rerank",
@@ -21292,7 +21313,7 @@ var lP = { chat: { exclude: [
   "sdxl",
   "flux",
   "moderation"
-] } }, uP = Object.freeze([
+] } }, dP = Object.freeze([
   "claude-opus-4-7",
   "claude-opus-4-6",
   "claude-opus-4-5",
@@ -21338,7 +21359,7 @@ function Hd(e = {}) {
   return sn(e);
 }
 function Vr(e = []) {
-  const t = [...new Set(e.filter(Boolean).map((o) => String(o).trim()).filter(Boolean))], n = lP.chat, r = t.filter((o) => {
+  const t = [...new Set(e.filter(Boolean).map((o) => String(o).trim()).filter(Boolean))], n = cP.chat, r = t.filter((o) => {
     const i = o.toLowerCase();
     return !n.exclude.some((s) => i.includes(s));
   });
@@ -21350,22 +21371,22 @@ function Lo(e = "") {
 function Bn(e) {
   return String(e || "").trim().replace(/\/+$/, "");
 }
-function cP(e = "") {
+function fP(e = "") {
   return e === "sillytavern-openai-compatible" || e === "sillytavern-claude" || e === "sillytavern-google";
 }
 function An(e = "") {
   return e === "openai-compatible" || e === "sillytavern-openai-compatible";
 }
-function dP(e = "") {
+function hP(e = "") {
   return e === "anthropic" || e === "sillytavern-claude";
 }
-function fP(e = "") {
+function pP(e = "") {
   return e === "sillytavern-claude" ? dl : e === "sillytavern-google" ? fl : Gt;
 }
 function Jr(e = []) {
   return [...new Set(e.filter(Boolean).map((t) => String(t).trim()).filter(Boolean))];
 }
-function hP(e) {
+function mP(e) {
   const t = Bn(e);
   if (!t) return [];
   if (t.endsWith("/v1")) {
@@ -21391,7 +21412,7 @@ function Ag(e) {
   }
   return Jr([`${t}/v1/models`, `${t}/models`]);
 }
-function pP(e, t) {
+function gP(e, t) {
   const n = Bn(e);
   if (!n) return [];
   const r = n.endsWith("/v1beta") ? n.slice(0, -7) : n;
@@ -21404,7 +21425,7 @@ function pP(e, t) {
     `${r}/models`
   ]);
 }
-function mP(e, t) {
+function yP(e, t) {
   const n = [
     e?.error?.message,
     e?.message,
@@ -21414,7 +21435,7 @@ function mP(e, t) {
   ].find((r) => typeof r == "string" && r.trim());
   return n ? n.trim() : String(t || "").trim().slice(0, 160);
 }
-async function gP(e, t = {}) {
+async function _P(e, t = {}) {
   const n = await fetch(e, t), r = await n.text();
   let o = null, i = null;
   try {
@@ -21429,22 +21450,22 @@ async function gP(e, t = {}) {
     data: o,
     rawText: r,
     parseError: i,
-    errorSnippet: mP(o, r)
+    errorSnippet: yP(o, r)
   };
 }
-function yP(e) {
+function vP(e) {
   return Vr((e?.data || []).map((t) => String(t?.id || "").trim()).filter(Boolean));
 }
 function Tg(e) {
   return Vr((e?.data || []).map((t) => String(t?.id || "").trim()).filter(Boolean));
 }
-function _P(e) {
+function AP(e) {
   return Vr((e?.models || e?.data || []).map((t) => String(t?.id || t?.name || "")).map((t) => t.split("/").pop() || "").filter(Boolean));
 }
 async function Qo({ urls: e, requestOptionsList: t, extractModels: n, providerLabel: r }) {
   let o = null;
   for (const i of e) for (const s of t) {
-    const u = await gP(i, s);
+    const u = await _P(i, s);
     if (!u.ok) {
       o = u;
       continue;
@@ -21469,7 +21490,7 @@ async function Qo({ urls: e, requestOptionsList: t, extractModels: n, providerLa
   }
   throw new Error(`${r} 拉取模型失败：未获取到模型列表。`);
 }
-async function vP(e) {
+async function TP(e) {
   const t = String(e.apiKey || "").trim(), n = Bn(e.baseUrl || ""), r = Bn(n || cg.claude);
   if (t && r) try {
     return await Qo({
@@ -21485,16 +21506,16 @@ async function vP(e) {
   } catch (o) {
     if (n) throw o;
   }
-  return [...uP];
+  return [...dP];
 }
 async function Vd(e) {
   const t = e.provider, n = Bn(e.baseUrl || ""), r = String(e.apiKey || "").trim();
-  if (t === "sillytavern-claude") return Vr(await vP(e));
-  if (cP(t)) return Vr(await gl(e, fP(t)));
+  if (t === "sillytavern-claude") return Vr(await TP(e));
+  if (fP(t)) return Vr(await gl(e, pP(t)));
   if (!r) throw new Error("请先填写 API Key。");
   if (!n) throw new Error("请先填写 Base URL。");
   return t === "google" ? await Qo({
-    urls: pP(n, r),
+    urls: gP(n, r),
     requestOptionsList: [
       { headers: {
         Accept: "application/json",
@@ -21506,9 +21527,9 @@ async function Vd(e) {
       } },
       { headers: { Accept: "application/json" } }
     ],
-    extractModels: _P,
+    extractModels: AP,
     providerLabel: "Google AI"
-  }) : dP(t) ? await Qo({
+  }) : hP(t) ? await Qo({
     urls: Ag(n),
     requestOptionsList: [{ headers: {
       "x-api-key": r,
@@ -21518,20 +21539,20 @@ async function Vd(e) {
     extractModels: Tg,
     providerLabel: "Anthropic"
   }) : await Qo({
-    urls: hP(n),
+    urls: mP(n),
     requestOptionsList: [{ headers: {
       Authorization: `Bearer ${r}`,
       Accept: "application/json"
     } }],
-    extractModels: yP,
+    extractModels: vP,
     providerLabel: t === "openai-responses" ? "OpenAI Responses" : "OpenAI-Compatible"
   });
 }
-function AP(e) {
+function SP(e) {
   return e instanceof Error ? e.message : String(e || "unknown_error");
 }
-function IP(e = {}) {
-  const { state: t, render: n, showToast: r, createRequestId: o = (y = "req") => `${y}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, saveConfig: i, reloadConfig: s, describeError: u = AP, getRuntimeSummaryText: c } = e;
+function PP(e = {}) {
+  const { state: t, render: n, showToast: r, createRequestId: o = (y = "req") => `${y}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, saveConfig: i, reloadConfig: s, describeError: u = SP, getRuntimeSummaryText: c } = e;
   function d() {
     t.configFormSyncPending = !0;
   }
@@ -22195,11 +22216,11 @@ function pr(e) {
     delete: '<path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6" /><path d="M10 11v6" /><path d="M14 11v6" />'
   }[e] || ""}</svg>`;
 }
-function TP(e = {}) {
+function EP(e = {}) {
   const t = String(e?.status || "idle");
   return t === "saving" ? "saving" : t === "success" ? "success" : t === "error" ? "error" : "save";
 }
-function SP(e = {}) {
+function CP(e = {}) {
   const t = String(e?.status || "idle");
   return t === "saving" ? {
     className: "xb-assistant-save-button is-saving",
@@ -22215,8 +22236,8 @@ function SP(e = {}) {
     title: "保存配置"
   };
 }
-function bP(e = {}) {
-  const { configSave: t = {}, runtimeText: n = "", inlineToastText: r = "", showInlineToast: o = !0, showAssistantPermissions: i = !0, showDelegateSettings: s = !0, activePage: u = "main", delegatePresetHint: c = "DelegateRun 分身会使用这里的独立 API 配置；可以和主助手使用不同 Provider、Base URL、模型和 Tool 调用格式。", isBusy: d = !1, canDeletePreset: f = !0, configLoadError: h = "", configExternalChangePending: p = !1 } = e, m = String(h || "").trim(), g = SP(t), _ = TP(t), v = d || m || String(t?.status || "") === "saving" ? "disabled" : "", C = d || !f ? "disabled" : "", b = u === "delegate" ? "delegate" : "main", P = b === "main", R = b === "delegate", D = i ? `
+function RP(e = {}) {
+  const { configSave: t = {}, runtimeText: n = "", inlineToastText: r = "", showInlineToast: o = !0, showAssistantPermissions: i = !0, showDelegateSettings: s = !0, activePage: u = "main", delegatePresetHint: c = "DelegateRun 分身会使用这里的独立 API 配置；可以和主助手使用不同 Provider、Base URL、模型和 Tool 调用格式。", isBusy: d = !1, canDeletePreset: f = !0, configLoadError: h = "", configExternalChangePending: p = !1 } = e, m = String(h || "").trim(), g = CP(t), _ = EP(t), v = d || m || String(t?.status || "") === "saving" ? "disabled" : "", C = d || !f ? "disabled" : "", b = u === "delegate" ? "delegate" : "main", P = b === "main", R = b === "delegate", D = i ? `
             <label>
                 <span>斜杠命令权限</span>
                 <select id="xb-assistant-permission-mode"></select>
@@ -22419,13 +22440,13 @@ function bP(e = {}) {
         </section>
     `;
 }
-var EP = [
+var wP = [
   "你是小白X“四次元壁”的交流生成器。",
   "只完成本轮四次元壁回复，不调用工具，不编造外部事实。",
   "严格遵循后续提示词里的输出格式，优先输出可被解析的 <thinking> 与 <msg> 内容。"
 ].join(`
 `);
-function CP(e = {}, t = {}) {
+function IP(e = {}, t = {}) {
   const n = [e.msg3 ? String(e.msg3).trim() : "", t.disableAssistantPrefill && e.msg4 ? String(e.msg4).trim() : ""].filter(Boolean).join(`
 
 `);
@@ -22448,13 +22469,13 @@ function CP(e = {}, t = {}) {
     } : null
   ].filter((r) => r !== null);
 }
-function PP(e = {}) {
-  c0(typeof e.requestHeadersProvider == "function" ? e.requestHeadersProvider : null);
+function xP(e = {}) {
+  d0(typeof e.requestHeadersProvider == "function" ? e.requestHeadersProvider : null);
 }
-async function RP(e = {}) {
-  const t = sP(Vg(e.config || {})), n = aP(t, { missingApiKeyMessage: "请先在小白 Agent API 配置中填写当前预设的 API Key。" }), r = e.stream === !0 && typeof e.onStreamProgress == "function", o = await n.chat({
-    systemPrompt: EP,
-    messages: CP(e.builtPrompt || {}, { disableAssistantPrefill: e.disableAssistantPrefill === !0 }),
+async function MP(e = {}) {
+  const t = lP(Vg(e.config || {})), n = uP(t, { missingApiKeyMessage: "请先在小白 Agent API 配置中填写当前预设的 API Key。" }), r = e.stream === !0 && typeof e.onStreamProgress == "function", o = await n.chat({
+    systemPrompt: wP,
+    messages: IP(e.builtPrompt || {}, { disableAssistantPrefill: e.disableAssistantPrefill === !0 }),
     tools: [],
     temperature: t.temperature,
     maxTokens: t.maxTokens,
@@ -22471,9 +22492,9 @@ async function RP(e = {}) {
   };
 }
 export {
-  bP as buildAgentSettingsPanelMarkup,
-  PP as configureFourthWallAgent,
-  IP as createAgentSettingsPanel,
-  RP as generateFourthWallResponse,
+  RP as buildAgentSettingsPanelMarkup,
+  xP as configureFourthWallAgent,
+  PP as createAgentSettingsPanel,
+  MP as generateFourthWallResponse,
   ms as normalizeAgentConfig
 };

@@ -6,7 +6,10 @@ import {
     validateXiaobaiOsSettings,
     XiaobaiOsDataError,
 } from './legacy-migration.js';
-import type { FourthWallGlobalSettings, XiaobaiOsSettings } from '../apps/fourth-wall/types.js';
+import type { FourthWallGlobalSettings } from '../apps/fourth-wall/types.js';
+import type { XiaobaiOsSettings as XiaobaiOsSettingsRoot } from '../types.js';
+
+type XiaobaiOsSettings = XiaobaiOsSettingsRoot<{ fourthWall: FourthWallGlobalSettings }>;
 
 type UnknownRecord = Record<string, unknown>;
 

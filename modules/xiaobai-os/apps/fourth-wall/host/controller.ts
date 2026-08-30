@@ -25,11 +25,11 @@ import type {
     FourthWallGenerationResult,
     FourthWallGlobalSettings,
     FourthWallGlobalSettingsPatch,
-    XiaobaiOsChatIdentity,
 } from '../types.js';
+import type { XiaobaiOsAppRuntime, XiaobaiOsChatIdentity } from '../../../types.js';
+import type { RootMutationOptions } from '../../../host/chat-data-store.js';
 import type { FourthWallImageProtocol } from './image-protocol.js';
 import type { FourthWallVoiceProtocol } from './voice-protocol.js';
-import type { XiaobaiOsAppDescriptor, XiaobaiOsAppRuntime } from '../../../host/lifecycle.js';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -38,6 +38,7 @@ interface ControllerChatRepository {
     readCurrentChatFourthWall: () => FourthWallChatState | null;
     mutateCurrentChatFourthWall: (
         action: (current: FourthWallChatState) => FourthWallChatState,
+        options?: RootMutationOptions,
     ) => Promise<FourthWallChatState>;
 }
 
@@ -92,12 +93,6 @@ interface GenerationRun {
     sessionId: string;
     requestId: string;
 }
-
-export const FOURTH_WALL_APP_DESCRIPTOR: Readonly<XiaobaiOsAppDescriptor> = Object.freeze({
-    id: 'fourth-wall',
-    name: '四次元壁',
-    accent: '#7567d8',
-});
 
 function identityKey(identity: ControllerDependencies['getChatIdentity'] extends () => infer T ? T : never): string {
     if (typeof identity === 'string') {
@@ -338,17 +333,26 @@ export function createFourthWallController({
                 }
                 const projected = projectGenerationResult(result);
                 try {
-                    const next = await chatRepository.mutateCurrentChatFourthWall((state) => {
-                        if (state.activeSessionId !== sessionId) {
-                            throw new Error('记录已切换，回复未保存');
-                        }
-                        return appendMessage(state, sessionId, {
-                            role: 'ai',
-                            content: projected.text,
-                            thinking: projected.thinking || undefined,
-                            ts: now(),
-                        });
-                    });
+                    const next = await chatRepository.mutateCurrentChatFourthWall(
+                        (state) => {
+                            if (state.activeSessionId !== sessionId) {
+                                throw new Error('记录已切换，回复未保存');
+                            }
+                            return appendMessage(state, sessionId, {
+                                role: 'ai',
+                                content: projected.text,
+                                thinking: projected.thinking || undefined,
+                                ts: now(),
+                            });
+                        },
+                        {
+                            beforeCommit() {
+                                if (!isRunCurrent(run)) {
+                                    throw new Error('generation_result_invalidated');
+                                }
+                            },
+                        },
+                    );
                     if (!isRunCurrent(run)) {
                         return;
                     }
@@ -463,7 +467,7 @@ export function createFourthWallController({
                   });
                   return projectGenerationResult(result).text;
               },
-              async commit(captured: CommentaryCaptured, text: string): Promise<void> {
+              async commit(captured: CommentaryCaptured, text: string, signal: AbortSignal): Promise<void> {
                   if (identityKey(getChatIdentity()) !== captured.chatIdentity) {
                       throw new Error('聊天已切换');
                   }
@@ -472,25 +476,28 @@ export function createFourthWallController({
                       edit_own: '(caught you sneaking edits) ',
                       edit_ai: '(noticed you edited my line) ',
                   };
-                  await chatRepository.mutateCurrentChatFourthWall((state) =>
-                      appendMessage(state, captured.sessionId, {
+                  await chatRepository.mutateCurrentChatFourthWall(
+                      (state) => appendMessage(state, captured.sessionId, {
                           role: 'ai',
                           content: `${prefixes[captured.kind]}${text}`,
                           ts: now(),
                           type: 'commentary',
                       }),
+                      {
+                          beforeCommit() {
+                              if (signal.aborted || identityKey(getChatIdentity()) !== captured.chatIdentity) {
+                                  throw new Error('commentary_result_invalidated');
+                              }
+                          },
+                      },
                   );
               },
           })
         : null;
 
     async function activate(
-        appId: string,
         { post: postToFrame }: { post?: Activation['post'] } = {},
     ): Promise<FourthWallClientState> {
-        if (appId !== FOURTH_WALL_APP_DESCRIPTOR.id) {
-            throw new Error('app_unavailable');
-        }
         cancelForeground('reactivated');
         const identity = getChatIdentity();
         const chatIdentity = identityKey(identity);
@@ -508,10 +515,7 @@ export function createFourthWallController({
         return clientState;
     }
 
-    function deactivate(appId: string, reason = 'deactivated'): void {
-        if (appId !== FOURTH_WALL_APP_DESCRIPTOR.id) {
-            return;
-        }
+    function deactivate(reason = 'deactivated'): void {
         cancelForeground(reason);
     }
 
@@ -566,12 +570,8 @@ export function createFourthWallController({
     }
 
     async function handleMessage(
-        appId: string,
         message: { type: string; requestId?: string; payload?: unknown },
     ): Promise<unknown> {
-        if (appId !== FOURTH_WALL_APP_DESCRIPTOR.id) {
-            throw new Error('app_unavailable');
-        }
         const payload =
             message.payload && typeof message.payload === 'object' && !Array.isArray(message.payload)
                 ? (message.payload as UnknownRecord)

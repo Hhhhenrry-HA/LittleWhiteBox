@@ -4,6 +4,7 @@ import {
     type XiaobaiOsHostFrameBridge,
     type XiaobaiOsHostFrameMessage,
 } from './frame-bridge.js';
+import type { XiaobaiOsAppDescriptor, XiaobaiOsAppRuntimeRouter } from '../types.js';
 
 const BUTTON_ID = 'xiaobaix-os-button';
 const STYLE_ID = 'xiaobaix-os-host-styles';
@@ -11,28 +12,6 @@ const OVERLAY_ID = 'xiaobaix-os-overlay';
 const IFRAME_ID = 'xiaobaix-os-iframe';
 
 type UnknownRecord = Record<string, unknown>;
-
-export interface XiaobaiOsAppDescriptor {
-    id: string;
-    name: string;
-    accent: string;
-}
-
-export interface XiaobaiOsAppRuntime {
-    activate?: (
-        appId: string,
-        context: { post: (type: string, payload?: unknown, responseId?: string) => boolean },
-    ) => unknown | Promise<unknown>;
-    deactivate?: (appId: string, reason: string) => void;
-    handleMessage?: (appId: string, message: XiaobaiOsHostFrameMessage) => unknown | Promise<unknown>;
-    cancelForeground?: (reason: string) => void;
-    cancelAll?: (reason: string) => void;
-    handleWindowOpened?: () => void;
-    handleWindowClosed?: (reason: string) => void;
-    handleChatChanged?: () => void;
-    startBackground?: () => void;
-    stopBackground?: () => void;
-}
 
 export interface XiaobaiOsLifecycleSnapshot {
     theme?: 'light' | 'dark';
@@ -50,7 +29,7 @@ export interface XiaobaiOsLifecycleOptions {
     subscribeChatChanged?: (handler: () => void) => () => void;
     getInitSnapshot?: () => XiaobaiOsLifecycleSnapshot | null;
     getAppDescriptors?: () => readonly XiaobaiOsAppDescriptor[];
-    appRuntime?: XiaobaiOsAppRuntime;
+    appRuntime?: Partial<XiaobaiOsAppRuntimeRouter>;
     bridgeFactory?: (options: XiaobaiOsFrameBridgeOptions) => XiaobaiOsHostFrameBridge;
     onError?: (error: unknown) => void;
 }

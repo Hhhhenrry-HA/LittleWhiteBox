@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-import { createChatMetadataRepository } from '../host/chat-metadata-repository.js';
+import { createFourthWallRepository } from '../apps/fourth-wall/host/repository.js';
+import { createChatDataStore } from '../host/chat-data-store.js';
 
 async function loadFixture(name) {
     const text = await readFile(new URL(`./fixtures/${name}`, import.meta.url), 'utf8');
@@ -16,11 +17,12 @@ function createHarness(metadata, chatId, saveChatMetadata = async () => {}) {
     };
     return {
         state,
-        repository: createChatMetadataRepository({
+        repository: createFourthWallRepository(createChatDataStore({
             getChatIdentity: () => state.identity,
             getChatMetadata: identity => identity?.key === state.identity?.key ? state.metadata : null,
             saveChatMetadata,
-        }, { now: () => 1720000000000 }),
+            readPersistedXiaobaiOs: async () => state.metadata.extensions?.LittleWhiteBox?.xiaobaiOs,
+        }), { now: () => 1720000000000 }),
     };
 }
 
@@ -54,7 +56,8 @@ test('migrates the upstream sessions format without losing observable message fi
     assert.deepEqual(metadata['character-chat-a'].extensions.OtherExtension, { keep: true });
     assert.equal(metadata['character-chat-a'].keepChatSibling, 'preserved');
     assert.equal(metadata.unrelatedMetadata, 'preserved');
-    assert.equal(metadata.extensions.LittleWhiteBox.xiaobaiOs.schemaVersion, 1);
+    assert.equal(metadata.extensions.LittleWhiteBox.xiaobaiOs.schemaVersion, 2);
+    assert.deepEqual(metadata.extensions.LittleWhiteBox.xiaobaiOs.domains, {});
 });
 
 test('converts the earlier root history format only at the migration boundary', async () => {

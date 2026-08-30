@@ -149,15 +149,19 @@ onMounted(() => {
             return;
         }
         if (payload.status === 'error') {
-            generation.value = {
-                status: 'error',
-                sessionId: payload.sessionId || activeSession.value.id,
-                text: payload.draft?.text || payload.text || '',
-                thinking: payload.draft?.thinking || payload.thinking || '',
-                message: payload.message || '生成失败',
-                unsaved: payload.kind === 'save',
-            };
             errorMessage.value = payload.message || '生成失败';
+            const hasUnsavedDraft = payload.kind === 'save'
+                && !!(payload.draft?.text || payload.draft?.thinking);
+            generation.value = hasUnsavedDraft
+                ? {
+                    status: 'error',
+                    sessionId: payload.sessionId || activeSession.value.id,
+                    text: payload.draft?.text || '',
+                    thinking: payload.draft?.thinking || '',
+                    message: '',
+                    unsaved: true,
+                }
+                : { status: 'idle', sessionId: '', text: '', thinking: '', message: '', unsaved: false };
             return;
         }
         generation.value = {

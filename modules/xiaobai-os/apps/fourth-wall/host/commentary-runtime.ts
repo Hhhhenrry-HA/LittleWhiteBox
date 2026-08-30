@@ -27,7 +27,7 @@ export interface FourthWallCommentaryOptions<TEvent extends CommentaryEventLike,
     subscribe?: (handler: (event: TEvent) => Promise<boolean>) => (() => void) | void;
     capture?: (event: TEvent) => TCaptured | null | Promise<TCaptured | null>;
     generate?: (captured: TCaptured, signal: AbortSignal) => Promise<unknown>;
-    commit?: (captured: TCaptured, text: string) => Promise<void> | void;
+    commit?: (captured: TCaptured, text: string, signal: AbortSignal) => Promise<void> | void;
     show?: (text: string) => void;
     hide?: () => void;
     isForegroundActive?: () => boolean;
@@ -110,7 +110,7 @@ export function createFourthWallCommentaryRuntime<TEvent extends CommentaryEvent
             if (controller.signal.aborted || !String(text || '').trim()) {
                 return false;
             }
-            await commit(captured, String(text).trim());
+            await commit(captured, String(text).trim(), controller.signal);
             if (controller.signal.aborted) {
                 return false;
             }

@@ -32,8 +32,11 @@
 }
 
 .xiaobaix-os-overlay {
+    height: 100vh;
+    height: 100dvh;
     inset: 0;
     position: fixed;
+    width: 100vw;
     z-index: 10020;
 }
 

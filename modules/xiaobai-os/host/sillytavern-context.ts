@@ -1,20 +1,12 @@
 import { extension_settings, getContext } from '../../../../../../extensions.js';
-import {
-    default_avatar,
-    default_user_avatar,
-    getRequestHeaders,
-    saveSettings as saveSillyTavernSettings,
-} from '../../../../../../../script.js';
+import { default_user_avatar, getRequestHeaders, saveSettings as saveSillyTavernSettings } from '../../../../../../../script.js';
 import { EXT_ID } from '../../../core/constants.js';
-import type {
-    FourthWallCapturedCommentary,
-    FourthWallChatSnapshot,
-    FourthWallCommentaryKind,
-    XiaobaiOsChatIdentity,
-    XiaobaiOsChatIdentityInput,
-} from '../apps/fourth-wall/types.js';
-import type { XiaobaiOsChatAdapter, XiaobaiOsChatSaveTransaction } from './chat-metadata-repository.js';
+import type { XiaobaiOsChatIdentity, XiaobaiOsChatIdentityInput } from '../types.js';
+import type { XiaobaiOsChatAdapter, XiaobaiOsChatSaveTransaction } from './chat-data-store.js';
+import { jsonValuesEqual } from './json-values-equal.js';
 import type { XiaobaiOsSettingsAdapter } from './settings-repository.js';
+import type { XiaobaiOsStoryAdapter } from './story-adapter.js';
+import type { StoryMessageSnapshot, StorySnapshot } from './story-fingerprint.js';
 
 type UnknownRecord = Record<string, unknown>;
 const CHAT_READBACK_TIMEOUT_MS = 15_000;
@@ -23,6 +15,7 @@ const HOST_SAVE_TIMEOUT_MS = 15_000;
 interface SillyTavernMessage {
     name?: unknown;
     is_user?: boolean;
+    is_system?: boolean;
     mes?: unknown;
 }
 
@@ -40,7 +33,7 @@ interface SillyTavernContext {
     saveMetadata?: () => Promise<void> | void;
 }
 
-interface PersistedChatHeader {
+interface PersistedChatHeader extends SillyTavernMessage {
     chat_metadata?: unknown;
 }
 
@@ -49,13 +42,6 @@ interface XiaobaiOsSaveError extends Error {
     uncertain?: boolean;
     cause?: unknown;
     saveError?: unknown;
-}
-
-export interface CommentaryEventInput {
-    kind?: string;
-    chatId?: unknown;
-    messageId?: unknown;
-    data?: unknown;
 }
 
 export interface XiaobaiOsShellSnapshot {
@@ -249,15 +235,6 @@ function resolveUserAvatar(context: SillyTavernContext): string {
     return resolveAssetUrl(avatar, 'User Avatars');
 }
 
-function normalizeMessageIndex(event: unknown, context: SillyTavernContext): number {
-    const direct = isRecord(event) ? (event.messageId ?? event.id ?? event.index) : event;
-    const parsed = Number(direct);
-    if (Number.isInteger(parsed) && parsed >= 0) {
-        return parsed;
-    }
-    return context?.chat?.length ? context.chat.length - 1 : -1;
-}
-
 export function createSillyTavernSettingsAdapter(): XiaobaiOsSettingsAdapter {
     const settingsRoot = extension_settings as unknown as Record<string, UnknownRecord | undefined>;
     return {
@@ -266,7 +243,7 @@ export function createSillyTavernSettingsAdapter(): XiaobaiOsSettingsAdapter {
             return settingsRoot[EXT_ID];
         },
         async saveSettings() {
-            const expected = JSON.stringify(settingsRoot[EXT_ID]?.xiaobaiOs);
+            const expected = structuredClone(settingsRoot[EXT_ID]?.xiaobaiOs);
             let saveError: unknown;
             try {
                 await waitForHostSave(saveSillyTavernSettings);
@@ -281,7 +258,7 @@ export function createSillyTavernSettingsAdapter(): XiaobaiOsSettingsAdapter {
                     isRecord(persisted) && isRecord(persisted.extension_settings) ? persisted.extension_settings : null;
                 const persistedExtension =
                     persistedSettings && isRecord(persistedSettings[EXT_ID]) ? persistedSettings[EXT_ID] : null;
-                if (JSON.stringify(persistedExtension?.xiaobaiOs) !== expected) {
+                if (!jsonValuesEqual(persistedExtension?.xiaobaiOs, expected)) {
                     throw new Error('服务端设置不包含本次小白 OS 修改');
                 }
             } catch (cause) {
@@ -321,103 +298,73 @@ export function createSillyTavernChatAdapter(): XiaobaiOsChatAdapter {
             } catch (error) {
                 saveError = error;
             }
-            if (!sameIdentity(capturedIdentity, captureIdentity())) {
-                throw createSaveError('CHAT_CHANGED', '保存期间聊天已经切换');
-            }
             try {
                 const persisted = await readPersistedChat(context, capturedIdentity);
                 const actual = getPersistedXiaobaiOs(persisted[0].chat_metadata);
-                if (JSON.stringify(actual) !== JSON.stringify(xiaobaiOs)) {
+                if (!jsonValuesEqual(actual, xiaobaiOs)) {
                     throw new Error('服务端聊天不包含本次小白 OS 修改');
                 }
             } catch (cause) {
-                throw createSaveError('SAVE_UNCONFIRMED', '无法确认四次元壁数据已经保存', {
+                throw createSaveError('SAVE_UNCONFIRMED', '无法确认小白 OS 聊天数据已经保存', {
                     cause,
                     saveError,
                     uncertain: true,
                 });
             }
         },
+        async readPersistedXiaobaiOs(identity) {
+            const context = getSillyTavernContext();
+            const capturedIdentity = captureIdentity(context);
+            if (!capturedIdentity || !sameIdentity(identity, capturedIdentity)) {
+                throw createSaveError('CHAT_CHANGED', '读取前聊天已经切换');
+            }
+            const persisted = await readPersistedChat(context, capturedIdentity);
+            return structuredClone(getPersistedXiaobaiOs(persisted[0].chat_metadata));
+        },
+    };
+}
+
+function toStoryMessages(
+    messages: readonly SillyTavernMessage[],
+): StoryMessageSnapshot[] {
+    return messages.map((message) => ({
+        role: message.is_system === true ? 'system' : message.is_user === true ? 'user' : 'assistant',
+        name: message.name === null || message.name === undefined ? '' : String(message.name),
+        text: String(message.mes || ''),
+    }));
+}
+
+export function createSillyTavernStoryAdapter(
+    subscribeChanges: XiaobaiOsStoryAdapter['subscribeChanges'],
+): XiaobaiOsStoryAdapter {
+    return {
+        captureCurrent(): StorySnapshot | null {
+            const context = getSillyTavernContext();
+            const identity = captureIdentity(context);
+            if (!identity) {return null;}
+            return {
+                identityKey: identity.key,
+                messages: toStoryMessages(context.chat || []),
+            };
+        },
+        async readPersistedCurrent(expectedIdentityKey: string): Promise<StorySnapshot> {
+            const context = getSillyTavernContext();
+            const identity = captureIdentity(context);
+            if (!identity || identity.key !== expectedIdentityKey) {
+                throw createSaveError('CHAT_CHANGED', '读取剧情前聊天已经切换');
+            }
+            const persisted = await readPersistedChat(context, identity);
+            return {
+                identityKey: identity.key,
+                messages: toStoryMessages(persisted.slice(1)),
+            };
+        },
+        subscribeChanges,
     };
 }
 
 export function getSillyTavernChatIdentity(): XiaobaiOsChatIdentity | null {
     return captureIdentity();
-}
-
-export function getSillyTavernChatSnapshot(): FourthWallChatSnapshot | null {
-    const context = getSillyTavernContext();
-    const identity = captureIdentity(context);
-    if (!identity) {
-        return null;
-    }
-    return {
-        chatIdentity: identity.key,
-        userName: String(context.name1 || 'User'),
-        characterName: String(context.name2 || 'Assistant'),
-        userAvatar: resolveUserAvatar(context),
-        characterAvatar: resolveCharacterAvatar(context) || resolveAssetUrl(default_avatar, 'characters'),
-        messages: (context.chat || []).map((message, index) => ({
-            index,
-            name: String(message?.name || (message?.is_user ? context.name1 : context.name2) || ''),
-            isUser: message?.is_user === true,
-            text: String(message?.mes || ''),
-        })),
-    };
-}
-
-export function captureSillyTavernCommentaryEvent(
-    event: CommentaryEventInput = {},
-): FourthWallCapturedCommentary | null {
-    const context = getSillyTavernContext();
-    const identity = captureIdentity(context);
-    if (!identity) {
-        return null;
-    }
-    if (event.chatId && String(event.chatId) !== identity.chatId) {
-        return null;
-    }
-    const messageIndex = normalizeMessageIndex(event.data ?? event.messageId, context);
-    const message = context.chat?.[messageIndex];
-    if (!message || !String(message.mes || '').trim()) {
-        return null;
-    }
-    let kind = String(event.kind || '') as FourthWallCommentaryKind | 'edited';
-    if (kind === 'edited') {
-        kind = message.is_user ? 'edit_own' : 'edit_ai';
-    }
-    if (kind !== 'ai_message' && kind !== 'edit_own' && kind !== 'edit_ai') {
-        return null;
-    }
-    if (kind === 'ai_message' && message.is_user) {
-        return null;
-    }
-    return {
-        chatIdentity: identity.key,
-        messageIndex,
-        text: String(message.mes),
-        kind,
-        chatSnapshot: getSillyTavernChatSnapshot() as FourthWallChatSnapshot,
-    };
-}
-
-export function getSillyTavernAfterAiHint(data: unknown, source: string): { chatId: string; messageId: number } | null {
-    const context = getSillyTavernContext();
-    const identity = captureIdentity(context);
-    if (!identity || !context.chat?.length) {
-        return null;
-    }
-    const direct =
-        source === 'generation_ended'
-            ? context.chat.length - 1
-            : isRecord(data)
-              ? (data.messageId ?? data.id ?? data.index)
-              : data;
-    const messageId = Number(direct);
-    if (!Number.isInteger(messageId) || messageId < 0 || context.chat[messageId]?.is_user) {
-        return null;
-    }
-    return { chatId: identity.chatId, messageId };
 }
 
 export function getSillyTavernShellSnapshot(): XiaobaiOsShellSnapshot {

@@ -920,6 +920,22 @@ async function readSseEventsFromResponse(response, onEvent) {
     }
 }
 
+function describeOpenAICompatibleHttpError(rawText, status) {
+    const source = String(rawText || '').trim();
+    if (source && (source.startsWith('{') || source.startsWith('['))) {
+        try {
+            const payload = JSON.parse(source);
+            const message = payload?.error?.message || payload?.message;
+            if (typeof message === 'string' && message.trim()) {
+                return message.trim();
+            }
+        } catch {
+            // Keep the provider response below when it is not valid JSON.
+        }
+    }
+    return source || `OpenAI 兼容流式请求失败（HTTP ${status}）`;
+}
+
 export class OpenAICompatibleAdapter {
     constructor(config) {
         this.config = config;
@@ -1014,8 +1030,9 @@ export class OpenAICompatibleAdapter {
 
         if (!response.ok) {
             const errorText = await response.text().catch(() => '');
-            const error = new Error(errorText || `openai_compatible_stream_http_${response.status}`);
+            const error = new Error(describeOpenAICompatibleHttpError(errorText, response.status));
             error.status = response.status;
+            error.body = errorText;
             throw error;
         }
         const assistantSnapshot = {

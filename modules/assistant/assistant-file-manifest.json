@@ -370,7 +370,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/agent-core/adapters/openai-compatible.js",
       "relativePath": "modules/agent-core/adapters/openai-compatible.js",
       "extension": ".js",
-      "sizeBytes": 48786
+      "sizeBytes": 49444
     },
     {
       "source": "littlewhitebox",
@@ -860,7 +860,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/assistant/references/project-structure.md",
       "relativePath": "modules/assistant/references/project-structure.md",
       "extension": ".md",
-      "sizeBytes": 41651
+      "sizeBytes": 41915
     },
     {
       "source": "littlewhitebox",
@@ -1098,7 +1098,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/assistant/tests/openai-compatible-adapter.test.js",
       "relativePath": "modules/assistant/tests/openai-compatible-adapter.test.js",
       "extension": ".js",
-      "sizeBytes": 80265
+      "sizeBytes": 81437
     },
     {
       "source": "littlewhitebox",
@@ -1126,7 +1126,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/assistant/tests/sillytavern-openai-compatible-adapter.test.js",
       "relativePath": "modules/assistant/tests/sillytavern-openai-compatible-adapter.test.js",
       "extension": ".js",
-      "sizeBytes": 88605
+      "sizeBytes": 89740
     },
     {
       "source": "littlewhitebox",
@@ -6163,6 +6163,13 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/fourth-wall/descriptor.ts",
+      "relativePath": "modules/xiaobai-os/apps/fourth-wall/descriptor.ts",
+      "extension": ".ts",
+      "sizeBytes": 231
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/fourth-wall/domain/defaults.ts",
       "relativePath": "modules/xiaobai-os/apps/fourth-wall/domain/defaults.ts",
       "extension": ".ts",
@@ -6201,14 +6208,21 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/fourth-wall/host/commentary-runtime.ts",
       "relativePath": "modules/xiaobai-os/apps/fourth-wall/host/commentary-runtime.ts",
       "extension": ".ts",
-      "sizeBytes": 6774
+      "sizeBytes": 6814
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/fourth-wall/host/controller.ts",
       "relativePath": "modules/xiaobai-os/apps/fourth-wall/host/controller.ts",
       "extension": ".ts",
-      "sizeBytes": 30714
+      "sizeBytes": 31017
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/fourth-wall/host/create-runtime.ts",
+      "relativePath": "modules/xiaobai-os/apps/fourth-wall/host/create-runtime.ts",
+      "extension": ".ts",
+      "sizeBytes": 5256
     },
     {
       "source": "littlewhitebox",
@@ -6223,6 +6237,20 @@
       "relativePath": "modules/xiaobai-os/apps/fourth-wall/host/image-protocol.ts",
       "extension": ".ts",
       "sizeBytes": 5158
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/fourth-wall/host/repository.ts",
+      "relativePath": "modules/xiaobai-os/apps/fourth-wall/host/repository.ts",
+      "extension": ".ts",
+      "sizeBytes": 6739
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/fourth-wall/host/sillytavern-adapter.ts",
+      "relativePath": "modules/xiaobai-os/apps/fourth-wall/host/sillytavern-adapter.ts",
+      "extension": ".ts",
+      "sizeBytes": 5275
     },
     {
       "source": "littlewhitebox",
@@ -6243,7 +6271,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/fourth-wall/types.ts",
       "relativePath": "modules/xiaobai-os/apps/fourth-wall/types.ts",
       "extension": ".ts",
-      "sizeBytes": 4059
+      "sizeBytes": 3492
     },
     {
       "source": "littlewhitebox",
@@ -6257,7 +6285,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/fourth-wall/ui/FourthWallApp.vue",
       "relativePath": "modules/xiaobai-os/apps/fourth-wall/ui/FourthWallApp.vue",
       "extension": ".vue",
-      "sizeBytes": 9585
+      "sizeBytes": 9797
     },
     {
       "source": "littlewhitebox",
@@ -6296,24 +6324,164 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/wallet/descriptor.ts",
+      "relativePath": "modules/xiaobai-os/apps/wallet/descriptor.ts",
+      "extension": ".ts",
+      "sizeBytes": 215
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/wallet/host/controller.ts",
+      "relativePath": "modules/xiaobai-os/apps/wallet/host/controller.ts",
+      "extension": ".ts",
+      "sizeBytes": 9028
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/wallet/README.md",
+      "relativePath": "modules/xiaobai-os/apps/wallet/README.md",
+      "extension": ".md",
+      "sizeBytes": 616
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/wallet/types.ts",
+      "relativePath": "modules/xiaobai-os/apps/wallet/types.ts",
+      "extension": ".ts",
+      "sizeBytes": 826
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/wallet/ui/wallet.css",
+      "relativePath": "modules/xiaobai-os/apps/wallet/ui/wallet.css",
+      "extension": ".css",
+      "sizeBytes": 10078
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/wallet/ui/WalletApp.vue",
+      "relativePath": "modules/xiaobai-os/apps/wallet/ui/WalletApp.vue",
+      "extension": ".vue",
+      "sizeBytes": 6888
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/wallet/ui/WalletBalanceCard.vue",
+      "relativePath": "modules/xiaobai-os/apps/wallet/ui/WalletBalanceCard.vue",
+      "extension": ".vue",
+      "sizeBytes": 1348
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/wallet/ui/WalletTransactionList.vue",
+      "relativePath": "modules/xiaobai-os/apps/wallet/ui/WalletTransactionList.vue",
+      "extension": ".vue",
+      "sizeBytes": 1406
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/wallet/ui/WalletTransactionRow.vue",
+      "relativePath": "modules/xiaobai-os/apps/wallet/ui/WalletTransactionRow.vue",
+      "extension": ".vue",
+      "sizeBytes": 1546
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/economy-platform-phase-1-implementation-plan.md",
+      "relativePath": "modules/xiaobai-os/docs/economy-platform-phase-1-implementation-plan.md",
+      "extension": ".md",
+      "sizeBytes": 20856
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/economy-platform-target-design.md",
+      "relativePath": "modules/xiaobai-os/docs/economy-platform-target-design.md",
+      "extension": ".md",
+      "sizeBytes": 21294
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/phase-1-implementation-plan.md",
       "relativePath": "modules/xiaobai-os/docs/phase-1-implementation-plan.md",
       "extension": ".md",
-      "sizeBytes": 8712
+      "sizeBytes": 8880
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/target-design-and-roadmap.md",
       "relativePath": "modules/xiaobai-os/docs/target-design-and-roadmap.md",
       "extension": ".md",
-      "sizeBytes": 18707
+      "sizeBytes": 21961
     },
     {
       "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/host/chat-metadata-repository.ts",
-      "relativePath": "modules/xiaobai-os/host/chat-metadata-repository.ts",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/domains/economy/invariants.ts",
+      "relativePath": "modules/xiaobai-os/domains/economy/invariants.ts",
       "extension": ".ts",
-      "sizeBytes": 16103
+      "sizeBytes": 9226
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/domains/economy/ledger.ts",
+      "relativePath": "modules/xiaobai-os/domains/economy/ledger.ts",
+      "extension": ".ts",
+      "sizeBytes": 9607
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/domains/economy/README.md",
+      "relativePath": "modules/xiaobai-os/domains/economy/README.md",
+      "extension": ".md",
+      "sizeBytes": 1176
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/domains/economy/repository.ts",
+      "relativePath": "modules/xiaobai-os/domains/economy/repository.ts",
+      "extension": ".ts",
+      "sizeBytes": 9934
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/domains/economy/story-reconciliation-runtime.ts",
+      "relativePath": "modules/xiaobai-os/domains/economy/story-reconciliation-runtime.ts",
+      "extension": ".ts",
+      "sizeBytes": 9397
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/domains/economy/story-write-gate.ts",
+      "relativePath": "modules/xiaobai-os/domains/economy/story-write-gate.ts",
+      "extension": ".ts",
+      "sizeBytes": 1379
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/domains/economy/timeline.ts",
+      "relativePath": "modules/xiaobai-os/domains/economy/timeline.ts",
+      "extension": ".ts",
+      "sizeBytes": 2531
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/domains/economy/types.ts",
+      "relativePath": "modules/xiaobai-os/domains/economy/types.ts",
+      "extension": ".ts",
+      "sizeBytes": 2259
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/host/app-runtime-registry.ts",
+      "relativePath": "modules/xiaobai-os/host/app-runtime-registry.ts",
+      "extension": ".ts",
+      "sizeBytes": 3705
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/host/chat-data-store.ts",
+      "relativePath": "modules/xiaobai-os/host/chat-data-store.ts",
+      "extension": ".ts",
+      "sizeBytes": 15472
     },
     {
       "source": "littlewhitebox",
@@ -6324,59 +6492,80 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/host/json-values-equal.ts",
+      "relativePath": "modules/xiaobai-os/host/json-values-equal.ts",
+      "extension": ".ts",
+      "sizeBytes": 1071
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/host/legacy-migration.ts",
       "relativePath": "modules/xiaobai-os/host/legacy-migration.ts",
       "extension": ".ts",
-      "sizeBytes": 16755
+      "sizeBytes": 16953
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/host/lifecycle.ts",
       "relativePath": "modules/xiaobai-os/host/lifecycle.ts",
       "extension": ".ts",
-      "sizeBytes": 14609
+      "sizeBytes": 13955
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/host/settings-repository.ts",
       "relativePath": "modules/xiaobai-os/host/settings-repository.ts",
       "extension": ".ts",
-      "sizeBytes": 6562
+      "sizeBytes": 6713
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/host/sillytavern-context.ts",
       "relativePath": "modules/xiaobai-os/host/sillytavern-context.ts",
       "extension": ".ts",
-      "sizeBytes": 15773
+      "sizeBytes": 14564
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/host/story-adapter.ts",
+      "relativePath": "modules/xiaobai-os/host/story-adapter.ts",
+      "extension": ".ts",
+      "sizeBytes": 295
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/host/story-fingerprint.ts",
+      "relativePath": "modules/xiaobai-os/host/story-fingerprint.ts",
+      "extension": ".ts",
+      "sizeBytes": 2971
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/host.css",
       "relativePath": "modules/xiaobai-os/host.css",
       "extension": ".css",
-      "sizeBytes": 4678
+      "sizeBytes": 4735
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/index.ts",
       "relativePath": "modules/xiaobai-os/index.ts",
       "extension": ".ts",
-      "sizeBytes": 8787
+      "sizeBytes": 6162
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/README.md",
       "relativePath": "modules/xiaobai-os/README.md",
       "extension": ".md",
-      "sizeBytes": 2313
+      "sizeBytes": 4093
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/shell/app-src/app-registry.ts",
       "relativePath": "modules/xiaobai-os/shell/app-src/app-registry.ts",
       "extension": ".ts",
-      "sizeBytes": 589
+      "sizeBytes": 955
     },
     {
       "source": "littlewhitebox",
@@ -6397,7 +6586,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/shell/app-src/components/XiaobaiOsHome.vue",
       "relativePath": "modules/xiaobai-os/shell/app-src/components/XiaobaiOsHome.vue",
       "extension": ".vue",
-      "sizeBytes": 1238
+      "sizeBytes": 1539
     },
     {
       "source": "littlewhitebox",
@@ -6443,17 +6632,52 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/app-runtime-registry.test.js",
+      "relativePath": "modules/xiaobai-os/tests/app-runtime-registry.test.js",
+      "extension": ".js",
+      "sizeBytes": 1406
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/chat-data-store.test.js",
+      "relativePath": "modules/xiaobai-os/tests/chat-data-store.test.js",
+      "extension": ".js",
+      "sizeBytes": 8536
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/chat-metadata-migration.test.js",
       "relativePath": "modules/xiaobai-os/tests/chat-metadata-migration.test.js",
       "extension": ".js",
-      "sizeBytes": 4154
+      "sizeBytes": 4422
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/chat-metadata-repository.test.js",
       "relativePath": "modules/xiaobai-os/tests/chat-metadata-repository.test.js",
       "extension": ".js",
-      "sizeBytes": 6194
+      "sizeBytes": 6526
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/economy-ledger.test.js",
+      "relativePath": "modules/xiaobai-os/tests/economy-ledger.test.js",
+      "extension": ".js",
+      "sizeBytes": 8395
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/economy-repository.test.js",
+      "relativePath": "modules/xiaobai-os/tests/economy-repository.test.js",
+      "extension": ".js",
+      "sizeBytes": 7180
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/economy-rollback.test.js",
+      "relativePath": "modules/xiaobai-os/tests/economy-rollback.test.js",
+      "extension": ".js",
+      "sizeBytes": 2682
     },
     {
       "source": "littlewhitebox",
@@ -6495,7 +6719,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/fourth-wall-controller.test.js",
       "relativePath": "modules/xiaobai-os/tests/fourth-wall-controller.test.js",
       "extension": ".js",
-      "sizeBytes": 14636
+      "sizeBytes": 15472
     },
     {
       "source": "littlewhitebox",
@@ -6531,6 +6755,34 @@
       "relativePath": "modules/xiaobai-os/tests/settings-migration.test.js",
       "extension": ".js",
       "sizeBytes": 4618
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/story-change-runtime.test.js",
+      "relativePath": "modules/xiaobai-os/tests/story-change-runtime.test.js",
+      "extension": ".js",
+      "sizeBytes": 6833
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/story-fingerprint.test.js",
+      "relativePath": "modules/xiaobai-os/tests/story-fingerprint.test.js",
+      "extension": ".js",
+      "sizeBytes": 2087
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/wallet-controller.test.js",
+      "relativePath": "modules/xiaobai-os/tests/wallet-controller.test.js",
+      "extension": ".js",
+      "sizeBytes": 8232
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/types.ts",
+      "relativePath": "modules/xiaobai-os/types.ts",
+      "extension": ".ts",
+      "sizeBytes": 2406
     },
     {
       "source": "littlewhitebox",
@@ -7447,7 +7699,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/shared/host-llm/chat-completions/client.js",
       "relativePath": "shared/host-llm/chat-completions/client.js",
       "extension": ".js",
-      "sizeBytes": 16580
+      "sizeBytes": 17216
     },
     {
       "source": "littlewhitebox",

@@ -41,10 +41,11 @@ function createHarness({ secondSession = false, prepareChat = null } = {}) {
                 ? await prepareChat(state)
                 : structuredClone(state.chat),
             readCurrentChatFourthWall: () => structuredClone(state.chat),
-            async mutateCurrentChatFourthWall(mutator) {
+            async mutateCurrentChatFourthWall(mutator, options = {}) {
                 state.mutationAttempts += 1;
                 const next = mutator(structuredClone(state.chat));
                 await state.beforeMutationCommit?.();
+                await options.beforeCommit?.();
                 if (state.mutationAttempts === state.failMutationAt) {
                     throw new Error('save failed');
                 }
@@ -85,10 +86,10 @@ function createHarness({ secondSession = false, prepareChat = null } = {}) {
 }
 
 async function activateAndSend(harness) {
-    await harness.controller.activate('fourth-wall', {
+    await harness.controller.activate({
         post: (type, payload) => harness.posts.push({ type, payload }),
     });
-    await harness.controller.handleMessage('fourth-wall', {
+    await harness.controller.handleMessage({
         type: 'fourth-wall/send',
         requestId: 'request-1',
         payload: {
@@ -160,7 +161,7 @@ test('cancelled generation ignores late progress and final results', async () =>
     const harness = createHarness();
     const request = await activateAndSend(harness);
 
-    const result = await harness.controller.handleMessage('fourth-wall', {
+    const result = await harness.controller.handleMessage({
         type: 'fourth-wall/cancel',
         payload: { chatIdentity: 'chat:a', sessionId: 'default' },
     });
@@ -174,6 +175,29 @@ test('cancelled generation ignores late progress and final results', async () =>
     assert.deepEqual(harness.state.chat.sessions[0].history.map(message => message.content), ['hello']);
 });
 
+test('closing while a completed generation waits to commit prevents the AI result from being saved', async () => {
+    const harness = createHarness();
+    const request = await activateAndSend(harness);
+    let releaseCommit;
+    let markCommitStarted;
+    const commitStarted = new Promise(resolve => { markCommitStarted = resolve; });
+    const commitGate = new Promise(resolve => { releaseCommit = resolve; });
+    harness.state.beforeMutationCommit = async () => {
+        markCommitStarted();
+        await commitGate;
+    };
+
+    request.resolve({ text: '<msg>stale final</msg>' });
+    await commitStarted;
+    harness.controller.deactivate('closed');
+    releaseCommit();
+    await flushAsyncWork();
+    await flushAsyncWork();
+
+    assert.deepEqual(harness.state.chat.sessions[0].history.map(message => message.content), ['hello']);
+    assert.equal(harness.posts.some(item => item.payload.status === 'complete'), false);
+});
+
 test('chat switch, session switch, and deactivation invalidate old results', async (context) => {
     const cases = [
         {
@@ -185,7 +209,7 @@ test('chat switch, session switch, and deactivation invalidate old results', asy
             name: 'session switch',
             setup: () => createHarness({ secondSession: true }),
             invalidate: async (harness) => {
-                await harness.controller.handleMessage('fourth-wall', {
+                await harness.controller.handleMessage({
                     type: 'fourth-wall/switch-session',
                     payload: {
                         chatIdentity: 'chat:a',
@@ -198,7 +222,7 @@ test('chat switch, session switch, and deactivation invalidate old results', asy
         {
             name: 'deactivation',
             setup: () => createHarness(),
-            invalidate: async (harness) => { harness.controller.deactivate('fourth-wall', 'closed'); },
+            invalidate: async (harness) => { harness.controller.deactivate('closed'); },
         },
     ];
 
@@ -229,7 +253,7 @@ test('closing the foreground invalidates an activation that is still preparing c
             finishPreparation = () => resolve(structuredClone(state.chat));
         }),
     });
-    const pending = harness.controller.activate('fourth-wall');
+    const pending = harness.controller.activate();
 
     await Promise.resolve();
     harness.controller.cancelForeground('closed');
@@ -237,7 +261,7 @@ test('closing the foreground invalidates an activation that is still preparing c
 
     await assert.rejects(pending, /聊天已切换/);
     await assert.rejects(
-        harness.controller.handleMessage('fourth-wall', {
+        harness.controller.handleMessage({
             type: 'fourth-wall/refresh',
             payload: { chatIdentity: 'chat:a' },
         }),
@@ -247,7 +271,7 @@ test('closing the foreground invalidates an activation that is still preparing c
 
 test('a request from an old activation cannot continue in a reopened view of the same chat', async () => {
     const harness = createHarness();
-    await harness.controller.activate('fourth-wall', {
+    await harness.controller.activate({
         post: (type, payload) => harness.posts.push({ type, payload }),
     });
     let releaseMutation;
@@ -259,7 +283,7 @@ test('a request from an old activation cannot continue in a reopened view of the
         await mutationGate;
     };
 
-    const staleSend = harness.controller.handleMessage('fourth-wall', {
+    const staleSend = harness.controller.handleMessage({
         type: 'fourth-wall/send',
         requestId: 'stale-send',
         payload: {
@@ -269,9 +293,9 @@ test('a request from an old activation cannot continue in a reopened view of the
         },
     });
     await mutationStarted;
-    harness.controller.deactivate('fourth-wall', 'closed');
+    harness.controller.deactivate('closed');
     const reopenedPosts = [];
-    await harness.controller.activate('fourth-wall', {
+    await harness.controller.activate({
         post: (type, payload) => reopenedPosts.push({ type, payload }),
     });
 

@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createChatMetadataRepository } from '../host/chat-metadata-repository.js';
+import { createFourthWallRepository } from '../apps/fourth-wall/host/repository.js';
+import { createChatDataStore } from '../host/chat-data-store.js';
 
 function createHarness() {
     const chats = new Map([
@@ -17,12 +18,14 @@ function createHarness() {
         saves: [],
         saveImpl: async transaction => state.saves.push(transaction.identity.key),
     };
-    const repository = createChatMetadataRepository({
+    const store = createChatDataStore({
         getChatIdentity: () => state.identity,
         getChatMetadata: identity => chats.get(identity?.key) ?? null,
         saveChatMetadata: transaction => state.saveImpl(transaction),
-    }, { now: () => 1000 });
-    return { chats, identities, repository, state };
+        readPersistedXiaobaiOs: async identity => chats.get(identity?.key)?.extensions?.LittleWhiteBox?.xiaobaiOs,
+    });
+    const repository = createFourthWallRepository(store, { now: () => 1000 });
+    return { chats, identities, repository, state, store };
 }
 
 test('read does not create current chat data', () => {
@@ -91,10 +94,11 @@ test('a queued mutation stays bound to the chat that issued it', async () => {
         return next;
     });
     const queuedRejection = assert.rejects(queued, error => error.code === 'CHAT_CHANGED');
+    const firstRejection = assert.rejects(first, error => error.code === 'CHAT_CHANGED');
 
     state.identity = identities.b;
     releaseSave();
-    await first;
+    await firstRejection;
     await queuedRejection;
 
     assert.equal(queuedActionRan, false);
