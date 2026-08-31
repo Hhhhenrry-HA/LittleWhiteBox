@@ -63,15 +63,17 @@ modules/xiaobai-os/
 │  ├─ lifecycle.ts                 # 图标、窗口、APP 生命周期
 │  ├─ frame-bridge.ts              # 可信 iframe 边界
 │  ├─ sillytavern-context.ts       # SillyTavern adapter/DTO
+│  ├─ agent/                       # 统一 Agent Core gateway 与 bundle loader
 │  ├─ settings-repository.ts       # 全局设置唯一写入口
 │  ├─ chat-metadata-repository.ts  # 当前聊天数据唯一写入口
 │  └─ legacy-migration.ts          # 一次性上游迁移与现行校验
+├─ agent/browser-entry.ts          # OS 共用 Agent bundle 入口
 ├─ shell/app-src/                  # Vue/TypeScript OS 桌面与导航
+├─ apps/agent-api/                 # 共享 Agent 设置系统 APP
 ├─ apps/fourth-wall/
 │  ├─ types.ts                     # APP 跨层数据契约
 │  ├─ domain/*.ts                  # 默认值、状态转换、Prompt、结果投影
-│  ├─ host/*.ts                    # Controller、生成、吐槽、媒体、设置窗口
-│  ├─ agent/fourth-wall-agent.ts   # Agent bundle 入口
+│  ├─ host/*.ts                    # Controller、生成适配、吐槽与媒体
 │  └─ ui/*.vue                     # APP 界面
 ├─ tests/*.test.js                 # 公开行为测试
 └─ dist/                           # 构建产物
@@ -82,9 +84,11 @@ modules/xiaobai-os/
 ```text
 根 index.js
     ↓ dist/xiaobai-os-host.js
-index.ts → host adapters/repositories/lifecycle → apps/fourth-wall host
-                                                ↓
-                                    domain/types + 通用 Agent/Draw/TTS
+index.ts → host lifecycle/composition → 各 APP host/controller → 各自 domain/types
+                         │                     │
+                         └→ host/agent gateway ←┘（仅需模型的 APP）
+                                  ├→ agent-core 共享设置仓库
+                                  └→ dist/xiaobai-os-agent.js → agent-core 供应商实现
 
 shell Vue ←可信 iframe 协议→ host lifecycle/controller
 ```
@@ -145,10 +149,10 @@ chat_metadata[currentChatId].extensions.LittleWhiteBox.fw
 modules/xiaobai-os/dist/xiaobai-os-app.js
 modules/xiaobai-os/dist/xiaobai-os-app.css
 modules/xiaobai-os/dist/xiaobai-os-host.js
-modules/xiaobai-os/dist/fourth-wall-agent.js
+modules/xiaobai-os/dist/xiaobai-os-agent.js
 ```
 
-宿主 bundle 只合并 OS 自有源码；SillyTavern、根`core/`和通用`modules/agent-core/`保持外部依赖，并由构建配置按`dist/`位置重写相对路径。Agent bundle 独立打包通用 Agent 能力；iframe 壳不接收 API key。
+宿主 bundle 只合并 OS 自有源码；SillyTavern、根`core/`和通用`modules/agent-core/`保持外部依赖，并由构建配置按`dist/`位置重写相对路径。Agent bundle 独立打包通用 Agent 能力。共享密钥只在用户打开 Agent API 系统 APP 时随该 APP 的可信状态下发；桌面状态及四次元壁等业务 APP 均不接收密钥。
 
 ## 8. 自动验收
 

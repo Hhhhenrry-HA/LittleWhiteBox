@@ -12,7 +12,7 @@ function flushAsyncWork() {
     return new Promise(resolve => globalThis.setTimeout(resolve, 0));
 }
 
-function createHarness({ secondSession = false, prepareChat = null, openAgentSettings = null } = {}) {
+function createHarness({ secondSession = false, prepareChat = null } = {}) {
     const state = {
         chatIdentity: 'chat:a',
         chat: createDefaultFourthWallChatState(1000),
@@ -79,7 +79,6 @@ function createHarness({ secondSession = false, prepareChat = null, openAgentSet
             });
         },
         loadAgentConfig: async () => ({ provider: 'test' }),
-        ...(openAgentSettings ? { openAgentSettings } : {}),
         now: () => ++timestamp,
     });
 
@@ -333,8 +332,8 @@ test('an abort-shaped provider failure settles the generation instead of leaving
     assert.deepEqual(cancelled, ['aborted']);
 });
 
-test('Agent settings bridge reports a dialog loading failure to the active app', async () => {
-    const harness = createHarness({ openAgentSettings: async () => false });
+test('Fourth Wall no longer owns an Agent settings action', async () => {
+    const harness = createHarness();
     await harness.controller.activate({
         post: (type, payload) => harness.posts.push({ type, payload }),
     });
@@ -342,7 +341,7 @@ test('Agent settings bridge reports a dialog loading failure to the active app',
     await assert.rejects(harness.controller.handleMessage({
         type: 'fourth-wall/open-agent-settings',
         payload: { chatIdentity: 'chat:a', sessionId: 'default' },
-    }), /Agent API 配置无法打开/);
+    }), /unsupported_fourth_wall_action/);
 });
 
 test('a real commentary event prepares a new chat before generating and saving', async () => {

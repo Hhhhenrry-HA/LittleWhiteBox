@@ -535,7 +535,8 @@ test('shared Agent API panel disables failed loads, retries, and keeps partial m
         assert.equal(state.configDraft, null);
         assert.equal(state.configDirty, false);
         assert.equal(state.configExternalChangePending, false);
-        assert.equal(renders, 1);
+        assert.equal(retries, 2);
+        assert.equal(renders, 0);
     } finally {
         dom.restore();
     }

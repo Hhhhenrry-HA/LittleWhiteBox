@@ -1,4 +1,6 @@
 import type { Component } from 'vue';
+import { AGENT_API_APP_DESCRIPTOR } from '../../apps/agent-api/descriptor.js';
+import AgentApiApp from '../../apps/agent-api/ui/AgentApiApp.vue';
 import { BANK_APP_DESCRIPTOR } from '../../apps/bank/descriptor.js';
 import BankApp from '../../apps/bank/ui/BankApp.vue';
 import { GAME_APP_DESCRIPTOR } from '../../apps/game/descriptor.js';
@@ -25,6 +27,11 @@ export interface XiaobaiOsAppDefinition {
 }
 
 export const xiaobaiOsApps: readonly XiaobaiOsAppDefinition[] = Object.freeze([
+    {
+        ...AGENT_API_APP_DESCRIPTOR,
+        iconPaths: ['M14 11h36a4 4 0 0 1 4 4v34a4 4 0 0 1-4 4H14a4 4 0 0 1-4-4V15a4 4 0 0 1 4-4z', 'M19 24h26M19 34h18M19 44h11M45 44h.1'],
+        component: AgentApiApp,
+    },
     {
         ...FOURTH_WALL_APP_DESCRIPTOR,
         iconPaths: ['M13 15h38v29H32l-12 9 3-9H13z', 'M22 25h20M22 33h14'],

@@ -13,6 +13,8 @@ import { createModuleEvents, event_types } from '../../../core/event-manager.js'
 import { FOURTH_WALL_APP_DESCRIPTOR } from '../apps/fourth-wall/descriptor.js';
 import { createFourthWallRuntime } from '../apps/fourth-wall/host/create-runtime.js';
 import { createFourthWallRepository } from '../apps/fourth-wall/host/repository.js';
+import { AGENT_API_APP_DESCRIPTOR } from '../apps/agent-api/descriptor.js';
+import { createAgentApiController } from '../apps/agent-api/host/controller.js';
 import { BANK_APP_DESCRIPTOR } from '../apps/bank/descriptor.js';
 import { createBankController } from '../apps/bank/host/controller.js';
 import { GAME_APP_DESCRIPTOR } from '../apps/game/descriptor.js';
@@ -36,6 +38,7 @@ import { createWalletController } from '../apps/wallet/host/controller.js';
 import { validateLedger } from '../domains/economy/invariants.js';
 import { createEconomyRepository } from '../domains/economy/repository.js';
 import { createAppRuntimeRegistry } from './app-runtime-registry.js';
+import { createXiaobaiOsAgentGateway } from './agent/gateway.js';
 import { createChatDataStore } from './chat-data-store.js';
 import {
     createDefaultXiaobaiOsSettings,
@@ -169,8 +172,10 @@ export function createProductionLifecycle(
     const game = createGameService(chatStore, {
         isMainGenerationActive: mainGenerationRuntime.isActive,
     });
+    const agentGateway = createXiaobaiOsAgentGateway({ source: 'xiaobai-os-agent-api' });
+    const agentApiRuntime = createAgentApiController(agentGateway);
     const fourthWallRepository = createFourthWallRepository(chatStore);
-    const fourthWallRuntime = createFourthWallRuntime(fourthWallRepository, settingsRepository);
+    const fourthWallRuntime = createFourthWallRuntime(fourthWallRepository, settingsRepository, agentGateway);
     const walletRuntime = createWalletController({
         economy,
         getChatIdentity: getSillyTavernChatIdentity,
@@ -219,6 +224,7 @@ export function createProductionLifecycle(
         },
     };
     const appRegistry = createAppRuntimeRegistry([
+        { descriptor: AGENT_API_APP_DESCRIPTOR, runtime: agentApiRuntime },
         { descriptor: FOURTH_WALL_APP_DESCRIPTOR, runtime: fourthWallRuntime },
         { descriptor: WALLET_APP_DESCRIPTOR, runtime: walletRuntime },
         { descriptor: SHOP_APP_DESCRIPTOR, runtime: shopRuntime },

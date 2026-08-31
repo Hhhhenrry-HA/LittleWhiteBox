@@ -115,15 +115,6 @@ function updateGlobal(patch: Partial<FourthWallGlobalSettings>): void {
     void requestState('fourth-wall/update-global-settings', { ...binding(), patch });
 }
 
-async function openAgentSettings(): Promise<void> {
-    errorMessage.value = '';
-    try {
-        await props.bridge.request('fourth-wall/open-agent-settings', binding());
-    } catch (error) {
-        errorMessage.value = error instanceof Error ? error.message : String(error);
-    }
-}
-
 onMounted(() => {
     unsubscribe = props.bridge.subscribe((message) => {
         if (message.type === 'fourth-wall/state') {
@@ -235,7 +226,6 @@ onBeforeUnmount(() => unsubscribe());
             @rename-session="(sessionId, name) => requestState('fourth-wall/rename-session', { ...binding(sessionId), name })"
             @delete-session="sessionId => requestState('fourth-wall/delete-session', binding(sessionId))"
             @open-prompts="promptOpen = true"
-            @open-agent="openAgentSettings"
         />
         <FourthWallPromptEditor
             v-if="promptOpen"

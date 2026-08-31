@@ -111,6 +111,7 @@ export function buildAgentSettingsPanelMarkup(options = {}) {
         showInlineToast = true,
         showAssistantPermissions = true,
         showDelegateSettings = true,
+        showTavilySettings = true,
         activePage = 'main',
         delegatePresetHint = 'DelegateRun 分身会使用这里的独立 API 配置；可以和主助手使用不同 Provider、Base URL、模型和 Tool 调用格式。',
         isBusy = false,
@@ -298,13 +299,13 @@ export function buildAgentSettingsPanelMarkup(options = {}) {
                     </span>
                 </label>
             </div>
-            <label>
+            ${showTavilySettings ? `<label>
                 <span>Tavily API Key（全局）</span>
                 <div class="xb-assistant-inline-input">
                     <input id="xb-assistant-tavily-api-key" type="password" />
                     <button id="xb-assistant-toggle-tavily-key" type="button" class="secondary ghost">显示</button>
                 </div>
-            </label>
+            </label>` : ''}
             <label id="xb-assistant-tool-mode-wrap">
                 <span>Tool 调用格式</span>
                 <select id="xb-assistant-tool-mode"></select>

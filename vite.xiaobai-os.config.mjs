@@ -81,14 +81,14 @@ export default defineConfig(({ mode }) => {
             lib: {
                 entry: path.resolve(
                     buildAgent
-                        ? 'modules/xiaobai-os/apps/fourth-wall/agent/fourth-wall-agent.ts'
+                        ? 'modules/xiaobai-os/agent/browser-entry.ts'
                         : buildHost
                             ? 'modules/xiaobai-os/index.ts'
                             : 'modules/xiaobai-os/shell/app-src/main.ts',
                 ),
                 formats: ['es'],
                 fileName: () => {
-                    if (buildAgent) return 'fourth-wall-agent.js';
+                    if (buildAgent) return 'xiaobai-os-agent.js';
                     if (buildHost) return 'xiaobai-os-host.js';
                     return 'xiaobai-os-app.js';
                 },

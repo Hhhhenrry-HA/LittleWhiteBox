@@ -18,7 +18,6 @@ const emit = defineEmits<{
     renameSession: [sessionId: string, name: string];
     deleteSession: [sessionId: string];
     openPrompts: [];
-    openAgent: [];
 }>();
 
 const chatDraft = reactive(structuredClone(toRaw(props.chat.settings)));
@@ -71,7 +70,6 @@ function saveCapabilities(): void {
             </section>
             <section class="fourth-wall-settings-section is-actions">
                 <button type="button" @click="emit('openPrompts')">提示词模板</button>
-                <button type="button" aria-haspopup="dialog" @click="emit('openAgent')">Agent API 配置</button>
             </section>
         </div>
     </aside>
