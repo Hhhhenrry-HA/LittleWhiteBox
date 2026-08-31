@@ -1,10 +1,10 @@
-# 普通酒馆小白 OS：终态设计与路线
+# 普通酒馆小白 OS：终态设计与开发路线
 
 ## 1. 产品定位
 
-普通酒馆小白 OS 与小白酒馆 Phone OS 是两个独立产品。用户可以感知它们属于同一品牌，内部不能共享 Tavern DB、Session、Phone 消息、楼层语义、回滚协议或领域实现。
+普通酒馆小白 OS 与小白酒馆 Phone OS 是两个独立产品。用户可以感知它们属于同一品牌，内部不能共享 Tavern DB、Session、Phone 消息、楼层语义、manager run、回滚协议或领域实现。
 
-普通 OS 的宿主是 SillyTavern 当前聊天；数据根位于当前聊天的`chat_metadata`。任何同名 APP 都按普通酒馆自己的行为重新建模。
+普通 OS 的宿主是 SillyTavern 当前聊天；聊天数据根位于当前聊天的`chat_metadata`。同名 APP 可以参考小白酒馆已经验证的产品经验，但必须按普通聊天的身份、事件和保存边界重新实现。
 
 ## 2. 终态结构
 
@@ -12,6 +12,8 @@
 modules/xiaobai-os/
 ├─ index.ts                         唯一扩展入口
 ├─ types.ts                         OS 公共宿主契约
+├─ agent/
+│  └─ browser-entry.ts              普通 OS Agent bundle 入口
 ├─ host/
 │  ├─ production-composition.ts     组合真实 APP/领域
 │  ├─ lifecycle.ts                  图标、窗口、清理
@@ -19,30 +21,66 @@ modules/xiaobai-os/
 │  ├─ frame-bridge.ts               可信 iframe 消息
 │  ├─ chat-data-store.ts            根级单写队列与保存确认
 │  ├─ sillytavern-context.ts        窄宿主事实读取
-│  └─ main-generation-runtime.ts    主生成临时状态
+│  ├─ main-generation-runtime.ts    主生成临时状态
+│  ├─ agent/                        共享配置读取与供应商调用桥
+│  └─ maintenance/                  User 接受轮捕获与通用编排
 ├─ shell/                           OS 设备外壳与桌面
 ├─ domains/<domain>/                纯领域规则与持久格式
-└─ apps/<app>/                      应用服务、宿主控制、UI
+└─ apps/<app>/                      应用服务、宿主控制、Prompt、工具、UI
 ```
 
-核心层只提供与业务无关的能力。功能删除应接近“删`apps/<app>` + 删`domains/<domain>` + 删注册 + 数据清理”。
+核心层只提供与业务无关的能力。Map、Tasks 等功能通过少量入口注册，自己的领域模型、存储格式、Prompt、工具和 UI 留在功能目录内。删除功能应接近“删`apps/<app>` + 删`domains/<domain>` + 删注册 + 一次数据清理”。
 
-## 3. 所有权
+## 3. 系统设置与 APP 开关
+
+OS 有两类用户级设置：
+
+1. `xiaobaiOs`扩展设置：OS 总开关、Fourth Wall 能力设置、Map/Tasks 的 APP 启用和自动维护开关。
+2. 共享 Agent 配置：`AssistantStorage/settings`，由`agent-core`拥有，供小白酒馆、Ebook、画图、普通 OS 等消费者共用。
+
+Agent provider、model、apiKey 等不得复制进 OS 设置或聊天数据。OS 桌面常驻一个「Agent API」系统 APP，四次元壁删除原专属入口。
+
+Map/Tasks 均采用两级用户级开关：APP 启用决定图标、Prompt 和 runtime 是否注册；自动维护决定所有普通聊天的 User 接受轮是否为该领域产生 Agent 工作。两项默认关闭。APP 启用复选框只放在 SillyTavern 扩展设置现有的「小白 OS」区块，保证图标隐藏后仍可重新开启；自动维护只放在对应 APP 内，并明确标注作用范围。关闭 APP 必须在同一次设置写入中把自动维护重置为关闭，重新启用不会自行恢复后台 API 消耗。
+
+扩展设置通过`modules/xiaobai-os/index.ts`导出的窄命令写唯一 settings repository。运行时启停由 host registry 完成，shell 不直接读写扩展设置；关闭正在显示的 APP 时先返回桌面，再清 Prompt、注销 participant 和中止该领域请求。某 APP 的复选框只随完整功能一起交付，不能先出现无页面的占位开关。
+
+完整契约见[Agent API 设置与后台维护终态设计](./agent-api-and-maintenance-target-design.md)。
+
+## 4. 所有权与唯一事实来源
 
 | 能力 | 所有者 | 唯一事实来源 |
 | --- | --- | --- |
 | 聊天隔离与根保存 | `host/chat-data-store.ts` | 当前聊天 identity 与`chat_metadata` |
 | 主生成是否进行中 | `host/main-generation-runtime.ts` | 当前运行内的 SillyTavern generation 生命周期 |
+| Agent 配置与供应商调用 | `agent-core`、`host/agent` | `AssistantStorage/settings` |
+| 接受轮后台编排 | `host/maintenance` | 当前运行内的 User `MESSAGE_SENT`事件和 participant 队列 |
 | 小白币 | `domains/economy` | 不可变资金流水 |
 | 银行头寸 | `domains/bank` | Bank 事件链 |
 | 赌局 | `domains/game` | Game 事件链和私有游戏状态 |
 | 商品库存与效果 | `domains/shop` | Shop 事件链 |
+| 世界图册与场景地图 | `domains/map` | 当前聊天的规范 Atlas/Scene |
+| 正式任务 | `domains/tasks` | Task 事件链；资金仍以 Economy 流水为准 |
 | 四次元壁会话 | `apps/fourth-wall` | `apps.fourthWall.sessions` |
-| 未来任务进度 | 未来`domains/task` | 任务自己的状态机，尚未施工 |
 
-宿主没有“全局剧情状态”。Economy、Wallet、Bank、Game、Shop 均不订阅剧情变化、不哈希消息、不进行剧情核对，也不因编辑、swipe、删除而回滚。
+宿主没有“全局剧情状态”。Economy、Wallet、Bank、Game、Shop 不订阅剧情变化、不哈希消息、不进行剧情核对，也不因编辑、swipe、删除而回滚。Map、Tasks 只在各自领域内处理 User 接受轮，不把这一依赖扩散给经济 APP。
 
-## 4. 数据模型
+## 5. 终态数据形状
+
+用户级 OS 设置：
+
+```ts
+interface XiaobaiOsSettings {
+    schemaVersion: 2;
+    enabled: boolean;
+    apps: {
+        fourthWall: FourthWallGlobalSettings;
+        map: { enabled: boolean; autoMaintenance: boolean };
+        tasks: { enabled: boolean; autoMaintenance: boolean };
+    };
+}
+```
+
+聊天级数据：
 
 ```ts
 interface XiaobaiOsChatData {
@@ -55,41 +93,62 @@ interface XiaobaiOsChatData {
         bank?: BankDomainV1;
         game?: GameDomainV1;
         shop?: ShopDomainV2;
+        map?: MapDomainV1;
+        tasks?: TaskDomainV1;
     };
 }
 ```
 
-根对象随当前聊天保存。运行时只认当前模型；真实上游旧格式只在 migration 入口一次性转换。测试线自己的旧 anchor、hash 和核对 schema 不保留兼容分支。
+Task 事件额外保存当时的`assistantTurn`，即当前聊天已完成的普通 Assistant 回复总数；离场 NPC 任务只用它派生自上次任务事件以来的经过量。它不标识消息，不产生删除回滚，生命周期随 Task 事件链。
+
+Agent 配置、运行队列、请求状态、页面路由、缩放、表单草稿和模型原始响应均不进入聊天数据。运行时只认当前数据模型；上游真实 Fourth Wall 格式只在 migration 入口一次性转换，测试线自己的旧 Map/Tasks schema、开关和协议不留兼容分支。
 
 ### 分支语义
 
-SillyTavern 创建分支时，OS 接受宿主给出的当前`chat_metadata`快照。OS 不读取消息前缀推断资金该回到哪里，也不维护第二条分支账本。两个分支从复制时的数据开始独立写入。
+SillyTavern 创建分支时，OS 接受宿主给出的当前`chat_metadata`快照。OS 不读取消息前缀推断资金、地图或任务应回到哪里，也不维护第二条分支账本。两个分支从复制时的数据开始独立写入。
 
-## 5. 写入契约
+## 6. User 后自动维护
 
-所有业务写经过根 store：
+自动维护只监听普通 User 消息保存成功后的`MESSAGE_SENT`。它把新 User 当作“上一轮已接受”的边界：
 
-1. 调用入口捕获目标 chat identity。
-2. 根级队列串行化写入。
-3. 领域校验 actionId、CAS 和业务输入。
-4. 涉及资金时，在一个候选根中同时生成领域事件与 Economy 资金腿。
-5. 运行领域内及跨领域不变量。
-6. 保存`chat_metadata`并确认 identity 未变化。
-7. 明确保存失败恢复旧根；保存结果不确定时保留候选并冻结后续写入，直到读回确认。
+```text
+U1 → A1a → swipe A1b → 保存 U2
+                          └─ 一次后台请求维护 U1 + A1b
+```
 
-根 store 同时发布当前运行内的候选安装和写入终态，已打开的 APP 据此刷新；该订阅是临时态，不进入聊天数据。
+- U2 不属于本次维护证据；
+- Assistant 回复、流式、swipe、regenerate、continue 不触发；
+- 事件监听器同步捕获后立即返回，不阻塞 U2 的主 RP 生成；
+- Map/Tasks 同时需要工作时合并为一次 Agent 请求；
+- 领域各自提供 Prompt、工具、staging 和提交；
+- 切聊、关开关、消息或 swipe 改变、领域 revision 改变时，迟到结果作废；
+- 所有 participant 关闭时不读取 Agent 配置，更不做网络检查。
 
-保留这些能力是为防止重复扣款、半个业务动作、切聊误写和服务端不确定结果；它们与剧情核对无关。
+后台队列、AbortController、running/error 是当前运行临时态。打开 APP、切换页面或 OS 启动不会自动调用模型。
 
-## 6. APP 读取普通聊天的边界
+APP 内的「维护一次」是独立的显式调用：只捕获聊天尾部最新完整 User + 当前所选 Assistant 内容，不要求自动维护开启，也不扫描整段历史。Map 的「从当前聊天建立/重建」是另一个明确的全量操作；Tasks 不提供从聊天重建已托管/已结算任务的普通入口。
+
+## 7. APP 与普通聊天的边界
 
 ### 四次元壁
 
-每次生成请求读取当时的普通聊天窗口作为即时上下文。皮下会话历史属于四次元壁自己，不等于主聊天消息。
+每次用户明确发送请求时读取当时的普通聊天窗口作为即时上下文。皮下会话历史属于四次元壁自己，不等于主聊天消息。它通过统一 Agent gateway 调用供应商，不再拥有 API 设置 UI。
+
+### 地图
+
+Map 读取被 User 继续后确认的上一轮，只维护已确认空间事实。它提供世界 Atlas 和地点 Scene；打开、查看、缩放均为本地操作。启用后可向主 RP 注入当前位置的安全摘要，但自动维护开关关闭时不产生 Agent 请求。
+
+完整契约见[Map APP 终态设计](./map-app-target-design.md)。
+
+### 任务
+
+Tasks 的任务大厅刷新和候选人招募只能由用户明确触发；接取、发布、选人、撤回是确定性状态机；只有既有 active 任务可在接受轮中自动 progress/complete/fail。任务 Prompt 可向主 RP 注入安全的只读活动任务摘要。
+
+任务状态和 Economy 资金腿由可信应用服务原子提交，Agent 不能直接改钱。完整契约见[Tasks APP 终态设计](./tasks-app-target-design.md)。
 
 ### 银行
 
-只读取当前已完成 Assistant 回复数量。期限是一个即时投影：`remaining = max(0, maturityTurn - currentTurn)`。数量减少不会删除已提交头寸或恢复已结算头寸。
+只读取当前已完成 Assistant 回复数量。期限是即时投影：`remaining = max(0, maturityTurn - currentTurn)`。数量减少不会删除已提交头寸或恢复已结算头寸。
 
 ### 商店
 
@@ -99,20 +158,32 @@ SillyTavern 创建分支时，OS 接受宿主给出的当前`chat_metadata`快�
 
 完全不读普通聊天内容。已有数据时打开 APP 只做内存投影。
 
-### 未来任务
+## 8. 写入、性能与错误
 
-任务是一套随剧情自动维护的状态机，确实可能需要消息事件、模型判断、迟到结果作废和分支规则。那些能力只能在任务领域内设计；不得先放一个全局 reconciler 让所有经济 APP 被动依赖。
+所有聊天业务写经过根 store：
 
-## 7. APP 打开与性能
+1. 调用入口捕获目标 chat identity。
+2. 根级队列串行化写入。
+3. 领域校验 actionId、CAS 和业务输入。
+4. 涉及资金时，在一个候选根中同时生成领域事件与 Economy 资金腿。
+5. 运行领域内及跨领域不变量。
+6. 保存`chat_metadata`并确认 identity 未变化。
+7. 明确保存失败恢复旧根；保存结果不确定时保留候选并冻结后续写入，直到读回确认。
 
-- 已有 Economy：Wallet、Bank、Game、Shop 激活同步返回`ready`，不得调用`/api/chats/get`。
-- 首次没有 Economy：先返回`loading`，后台只执行一次开户保存。
-- 外壳只创建一个窗口与一个 iframe；APP 路由切换复用外壳。
-- 主生成状态、Prompt 临时安装和未确认保存状态只存在于当前运行内，除非其业务事实已经提交。
+Map 与 Tasks 的 Agent 工具只修改内存 staged state；请求成功且边界仍有效后才进入各自的根 mutation。一个领域的 API/解析失败不能冒充另一个领域的成功。
 
-## 8. 当前交付
+性能契约：
 
-### 已完成
+- 已有 Economy：Wallet、Bank、Game、Shop、Tasks 激活同步返回本地投影，不调用`/api/chats/get`；
+- 首次没有 Economy：需要钱包的 APP 先返回`loading`，后台只执行一次开户保存；
+- Map 激活只读当前根，不为“地图是否存在”调用 Agent；
+- Agent API APP 先立即显示本地表单壳，再异步读取共享设置；不自动连接供应商，也不让打开握手等待配置读取；
+- 外壳只创建一个窗口与一个 iframe，APP 路由切换复用外壳；
+- 主生成状态、Prompt 临时安装、maintenance 队列和未确认保存状态只存在当前运行内，除非业务事实已经提交。
+
+## 9. 当前交付状态
+
+### 已实现
 
 - OS 外壳、发送键左侧入口、APP runtime registry；
 - 四次元壁 APP；
@@ -122,20 +193,53 @@ SillyTavern 创建分支时，OS 接受宿主给出的当前`chat_metadata`快�
 - 三款纯规则赌场游戏；
 - 根级单写队列、CAS、actionId 幂等、跨领域原子提交与保存确认。
 
-### 后续
+### 已完成终态设计、尚未施工
 
-1. 任务：先完成自动状态机、触发时序、模型边界、结算和分支语义设计，再施工。
-2. 不明物：产品形态、成长时钟和经济循环确认后再设计。
-3. 地图、宠物等：必须先明确自己的事实来源和生命周期，不预埋共享状态。
+- Agent API 桌面 APP 与统一后台维护架构；
+- Map 双层地图；
+- Tasks 正式任务状态机与钱包结算。
 
-## 9. 开工检查
+### 未进入设计
 
-每个新 APP 开工前必须回答：
+- 不明物：产品形态、成长时钟和经济循环尚未确认；不得注册占位 APP 或预埋数据。
+- 宠物：尚无明确消费者和生命周期；不得与不明物混成一个领域。
 
-- 功能所有者和唯一事实来源；
-- 哪些是临时态，哪些必须持久化；
-- 是否真的读取主聊天，读取哪个窄事实；
-- 外部依赖和注册入口；
-- 删除路径与数据策略；
-- 真实兼容对象；
-- 哪些稳定契约值得测试，以及最低成本测试层。
+## 10. 开工路线
+
+### 阶段 A：Agent API 与维护基础设施
+
+1. 把 Agent bundle 和调用桥从 Fourth Wall 所有权提升到普通 OS 基础设施。
+2. 新建桌面 Agent API APP，完成暗色原生控件与共享配置同步。
+3. 删除 Fourth Wall 旧设置入口、dialog、frame action 和专属测试。
+4. 在 settings repository、OS 导出命令和 host registry 中建立两级开关契约；此时只完成能力，不提前暴露 Map/Tasks 占位复选框或半成品 APP。
+5. 完成 accepted-turn source、maintenance registry/runner、队列、取消和迟到提交守卫。
+
+该阶段结束时，现有 Fourth Wall 行为不变；Map/Tasks 尚不注册半成品页面。
+
+### 阶段 B：Map
+
+1. 实现独立 Map 数据模型、不变量和 intent compiler。
+2. 实现 Map repository/application service、maintenance participant 和空间 Prompt runtime。
+3. 实现 Atlas/Scene UI、SVG renderer、材质与本地图标。
+4. 同完整 Map 一起暴露扩展设置中的 APP 启用开关，完成 APP 内自动维护、显式维护/重建和真实浏览器验收。
+
+### 阶段 C：Tasks
+
+1. 实现 board parser、Task 事件状态机和投影。
+2. 实现 Task/Economy escrow 协议与跨领域不变量。
+3. 实现大厅、发布、候选人、活动任务、历史与详情 UI。
+4. 实现显式 board/candidate 请求、active-task maintenance participant 和主 RP Prompt。
+5. 用 Task 事件的`assistantTurn`实现 NPC 离场经过量；同完整 Tasks 一起暴露 APP 启用开关，完成自动结算、切聊/迟到结果和移动端验收。
+
+每个阶段独立通盘 review、验证和提交。不得先造一个含业务分支的`world-manager.ts`，也不得用“以后再拆”接受临时上帝文件。
+
+## 11. 每阶段验收
+
+- 需求达成且用户操作含义明确；
+- APP 打开不启动隐式 API 检查；
+- 自动维护严格位于 User 接受边界，swipe/regenerate 零消耗；
+- 功能所有者、唯一事实来源、持久/临时态和删除路径与对应终态文档一致；
+- 运行产物不 import`modules/tavern/**`；
+- 无测试线旧 schema、旧入口或旧协议兼容壳；
+- 最低风险测试、typecheck、lint、build 和关键真实浏览器路径全部通过；
+- diff 经过上下游、边界、数据流、错误路径和视觉体验的完整 review。
