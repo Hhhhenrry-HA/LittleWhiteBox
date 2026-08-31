@@ -3,7 +3,6 @@ import type {
     XiaobaiOsChatDataStore,
     XiaobaiOsWriteState,
 } from '../../../host/chat-data-store.js';
-import type { StoryActionRunner, StoryBoundActionContext } from '../../../host/story-action-runner.js';
 import type { XiaobaiOsChatData } from '../../../types.js';
 import { postAction, projectBalances } from '../../../domains/economy/ledger.js';
 import type { EconomyLedgerV1 } from '../../../domains/economy/types.js';
@@ -35,11 +34,9 @@ import {
 } from './action-policy.js';
 import { createGameCommands } from './commands.js';
 import {
-    countAssistantTurns,
     emptyGameRoot,
     readEconomyLedger,
     readGameDomain,
-    reconcileGameRootWithStory,
     validateGameEconomyConsistency,
 } from './root-protocol.js';
 
@@ -103,7 +100,6 @@ export interface PreparedRoot {
     ledger: EconomyLedgerV1;
     game: GameDomainV1;
     state: GameState;
-    assistantTurn: number;
 }
 
 export type RunGameAction = (
@@ -121,7 +117,6 @@ function defaultId(prefix: string): string {
 
 export function createGameService(
     store: XiaobaiOsChatDataStore,
-    runner: StoryActionRunner,
     {
         now = Date.now,
         createGameId = kind => defaultId(`game-${kind}`),
@@ -154,11 +149,8 @@ export function createGameService(
         return buildView(root, input);
     }
 
-    function prepareRoot(
-        current: XiaobaiOsChatData | null,
-        storyContext: StoryBoundActionContext,
-    ): PreparedRoot {
-        const root = current ? reconcileGameRootWithStory(current, storyContext.fingerprint) : emptyGameRoot();
+    function prepareRoot(current: XiaobaiOsChatData | null): PreparedRoot {
+        const root = current ? structuredClone(current) : emptyGameRoot();
         const ledger = readEconomyLedger(root);
         if (!ledger) {throw new Error('economy_not_opened');}
         const game = readGameDomain(root) || createEmptyGameDomain();
@@ -167,7 +159,6 @@ export function createGameService(
             ledger,
             game,
             state: replayGameEvents(game),
-            assistantTurn: countAssistantTurns(storyContext.fingerprint),
         };
     }
 
@@ -188,8 +179,8 @@ export function createGameService(
         const assertGenerationIdle = () => {
             if (isMainGenerationActive()) {throw new Error('game_main_generation_active');}
         };
-        return runner.run((current, _rootContext, storyContext) => {
-            const prepared = prepareRoot(current, storyContext);
+        return store.mutateCurrent((current) => {
+            const prepared = prepareRoot(current);
             if (replayExistingAction(prepared.game, input.actionId, intent)) {
                 replayed = true;
                 return { next: prepared.root, result: buildView(prepared.root) };
@@ -217,8 +208,6 @@ export function createGameService(
                 actionId,
                 command: action.command,
                 result: action.result,
-                anchor: storyContext.anchor,
-                assistantTurn: prepared.assistantTurn,
                 createdAt: now(),
             });
             let ledger = prepared.ledger;
@@ -227,7 +216,6 @@ export function createGameService(
                     action.economyLegs,
                     actionId,
                     action.command.gameId,
-                    storyContext.anchor,
                 ), economyDependencies).ledger;
             }
             prepared.root.domains.economy = ledger;

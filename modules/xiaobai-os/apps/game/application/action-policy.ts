@@ -1,4 +1,3 @@
-import type { XiaobaiOsStoryAnchor } from '../../../types.js';
 import { projectBalances } from '../../../domains/economy/ledger.js';
 import { EconomyError, type EconomyLedgerV1, type PostTransactionInput } from '../../../domains/economy/types.js';
 import {
@@ -206,13 +205,11 @@ export function toPostInputs(
     legs: readonly GameEconomyLeg[],
     actionId: string,
     gameId: string,
-    anchor: XiaobaiOsStoryAnchor,
 ): PostTransactionInput[] {
     return legs.map((leg) => ({
         ...leg,
         actionId,
         sourceDomain: GAME_SOURCE_DOMAIN,
         sourceId: gameId,
-        anchor: structuredClone(anchor),
     }));
 }

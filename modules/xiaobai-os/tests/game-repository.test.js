@@ -5,16 +5,12 @@ import { validateGameDomain } from '../domains/game/invariants.js';
 import { createGameService } from '../apps/game/application/service.js';
 import {
     readGameDomain,
-    reconcileGameRootWithStory,
     validateGameEconomyConsistency,
 } from '../apps/game/application/root-protocol.js';
 import { validateLedger } from '../domains/economy/invariants.js';
 import { createEconomyRepository } from '../domains/economy/repository.js';
 import { projectBalances } from '../domains/economy/ledger.js';
 import { createChatDataStore } from '../host/chat-data-store.js';
-import { createStoryActionRunner } from '../host/story-action-runner.js';
-import { createStoryReconciliationRuntime } from '../host/story-reconciliation-runtime.js';
-import { createStoryWriteGate } from '../host/story-write-gate.js';
 
 function command(view, actionId, extra = {}) {
     return {
@@ -35,10 +31,7 @@ function createHarness(randomValues = [], options = {}) {
     const chat = {
         metadata: {},
         persisted: undefined,
-        story: {
-            identityKey: identity.key,
-            messages: [{ role: 'user', name: 'Player', text: 'Open the game app' }],
-        },
+        messages: [{ role: 'user', name: 'Player', text: 'Open the game app' }],
     };
     const state = {
         saveCount: 0,
@@ -69,13 +62,6 @@ function createHarness(randomValues = [], options = {}) {
         domains: { game: validateGameDomain, economy: validateLedger },
         root: validateGameEconomyConsistency,
     });
-    const storyAdapter = {
-        captureCurrent: () => structuredClone(chat.story),
-        readPersistedCurrent: async () => structuredClone(chat.story),
-        subscribeChanges: () => () => {},
-    };
-    const gate = createStoryWriteGate();
-    const runner = createStoryActionRunner(store, storyAdapter, gate, async () => {});
     let clock = 1_000;
     const now = () => ++clock;
     const createTransactionId = () => `tx-${++state.transactionIds}`;
@@ -93,9 +79,8 @@ function createHarness(randomValues = [], options = {}) {
     const economy = createEconomyRepository(store, {
         now,
         createId: createTransactionId,
-        actionRunner: runner,
     });
-    const game = createGameService(store, runner, {
+    const game = createGameService(store, {
         now,
         random,
         createGameId: kind => `game-${kind}-${++state.gameIds}`,
@@ -105,7 +90,7 @@ function createHarness(randomValues = [], options = {}) {
         isMainGenerationActive: () => state.generationActive,
         ...options,
     });
-    return { game, chat, economy, gate, runner, state, store, storyAdapter };
+    return { game, chat, economy, state, store };
 }
 
 async function openEconomy(harness) {
@@ -466,19 +451,19 @@ test('Game rejects new actions throughout a main generation but permits committe
     }, counts);
 });
 
-test('replaying a retained action commits the reconciled Game and Economy root', async () => {
+test('replaying an earlier action never rewinds committed Game or Economy state', async () => {
     const harness = createHarness(Array(9).fill(0));
     await openEconomy(harness);
     const input = command(harness.game.readCurrent(), 'branch-start');
     const started = await harness.game.startPush(input);
-    harness.chat.story.messages.push({ role: 'assistant', name: 'Character', text: 'Original reply' });
     const drawn = await harness.game.drawPush(command(started, 'branch-draw', {
         gameId: started.activeGame.id,
     }));
     await harness.game.cashOutPush(command(drawn, 'branch-cash', {
         gameId: drawn.activeGame.id,
     }));
-    harness.chat.story.messages[1].text = 'Rewritten reply';
+    const rootBefore = harness.store.readCurrent();
+    const viewBefore = harness.game.readCurrent();
     const counts = {
         random: harness.state.randomCalls,
         game: harness.state.gameIds,
@@ -490,13 +475,8 @@ test('replaying a retained action commits the reconciled Game and Economy root',
 
     const replay = await harness.game.startPush(input);
 
-    assert.equal(replay.revision, 1);
-    assert.equal(replay.activeGame.revealedCoins, 0);
-    assert.equal(replay.activities.length, 0);
-    assert.equal(replay.balance, 50);
-    assert.equal(harness.store.readCurrent().domains.game.events.length, 1);
-    assert.equal(harness.economy.readCurrent().transactions.length, 2);
-    assert.equal(escrowBalance(harness, replay.activeGame.id), 50);
+    assert.deepEqual(replay, viewBefore);
+    assert.deepEqual(harness.store.readCurrent(), rootBefore);
     assert.deepEqual({
         random: harness.state.randomCalls,
         game: harness.state.gameIds,
@@ -504,7 +484,7 @@ test('replaying a retained action commits the reconciled Game and Economy root',
         activity: harness.state.activityIds,
         transaction: harness.state.transactionIds,
     }, counts);
-    assert.equal(harness.state.saveCount, savesBefore + 1);
+    assert.equal(harness.state.saveCount, savesBefore);
 });
 
 test('insufficient funds does not create a game or consume random', async () => {
@@ -574,48 +554,27 @@ test('unconfirmed save retains one candidate and confirmation never redraws', as
     assert.equal(harness.game.readCurrent().eventId, candidate.eventId);
 });
 
-test('story rollback restores Game state, Economy balance and escrow on one prefix', async () => {
+test('editing host conversation content never rewinds committed Game or Economy state', async () => {
     const harness = createHarness(Array(9).fill(0));
     await openEconomy(harness);
     const started = await harness.game.startPush(command(harness.game.readCurrent(), 'rollback-start'));
-    harness.chat.story.messages.push({ role: 'assistant', name: 'Character', text: 'Original reply' });
+    harness.chat.messages.push({ role: 'assistant', name: 'Character', text: 'Original reply' });
     const drawn = await harness.game.drawPush(command(started, 'rollback-draw', {
         gameId: started.activeGame.id,
     }));
     await harness.game.cashOutPush(command(drawn, 'rollback-cash', {
         gameId: drawn.activeGame.id,
     }));
-    const runtime = createStoryReconciliationRuntime(
-        harness.storyAdapter,
-        harness.store,
-        harness.gate,
-        [{
-            key: 'game',
-            hasData: root => Boolean(root?.domains.game),
-            reconcile(root, fingerprint) {
-                return { root: reconcileGameRootWithStory(root, fingerprint), impact: null };
-            },
-        }],
-    );
+    const committedRoot = harness.store.readCurrent();
+    const committedView = harness.game.readCurrent();
+    const savesBefore = harness.state.saveCount;
 
-    harness.chat.story.messages[1].text = 'Rewritten reply';
-    assert.equal((await runtime.reconcileNow()).status, 'ready');
-    let view = harness.game.readCurrent();
-    assert.equal(view.revision, 1);
-    assert.equal(view.activeGame.kind, 'push');
-    assert.equal(view.activeGame.revealedCoins, 0);
-    assert.equal(view.balance, 50);
-    assert.equal(escrowBalance(harness, view.activeGame.id), 50);
-    assert.equal(view.activities.length, 0);
+    harness.chat.messages[0].text = 'Rewritten opening';
+    harness.chat.messages[1].text = 'Rewritten reply';
 
-    harness.chat.story.messages[0].text = 'Rewritten opening';
-    assert.equal((await runtime.reconcileNow()).status, 'ready');
-    view = harness.game.readCurrent();
-    assert.equal(view.revision, 0);
-    assert.equal(view.activeGame, undefined);
-    assert.equal(view.balance, 100);
-    assert.equal(readGameDomain(harness.store.readCurrent()), null);
-    assert.equal(gameTransactions(harness).length, 0);
+    assert.deepEqual(harness.game.readCurrent(), committedView);
+    assert.deepEqual(harness.store.readCurrent(), committedRoot);
+    assert.equal(harness.state.saveCount, savesBefore);
 });
 
 test('cross-domain invariant rejects forged Game money while service output stays private', async () => {

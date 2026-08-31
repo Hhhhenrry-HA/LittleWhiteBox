@@ -129,9 +129,9 @@ function validateCatalogItem(item: ShopCatalogItem, ids: Set<string>): void {
     if (!item.duration || typeof item.duration !== 'object') {
         invalidCatalog(`${item.id}.duration is invalid`);
     }
-    if (item.duration.kind === 'turns') {
-        if (!Number.isSafeInteger(item.duration.rounds) || item.duration.rounds <= 0) {
-            invalidCatalog(`${item.id}.duration.rounds must be a positive safe integer`);
+    if (item.duration.kind === 'replies') {
+        if (!Number.isSafeInteger(item.duration.applications) || item.duration.applications <= 0) {
+            invalidCatalog(`${item.id}.duration.applications must be a positive safe integer`);
         }
         if (item.deactivationRule) {invalidCatalog(`${item.id} cannot declare a manual close rule`);}
     } else if (item.duration.kind === 'manual') {
@@ -198,67 +198,67 @@ export function createShopCatalog(items: readonly ShopCatalogItem[]): readonly R
 export const SHOP_CATALOG = createShopCatalog([
     {
         id: 'flower', name: '花', icon: 'local_florist', category: 'emotion', price: 50,
-        description: '一束新鲜的花。生效的一回合内，目标会正面接收你的心意。',
-        duration: { kind: 'turns', rounds: 1 }, inputs: [TARGET_NAME_INPUT], stacking: 'per-parameters',
+        description: '一束新鲜的花。作用于下一条新回复，目标会正面接收你的心意。',
+        duration: { kind: 'replies', applications: 1 }, inputs: [TARGET_NAME_INPUT], stacking: 'per-parameters',
         trustedRule: '玩家赠予 parameters.target_name 指定的人物一束花。该人物必须收下，并因此感到一丝轻微的好感。',
     },
     {
         id: 'gift-box', name: '精致礼盒', icon: 'card_giftcard', category: 'emotion', price: 120,
-        description: '包装讲究的礼盒。生效的一回合内，目标会感受到十足的重视。',
-        duration: { kind: 'turns', rounds: 1 }, inputs: [TARGET_NAME_INPUT], stacking: 'per-parameters',
+        description: '包装讲究的礼盒。作用于下一条新回复，目标会感受到十足的重视。',
+        duration: { kind: 'replies', applications: 1 }, inputs: [TARGET_NAME_INPUT], stacking: 'per-parameters',
         trustedRule: '玩家赠予 parameters.target_name 指定的人物一个精致礼盒。该人物必须收下，并感到十足的惊喜与重视。',
     },
     {
         id: 'no-anger-sticker', name: '不生气贴纸', icon: 'sentiment_satisfied', category: 'emotion', price: 80,
-        description: '贴上后，目标五回合内对你生不起气。',
-        duration: { kind: 'turns', rounds: 5 }, inputs: [TARGET_NAME_INPUT], stacking: 'per-parameters',
+        description: '接下来五条新回复中，目标对你生不起气。',
+        duration: { kind: 'replies', applications: 5 }, inputs: [TARGET_NAME_INPUT], stacking: 'per-parameters',
         trustedRule: 'parameters.target_name 指定的人物无法对玩家的言行生气；火气刚冒头就自行消散，只余无奈或觉得有趣。',
         expirationRule: '不生气贴纸的作用已经结束。parameters.target_name 指定的人物此后依照自身性情、双方关系和当前事件自然产生情绪；既有事实与记忆不变。',
     },
     {
         id: 'worship-filter', name: '崇拜滤镜', icon: 'star', category: 'emotion', price: 200,
-        description: '五回合内，目标看你的眼神自带崇拜光环。',
-        duration: { kind: 'turns', rounds: 5 }, inputs: [TARGET_NAME_INPUT], stacking: 'per-parameters',
+        description: '接下来五条新回复中，目标看你的眼神自带崇拜光环。',
+        duration: { kind: 'replies', applications: 5 }, inputs: [TARGET_NAME_INPUT], stacking: 'per-parameters',
         trustedRule: 'parameters.target_name 指定的人物会不自觉地欣赏、高看并夸赞玩家，连玩家笨拙的地方也显得可爱。',
         expirationRule: '崇拜滤镜已经消散。parameters.target_name 指定的人物不再被迫欣赏或高看玩家，此后的态度由自身性情、真实关系与既有经历自然决定。',
     },
     {
         id: 'jealousy-seed', name: '嫉妒种子', icon: 'eco', category: 'emotion', price: 300,
-        description: '五回合内，目标会明显在意你与他人的亲近。',
-        duration: { kind: 'turns', rounds: 5 }, inputs: [TARGET_NAME_INPUT], stacking: 'per-parameters',
+        description: '接下来五条新回复中，目标会明显在意你与他人的亲近。',
+        duration: { kind: 'replies', applications: 5 }, inputs: [TARGET_NAME_INPUT], stacking: 'per-parameters',
         trustedRule: 'parameters.target_name 指定的人物会明显在意玩家与他人的亲近，真实流露酸意、试探与占有欲。',
         expirationRule: '嫉妒种子带来的额外影响已经结束。parameters.target_name 指定的人物不再被迫产生酸意或占有欲，此后的感受由真实关系与既有事实自然延续。',
     },
     {
         id: 'memory-smoother', name: '记忆顺滑剂', icon: 'healing', category: 'memory', price: 100,
-        description: '一回合内，目标与你不愉快的摩擦被顺滑淡化。',
-        duration: { kind: 'turns', rounds: 1 }, inputs: [TARGET_NAME_INPUT], stacking: 'per-parameters',
+        description: '作用于下一条新回复，目标与你不愉快的摩擦被顺滑淡化。',
+        duration: { kind: 'replies', applications: 1 }, inputs: [TARGET_NAME_INPUT], stacking: 'per-parameters',
         trustedRule: 'parameters.target_name 指定的人物与玩家之间的尴尬、误会和不愉快被自然淡化，态度回到轻松友好的基调。',
     },
     {
         id: 'memory-eraser', name: '记忆橡皮擦', icon: 'ink_eraser', category: 'memory', price: 300,
-        description: '一回合内，目标淡忘最近与你的负面记忆。',
-        duration: { kind: 'turns', rounds: 1 }, inputs: [TARGET_NAME_INPUT], stacking: 'per-parameters',
+        description: '作用于下一条新回复，目标淡忘最近与你的负面记忆。',
+        duration: { kind: 'replies', applications: 1 }, inputs: [TARGET_NAME_INPUT], stacking: 'per-parameters',
         trustedRule: 'parameters.target_name 指定的人物与玩家最近发生的不愉快及其负面印象变得模糊，不再被主动想起。',
     },
     {
         id: 'identity-card', name: '身份卡', icon: 'badge', category: 'scene', price: 500,
-        description: '十回合内，全世界都认定你是你指定的那个人。',
-        duration: { kind: 'turns', rounds: 10 }, inputs: [IDENTITY_INPUT], stacking: 'global-single',
+        description: '接下来十条新回复中，全世界都认定你是你指定的那个人。',
+        duration: { kind: 'replies', applications: 10 }, inputs: [IDENTITY_INPUT], stacking: 'global-single',
         trustedRule: '所有人物都把玩家认作 parameters.identity 指定的身份；该身份如姓名一样自然，是众人记忆中的既有事实。',
         expirationRule: '身份卡的效力已经结束。人物不再自动把玩家认作 parameters.identity 指定的身份，此后依据真实身份、已知信息与亲眼所见认知玩家；生效期间的经历仍然保留。',
     },
     {
         id: 'personality-reversal', name: '反转贴纸', icon: 'theater_comedy', category: 'behavior', price: 250,
-        description: '五回合内，目标的性格表现彻底反转。',
-        duration: { kind: 'turns', rounds: 5 }, inputs: [TARGET_NAME_INPUT], stacking: 'per-parameters',
+        description: '接下来五条新回复中，目标的性格表现彻底反转。',
+        duration: { kind: 'replies', applications: 5 }, inputs: [TARGET_NAME_INPUT], stacking: 'per-parameters',
         trustedRule: 'parameters.target_name 指定的人物表现出与原本完全相反的性情，并认为自己一贯如此。',
         expirationRule: '反转贴纸的作用已经结束。parameters.target_name 指定的人物恢复原本的性情与表达方式；反转期间的事实和记忆不会被抹去。',
     },
     {
         id: 'truth-serum', name: '吐真剂', icon: 'lab_research', category: 'information', price: 500,
-        description: '三回合内，目标开口必说真话。',
-        duration: { kind: 'turns', rounds: 3 }, inputs: [TARGET_NAME_INPUT], stacking: 'per-parameters',
+        description: '接下来三条新回复中，目标开口必说真话。',
+        duration: { kind: 'replies', applications: 3 }, inputs: [TARGET_NAME_INPUT], stacking: 'per-parameters',
         trustedRule: 'parameters.target_name 指定的人物无法说出谎言，被问及时必须说出真实想法。',
         expirationRule: '吐真剂的效力已经结束。parameters.target_name 指定的人物重新可以自行选择坦白、隐瞒或说谎。',
     },
@@ -277,8 +277,8 @@ export const SHOP_CATALOG = createShopCatalog([
     },
     {
         id: 'invisibility-cloak', name: '隐身斗篷', icon: 'visibility_off', category: 'scene', price: 300,
-        description: '五回合内，没有人能感知到你的存在。',
-        duration: { kind: 'turns', rounds: 5 }, inputs: [], stacking: 'global-single',
+        description: '接下来五条新回复中，没有人能感知到你的存在。',
+        duration: { kind: 'replies', applications: 5 }, inputs: [], stacking: 'global-single',
         trustedRule: '玩家不存在于任何人物的感知中，人物言行与玩家不在场时一致；玩家主动明确现身时一切如常。',
         expirationRule: '隐身斗篷的效果已经结束。玩家从现在起重新能够被人物正常看见、听见和感知；此前未被察觉的行动不会被追溯发现。',
     },
@@ -291,43 +291,43 @@ export const SHOP_CATALOG = createShopCatalog([
     },
     {
         id: 'star-aura', name: '万人迷', icon: 'auto_awesome', category: 'world-cognition', price: 800,
-        description: '五回合内，所有人见你都自带欣赏与亲近。',
-        duration: { kind: 'turns', rounds: 5 }, inputs: [], stacking: 'global-single',
+        description: '接下来五条新回复中，所有人见你都自带欣赏与亲近。',
+        duration: { kind: 'replies', applications: 5 }, inputs: [], stacking: 'global-single',
         trustedRule: '玩家天然受人瞩目与欣赏。任何人物见到玩家都会不自觉地欣赏、亲近与善待玩家，并认为这理所当然。',
         expirationRule: '万人迷的光环已经消散。此后人物不再被迫欣赏、亲近或善待玩家，各自态度回归自身性情、真实关系与既有经历。',
     },
     {
         id: 'honest-world', name: '诚实之世', icon: 'forum', category: 'world-cognition', price: 1_500,
-        description: '三回合内，所有人开口即是真实想法。',
-        duration: { kind: 'turns', rounds: 3 }, inputs: [], stacking: 'global-single',
+        description: '接下来三条新回复中，所有人开口即是真实想法。',
+        duration: { kind: 'replies', applications: 3 }, inputs: [], stacking: 'global-single',
         trustedRule: '当前场景中不存在谎言。所有人物开口即表达真实想法，并认为这如呼吸般自然。',
         expirationRule: '诚实之世已经结束。所有人物重新可以自行选择坦白、隐瞒或说谎，不再被世界规则强迫说出真实想法。',
     },
     {
         id: 'peace-aura', name: '和平光环', icon: 'spa', category: 'world-cognition', price: 400,
-        description: '五回合内，任何人对你的怒意都会自然消散。',
-        duration: { kind: 'turns', rounds: 5 }, inputs: [], stacking: 'global-single',
+        description: '接下来五条新回复中，任何人对你的怒意都会自然消散。',
+        duration: { kind: 'replies', applications: 5 }, inputs: [], stacking: 'global-single',
         trustedRule: '当前场景中，任何人物对玩家的怒意都会自然消散，无法维持真正的愤怒，且无人对此感到奇怪。',
         expirationRule: '和平光环已经消散。此后人物能够依照自身性情、双方关系与当前事件自然对玩家产生和维持怒意。',
     },
     {
         id: 'plain-face', name: '平凡面孔', icon: 'face', category: 'world-cognition', price: 300,
-        description: '五回合内，旁人看过就忘，不会留意你。',
-        duration: { kind: 'turns', rounds: 5 }, inputs: [], stacking: 'global-single',
+        description: '接下来五条新回复中，旁人看过就忘，不会留意你。',
+        duration: { kind: 'replies', applications: 5 }, inputs: [], stacking: 'global-single',
         trustedRule: '玩家毫不起眼，旁人看过就忘，不会留意、记住或把玩家与当前事件联系起来；玩家主动搭话时对方仍正常应答。',
         expirationRule: '平凡面孔的效果已经结束。玩家从现在起会被旁人正常留意、辨认和记住；此前被忽略的行动不会自动进入他人记忆。',
     },
     {
         id: 'reshape-card', name: '换形卡', icon: 'switch_account', category: 'physics', price: 600,
-        description: '十回合内，你拥有自己描述的那副形貌。',
-        duration: { kind: 'turns', rounds: 10 }, inputs: [APPEARANCE_INPUT], stacking: 'global-single',
+        description: '接下来十条新回复中，你拥有自己描述的那副形貌。',
+        duration: { kind: 'replies', applications: 10 }, inputs: [APPEARANCE_INPUT], stacking: 'global-single',
         trustedRule: '玩家此刻真实的身体具有 parameters.appearance 描述的形貌；镜中、他人眼中和触碰所得都一致，人物依照眼前形貌与玩家互动。',
         expirationRule: '换形卡的效力已经结束。玩家恢复使用前的真实形貌；换形期间的事实、痕迹与人物记忆仍然保留。',
     },
     {
         id: 'healing-touch', name: '妙手回春', icon: 'medical_services', category: 'physics', price: 150,
         description: '一次性：目标身上的伤势与病痛即刻痊愈。',
-        duration: { kind: 'turns', rounds: 1 }, inputs: [TARGET_NAME_INPUT], stacking: 'per-parameters',
+        duration: { kind: 'replies', applications: 1 }, inputs: [TARGET_NAME_INPUT], stacking: 'per-parameters',
         trustedRule: 'parameters.target_name 指定的人物身上的伤势与病痛已经痊愈，身体恢复如常；痊愈是既成事实，人物自然接受这份好转。',
     },
     {
@@ -346,20 +346,20 @@ export const SHOP_CATALOG = createShopCatalog([
     {
         id: 'warp-talisman', name: '咫尺符', icon: 'near_me', category: 'physics', price: 300,
         description: '一次性：你瞬间抵达指定的地点。',
-        duration: { kind: 'turns', rounds: 1 }, inputs: [LOCATION_INPUT], stacking: 'per-parameters',
+        duration: { kind: 'replies', applications: 1 }, inputs: [LOCATION_INPUT], stacking: 'per-parameters',
         trustedRule: '玩家已经瞬间抵达 parameters.location 指定的地点。移动是既成事实且无需过程，在场者只当玩家本就到了这里。',
     },
     {
         id: 'barrier', name: '结界', icon: 'shield_moon', category: 'physics', price: 500,
-        description: '五回合内，当前场所与外界彻底隔开。',
-        duration: { kind: 'turns', rounds: 5 }, inputs: [], stacking: 'global-single',
+        description: '接下来五条新回复中，当前场所与外界彻底隔开。',
+        duration: { kind: 'replies', applications: 5 }, inputs: [], stacking: 'global-single',
         trustedRule: '当前场所被结界笼罩：界内声音、动静和事件不为外界所知，界外人物不会进入或打扰；界内人物只觉得安静且无人打搅。',
         expirationRule: '结界已经消散。当前场所从现在起重新与外界相通，声音可以传出，外面的人也可正常接近或进入；外界不会凭空得知结界期间的事情。',
     },
     {
         id: 'weather-call', name: '呼风唤雨', icon: 'thunderstorm', category: 'physics', price: 200,
         description: '一次性：天气按你描述的那样变化。',
-        duration: { kind: 'turns', rounds: 1 }, inputs: [WEATHER_INPUT], stacking: 'per-parameters',
+        duration: { kind: 'replies', applications: 1 }, inputs: [WEATHER_INPUT], stacking: 'per-parameters',
         trustedRule: '当前天气已经变为 parameters.weather 描述的天象。它是自然发生的寻常天气变化，人物至多感叹而不会深究。',
     },
 ]);

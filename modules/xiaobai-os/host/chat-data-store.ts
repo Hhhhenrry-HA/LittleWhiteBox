@@ -6,6 +6,11 @@ type UnknownRecord = Record<string, unknown>;
 
 export type XiaobaiOsWriteState = 'ready' | 'saving' | 'unconfirmed' | 'conflict';
 
+export interface XiaobaiOsChatDataChange {
+    readonly identityKey: string;
+    readonly writeState: XiaobaiOsWriteState;
+}
+
 export interface XiaobaiOsChatSaveTransaction {
     identity: XiaobaiOsChatIdentityInput;
     metadata: UnknownRecord;
@@ -64,6 +69,7 @@ export interface XiaobaiOsChatDataStore {
     ) => Promise<T>;
     confirmPending: () => Promise<ConfirmResult>;
     getWriteState: () => XiaobaiOsWriteState;
+    subscribe: (listener: (change: XiaobaiOsChatDataChange) => void) => () => void;
 }
 
 interface CapturedChat extends RootMutationContext {}
@@ -216,6 +222,28 @@ export function createChatDataStore(
     const enqueueWrite = createWriteQueue();
     const writeStates = new Map<string, XiaobaiOsWriteState>();
     const pendingSaves = new Map<string, PendingSave>();
+    const listeners = new Set<(change: XiaobaiOsChatDataChange) => void>();
+
+    function publish(identityKey: string, writeState: XiaobaiOsWriteState): void {
+        const change = Object.freeze({ identityKey, writeState });
+        for (const listener of listeners) {
+            try {
+                listener(change);
+            } catch (error) {
+                console.error('[LittleWhiteBox] 小白 OS 数据状态监听失败', error);
+            }
+        }
+    }
+
+    function setWriteState(identityKey: string, next: XiaobaiOsWriteState): void {
+        const previous = writeStates.get(identityKey) ?? 'ready';
+        if (next === 'ready') {
+            writeStates.delete(identityKey);
+        } else {
+            writeStates.set(identityKey, next);
+        }
+        if (previous !== next) {publish(identityKey, next);}
+    }
 
     function getRequestedIdentity(): XiaobaiOsChatIdentityInput {
         const identity = adapter.getChatIdentity();
@@ -327,7 +355,7 @@ export function createChatDataStore(
                 }
                 throw error;
             }
-            writeStates.set(requestedKey, 'saving');
+            setWriteState(requestedKey, 'saving');
             try {
                 await adapter.saveChatMetadata({
                     identity: captured.identity,
@@ -336,7 +364,7 @@ export function createChatDataStore(
                 });
             } catch (error) {
                 if (isUnconfirmedSave(error)) {
-                    writeStates.set(requestedKey, 'unconfirmed');
+                    setWriteState(requestedKey, 'unconfirmed');
                     pendingSaves.set(requestedKey, {
                         identity: captured.identity,
                         metadata: captured.metadata,
@@ -347,11 +375,11 @@ export function createChatDataStore(
                 } else {
                     installOptionalRoot(captured.metadata, previousValue);
                     plan.metadataEffect?.rollback();
-                    writeStates.set(requestedKey, 'ready');
+                    setWriteState(requestedKey, 'ready');
                 }
                 throw error;
             }
-            writeStates.set(requestedKey, 'ready');
+            setWriteState(requestedKey, 'ready');
             pendingSaves.delete(requestedKey);
             assertStillCurrent(captured);
             return plan.result;
@@ -375,7 +403,7 @@ export function createChatDataStore(
                 persisted = await adapter.readPersistedXiaobaiOs(captured.identity);
             } catch {
                 assertStillCurrent(captured);
-                writeStates.set(requestedKey, 'unconfirmed');
+                setWriteState(requestedKey, 'unconfirmed');
                 return { status: 'unconfirmed' };
             }
             assertStillCurrent(captured);
@@ -383,20 +411,26 @@ export function createChatDataStore(
                 if (pending.candidate !== undefined) {assertValidRoot(pending.candidate, validators);}
                 installOptionalRoot(captured.metadata, cloneXiaobaiOsData(pending.candidate));
                 pendingSaves.delete(requestedKey);
-                writeStates.set(requestedKey, 'ready');
+                setWriteState(requestedKey, 'ready');
                 return { status: 'confirmed' };
             }
             if (jsonValuesEqual(persisted, pending.previous)) {
                 installOptionalRoot(captured.metadata, cloneXiaobaiOsData(pending.previous));
                 if (captured.metadata === pending.metadata) {pending.metadataEffect?.rollback();}
                 pendingSaves.delete(requestedKey);
-                writeStates.set(requestedKey, 'ready');
+                setWriteState(requestedKey, 'ready');
                 return { status: 'rejected' };
             }
-            writeStates.set(requestedKey, 'conflict');
+            setWriteState(requestedKey, 'conflict');
             return { status: 'conflict' };
         });
     }
 
-    return Object.freeze({ readCurrent, mutateCurrent, confirmPending, getWriteState });
+    function subscribe(listener: (change: XiaobaiOsChatDataChange) => void): () => void {
+        if (typeof listener !== 'function') {throw new TypeError('chat data listener must be a function');}
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+    }
+
+    return Object.freeze({ readCurrent, mutateCurrent, confirmPending, getWriteState, subscribe });
 }

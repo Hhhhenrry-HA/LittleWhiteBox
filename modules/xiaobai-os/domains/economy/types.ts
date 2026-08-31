@@ -1,5 +1,3 @@
-import type { XiaobaiOsStoryAnchor } from '../../types.js';
-
 export const ECONOMY_SCHEMA_VERSION = 1 as const;
 export const OPENING_GRANT_AMOUNT = 100 as const;
 export const OPENING_GRANT_ACTION_ID = 'economy:opening-grant:v1';
@@ -18,7 +16,6 @@ export interface EconomyTransaction {
     note: string;
     sourceDomain: string;
     sourceId: string;
-    anchor: XiaobaiOsStoryAnchor;
     createdAt: number;
     reversalOfTransactionId?: string;
 }
@@ -39,7 +36,6 @@ export interface PostTransactionInput {
     note?: string;
     sourceDomain: string;
     sourceId: string;
-    anchor: XiaobaiOsStoryAnchor;
     reversalOfTransactionId?: string;
 }
 
@@ -51,7 +47,6 @@ export interface ReverseTransactionInput {
     note?: string;
     sourceDomain: string;
     sourceId: string;
-    anchor: XiaobaiOsStoryAnchor;
 }
 
 export interface EconomyPostResult {
@@ -70,15 +65,6 @@ export interface EconomyTransactionPage {
     transactions: EconomyTransaction[];
     nextCursor: number | null;
     hasMore: boolean;
-}
-
-export interface EconomyRollbackImpact {
-    changed: boolean;
-    firstInvalidSequence: number | null;
-    removedTransactionIds: string[];
-    removedActionIds: string[];
-    previousBalance: number;
-    nextBalance: number;
 }
 
 export class EconomyError extends Error {

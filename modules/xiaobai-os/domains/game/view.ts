@@ -69,12 +69,11 @@ function publicActivity(record: ReturnType<typeof flattenGameActivities>[number]
         revision: record.revision,
         eventId: record.eventId,
         actionId: record.actionId,
-        assistantTurn: record.assistantTurn,
         createdAt: record.createdAt,
     };
 }
 
-/** Constructs a fresh public snapshot with no hidden dealer dice, deck, or story anchors. */
+/** Constructs a fresh public snapshot with no hidden dealer dice or deck order. */
 export function createGameView(input: CreateGameViewInput = {}): GameClientView {
     const offset = pageInteger(input.activityOffset, 0, 0, Number.MAX_SAFE_INTEGER, 'activityOffset');
     const limit = pageInteger(

@@ -1,4 +1,4 @@
-export type WalletStatus = 'ready' | 'reconciling' | 'saving' | 'unconfirmed' | 'conflict' | 'blocked';
+export type WalletStatus = 'ready' | 'loading' | 'saving' | 'unconfirmed' | 'conflict' | 'blocked';
 
 export type WalletTransactionDirection = 'income' | 'expense' | 'transfer';
 
@@ -12,7 +12,6 @@ export interface WalletTransactionView {
     amount: number;
     direction: WalletTransactionDirection;
     createdAt: number;
-    anchorFloor: number;
 }
 
 export interface WalletTransactionPageView {

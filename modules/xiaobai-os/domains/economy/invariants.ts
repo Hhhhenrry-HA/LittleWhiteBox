@@ -1,4 +1,3 @@
-import { EMPTY_STORY_PREFIX_HASH } from '../../types.js';
 import {
     ECONOMY_SCHEMA_VERSION,
     OPENING_GRANT_ACTION_ID,
@@ -9,24 +8,45 @@ import {
     type EconomyTransaction,
 } from './types.js';
 
-const HASH_PATTERN = /^sha256:[0-9a-f]{64}$/;
 const ACCOUNT_PATTERN = /^(?:player|system:(?:mint|sink)|(?:counterparty|escrow):[a-z0-9_-]+:[a-zA-Z0-9._:-]+)$/;
 const MAX_DATE_MS = 8_640_000_000_000_000;
+const TRANSACTION_KEYS = [
+    'id',
+    'sequence',
+    'idempotencyKey',
+    'actionId',
+    'fromAccountId',
+    'toAccountId',
+    'amount',
+    'kind',
+    'title',
+    'note',
+    'sourceDomain',
+    'sourceId',
+    'createdAt',
+] as const;
+
+function exactRecord(value: unknown, keys: readonly string[], field: string): Record<string, unknown> {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        throw new EconomyError('economy_invalid_ledger', `${field} must be an object`);
+    }
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) {
+        throw new EconomyError('economy_invalid_ledger', `${field} must be a plain object`);
+    }
+    const actual = Object.keys(value).sort();
+    const expected = [...keys].sort();
+    if (actual.length !== expected.length || actual.some((key, index) => key !== expected[index])) {
+        throw new EconomyError('economy_invalid_ledger', `${field} has non-canonical fields`);
+    }
+    return value as Record<string, unknown>;
+}
 
 function requireString(value: unknown, field: string, maxLength: number): string {
     if (typeof value !== 'string' || value.length === 0 || value.length > maxLength) {
         throw new EconomyError('economy_invalid_transaction', `${field} must be a non-empty string up to ${maxLength} characters`);
     }
     return value;
-}
-
-function validateAnchor(transaction: EconomyTransaction): void {
-    if (!Number.isInteger(transaction.anchor?.floor) || transaction.anchor.floor < -1) {
-        throw new EconomyError('economy_invalid_anchor', 'story anchor floor must be an integer at least -1');
-    }
-    if (!HASH_PATTERN.test(transaction.anchor?.prefixHash || '')) {
-        throw new EconomyError('economy_invalid_anchor', 'story anchor hash is invalid');
-    }
 }
 
 function assertOpeningGrant(transaction: EconomyTransaction): void {
@@ -40,8 +60,6 @@ function assertOpeningGrant(transaction: EconomyTransaction): void {
         transaction.kind !== 'opening_grant' ||
         transaction.sourceDomain !== 'economy' ||
         transaction.sourceId !== 'opening-grant:v1' ||
-        transaction.anchor.floor !== -1 ||
-        transaction.anchor.prefixHash !== EMPTY_STORY_PREFIX_HASH ||
         transaction.reversalOfTransactionId !== undefined
     ) {
         throw new EconomyError('economy_invalid_opening_grant', 'economy ledger must start with the fixed opening grant');
@@ -49,10 +67,7 @@ function assertOpeningGrant(transaction: EconomyTransaction): void {
 }
 
 export function validateLedger(value: unknown): asserts value is EconomyLedgerV1 {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
-        throw new EconomyError('economy_invalid_ledger', 'economy ledger must be an object');
-    }
-    const ledger = value as Partial<EconomyLedgerV1>;
+    const ledger = exactRecord(value, ['schemaVersion', 'transactions'], 'economy ledger') as unknown as Partial<EconomyLedgerV1>;
     if (ledger.schemaVersion !== ECONOMY_SCHEMA_VERSION) {
         throw new EconomyError('economy_unsupported_version', 'unsupported economy schema version');
     }
@@ -68,7 +83,15 @@ export function validateLedger(value: unknown): asserts value is EconomyLedgerV1
     let previous: EconomyTransaction | null = null;
 
     for (let index = 0; index < ledger.transactions.length; index += 1) {
-        const transaction = ledger.transactions[index] as EconomyTransaction;
+        const rawTransaction = ledger.transactions[index];
+        const hasReversal = !!rawTransaction
+            && typeof rawTransaction === 'object'
+            && !Array.isArray(rawTransaction)
+            && Object.hasOwn(rawTransaction, 'reversalOfTransactionId');
+        const keys = hasReversal
+            ? [...TRANSACTION_KEYS, 'reversalOfTransactionId']
+            : TRANSACTION_KEYS;
+        const transaction = exactRecord(rawTransaction, keys, `economy transaction ${index + 1}`) as unknown as EconomyTransaction;
         requireString(transaction.id, 'id', 160);
         requireString(transaction.idempotencyKey, 'idempotencyKey', 200);
         requireString(transaction.actionId, 'actionId', 200);
@@ -101,7 +124,6 @@ export function validateLedger(value: unknown): asserts value is EconomyLedgerV1
         if (!Number.isSafeInteger(transaction.createdAt) || transaction.createdAt < 0 || transaction.createdAt > MAX_DATE_MS) {
             throw new EconomyError('economy_invalid_transaction', 'createdAt must be a valid non-negative integer timestamp');
         }
-        validateAnchor(transaction);
         if (ids.has(transaction.id) || idempotencyKeys.has(transaction.idempotencyKey)) {
             throw new EconomyError('economy_duplicate_transaction', 'transaction id and idempotency key must be unique');
         }
@@ -112,7 +134,7 @@ export function validateLedger(value: unknown): asserts value is EconomyLedgerV1
             throw new EconomyError('economy_invalid_opening_grant', 'the fixed opening grant can only appear once');
         }
 
-        const isReversal = transaction.reversalOfTransactionId !== undefined;
+        const isReversal = Object.hasOwn(transaction, 'reversalOfTransactionId');
         if ((transaction.kind === 'reversal') !== isReversal) {
             throw new EconomyError('economy_invalid_reversal', 'reversal kind and target must be declared together');
         }
@@ -123,15 +145,11 @@ export function validateLedger(value: unknown): asserts value is EconomyLedgerV1
         }
         if (previous?.actionId === transaction.actionId) {
             if (
-                previous.anchor.floor !== transaction.anchor.floor ||
-                previous.anchor.prefixHash !== transaction.anchor.prefixHash ||
                 previous.sourceDomain !== transaction.sourceDomain ||
                 previous.sourceId !== transaction.sourceId
             ) {
-                throw new EconomyError('economy_inconsistent_action', 'transactions for one action must share source and anchor');
+                throw new EconomyError('economy_inconsistent_action', 'transactions for one action must share a source');
             }
-        } else if (previous && transaction.anchor.floor < previous.anchor.floor) {
-            throw new EconomyError('economy_anchor_regression', 'new economy actions cannot move backward in the story');
         }
 
         if (isReversal) {

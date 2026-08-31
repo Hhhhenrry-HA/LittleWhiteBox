@@ -1,12 +1,5 @@
 import type { XiaobaiOsHostFrameMessage } from './host/frame-bridge.js';
 
-export const EMPTY_STORY_PREFIX_HASH = 'sha256:7d0895b5e4a7170fe97ae325c8d441725fd5973b733dc8938469f794c01feee3';
-
-export interface XiaobaiOsStoryAnchor {
-    floor: number;
-    prefixHash: string;
-}
-
 export interface XiaobaiOsSettings<TApps extends object = Record<string, unknown>> {
     schemaVersion: 1;
     enabled: boolean;

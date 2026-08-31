@@ -1,16 +1,16 @@
-import { EMPTY_STORY_PREFIX_HASH } from '../../types.js';
 import { getShopItem } from './catalog.js';
 import {
+    SHOP_EFFECT_RECEIPT_VERSION,
     SHOP_SCHEMA_VERSION,
     ShopError,
     type ShopAction,
     type ShopActivation,
     type ShopCatalogItem,
-    type ShopDomainV1,
+    type ShopDomainV2,
+    type ShopEffectReceipt,
     type ShopEvent,
 } from './types.js';
 
-const HASH_PATTERN = /^sha256:[0-9a-f]{64}$/;
 const MAX_DATE_MS = 8_640_000_000_000_000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -31,10 +31,22 @@ function requireCanonicalId(value: unknown, field: string, maxLength: number): s
         || !value
         || value !== value.trim()
         || Array.from(value).length > maxLength
+        || /[\u0000-\u001f\u007f-\u009f]/u.test(value)
     ) {
         throw new ShopError('shop_invalid_domain', `${field} must be a canonical non-empty string`);
     }
     return value;
+}
+
+function requireCanonicalIdList(value: unknown, field: string): string[] {
+    if (!Array.isArray(value) || value.length > 100) {
+        throw new ShopError('shop_invalid_domain', `${field} must be an id array`);
+    }
+    const ids = value.map((entry, index) => requireCanonicalId(entry, `${field}.${index}`, 200));
+    if (new Set(ids).size !== ids.length) {
+        throw new ShopError('shop_invalid_domain', `${field} must not contain duplicates`);
+    }
+    return ids;
 }
 
 function normalizeText(value: unknown, maxLength: number): string {
@@ -94,56 +106,50 @@ function validateAction(value: unknown): ShopAction {
     const kind = value.kind;
     if (kind === 'purchase') {
         requireExactKeys(value, ['kind', 'itemId'], 'purchase action');
-        const itemId = requireCanonicalId(value.itemId, 'action.itemId', 80);
-        const item = getShopItem(itemId);
+        const item = getShopItem(requireCanonicalId(value.itemId, 'action.itemId', 80));
         return { kind, itemId: item.id };
     }
     if (kind === 'activate') {
         requireExactKeys(value, ['kind', 'itemId', 'activationId', 'parameters'], 'activate action');
-        const itemId = requireCanonicalId(value.itemId, 'action.itemId', 80);
-        const item = getShopItem(itemId);
+        const item = getShopItem(requireCanonicalId(value.itemId, 'action.itemId', 80));
         const activationId = requireCanonicalId(value.activationId, 'action.activationId', 200);
         if (!parametersAreCanonical(item, value.parameters)) {
-            throw new ShopError('shop_invalid_domain', `activation parameters are not canonical: ${itemId}`);
+            throw new ShopError('shop_invalid_domain', `activation parameters are not canonical: ${item.id}`);
         }
         return { kind, itemId: item.id, activationId, parameters: value.parameters };
     }
     if (kind === 'deactivate') {
         requireExactKeys(value, ['kind', 'itemId', 'activationId'], 'deactivate action');
-        const itemId = requireCanonicalId(value.itemId, 'action.itemId', 80);
-        const item = getShopItem(itemId);
+        const item = getShopItem(requireCanonicalId(value.itemId, 'action.itemId', 80));
         return {
             kind,
             itemId: item.id,
             activationId: requireCanonicalId(value.activationId, 'action.activationId', 200),
         };
     }
+    if (kind === 'deliver') {
+        requireExactKeys(value, ['kind', 'consumedActivationIds', 'transitionActivationIds'], 'deliver action');
+        const consumedActivationIds = requireCanonicalIdList(value.consumedActivationIds, 'action.consumedActivationIds');
+        const transitionActivationIds = requireCanonicalIdList(
+            value.transitionActivationIds,
+            'action.transitionActivationIds',
+        );
+        if (consumedActivationIds.length === 0 && transitionActivationIds.length === 0) {
+            throw new ShopError('shop_invalid_domain', 'deliver action must advance at least one effect');
+        }
+        if (consumedActivationIds.some(id => transitionActivationIds.includes(id))) {
+            throw new ShopError('shop_invalid_domain', 'one delivery cannot consume and transition the same activation');
+        }
+        return { kind, consumedActivationIds, transitionActivationIds };
+    }
     throw new ShopError('shop_invalid_domain', 'event action kind is invalid');
 }
 
 function validateEventShape(value: unknown, expectedRevision: number): ShopEvent {
     if (!isRecord(value)) {throw new ShopError('shop_invalid_domain', 'shop event must be an object');}
-    requireExactKeys(
-        value,
-        ['revision', 'eventId', 'actionId', 'action', 'anchor', 'assistantTurn', 'createdAt'],
-        'shop event',
-    );
+    requireExactKeys(value, ['revision', 'eventId', 'actionId', 'action', 'createdAt'], 'shop event');
     if (!Number.isSafeInteger(value.revision) || value.revision !== expectedRevision) {
         throw new ShopError('shop_invalid_domain', 'event revisions must be contiguous from 1');
-    }
-    if (!isRecord(value.anchor)) {throw new ShopError('shop_invalid_domain', 'event anchor must be an object');}
-    requireExactKeys(value.anchor, ['floor', 'prefixHash'], 'event anchor');
-    if (!Number.isSafeInteger(value.anchor.floor) || Number(value.anchor.floor) < -1) {
-        throw new ShopError('shop_invalid_domain', 'story anchor floor is invalid');
-    }
-    if (typeof value.anchor.prefixHash !== 'string' || !HASH_PATTERN.test(value.anchor.prefixHash)) {
-        throw new ShopError('shop_invalid_domain', 'story anchor hash is invalid');
-    }
-    if (value.anchor.floor === -1 && value.anchor.prefixHash !== EMPTY_STORY_PREFIX_HASH) {
-        throw new ShopError('shop_invalid_domain', 'empty-story anchor hash is invalid');
-    }
-    if (!Number.isSafeInteger(value.assistantTurn) || Number(value.assistantTurn) < 0) {
-        throw new ShopError('shop_invalid_domain', 'assistantTurn must be a non-negative safe integer');
     }
     if (
         !Number.isSafeInteger(value.createdAt)
@@ -157,29 +163,99 @@ function validateEventShape(value: unknown, expectedRevision: number): ShopEvent
         eventId: requireCanonicalId(value.eventId, 'event.eventId', 200),
         actionId: requireCanonicalId(value.actionId, 'event.actionId', 200),
         action: validateAction(value.action),
-        anchor: {
-            floor: Number(value.anchor.floor),
-            prefixHash: value.anchor.prefixHash,
-        },
-        assistantTurn: Number(value.assistantTurn),
         createdAt: Number(value.createdAt),
     };
 }
 
-function isActiveAt(activation: ShopActivation, item: Readonly<ShopCatalogItem>, targetAssistantTurn: number): boolean {
-    if (targetAssistantTurn < activation.startsAtAssistantTurn) {return false;}
-    if (
-        activation.transitionAtAssistantTurn !== undefined
-        && targetAssistantTurn >= activation.transitionAtAssistantTurn
-    ) {
-        return false;
+function isActive(activation: ShopActivation, item: Readonly<ShopCatalogItem>): boolean {
+    if (item.duration.kind === 'permanent') {return true;}
+    if (item.duration.kind === 'manual') {return activation.deactivatedByEventId === undefined;}
+    return activation.appliedCount < item.duration.applications;
+}
+
+function hasPendingTransition(activation: ShopActivation, item: Readonly<ShopCatalogItem>): boolean {
+    if (activation.transitionDeliveredByEventId) {return false;}
+    if (item.duration.kind === 'replies') {
+        return activation.appliedCount === item.duration.applications && !!item.expirationRule;
     }
-    return item.duration.kind !== 'turns'
-        || targetAssistantTurn < activation.startsAtAssistantTurn + item.duration.rounds;
+    return item.duration.kind === 'manual' && !!activation.deactivatedByEventId && !!item.deactivationRule;
+}
+
+function applyEventState(
+    event: ShopEvent,
+    quantities: Map<string, number>,
+    purchaseCounts: Map<string, number>,
+    activations: Map<string, ShopActivation>,
+): void {
+    const action = event.action;
+    if (action.kind === 'purchase') {
+        const item = getShopItem(action.itemId);
+        const purchasedCount = (purchaseCounts.get(item.id) || 0) + 1;
+        if (item.purchaseLimit !== undefined && purchasedCount > item.purchaseLimit) {
+            throw new ShopError('shop_invalid_domain', `purchase limit exceeded: ${item.id}`);
+        }
+        purchaseCounts.set(item.id, purchasedCount);
+        quantities.set(item.id, (quantities.get(item.id) || 0) + 1);
+        return;
+    }
+    if (action.kind === 'activate') {
+        const item = getShopItem(action.itemId);
+        if (activations.has(action.activationId)) {
+            throw new ShopError('shop_invalid_domain', `activationId is duplicated: ${action.activationId}`);
+        }
+        if ((quantities.get(item.id) || 0) < 1) {
+            throw new ShopError('shop_invalid_domain', `activation has no inventory: ${item.id}`);
+        }
+        const activationKey = shopActivationKey(item, action.parameters);
+        for (const existing of activations.values()) {
+            if (existing.itemId !== item.id || !isActive(existing, item)) {continue;}
+            if (item.stacking === 'global-single' || shopActivationKey(item, existing.parameters) === activationKey) {
+                throw new ShopError('shop_invalid_domain', `activation scope overlaps: ${item.id}`);
+            }
+        }
+        quantities.set(item.id, (quantities.get(item.id) || 0) - 1);
+        activations.set(action.activationId, {
+            activationId: action.activationId,
+            itemId: item.id,
+            parameters: { ...action.parameters },
+            activatedByEventId: event.eventId,
+            activatedAtRevision: event.revision,
+            appliedCount: 0,
+        });
+        return;
+    }
+    if (action.kind === 'deactivate') {
+        const item = getShopItem(action.itemId);
+        const activation = activations.get(action.activationId);
+        if (!activation || activation.itemId !== item.id) {
+            throw new ShopError('shop_invalid_domain', `deactivation target is missing: ${action.activationId}`);
+        }
+        if (item.duration.kind !== 'manual' || !isActive(activation, item)) {
+            throw new ShopError('shop_invalid_domain', `deactivation target is not an active manual effect: ${action.activationId}`);
+        }
+        activation.deactivatedByEventId = event.eventId;
+        return;
+    }
+    for (const activationId of action.consumedActivationIds) {
+        const activation = activations.get(activationId);
+        if (!activation) {throw new ShopError('shop_invalid_domain', `delivery target is missing: ${activationId}`);}
+        const item = getShopItem(activation.itemId);
+        if (item.duration.kind !== 'replies' || !isActive(activation, item)) {
+            throw new ShopError('shop_invalid_domain', `delivery cannot consume effect: ${activationId}`);
+        }
+        activation.appliedCount += 1;
+    }
+    for (const activationId of action.transitionActivationIds) {
+        const activation = activations.get(activationId);
+        if (!activation || !hasPendingTransition(activation, getShopItem(activation.itemId))) {
+            throw new ShopError('shop_invalid_domain', `delivery has no pending transition: ${activationId}`);
+        }
+        activation.transitionDeliveredByEventId = event.eventId;
+    }
 }
 
 /** Validates both serialized shape and every invariant implied by event replay. */
-export function validateShopDomain(value: unknown): asserts value is ShopDomainV1 {
+export function validateShopDomain(value: unknown): asserts value is ShopDomainV2 {
     if (!isRecord(value)) {throw new ShopError('shop_invalid_domain', 'shop domain must be an object');}
     if (value.schemaVersion !== SHOP_SCHEMA_VERSION) {
         throw new ShopError('shop_unsupported_version', 'unsupported shop schema version');
@@ -189,13 +265,9 @@ export function validateShopDomain(value: unknown): asserts value is ShopDomainV
 
     const eventIds = new Set<string>();
     const actionIds = new Set<string>();
-    const activationIds = new Set<string>();
     const quantities = new Map<string, number>();
     const purchaseCounts = new Map<string, number>();
     const activations = new Map<string, ShopActivation>();
-    let previousAnchorFloor = -1;
-    let previousAssistantTurn = 0;
-
     for (let index = 0; index < value.events.length; index += 1) {
         const event = validateEventShape(value.events[index], index + 1);
         if (eventIds.has(event.eventId) || actionIds.has(event.actionId)) {
@@ -203,58 +275,32 @@ export function validateShopDomain(value: unknown): asserts value is ShopDomainV
         }
         eventIds.add(event.eventId);
         actionIds.add(event.actionId);
-        if (event.anchor.floor < previousAnchorFloor || event.assistantTurn < previousAssistantTurn) {
-            throw new ShopError('shop_invalid_domain', 'shop event timeline cannot move backward');
-        }
-        previousAnchorFloor = event.anchor.floor;
-        previousAssistantTurn = event.assistantTurn;
+        applyEventState(event, quantities, purchaseCounts, activations);
+    }
+}
 
-        const action = event.action;
-        const item = getShopItem(action.itemId);
-        if (action.kind === 'purchase') {
-            const purchasedCount = (purchaseCounts.get(item.id) || 0) + 1;
-            if (item.purchaseLimit !== undefined && purchasedCount > item.purchaseLimit) {
-                throw new ShopError('shop_invalid_domain', `purchase limit exceeded: ${item.id}`);
-            }
-            purchaseCounts.set(item.id, purchasedCount);
-            quantities.set(item.id, (quantities.get(item.id) || 0) + 1);
-            continue;
+export function parseShopEffectReceipt(value: unknown): ShopEffectReceipt {
+    if (!isRecord(value)) {throw new ShopError('shop_effect_receipt_invalid');}
+    try {
+        requireExactKeys(
+            value,
+            ['schemaVersion', 'activeActivationIds', 'transitionActivationIds'],
+            'shop effect receipt',
+        );
+        if (value.schemaVersion !== SHOP_EFFECT_RECEIPT_VERSION) {
+            throw new ShopError('shop_effect_receipt_invalid');
         }
-        if (action.kind === 'activate') {
-            if (activationIds.has(action.activationId)) {
-                throw new ShopError('shop_invalid_domain', `activationId is duplicated: ${action.activationId}`);
-            }
-            if ((quantities.get(item.id) || 0) < 1) {
-                throw new ShopError('shop_invalid_domain', `activation has no inventory: ${item.id}`);
-            }
-            const targetTurn = event.assistantTurn + 1;
-            const activationKey = shopActivationKey(item, action.parameters);
-            for (const existing of activations.values()) {
-                if (existing.itemId !== item.id || !isActiveAt(existing, item, targetTurn)) {continue;}
-                if (item.stacking === 'global-single' || shopActivationKey(item, existing.parameters) === activationKey) {
-                    throw new ShopError('shop_invalid_domain', `activation scope overlaps: ${item.id}`);
-                }
-            }
-            activationIds.add(action.activationId);
-            quantities.set(item.id, (quantities.get(item.id) || 0) - 1);
-            activations.set(action.activationId, {
-                activationId: action.activationId,
-                itemId: item.id,
-                parameters: { ...action.parameters },
-                startsAtAssistantTurn: targetTurn,
-                activatedByEventId: event.eventId,
-                activatedAtRevision: event.revision,
-            });
-            continue;
+        const activeActivationIds = requireCanonicalIdList(value.activeActivationIds, 'receipt.activeActivationIds');
+        const transitionActivationIds = requireCanonicalIdList(
+            value.transitionActivationIds,
+            'receipt.transitionActivationIds',
+        );
+        if (activeActivationIds.some(id => transitionActivationIds.includes(id))) {
+            throw new ShopError('shop_effect_receipt_invalid');
         }
-        const activation = activations.get(action.activationId);
-        if (!activation || activation.itemId !== item.id) {
-            throw new ShopError('shop_invalid_domain', `deactivation target is missing: ${action.activationId}`);
-        }
-        if (item.duration.kind !== 'manual' || activation.deactivatedByEventId) {
-            throw new ShopError('shop_invalid_domain', `deactivation target is not an active manual effect: ${action.activationId}`);
-        }
-        activation.deactivatedByEventId = event.eventId;
-        activation.transitionAtAssistantTurn = event.assistantTurn + 1;
+        return { schemaVersion: SHOP_EFFECT_RECEIPT_VERSION, activeActivationIds, transitionActivationIds };
+    } catch (error) {
+        if (error instanceof ShopError && error.code === 'shop_effect_receipt_invalid') {throw error;}
+        throw new ShopError('shop_effect_receipt_invalid');
     }
 }

@@ -4,7 +4,6 @@ import type { XiaobaiOsAppProps } from '../../../shell/app-src/app-registry.js';
 import type { WalletClientState, WalletTransactionPageView } from '../types.js';
 import WalletAppHeader from './WalletAppHeader.vue';
 import WalletBalanceCard from './WalletBalanceCard.vue';
-import WalletIconButton from './WalletIconButton.vue';
 import WalletNotice, { type WalletNoticeTone } from './WalletNotice.vue';
 import WalletTransactionList from './WalletTransactionList.vue';
 import './wallet-ui.css';
@@ -21,7 +20,7 @@ let unsubscribe = () => {};
 let requestGeneration = 0;
 
 const requiresConfirmation = computed(() => state.value.status === 'unconfirmed');
-const actionBusy = computed(() => refreshing.value || state.value.status === 'reconciling' || state.value.status === 'saving');
+const actionBusy = computed(() => refreshing.value || state.value.status === 'loading' || state.value.status === 'saving');
 const refreshDisabled = computed(() => actionBusy.value || requiresConfirmation.value || state.value.status === 'conflict');
 const noticeVisible = computed(() => Boolean(state.value.message || errorMessage.value));
 
@@ -33,9 +32,16 @@ const noticeTone = computed<WalletNoticeTone>(() => {
 
 const noticeTitle = computed(() => {
     if (state.value.status === 'conflict') {return '账本发生冲突';}
-    if (state.value.status === 'blocked') {return '账本暂停';}
+    if (state.value.status === 'blocked') {return '钱包暂时无法读取';}
     return '账本状态';
 });
+
+function readableError(error: unknown): string {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('聊天已切换')) {return '聊天已切换，请重新打开钱包。';}
+    if (message === 'host_request_timeout') {return '读取等待超时，请稍后重新读取。';}
+    return '钱包数据暂时无法读取，请稍后重试。';
+}
 
 function binding(): { chatIdentity: string } {
     return { chatIdentity: state.value.chatIdentity };
@@ -60,7 +66,7 @@ async function refresh(): Promise<void> {
         };
         if (generation === requestGeneration) {applyState(response.result);}
     } catch (error) {
-        if (generation === requestGeneration) {errorMessage.value = error instanceof Error ? error.message : String(error);}
+        if (generation === requestGeneration) {errorMessage.value = readableError(error);}
     } finally {
         if (generation === requestGeneration) {refreshing.value = false;}
     }
@@ -77,7 +83,7 @@ async function confirmSave(): Promise<void> {
         };
         if (generation === requestGeneration) {applyState(response.result.state);}
     } catch (error) {
-        if (generation === requestGeneration) {errorMessage.value = error instanceof Error ? error.message : String(error);}
+        if (generation === requestGeneration) {errorMessage.value = readableError(error);}
     } finally {
         if (generation === requestGeneration) {refreshing.value = false;}
     }
@@ -100,7 +106,7 @@ async function loadMore(): Promise<void> {
         state.value.nextCursor = response.result.nextCursor;
         state.value.hasMore = response.result.hasMore;
     } catch (error) {
-        if (generation === requestGeneration) {loadMoreError.value = error instanceof Error ? error.message : String(error);}
+        if (generation === requestGeneration) {loadMoreError.value = '更多流水暂时无法读取，请稍后重试。';}
     } finally {
         if (generation === requestGeneration) {loadingMore.value = false;}
     }
@@ -113,7 +119,7 @@ onMounted(() => {
             applyState((message.payload as { state: WalletClientState }).state);
         }
         if (message.type === 'wallet/error') {
-            errorMessage.value = String((message.payload as { message?: string })?.message || '钱包暂时无法读取');
+            errorMessage.value = readableError((message.payload as { message?: string })?.message || '');
         }
     });
 });
@@ -126,13 +132,7 @@ onBeforeUnmount(() => {
 
 <template>
     <main class="wallet-ui-app wallet-app">
-        <WalletAppHeader kicker="Wallet" title="钱包">
-            <template #actions>
-                <WalletIconButton label="重新读取账本" :disabled="refreshDisabled" :busy="refreshing" @activate="refresh">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M18.2 9A7 7 0 0 0 6.1 6.7L4 9m16 6-2.1 2.3A7 7 0 0 1 5.8 15" /></svg>
-                </WalletIconButton>
-            </template>
-        </WalletAppHeader>
+        <WalletAppHeader kicker="Wallet" title="钱包" />
 
         <div class="wallet-ui-scroll">
             <WalletBalanceCard :balance="state.balance" :currency="state.currency" :status="state.status" />
@@ -147,7 +147,7 @@ onBeforeUnmount(() => {
                 <button v-if="requiresConfirmation" type="button" class="wallet-ui-text-button" :disabled="refreshing" @click="confirmSave">
                     {{ refreshing ? '正在核实…' : '核实保存结果' }}
                 </button>
-                <button v-else-if="state.status === 'blocked'" type="button" class="wallet-ui-text-button" :disabled="refreshing" @click="refresh">
+                <button v-else-if="state.status === 'blocked' || errorMessage" type="button" class="wallet-ui-text-button" :disabled="refreshDisabled" @click="refresh">
                     {{ refreshing ? '正在读取…' : '重新读取' }}
                 </button>
             </WalletNotice>

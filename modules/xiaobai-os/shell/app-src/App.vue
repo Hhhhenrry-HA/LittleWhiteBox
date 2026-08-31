@@ -16,6 +16,11 @@ interface InitPayload {
     } | null;
 }
 
+interface PendingAppOpening {
+    appId: string;
+    latestState?: unknown;
+}
+
 const bridge = createFrameBridge();
 const root = ref<HTMLElement | null>(null);
 const initialized = ref(false);
@@ -28,11 +33,13 @@ const errorMessage = ref('');
 let previousFocus: HTMLElement | null = null;
 let unsubscribe = () => {};
 let navigationGeneration = 0;
+let pendingAppOpening: PendingAppOpening | null = null;
 
 const availableApps = computed(() => xiaobaiOsApps.filter(app => availableIds.value.has(app.id)));
 
 function applyInit(payload: InitPayload): void {
     navigationGeneration += 1;
+    pendingAppOpening = null;
     theme.value = payload.theme === 'dark' ? 'dark' : 'light';
     availableIds.value = new Set((payload.apps || []).map(app => String(app.id)));
     characterAvatar.value = String(payload.chat?.characterAvatar || '');
@@ -52,10 +59,19 @@ function handleHostMessage(message: FrameMessage): void {
     if (message.type === 'os/error') {
         errorMessage.value = String((message.payload as { message?: string })?.message || '小白 OS 初始化失败');
     }
+    const state = (message.payload as { state?: unknown } | undefined)?.state;
+    if (pendingAppOpening && message.type === `${pendingAppOpening.appId}/state`) {
+        pendingAppOpening.latestState = state;
+    }
+    if (activeApp.value && message.type === `${activeApp.value.id}/state`) {
+        activeState.value = state;
+    }
 }
 
 async function openApp(app: XiaobaiOsAppDefinition): Promise<void> {
     const generation = ++navigationGeneration;
+    const opening: PendingAppOpening = { appId: app.id };
+    pendingAppOpening = opening;
     errorMessage.value = '';
     try {
         const response = await bridge.request('app/activate', { appId: app.id }) as { appId?: string; state?: unknown };
@@ -65,7 +81,7 @@ async function openApp(app: XiaobaiOsAppDefinition): Promise<void> {
         if (response.appId !== app.id) {
             throw new Error('app_activation_mismatch');
         }
-        activeState.value = response.state ?? null;
+        activeState.value = opening.latestState ?? response.state ?? null;
         activeApp.value = app;
     } catch (error) {
         if (generation !== navigationGeneration) {
@@ -73,11 +89,14 @@ async function openApp(app: XiaobaiOsAppDefinition): Promise<void> {
         }
         activeApp.value = null;
         errorMessage.value = error instanceof Error ? error.message : String(error);
+    } finally {
+        if (pendingAppOpening === opening) {pendingAppOpening = null;}
     }
 }
 
 function goHome(): void {
     navigationGeneration += 1;
+    pendingAppOpening = null;
     bridge.post('app/deactivate', { appId: activeApp.value?.id || '' });
     activeApp.value = null;
     activeState.value = null;
@@ -85,6 +104,7 @@ function goHome(): void {
 
 function close(): void {
     navigationGeneration += 1;
+    pendingAppOpening = null;
     bridge.post('os/close');
 }
 
@@ -126,6 +146,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
     navigationGeneration += 1;
+    pendingAppOpening = null;
     unsubscribe();
     bridge.dispose();
     previousFocus?.focus();

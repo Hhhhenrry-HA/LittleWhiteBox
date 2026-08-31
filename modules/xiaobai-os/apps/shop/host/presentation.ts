@@ -1,7 +1,6 @@
 import { listShopCatalog } from '../../../domains/shop/catalog.js';
-import { isShopActivationActive, shopRemainingAssistantTurns } from '../../../domains/shop/timeline.js';
+import { isShopActivationActive, shopRemainingApplications } from '../../../domains/shop/timeline.js';
 import type { ShopServiceView } from '../application/service.js';
-import type { StoryReconciliationState } from '../../../host/story-reconciliation-runtime.js';
 import type { ShopActivationView, ShopClientState, ShopClientStatus } from '../types.js';
 
 const CATEGORY_LABELS: Readonly<Record<string, string>> = Object.freeze({
@@ -18,13 +17,11 @@ const CATEGORY_LABELS: Readonly<Record<string, string>> = Object.freeze({
 function durationLabel(duration: ReturnType<typeof listShopCatalog>[number]['duration']): string {
     if (duration.kind === 'manual') {return '持续至手动关闭';}
     if (duration.kind === 'permanent') {return '永久生效';}
-    return duration.rounds === 1 ? '作用于下一回合' : `持续 ${duration.rounds} 回合`;
+    return duration.applications === 1 ? '作用于下一条新回复' : `作用于接下来 ${duration.applications} 条新回复`;
 }
 
 function resolveStatus(
     view: ShopServiceView,
-    storyState: StoryReconciliationState,
-    chatIdentity: string,
 ): { status: ShopClientStatus; message: string } {
     if (view.writeState === 'conflict') {
         return { status: 'conflict', message: '服务端数据与当前候选不一致，请刷新酒馆后再继续。' };
@@ -35,27 +32,22 @@ function resolveStatus(
     if (view.writeState === 'saving') {
         return { status: 'saving', message: '正在确认商店与账本保存结果…' };
     }
-    if (storyState.identityKey === chatIdentity && storyState.status !== 'ready') {
-        return { status: storyState.status, message: storyState.message };
-    }
     return { status: 'ready', message: '' };
 }
 
 function activationView(
     activation: ShopServiceView['projection']['activations'][number],
-    targetAssistantTurn: number,
 ): ShopActivationView {
     const item = listShopCatalog().find((candidate) => candidate.id === activation.itemId);
     if (!item) {throw new Error(`shop_item_missing:${activation.itemId}`);}
-    const active = isShopActivationActive(activation, item, targetAssistantTurn);
-    const closed = activation.transitionAtAssistantTurn !== undefined
-        && targetAssistantTurn >= activation.transitionAtAssistantTurn;
-    const remaining = shopRemainingAssistantTurns(activation, item, targetAssistantTurn);
+    const active = isShopActivationActive(activation, item);
+    const closed = item.duration.kind === 'manual' && activation.deactivatedByEventId !== undefined;
+    const remaining = shopRemainingApplications(activation, item);
     const state = active ? 'active' : closed ? 'closed' : 'expired';
     const stateLabel = active
         ? remaining === null
             ? item.duration.kind === 'manual' ? '持续生效中' : '永久生效'
-            : `剩余 ${remaining} 回合`
+            : `剩余 ${remaining} 条新回复`
         : closed ? '已关闭' : '已结束';
     return {
         activationId: activation.activationId,
@@ -76,17 +68,13 @@ function activationView(
 export function presentShopState({
     chatIdentity,
     serviceView,
-    storyState,
-    completedAssistantTurns,
     generationActive,
 }: {
     chatIdentity: string;
     serviceView: ShopServiceView;
-    storyState: StoryReconciliationState;
-    completedAssistantTurns: number;
     generationActive: boolean;
 }): ShopClientState {
-    const status = resolveStatus(serviceView, storyState, chatIdentity);
+    const status = resolveStatus(serviceView);
     return {
         chatIdentity,
         currency: '小白币',
@@ -118,8 +106,6 @@ export function presentShopState({
                 quantity: inventory?.quantity || 0,
             };
         }),
-        activations: serviceView.projection.activations.map((activation) => (
-            activationView(activation, completedAssistantTurns + 1)
-        )),
+        activations: serviceView.projection.activations.map(activationView),
     };
 }

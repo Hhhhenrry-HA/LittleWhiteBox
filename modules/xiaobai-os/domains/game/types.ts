@@ -1,5 +1,3 @@
-import type { XiaobaiOsStoryAnchor } from '../../types.js';
-
 export const GAME_SCHEMA_VERSION = 1 as const;
 
 export type GameDieFace = 1 | 2 | 3 | 4 | 5 | 6;
@@ -210,8 +208,6 @@ export interface GameActivityRecord extends GameActivity {
     revision: number;
     eventId: string;
     actionId: string;
-    anchor: XiaobaiOsStoryAnchor;
-    assistantTurn: number;
     createdAt: number;
 }
 
@@ -242,8 +238,6 @@ export interface GameEvent {
     actionId: string;
     command: GameAction;
     result: GameEventResult;
-    anchor: XiaobaiOsStoryAnchor;
-    assistantTurn: number;
     createdAt: number;
 }
 
@@ -262,8 +256,6 @@ export interface GameAppendEventInput extends GameCasToken {
     actionId: string;
     command: GameAction;
     result: GameEventResult;
-    anchor: XiaobaiOsStoryAnchor;
-    assistantTurn: number;
     createdAt: number;
 }
 
@@ -272,18 +264,6 @@ export interface GameCommandResult {
     event: GameEvent;
     state: GameState;
     created: boolean;
-}
-
-export interface GameRestoreImpact {
-    changed: boolean;
-    firstInvalidRevision: number | null;
-    removedEventIds: string[];
-    removedActionIds: string[];
-    removedActivityIds: string[];
-    affectedGameIds: string[];
-    previousLockedAmount: number;
-    nextLockedAmount: number;
-    lockedAmountChange: number;
 }
 
 export interface GamePublicActivityRecord {
@@ -296,7 +276,6 @@ export interface GamePublicActivityRecord {
     revision: number;
     eventId: string;
     actionId: string;
-    assistantTurn: number;
     createdAt: number;
 }
 

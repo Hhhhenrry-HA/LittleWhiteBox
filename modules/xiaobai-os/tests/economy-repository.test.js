@@ -3,8 +3,6 @@ import test from 'node:test';
 
 import { createEconomyRepository } from '../domains/economy/repository.js';
 import { createChatDataStore } from '../host/chat-data-store.js';
-import { createStoryActionRunner } from '../host/story-action-runner.js';
-import { createStoryWriteGate } from '../host/story-write-gate.js';
 
 function createHarness() {
     const identity = { key: 'character:1:chat-a', chatId: 'chat-a' };
@@ -13,11 +11,6 @@ function createHarness() {
         identity,
         metadata,
         persisted: undefined,
-        story: {
-            identityKey: identity.key,
-            messages: [{ role: 'user', name: '主人', text: '第一幕' }],
-        },
-        capture: null,
         saveCount: 0,
         save: async transaction => { state.persisted = structuredClone(transaction.xiaobaiOs); },
     };
@@ -30,17 +23,12 @@ function createHarness() {
         },
         readPersistedXiaobaiOs: async () => structuredClone(state.persisted),
     });
-    const gate = createStoryWriteGate();
-    const actionRunner = createStoryActionRunner(store, {
-        captureCurrent: () => structuredClone(state.capture ? state.capture() : state.story),
-    }, gate, async () => {});
     let id = 0;
     const economy = createEconomyRepository(store, {
         now: () => 1_000 + id,
         createId: () => `tx-${++id}`,
-        actionRunner,
     });
-    return { economy, gate, state };
+    return { economy, state };
 }
 
 function purchase(id, amount = 20) {
@@ -57,63 +45,11 @@ function purchase(id, amount = 20) {
     };
 }
 
-test('economy repository uses the shared story runner and rejects writes while reconciliation is required', async () => {
-    const { economy, gate, state } = createHarness();
-    await economy.ensureCurrent();
-    const posted = await economy.postCurrent(purchase('one'));
-
-    assert.equal(posted.transaction.anchor.floor, 0);
-    assert.equal(economy.getPlayerBalance(), 80);
-
-    const token = gate.block(state.identity.key);
-    await assert.rejects(economy.postCurrent(purchase('two')), /story_reconciliation_required/);
-    assert.equal(economy.readCurrent().transactions.length, 2);
-    gate.release(state.identity.key, token);
-});
-
-test('economy repository rechecks the same story immediately before installing its candidate', async () => {
-    const { economy, state } = createHarness();
-    await economy.ensureCurrent();
-    const savesBefore = state.saveCount;
-    let captures = 0;
-    state.capture = () => {
-        captures += 1;
-        if (captures < 3) return state.story;
-        return {
-            ...state.story,
-            messages: [{ role: 'user', name: '主人', text: '剧情在提交前改变' }],
-        };
-    };
-
-    await assert.rejects(economy.postCurrent(purchase('late')), /story_changed_during_bound_action/);
-    assert.equal(state.saveCount, savesBefore);
-    assert.equal(economy.readCurrent().transactions.length, 1);
-});
-
-test('an async pre-commit hook cannot move the story after the final economy check', async () => {
-    const { economy, state } = createHarness();
-    await economy.ensureCurrent();
-    const savesBefore = state.saveCount;
-
-    await assert.rejects(economy.postCurrent(purchase('hook-race'), {
-        async beforeCommit() {
-            state.story = {
-                ...state.story,
-                messages: [{ role: 'user', name: '主人', text: '钩子期间剧情改变' }],
-            };
-        },
-    }), /story_changed_during_bound_action/);
-
-    assert.equal(state.saveCount, savesBefore);
-    assert.equal(economy.readCurrent().transactions.length, 1);
-});
-
-test('an idempotent repository retry survives story messages appended after the original action', async () => {
+test('economy writes do not depend on conversation content and idempotent retries do not save twice', async () => {
     const { economy, state } = createHarness();
     await economy.ensureCurrent();
     const first = await economy.postCurrent(purchase('stable-retry'));
     const savesAfterFirst = state.saveCount;
-    state.story.messages.push({ role: 'assistant', name: '角色', text: '后续剧情' });
 
     const retry = await economy.postCurrent(purchase('stable-retry'));
 

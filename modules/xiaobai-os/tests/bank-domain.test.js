@@ -15,14 +15,9 @@ import {
     createEmptyBankState,
     flattenBankActivities,
     getBankCasToken,
-    reconcileBankWithStory,
     replayBankEvents,
 } from '../domains/bank/timeline.js';
 import { createBankView } from '../domains/bank/view.js';
-
-const HASH_A = `sha256:${'a'.repeat(64)}`;
-const HASH_B = `sha256:${'b'.repeat(64)}`;
-const HASH_C = `sha256:${'c'.repeat(64)}`;
 
 function depositPosition(id, productId = 'short-term', principal = 100, startTurn = 0) {
     const product = getBankDepositContract(productId);
@@ -32,7 +27,6 @@ function depositPosition(id, productId = 'short-term', principal = 100, startTur
         principal,
         startTurn,
         maturityTurn: startTurn + product.lockRounds,
-        openedAtAnchor: { floor: 0, prefixHash: HASH_A },
         ...createBankDepositFrozenContract(product, principal),
     };
 }
@@ -45,7 +39,6 @@ function fundPosition(id, productId = 'steady-fund', principal = 200, startTurn 
         principal,
         startTurn,
         maturityTurn: startTurn + product.lockRounds,
-        openedAtAnchor: { floor: 0, prefixHash: HASH_A },
         ...createBankFundFrozenContract(product, principal, returnBps),
     };
 }
@@ -57,7 +50,6 @@ function eventInput(domain, sequence, command, result, options = {}) {
         actionId: `bank-action-${sequence}`,
         command,
         result,
-        anchor: { floor: 0, prefixHash: HASH_A },
         assistantTurn: 0,
         createdAt: 1_000 + sequence,
         ...options,
@@ -166,7 +158,6 @@ test('schema v1 events replay finance changes and flatten activities at their ev
         revision: 2,
         eventId: 'bank-event-2',
         actionId: 'bank-action-2',
-        anchor: { floor: 0, prefixHash: HASH_A },
         assistantTurn: 1,
         createdAt: 1_002,
     }]);
@@ -198,8 +189,6 @@ test('validation rejects non-canonical shapes, forged contracts, money, activiti
     wrongRevision.events[0].revision = 2;
     const paddedId = structuredClone(valid);
     paddedId.events[0].eventId = ' padded ';
-    const badAnchor = structuredClone(valid);
-    badAnchor.events[0].anchor.prefixHash = 'not-a-hash';
     const badTimestamp = structuredClone(valid);
     badTimestamp.events[0].createdAt = 1.5;
     const badPrincipal = structuredClone(valid);
@@ -212,7 +201,6 @@ test('validation rejects non-canonical shapes, forged contracts, money, activiti
         extraCommand,
         wrongRevision,
         paddedId,
-        badAnchor,
         badTimestamp,
         badPrincipal,
         forgedContract,
@@ -298,38 +286,15 @@ test('CAS append is immutable and idempotent action replay precedes stale-token 
     }), error => error.code === 'bank_revision_conflict');
 });
 
-test('story reconciliation removes the first invalid suffix and reports exact locked impact', () => {
-    const deposit = depositPosition('deposit-before-branch');
-    let domain = openDeposit(createEmptyBankDomain(), 1, deposit).domain;
-    const fund = {
-        ...fundPosition('fund-after-branch', 'steady-fund', 200, 1),
-        openedAtAnchor: { floor: 1, prefixHash: HASH_B },
-    };
-    domain = openFund(domain, 2, fund, {
-        anchor: { floor: 1, prefixHash: HASH_B },
-        assistantTurn: 1,
-    }).domain;
+test('assistant turn counts may move backward without deleting committed positions', () => {
+    const later = depositPosition('opened-later', 'short-term', 100, 8);
+    let domain = openDeposit(createEmptyBankDomain(), 1, later, { assistantTurn: 8 }).domain;
+    const afterDeletion = fundPosition('opened-after-deletion', 'steady-fund', 200, 3);
+    domain = openFund(domain, 2, afterDeletion, { assistantTurn: 3 }).domain;
 
     assert.equal(calculateBankLockedAmount(replayBankEvents(domain)), 300);
-    const reconciled = reconcileBankWithStory(domain, {
-        identityKey: 'character:1:chat-a',
-        messages: [],
-        prefixHashes: [HASH_A, HASH_C],
-        latestAnchor: { floor: 1, prefixHash: HASH_C },
-    });
-    assert.equal(reconciled.domain.events.length, 1);
-    assert.deepEqual(reconciled.impact, {
-        changed: true,
-        firstInvalidRevision: 2,
-        removedEventIds: ['bank-event-2'],
-        removedActionIds: ['bank-action-2'],
-        removedActivityIds: [],
-        affectedPositionIds: ['fund-after-branch'],
-        previousLockedAmount: 300,
-        nextLockedAmount: 100,
-        lockedAmountChange: -200,
-    });
-    assert.equal(calculateBankLockedAmount(replayBankEvents(reconciled.domain)), 100);
+    assert.deepEqual(replayBankEvents(domain).openDeposits, [later]);
+    assert.deepEqual(replayBankEvents(domain).openInvestments, [afterDeletion]);
 });
 
 test('public view exposes products and claimability without leaking locked fund outcomes', () => {
@@ -344,7 +309,6 @@ test('public view exposes products and claimability without leaking locked fund 
     assert.equal(Object.hasOwn(locked.investments[0], 'resolvedReturnBps'), false);
     assert.equal(Object.hasOwn(locked.investments[0], 'settlementAmount'), false);
     assert.equal(JSON.stringify(locked).includes('resolvedReturnBps'), false);
-    assert.equal(JSON.stringify(locked).includes(HASH_A), false);
 
     const claimable = createBankView({ domain, currentTurn: 20 });
     assert.deepEqual({
@@ -377,5 +341,4 @@ test('public activity paging is newest-first, anchor-free and independently copi
 
     latest.activities[0].detail.outcome = 'matured';
     assert.equal(domain.events[3].result.activities[0].detail.outcome, 'withdrawn-early');
-    assert.equal(JSON.stringify(latest).includes(HASH_A), false);
 });

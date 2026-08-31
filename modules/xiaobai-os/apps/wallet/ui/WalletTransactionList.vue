@@ -16,7 +16,7 @@ defineEmits<{ loadMore: [] }>();
 <template>
     <div>
         <WalletEmpty
-            v-if="transactions.length === 1 && transactions[0]?.anchorFloor === -1"
+            v-if="transactions.length === 1 && transactions[0]?.sequence === 1 && transactions[0]?.sourceDomain === 'economy'"
             title="新账簿已经启用"
             message="除了开户赠礼，还没有其他收支。"
         >

@@ -1,4 +1,4 @@
-export type GameClientStatus = 'ready' | 'saving' | 'unconfirmed' | 'conflict' | 'reconciling' | 'blocked';
+export type GameClientStatus = 'ready' | 'loading' | 'saving' | 'unconfirmed' | 'conflict' | 'blocked';
 export type GameKind = 'dice' | 'push' | 'ladder';
 export type GameDieFace = 1 | 2 | 3 | 4 | 5 | 6;
 export type GameDiceBidFace = 2 | 3 | 4 | 5 | 6;

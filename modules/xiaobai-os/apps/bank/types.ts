@@ -1,4 +1,4 @@
-export type BankClientStatus = 'ready' | 'saving' | 'unconfirmed' | 'conflict' | 'reconciling' | 'blocked';
+export type BankClientStatus = 'ready' | 'loading' | 'saving' | 'unconfirmed' | 'conflict' | 'blocked';
 export type BankRiskView = 'low' | 'medium' | 'high';
 export type BankPage = 'vault' | 'deposits' | 'funds' | 'positions' | 'records';
 

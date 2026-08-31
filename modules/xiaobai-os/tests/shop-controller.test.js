@@ -9,6 +9,10 @@ function deferred() {
     return { promise, resolve };
 }
 
+function nextTask() {
+    return new Promise(resolve => setTimeout(resolve, 0));
+}
+
 function emptyView(writeState = 'ready') {
     return {
         domain: null,
@@ -22,18 +26,14 @@ function createHarness({ economyOpened = true, writeState = 'ready' } = {}) {
     const host = {
         identity: { key: 'character:1:chat-a', chatId: 'chat-a' },
         posts: [],
-        story: {
-            identityKey: 'character:1:chat-a',
-            messages: [{ role: 'user', name: '主人', text: '开场' }],
-        },
     };
     let view = emptyView(writeState);
     let opened = economyOpened;
     let generationActive = false;
     let generationListener = null;
+    let dataListener = null;
+    let ensureCalls = 0;
     const commands = [];
-    const storyListeners = new Set();
-    let storyState = { identityKey: host.identity.key, status: 'ready', message: '' };
     const shop = {
         readCurrent: () => structuredClone(view),
         async purchaseCurrent(input) {
@@ -58,6 +58,7 @@ function createHarness({ economyOpened = true, writeState = 'ready' } = {}) {
             commands.push({ kind: 'deactivate', input: structuredClone(input) });
             return structuredClone(view);
         },
+        async commitDeliveryCurrent() {return structuredClone(view);},
         async confirmPending() {
             view = { ...view, writeState: 'ready' };
             return { status: 'confirmed' };
@@ -66,27 +67,23 @@ function createHarness({ economyOpened = true, writeState = 'ready' } = {}) {
     };
     const economy = {
         hasCurrent: () => opened,
-        async ensureCurrent() {opened = true;},
-    };
-    let reconciliations = 0;
-    const storyRuntime = {
-        async reconcileNow() {reconciliations += 1; return storyState;},
-        getState: () => storyState,
-        subscribe(listener) {
-            storyListeners.add(listener);
-            return () => storyListeners.delete(listener);
+        async ensureCurrent() {
+            ensureCalls += 1;
+            opened = true;
         },
     };
     const controller = createShopController({
         shop,
         economy,
-        storyRuntime,
-        captureStory: () => structuredClone(host.story),
         getChatIdentity: () => host.identity,
         isMainGenerationActive: () => generationActive,
         subscribeGeneration(listener) {
             generationListener = listener;
             return () => {generationListener = null;};
+        },
+        subscribeData(listener) {
+            dataListener = listener;
+            return () => {dataListener = null;};
         },
     });
     controller.startBackground();
@@ -95,37 +92,47 @@ function createHarness({ economyOpened = true, writeState = 'ready' } = {}) {
         controller,
         host,
         shop,
-        get reconciliations() {return reconciliations;},
+        get ensureCalls() {return ensureCalls;},
         setGeneration(active) {
             generationActive = active;
             generationListener?.(active);
         },
-        publishStory(next) {
-            storyState = next;
-            storyListeners.forEach(listener => listener(next));
+        publishData(next, identity = host.identity.key) {
+            view = structuredClone(next);
+            dataListener?.({ identityKey: identity, writeState: view.writeState });
         },
     };
 }
 
-async function activate(harness) {
-    return harness.controller.activate({
+async function activate(harness, { waitForPreparation = true } = {}) {
+    const initial = await harness.controller.activate({
         post(type, payload) {
             harness.host.posts.push({ type, payload });
             return true;
         },
     });
+    if (!waitForPreparation) {return initial;}
+    await nextTask();
+    return harness.host.posts.findLast(post => post.type === 'shop/state')?.payload.state || initial;
 }
 
-test('shop activation opens Economy when needed and otherwise reconciles before presenting the catalog', async () => {
+test('shop prepares a missing Economy only and opens existing data immediately', async () => {
     const unopened = createHarness({ economyOpened: false });
-    const fresh = await activate(unopened);
+    const fresh = await activate(unopened, { waitForPreparation: false });
     assert.equal(fresh.balance, 100);
     assert.equal(fresh.catalog.length, 25);
-    assert.equal(unopened.reconciliations, 0);
+    assert.equal(fresh.status, 'loading');
+    assert.equal(unopened.ensureCalls, 0);
+    await nextTask();
+    assert.equal(unopened.host.posts.findLast(post => post.type === 'shop/state').payload.state.status, 'ready');
 
     const existing = createHarness();
-    await activate(existing);
-    assert.equal(existing.reconciliations, 1);
+    const ready = await activate(existing, { waitForPreparation: false });
+    assert.equal(ready.status, 'ready');
+    assert.equal(existing.ensureCalls, 0);
+    await nextTask();
+    assert.equal(existing.ensureCalls, 0);
+    assert.equal(existing.host.posts.length, 0);
 });
 
 test('purchase accepts only identity, CAS, action and item fields and publishes the confirmed state', async () => {
@@ -210,20 +217,38 @@ test('shop controller serializes writes and invalidates the active page after a 
     );
 });
 
-test('generation and story state changes are pushed without writing Shop data', async () => {
+test('generation changes refresh Shop presentation without writing Shop data', async () => {
     const harness = createHarness();
     await activate(harness);
     harness.setGeneration(true);
     assert.equal(harness.host.posts.findLast(post => post.type === 'shop/state').payload.state.generationActive, true);
 
-    harness.publishStory({
-        identityKey: harness.host.identity.key,
-        status: 'reconciling',
-        message: '剧情已变化，正在核对商店',
-    });
     const pushed = harness.host.posts.findLast(post => post.type === 'shop/state').payload.state;
-    assert.equal(pushed.status, 'reconciling');
-    assert.equal(pushed.message, '剧情已变化，正在核对商店');
+    assert.equal(pushed.status, 'ready');
+    assert.equal(harness.commands.length, 0);
+});
+
+test('background root commits publish the latest Shop revision and save state', async () => {
+    const harness = createHarness();
+    await activate(harness);
+    const background = {
+        ...emptyView('saving'),
+        projection: { revision: 1, eventId: 'reply-event-1', inventory: {}, activations: [] },
+    };
+
+    harness.publishData(background);
+    let pushed = harness.host.posts.findLast(post => post.type === 'shop/state').payload.state;
+    assert.equal(pushed.revision, 1);
+    assert.equal(pushed.status, 'saving');
+
+    harness.publishData({ ...background, writeState: 'ready' });
+    pushed = harness.host.posts.findLast(post => post.type === 'shop/state').payload.state;
+    assert.equal(pushed.revision, 1);
+    assert.equal(pushed.status, 'ready');
+
+    const postCount = harness.host.posts.length;
+    harness.publishData(background, 'character:2:chat-b');
+    assert.equal(harness.host.posts.length, postCount);
 });
 
 test('an unconfirmed Shop save exposes the shared confirmation result', async () => {

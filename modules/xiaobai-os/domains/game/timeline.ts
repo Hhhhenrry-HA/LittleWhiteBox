@@ -1,4 +1,3 @@
-import { EMPTY_STORY_PREFIX_HASH } from '../../types.js';
 import { validateGameAction, validateGameDomain, validateGameState } from './invariants.js';
 import {
     GAME_SCHEMA_VERSION,
@@ -11,16 +10,10 @@ import {
     type GameCommandResult,
     type GameDomainV1,
     type GameEvent,
-    type GameRestoreImpact,
     type GameState,
 } from './types.js';
 
-const HASH_PATTERN = /^sha256:[0-9a-f]{64}$/;
 const MAX_DATE_MS = 8_640_000_000_000_000;
-
-interface StoryPrefixLookup {
-    readonly prefixHashes: readonly string[];
-}
 
 export function createEmptyGameDomain(): GameDomainV1 {
     return { schemaVersion: GAME_SCHEMA_VERSION, events: [] };
@@ -58,8 +51,6 @@ export function flattenGameActivities(domain: GameDomainV1): GameActivityRecord[
         revision: event.revision,
         eventId: event.eventId,
         actionId: event.actionId,
-        anchor: structuredClone(event.anchor),
-        assistantTurn: event.assistantTurn,
         createdAt: event.createdAt,
     })));
 }
@@ -101,11 +92,7 @@ function requireAppendContext(input: GameAppendEventInput): void {
         || /[\u0000-\u001f\u007f-\u009f]/u.test(input.actionId)) {
         throwGameError('game_action_required');
     }
-    if (!input.anchor || !Number.isSafeInteger(input.anchor.floor) || input.anchor.floor < -1
-        || !HASH_PATTERN.test(input.anchor.prefixHash || '')
-        || (input.anchor.floor === -1 && input.anchor.prefixHash !== EMPTY_STORY_PREFIX_HASH)
-        || !Number.isSafeInteger(input.assistantTurn) || input.assistantTurn < 0
-        || !Number.isSafeInteger(input.createdAt) || input.createdAt < 0 || input.createdAt > MAX_DATE_MS) {
+    if (!Number.isSafeInteger(input.createdAt) || input.createdAt < 0 || input.createdAt > MAX_DATE_MS) {
         throwGameError('game_invalid_context', 'event');
     }
 }
@@ -141,8 +128,6 @@ export function appendGameEvent(domain: GameDomainV1, input: GameAppendEventInpu
         actionId: input.actionId,
         command,
         result: structuredClone(input.result),
-        anchor: structuredClone(input.anchor),
-        assistantTurn: input.assistantTurn,
         createdAt: input.createdAt,
     };
     const next: GameDomainV1 = {
@@ -165,69 +150,4 @@ export function calculateGameLockedAmount(state: GameState): number {
         throwGameError('game_invalid_domain', 'locked-amount');
     }
     return locked;
-}
-
-function isAnchorValid(event: GameEvent, fingerprint: StoryPrefixLookup): boolean {
-    if (event.anchor.floor === -1) {return event.anchor.prefixHash === EMPTY_STORY_PREFIX_HASH;}
-    return fingerprint.prefixHashes[event.anchor.floor] === event.anchor.prefixHash;
-}
-
-function affectedGameIds(events: readonly GameEvent[]): string[] {
-    const games = new Set<string>();
-    for (const event of events) {
-        games.add(event.command.gameId);
-        for (const change of event.result.changes) {
-            if (change.kind === 'game-started' || change.kind === 'game-advanced') {games.add(change.game.game.id);}
-            else {games.add(change.gameId);}
-        }
-        for (const activity of event.result.activities) {games.add(activity.sourceId);}
-    }
-    return [...games];
-}
-
-/** Cuts the complete suffix from the first event whose story prefix no longer exists. */
-export function reconcileGameWithStory(
-    domain: GameDomainV1,
-    fingerprint: StoryPrefixLookup,
-): { domain: GameDomainV1; impact: GameRestoreImpact } {
-    validateGameDomain(domain);
-    const previousLockedAmount = calculateGameLockedAmount(replayGameEvents(domain));
-    const firstInvalidIndex = domain.events.findIndex((event) => !isAnchorValid(event, fingerprint));
-    if (firstInvalidIndex < 0) {
-        return {
-            domain: structuredClone(domain),
-            impact: {
-                changed: false,
-                firstInvalidRevision: null,
-                removedEventIds: [],
-                removedActionIds: [],
-                removedActivityIds: [],
-                affectedGameIds: [],
-                previousLockedAmount,
-                nextLockedAmount: previousLockedAmount,
-                lockedAmountChange: 0,
-            },
-        };
-    }
-    const removed = domain.events.slice(firstInvalidIndex);
-    const next: GameDomainV1 = {
-        schemaVersion: GAME_SCHEMA_VERSION,
-        events: structuredClone(domain.events.slice(0, firstInvalidIndex)),
-    };
-    validateGameDomain(next);
-    const nextLockedAmount = calculateGameLockedAmount(replayGameEvents(next));
-    return {
-        domain: next,
-        impact: {
-            changed: true,
-            firstInvalidRevision: removed[0]?.revision ?? null,
-            removedEventIds: removed.map((event) => event.eventId),
-            removedActionIds: removed.map((event) => event.actionId),
-            removedActivityIds: removed.flatMap((event) => event.result.activities.map((activity) => activity.id)),
-            affectedGameIds: affectedGameIds(removed),
-            previousLockedAmount,
-            nextLockedAmount,
-            lockedAmountChange: nextLockedAmount - previousLockedAmount,
-        },
-    };
 }

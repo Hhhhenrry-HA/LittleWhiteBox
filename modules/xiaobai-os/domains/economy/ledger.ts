@@ -1,4 +1,3 @@
-import { EMPTY_STORY_PREFIX_HASH } from '../../types.js';
 import { validateLedger } from './invariants.js';
 import {
     ECONOMY_SCHEMA_VERSION,
@@ -38,7 +37,6 @@ function normalizedInput(input: PostTransactionInput): Omit<EconomyTransaction, 
         note: input.note || '',
         sourceDomain: input.sourceDomain,
         sourceId: input.sourceId,
-        anchor: structuredClone(input.anchor),
         ...(input.reversalOfTransactionId ? { reversalOfTransactionId: input.reversalOfTransactionId } : {}),
     };
 }
@@ -54,8 +52,6 @@ function sameInput(transaction: EconomyTransaction, input: PostTransactionInput)
         && transaction.note === (input.note || '')
         && transaction.sourceDomain === input.sourceDomain
         && transaction.sourceId === input.sourceId
-        && transaction.anchor.floor === input.anchor.floor
-        && transaction.anchor.prefixHash === input.anchor.prefixHash
         && transaction.reversalOfTransactionId === input.reversalOfTransactionId;
 }
 
@@ -82,7 +78,6 @@ export function ensureEconomy(
             note: '欢迎来到小白 OS',
             sourceDomain: 'economy',
             sourceId: 'opening-grant:v1',
-            anchor: { floor: -1, prefixHash: EMPTY_STORY_PREFIX_HASH },
             createdAt: now(),
         }],
     };
@@ -134,13 +129,11 @@ export function postAction(
         if (
             input.actionId !== first.actionId ||
             input.sourceDomain !== first.sourceDomain ||
-            input.sourceId !== first.sourceId ||
-            input.anchor.floor !== first.anchor.floor ||
-            input.anchor.prefixHash !== first.anchor.prefixHash
+            input.sourceId !== first.sourceId
         ) {
             throw new EconomyError(
                 'economy_inconsistent_action',
-                'economy action legs must share action, source and story anchor',
+                'economy action legs must share an action and source',
             );
         }
     }
@@ -204,7 +197,6 @@ export function reverseTransaction(
         note: input.note,
         sourceDomain: input.sourceDomain,
         sourceId: input.sourceId,
-        anchor: input.anchor,
         reversalOfTransactionId: original.id,
     }, dependencies);
 }

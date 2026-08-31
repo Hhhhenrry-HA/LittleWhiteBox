@@ -37,7 +37,7 @@ const writeDisabledReason = computed(() => {
 const refreshDisabled = computed(() => refreshing.value || actionBusy.value || requiresConfirmation.value);
 
 function createActionId(): string {
-    if (typeof crypto.randomUUID === 'function') {return `shop-ui:${crypto.randomUUID()}`;}
+    if (typeof globalThis.crypto?.randomUUID === 'function') {return `shop-ui:${globalThis.crypto.randomUUID()}`;}
     return `shop-ui:${Date.now()}:${Math.random().toString(36).slice(2, 10)}`;
 }
 
@@ -59,7 +59,7 @@ function readableError(error: unknown): string {
         return '商店状态已变化，请关闭确认框后重试。';
     }
     if (message === 'host_request_timeout') {return '等待保存结果超时，请使用同一确认框重试。';}
-    return message;
+    return '商店操作未完成，请稍后重试。';
 }
 
 async function refresh(): Promise<void> {
@@ -142,7 +142,7 @@ onMounted(() => {
             applyState((message.payload as { state: ShopClientState }).state);
         }
         if (message.type === 'shop/error') {
-            errorMessage.value = String((message.payload as { message?: string })?.message || '商店暂时无法读取');
+            errorMessage.value = readableError((message.payload as { message?: string })?.message || '');
         }
     });
 });

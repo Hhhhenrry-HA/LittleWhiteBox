@@ -1,5 +1,4 @@
 import type { BankServiceView } from '../application/service.js';
-import type { StoryReconciliationState } from '../../../host/story-reconciliation-runtime.js';
 import type {
     BankActivityPageView,
     BankActivityView,
@@ -20,8 +19,8 @@ const STATUS_LABELS: Readonly<Record<BankClientStatus, string>> = Object.freeze(
     saving: '正在封存',
     unconfirmed: '保存待核实',
     conflict: '状态冲突',
-    reconciling: '正在核对',
-    blocked: '金库暂停',
+    loading: '正在载入',
+    blocked: '暂时不可用',
 });
 
 function bpsLabel(value: number): string {
@@ -35,8 +34,6 @@ function amountRangeLabel(minimum: number, maximum: number): string {
 
 function status(
     view: BankServiceView,
-    storyState: StoryReconciliationState,
-    chatIdentity: string,
 ): { status: BankClientStatus; statusLabel: string; message: string } {
     let next: BankClientStatus = 'ready';
     let message = '';
@@ -49,9 +46,6 @@ function status(
     } else if (view.writeState === 'saving') {
         next = 'saving';
         message = '正在确认金库与账本保存结果…';
-    } else if (storyState.identityKey === chatIdentity && storyState.status !== 'ready') {
-        next = storyState.status;
-        message = storyState.message;
     }
     return { status: next, statusLabel: STATUS_LABELS[next], message };
 }
@@ -97,12 +91,10 @@ export function presentBankActivityPage(view: BankServiceView): BankActivityPage
 export function presentBankState({
     chatIdentity,
     serviceView,
-    storyState,
     generationActive,
 }: {
     chatIdentity: string;
     serviceView: BankServiceView;
-    storyState: StoryReconciliationState;
     generationActive: boolean;
 }): BankClientState {
     const deposits = serviceView.deposits.map((position) => ({
@@ -149,7 +141,7 @@ export function presentBankState({
         currentTurn: serviceView.currentTurn,
         revision: serviceView.revision,
         eventId: serviceView.eventId,
-        ...status(serviceView, storyState, chatIdentity),
+        ...status(serviceView),
         generationActive,
         claimableCount: deposits.filter((position) => position.claimable).length
             + investments.filter((position) => position.claimable).length,

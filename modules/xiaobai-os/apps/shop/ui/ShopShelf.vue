@@ -24,6 +24,10 @@ const visibleItems = computed(() => selectedCategory.value === 'all'
 
 function purchaseDisabledReason(item: ShopCatalogItemView): string {
     if (props.writeDisabledReason) {return props.writeDisabledReason;}
+    return purchaseHint(item);
+}
+
+function purchaseHint(item: ShopCatalogItemView): string {
     if (item.purchaseLimit !== null && item.purchasedCount >= item.purchaseLimit) {return '此奇物已达购买上限';}
     if (props.balance < item.price) {return `还差 ${item.price - props.balance} 小白币`;}
     return '';
@@ -74,7 +78,7 @@ function purchaseDisabledReason(item: ShopCatalogItemView): string {
                             {{ item.purchaseLimit !== null && item.purchasedCount >= item.purchaseLimit ? '已购得' : '购入' }}
                         </button>
                     </div>
-                    <p v-if="purchaseDisabledReason(item)" class="shop-card-reason">{{ purchaseDisabledReason(item) }}</p>
+                    <p v-if="purchaseHint(item)" class="shop-card-reason">{{ purchaseHint(item) }}</p>
                 </div>
             </article>
         </div>

@@ -1,23 +1,20 @@
-import type { StoryFingerprint } from '../../../host/story-fingerprint.js';
-import type { XiaobaiOsChatData, XiaobaiOsStoryAnchor } from '../../../types.js';
+import type { XiaobaiOsChatData } from '../../../types.js';
 import { validateLedger } from '../../../domains/economy/invariants.js';
 import { projectBalances } from '../../../domains/economy/ledger.js';
-import { reconcileLedgerWithStory } from '../../../domains/economy/timeline.js';
 import type { EconomyLedgerV1, PostTransactionInput } from '../../../domains/economy/types.js';
 import { validateBankDomain } from '../../../domains/bank/invariants.js';
-import { reconcileBankWithStory, replayBankEvents } from '../../../domains/bank/timeline.js';
+import { replayBankEvents } from '../../../domains/bank/timeline.js';
 import {
     throwBankError,
     type BankActivity,
     type BankDomainV1,
     type BankEvent,
-    type BankRestoreImpact,
 } from '../../../domains/bank/types.js';
 
 const BANK_SOURCE_DOMAIN = 'bank';
 const BANK_RESERVE_ACCOUNT = 'counterparty:bank:reserve';
 const BANK_ESCROW_PREFIX = 'escrow:bank:';
-type BankLeg = Omit<PostTransactionInput, 'actionId' | 'sourceDomain' | 'sourceId' | 'anchor' | 'idempotencyKey'>;
+type BankLeg = Omit<PostTransactionInput, 'actionId' | 'sourceDomain' | 'sourceId' | 'idempotencyKey'>;
 export function emptyBankRoot(): XiaobaiOsChatData {
     return { schemaVersion: 2, apps: {}, domains: {} };
 }
@@ -34,14 +31,6 @@ export function readBankDomain(root: XiaobaiOsChatData | null): BankDomainV1 | n
     if (value === undefined) {return null;}
     validateBankDomain(value);
     return structuredClone(value);
-}
-
-export function countAssistantTurns(fingerprint: StoryFingerprint): number {
-    return fingerprint.messages.reduce((count, message) => count + Number(message.role === 'assistant'), 0);
-}
-
-function sameAnchor(left: XiaobaiOsStoryAnchor, right: XiaobaiOsStoryAnchor): boolean {
-    return left.floor === right.floor && left.prefixHash === right.prefixHash;
 }
 
 function inconsistency(detail: string): never {
@@ -108,7 +97,6 @@ export function buildBankTransactions(event: BankEvent): PostTransactionInput[] 
         actionId: event.actionId,
         sourceDomain: BANK_SOURCE_DOMAIN,
         sourceId: actionSourceId(event),
-        anchor: structuredClone(event.anchor),
     }));
 }
 
@@ -136,7 +124,6 @@ function sameLeg(transaction: EconomyLedgerV1['transactions'][number], expected:
         && transaction.note === (expected.note || '')
         && transaction.sourceDomain === expected.sourceDomain
         && transaction.sourceId === expected.sourceId
-        && sameAnchor(transaction.anchor, expected.anchor)
         && transaction.reversalOfTransactionId === undefined;
 }
 
@@ -178,48 +165,4 @@ export function validateBankEconomyConsistency(value: unknown, path = 'xiaobaiOs
             }
         }
     }
-}
-
-function emptyRestoreImpact(): BankRestoreImpact {
-    return {
-        changed: false,
-        firstInvalidRevision: null,
-        removedEventIds: [],
-        removedActionIds: [],
-        removedActivityIds: [],
-        affectedPositionIds: [],
-        previousLockedAmount: 0,
-        nextLockedAmount: 0,
-        lockedAmountChange: 0,
-    };
-}
-
-export function reconcileBankDomainInRoot(
-    value: XiaobaiOsChatData,
-    fingerprint: StoryFingerprint,
-): { root: XiaobaiOsChatData; impact: BankRestoreImpact } {
-    const root = structuredClone(value);
-    const bank = readBankDomain(root);
-    if (!bank) {return { root, impact: emptyRestoreImpact() };}
-    const reconciled = reconcileBankWithStory(bank, fingerprint);
-    if (reconciled.impact.changed) {
-        if (reconciled.domain.events.length === 0) {
-            delete root.domains.bank;
-        } else {
-            root.domains.bank = reconciled.domain;
-        }
-    }
-    return { root, impact: reconciled.impact };
-}
-
-export function reconcileBankRootWithStory(
-    value: XiaobaiOsChatData,
-    fingerprint: StoryFingerprint,
-): XiaobaiOsChatData {
-    let root = structuredClone(value);
-    const ledger = readEconomyLedger(root);
-    if (ledger) {root.domains.economy = reconcileLedgerWithStory(ledger, fingerprint).ledger;}
-    root = reconcileBankDomainInRoot(root, fingerprint).root;
-    validateBankEconomyConsistency(root);
-    return root;
 }

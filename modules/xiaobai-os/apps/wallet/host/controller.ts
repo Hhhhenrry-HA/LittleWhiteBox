@@ -1,15 +1,12 @@
 import type { EconomyRepository } from '../../../domains/economy/repository.js';
 import type { EconomyTransaction, EconomyTransactionPage } from '../../../domains/economy/types.js';
 import type {
-    StoryReconciliationRuntime,
-    StoryReconciliationState,
-} from '../../../host/story-reconciliation-runtime.js';
-import type {
     XiaobaiOsAppActivationContext,
     XiaobaiOsAppRuntime,
     XiaobaiOsChatIdentity,
 } from '../../../types.js';
 import type { XiaobaiOsHostFrameMessage } from '../../../host/frame-bridge.js';
+import type { XiaobaiOsChatDataChange } from '../../../host/chat-data-store.js';
 import type {
     WalletClientState,
     WalletStatus,
@@ -22,15 +19,14 @@ type UnknownRecord = Record<string, unknown>;
 const WALLET_PAGE_SIZE = 18;
 
 interface WalletActivation {
-    generation: number;
     chatIdentity: string;
     post: XiaobaiOsAppActivationContext['post'];
 }
 
 interface WalletControllerDependencies {
     economy: EconomyRepository;
-    storyRuntime: StoryReconciliationRuntime;
     getChatIdentity: () => XiaobaiOsChatIdentity | { key?: unknown } | string | null;
+    subscribeData: (listener: (change: XiaobaiOsChatDataChange) => void) => () => void;
 }
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -67,7 +63,6 @@ function projectTransaction(transaction: EconomyTransaction): WalletTransactionV
         amount: transaction.amount,
         direction: transactionDirection(transaction),
         createdAt: transaction.createdAt,
-        anchorFloor: transaction.anchor.floor,
     };
 }
 
@@ -81,8 +76,6 @@ function projectPage(page: EconomyTransactionPage): WalletTransactionPageView {
 
 function resolveStatus(
     writeState: ReturnType<EconomyRepository['getWriteState']>,
-    storyState: StoryReconciliationState,
-    chatIdentity: string,
     hasLedger: boolean,
 ): { status: WalletStatus; message: string } {
     if (writeState === 'conflict') {
@@ -94,9 +87,6 @@ function resolveStatus(
     if (writeState === 'saving') {
         return { status: 'saving', message: '正在确认账本保存结果…' };
     }
-    if (storyState.identityKey === chatIdentity && storyState.status !== 'ready') {
-        return { status: storyState.status, message: storyState.message };
-    }
     if (!hasLedger) {
         return { status: 'blocked', message: '钱包尚未完成开户，请重新读取。' };
     }
@@ -105,15 +95,15 @@ function resolveStatus(
 
 export function createWalletController({
     economy,
-    storyRuntime,
     getChatIdentity,
+    subscribeData,
 }: WalletControllerDependencies): XiaobaiOsAppRuntime & {
     activate: NonNullable<XiaobaiOsAppRuntime['activate']>;
     handleMessage: NonNullable<XiaobaiOsAppRuntime['handleMessage']>;
 } {
     let activation: WalletActivation | null = null;
-    let activationGeneration = 0;
-    let unsubscribeStory: (() => void) | null = null;
+    let preparation: { activation: WalletActivation; error: string } | null = null;
+    let unsubscribeData: (() => void) | null = null;
 
     function currentChatIdentity(): string {
         return identityKey(getChatIdentity());
@@ -137,11 +127,9 @@ export function createWalletController({
         const page = economy.listCurrentTransactions({ limit: WALLET_PAGE_SIZE });
         const status = resolveStatus(
             economy.getWriteState(),
-            storyRuntime.getState(),
-            chatIdentity,
             ledger !== null,
         );
-        return {
+        const next: WalletClientState = {
             chatIdentity,
             currency: '小白币',
             balance: economy.getPlayerBalance(),
@@ -149,6 +137,12 @@ export function createWalletController({
             ...projectPage(page),
             ...status,
         };
+        if (!preparation || preparation.activation !== activation) {return next;}
+        if (preparation.error) {
+            return { ...next, status: 'blocked', message: preparation.error };
+        }
+        if (next.status === 'unconfirmed' || next.status === 'conflict') {return next;}
+        return { ...next, status: 'loading', message: '' };
     }
 
     function emitState(current = activation): WalletClientState {
@@ -159,10 +153,7 @@ export function createWalletController({
     }
 
     async function prepareLedger(): Promise<void> {
-        if (economy.hasCurrent()) {
-            await storyRuntime.reconcileNow();
-            return;
-        }
+        if (economy.hasCurrent()) {return;}
         try {
             await economy.ensureCurrent();
         } catch (error) {
@@ -170,40 +161,44 @@ export function createWalletController({
         }
     }
 
-    async function activate(context: XiaobaiOsAppActivationContext): Promise<WalletClientState> {
+    function schedulePreparation(current: WalletActivation): void {
+        const pending = { activation: current, error: '' };
+        preparation = pending;
+        globalThis.setTimeout(() => {
+            if (preparation !== pending || activation !== current || currentChatIdentity() !== current.chatIdentity) {return;}
+            void prepareLedger().then(() => {
+                if (preparation !== pending || activation !== current || currentChatIdentity() !== current.chatIdentity) {return;}
+                preparation = null;
+                emitState(current);
+            }).catch((error) => {
+                if (preparation !== pending || activation !== current || currentChatIdentity() !== current.chatIdentity) {return;}
+                console.error('[LittleWhiteBox] 钱包数据准备失败', error);
+                preparation = { activation: current, error: '钱包数据暂时无法读取，请稍后重试。' };
+                emitState(current);
+            });
+        }, 0);
+    }
+
+    function activate(context: XiaobaiOsAppActivationContext): WalletClientState {
         cancelForeground();
         const chatIdentity = currentChatIdentity();
         if (!chatIdentity) {throw new Error('请先打开一个聊天');}
-        const generation = ++activationGeneration;
-        await prepareLedger();
-        if (generation !== activationGeneration || currentChatIdentity() !== chatIdentity) {
-            throw new Error('聊天已切换，请重新打开钱包');
-        }
-        activation = { generation, chatIdentity, post: context.post };
+        const current = { chatIdentity, post: context.post };
+        activation = current;
+        if (!economy.hasCurrent()) {schedulePreparation(current);}
         return buildState(chatIdentity);
     }
 
     function cancelForeground(): void {
-        activationGeneration += 1;
         activation = null;
-    }
-
-    function handleStoryState(next: StoryReconciliationState): void {
-        const current = activation;
-        if (!current || next.identityKey !== current.chatIdentity || currentChatIdentity() !== current.chatIdentity) {return;}
-        try {
-            emitState(current);
-        } catch (error) {
-            current.post('wallet/error', {
-                message: error instanceof Error ? error.message : String(error),
-            });
-        }
+        preparation = null;
     }
 
     async function handleMessage(message: XiaobaiOsHostFrameMessage): Promise<unknown> {
         const payload = isRecord(message.payload) ? message.payload : {};
         const current = assertActivation(payload);
         if (message.type === 'wallet/refresh') {
+            preparation = null;
             await prepareLedger();
             assertSameActivation(current, payload);
             return emitState(current);
@@ -216,11 +211,26 @@ export function createWalletController({
             return projectPage(economy.listCurrentTransactions({ beforeSequence, limit: WALLET_PAGE_SIZE }));
         }
         if (message.type === 'wallet/confirm-save') {
+            preparation = null;
             const confirmation = await economy.confirmPending();
             assertSameActivation(current, payload);
             return { confirmation: confirmation.status, state: emitState(current) };
         }
         throw new Error('未知的钱包操作');
+    }
+
+    function handleExternalState(change: XiaobaiOsChatDataChange): void {
+        const current = activation;
+        if (
+            !current
+            || change.identityKey !== current.chatIdentity
+            || currentChatIdentity() !== current.chatIdentity
+        ) {return;}
+        try {
+            emitState(current);
+        } catch {
+            current.post('wallet/error', { message: '钱包状态暂时无法读取，请重新打开。' });
+        }
     }
 
     return Object.freeze({
@@ -231,11 +241,11 @@ export function createWalletController({
         handleChatChanged: cancelForeground,
         handleMessage,
         startBackground() {
-            if (!unsubscribeStory) {unsubscribeStory = storyRuntime.subscribe(handleStoryState);}
+            if (!unsubscribeData) {unsubscribeData = subscribeData(handleExternalState);}
         },
         stopBackground() {
-            unsubscribeStory?.();
-            unsubscribeStory = null;
+            unsubscribeData?.();
+            unsubscribeData = null;
             cancelForeground();
         },
     });

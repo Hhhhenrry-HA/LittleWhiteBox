@@ -16,14 +16,9 @@ import {
     createEmptyGameState,
     flattenGameActivities,
     getGameCasToken,
-    reconcileGameWithStory,
     replayGameEvents,
 } from '../domains/game/timeline.js';
 import { createGameView } from '../domains/game/view.js';
-
-const HASH_A = `sha256:${'a'.repeat(64)}`;
-const HASH_B = `sha256:${'b'.repeat(64)}`;
-const HASH_C = `sha256:${'c'.repeat(64)}`;
 
 function eventInput(domain, sequence, command, result, options = {}) {
     return {
@@ -32,8 +27,6 @@ function eventInput(domain, sequence, command, result, options = {}) {
         actionId: `game-action-${sequence}`,
         command,
         result,
-        anchor: { floor: 0, prefixHash: HASH_A },
-        assistantTurn: 0,
         createdAt: 1_000 + sequence,
         ...options,
     };
@@ -100,8 +93,6 @@ test('schema v1 replays one active game and flattens terminal activity boundarie
         revision: 3,
         eventId: 'game-event-3',
         actionId: 'game-action-3',
-        anchor: { floor: 0, prefixHash: HASH_A },
-        assistantTurn: 0,
         createdAt: 1_003,
     }]);
     assert.deepEqual(getGameCasToken(ended.domain), {
@@ -132,12 +123,10 @@ test('validation rejects non-canonical persistence and forged private progressio
     wrongRevision.events[0].revision = 2;
     const paddedId = structuredClone(started);
     paddedId.events[0].eventId = ' padded ';
-    const badAnchor = structuredClone(started);
-    badAnchor.events[0].anchor.prefixHash = 'not-a-hash';
     const forgedDeck = structuredClone(started);
     forgedDeck.events[0].result.changes[0].game.game.deck[0] = 'forged';
 
-    for (const candidate of [extraTopLevel, extraCommand, wrongRevision, paddedId, badAnchor, forgedDeck]) {
+    for (const candidate of [extraTopLevel, extraCommand, wrongRevision, paddedId, forgedDeck]) {
         assert.throws(() => validateGameDomain(candidate), error => error.code === 'game_invalid_domain');
     }
 
@@ -305,42 +294,12 @@ test('CAS append is immutable and idempotent action replay precedes stale-token 
     }), error => error.code === 'game_revision_conflict');
 });
 
-test('story reconciliation removes the invalid suffix and reports only game impact', () => {
-    const push = createGamePushGame({ id: 'push-branch' }, createGameSequenceRandom(Array(9).fill(0)));
-    let domain = startPush(createEmptyGameDomain(), 1, push).domain;
-    const advanced = advancePush(domain, 2, push, {
-        anchor: { floor: 1, prefixHash: HASH_B },
-        assistantTurn: 1,
-    });
-    domain = advanced.domain;
-    domain = cashOutPush(domain, 3, advanced.state.activeGame.game, {
-        anchor: { floor: 1, prefixHash: HASH_B },
-        assistantTurn: 1,
-    }).domain;
-
-    const reconciled = reconcileGameWithStory(domain, { prefixHashes: [HASH_A, HASH_C] });
-    assert.equal(reconciled.domain.events.length, 1);
-    assert.deepEqual(reconciled.impact, {
-        changed: true,
-        firstInvalidRevision: 2,
-        removedEventIds: ['game-event-2', 'game-event-3'],
-        removedActionIds: ['game-action-2', 'game-action-3'],
-        removedActivityIds: ['activity-push-branch'],
-        affectedGameIds: ['push-branch'],
-        previousLockedAmount: 0,
-        nextLockedAmount: 50,
-        lockedAmountChange: 50,
-    });
-    assert.equal(calculateGameLockedAmount(replayGameEvents(reconciled.domain)), 50);
-});
-
-test('public views hide every deck, dealer die, and story anchor while remaining deep copies', () => {
+test('public views hide every deck and dealer die while remaining deep copies', () => {
     const push = createGamePushGame({ id: 'private-push' }, createGameSequenceRandom(Array(9).fill(0)));
     const pushDomain = startPush(createEmptyGameDomain(), 1, push).domain;
     const pushView = createGameView({ domain: pushDomain });
     assert.equal(Object.hasOwn(pushView.activeGame, 'deck'), false);
     assert.equal(JSON.stringify(pushView).includes('deck'), false);
-    assert.equal(JSON.stringify(pushView).includes(HASH_A), false);
     pushView.activeGame.legalActions[0] = 'cash-out';
     assert.equal(replayGameEvents(pushDomain).activeGame.game.drawIndex, 0);
 
@@ -380,5 +339,4 @@ test('public views hide every deck, dealer die, and story anchor while remaining
     const terminalView = createGameView({ domain: diceDomain });
     assert.equal(Object.hasOwn(terminalView.activities[0].detail, 'dealerDice'), false);
     assert.equal(JSON.stringify(terminalView).includes('dealerDice'), false);
-    assert.equal(JSON.stringify(terminalView).includes(HASH_A), false);
 });

@@ -280,8 +280,9 @@ button {
 
 .xiaobai-os-navigation {
     align-items: center;
-    background: var(--xiaobai-os-surface);
-    border-top: 1px solid var(--xiaobai-os-divider);
+    background: #0b0d11;
+    border-top: 1px solid rgba(255, 255, 255, .08);
+    color: #fff;
     display: grid;
     grid-template-columns: 44px 1fr 44px;
     height: 54px;

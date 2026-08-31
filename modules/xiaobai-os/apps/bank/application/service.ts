@@ -3,8 +3,7 @@ import type {
     XiaobaiOsChatDataStore,
     XiaobaiOsWriteState,
 } from '../../../host/chat-data-store.js';
-import type { StoryActionRunner, StoryBoundActionContext } from '../../../host/story-action-runner.js';
-import type { XiaobaiOsChatData, XiaobaiOsStoryAnchor } from '../../../types.js';
+import type { XiaobaiOsChatData } from '../../../types.js';
 import { postAction, projectBalances } from '../../../domains/economy/ledger.js';
 import type { EconomyLedgerV1 } from '../../../domains/economy/types.js';
 import { bankRandomSource } from '../../../domains/bank/random.js';
@@ -31,11 +30,9 @@ import {
 import { createBankCommands } from './commands.js';
 import {
     buildBankTransactions,
-    countAssistantTurns,
     emptyBankRoot,
     readBankDomain,
     readEconomyLedger,
-    reconcileBankRootWithStory,
     validateBankEconomyConsistency,
 } from './root-protocol.js';
 
@@ -83,7 +80,7 @@ interface BankServiceDependencies {
     createActivityId?: () => string;
     createTransactionId?: () => string;
     random?: BankRandomSource;
-    getCurrentAssistantTurn?: () => number;
+    getCurrentAssistantTurn?: (identityKey?: string) => number;
     isMainGenerationActive?: () => boolean;
 }
 
@@ -98,7 +95,7 @@ export interface PreparedBankRoot {
 export type RunBankAction = (
     kind: BankAction['kind'],
     input: BankCommandInput,
-    create: (prepared: PreparedBankRoot, anchor: XiaobaiOsStoryAnchor) => {
+    create: (prepared: PreparedBankRoot) => {
         eventId: string;
         command: BankAction;
         result: BankEventResult;
@@ -114,7 +111,6 @@ function defaultId(prefix: string): string {
 
 export function createBankService(
     store: XiaobaiOsChatDataStore,
-    runner: StoryActionRunner,
     {
         now = Date.now,
         createEventId = () => defaultId('bank-event'),
@@ -147,8 +143,8 @@ export function createBankService(
         return buildView(root, getCurrentAssistantTurn(), options);
     }
 
-    function prepareRoot(current: XiaobaiOsChatData | null, context: StoryBoundActionContext): PreparedBankRoot {
-        const root = current ? reconcileBankRootWithStory(current, context.fingerprint) : emptyBankRoot();
+    function prepareRoot(current: XiaobaiOsChatData | null, identityKey: string): PreparedBankRoot {
+        const root = current ? structuredClone(current) : emptyBankRoot();
         const ledger = readEconomyLedger(root);
         if (!ledger) {throw new Error('economy_not_opened');}
         const domain = readBankDomain(root) || createEmptyBankDomain();
@@ -157,7 +153,7 @@ export function createBankService(
             ledger,
             domain,
             state: replayBankEvents(domain),
-            assistantTurn: countAssistantTurns(context.fingerprint),
+            assistantTurn: getCurrentAssistantTurn(identityKey),
         };
     }
 
@@ -167,14 +163,12 @@ export function createBankService(
         eventId: string,
         command: BankAction,
         result: BankEventResult,
-        anchor: XiaobaiOsStoryAnchor,
     ): BankServiceView {
         const appended = appendBankEvent(prepared.domain, {
             ...input,
             eventId,
             command,
             result,
-            anchor,
             assistantTurn: prepared.assistantTurn,
             createdAt: now(),
         });
@@ -190,7 +184,7 @@ export function createBankService(
     const runAction: RunBankAction = (
         kind: BankAction['kind'],
         input: BankCommandInput,
-        create: (prepared: PreparedBankRoot, anchor: XiaobaiOsStoryAnchor) => {
+        create: (prepared: PreparedBankRoot) => {
             eventId: string;
             command: BankAction;
             result: BankEventResult;
@@ -200,8 +194,8 @@ export function createBankService(
         const assertGenerationIdle = () => {
             if (isMainGenerationActive()) {throw new Error('bank_main_generation_active');}
         };
-        return runner.run((current, _rootContext, storyContext) => {
-            const prepared = prepareRoot(current, storyContext);
+        return store.mutateCurrent((current, rootContext) => {
+            const prepared = prepareRoot(current, rootContext.identityKey);
             const existing = prepared.domain.events.find((event) => event.actionId === input.actionId);
             if (existing) {
                 if (!replayMatches(existing, kind, input)) {throwBankError('bank_action_conflict');}
@@ -214,8 +208,8 @@ export function createBankService(
             if (prepared.ledger.transactions.some((transaction) => transaction.actionId === input.actionId)) {
                 throwBankError('bank_action_conflict');
             }
-            const action = create(prepared, storyContext.anchor);
-            const view = commit(prepared, input, action.eventId, action.command, action.result, storyContext.anchor);
+            const action = create(prepared);
+            const view = commit(prepared, input, action.eventId, action.command, action.result);
             return { next: prepared.root, result: view };
         }, {
             beforeCommit() {

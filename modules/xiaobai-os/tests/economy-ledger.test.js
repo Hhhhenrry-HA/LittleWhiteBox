@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildStoryFingerprint } from '../host/story-fingerprint.js';
 import {
     ensureEconomy,
     postAction,
@@ -9,17 +8,11 @@ import {
     projectBalances,
     reverseTransaction,
 } from '../domains/economy/ledger.js';
+import { validateLedger } from '../domains/economy/invariants.js';
 
 function dependencies() {
     let id = 0;
     return { now: () => 1000 + id, createId: () => `tx-${++id}` };
-}
-
-async function anchor(text = '当前剧情') {
-    return (await buildStoryFingerprint({
-        identityKey: 'character:1:chat-a',
-        messages: [{ role: 'user', name: '小白', text }],
-    })).latestAnchor;
 }
 
 test('economy opens once with 100 coins and never persists a second balance fact', () => {
@@ -31,7 +24,16 @@ test('economy opens once with 100 coins and never persists a second balance fact
     assert.equal(Object.hasOwn(ledger, 'balance'), false);
 });
 
-test('posting is idempotent, rejects conflicting retries and prevents overdraft', async () => {
+test('current Economy persistence rejects fields removed with story anchoring', () => {
+    const ledger = ensureEconomy(undefined, dependencies());
+    ledger.transactions[0].anchor = { floor: -1, prefixHash: 'obsolete' };
+    assert.throws(
+        () => validateLedger(ledger),
+        error => error.code === 'economy_invalid_ledger',
+    );
+});
+
+test('posting is idempotent, rejects conflicting retries and prevents overdraft', () => {
     const deps = dependencies();
     const ledger = ensureEconomy(undefined, deps);
     const input = {
@@ -44,19 +46,12 @@ test('posting is idempotent, rejects conflicting retries and prevents overdraft'
         title: '购买礼物',
         sourceDomain: 'shop',
         sourceId: 'purchase:1',
-        anchor: await anchor(),
     };
     const posted = postTransaction(ledger, input, deps);
     assert.equal(projectBalances(posted.ledger).player, 70);
     const replay = postTransaction(posted.ledger, input, deps);
     assert.equal(replay.created, false);
     assert.equal(replay.ledger.transactions.length, 2);
-    const reorderedByPersistence = structuredClone(posted.ledger);
-    reorderedByPersistence.transactions[1].anchor = {
-        prefixHash: input.anchor.prefixHash,
-        floor: input.anchor.floor,
-    };
-    assert.equal(postTransaction(reorderedByPersistence, input, deps).created, false);
     assert.throws(
         () => postTransaction(posted.ledger, { ...input, amount: 31 }, deps),
         error => error.code === 'economy_idempotency_conflict',
@@ -73,9 +68,8 @@ test('posting is idempotent, rejects conflicting retries and prevents overdraft'
     );
 });
 
-test('multi-leg actions stay contiguous and a reversal appends immutable history', async () => {
+test('multi-leg actions stay contiguous and a reversal appends immutable history', () => {
     const deps = dependencies();
-    const storyAnchor = await anchor();
     let ledger = ensureEconomy(undefined, deps);
     const fundingInputs = [{
         idempotencyKey: 'task:1:escrow-in',
@@ -87,7 +81,6 @@ test('multi-leg actions stay contiguous and a reversal appends immutable history
         title: '任务托管',
         sourceDomain: 'task',
         sourceId: 'task:one',
-        anchor: storyAnchor,
     }, {
         idempotencyKey: 'task:1:escrow-out',
         actionId: 'task:1:fund',
@@ -98,7 +91,6 @@ test('multi-leg actions stay contiguous and a reversal appends immutable history
         title: '任务手续费',
         sourceDomain: 'task',
         sourceId: 'task:one',
-        anchor: storyAnchor,
     }];
     const funded = postAction(ledger, fundingInputs, deps);
     assert.equal(funded.created, true);
@@ -126,7 +118,6 @@ test('multi-leg actions stay contiguous and a reversal appends immutable history
         title: '购买物品',
         sourceDomain: 'shop',
         sourceId: 'purchase:two',
-        anchor: storyAnchor,
     }, deps);
     ledger = purchase.ledger;
 
@@ -140,7 +131,6 @@ test('multi-leg actions stay contiguous and a reversal appends immutable history
         title: '迟到资金腿',
         sourceDomain: 'task',
         sourceId: 'task:one',
-        anchor: storyAnchor,
     }, deps), error => error.code === 'economy_non_contiguous_action');
 
     const reversed = reverseTransaction(ledger, {
@@ -150,16 +140,14 @@ test('multi-leg actions stay contiguous and a reversal appends immutable history
         title: '购买退款',
         sourceDomain: 'shop',
         sourceId: 'purchase:two',
-        anchor: storyAnchor,
     }, deps);
     assert.equal(reversed.transaction.reversalOfTransactionId, purchase.transaction.id);
     assert.equal(projectBalances(reversed.ledger).player, projectBalances(ledger).player + 10);
     assert.equal(reversed.ledger.transactions[3].amount, 10);
 });
 
-test('an action batch rejects partial replay and the opening grant cannot be reversed', async () => {
+test('an action batch rejects partial replay and the opening grant cannot be reversed', () => {
     const deps = dependencies();
-    const storyAnchor = await anchor();
     const ledger = ensureEconomy(undefined, deps);
     const firstLeg = {
         idempotencyKey: 'task:partial:hold',
@@ -171,7 +159,6 @@ test('an action batch rejects partial replay and the opening grant cannot be rev
         title: '托管',
         sourceDomain: 'task',
         sourceId: 'partial',
-        anchor: storyAnchor,
     };
     const partial = postTransaction(ledger, firstLeg, deps).ledger;
     assert.throws(() => postAction(partial, [firstLeg, {
@@ -193,14 +180,12 @@ test('an action batch rejects partial replay and the opening grant cannot be rev
         title: '非法撤销开户',
         sourceDomain: 'economy',
         sourceId: 'illegal-opening-reversal',
-        anchor: storyAnchor,
         reversalOfTransactionId: opening.id,
     }, deps), error => error.code === 'economy_invalid_reversal');
 });
 
-test('the reserved opening action cannot mint a second grant and reversal metadata stays explicit', async () => {
+test('the reserved opening action cannot mint a second grant and reversal metadata stays explicit', () => {
     const deps = dependencies();
-    const storyAnchor = await anchor();
     const ledger = ensureEconomy(undefined, deps);
 
     assert.throws(() => postTransaction(ledger, {
@@ -213,7 +198,6 @@ test('the reserved opening action cannot mint a second grant and reversal metada
         title: '重复开户',
         sourceDomain: 'economy',
         sourceId: 'opening-grant:v1',
-        anchor: { floor: -1, prefixHash: ledger.transactions[0].anchor.prefixHash },
     }, deps), error => error.code === 'economy_invalid_opening_grant');
 
     assert.throws(() => postTransaction(ledger, {
@@ -226,6 +210,5 @@ test('the reserved opening action cannot mint a second grant and reversal metada
         title: '无目标冲正',
         sourceDomain: 'economy',
         sourceId: 'fake-reversal',
-        anchor: storyAnchor,
     }, deps), error => error.code === 'economy_invalid_reversal');
 });

@@ -152,10 +152,14 @@
 .shop-app button:focus-visible { outline: 2px solid #e4c17f; outline-offset: 2px; }
 
 @media (max-width: 350px), (max-height: 650px) {
-    .shop-header { padding-left: 14px; padding-right: 14px; padding-top: 42px; }
+    .shop-header { padding-left: 14px; padding-right: 14px; }
     .shop-scroll { padding-left: 10px; padding-right: 10px; }
     .shop-product-card { gap: 9px; padding: 11px; }
     .shop-dialog { padding: 10px; }
+}
+
+@media (max-width: 760px), (pointer: coarse) and (max-height: 760px) {
+    .shop-header { padding-top: calc(14px + env(safe-area-inset-top)); }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,4 +1,4 @@
-export type ShopClientStatus = 'ready' | 'saving' | 'unconfirmed' | 'conflict' | 'reconciling' | 'blocked';
+export type ShopClientStatus = 'ready' | 'loading' | 'saving' | 'unconfirmed' | 'conflict' | 'blocked';
 
 export interface ShopInputView {
     key: string;
@@ -15,7 +15,7 @@ export interface ShopCatalogItemView {
     categoryLabel: string;
     price: number;
     description: string;
-    duration: 'turns' | 'manual' | 'permanent';
+    duration: 'replies' | 'manual' | 'permanent';
     durationLabel: string;
     inputs: ShopInputView[];
     purchaseLimit: number | null;

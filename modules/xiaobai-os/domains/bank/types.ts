@@ -1,5 +1,3 @@
-import type { XiaobaiOsStoryAnchor } from '../../types.js';
-
 export const BANK_SCHEMA_VERSION = 1 as const;
 
 export type BankDepositProductId = 'short-term' | 'mid-term' | 'long-term';
@@ -50,7 +48,6 @@ export interface BankDepositPosition extends BankDepositFrozenContract {
     principal: number;
     startTurn: number;
     maturityTurn: number;
-    openedAtAnchor: XiaobaiOsStoryAnchor;
 }
 
 export interface BankFundPosition extends BankFundFrozenContract {
@@ -59,7 +56,6 @@ export interface BankFundPosition extends BankFundFrozenContract {
     principal: number;
     startTurn: number;
     maturityTurn: number;
-    openedAtAnchor: XiaobaiOsStoryAnchor;
 }
 
 export interface BankState {
@@ -96,7 +92,6 @@ export interface BankActivityRecord extends BankActivity {
     revision: number;
     eventId: string;
     actionId: string;
-    anchor: XiaobaiOsStoryAnchor;
     assistantTurn: number;
     createdAt: number;
 }
@@ -123,7 +118,6 @@ export interface BankEvent {
     actionId: string;
     command: BankAction;
     result: BankEventResult;
-    anchor: XiaobaiOsStoryAnchor;
     assistantTurn: number;
     createdAt: number;
 }
@@ -143,7 +137,6 @@ export interface BankAppendEventInput extends BankCasToken {
     actionId: string;
     command: BankAction;
     result: BankEventResult;
-    anchor: XiaobaiOsStoryAnchor;
     assistantTurn: number;
     createdAt: number;
 }
@@ -153,18 +146,6 @@ export interface BankCommandResult {
     event: BankEvent;
     state: BankState;
     created: boolean;
-}
-
-export interface BankRestoreImpact {
-    changed: boolean;
-    firstInvalidRevision: number | null;
-    removedEventIds: string[];
-    removedActionIds: string[];
-    removedActivityIds: string[];
-    affectedPositionIds: string[];
-    previousLockedAmount: number;
-    nextLockedAmount: number;
-    lockedAmountChange: number;
 }
 
 export interface BankDepositPositionView {
@@ -204,7 +185,7 @@ export interface BankClaimableFundPositionView extends BankFundPositionViewBase 
 
 export type BankFundPositionView = BankLockedFundPositionView | BankClaimableFundPositionView;
 
-export type BankPublicActivityRecord = Omit<BankActivityRecord, 'anchor'>;
+export type BankPublicActivityRecord = BankActivityRecord;
 
 export interface BankActivityPage {
     offset: number;

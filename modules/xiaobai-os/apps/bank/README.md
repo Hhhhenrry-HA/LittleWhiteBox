@@ -1,37 +1,12 @@
 # Bank app
 
-Bank is the standalone Xiaobai OS interface for fixed deposits, managed funds, open positions, due settlement, and financial activity. Game and game concerns are intentionally absent.
+`apps/bank`负责把纯 Bank 领域接入 Economy、根 store、iframe 协议和 Vue UI。
 
-## Boundaries
+- `application/root-protocol.ts`：Bank/Economy 根读取、资金腿构造和交叉不变量。
+- `application/commands.ts`：存入、提前支取、开立理财和到期结算命令。
+- `application/service.ts`：CAS、actionId 幂等、Assistant 回合读取和原子根提交。
+- `host/controller.ts`：聊天 activation、首次开户、写串行化和 frame 消息。
+- `host/presentation.ts`：隐藏锁定理财收益，生成客户端 DTO。
+- `ui/`：金库、产品、头寸、记录和操作弹窗。
 
-- `domains/bank/` owns only Bank products, event rules, replay, validation, randomness, and safe projections.
-- `application/` owns the Economy/root protocol, story reconciliation, command orchestration, application service, CAS coordination, and write state.
-- `host/presentation.ts` rebuilds an explicit iframe-safe DTO. Locked funds never expose their frozen return or settlement amount.
-- `host/controller.ts` owns chat activation, iframe request parsing, foreground request serialization, generation subscriptions, and save-confirmation routing.
-- `ui/` owns only navigation, forms, dialogs, request state, and rendering. It does not calculate fund outcomes or persist state.
-
-## Protocol
-
-The iframe can request only:
-
-- `bank/refresh`
-- `bank/deposit/open`
-- `bank/deposit/withdraw`
-- `bank/fund/open`
-- `bank/settle-due`
-- `bank/records/load-more`
-- `bank/confirm-save`
-
-Write commands accept chat identity, CAS, action ID, and only their required intent fields. Contract terms, payout values, frozen outcomes, and randomness are never accepted from the iframe.
-
-## Lifecycle
-
-Activation opens Economy when needed or reconciles an existing story-backed root before presenting Bank state. Deactivation, chat changes, and a newer activation invalidate pending foreground results without changing Bank data. An unconfirmed root save freezes writes until `bank/confirm-save` resolves it.
-
-## Verification
-
-```text
-node --import tsx --test modules/xiaobai-os/tests/bank-controller.test.js
-npx vue-tsc --noEmit -p tsconfig.xiaobai-os.json
-npx eslint "modules/xiaobai-os/apps/bank/**/*.{ts,vue}" "modules/xiaobai-os/domains/bank/**/*.ts" "modules/xiaobai-os/tests/bank-controller.test.js"
-```
+Bank 只向宿主读取一个窄事实：当前聊天已完成的 Assistant 回复数量。它不读取消息文本，不做剧情核对。已有 Economy 时 APP 立即打开；只有首次开户异步准备。

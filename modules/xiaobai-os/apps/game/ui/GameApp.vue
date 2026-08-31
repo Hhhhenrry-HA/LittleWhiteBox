@@ -66,7 +66,7 @@ const refreshDisabled = computed(() => refreshing.value || actionBusy.value || r
 const latestResult = computed(() => state.value.records.find(record => record.id === latestResultId.value) || null);
 
 function createActionId(): string {
-    if (typeof crypto.randomUUID === 'function') {return `game-ui:${crypto.randomUUID()}`;}
+    if (typeof globalThis.crypto?.randomUUID === 'function') {return `game-ui:${globalThis.crypto.randomUUID()}`;}
     actionSequence += 1;
     return `game-ui:${Date.now()}:${actionSequence}`;
 }

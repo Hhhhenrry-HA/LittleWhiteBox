@@ -19,7 +19,7 @@ const formattedAmount = computed(() => {
     return amount;
 });
 
-const formattedAnchor = computed(() => {
+const formattedTime = computed(() => {
     const date = new Date(props.transaction.createdAt);
     const time = new Intl.DateTimeFormat('zh-CN', {
         month: '2-digit',
@@ -28,7 +28,7 @@ const formattedAnchor = computed(() => {
         minute: '2-digit',
         hour12: false,
     }).format(date);
-    return props.transaction.anchorFloor < 0 ? `开户 · ${time}` : `第 ${props.transaction.anchorFloor} 楼 · ${time}`;
+    return props.transaction.sequence === 1 && props.transaction.sourceDomain === 'economy' ? `开户 · ${time}` : time;
 });
 </script>
 
@@ -40,7 +40,7 @@ const formattedAnchor = computed(() => {
         <div class="wallet-row-copy">
             <strong>{{ transaction.title }}</strong>
             <p v-if="transaction.note">{{ transaction.note }}</p>
-            <small>{{ transaction.source }} · {{ formattedAnchor }}</small>
+            <small>{{ transaction.source }} · {{ formattedTime }}</small>
         </div>
         <span class="wallet-row-amount">{{ formattedAmount }}</span>
     </li>

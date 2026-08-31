@@ -1,6 +1,4 @@
-import type { StoryFingerprint } from '../../host/story-fingerprint.js';
-import type { StoryActionRunner } from '../../host/story-action-runner.js';
-import type { XiaobaiOsChatData, XiaobaiOsStoryAnchor } from '../../types.js';
+import type { XiaobaiOsChatData } from '../../types.js';
 import type {
     ConfirmResult,
     RootMutationOptions,
@@ -9,12 +7,10 @@ import type {
 } from '../../host/chat-data-store.js';
 import { ensureEconomy, listTransactions, postAction, projectBalances, reverseTransaction } from './ledger.js';
 import { validateLedger } from './invariants.js';
-import { reconcileLedgerWithStory } from './timeline.js';
 import type {
     EconomyLedgerV1,
     EconomyPostActionResult,
     EconomyPostResult,
-    EconomyRollbackImpact,
     EconomyTransactionPage,
     PostTransactionInput,
     ReverseTransactionInput,
@@ -26,20 +22,16 @@ export interface EconomyRepository {
     ensureCurrent: () => Promise<EconomyLedgerV1>;
     getPlayerBalance: () => number;
     listCurrentTransactions: (options?: { beforeSequence?: number; limit?: number }) => EconomyTransactionPage;
-    reconcileCurrent: (
-        fingerprint: StoryFingerprint,
-        options?: RootMutationOptions,
-    ) => Promise<EconomyRollbackImpact>;
     postCurrent: (
-        input: Omit<PostTransactionInput, 'anchor'>,
+        input: PostTransactionInput,
         options?: RootMutationOptions,
     ) => Promise<EconomyPostResult>;
     postActionCurrent: (
-        inputs: readonly Omit<PostTransactionInput, 'anchor'>[],
+        inputs: readonly PostTransactionInput[],
         options?: RootMutationOptions,
     ) => Promise<EconomyPostActionResult>;
     reverseCurrent: (
-        input: Omit<ReverseTransactionInput, 'anchor'>,
+        input: ReverseTransactionInput,
         options?: RootMutationOptions,
     ) => Promise<EconomyPostResult>;
     confirmPending: () => Promise<ConfirmResult>;
@@ -49,7 +41,6 @@ export interface EconomyRepository {
 interface EconomyRepositoryDependencies {
     now?: () => number;
     createId?: () => string;
-    actionRunner?: StoryActionRunner;
 }
 
 function emptyRoot(): XiaobaiOsChatData {
@@ -65,7 +56,7 @@ function readLedger(root: XiaobaiOsChatData | null): EconomyLedgerV1 | null {
 
 export function createEconomyRepository(
     store: XiaobaiOsChatDataStore,
-    { now = Date.now, createId, actionRunner }: EconomyRepositoryDependencies = {},
+    { now = Date.now, createId }: EconomyRepositoryDependencies = {},
 ): EconomyRepository {
     const ledgerDependencies = { now, ...(createId ? { createId } : {}) };
 
@@ -95,76 +86,21 @@ export function createEconomyRepository(
         return listTransactions(ledger, options);
     }
 
-    function reconcileCurrent(
-        fingerprint: StoryFingerprint,
-        options: RootMutationOptions = {},
-    ): Promise<EconomyRollbackImpact> {
-        return store.mutateCurrent((current, context) => {
-            if (context.identityKey !== fingerprint.identityKey) {
-                throw new Error('story_fingerprint_chat_mismatch');
-            }
-            const ledger = readLedger(current);
-            if (!current || !ledger) {
-                return {
-                    next: current,
-                    result: {
-                        changed: false,
-                        firstInvalidSequence: null,
-                        removedTransactionIds: [],
-                        removedActionIds: [],
-                        previousBalance: 0,
-                        nextBalance: 0,
-                    },
-                };
-            }
-            const reconciled = reconcileLedgerWithStory(ledger, fingerprint);
-            if (!reconciled.impact.changed) {return { next: current, result: reconciled.impact };}
-            const next = structuredClone(current);
-            next.domains.economy = reconciled.ledger;
-            return { next, result: reconciled.impact };
-        }, options);
-    }
-
-    function requireActionRunner(): StoryActionRunner {
-        if (!actionRunner) {
-            throw new Error('economy_story_access_unavailable');
-        }
-        return actionRunner;
-    }
-
-    function actionAnchor(
-        ledger: EconomyLedgerV1,
-        inputs: readonly Omit<PostTransactionInput, 'anchor'>[],
-        fallback: XiaobaiOsStoryAnchor,
-    ): XiaobaiOsStoryAnchor {
-        const actionId = inputs[0]?.actionId;
-        const existing = actionId
-            ? ledger.transactions.find((transaction) => transaction.actionId === actionId)
-            : undefined;
-        return structuredClone(existing?.anchor || fallback);
-    }
-
-    async function postActionCurrent(
-        inputs: readonly Omit<PostTransactionInput, 'anchor'>[],
+    function postActionCurrent(
+        inputs: readonly PostTransactionInput[],
         options: RootMutationOptions = {},
     ): Promise<EconomyPostActionResult> {
-        return requireActionRunner().run((current, _rootContext, storyContext) => {
+        return store.mutateCurrent((current) => {
             const next = current ? structuredClone(current) : emptyRoot();
-            const existing = ensureEconomy(readLedger(current) || undefined, ledgerDependencies);
-            const reconciled = reconcileLedgerWithStory(existing, storyContext.fingerprint).ledger;
-            const anchor = actionAnchor(reconciled, inputs, storyContext.anchor);
-            const result = postAction(
-                reconciled,
-                inputs.map((input) => ({ ...input, anchor })),
-                ledgerDependencies,
-            );
+            const ledger = ensureEconomy(readLedger(current) || undefined, ledgerDependencies);
+            const result = postAction(ledger, inputs, ledgerDependencies);
             next.domains.economy = result.ledger;
             return { next, result };
         }, options);
     }
 
     async function postCurrent(
-        input: Omit<PostTransactionInput, 'anchor'>,
+        input: PostTransactionInput,
         options: RootMutationOptions = {},
     ): Promise<EconomyPostResult> {
         const result = await postActionCurrent([input], options);
@@ -175,21 +111,14 @@ export function createEconomyRepository(
         };
     }
 
-    async function reverseCurrent(
-        input: Omit<ReverseTransactionInput, 'anchor'>,
+    function reverseCurrent(
+        input: ReverseTransactionInput,
         options: RootMutationOptions = {},
     ): Promise<EconomyPostResult> {
-        return requireActionRunner().run((current, _rootContext, storyContext) => {
+        return store.mutateCurrent((current) => {
             const ledger = readLedger(current);
             if (!current || !ledger) {throw new Error('economy_not_opened');}
-            const reconciled = reconcileLedgerWithStory(ledger, storyContext.fingerprint).ledger;
-            const existing = reconciled.transactions.find(
-                (transaction) => transaction.idempotencyKey === input.idempotencyKey,
-            );
-            const result = reverseTransaction(reconciled, {
-                ...input,
-                anchor: structuredClone(existing?.anchor || storyContext.anchor),
-            }, ledgerDependencies);
+            const result = reverseTransaction(ledger, input, ledgerDependencies);
             const next = structuredClone(current);
             next.domains.economy = result.ledger;
             return { next, result };
@@ -202,7 +131,6 @@ export function createEconomyRepository(
         ensureCurrent,
         getPlayerBalance,
         listCurrentTransactions,
-        reconcileCurrent,
         postCurrent,
         postActionCurrent,
         reverseCurrent,

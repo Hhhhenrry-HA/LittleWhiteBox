@@ -1,16 +1,13 @@
-import type { StoryFingerprint } from '../../../host/story-fingerprint.js';
-import type { XiaobaiOsChatData, XiaobaiOsStoryAnchor } from '../../../types.js';
+import type { XiaobaiOsChatData } from '../../../types.js';
 import { validateLedger } from '../../../domains/economy/invariants.js';
 import { projectBalances } from '../../../domains/economy/ledger.js';
-import { reconcileLedgerWithStory } from '../../../domains/economy/timeline.js';
 import type { EconomyLedgerV1 } from '../../../domains/economy/types.js';
 import { GAME_PUSH_BET } from '../../../domains/game/games/push-your-luck.js';
 import { validateGameDomain } from '../../../domains/game/invariants.js';
-import { reconcileGameWithStory, replayGameEvents } from '../../../domains/game/timeline.js';
+import { replayGameEvents } from '../../../domains/game/timeline.js';
 import type {
     GameDomainV1,
     GameEvent,
-    GameRestoreImpact,
 } from '../../../domains/game/types.js';
 
 export interface GameEconomyLeg {
@@ -40,14 +37,6 @@ export function readGameDomain(root: XiaobaiOsChatData | null): GameDomainV1 | n
     if (value === undefined) {return null;}
     validateGameDomain(value);
     return structuredClone(value);
-}
-
-export function countAssistantTurns(fingerprint: StoryFingerprint): number {
-    return fingerprint.messages.reduce((count, message) => count + Number(message.role === 'assistant'), 0);
-}
-
-function sameAnchor(left: XiaobaiOsStoryAnchor, right: XiaobaiOsStoryAnchor): boolean {
-    return left.floor === right.floor && left.prefixHash === right.prefixHash;
 }
 
 function escrowAccount(gameId: string): string {
@@ -138,7 +127,6 @@ function sameEconomyLeg(
         && transaction.note === ''
         && transaction.sourceDomain === GAME_SOURCE_DOMAIN
         && transaction.sourceId === event.command.gameId
-        && sameAnchor(transaction.anchor, event.anchor)
         && transaction.reversalOfTransactionId === undefined;
 }
 
@@ -176,48 +164,4 @@ export function validateGameEconomyConsistency(value: unknown, path = 'xiaobaiOs
             throw new Error(`${path} Game escrow is inconsistent: ${gameId}`);
         }
     }
-}
-
-function unchangedGameImpact(): GameRestoreImpact {
-    return {
-        changed: false,
-        firstInvalidRevision: null,
-        removedEventIds: [],
-        removedActionIds: [],
-        removedActivityIds: [],
-        affectedGameIds: [],
-        previousLockedAmount: 0,
-        nextLockedAmount: 0,
-        lockedAmountChange: 0,
-    };
-}
-
-export function reconcileGameDomainInRoot(
-    value: XiaobaiOsChatData,
-    fingerprint: StoryFingerprint,
-): { root: XiaobaiOsChatData; impact: GameRestoreImpact } {
-    const root = structuredClone(value);
-    const game = readGameDomain(root);
-    if (!game) {return { root, impact: unchangedGameImpact() };}
-    const reconciled = reconcileGameWithStory(game, fingerprint);
-    if (reconciled.impact.changed) {
-        if (reconciled.domain.events.length === 0) {
-            delete root.domains.game;
-        } else {
-            root.domains.game = reconciled.domain;
-        }
-    }
-    return { root, impact: reconciled.impact };
-}
-
-export function reconcileGameRootWithStory(
-    value: XiaobaiOsChatData,
-    fingerprint: StoryFingerprint,
-): XiaobaiOsChatData {
-    let root = structuredClone(value);
-    const ledger = readEconomyLedger(root);
-    if (ledger) {root.domains.economy = reconcileLedgerWithStory(ledger, fingerprint).ledger;}
-    root = reconcileGameDomainInRoot(root, fingerprint).root;
-    validateGameEconomyConsistency(root);
-    return root;
 }

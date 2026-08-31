@@ -3,27 +3,18 @@ import test from 'node:test';
 
 import { validateBankDomain } from '../domains/bank/invariants.js';
 import { createBankService } from '../apps/bank/application/service.js';
-import {
-    reconcileBankRootWithStory,
-    validateBankEconomyConsistency,
-} from '../apps/bank/application/root-protocol.js';
+import { validateBankEconomyConsistency } from '../apps/bank/application/root-protocol.js';
 import { validateLedger } from '../domains/economy/invariants.js';
 import { projectBalances } from '../domains/economy/ledger.js';
 import { createEconomyRepository } from '../domains/economy/repository.js';
 import { createChatDataStore } from '../host/chat-data-store.js';
-import { createStoryActionRunner } from '../host/story-action-runner.js';
-import { createStoryReconciliationRuntime } from '../host/story-reconciliation-runtime.js';
-import { createStoryWriteGate } from '../host/story-write-gate.js';
 
 function createHarness(randomValues = []) {
     const identity = { key: 'character:1:bank-chat', chatId: 'bank-chat' };
     const chat = {
         metadata: {},
         persisted: undefined,
-        story: {
-            identityKey: identity.key,
-            messages: [{ role: 'user', name: '主人', text: '开场' }],
-        },
+        assistantTurns: 0,
     };
     const state = {
         saveCount: 0,
@@ -49,13 +40,6 @@ function createHarness(randomValues = []) {
         domains: { economy: validateLedger, bank: validateBankDomain },
         root: validateBankEconomyConsistency,
     });
-    const storyAdapter = {
-        captureCurrent: () => structuredClone(chat.story),
-        readPersistedCurrent: async () => structuredClone(chat.story),
-        subscribeChanges: () => () => {},
-    };
-    const gate = createStoryWriteGate();
-    const runner = createStoryActionRunner(store, storyAdapter, gate, async () => {});
     let clock = 1_000;
     let transactionId = 0;
     let eventId = 0;
@@ -68,9 +52,8 @@ function createHarness(randomValues = []) {
     const economy = createEconomyRepository(store, {
         now,
         createId: createTransactionId,
-        actionRunner: runner,
     });
-    const bank = createBankService(store, runner, {
+    const bank = createBankService(store, {
         now,
         createEventId: () => `bank-event-${++eventId}`,
         createPositionId: () => `bank-position-${++positionId}`,
@@ -85,7 +68,7 @@ function createHarness(randomValues = []) {
                 return value;
             },
         },
-        getCurrentAssistantTurn: () => chat.story.messages.filter(message => message.role === 'assistant').length,
+        getCurrentAssistantTurn: () => chat.assistantTurns,
         isMainGenerationActive: () => state.generationActive,
     });
 
@@ -93,19 +76,18 @@ function createHarness(randomValues = []) {
         bank,
         chat,
         economy,
-        gate,
         randomQueue,
-        runner,
         state,
         store,
-        storyAdapter,
         calls() {
             return { eventId, positionId, activityId, random: randomCalls, transactionId };
         },
         addAssistant(count, prefix = '回复') {
-            for (let index = 0; index < count; index += 1) {
-                chat.story.messages.push({ role: 'assistant', name: '角色', text: `${prefix}${index + 1}` });
-            }
+            void prefix;
+            chat.assistantTurns += count;
+        },
+        setAssistantTurns(count) {
+            chat.assistantTurns = count;
         },
     };
 }
@@ -204,7 +186,6 @@ test('read-only view stays safe and opening a deposit atomically commits Bank an
         note: '',
         sourceDomain: 'bank',
         sourceId: 'open-deposit',
-        anchor: saved.domains.bank.events[0].anchor,
         createdAt: saved.domains.economy.transactions[1].createdAt,
     });
     assert.deepEqual(harness.chat.persisted, harness.store.readCurrent());
@@ -304,7 +285,7 @@ test('fund replay compares explicit intent before CAS and never regenerates IDs 
     assert.equal(first.eventId, replay.eventId);
 });
 
-test('replaying a retained action commits the reconciled Bank and Economy root', async () => {
+test('replaying an earlier action never rewinds committed Bank or Economy state', async () => {
     const harness = createHarness();
     await openEconomy(harness);
     const input = command(harness.bank.readCurrent(), 'branch-open', {
@@ -313,20 +294,17 @@ test('replaying a retained action commits the reconciled Bank and Economy root',
     const opened = await harness.bank.openDeposit(input);
     harness.addAssistant(10);
     await harness.bank.settleDue(command(opened, 'branch-settle'));
-    harness.chat.story.messages[10].text = '改写后的回复';
+    const rootBefore = harness.store.readCurrent();
+    const viewBefore = harness.bank.readCurrent();
     const callsBefore = harness.calls();
     const savesBefore = harness.state.saveCount;
 
     const replay = await harness.bank.openDeposit(input);
 
-    assert.equal(replay.revision, 1);
-    assert.equal(replay.deposits.length, 1);
-    assert.equal(replay.balance, 0);
-    assert.equal(harness.store.readCurrent().domains.bank.events.length, 1);
-    assert.equal(harness.economy.readCurrent().transactions.length, 2);
-    assert.equal(projectBalances(harness.economy.readCurrent())['escrow:bank:bank-position-1'], 100);
+    assert.deepEqual(replay, viewBefore);
+    assert.deepEqual(harness.store.readCurrent(), rootBefore);
     assert.deepEqual(harness.calls(), callsBefore);
-    assert.equal(harness.state.saveCount, savesBefore + 1);
+    assert.equal(harness.state.saveCount, savesBefore);
 });
 
 test('settleDue builds exact profit and loss legs with one source and zeroes both escrows', async () => {
@@ -454,7 +432,7 @@ test('save failure rolls back both domains while unconfirmed save freezes one sa
     assert.equal(pending.calls().random, 1);
 });
 
-test('story rollback restores Bank positions and Economy escrow on the same prefix', async () => {
+test('assistant turn regression changes timing only and never rolls back committed Bank money', async () => {
     const harness = createHarness();
     await openEconomy(harness);
     const opened = await harness.bank.openDeposit(command(harness.bank.readCurrent(), 'rollback-open', {
@@ -462,36 +440,18 @@ test('story rollback restores Bank positions and Economy escrow on the same pref
     }));
     harness.addAssistant(10);
     await harness.bank.settleDue(command(opened, 'rollback-settle'));
-    const runtime = createStoryReconciliationRuntime(
-        harness.storyAdapter,
-        harness.store,
-        harness.gate,
-        [{
-            key: 'bank',
-            hasData: root => Boolean(root?.domains.bank)
-                || Boolean(root?.domains.economy?.transactions?.some(transaction => transaction.sourceDomain === 'bank')),
-            reconcile(root, fingerprint) {
-                return { root: reconcileBankRootWithStory(root, fingerprint), impact: null };
-            },
-        }],
-    );
+    const committedRoot = harness.store.readCurrent();
+    const committedView = harness.bank.readCurrent();
+    const savesBefore = harness.state.saveCount;
 
-    harness.chat.story.messages[10].text = '被重写的最后回复';
-    assert.equal((await runtime.reconcileNow()).status, 'ready');
-    let view = harness.bank.readCurrent();
-    assert.equal(view.revision, 1);
-    assert.equal(view.balance, 0);
-    assert.equal(view.deposits[0].claimable, true);
-    assert.equal(projectBalances(harness.economy.readCurrent())['escrow:bank:bank-position-1'], 100);
+    harness.setAssistantTurns(0);
+    const regressedView = harness.bank.readCurrent();
+    assert.equal(regressedView.revision, committedView.revision);
+    assert.equal(regressedView.balance, committedView.balance);
+    assert.equal(regressedView.deposits.length, 0);
+    assert.deepEqual(harness.store.readCurrent(), committedRoot);
+    assert.equal(harness.state.saveCount, savesBefore);
     validateBankEconomyConsistency(harness.store.readCurrent());
-
-    harness.chat.story.messages[0].text = '被重写的开场';
-    assert.equal((await runtime.reconcileNow()).status, 'ready');
-    view = harness.bank.readCurrent();
-    assert.equal(view.revision, 0);
-    assert.equal(view.balance, 100);
-    assert.equal(harness.store.readCurrent().domains.bank, undefined);
-    assert.equal(harness.economy.readCurrent().transactions.length, 1);
 
     const corrupt = structuredClone(harness.state.saves[0].xiaobaiOs);
     corrupt.domains.economy.transactions[1].sourceId = 'wrong-action-source';

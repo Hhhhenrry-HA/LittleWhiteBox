@@ -9,6 +9,10 @@ function deferred() {
     return { promise, resolve };
 }
 
+function nextTask() {
+    return new Promise(resolve => setTimeout(resolve, 0));
+}
+
 function products() {
     return {
         deposits: [{
@@ -52,7 +56,7 @@ function activity(index) {
     };
 }
 
-function createHarness({ economyOpened = true, writeState = 'ready', activityCount = 0, reconcileGate = null } = {}) {
+function createHarness({ economyOpened = true, writeState = 'ready', activityCount = 0, prepareGate = null } = {}) {
     const host = {
         identity: { key: 'character:1:bank-chat', chatId: 'bank-chat' },
         posts: [],
@@ -61,8 +65,7 @@ function createHarness({ economyOpened = true, writeState = 'ready', activityCou
     let opened = economyOpened;
     let generationActive = false;
     let generationListener = null;
-    let reconciliations = 0;
-    let storyState = { identityKey: host.identity.key, status: 'ready', message: '' };
+    let ensureCalls = 0;
     let view = {
         revision: 0,
         eventId: '',
@@ -101,7 +104,6 @@ function createHarness({ economyOpened = true, writeState = 'ready', activityCou
     };
     const commands = [];
     const reads = [];
-    const storyListeners = new Set();
 
     function readCurrent(options = {}) {
         reads.push(structuredClone(options));
@@ -140,30 +142,22 @@ function createHarness({ economyOpened = true, writeState = 'ready', activityCou
     };
     const economy = {
         hasCurrent: () => opened,
-        async ensureCurrent() {opened = true;},
-    };
-    const storyRuntime = {
-        async reconcileNow() {
-            reconciliations += 1;
-            if (reconcileGate) {await reconcileGate.promise;}
-            return storyState;
-        },
-        getState: () => storyState,
-        subscribe(listener) {
-            storyListeners.add(listener);
-            return () => storyListeners.delete(listener);
+        async ensureCurrent() {
+            ensureCalls += 1;
+            if (prepareGate) {await prepareGate.promise;}
+            opened = true;
         },
     };
     const controller = createBankController({
         bank,
         economy,
-        storyRuntime,
         getChatIdentity: () => host.identity,
         isMainGenerationActive: () => generationActive,
         subscribeGeneration(listener) {
             generationListener = listener;
             return () => {generationListener = null;};
         },
+        subscribeData() {return () => {};},
     });
     controller.startBackground();
     return {
@@ -172,26 +166,25 @@ function createHarness({ economyOpened = true, writeState = 'ready', activityCou
         controller,
         host,
         reads,
-        get reconciliations() {return reconciliations;},
+        get ensureCalls() {return ensureCalls;},
         setGeneration(active) {
             generationActive = active;
             generationListener?.();
         },
         setWriteState(next) {view = { ...view, writeState: next };},
-        publishStory(next) {
-            storyState = next;
-            storyListeners.forEach(listener => listener(next));
-        },
     };
 }
 
-async function activate(harness) {
-    return harness.controller.activate({
+async function activate(harness, { waitForPreparation = true } = {}) {
+    const initial = await harness.controller.activate({
         post(type, payload) {
             harness.host.posts.push({ type, payload });
             return true;
         },
     });
+    if (!waitForPreparation) {return initial;}
+    await nextTask();
+    return harness.host.posts.findLast(post => post.type === 'bank/state')?.payload.state || initial;
 }
 
 function payload(harness, state, intent = {}) {
@@ -204,12 +197,17 @@ function payload(harness, state, intent = {}) {
     };
 }
 
-test('activation opens Economy or reconciles existing story state and projects only safe locked-fund fields', async () => {
+test('activation prepares a missing Economy only and projects safe locked-fund fields', async () => {
     const unopened = createHarness({ economyOpened: false });
-    const fresh = await activate(unopened);
+    const loading = await activate(unopened, { waitForPreparation: false });
+    assert.equal(loading.status, 'loading');
+    assert.equal(loading.statusLabel, '正在载入');
+    assert.equal(unopened.ensureCalls, 0);
+    await nextTask();
+    const fresh = unopened.host.posts.findLast(post => post.type === 'bank/state').payload.state;
     assert.equal(fresh.balance, 1_500);
     assert.equal(fresh.statusLabel, '金库就绪');
-    assert.equal(unopened.reconciliations, 0);
+    assert.equal(unopened.ensureCalls, 1);
 
     const lockedFund = fresh.investments[0];
     assert.equal(lockedFund.statusLabel, '剩余 16 回合');
@@ -218,8 +216,12 @@ test('activation opens Economy or reconciles existing story state and projects o
     assert.equal(Object.hasOwn(lockedFund, 'randomSeed'), false);
 
     const existing = createHarness();
-    await activate(existing);
-    assert.equal(existing.reconciliations, 1);
+    const ready = await activate(existing, { waitForPreparation: false });
+    assert.equal(ready.status, 'ready');
+    assert.equal(existing.ensureCalls, 0);
+    await nextTask();
+    assert.equal(existing.ensureCalls, 0);
+    assert.equal(existing.host.posts.length, 0);
 });
 
 test('write protocols forward only identity-bound intent, CAS, and action fields', async () => {
@@ -318,13 +320,22 @@ test('controller serializes every write and rejects a late result after chat ide
     }), /银行 APP 未激活/);
 });
 
-test('a stale activation cannot bind a page after reconciliation finishes in another chat', async () => {
+test('a stale first-time Economy preparation cannot update a page after the chat changes', async () => {
     const gate = deferred();
-    const harness = createHarness({ reconcileGate: gate });
-    const opening = activate(harness);
+    const harness = createHarness({ economyOpened: false, prepareGate: gate });
+    const opening = await activate(harness, { waitForPreparation: false });
+    assert.equal(opening.status, 'loading');
+    await nextTask();
+    const postCount = harness.host.posts.length;
     harness.host.identity = { key: 'character:2:other-chat', chatId: 'other-chat' };
     gate.resolve();
-    await assert.rejects(opening, /聊天已切换/);
+    await nextTask();
+    assert.equal(harness.host.posts.length, postCount);
+    harness.controller.handleChatChanged();
+    await assert.rejects(harness.controller.handleMessage({
+        type: 'bank/refresh',
+        payload: { chatIdentity: 'character:1:bank-chat' },
+    }), /银行 APP 未激活/);
 });
 
 test('unconfirmed saves freeze state until the shared confirmation succeeds', async () => {
@@ -341,19 +352,14 @@ test('unconfirmed saves freeze state until the shared confirmation succeeds', as
     assert.equal(result.state.status, 'ready');
 });
 
-test('story and generation changes push a fresh first page without writing Bank data', async () => {
+test('generation changes push a fresh first page without writing Bank data', async () => {
     const harness = createHarness({ activityCount: 75 });
     await activate(harness);
     harness.setGeneration(true);
     assert.equal(harness.host.posts.at(-1).payload.state.generationActive, true);
 
-    harness.publishStory({
-        identityKey: harness.host.identity.key,
-        status: 'reconciling',
-        message: '剧情已变化，正在核对银行',
-    });
     const pushed = harness.host.posts.at(-1).payload.state;
-    assert.equal(pushed.status, 'reconciling');
+    assert.equal(pushed.status, 'ready');
     assert.equal(pushed.activities.length, 50);
     assert.equal(harness.commands.length, 0);
 });

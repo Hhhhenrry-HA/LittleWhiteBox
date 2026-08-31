@@ -10,12 +10,12 @@ const props = defineProps<{
 
 const formattedBalance = computed(() => Number(props.balance).toLocaleString('zh-CN'));
 const statusLabel = computed(() => ({
-    ready: '账目已核',
-    reconciling: '剧情核对中',
-    saving: '保存确认中',
-    unconfirmed: '保存待核实',
+    ready: '账目就绪',
+    loading: '正在开户',
+    saving: '正在保存',
+    unconfirmed: '保存待确认',
     conflict: '账目已冻结',
-    blocked: '账目已暂停',
+    blocked: '暂时不可用',
 })[props.status]);
 </script>
 

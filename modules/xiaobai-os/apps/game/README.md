@@ -1,9 +1,7 @@
-# Game App
+# Game app
 
-`apps/game` owns the standalone Game application layer, controller, public client DTOs, presentation mapping, and Vue interface. `application/` contains the root protocol, command orchestration, and atomic Economy integration; `host/` contains only SillyTavern/iframe adapters. It has no Bank dependency and does not write prompts or chat messages.
+`apps/game`把纯 Game 状态机接入 Economy、根 store、iframe 协议和 Vue UI。
 
-The controller binds every request to one chat activation, serializes foreground operations, and forwards only explicit action fields. The application layer reconciles story state and commits writes; the presentation layer copies the service's public view field-by-field, so private game state never reaches the iframe.
+Application service 在一个根 mutation 中提交游戏事件与下注/派彩资金腿，并保留 CAS、actionId 幂等、随机只抽一次、保存失败恢复和未确认写冻结。Controller 绑定聊天 activation、串行化前台操作，只转发明确的用户意图。Presentation 逐字段复制公开状态，私有骰子和牌堆不会进入 iframe。
 
-Game rules, randomness, replay, persisted events, and terminal activities belong to `domains/game`. Player balance and escrow transactions remain owned by `domains/economy` and are committed atomically by the Game service.
-
-Removal requires settling or explicitly discarding active escrow first, then removing this directory, the Game host and shell registrations, `domains/game`, `domains.game` chat data, and linked Economy transactions according to the chosen migration policy.
+Game 不读取普通聊天消息或 Assistant 回合，也不注册聊天变化后台服务。已有 Economy 时同步打开；首次没有 Economy 时只异步开户。

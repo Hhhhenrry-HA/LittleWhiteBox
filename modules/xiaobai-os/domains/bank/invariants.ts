@@ -1,4 +1,3 @@
-import { EMPTY_STORY_PREFIX_HASH, type XiaobaiOsStoryAnchor } from '../../types.js';
 import { BANK_MAX_PAYOUT } from './money.js';
 import {
     createBankDepositFrozenContract,
@@ -21,7 +20,6 @@ import {
     type BankState,
 } from './types.js';
 
-const HASH_PATTERN = /^sha256:[0-9a-f]{64}$/;
 const MAX_DATE_MS = 8_640_000_000_000_000;
 const MAX_ID_LENGTH = 200;
 
@@ -64,25 +62,11 @@ function payout(value: unknown, detail: string): number {
     return amount;
 }
 
-function anchor(value: unknown, detail: string): XiaobaiOsStoryAnchor {
-    const source = exactRecord(value, ['floor', 'prefixHash'], detail);
-    const floor = safeInteger(source.floor, -1, `${detail}.floor`);
-    if (typeof source.prefixHash !== 'string' || !HASH_PATTERN.test(source.prefixHash)
-        || (floor === -1 && source.prefixHash !== EMPTY_STORY_PREFIX_HASH)) {
-        return invalid(`${detail}.prefixHash`);
-    }
-    return { floor, prefixHash: source.prefixHash };
-}
-
 function idArray(value: unknown, detail: string): string[] {
     if (!Array.isArray(value)) {return invalid(`${detail}.shape`);}
     const ids = value.map((entry, index) => canonicalId(entry, `${detail}.${index}`));
     if (new Set(ids).size !== ids.length) {return invalid(`${detail}.duplicate`);}
     return ids;
-}
-
-function sameJson(left: unknown, right: unknown): boolean {
-    return JSON.stringify(left) === JSON.stringify(right);
 }
 
 function sameIdSet(left: readonly string[], right: readonly string[]): boolean {
@@ -91,7 +75,7 @@ function sameIdSet(left: readonly string[], right: readonly string[]): boolean {
 
 function validateDepositPosition(value: unknown, detail: string): BankDepositPosition {
     const position = exactRecord(value, [
-        'id', 'productId', 'principal', 'startTurn', 'maturityTurn', 'openedAtAnchor',
+        'id', 'productId', 'principal', 'startTurn', 'maturityTurn',
         'maturityAmount', 'earlyWithdrawalAmount',
     ], detail);
     const id = canonicalId(position.id, `${detail}.id`);
@@ -118,14 +102,13 @@ function validateDepositPosition(value: unknown, detail: string): BankDepositPos
         principal,
         startTurn,
         maturityTurn,
-        openedAtAnchor: anchor(position.openedAtAnchor, `${detail}.openedAtAnchor`),
         ...contract,
     };
 }
 
 function validateFundPosition(value: unknown, detail: string): BankFundPosition {
     const position = exactRecord(value, [
-        'id', 'productId', 'principal', 'startTurn', 'maturityTurn', 'openedAtAnchor',
+        'id', 'productId', 'principal', 'startTurn', 'maturityTurn',
         'resolvedReturnBps', 'settlementAmount',
     ], detail);
     const id = canonicalId(position.id, `${detail}.id`);
@@ -151,7 +134,6 @@ function validateFundPosition(value: unknown, detail: string): BankFundPosition 
         principal,
         startTurn,
         maturityTurn,
-        openedAtAnchor: anchor(position.openedAtAnchor, `${detail}.openedAtAnchor`),
         ...contract,
     };
 }
@@ -263,7 +245,7 @@ export function validateBankEventResult(value: unknown): BankEventResult {
 
 function validateEvent(value: unknown, expectedRevision: number): BankEvent {
     const event = exactRecord(value, [
-        'revision', 'eventId', 'actionId', 'command', 'result', 'anchor', 'assistantTurn', 'createdAt',
+        'revision', 'eventId', 'actionId', 'command', 'result', 'assistantTurn', 'createdAt',
     ], 'event');
     if (event.revision !== expectedRevision) {return invalid('event.revision');}
     return {
@@ -272,7 +254,6 @@ function validateEvent(value: unknown, expectedRevision: number): BankEvent {
         actionId: canonicalId(event.actionId, 'event.actionId'),
         command: validateBankAction(event.command),
         result: validateBankEventResult(event.result),
-        anchor: anchor(event.anchor, 'event.anchor'),
         assistantTurn: safeInteger(event.assistantTurn, 0, 'event.assistantTurn'),
         createdAt: (() => {
             const createdAt = safeInteger(event.createdAt, 0, 'event.createdAt');
@@ -287,8 +268,7 @@ function assertOpenedPosition(
     command: Extract<BankAction, { kind: 'deposit-open' | 'fund-open' }>,
 ): void {
     if (position.id !== command.positionId || position.productId !== command.productId
-        || position.principal !== command.amount || position.startTurn !== event.assistantTurn
-        || !sameJson(position.openedAtAnchor, event.anchor)) {
+        || position.principal !== command.amount || position.startTurn !== event.assistantTurn) {
         invalid('event.opened-position');
     }
 }
@@ -413,18 +393,11 @@ export function validateBankDomain(value: unknown): asserts value is BankDomainV
     const activityIds = new Set<string>();
     const activitySourceIds = new Set<string>();
     const state: BankState = { openDeposits: [], openInvestments: [] };
-    let previousFloor = -1;
-    let previousTurn = 0;
     for (let index = 0; index < domain.events.length; index += 1) {
         const event = validateEvent(domain.events[index], index + 1);
         if (eventIds.has(event.eventId) || actionIds.has(event.actionId)) {invalid('event.id-duplicate');}
-        if (event.anchor.floor < previousFloor || event.assistantTurn < previousTurn) {
-            invalid('event.timeline-regression');
-        }
         eventIds.add(event.eventId);
         actionIds.add(event.actionId);
         applyValidatedEvent(state, event, entityIds, activityIds, activitySourceIds);
-        previousFloor = event.anchor.floor;
-        previousTurn = event.assistantTurn;
     }
 }

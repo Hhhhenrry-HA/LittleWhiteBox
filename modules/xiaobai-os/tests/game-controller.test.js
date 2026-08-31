@@ -9,6 +9,10 @@ function deferred() {
     return { promise, resolve };
 }
 
+function nextTask() {
+    return new Promise(resolve => setTimeout(resolve, 0));
+}
+
 function activity(index = 1) {
     return {
         id: `activity-${index}`,
@@ -71,11 +75,9 @@ function createHarness({ economyOpened = true, writeState = 'ready', records = n
     let view = baseView(writeState);
     const allRecords = records || view.activities;
     const commands = [];
-    const storyListeners = new Set();
     const generationListeners = new Set();
     let generationActive = false;
-    let storyState = { identityKey: host.identity.key, status: 'ready', message: '' };
-    let reconciliations = 0;
+    let ensureCalls = 0;
     const record = method => async (input) => {
         commands.push({ method, input: structuredClone(input) });
         return structuredClone(view);
@@ -113,26 +115,21 @@ function createHarness({ economyOpened = true, writeState = 'ready', records = n
     };
     const economy = {
         hasCurrent: () => opened,
-        async ensureCurrent() {opened = true;},
-    };
-    const storyRuntime = {
-        async reconcileNow() {reconciliations += 1; return storyState;},
-        getState: () => storyState,
-        subscribe(listener) {
-            storyListeners.add(listener);
-            return () => storyListeners.delete(listener);
+        async ensureCurrent() {
+            ensureCalls += 1;
+            opened = true;
         },
     };
     const controller = createGameController({
         game,
         economy,
-        storyRuntime,
         getChatIdentity: () => host.identity,
         isMainGenerationActive: () => generationActive,
         subscribeGeneration(listener) {
             generationListeners.add(listener);
             return () => generationListeners.delete(listener);
         },
+        subscribeData() {return () => {};},
     });
     controller.startBackground();
     return {
@@ -140,25 +137,24 @@ function createHarness({ economyOpened = true, writeState = 'ready', records = n
         commands,
         controller,
         host,
-        get reconciliations() {return reconciliations;},
+        get ensureCalls() {return ensureCalls;},
         setGeneration(active) {
             generationActive = active;
             generationListeners.forEach(listener => listener(active));
         },
-        publishStory(next) {
-            storyState = next;
-            storyListeners.forEach(listener => listener(next));
-        },
     };
 }
 
-async function activate(harness) {
-    return harness.controller.activate({
+async function activate(harness, { waitForPreparation = true } = {}) {
+    const initial = await harness.controller.activate({
         post(type, payload) {
             harness.host.posts.push({ type, payload });
             return true;
         },
     });
+    if (!waitForPreparation) {return initial;}
+    await nextTask();
+    return harness.host.posts.findLast(post => post.type === 'game/state')?.payload.state || initial;
 }
 
 function assertNoHiddenFields(value) {
@@ -173,19 +169,27 @@ function assertNoHiddenFields(value) {
     visit(value);
 }
 
-test('Game activation ensures Economy, reconciles existing story state, and strips hidden service fields', async () => {
+test('Game prepares a missing Economy only and strips hidden service fields', async () => {
     const unopened = createHarness({ economyOpened: false });
-    const openedState = await activate(unopened);
+    const loading = await activate(unopened, { waitForPreparation: false });
+    assert.equal(loading.status, 'loading');
+    assert.equal(unopened.ensureCalls, 0);
+    await nextTask();
+    const openedState = unopened.host.posts.findLast(post => post.type === 'game/state').payload.state;
     assert.equal(openedState.balance, 150);
-    assert.equal(unopened.reconciliations, 0);
+    assert.equal(unopened.ensureCalls, 1);
     assertNoHiddenFields(openedState);
 
     const existing = createHarness();
-    const state = await activate(existing);
-    assert.equal(existing.reconciliations, 1);
-    assert.deepEqual(state.activeGame.playerDice, [1, 2, 3, 4, 5]);
-    assert.equal(state.records[0].payout, 95);
-    assertNoHiddenFields(state);
+    const initial = await activate(existing, { waitForPreparation: false });
+    assert.equal(initial.status, 'ready');
+    assert.equal(existing.ensureCalls, 0);
+    assert.deepEqual(initial.activeGame.playerDice, [1, 2, 3, 4, 5]);
+    assert.equal(initial.records[0].payout, 95);
+    assertNoHiddenFields(initial);
+    await nextTask();
+    assert.equal(existing.ensureCalls, 0);
+    assert.equal(existing.host.posts.length, 0);
 });
 
 test('Game protocol forwards only explicit fields for every game action', async () => {
@@ -262,7 +266,7 @@ test('Game serializes writes and invalidates a pending result after a chat switc
     );
 });
 
-test('Game pages records explicitly and publishes reconciliation and save recovery states', async () => {
+test('Game pages records explicitly and publishes save recovery states', async () => {
     const records = Array.from({ length: 55 }, (_, index) => activity(55 - index));
     const harness = createHarness({ writeState: 'unconfirmed', records });
     const initial = await activate(harness);
@@ -286,14 +290,6 @@ test('Game pages records explicitly and publishes reconciliation and save recove
     assert.equal(confirmation.confirmation, 'confirmed');
     assert.equal(confirmation.state.status, 'ready');
 
-    harness.publishStory({
-        identityKey: harness.host.identity.key,
-        status: 'reconciling',
-        message: '剧情已变化，正在核对游戏',
-    });
-    const pushed = harness.host.posts.findLast(post => post.type === 'game/state').payload.state;
-    assert.equal(pushed.status, 'reconciling');
-    assert.equal(pushed.message, '剧情已变化，正在核对游戏');
 });
 
 test('Game publishes main-generation state without invoking a game command', async () => {

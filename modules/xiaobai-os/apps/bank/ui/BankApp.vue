@@ -50,7 +50,7 @@ const writeDisabledReason = computed(() => {
 const refreshDisabled = computed(() => refreshing.value || actionBusy.value || requiresConfirmation.value);
 
 function createActionId(): string {
-    if (typeof crypto.randomUUID === 'function') {return `bank-ui:${crypto.randomUUID()}`;}
+    if (typeof globalThis.crypto?.randomUUID === 'function') {return `bank-ui:${globalThis.crypto.randomUUID()}`;}
     return `bank-ui:${Date.now()}:${Math.random().toString(36).slice(2, 10)}`;
 }
 
@@ -76,7 +76,7 @@ function readableError(error: unknown): string {
     if (message.includes('bank_position_missing') || message.includes('bank_position_state_changed')) {return '该头寸状态已经变化，请刷新金库。';}
     if (message.includes('bank_no_due_positions')) {return '当前没有可领取的到期头寸。';}
     if (message === 'host_request_timeout') {return '等待保存结果超时，请保留当前页面并重试。';}
-    return message;
+    return '银行操作未完成，请稍后重试。';
 }
 
 async function refresh(): Promise<void> {
@@ -212,7 +212,7 @@ onMounted(() => {
             applyState((message.payload as { state: BankClientState }).state);
         }
         if (message.type === 'bank/error') {
-            errorMessage.value = String((message.payload as { message?: string })?.message || '金库暂时无法读取');
+            errorMessage.value = readableError((message.payload as { message?: string })?.message || '');
         }
     });
 });

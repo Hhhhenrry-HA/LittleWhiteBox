@@ -3,22 +3,24 @@ import type {
     XiaobaiOsChatDataStore,
     XiaobaiOsWriteState,
 } from '../../../host/chat-data-store.js';
-import type { StoryActionRunner, StoryBoundActionContext } from '../../../host/story-action-runner.js';
-import type { StoryFingerprint } from '../../../host/story-fingerprint.js';
 import type { XiaobaiOsChatData } from '../../../types.js';
 import { postAction } from '../../../domains/economy/ledger.js';
 import type { EconomyLedgerV1 } from '../../../domains/economy/types.js';
 import { getShopItem } from '../../../domains/shop/catalog.js';
+import { parseShopEffectReceipt } from '../../../domains/shop/invariants.js';
 import {
     activateShopItem,
     createEmptyShopState,
     deactivateShopItem,
+    deliverShopEffects,
+    getShopCasToken,
     projectShopState,
     purchaseShopItem,
 } from '../../../domains/shop/timeline.js';
 import type {
     ShopCasToken,
-    ShopDomainV1,
+    ShopDomainV2,
+    ShopEffectReceipt,
     ShopStateProjection,
 } from '../../../domains/shop/types.js';
 import {
@@ -26,12 +28,11 @@ import {
     readEconomyLedger,
     readPlayerBalance,
     readShopDomain,
-    reconcileShopRootWithStory,
     validateShopEconomyConsistency,
 } from './root-protocol.js';
 
 export interface ShopServiceView {
-    domain: ShopDomainV1 | null;
+    domain: ShopDomainV2 | null;
     projection: ShopStateProjection;
     balance: number;
     writeState: XiaobaiOsWriteState;
@@ -55,11 +56,18 @@ export interface ShopDeactivateCommand extends ShopServiceCommand {
     activationId: string;
 }
 
+export interface ShopCommitDeliveryCommand {
+    chatIdentity: string;
+    actionId: string;
+    receipt: ShopEffectReceipt;
+}
+
 export interface ShopService {
     readCurrent: () => ShopServiceView;
     purchaseCurrent: (input: ShopPurchaseCommand) => Promise<ShopServiceView>;
     activateCurrent: (input: ShopActivateCommand) => Promise<ShopServiceView>;
     deactivateCurrent: (input: ShopDeactivateCommand) => Promise<ShopServiceView>;
+    commitDeliveryCurrent: (input: ShopCommitDeliveryCommand) => Promise<ShopServiceView>;
     confirmPending: () => Promise<ConfirmResult>;
     getWriteState: () => XiaobaiOsWriteState;
 }
@@ -72,18 +80,13 @@ interface ShopServiceDependencies {
     isMainGenerationActive?: () => boolean;
 }
 
-function assistantTurn(fingerprint: StoryFingerprint): number {
-    return fingerprint.messages.reduce((count, message) => count + Number(message.role === 'assistant'), 0);
-}
-
 export function createShopService(
     store: XiaobaiOsChatDataStore,
-    runner: StoryActionRunner,
     {
         now = Date.now,
         createEventId,
         createTransactionId,
-        createActivationId = () => `shop-activation-${globalThis.crypto.randomUUID()}`,
+        createActivationId = () => `shop-activation-${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`}`,
         isMainGenerationActive = () => false,
     }: ShopServiceDependencies = {},
 ): ShopService {
@@ -108,16 +111,14 @@ export function createShopService(
 
     function prepareRoot(
         current: XiaobaiOsChatData | null,
-        storyContext: StoryBoundActionContext,
-    ): { root: XiaobaiOsChatData; ledger: EconomyLedgerV1; shop: ShopDomainV1; assistantTurn: number } {
-        const base = current ? reconcileShopRootWithStory(current, storyContext.fingerprint) : emptyShopRoot();
+    ): { root: XiaobaiOsChatData; ledger: EconomyLedgerV1; shop: ShopDomainV2 } {
+        const base = current ? structuredClone(current) : emptyShopRoot();
         const ledger = readEconomyLedger(base);
         if (!ledger) {throw new Error('economy_not_opened');}
         return {
             root: base,
             ledger,
             shop: readShopDomain(base) || createEmptyShopState(),
-            assistantTurn: assistantTurn(storyContext.fingerprint),
         };
     }
 
@@ -126,14 +127,10 @@ export function createShopService(
     }
 
     async function purchaseCurrent(input: ShopPurchaseCommand): Promise<ShopServiceView> {
-        return runner.run((current, _rootContext, storyContext) => {
-            const prepared = prepareRoot(current, storyContext);
-            const existing = prepared.shop.events.find((event) => event.actionId === input.actionId);
-            const anchor = existing?.anchor || storyContext.anchor;
+        return store.mutateCurrent((current) => {
+            const prepared = prepareRoot(current);
             const shopResult = purchaseShopItem(prepared.shop, {
                 ...input,
-                anchor,
-                assistantTurn: existing?.assistantTurn ?? prepared.assistantTurn,
             }, shopDependencies);
             const item = getShopItem(input.itemId);
             const economyResult = postAction(prepared.ledger, [{
@@ -146,7 +143,6 @@ export function createShopService(
                 title: `购买${item.name}`,
                 sourceDomain: 'shop',
                 sourceId: item.id,
-                anchor,
             }], economyDependencies);
             prepared.root.domains.economy = economyResult.ledger;
             prepared.root.domains.shop = shopResult.domain;
@@ -157,9 +153,9 @@ export function createShopService(
 
     async function activateCurrent(input: ShopActivateCommand): Promise<ShopServiceView> {
         assertGenerationIdle();
-        return runner.run((current, _rootContext, storyContext) => {
+        return store.mutateCurrent((current) => {
             assertGenerationIdle();
-            const prepared = prepareRoot(current, storyContext);
+            const prepared = prepareRoot(current);
             const existing = prepared.shop.events.find((event) => event.actionId === input.actionId);
             const activationId = existing?.action.kind === 'activate'
                 ? existing.action.activationId
@@ -167,8 +163,6 @@ export function createShopService(
             const result = activateShopItem(prepared.shop, {
                 ...input,
                 activationId,
-                anchor: existing?.anchor || storyContext.anchor,
-                assistantTurn: existing?.assistantTurn ?? prepared.assistantTurn,
             }, shopDependencies);
             prepared.root.domains.shop = result.domain;
             validateShopEconomyConsistency(prepared.root);
@@ -178,14 +172,11 @@ export function createShopService(
 
     async function deactivateCurrent(input: ShopDeactivateCommand): Promise<ShopServiceView> {
         assertGenerationIdle();
-        return runner.run((current, _rootContext, storyContext) => {
+        return store.mutateCurrent((current) => {
             assertGenerationIdle();
-            const prepared = prepareRoot(current, storyContext);
-            const existing = prepared.shop.events.find((event) => event.actionId === input.actionId);
+            const prepared = prepareRoot(current);
             const result = deactivateShopItem(prepared.shop, {
                 ...input,
-                anchor: existing?.anchor || storyContext.anchor,
-                assistantTurn: existing?.assistantTurn ?? prepared.assistantTurn,
             }, shopDependencies);
             prepared.root.domains.shop = result.domain;
             validateShopEconomyConsistency(prepared.root);
@@ -193,11 +184,33 @@ export function createShopService(
         }, { beforeCommit: assertGenerationIdle });
     }
 
+    async function commitDeliveryCurrent(input: ShopCommitDeliveryCommand): Promise<ShopServiceView> {
+        const receipt = parseShopEffectReceipt(input.receipt);
+        return store.mutateCurrent((current, rootContext) => {
+            if (!input.chatIdentity || input.chatIdentity !== rootContext.identityKey) {
+                throw new Error('shop_generation_chat_changed');
+            }
+            const prepared = prepareRoot(current);
+            const result = deliverShopEffects(prepared.shop, {
+                ...getShopCasToken(prepared.shop),
+                actionId: input.actionId,
+                receipt,
+            }, shopDependencies);
+            prepared.root.domains.shop = result.domain;
+            validateShopEconomyConsistency(prepared.root);
+            return {
+                next: prepared.root,
+                result: buildView(prepared.root),
+            };
+        });
+    }
+
     return Object.freeze({
         readCurrent,
         purchaseCurrent,
         activateCurrent,
         deactivateCurrent,
+        commitDeliveryCurrent,
         confirmPending: store.confirmPending,
         getWriteState: store.getWriteState,
     });

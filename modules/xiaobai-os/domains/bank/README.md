@@ -1,20 +1,14 @@
 # Bank domain
 
-This directory owns the pure rules of the Xiaobai OS Bank domain. It does not import Economy, host runtimes, controllers, or UI; `apps/bank/application/` combines these rules with the shared root and Economy protocols.
+Bank 只拥有金融产品、头寸、结算活动和事件重放。它不拥有余额、宿主生命周期、聊天内容或 UI。
 
-- `types.ts` defines persistence, product, position, action, result, activity, and public-view contracts.
-- `products.ts` owns the immutable registry of three deposits and three funds, including current shelf membership and frozen contract calculations.
-- `money.ts` is the sole integer-money boundary. Calculations floor their result, reject unsafe values, and enforce the 50,000 payout cap.
-- `random.ts` validates every synchronous `nextInt` call and supplies the production `Math.random` source plus deterministic helpers.
-- `invariants.ts` validates the current serialized event chain and frozen contracts.
-- `timeline.ts` owns replay, immutable CAS/idempotent append, and story-prefix trimming.
-- `view.ts` creates deep-copied public projections and omits unresolved fund outcomes.
+- `products.ts`：六款固定产品合同。
+- `money.ts`：整数金额、利息、罚金和收益计算。
+- `random.ts`：浮动理财的受控随机边界。
+- `timeline.ts`：线性事件追加、CAS、幂等重放和状态投影。
+- `view.ts`：隐藏未到期浮动收益的公开 DTO。
+- `invariants.ts`：事件、合同、头寸和活动不变量。
 
-Bank contains no game types, state machines, routes, or UI. Those belong exclusively to `domains/game` and `apps/game`.
+每个 Bank 事件记录动作发生时的 Assistant 回合数。期限展示使用“当前已完成 Assistant 回复数 - 开立回合”；回合数下降只会改变剩余期限或可领取状态，不删除、恢复或改写任何 Bank/Economy 事实。
 
-Economy transactions, cross-domain validation, root reconciliation, persistence, and write-state handling belong to `apps/bank/application/`; iframe and SillyTavern adaptation belong to `apps/bank/host/`.
-
-Specifications:
-
-- [Target design](../../docs/bank-app-target-design.md)
-- [Implementation plan](../../docs/bank-app-implementation-plan.md)
+资金腿和 Bank 事件的原子组合位于`apps/bank/application/`。删除 Bank 需要删除领域与 APP 注册，并清理`domains.bank`和仍被 Bank escrow 占用的数据。

@@ -1,6 +1,5 @@
 import type { GameServiceView } from '../application/service.js';
 import type { GamePublicActivityRecord, GamePublicGameView } from '../../../domains/game/types.js';
-import type { StoryReconciliationState } from '../../../host/story-reconciliation-runtime.js';
 import type {
     GameActiveGameView,
     GameClientState,
@@ -28,8 +27,6 @@ const OUTCOME_LABELS: Readonly<Record<string, string>> = Object.freeze({
 
 function resolveStatus(
     view: GameServiceView,
-    storyState: StoryReconciliationState,
-    chatIdentity: string,
     economyReady: boolean,
 ): { status: GameClientStatus; message: string } {
     if (view.writeState === 'conflict') {
@@ -40,9 +37,6 @@ function resolveStatus(
     }
     if (view.writeState === 'saving') {
         return { status: 'saving', message: '正在确认赌局与账本保存结果…' };
-    }
-    if (storyState.identityKey === chatIdentity && storyState.status !== 'ready') {
-        return { status: storyState.status, message: storyState.message };
     }
     if (!economyReady) {
         return { status: 'blocked', message: '钱包尚未完成开户，请重新读取。' };
@@ -158,13 +152,11 @@ export function presentGameRecords(view: GameServiceView): GameRecordPageView {
 export function presentGameState({
     chatIdentity,
     serviceView,
-    storyState,
     economyReady,
     generationActive,
 }: {
     chatIdentity: string;
     serviceView: GameServiceView;
-    storyState: StoryReconciliationState;
     economyReady: boolean;
     generationActive: boolean;
 }): GameClientState {
@@ -175,7 +167,7 @@ export function presentGameState({
         lockedAmount: serviceView.lockedAmount,
         revision: serviceView.revision,
         eventId: serviceView.eventId,
-        ...resolveStatus(serviceView, storyState, chatIdentity, economyReady),
+        ...resolveStatus(serviceView, economyReady),
         generationActive,
         activeGame: presentActiveGame(serviceView.activeGame),
         ...presentGameRecords(serviceView),

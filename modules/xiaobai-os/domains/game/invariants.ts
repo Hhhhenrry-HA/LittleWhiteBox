@@ -1,4 +1,3 @@
-import { EMPTY_STORY_PREFIX_HASH, type XiaobaiOsStoryAnchor } from '../../types.js';
 import {
     assertGameDiceGameWaitingForPlayer,
     countGameDiceBidMatches,
@@ -43,7 +42,6 @@ import {
     type GameState,
 } from './types.js';
 
-const HASH_PATTERN = /^sha256:[0-9a-f]{64}$/;
 const MAX_DATE_MS = 8_640_000_000_000_000;
 const MAX_ID_LENGTH = 200;
 
@@ -84,16 +82,6 @@ function payout(value: unknown, detail: string): number {
     const amount = safeInteger(value, 0, detail);
     if (amount > GAME_MAX_PAYOUT) {return invalid(detail);}
     return amount;
-}
-
-function anchor(value: unknown, detail: string): XiaobaiOsStoryAnchor {
-    const source = exactRecord(value, ['floor', 'prefixHash'], detail);
-    const floor = safeInteger(source.floor, -1, `${detail}.floor`);
-    if (typeof source.prefixHash !== 'string' || !HASH_PATTERN.test(source.prefixHash)
-        || (floor === -1 && source.prefixHash !== EMPTY_STORY_PREFIX_HASH)) {
-        return invalid(`${detail}.prefixHash`);
-    }
-    return { floor, prefixHash: source.prefixHash };
 }
 
 function sameJson(left: unknown, right: unknown): boolean {
@@ -396,7 +384,7 @@ export function validateGameEventResult(value: unknown): GameEventResult {
 
 function validateEvent(value: unknown, expectedRevision: number): GameEvent {
     const event = exactRecord(value, [
-        'revision', 'eventId', 'actionId', 'command', 'result', 'anchor', 'assistantTurn', 'createdAt',
+        'revision', 'eventId', 'actionId', 'command', 'result', 'createdAt',
     ], 'event');
     if (event.revision !== expectedRevision) {return invalid('event.revision');}
     return {
@@ -405,8 +393,6 @@ function validateEvent(value: unknown, expectedRevision: number): GameEvent {
         actionId: canonicalId(event.actionId, 'event.actionId'),
         command: validateGameAction(event.command),
         result: validateGameEventResult(event.result),
-        anchor: anchor(event.anchor, 'event.anchor'),
-        assistantTurn: safeInteger(event.assistantTurn, 0, 'event.assistantTurn'),
         createdAt: (() => {
             const createdAt = safeInteger(event.createdAt, 0, 'event.createdAt');
             return createdAt <= MAX_DATE_MS ? createdAt : invalid('event.createdAt');
@@ -625,18 +611,11 @@ export function validateGameDomain(value: unknown): asserts value is GameDomainV
     const activityIds = new Set<string>();
     const activitySourceIds = new Set<string>();
     const state: GameState = {};
-    let previousFloor = -1;
-    let previousTurn = 0;
     for (let index = 0; index < domain.events.length; index += 1) {
         const event = validateEvent(domain.events[index], index + 1);
         if (eventIds.has(event.eventId) || actionIds.has(event.actionId)) {invalid('event.id-duplicate');}
-        if (event.anchor.floor < previousFloor || event.assistantTurn < previousTurn) {
-            invalid('event.timeline-regression');
-        }
         eventIds.add(event.eventId);
         actionIds.add(event.actionId);
         applyValidatedEvent(state, event, gameIds, activityIds, activitySourceIds);
-        previousFloor = event.anchor.floor;
-        previousTurn = event.assistantTurn;
     }
 }

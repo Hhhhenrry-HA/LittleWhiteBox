@@ -26,8 +26,16 @@ function createHarness(validators = {}) {
     return { state, store };
 }
 
+function deferred() {
+    let resolve;
+    const promise = new Promise(resolvePromise => {resolve = resolvePromise;});
+    return { promise, resolve };
+}
+
 test('an unconfirmed save freezes later writes until the candidate is confirmed', async () => {
     const { state, store } = createHarness();
+    const writeStates = [];
+    store.subscribe(change => writeStates.push(change.writeState));
     state.save = async transaction => {
         state.persisted = structuredClone(transaction.xiaobaiOs);
         throw Object.assign(new Error('read-back unavailable'), { code: 'SAVE_UNCONFIRMED', uncertain: true });
@@ -37,12 +45,14 @@ test('an unconfirmed save freezes later writes until the candidate is confirmed'
         error => error.code === 'SAVE_UNCONFIRMED',
     );
     assert.equal(store.getWriteState(), 'unconfirmed');
+    assert.deepEqual(writeStates, ['saving', 'unconfirmed']);
     await assert.rejects(
         store.mutateCurrent(() => ({ next: root('second'), result: true })),
         error => error.code === 'SAVE_UNCONFIRMED',
     );
     assert.deepEqual(await store.confirmPending(), { status: 'confirmed' });
     assert.equal(store.getWriteState(), 'ready');
+    assert.deepEqual(writeStates, ['saving', 'unconfirmed', 'ready']);
     assert.equal(store.readCurrent().domains.sample, 'candidate');
 });
 
@@ -197,4 +207,34 @@ test('the root store validates registered branches and preserves unowned optiona
 
     state.metadata.extensions.LittleWhiteBox.xiaobaiOs.domains.sample = 'invalid';
     assert.throws(() => store.readCurrent(), /xiaobaiOs\.domains\.sample:invalid/);
+});
+
+test('the root store publishes candidate and terminal write states to transient subscribers', async () => {
+    const { state, store } = createHarness();
+    const saveGate = deferred();
+    const observed = [];
+    state.save = async transaction => {
+        await saveGate.promise;
+        state.persisted = structuredClone(transaction.xiaobaiOs);
+    };
+    const unsubscribe = store.subscribe(change => {
+        observed.push({ ...change, value: store.readCurrent()?.domains.sample });
+    });
+
+    const write = store.mutateCurrent(() => ({ next: root('candidate'), result: true }));
+    await new Promise(resolve => globalThis.setImmediate(resolve));
+    assert.deepEqual(observed, [{
+        identityKey: state.identity.key,
+        writeState: 'saving',
+        value: 'candidate',
+    }]);
+
+    saveGate.resolve();
+    await write;
+    assert.deepEqual(observed.map(item => item.writeState), ['saving', 'ready']);
+    assert.equal(observed.at(-1).value, 'candidate');
+
+    unsubscribe();
+    await store.mutateCurrent(() => ({ next: root('after-unsubscribe'), result: true }));
+    assert.equal(observed.length, 2);
 });

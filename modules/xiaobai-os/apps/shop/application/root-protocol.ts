@@ -1,13 +1,10 @@
-import type { StoryFingerprint } from '../../../host/story-fingerprint.js';
 import type { XiaobaiOsChatData } from '../../../types.js';
 import { validateLedger } from '../../../domains/economy/invariants.js';
 import { projectBalances } from '../../../domains/economy/ledger.js';
-import { reconcileLedgerWithStory } from '../../../domains/economy/timeline.js';
 import type { EconomyLedgerV1 } from '../../../domains/economy/types.js';
 import { getShopItem } from '../../../domains/shop/catalog.js';
 import { validateShopDomain } from '../../../domains/shop/invariants.js';
-import { reconcileShopWithStory } from '../../../domains/shop/timeline.js';
-import type { ShopDomainV1, ShopRollbackImpact } from '../../../domains/shop/types.js';
+import type { ShopDomainV2 } from '../../../domains/shop/types.js';
 
 export function emptyShopRoot(): XiaobaiOsChatData {
     return { schemaVersion: 2, apps: {}, domains: {} };
@@ -20,18 +17,11 @@ export function readEconomyLedger(root: XiaobaiOsChatData | null): EconomyLedger
     return structuredClone(value);
 }
 
-export function readShopDomain(root: XiaobaiOsChatData | null): ShopDomainV1 | null {
+export function readShopDomain(root: XiaobaiOsChatData | null): ShopDomainV2 | null {
     const value = root?.domains.shop;
     if (value === undefined) {return null;}
     validateShopDomain(value);
     return structuredClone(value);
-}
-
-function sameAnchor(
-    left: { floor: number; prefixHash: string },
-    right: { floor: number; prefixHash: string },
-): boolean {
-    return left.floor === right.floor && left.prefixHash === right.prefixHash;
 }
 
 export function validateShopEconomyConsistency(value: unknown, path = 'xiaobaiOs'): void {
@@ -49,6 +39,7 @@ export function validateShopEconomyConsistency(value: unknown, path = 'xiaobaiOs
         throw new Error(`${path} Shop purchase events and Economy transactions are inconsistent`);
     }
     for (const event of purchaseEvents) {
+        if (event.action.kind !== 'purchase') {continue;}
         const item = getShopItem(event.action.itemId);
         const matches = purchaseTransactions.filter((transaction) => transaction.actionId === event.actionId);
         if (
@@ -60,51 +51,10 @@ export function validateShopEconomyConsistency(value: unknown, path = 'xiaobaiOs
             || matches[0].kind !== 'shop_purchase'
             || matches[0].sourceDomain !== 'shop'
             || matches[0].sourceId !== item.id
-            || !sameAnchor(matches[0].anchor, event.anchor)
         ) {
             throw new Error(`${path} Shop purchase action is inconsistent: ${event.actionId}`);
         }
     }
-}
-
-export function reconcileShopDomainInRoot(
-    value: XiaobaiOsChatData,
-    fingerprint: StoryFingerprint,
-): { root: XiaobaiOsChatData; impact: ShopRollbackImpact } {
-    const root = structuredClone(value);
-    const shop = readShopDomain(root);
-    if (!shop) {
-        return {
-            root,
-            impact: {
-                changed: false,
-                firstInvalidRevision: null,
-                removedEventIds: [],
-                removedActionIds: [],
-            },
-        };
-    }
-    const reconciled = reconcileShopWithStory(shop, fingerprint);
-    if (reconciled.impact.changed) {
-        if (reconciled.domain.events.length === 0) {
-            delete root.domains.shop;
-        } else {
-            root.domains.shop = reconciled.domain;
-        }
-    }
-    return { root, impact: reconciled.impact };
-}
-
-export function reconcileShopRootWithStory(
-    value: XiaobaiOsChatData,
-    fingerprint: StoryFingerprint,
-): XiaobaiOsChatData {
-    let root = structuredClone(value);
-    const ledger = readEconomyLedger(root);
-    if (ledger) {root.domains.economy = reconcileLedgerWithStory(ledger, fingerprint).ledger;}
-    root = reconcileShopDomainInRoot(root, fingerprint).root;
-    validateShopEconomyConsistency(root);
-    return root;
 }
 
 export function readPlayerBalance(root: XiaobaiOsChatData | null): number {

@@ -8,10 +8,7 @@ import type {
 } from '../application/service.js';
 import type { EconomyRepository } from '../../../domains/economy/repository.js';
 import type { XiaobaiOsHostFrameMessage } from '../../../host/frame-bridge.js';
-import type {
-    StoryReconciliationRuntime,
-    StoryReconciliationState,
-} from '../../../host/story-reconciliation-runtime.js';
+import type { XiaobaiOsChatDataChange } from '../../../host/chat-data-store.js';
 import type {
     XiaobaiOsAppActivationContext,
     XiaobaiOsAppRuntime,
@@ -24,7 +21,6 @@ type UnknownRecord = Record<string, unknown>;
 const BANK_ACTIVITY_PAGE_SIZE = 50;
 
 interface BankActivation {
-    generation: number;
     chatIdentity: string;
     post: XiaobaiOsAppActivationContext['post'];
 }
@@ -32,10 +28,10 @@ interface BankActivation {
 interface BankControllerDependencies {
     bank: BankService;
     economy: EconomyRepository;
-    storyRuntime: StoryReconciliationRuntime;
     getChatIdentity: () => XiaobaiOsChatIdentity | { key?: unknown } | string | null;
     isMainGenerationActive: () => boolean;
     subscribeGeneration: (listener: () => void) => () => void;
+    subscribeData: (listener: (change: XiaobaiOsChatDataChange) => void) => () => void;
 }
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -78,19 +74,19 @@ function requireCas(payload: UnknownRecord): { expectedRevision: number; expecte
 export function createBankController({
     bank,
     economy,
-    storyRuntime,
     getChatIdentity,
     isMainGenerationActive,
     subscribeGeneration,
+    subscribeData,
 }: BankControllerDependencies): XiaobaiOsAppRuntime & {
     activate: NonNullable<XiaobaiOsAppRuntime['activate']>;
     handleMessage: NonNullable<XiaobaiOsAppRuntime['handleMessage']>;
 } {
     let activation: BankActivation | null = null;
-    let activationGeneration = 0;
+    let preparation: { activation: BankActivation; error: string } | null = null;
     let busy = false;
-    let unsubscribeStory: (() => void) | null = null;
     let unsubscribeGeneration: (() => void) | null = null;
+    let unsubscribeData: (() => void) | null = null;
 
     function currentChatIdentity(): string {
         return identityKey(getChatIdentity());
@@ -110,12 +106,17 @@ export function createBankController({
     }
 
     function present(chatIdentity: string, serviceView: BankServiceView): BankClientState {
-        return presentBankState({
+        const next = presentBankState({
             chatIdentity,
             serviceView,
-            storyState: storyRuntime.getState(),
             generationActive: isMainGenerationActive(),
         });
+        if (!preparation || preparation.activation !== activation) {return next;}
+        if (preparation.error) {
+            return { ...next, status: 'blocked', statusLabel: '暂时不可用', message: preparation.error };
+        }
+        if (next.status === 'unconfirmed' || next.status === 'conflict') {return next;}
+        return { ...next, status: 'loading', statusLabel: '正在载入', message: '' };
     }
 
     function buildState(chatIdentity: string): BankClientState {
@@ -133,10 +134,7 @@ export function createBankController({
     }
 
     async function prepare(): Promise<void> {
-        if (economy.hasCurrent()) {
-            await storyRuntime.reconcileNow();
-            return;
-        }
+        if (economy.hasCurrent()) {return;}
         try {
             await economy.ensureCurrent();
         } catch (error) {
@@ -144,22 +142,37 @@ export function createBankController({
         }
     }
 
-    async function activate(context: XiaobaiOsAppActivationContext): Promise<BankClientState> {
+    function schedulePreparation(current: BankActivation): void {
+        const pending = { activation: current, error: '' };
+        preparation = pending;
+        globalThis.setTimeout(() => {
+            if (preparation !== pending || activation !== current || currentChatIdentity() !== current.chatIdentity) {return;}
+            void prepare().then(() => {
+                if (preparation !== pending || activation !== current || currentChatIdentity() !== current.chatIdentity) {return;}
+                preparation = null;
+                emitState(current);
+            }).catch((error) => {
+                if (preparation !== pending || activation !== current || currentChatIdentity() !== current.chatIdentity) {return;}
+                console.error('[LittleWhiteBox] 银行数据准备失败', error);
+                preparation = { activation: current, error: '银行数据暂时无法读取，请稍后重试。' };
+                emitState(current);
+            });
+        }, 0);
+    }
+
+    function activate(context: XiaobaiOsAppActivationContext): BankClientState {
         cancelForeground();
         const chatIdentity = currentChatIdentity();
         if (!chatIdentity) {throw new Error('请先打开一个聊天');}
-        const generation = ++activationGeneration;
-        await prepare();
-        if (generation !== activationGeneration || currentChatIdentity() !== chatIdentity) {
-            throw new Error('聊天已切换，请重新打开银行');
-        }
-        activation = { generation, chatIdentity, post: context.post };
+        const current = { chatIdentity, post: context.post };
+        activation = current;
+        if (!economy.hasCurrent()) {schedulePreparation(current);}
         return buildState(chatIdentity);
     }
 
     function cancelForeground(): void {
-        activationGeneration += 1;
         activation = null;
+        preparation = null;
         busy = false;
     }
 
@@ -200,6 +213,7 @@ export function createBankController({
         const current = assertActivation(payload);
         if (message.type === 'bank/refresh') {
             if (busy) {throw new Error('已有银行操作正在处理');}
+            preparation = null;
             await prepare();
             assertSameActivation(current, payload);
             return emitState(current);
@@ -218,6 +232,7 @@ export function createBankController({
             return page;
         }
         if (message.type === 'bank/confirm-save') {
+            preparation = null;
             return serializeWrite(current, payload, () => bank.confirmPending(), (confirmation) => ({
                 confirmation: confirmation.status,
                 state: emitState(current),
@@ -257,10 +272,13 @@ export function createBankController({
         throw new Error('未知的银行操作');
     }
 
-    function handleExternalState(next?: StoryReconciliationState): void {
+    function handleExternalState(change?: XiaobaiOsChatDataChange): void {
         const current = activation;
-        if (!current || currentChatIdentity() !== current.chatIdentity) {return;}
-        if (next && next.identityKey !== current.chatIdentity) {return;}
+        if (
+            !current
+            || (change && change.identityKey !== current.chatIdentity)
+            || currentChatIdentity() !== current.chatIdentity
+        ) {return;}
         try {
             emitState(current);
         } catch (error) {
@@ -276,14 +294,14 @@ export function createBankController({
         handleChatChanged: cancelForeground,
         handleMessage,
         startBackground() {
-            if (!unsubscribeStory) {unsubscribeStory = storyRuntime.subscribe(handleExternalState);}
             if (!unsubscribeGeneration) {unsubscribeGeneration = subscribeGeneration(() => handleExternalState());}
+            if (!unsubscribeData) {unsubscribeData = subscribeData(handleExternalState);}
         },
         stopBackground() {
-            unsubscribeStory?.();
-            unsubscribeStory = null;
             unsubscribeGeneration?.();
             unsubscribeGeneration = null;
+            unsubscribeData?.();
+            unsubscribeData = null;
             cancelForeground();
         },
     });

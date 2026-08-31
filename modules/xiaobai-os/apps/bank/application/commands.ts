@@ -80,7 +80,7 @@ export function createBankCommands({
     }
 
     function openDeposit(input: BankOpenDepositCommand): Promise<BankServiceView> {
-        return runAction('deposit-open', input, (prepared, anchor) => {
+        return runAction('deposit-open', input, (prepared) => {
             const product = getBankDepositProduct(input.productId);
             const amount = assertBankProductAmount(product, input.amount);
             const due = duePositions(prepared.state, prepared.assistantTurn);
@@ -92,7 +92,6 @@ export function createBankCommands({
                 principal: amount,
                 startTurn: prepared.assistantTurn,
                 maturityTurn: prepared.assistantTurn + product.lockRounds,
-                openedAtAnchor: structuredClone(anchor),
                 ...createBankDepositFrozenContract(product, amount),
             };
             const closed = due.map((entry) => ({ position: entry, early: false }));
@@ -137,7 +136,7 @@ export function createBankCommands({
     }
 
     function openFund(input: BankOpenFundCommand): Promise<BankServiceView> {
-        return runAction('fund-open', input, (prepared, anchor) => {
+        return runAction('fund-open', input, (prepared) => {
             const product = getBankFundProduct(input.productId);
             const amount = assertBankProductAmount(product, input.amount);
             const due = duePositions(prepared.state, prepared.assistantTurn);
@@ -150,7 +149,6 @@ export function createBankCommands({
                 principal: amount,
                 startTurn: prepared.assistantTurn,
                 maturityTurn: prepared.assistantTurn + product.lockRounds,
-                openedAtAnchor: structuredClone(anchor),
                 ...contract,
             };
             const closed = due.map((entry) => ({ position: entry, early: false }));

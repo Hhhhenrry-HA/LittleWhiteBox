@@ -1,4 +1,3 @@
-import { EMPTY_STORY_PREFIX_HASH } from '../../types.js';
 import { validateBankAction, validateBankDomain, validateBankState } from './invariants.js';
 import {
     BANK_SCHEMA_VERSION,
@@ -11,16 +10,10 @@ import {
     type BankCommandResult,
     type BankDomainV1,
     type BankEvent,
-    type BankRestoreImpact,
     type BankState,
 } from './types.js';
 
-const HASH_PATTERN = /^sha256:[0-9a-f]{64}$/;
 const MAX_DATE_MS = 8_640_000_000_000_000;
-
-interface StoryPrefixLookup {
-    readonly prefixHashes: readonly string[];
-}
 
 export function createEmptyBankDomain(): BankDomainV1 {
     return { schemaVersion: BANK_SCHEMA_VERSION, events: [] };
@@ -61,7 +54,6 @@ export function flattenBankActivities(domain: BankDomainV1): BankActivityRecord[
         revision: event.revision,
         eventId: event.eventId,
         actionId: event.actionId,
-        anchor: structuredClone(event.anchor),
         assistantTurn: event.assistantTurn,
         createdAt: event.createdAt,
     })));
@@ -104,10 +96,7 @@ function requireAppendContext(input: BankAppendEventInput): void {
         || /[\u0000-\u001f\u007f-\u009f]/u.test(input.actionId)) {
         throwBankError('bank_action_required');
     }
-    if (!input.anchor || !Number.isSafeInteger(input.anchor.floor) || input.anchor.floor < -1
-        || !HASH_PATTERN.test(input.anchor.prefixHash || '')
-        || (input.anchor.floor === -1 && input.anchor.prefixHash !== EMPTY_STORY_PREFIX_HASH)
-        || !Number.isSafeInteger(input.assistantTurn) || input.assistantTurn < 0
+    if (!Number.isSafeInteger(input.assistantTurn) || input.assistantTurn < 0
         || !Number.isSafeInteger(input.createdAt) || input.createdAt < 0 || input.createdAt > MAX_DATE_MS) {
         throwBankError('bank_invalid_context', 'event');
     }
@@ -147,7 +136,6 @@ export function appendBankEvent(domain: BankDomainV1, input: BankAppendEventInpu
         actionId: input.actionId,
         command,
         result: structuredClone(input.result),
-        anchor: structuredClone(input.anchor),
         assistantTurn: input.assistantTurn,
         createdAt: input.createdAt,
     };
@@ -170,72 +158,4 @@ export function calculateBankLockedAmount(state: BankState): number {
         .reduce((total, position) => total + position.principal, 0);
     if (!Number.isSafeInteger(locked) || locked < 0) {throwBankError('bank_invalid_domain', 'locked-amount');}
     return locked;
-}
-
-function isAnchorValid(event: BankEvent, fingerprint: StoryPrefixLookup): boolean {
-    if (event.anchor.floor === -1) {return event.anchor.prefixHash === EMPTY_STORY_PREFIX_HASH;}
-    return fingerprint.prefixHashes[event.anchor.floor] === event.anchor.prefixHash;
-}
-
-function collectAffectedPositionIds(events: readonly BankEvent[]): string[] {
-    const positions = new Set<string>();
-    for (const event of events) {
-        const command = event.command;
-        command.settledPositionIds.forEach((id) => positions.add(id));
-        if ('positionId' in command) {positions.add(command.positionId);}
-        for (const change of event.result.changes) {
-            if (change.kind === 'deposit-opened' || change.kind === 'fund-opened') {positions.add(change.position.id);}
-            if (change.kind === 'positions-closed') {change.positionIds.forEach((id) => positions.add(id));}
-        }
-        event.result.activities.forEach((activity) => positions.add(activity.sourceId));
-    }
-    return [...positions];
-}
-
-/** Cuts the complete suffix from the first event whose story prefix no longer exists. */
-export function reconcileBankWithStory(
-    domain: BankDomainV1,
-    fingerprint: StoryPrefixLookup,
-): { domain: BankDomainV1; impact: BankRestoreImpact } {
-    validateBankDomain(domain);
-    const previousLockedAmount = calculateBankLockedAmount(replayBankEvents(domain));
-    const firstInvalidIndex = domain.events.findIndex((event) => !isAnchorValid(event, fingerprint));
-    if (firstInvalidIndex < 0) {
-        return {
-            domain: structuredClone(domain),
-            impact: {
-                changed: false,
-                firstInvalidRevision: null,
-                removedEventIds: [],
-                removedActionIds: [],
-                removedActivityIds: [],
-                affectedPositionIds: [],
-                previousLockedAmount,
-                nextLockedAmount: previousLockedAmount,
-                lockedAmountChange: 0,
-            },
-        };
-    }
-    const removed = domain.events.slice(firstInvalidIndex);
-    const next: BankDomainV1 = {
-        schemaVersion: BANK_SCHEMA_VERSION,
-        events: structuredClone(domain.events.slice(0, firstInvalidIndex)),
-    };
-    validateBankDomain(next);
-    const nextLockedAmount = calculateBankLockedAmount(replayBankEvents(next));
-    const affectedPositionIds = collectAffectedPositionIds(removed);
-    return {
-        domain: next,
-        impact: {
-            changed: true,
-            firstInvalidRevision: removed[0]?.revision ?? null,
-            removedEventIds: removed.map((event) => event.eventId),
-            removedActionIds: removed.map((event) => event.actionId),
-            removedActivityIds: removed.flatMap((event) => event.result.activities.map((activity) => activity.id)),
-            affectedPositionIds,
-            previousLockedAmount,
-            nextLockedAmount,
-            lockedAmountChange: nextLockedAmount - previousLockedAmount,
-        },
-    };
 }
