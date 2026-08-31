@@ -33,10 +33,11 @@ modules/xiaobai-os/
 
 ## 3. 系统设置与 APP 开关
 
-OS 有两类用户级设置：
+OS 有三类用户级设置入口：
 
-1. `xiaobaiOs`扩展设置：OS 总开关、Fourth Wall 能力设置、Map/Tasks 的 APP 启用和自动维护开关。
-2. 共享 Agent 配置：`AssistantStorage/settings`，由`agent-core`拥有，供小白酒馆、Ebook、画图、普通 OS 等消费者共用。
+1. SillyTavern 扩展设置页：OS 总开关、Fourth Wall 能力设置，以及已完整交付 APP 的启用开关；这里不放自动维护开关。
+2. Map/Tasks 各自的 APP 设置页：仅在对应 APP 完整交付后提供「所有普通聊天自动维护」，偏好仍由`xiaobaiOs`用户级设置仓库保存。
+3. 共享 Agent 配置：`AssistantStorage/settings`，由`agent-core`拥有，供小白酒馆、Ebook、画图、普通 OS 等消费者共用。
 
 Agent provider、model、apiKey 等不得复制进 OS 设置或聊天数据。OS 桌面常驻一个「Agent API」系统 APP，四次元壁删除原专属入口。
 
@@ -191,13 +192,14 @@ Map 与 Tasks 的 Agent 工具只修改内存 staged state；请求成功且边�
 - 固定商品商店与主 RP Prompt 效果；
 - 银行；
 - 三款纯规则赌场游戏；
+- Agent API 系统 APP、共享配置编辑、普通 OS Agent gateway 与通用 Agent bundle；
+- 四次元壁已改为消费统一 gateway，不再拥有 API 设置入口或专属 Agent bundle；
 - 根级单写队列、CAS、actionId 幂等、跨领域原子提交与保存确认。
 
 ### 已完成终态设计、尚未施工
 
-- Agent API 桌面 APP 与统一后台维护架构；
-- Map 双层地图；
-- Tasks 正式任务状态机与钱包结算。
+- Map 双层地图，以及随完整 Map 一起落地的首个自动维护纵切；
+- Tasks 正式任务状态机、钱包结算，以及第二个 participant 接入后的双领域合并维护。
 
 ### 未进入设计
 
@@ -206,32 +208,32 @@ Map 与 Tasks 的 Agent 工具只修改内存 staged state；请求成功且边�
 
 ## 10. 开工路线
 
-### 阶段 A：Agent API 与维护基础设施
+### 阶段 A：Agent API 与 gateway（已完成）
 
 1. 把 Agent bundle 和调用桥从 Fourth Wall 所有权提升到普通 OS 基础设施。
 2. 新建桌面 Agent API APP，完成暗色原生控件与共享配置同步。
 3. 删除 Fourth Wall 旧设置入口、dialog、frame action 和专属测试。
-4. 在 settings repository、OS 导出命令和 host registry 中建立两级开关契约；此时只完成能力，不提前暴露 Map/Tasks 占位复选框或半成品 APP。
-5. 完成 accepted-turn source、maintenance registry/runner、队列、取消和迟到提交守卫。
 
-该阶段结束时，现有 Fourth Wall 行为不变；Map/Tasks 尚不注册半成品页面。
+该阶段只完成已有消费者立即需要的 Agent 能力。Map/Tasks 的设置字段、开关、runtime、participant 和`host/maintenance`均不在此阶段预建。
 
-### 阶段 B：Map
+### 阶段 B：完整 Map 与第一个真实维护消费者（下一阶段）
 
 1. 实现独立 Map 数据模型、不变量和 intent compiler。
-2. 实现 Map repository/application service、maintenance participant 和空间 Prompt runtime。
-3. 实现 Atlas/Scene UI、SVG renderer、材质与本地图标。
-4. 同完整 Map 一起暴露扩展设置中的 APP 启用开关，完成 APP 内自动维护、显式维护/重建和真实浏览器验收。
+2. 实现 Map repository/application service、空间 Prompt runtime，以及归 Map 自己所有的 Prompt、工具、staged mutation 和 participant。
+3. 实现 Atlas/Scene UI、SVG renderer、材质、本地图标和显式维护/重建交互。
+4. Map participant 成为真实消费者时，同阶段实现其所需的 accepted-turn source、业务无关的 maintenance runner、队列、取消和迟到提交守卫；其中不得出现 Tasks 字段、Prompt 或预留分支。
+5. Map 完整可用后才增加 Map 用户级设置、host/shell 注册和两个入口：扩展设置页的「APP 启用」与 Map 内的「自动维护」。完成 User 接受边界、零隐式 API 和真实浏览器验收后一起交付。
 
-### 阶段 C：Tasks
+### 阶段 C：完整 Tasks 与第二个维护消费者
 
 1. 实现 board parser、Task 事件状态机和投影。
 2. 实现 Task/Economy escrow 协议与跨领域不变量。
 3. 实现大厅、发布、候选人、活动任务、历史与详情 UI。
 4. 实现显式 board/candidate 请求、active-task maintenance participant 和主 RP Prompt。
-5. 用 Task 事件的`assistantTurn`实现 NPC 离场经过量；同完整 Tasks 一起暴露 APP 启用开关，完成自动结算、切聊/迟到结果和移动端验收。
+5. Tasks participant 成为第二个真实消费者后才增加 Tasks 用户级设置与注册，并验收 Map/Tasks 同一接受轮合并为一次 Agent 请求、各自 staged、各自事务提交。
+6. 用 Task 事件的`assistantTurn`实现 NPC 离场经过量；Tasks 完整可用后才一起暴露扩展设置页的「APP 启用」和 Tasks 内的「自动维护」，完成自动结算、切聊/迟到结果和移动端验收。
 
-每个阶段独立通盘 review、验证和提交。不得先造一个含业务分支的`world-manager.ts`，也不得用“以后再拆”接受临时上帝文件。
+每个阶段独立通盘 review、验证和提交。终态文档描述的公共结构不等于独立的先行施工阶段：没有真实 participant 时不创建空 runner，没有完整 APP 时不创建其字段、开关或注册。不得先造一个含业务分支的`world-manager.ts`，也不得用“以后再拆”接受临时上帝文件。
 
 ## 11. 每阶段验收
 

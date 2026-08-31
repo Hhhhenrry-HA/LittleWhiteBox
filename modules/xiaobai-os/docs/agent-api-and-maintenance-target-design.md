@@ -45,6 +45,17 @@ modules/xiaobai-os/
 
 OS Agent bundle 取代当前由 Fourth Wall 命名和拥有的 Agent bundle。供应商适配、配置规范化和设置表单行为继续复用`agent-core`；四次元壁只向 gateway 提交自己的 prompt 和请求选项。
 
+### 3.1 终态结构与施工顺序
+
+本节目录树描述全部功能完成后的终态，不代表`host/maintenance`应先于业务 APP 单独施工。
+
+- Agent API APP、Agent gateway 和通用 Agent bundle 已完成，因为四次元壁是它们当下的真实消费者。
+- 下一步先实现完整 Map。只有 Map 的领域、Prompt、工具和 participant 已经存在时，才在同一阶段实现它实际需要的 accepted-turn source 与业务无关 runner，并在 Map 完整可用后暴露 Map 两级开关。
+- Tasks 未完成前，不增加 Tasks 设置字段、命令、开关、runtime、注册或占位 participant。
+- 完整 Tasks 带来第二个真实 participant 后，才落下并验收同一接受轮的多 participant 聚合：一次 Agent 请求、各自 staging、各自事务提交。
+
+因此，“打开 APP 不检查 API”“关闭开关不调用 API”“只由已保存 User 确认上一轮”是 Map/Tasks 交付时必须满足的运行契约，不是脱离 APP 预建空基础设施的理由。
+
 ## 4. 统一 Agent API 设置
 
 ### 4.1 配置所有权
@@ -117,9 +128,9 @@ Map 和 Tasks 各有两个不同语义的用户级开关：
 
 两种开关本身都只保存用户级偏好，不读取 Agent 配置、不发请求，也不创建聊天数据。扩展设置通过 OS `index.ts`导出的窄设置命令写唯一 settings repository，不能直接改`extension_settings`；shell 也不能自行解释或保存设置。
 
-settings repository 为`map|tasks`提供类型化的`setAppEnabled`、`setAutoMaintenance`和当前运行内变更订阅。扩展设置 handler 与 APP Controller 只能调用这些命令；repository 在确定保存成功后发布新快照，确定失败则恢复旧值且不切 runtime。若宿主保存结果不确定，沿用现有 settings 候选语义：保留当前内存候选、按候选切换 runtime并明确提示“保存未确认”，不另造第二套 pending 开关。
+终态 settings repository 为`map|tasks`提供类型化的`setAppEnabled`、`setAutoMaintenance`和当前运行内变更订阅，但命令与字段随对应完整 APP 一起加入：Map 阶段只加入 Map，Tasks 阶段再加入 Tasks，不预建尚无所有者的配置。扩展设置 handler 与 APP Controller 只能调用这些命令；repository 在确定保存成功后发布新快照，确定失败则恢复旧值且不切 runtime。若宿主保存结果不确定，沿用现有 settings 候选语义：保留当前内存候选、按候选切换 runtime并明确提示“保存未确认”，不另造第二套 pending 开关。
 
-运行中的启停由`app-runtime-registry`应用：开启后注册该 APP 的 descriptor、runtime 和主 Prompt runtime；关闭后若该 APP 正在显示，shell 先回到桌面，再移除 descriptor、清空 Prompt、注销 participant 并 abort 该领域请求。Map/Tasks 的开关只能随对应完整 APP 一起暴露，基础设施阶段不得先展示能勾选却没有页面的半成品入口。
+运行中的启停由`app-runtime-registry`应用：开启后注册该 APP 的 descriptor、runtime 和主 Prompt runtime；关闭后若该 APP 正在显示，shell 先回到桌面，再移除 descriptor、清空 Prompt、注销 participant 并 abort 该领域请求。对应 APP 完成前，其开关、配置字段和注册入口均不存在；不能先交付能勾选却没有完整页面与领域行为的半成品入口。
 
 用户可在具体 APP 内通过标明会使用 Agent 的「维护一次」「重建」或「刷新」按钮发起显式请求。
 
