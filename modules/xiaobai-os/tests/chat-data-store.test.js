@@ -100,6 +100,75 @@ test('confirmation restores the previous root or freezes a third-party conflict'
     conflict.state.persisted = root('other-writer');
     assert.deepEqual(await conflict.store.confirmPending(), { status: 'conflict' });
     assert.equal(conflict.store.getWriteState(), 'conflict');
+    assert.deepEqual(await conflict.store.adoptServerState(), { status: 'adopted' });
+    assert.equal(conflict.store.getWriteState(), 'ready');
+    assert.equal(conflict.store.readCurrent().domains.sample, 'other-writer');
+});
+
+test('adopting malformed or unreadable server data keeps the conflict frozen', async (t) => {
+    t.mock.method(console, 'error', () => undefined);
+    const harness = createHarness({
+        domains: {
+            sample(value) {if (value !== 'before' && value !== 'candidate') {throw new Error('invalid sample');}},
+        },
+    });
+    harness.state.persisted = root('before');
+    harness.state.metadata.extensions = { LittleWhiteBox: { xiaobaiOs: root('before') } };
+    harness.state.save = async () => {
+        throw Object.assign(new Error('unknown result'), { code: 'SAVE_UNCONFIRMED', uncertain: true });
+    };
+    await assert.rejects(harness.store.mutateCurrent(() => ({ next: root('candidate'), result: true })));
+    harness.state.persisted = root('invalid-server');
+    assert.deepEqual(await harness.store.confirmPending(), { status: 'conflict' });
+    assert.deepEqual(await harness.store.adoptServerState(), { status: 'conflict' });
+    assert.equal(harness.store.getWriteState(), 'conflict');
+    assert.equal(harness.store.readCurrent().domains.sample, 'candidate');
+
+    harness.state.read = async () => {throw new Error('offline');};
+    assert.deepEqual(await harness.store.adoptServerState(), { status: 'conflict' });
+    assert.equal(harness.store.getWriteState(), 'conflict');
+});
+
+test('server adoption rolls back migration effects only after server data installs', async (t) => {
+    t.mock.method(console, 'error', () => undefined);
+    const identity = { key: 'character:1:chat-a', chatId: 'chat-a' };
+    let rejectInstall = false;
+    const littleWhiteBox = new Proxy({ xiaobaiOs: root('before') }, {
+        set(target, key, value) {
+            if (key === 'xiaobaiOs' && rejectInstall) {throw new Error('install rejected');}
+            return Reflect.set(target, key, value);
+        },
+    });
+    const metadata = { legacy: { keep: true }, extensions: { LittleWhiteBox: littleWhiteBox } };
+    let persisted = root('server');
+    const store = createChatDataStore({
+        getChatIdentity: () => identity,
+        getChatMetadata: () => metadata,
+        saveChatMetadata: async () => {
+            throw Object.assign(new Error('unknown result'), { code: 'SAVE_UNCONFIRMED', uncertain: true });
+        },
+        readPersistedXiaobaiOs: async () => structuredClone(persisted),
+    });
+
+    await assert.rejects(store.mutateCurrent(() => ({
+        next: root('candidate'),
+        result: true,
+        metadataEffect: {
+            apply() {delete metadata.legacy;},
+            rollback() {metadata.legacy = { keep: true };},
+        },
+    })));
+    assert.equal(Object.hasOwn(metadata, 'legacy'), false);
+
+    rejectInstall = true;
+    assert.deepEqual(await store.adoptServerState(), { status: 'conflict' });
+    assert.equal(store.readCurrent().domains.sample, 'candidate');
+    assert.equal(Object.hasOwn(metadata, 'legacy'), false);
+
+    rejectInstall = false;
+    assert.deepEqual(await store.adoptServerState(), { status: 'adopted' });
+    assert.equal(store.readCurrent().domains.sample, 'server');
+    assert.deepEqual(metadata.legacy, { keep: true });
 });
 
 test('an explicit save failure restores the previous root and permits a clean retry', async () => {
@@ -138,7 +207,9 @@ test('queued work captured in one chat cannot mutate the chat opened before it s
     const chatBMetadata = {};
     state.identity = { key: 'character:2:chat-b', chatId: 'chat-b' };
     state.metadata = chatBMetadata;
-    const firstRejection = assert.rejects(first, error => error.code === 'CHAT_CHANGED');
+    const firstRejection = assert.rejects(first, error => (
+        error.code === 'CHAT_CHANGED' && error.mutationCommitted === true
+    ));
     releaseFirst();
 
     await firstRejection;

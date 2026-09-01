@@ -1,0 +1,243 @@
+import {
+    buildProviderAssistantToolCallMessage,
+    buildProviderToolResultMessage,
+    resolveResultToolCalls,
+} from '../../../agent-core/runtime/protocol.js';
+import type { MaintenanceSession } from './registry.js';
+
+type UnknownRecord = Record<string, unknown>;
+
+export interface MaintenanceAgentSession {
+    readonly providerConfig: UnknownRecord;
+    readonly supportsSessionToolLoop: boolean;
+    run: (request: {
+        readonly systemPrompt: string;
+        readonly messages: readonly UnknownRecord[];
+        readonly tools: readonly UnknownRecord[];
+        readonly signal?: AbortSignal;
+        readonly toolResponses?: readonly UnknownRecord[];
+        readonly finalAnswerReminderText?: string;
+    }) => Promise<UnknownRecord>;
+}
+
+export interface ProviderToolLoopSession {
+    readonly session: MaintenanceSession;
+    isActive: () => boolean;
+}
+
+export interface ProviderToolLoopResult {
+    readonly status: 'finished' | 'provider-failed' | 'round-limit' | 'cancelled';
+    readonly rounds: number;
+    readonly unresolvedParticipantIds: readonly string[];
+    readonly unownedFailure: boolean;
+    readonly error?: unknown;
+}
+
+const MAX_PROVIDER_ROUNDS = 12;
+
+function errorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error || 'tool_failed');
+}
+
+function safeJson(value: unknown): string {
+    try {return JSON.stringify(value);}
+    catch {return JSON.stringify({ ok: false, status: 'failed', changed: false, error: 'tool_result_not_serializable' });}
+}
+
+function structuredToolError(error: unknown, hint: string, brake = false): UnknownRecord {
+    return {
+        ok: false,
+        status: 'failed',
+        changed: false,
+        applied: [],
+        skipped: [],
+        warnings: [],
+        error: errorMessage(error),
+        hint,
+        ...(brake ? { brake: 'Repeated identical failure. Change the arguments or stop calling this tool.' } : {}),
+    };
+}
+
+function isFailedToolResult(value: unknown): value is UnknownRecord {
+    return !!value && typeof value === 'object' && !Array.isArray(value)
+        && (value as UnknownRecord).ok === false;
+}
+
+function systemPrompt(sessions: readonly ProviderToolLoopSession[]): string {
+    return [
+        'Maintain each enabled domain using only its declared tools. Domains own separate staging and commits.',
+        'Tool errors are recoverable input: inspect the structured error, correct arguments, and retry only the failed intent.',
+        ...sessions.map(({ session }) => `Domain ${session.participantId}:\n${session.prompt}`),
+    ].join('\n\n');
+}
+
+export async function runProviderToolLoop(options: {
+    readonly agent: MaintenanceAgentSession;
+    readonly sessions: readonly ProviderToolLoopSession[];
+    readonly sourceMessage: UnknownRecord;
+    readonly signal: AbortSignal;
+    readonly guard: () => boolean;
+    readonly beforeRound?: () => boolean | Promise<boolean>;
+    readonly isRoundReady?: () => boolean;
+    readonly onError?: (error: unknown) => void;
+}): Promise<ProviderToolLoopResult> {
+    const {
+        agent,
+        sessions,
+        sourceMessage,
+        signal,
+        guard,
+        beforeRound = () => true,
+        isRoundReady = () => true,
+        onError = () => undefined,
+    } = options;
+    const messages: UnknownRecord[] = [sourceMessage];
+    const prompt = systemPrompt(sessions);
+    const owners: Record<string, ProviderToolLoopSession> = Object.create(null) as Record<string, ProviderToolLoopSession>;
+    const tools: UnknownRecord[] = [];
+    for (const owner of sessions) {
+        for (const tool of owner.session.tools) {
+            const name = String(tool.function.name || '').trim();
+            if (!name || owners[name]) {throw new Error(name ? `duplicate_tool:${name}` : 'invalid_tool');}
+            owners[name] = owner;
+            tools.push(tool as unknown as UnknownRecord);
+        }
+    }
+
+    const unresolvedFailures = new Map<string, { participantId: string | null; round: number }>();
+    const loopResult = (
+        status: ProviderToolLoopResult['status'],
+        rounds: number,
+        error?: unknown,
+    ): ProviderToolLoopResult => ({
+        status,
+        rounds,
+        unresolvedParticipantIds: [...new Set([...unresolvedFailures.values()]
+            .map(failure => failure.participantId)
+            .filter((id): id is string => id !== null))],
+        unownedFailure: [...unresolvedFailures.values()].some(failure => failure.participantId === null),
+        ...(error === undefined ? {} : { error }),
+    });
+
+    let pendingToolResponses: UnknownRecord[] | undefined;
+    let pendingFinalAnswerReminderText = '';
+    let sawToolExecution = false;
+    let reminded = false;
+    let lastFailureSignature = '';
+    let repeatedFailures = 0;
+    for (let round = 1; round <= MAX_PROVIDER_ROUNDS; round += 1) {
+        while (true) {
+            if (signal.aborted || !guard()) {return loopResult('cancelled', round - 1);}
+            if (!await beforeRound() || signal.aborted || !guard()) {
+                return loopResult('cancelled', round - 1);
+            }
+            if (isRoundReady()) {break;}
+        }
+        let result: UnknownRecord;
+        try {
+            const sessionContinuation = agent.supportsSessionToolLoop
+                && (!!pendingToolResponses || !!pendingFinalAnswerReminderText);
+            result = await agent.run({
+                systemPrompt: prompt,
+                messages: sessionContinuation ? [] : messages,
+                tools,
+                signal,
+                ...(agent.supportsSessionToolLoop && pendingToolResponses ? { toolResponses: pendingToolResponses } : {}),
+                ...(agent.supportsSessionToolLoop && !pendingToolResponses && pendingFinalAnswerReminderText
+                    ? { finalAnswerReminderText: pendingFinalAnswerReminderText }
+                    : {}),
+            });
+        } catch (error) {
+            if (signal.aborted || !guard()) {return loopResult('cancelled', round - 1, error);}
+            onError(error);
+            return loopResult('provider-failed', round, error);
+        }
+        pendingToolResponses = undefined;
+        pendingFinalAnswerReminderText = '';
+        if (!guard()) {return loopResult('cancelled', round);}
+        const toolCalls = resolveResultToolCalls(result, agent.providerConfig, { fallbackPrefix: `maintenance-${round}` });
+        if (!toolCalls.length) {
+            const hasConclusion = !!String(result.text || '').trim();
+            if (!hasConclusion && sawToolExecution && !reminded && round < MAX_PROVIDER_ROUNDS) {
+                reminded = true;
+                const reminder = 'Tool results are complete. Stop calling tools and finish this maintenance run with a concise conclusion.';
+                if (agent.supportsSessionToolLoop) {pendingFinalAnswerReminderText = reminder;}
+                else {messages.push({ role: 'system', content: reminder });}
+                continue;
+            }
+            if (!hasConclusion) {
+                const error = new Error(sawToolExecution ? 'empty_maintenance_conclusion' : 'empty_provider_response');
+                onError(error);
+                return loopResult('provider-failed', round, error);
+            }
+            return loopResult('finished', round);
+        }
+        sawToolExecution = true;
+        messages.push(buildProviderAssistantToolCallMessage(result, toolCalls, { fallbackPrefix: `maintenance-${round}` }));
+        const responses: UnknownRecord[] = [];
+        for (const toolCall of toolCalls) {
+            if (signal.aborted || !guard()) {return loopResult('cancelled', round);}
+            const owner = owners[toolCall.name];
+            const failureKey = toolCall.name || '<unknown>';
+            let value: unknown;
+            let failureSignature = '';
+            try {
+                if (!owner || !owner.isActive()) {throw new Error(owner ? 'participant_inactive' : `unknown_tool:${toolCall.name}`);}
+                let args: unknown;
+                try {args = JSON.parse(String(toolCall.arguments || '').trim() || '{}');}
+                catch (error) {throw new TypeError(`invalid_tool_arguments_json:${errorMessage(error)}`);}
+                value = await owner.session.executeTool(toolCall.name, args);
+                if (isFailedToolResult(value)) {
+                    unresolvedFailures.set(failureKey, { participantId: owner.session.participantId, round });
+                    failureSignature = `${toolCall.name}\n${String(toolCall.arguments || '')}\n${safeJson(value)}`;
+                    repeatedFailures = failureSignature === lastFailureSignature ? repeatedFailures + 1 : 1;
+                    lastFailureSignature = failureSignature;
+                    if (repeatedFailures >= 4) {
+                        return loopResult('provider-failed', round, new Error('repeated_tool_failure'));
+                    }
+                    if (repeatedFailures === 3) {
+                        value = { ...value, brake: 'Repeated identical failure. Change the arguments or stop calling this tool.' };
+                    }
+                } else {
+                    unresolvedFailures.delete(failureKey);
+                    for (const [key, failure] of unresolvedFailures) {
+                        if (failure.participantId === null && failure.round < round) {
+                            unresolvedFailures.delete(key);
+                        }
+                    }
+                    lastFailureSignature = '';
+                    repeatedFailures = 0;
+                }
+            } catch (error) {
+                onError(error);
+                unresolvedFailures.set(failureKey, { participantId: owner?.session.participantId || null, round });
+                failureSignature = `${toolCall.name}\n${String(toolCall.arguments || '')}\n${errorMessage(error)}`;
+                repeatedFailures = failureSignature === lastFailureSignature ? repeatedFailures + 1 : 1;
+                lastFailureSignature = failureSignature;
+                if (repeatedFailures >= 4) {
+                    return loopResult('provider-failed', round, new Error('repeated_tool_failure'));
+                }
+                value = structuredToolError(
+                    error,
+                    'Correct the arguments and retry. Successful staged changes remain available.',
+                    repeatedFailures === 3,
+                );
+            }
+            const content = safeJson(value);
+            messages.push(buildProviderToolResultMessage({
+                toolCallId: toolCall.id,
+                toolName: toolCall.name,
+                content,
+            }));
+            responses.push({
+                id: toolCall.id,
+                name: toolCall.name,
+                response: value,
+                ...(Object.hasOwn(toolCall, 'providerId') ? { providerId: String(toolCall.providerId || '') } : {}),
+            });
+        }
+        pendingToolResponses = responses;
+        if (round === MAX_PROVIDER_ROUNDS) {return loopResult('round-limit', round);}
+    }
+    return loopResult('round-limit', MAX_PROVIDER_ROUNDS);
+}

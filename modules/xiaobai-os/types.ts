@@ -1,7 +1,7 @@
 import type { XiaobaiOsHostFrameMessage } from './host/frame-bridge.js';
 
 export interface XiaobaiOsSettings<TApps extends object = Record<string, unknown>> {
-    schemaVersion: 1;
+    schemaVersion: 2;
     enabled: boolean;
     apps: TApps;
 }

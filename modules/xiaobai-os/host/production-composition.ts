@@ -13,6 +13,12 @@ import { createModuleEvents, event_types } from '../../../core/event-manager.js'
 import { FOURTH_WALL_APP_DESCRIPTOR } from '../apps/fourth-wall/descriptor.js';
 import { createFourthWallRuntime } from '../apps/fourth-wall/host/create-runtime.js';
 import { createFourthWallRepository } from '../apps/fourth-wall/host/repository.js';
+import { MAP_APP_DESCRIPTOR } from '../apps/map/descriptor.js';
+import { createMapService } from '../apps/map/application/service.js';
+import { createMapAvailabilityRuntime } from '../apps/map/host/availability-runtime.js';
+import { createMapController } from '../apps/map/host/controller.js';
+import { createMapMaintenanceParticipant } from '../apps/map/host/maintenance-participant.js';
+import { createMapPromptRuntime } from '../apps/map/host/prompt-runtime.js';
 import { AGENT_API_APP_DESCRIPTOR } from '../apps/agent-api/descriptor.js';
 import { createAgentApiController } from '../apps/agent-api/host/controller.js';
 import { BANK_APP_DESCRIPTOR } from '../apps/bank/descriptor.js';
@@ -37,6 +43,7 @@ import { WALLET_APP_DESCRIPTOR } from '../apps/wallet/descriptor.js';
 import { createWalletController } from '../apps/wallet/host/controller.js';
 import { validateLedger } from '../domains/economy/invariants.js';
 import { createEconomyRepository } from '../domains/economy/repository.js';
+import { validateMapDomain } from '../domains/map/invariants.js';
 import { createAppRuntimeRegistry } from './app-runtime-registry.js';
 import { createXiaobaiOsAgentGateway } from './agent/gateway.js';
 import { createChatDataStore } from './chat-data-store.js';
@@ -46,6 +53,8 @@ import {
 } from './legacy-migration.js';
 import { createXiaobaiOsLifecycle, type XiaobaiOsLifecycle } from './lifecycle.js';
 import { createMainGenerationRuntime } from './main-generation-runtime.js';
+import { createMaintenanceRegistry } from './maintenance/registry.js';
+import { createMaintenanceRunner } from './maintenance/runner.js';
 import type { XiaobaiOsSettingsRepository } from './settings-repository.js';
 import {
     createSillyTavernChatAdapter,
@@ -58,6 +67,7 @@ import {
 export { createDefaultXiaobaiOsSettings };
 
 const SHOP_PROMPT_KEY = 'xiaobai_os_shop_effects';
+const MAP_PROMPT_KEY = 'xiaobai_os_map_context';
 const hostStylesheet = `${extensionFolderPath}/modules/xiaobai-os/host.css`;
 const frameSource = `${extensionFolderPath}/modules/xiaobai-os/shell/xiaobai-os.html`;
 
@@ -78,10 +88,12 @@ export function createProductionLifecycle(
             shop: validateShopDomain,
             bank: validateBankDomain,
             game: validateGameDomain,
+            map: validateMapDomain,
         },
         root: validateProductionRoot,
     });
     const economy = createEconomyRepository(chatStore);
+    const map = createMapService(chatStore);
     const mainGenerationRuntime = createMainGenerationRuntime({
         readHostGenerating: () => document.body.dataset.generating === 'true',
         subscribe(handlers) {
@@ -173,6 +185,82 @@ export function createProductionLifecycle(
         isMainGenerationActive: mainGenerationRuntime.isActive,
     });
     const agentGateway = createXiaobaiOsAgentGateway({ source: 'xiaobai-os-agent-api' });
+    const readMapSettings = () => {
+        const current = settingsRepository.read();
+        return current?.enabled ? current.apps.map : null;
+    };
+    const mapParticipant = createMapMaintenanceParticipant({
+        map,
+        readSettings: readMapSettings,
+    });
+    const maintenanceRunner = createMaintenanceRunner({
+        registry: createMaintenanceRegistry([mapParticipant]),
+        gateway: agentGateway,
+        captureSurface: getSillyTavernChatSurface,
+        isGenerationActive: mainGenerationRuntime.isActive,
+        writeGate: {
+            getState: chatStore.getWriteState,
+            subscribe(listener) {
+                return chatStore.subscribe(change => listener(change.writeState));
+            },
+        },
+        onError: error => console.error('[LittleWhiteBox] 小白 OS 后台维护失败', error),
+    });
+    const mapPromptRuntime = createMapPromptRuntime({
+        isEnabled: () => readMapSettings()?.enabled === true,
+        readCurrentMap: () => map.readCurrent().map,
+        setPrompt(value) {
+            setExtensionPrompt(
+                MAP_PROMPT_KEY,
+                value,
+                Number(extension_prompt_types.IN_CHAT) || 1,
+                1,
+                false,
+                Number(extension_prompt_roles.SYSTEM) || 0,
+            );
+        },
+        subscribe(handlers) {
+            const promptEvents = createModuleEvents('xiaobaiOsMapPrompt');
+            let dryRun = false;
+            promptEvents.on(event_types.GENERATION_STARTED, (
+                _type: unknown,
+                _options: unknown,
+                value: unknown,
+            ) => {
+                handlers.generationStarted();
+                dryRun = Boolean(value);
+            });
+            registerGenerateInterceptor(MAP_PROMPT_KEY, (
+                _chat: unknown,
+                _contextSize: unknown,
+                _abort: unknown,
+                type: unknown,
+            ) => {
+                const generationType = String(type || '');
+                if (
+                    dryRun
+                    || !['', 'normal', 'regenerate', 'swipe', 'continue'].includes(generationType)
+                ) {
+                    handlers.generationStopped();
+                    return;
+                }
+                handlers.intercept();
+            }, GENERATE_INTERCEPTOR_ORDER.XIAOBAI_OS_MAP);
+            promptEvents.on(event_types.GENERATE_AFTER_DATA, handlers.requestBuilt);
+            promptEvents.on(event_types.GENERATION_ENDED, () => {
+                dryRun = false;
+                handlers.generationEnded();
+            });
+            promptEvents.on(event_types.GENERATION_STOPPED, () => {
+                dryRun = false;
+                handlers.generationStopped();
+            });
+            return () => {
+                unregisterGenerateInterceptor(MAP_PROMPT_KEY);
+                promptEvents.cleanup();
+            };
+        },
+    });
     const agentApiRuntime = createAgentApiController(agentGateway);
     const fourthWallRepository = createFourthWallRepository(chatStore);
     const fourthWallRuntime = createFourthWallRuntime(fourthWallRepository, settingsRepository, agentGateway);
@@ -205,6 +293,13 @@ export function createProductionLifecycle(
         subscribeGeneration: mainGenerationRuntime.subscribe,
         subscribeData: chatStore.subscribe,
     });
+    const mapRuntime = createMapController({
+        map,
+        settings: settingsRepository,
+        maintenance: maintenanceRunner,
+        getChatIdentity: getSillyTavernChatIdentity,
+        subscribeData: chatStore.subscribe,
+    });
     let unsubscribeShopDeliveryState: (() => void) | null = null;
     const shopDeliveryLifecycle = {
         startBackground() {
@@ -223,6 +318,25 @@ export function createProductionLifecycle(
             unsubscribeShopDeliveryState = null;
         },
     };
+    const mapAvailabilityRuntime = createMapAvailabilityRuntime({
+        settings: settingsRepository,
+        maintenance: maintenanceRunner,
+        prompt: mapPromptRuntime,
+    });
+    const maintenanceLifecycle = {
+        startBackground() {
+            maintenanceRunner.startBackground((listener) => {
+                const maintenanceEvents = createModuleEvents('xiaobaiOsMaintenance');
+                maintenanceEvents.on(event_types.MESSAGE_SENT, (messageIndex: unknown) => {
+                    listener(Number(messageIndex));
+                });
+                return () => maintenanceEvents.cleanup();
+            });
+        },
+        handleChatChanged: maintenanceRunner.handleChatChanged,
+        cancelAll: maintenanceRunner.cancelAll,
+        stopBackground: maintenanceRunner.stopBackground,
+    };
     const appRegistry = createAppRuntimeRegistry([
         { descriptor: AGENT_API_APP_DESCRIPTOR, runtime: agentApiRuntime },
         { descriptor: FOURTH_WALL_APP_DESCRIPTOR, runtime: fourthWallRuntime },
@@ -230,7 +344,16 @@ export function createProductionLifecycle(
         { descriptor: SHOP_APP_DESCRIPTOR, runtime: shopRuntime },
         { descriptor: BANK_APP_DESCRIPTOR, runtime: bankRuntime },
         { descriptor: GAME_APP_DESCRIPTOR, runtime: gameRuntime },
-    ], [mainGenerationRuntime, shopPromptRuntime, shopDeliveryLifecycle]);
+        { descriptor: MAP_APP_DESCRIPTOR, runtime: mapRuntime },
+    ], [
+        mainGenerationRuntime,
+        shopPromptRuntime,
+        shopDeliveryLifecycle,
+        mapAvailabilityRuntime,
+        maintenanceLifecycle,
+    ]);
+    const getAvailableAppDescriptors = () => appRegistry.getDescriptors()
+        .filter(descriptor => descriptor.id !== MAP_APP_DESCRIPTOR.id || readMapSettings()?.enabled === true);
     return createXiaobaiOsLifecycle({
         stylesheetHref: hostStylesheet,
         frameSrc: frameSource,
@@ -238,8 +361,17 @@ export function createProductionLifecycle(
             lifecycleEvents.on(event_types.CHAT_CHANGED, handler);
             return () => lifecycleEvents.cleanup();
         },
+        subscribeAppDescriptorsChanged(handler) {
+            let mapEnabled = readMapSettings()?.enabled === true;
+            return settingsRepository.subscribe((settings) => {
+                const nextMapEnabled = settings.apps.map.enabled;
+                if (nextMapEnabled === mapEnabled) {return;}
+                mapEnabled = nextMapEnabled;
+                handler();
+            });
+        },
         getInitSnapshot: getSillyTavernShellSnapshot,
-        getAppDescriptors: appRegistry.getDescriptors,
+        getAppDescriptors: getAvailableAppDescriptors,
         appRuntime: appRegistry,
     });
 }

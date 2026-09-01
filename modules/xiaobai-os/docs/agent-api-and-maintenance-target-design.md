@@ -33,7 +33,11 @@ modules/xiaobai-os/
 │  └─ maintenance/
 │     ├─ accepted-turn-source.ts    读取刚被确认的上一轮
 │     ├─ registry.ts                领域 participant 注册
-│     └─ runner.ts                  单队列、取消、一次请求编排
+│     ├─ fifo-coordinator.ts        当前运行内 FIFO
+│     ├─ root-write-gate.ts         根保存状态栅栏
+│     ├─ provider-tool-loop.ts      Provider-aware 多轮工具循环
+│     ├─ outcome.ts                 运行与逐 participant 结果
+│     └─ runner.ts                  薄编排 facade 与取消入口
 └─ apps/
    ├─ agent-api/                    桌面设置 APP、Controller、UI
    ├─ fourth-wall/                  只保留四次元壁业务
@@ -52,7 +56,7 @@ OS Agent bundle 取代当前由 Fourth Wall 命名和拥有的 Agent bundle。�
 - Agent API APP、Agent gateway 和通用 Agent bundle 已完成，因为四次元壁是它们当下的真实消费者。
 - 下一步先实现完整 Map。只有 Map 的领域、Prompt、工具和 participant 已经存在时，才在同一阶段实现它实际需要的 accepted-turn source 与业务无关 runner，并在 Map 完整可用后暴露 Map 两级开关。
 - Tasks 未完成前，不增加 Tasks 设置字段、命令、开关、runtime、注册或占位 participant。
-- 完整 Tasks 带来第二个真实 participant 后，才落下并验收同一接受轮的多 participant 聚合：一次 Agent 请求、各自 staging、各自事务提交。
+- 通用 runner 在 Map 阶段已经按终态支持多个 participant 共用一个 Provider Session；当前只有 Map 是生产 participant。Tasks 完整交付时只注册自己的 Prompt、工具、Session 和事务，再以真实双领域行为复验聚合，不另起 runner。
 
 因此，“打开 APP 不检查 API”“关闭开关不调用 API”“只由已保存 User 确认上一轮”是 Map/Tasks 交付时必须满足的运行契约，不是脱离 APP 预建空基础设施的理由。
 
@@ -100,12 +104,14 @@ gateway 是 APP 与`agent-core`之间的窄边界：
 ```ts
 interface XiaobaiOsAgentGateway {
     loadConfig(): Promise<AgentConfig>;
+    openSession(config: AgentConfig): Promise<AgentSession>;
     run(request: AgentRunRequest, signal: AbortSignal): Promise<AgentRunResult>;
     testConnection(request: ExplicitConnectionTest, signal: AbortSignal): Promise<TestResult>;
 }
 ```
 
 - `loadConfig`只读共享配置。
+- maintenance 每个 job 只调用一次`openSession`并复用同一个 adapter；一次性`run`保留给四次元壁等真实消费者。
 - `run`只在明确的前台动作或 maintenance job 已经获准时调用供应商。
 - `testConnection`只能由 Agent API APP 的显式操作触发。
 - gateway 不判断哪个 APP 启用，不读 Map/Tasks 数据，不拥有 Prompt。
@@ -123,7 +129,7 @@ Map 和 Tasks 各有两个不同语义的用户级开关：
 两项默认均关闭，但入口不放在同一处：
 
 - Map、Tasks 的「APP 启用」复选框只放在 SillyTavern 扩展设置现有的「小白 OS」区块，紧邻 OS 总开关。即使 APP 图标已经隐藏，用户仍能从这里重新开启。
-- 「自动维护」只放在对应 APP 的设置页，不复制到扩展设置，也不放进 Agent API APP。它是用户级偏好，作用于所有普通聊天，因此 UI 必须明确标注「所有普通聊天自动维护」。Tasks 没有 active 任务时可本地返回 null；Map 是否出现新空间事实需由 Agent 判断，所以开启 Map 自动维护就表示每个有效接受轮都参加请求，即使最终没有 patch。这个成本差异必须写在开关说明中。
+- 「自动维护」只放在对应 APP 的设置页，不复制到扩展设置，也不放进 Agent API APP。它是用户级偏好，作用于所有普通聊天，因此 UI 必须明确标注「所有普通聊天自动维护」。Tasks 没有 active 任务时可本地返回 null；Map 是否出现新空间事实需由 Agent 判断，所以开启 Map 自动维护就表示每个有效接受轮都参加请求，即使最终无需更新地图。这个成本差异必须写在开关说明中。
 - `autoMaintenance=true`蕴含`enabled=true`。关闭 APP 时同一次设置 mutation 把该 APP 的自动维护重置为`false`；重新开启后仍需用户在 APP 内再次明确开启自动维护，不能恢复一个隐藏的付费行为。
 
 两种开关本身都只保存用户级偏好，不读取 Agent 配置、不发请求，也不创建聊天数据。扩展设置通过 OS `index.ts`导出的窄设置命令写唯一 settings repository，不能直接改`extension_settings`；shell 也不能自行解释或保存设置。
@@ -134,7 +140,7 @@ Map 和 Tasks 各有两个不同语义的用户级开关：
 
 用户可在具体 APP 内通过标明会使用 Agent 的「维护一次」「重建」或「刷新」按钮发起显式请求。
 
-若运行中关闭自动维护，该领域的自动 job token 立即失效并请求 abort；即使供应商仍返回，领域提交前也必须再次检查 token 并丢弃迟到结果。显式「维护一次」使用独立的前台授权 token，不依赖自动维护开关，但关闭整个 APP 仍会使它失效。
+若运行中关闭自动维护，该领域的自动 job token 立即失效并请求 abort；即使供应商仍返回，进入根保存 commit point 前也必须再次检查 token 并丢弃迟到结果。显式「维护一次」使用独立的前台授权 token，不依赖自动维护开关，但关闭整个 APP 仍会使它失效。设置 mutation 的 installed 通知只负责这条即时执行栅栏，稳定发布只切换 Prompt/页面生命周期，不重复推进取消 token。
 
 ## 7. 接受轮触发语义
 
@@ -162,7 +168,9 @@ U2 是“上一轮已经被用户接受”的边界，不是本次维护证据�
 - 触发 User 的消息位置、角色和原始文本；
 - 捕获时已完成的普通 Assistant 回复总数；
 - 接受来源中每条消息的位置、角色、当前`swipe_id`和当前文本；
-- participant generation token 与其领域 revision。
+- 本轮玩家契约`actorKey:"player"`、SillyTavern 用户展示名，以及每条消息的 speakerName；展示名在捕获入口统一清理控制字符、折叠空白并截到 120 个 Unicode 字符。
+
+participant 的运行 token 属于 job 临时态；领域 revision 在`createSession`读取并由提交事务做 CAS，不伪装成聊天消息来源字段。
 
 提交前重新读取当前聊天并逐项比较这些原始值。这里不需要消息 hash、Web Crypto、剧情指纹或持久“核对中”状态；任一值变化、聊天切换或来源消失都直接丢弃该迟到结果。
 
@@ -192,11 +200,8 @@ U2 是“上一轮已经被用户接受”的边界，不是本次维护证据�
 ```ts
 interface MaintenanceParticipant {
     id: string;
-    capture(source: AcceptedTurnSource): ParticipantSnapshot | null;
-    prompt(snapshot: ParticipantSnapshot): string;
-    tools(snapshot: ParticipantSnapshot): readonly AgentTool[];
-    commit(staged: unknown, guard: CommitGuard): Promise<void>;
-    invalidate(reason: string): void;
+    isEnabled(mode: MaintenanceMode): boolean;
+    createSession(source: AcceptedTurnSource, mode: MaintenanceMode): MaintenanceSession;
 }
 ```
 
@@ -214,11 +219,13 @@ interface MaintenanceParticipant {
 - 当前聊天只有一条 FIFO maintenance 队列，不并行维护两个接受轮。
 - 新 User 到来时前一 job 可继续；后一个等待前一个完成，避免旧结果覆盖新状态。
 - 关闭 OS 窗口不影响已经获准的自动 job；自动维护属于 host 后台，不由页面寿命拥有。
-- 「维护一次」、重建、board 刷新和候选招募属于前台请求；离开对应 APP/页面、再次发起同类请求或关闭 APP 时 abort，迟到结果不得提交。
-- 切聊、OS cleanup 或 OS 总开关关闭时，中止 active job 并清空当前运行队列。
+- 「维护一次」、重建、board 刷新和候选招募属于前台请求；离开对应 APP/页面、再次发起同类请求或关闭 APP 时请求 abort，尚未进入保存 commit point 的迟到结果不得提交。
+- 切聊、OS cleanup 或 OS 总开关关闭时，中止 active job 并清空当前运行队列。若某 participant 已安装根候选并发出宿主保存请求，该次保存无法物理撤回；等待它落定、保留真实 committed outcome，再取消其余 participant 和后续 job。
 - 单个 APP 关闭时只移除该 participant；同一请求中的其他 participant 可继续。
 - API 配置缺失、未启用或读取失败时，本次 job 以本地错误结束，不发供应商请求。
-- 供应商、请求级解析或整个工具循环失败时，所有 participant 都不写入。单个 participant 的工具参数/领域校验失败只使该 participant 无法提交，另一个拥有完整合法 staged 结果的 participant 仍可提交；错误不能跨领域冒充成功。
+- 工具解析、参数和可恢复执行错误以结构化结果回喂模型，不销毁 Session；同签名连续三次失败注入刹车，第四次结束，Provider 回合上限为 12。
+- Provider 后续失败或轮次耗尽时，已有合法 staging 的 participant 以 partial 提交；没有合法变化的 participant 为 failed。单个 participant 的领域错误不能跨领域冒充成功。
+- outcome 明确区分`updated/unchanged/partial/failed/cancelled/skipped`并携带逐 participant 结果；UI只翻译稳定状态，内部错误只写日志。
 - 运行错误和“上次维护”提示只活在当前页面进程。
 - 自动失败后不在重载时偷偷补请求。用户可等待下一次接受轮，或在 APP 内明确点击「维护一次」。
 

@@ -8,6 +8,10 @@ export interface XiaobaiOsAgentBridge {
         requestHeadersProvider?: (() => Record<string, string>) | null;
     }) => void;
     runXiaobaiOsAgent: (request: UnknownRecord) => Promise<UnknownRecord>;
+    openXiaobaiOsAgentSession: (providerConfig: UnknownRecord) => {
+        readonly supportsSessionToolLoop: boolean;
+        run: (request: UnknownRecord) => Promise<UnknownRecord>;
+    };
     pullXiaobaiOsAgentModels: (
         providerConfig: UnknownRecord,
         options?: { signal?: AbortSignal },

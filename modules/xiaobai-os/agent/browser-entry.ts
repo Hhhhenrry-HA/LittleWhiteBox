@@ -14,6 +14,13 @@ export interface XiaobaiOsAgentRunRequest {
     reasoning?: UnknownRecord;
     signal?: AbortSignal;
     onStreamProgress?: (snapshot: UnknownRecord) => void;
+    toolResponses?: readonly UnknownRecord[];
+    finalAnswerReminderText?: string;
+}
+
+export interface XiaobaiOsAgentSession {
+    readonly supportsSessionToolLoop: boolean;
+    run: (request: Omit<XiaobaiOsAgentRunRequest, 'providerConfig'>) => Promise<UnknownRecord>;
 }
 
 export function configureXiaobaiOsAgent(
@@ -24,21 +31,32 @@ export function configureXiaobaiOsAgent(
     );
 }
 
-export async function runXiaobaiOsAgent(request: XiaobaiOsAgentRunRequest): Promise<UnknownRecord> {
-    const providerConfig = request.providerConfig || {};
+export function openXiaobaiOsAgentSession(providerConfigValue: UnknownRecord): XiaobaiOsAgentSession {
+    const providerConfig = providerConfigValue || {};
     const adapter = createAgentAdapter(providerConfig, {
         missingApiKeyMessage: '请先在共享 Agent API 配置中填写当前预设的 API Key。',
     });
-    return await adapter.chat({
-        systemPrompt: String(request.systemPrompt || ''),
-        messages: Array.isArray(request.messages) ? request.messages : [],
-        tools: Array.isArray(request.tools) ? request.tools : [],
-        temperature: request.temperature,
-        maxTokens: request.maxTokens,
-        reasoning: request.reasoning,
-        signal: request.signal,
-        onStreamProgress: request.onStreamProgress,
-    }) as UnknownRecord;
+    return Object.freeze({
+        supportsSessionToolLoop: adapter.supportsSessionToolLoop === true,
+        async run(request: Omit<XiaobaiOsAgentRunRequest, 'providerConfig'>): Promise<UnknownRecord> {
+            return await adapter.chat({
+                systemPrompt: String(request.systemPrompt || ''),
+                messages: Array.isArray(request.messages) ? request.messages : [],
+                tools: Array.isArray(request.tools) ? request.tools : [],
+                temperature: request.temperature,
+                maxTokens: request.maxTokens,
+                reasoning: request.reasoning,
+                signal: request.signal,
+                onStreamProgress: request.onStreamProgress,
+                toolResponses: request.toolResponses,
+                finalAnswerReminderText: request.finalAnswerReminderText,
+            }) as UnknownRecord;
+        },
+    });
+}
+
+export async function runXiaobaiOsAgent(request: XiaobaiOsAgentRunRequest): Promise<UnknownRecord> {
+    return await openXiaobaiOsAgentSession(request.providerConfig).run(request);
 }
 
 export async function pullXiaobaiOsAgentModels(

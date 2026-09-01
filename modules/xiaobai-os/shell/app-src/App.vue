@@ -37,11 +37,23 @@ let pendingAppOpening: PendingAppOpening | null = null;
 
 const availableApps = computed(() => xiaobaiOsApps.filter(app => availableIds.value.has(app.id)));
 
+function applyAvailableApps(apps: readonly HostAppDescriptor[]): void {
+    const nextIds = new Set(apps.map(app => String(app.id)));
+    const activeRemoved = activeApp.value && !nextIds.has(activeApp.value.id);
+    const pendingRemoved = pendingAppOpening && !nextIds.has(pendingAppOpening.appId);
+    availableIds.value = nextIds;
+    if (!activeRemoved && !pendingRemoved) {return;}
+    navigationGeneration += 1;
+    pendingAppOpening = null;
+    activeApp.value = null;
+    activeState.value = null;
+}
+
 function applyInit(payload: InitPayload): void {
     navigationGeneration += 1;
     pendingAppOpening = null;
     theme.value = payload.theme === 'dark' ? 'dark' : 'light';
-    availableIds.value = new Set((payload.apps || []).map(app => String(app.id)));
+    applyAvailableApps(payload.apps || []);
     characterAvatar.value = String(payload.chat?.characterAvatar || '');
     activeApp.value = null;
     activeState.value = null;
@@ -55,6 +67,10 @@ function handleHostMessage(message: FrameMessage): void {
     if (message.type === 'os/theme-changed') {
         const payload = message.payload as { theme?: string };
         theme.value = payload?.theme === 'dark' ? 'dark' : 'light';
+    }
+    if (message.type === 'os/apps-changed') {
+        const payload = message.payload as { apps?: HostAppDescriptor[] } | undefined;
+        applyAvailableApps(payload?.apps || []);
     }
     if (message.type === 'os/error') {
         errorMessage.value = String((message.payload as { message?: string })?.message || '小白 OS 初始化失败');

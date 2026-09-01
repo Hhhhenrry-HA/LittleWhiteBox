@@ -149,7 +149,8 @@ test('an unconfirmed opening still opens the wallet with its frozen candidate an
     assert.equal(result.state.balance, 100);
 });
 
-test('a rejected or explicitly failed opening never remains visible as a successful wallet', async () => {
+test('a rejected or explicitly failed opening never remains visible as a successful wallet', async (t) => {
+    t.mock.method(console, 'error', () => undefined);
     const rejected = createHarness({ openingResult: 'unconfirmed-rejected' });
     rejected.controller.activate({
         post: (type, payload) => {rejected.host.posts.push({ type, payload }); return true;},

@@ -61,6 +61,8 @@ export interface XiaobaiOsShellSnapshot {
 export interface XiaobaiOsChatSurface {
     identityKey: string;
     messages: unknown[];
+    playerName: string;
+    assistantName: string;
 }
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -411,6 +413,8 @@ export function getSillyTavernChatSurface(): XiaobaiOsChatSurface | null {
     return {
         identityKey: identity.key,
         messages: context.chat || [],
+        playerName: String(context.name1 || 'User').trim() || 'User',
+        assistantName: String(context.name2 || 'Assistant').trim() || 'Assistant',
     };
 }
 

@@ -11,7 +11,6 @@ import { validateGameDomain } from '../domains/game/invariants.js';
 import { createGameSequenceRandom } from '../domains/game/random.js';
 import {
     appendGameEvent,
-    calculateGameLockedAmount,
     createEmptyGameDomain,
     createEmptyGameState,
     flattenGameActivities,

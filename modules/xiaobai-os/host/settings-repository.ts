@@ -7,9 +7,13 @@ import {
     XiaobaiOsDataError,
 } from './legacy-migration.js';
 import type { FourthWallGlobalSettings } from '../apps/fourth-wall/types.js';
+import type { MapSettings } from '../apps/map/types.js';
 import type { XiaobaiOsSettings as XiaobaiOsSettingsRoot } from '../types.js';
 
-type XiaobaiOsSettings = XiaobaiOsSettingsRoot<{ fourthWall: FourthWallGlobalSettings }>;
+type XiaobaiOsSettings = XiaobaiOsSettingsRoot<{
+    fourthWall: FourthWallGlobalSettings;
+    map: MapSettings;
+}>;
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -22,9 +26,13 @@ export interface XiaobaiOsSettingsRepository {
     prepare: () => Promise<XiaobaiOsSettings>;
     read: () => XiaobaiOsSettings | null;
     setEnabled: (enabled: boolean) => Promise<XiaobaiOsSettings>;
+    setMapEnabled: (enabled: boolean) => Promise<XiaobaiOsSettings>;
+    setMapAutoMaintenance: (enabled: boolean) => Promise<XiaobaiOsSettings>;
     mutateFourthWall: (
         action: (current: FourthWallGlobalSettings) => FourthWallGlobalSettings,
     ) => Promise<XiaobaiOsSettings>;
+    subscribe: (listener: (settings: XiaobaiOsSettings) => void) => () => void;
+    subscribeMutationInstalled: (listener: (settings: XiaobaiOsSettings) => void) => () => void;
     legacyKeys: readonly LegacyFourthWallSettingKey[];
 }
 
@@ -76,6 +84,46 @@ export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): Xia
         throw new TypeError('settings repository requires getExtensionSettings and saveSettings');
     }
     const enqueueWrite = createWriteQueue();
+    const listeners = new Set<(settings: XiaobaiOsSettings) => void>();
+    const mutationInstalledListeners = new Set<(settings: XiaobaiOsSettings) => void>();
+
+    function publish(settings: XiaobaiOsSettings): void {
+        for (const listener of listeners) {
+            try {
+                listener(cloneXiaobaiOsData(settings));
+            } catch (error) {
+                console.error('[LittleWhiteBox] 小白 OS 设置监听失败', error);
+            }
+        }
+    }
+
+    function publishMutationInstalled(settings: XiaobaiOsSettings): void {
+        for (const listener of mutationInstalledListeners) {
+            try {
+                listener(cloneXiaobaiOsData(settings));
+            } catch (error) {
+                console.error('[LittleWhiteBox] 小白 OS 设置写入监听失败', error);
+            }
+        }
+    }
+
+    async function saveInstalled(
+        installed: XiaobaiOsSettings,
+        rollback: () => void,
+    ): Promise<XiaobaiOsSettings> {
+        try {
+            await adapter.saveSettings();
+        } catch (error) {
+            if (isUnconfirmedSave(error)) {
+                publish(installed);
+            } else {
+                rollback();
+            }
+            throw error;
+        }
+        publish(installed);
+        return cloneXiaobaiOsData(installed);
+    }
 
     function read(): XiaobaiOsSettings | null {
         const root = requireSettingsRoot(adapter);
@@ -100,18 +148,12 @@ export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): Xia
             root.xiaobaiOs = installed;
             migration.legacyKeys.forEach((key) => delete root[key]);
 
-            try {
-                await adapter.saveSettings();
-            } catch (error) {
-                if (!isUnconfirmedSave(error)) {
-                    if (root.xiaobaiOs === installed) {
-                        delete root.xiaobaiOs;
-                    }
-                    restoreLegacySettings(root, legacySnapshots);
+            return saveInstalled(installed, () => {
+                if (root.xiaobaiOs === installed) {
+                    delete root.xiaobaiOs;
                 }
-                throw error;
-            }
-            return cloneXiaobaiOsData(installed);
+                restoreLegacySettings(root, legacySnapshots);
+            });
         });
     }
 
@@ -133,15 +175,12 @@ export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): Xia
             assertValidSettings(next);
             const installed = cloneXiaobaiOsData(next);
             root.xiaobaiOs = installed;
-            try {
-                await adapter.saveSettings();
-            } catch (error) {
-                if (!isUnconfirmedSave(error) && root.xiaobaiOs === installed) {
+            publishMutationInstalled(installed);
+            return saveInstalled(installed, () => {
+                if (root.xiaobaiOs === installed) {
                     root.xiaobaiOs = previous;
                 }
-                throw error;
-            }
-            return cloneXiaobaiOsData(installed);
+            });
         });
     }
 
@@ -151,6 +190,32 @@ export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): Xia
         }
         return mutate((next) => {
             next.enabled = enabled;
+            return next;
+        });
+    }
+
+    function setMapEnabled(enabled: boolean): Promise<XiaobaiOsSettings> {
+        if (typeof enabled !== 'boolean') {
+            throw new TypeError('map enabled must be a boolean');
+        }
+        return mutate((next) => {
+            next.apps.map.enabled = enabled;
+            if (!enabled) {
+                next.apps.map.autoMaintenance = false;
+            }
+            return next;
+        });
+    }
+
+    function setMapAutoMaintenance(enabled: boolean): Promise<XiaobaiOsSettings> {
+        if (typeof enabled !== 'boolean') {
+            throw new TypeError('map auto-maintenance must be a boolean');
+        }
+        return mutate((next) => {
+            next.apps.map.autoMaintenance = enabled;
+            if (enabled) {
+                next.apps.map.enabled = true;
+            }
             return next;
         });
     }
@@ -171,11 +236,31 @@ export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): Xia
         });
     }
 
+    function subscribe(listener: (settings: XiaobaiOsSettings) => void): () => void {
+        if (typeof listener !== 'function') {
+            throw new TypeError('settings listener must be a function');
+        }
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+    }
+
+    function subscribeMutationInstalled(listener: (settings: XiaobaiOsSettings) => void): () => void {
+        if (typeof listener !== 'function') {
+            throw new TypeError('settings mutation listener must be a function');
+        }
+        mutationInstalledListeners.add(listener);
+        return () => mutationInstalledListeners.delete(listener);
+    }
+
     return Object.freeze({
         prepare,
         read,
         setEnabled,
+        setMapEnabled,
+        setMapAutoMaintenance,
         mutateFourthWall,
+        subscribe,
+        subscribeMutationInstalled,
         legacyKeys: LEGACY_FOURTH_WALL_SETTING_KEYS,
     });
 }

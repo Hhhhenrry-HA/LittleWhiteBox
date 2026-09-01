@@ -51,11 +51,15 @@ export interface RootMutationPlan<T> {
 }
 
 export interface RootMutationOptions {
-    beforeCommit?: () => Promise<void> | void;
+    beforeCommit?: () => void;
 }
 
 export interface ConfirmResult {
     status: 'none' | 'confirmed' | 'rejected' | 'conflict' | 'unconfirmed';
+}
+
+export interface AdoptServerResult {
+    status: 'none' | 'adopted' | 'conflict';
 }
 
 export interface XiaobaiOsChatDataStore {
@@ -68,6 +72,7 @@ export interface XiaobaiOsChatDataStore {
         options?: RootMutationOptions,
     ) => Promise<T>;
     confirmPending: () => Promise<ConfirmResult>;
+    adoptServerState: () => Promise<AdoptServerResult>;
     getWriteState: () => XiaobaiOsWriteState;
     subscribe: (listener: (change: XiaobaiOsChatDataChange) => void) => () => void;
 }
@@ -80,6 +85,15 @@ interface PendingSave {
     previous: XiaobaiOsChatData | undefined;
     candidate: XiaobaiOsChatData | undefined;
     metadataEffect?: RootMutationMetadataEffect;
+}
+
+export class XiaobaiOsCommittedMutationError extends XiaobaiOsDataError {
+    readonly mutationCommitted = true as const;
+
+    constructor(message: string) {
+        super('CHAT_CHANGED', message);
+        this.name = 'XiaobaiOsCommittedMutationError';
+    }
 }
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -271,14 +285,17 @@ export function createChatDataStore(
         };
     }
 
-    function assertStillCurrent(captured: CapturedChat): void {
+    function assertStillCurrent(captured: CapturedChat, mutationCommitted = false): void {
         const identity = adapter.getChatIdentity();
         if (
             identity === null ||
             identityKey(identity) !== captured.identityKey ||
             adapter.getChatMetadata(identity) !== captured.metadata
         ) {
-            throw new XiaobaiOsDataError('CHAT_CHANGED', 'The active chat changed before metadata could be saved');
+            const message = 'The active chat changed before metadata could be saved';
+            throw mutationCommitted
+                ? new XiaobaiOsCommittedMutationError(message)
+                : new XiaobaiOsDataError('CHAT_CHANGED', message);
         }
     }
 
@@ -333,7 +350,7 @@ export function createChatDataStore(
             }
             const candidate = plan.next === null ? undefined : cloneXiaobaiOsData(plan.next);
             if (candidate !== undefined) {assertValidRoot(candidate, validators);}
-            await options.beforeCommit?.();
+            options.beforeCommit?.();
             assertStillCurrent(captured);
 
             const previousValue = previous === null ? undefined : cloneXiaobaiOsData(previous);
@@ -381,7 +398,7 @@ export function createChatDataStore(
             }
             setWriteState(requestedKey, 'ready');
             pendingSaves.delete(requestedKey);
-            assertStillCurrent(captured);
+            assertStillCurrent(captured, true);
             return plan.result;
         });
     }
@@ -426,11 +443,44 @@ export function createChatDataStore(
         });
     }
 
+    function adoptServerState(): Promise<AdoptServerResult> {
+        let requestedIdentity: XiaobaiOsChatIdentityInput;
+        try {
+            requestedIdentity = getRequestedIdentity();
+        } catch (error) {
+            return Promise.reject(error);
+        }
+        const requestedKey = identityKey(requestedIdentity);
+        return enqueueWrite(async () => {
+            const pending = pendingSaves.get(requestedKey);
+            if (!pending) {return { status: 'none' };}
+            const captured = captureCurrent(requestedIdentity);
+            try {
+                const persisted = await adapter.readPersistedXiaobaiOs(captured.identity);
+                assertStillCurrent(captured);
+                if (persisted !== undefined) {assertValidRoot(persisted, validators);}
+                installOptionalRoot(
+                    captured.metadata,
+                    persisted === undefined ? undefined : cloneXiaobaiOsData(persisted),
+                );
+                if (captured.metadata === pending.metadata) {pending.metadataEffect?.rollback();}
+                pendingSaves.delete(requestedKey);
+                setWriteState(requestedKey, 'ready');
+                return { status: 'adopted' };
+            } catch (error) {
+                assertStillCurrent(captured);
+                setWriteState(requestedKey, 'conflict');
+                console.error('[LittleWhiteBox] 采用服务端小白 OS 数据失败', error);
+                return { status: 'conflict' };
+            }
+        });
+    }
+
     function subscribe(listener: (change: XiaobaiOsChatDataChange) => void): () => void {
         if (typeof listener !== 'function') {throw new TypeError('chat data listener must be a function');}
         listeners.add(listener);
         return () => listeners.delete(listener);
     }
 
-    return Object.freeze({ readCurrent, mutateCurrent, confirmPending, getWriteState, subscribe });
+    return Object.freeze({ readCurrent, mutateCurrent, confirmPending, adoptServerState, getWriteState, subscribe });
 }

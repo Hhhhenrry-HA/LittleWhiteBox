@@ -27,6 +27,7 @@ export interface XiaobaiOsLifecycleOptions {
     stylesheetHref?: string;
     frameSrc?: string;
     subscribeChatChanged?: (handler: () => void) => () => void;
+    subscribeAppDescriptorsChanged?: (handler: () => void) => () => void;
     getInitSnapshot?: () => XiaobaiOsLifecycleSnapshot | null;
     getAppDescriptors?: () => readonly XiaobaiOsAppDescriptor[];
     appRuntime?: Partial<XiaobaiOsAppRuntimeRouter>;
@@ -104,6 +105,7 @@ export function createXiaobaiOsLifecycle({
     stylesheetHref,
     frameSrc,
     subscribeChatChanged = () => () => {},
+    subscribeAppDescriptorsChanged = () => () => {},
     getInitSnapshot = () => ({}),
     getAppDescriptors = () => [],
     appRuntime = {},
@@ -122,8 +124,10 @@ export function createXiaobaiOsLifecycle({
     let iframe: HTMLIFrameElement | null = null;
     let bridge: XiaobaiOsHostFrameBridge | null = null;
     let unsubscribeChatChanged: (() => void) | null = null;
+    let unsubscribeAppDescriptorsChanged: (() => void) | null = null;
     let themeObserver: MutationObserver | null = null;
     let activeAppId: string | null = null;
+    let pendingAppId: string | null = null;
     let generation = 0;
     let appActivationGeneration = 0;
 
@@ -142,6 +146,7 @@ export function createXiaobaiOsLifecycle({
 
     function deactivateActiveApp(reason: string): void {
         appActivationGeneration += 1;
+        pendingAppId = null;
         if (!activeAppId) {
             try {
                 appRuntime.cancelForeground?.(reason);
@@ -156,6 +161,20 @@ export function createXiaobaiOsLifecycle({
             appRuntime.deactivate?.(appId, reason);
         } catch (error) {
             onError(error);
+        }
+    }
+
+    function handleAppDescriptorsChanged(): void {
+        const apps = getAppDescriptors();
+        const availableIds = new Set(apps.map(app => app.id));
+        if (
+            (activeAppId && !availableIds.has(activeAppId))
+            || (pendingAppId && !availableIds.has(pendingAppId))
+        ) {
+            deactivateActiveApp('app-disabled');
+        }
+        if (bridge?.isReady()) {
+            bridge.post('os/apps-changed', { apps });
         }
     }
 
@@ -241,9 +260,10 @@ export function createXiaobaiOsLifecycle({
                 frameBridge.post('app/activation-result', { ok: false, error: 'app_unavailable' }, requestId);
                 return;
             }
+            deactivateActiveApp('app-switch');
+            const activationGeneration = ++appActivationGeneration;
+            pendingAppId = appId;
             try {
-                deactivateActiveApp('app-switch');
-                const activationGeneration = ++appActivationGeneration;
                 const state = await appRuntime.activate?.(appId, {
                     post: (messageType: string, messagePayload: unknown = {}, responseId = '') =>
                         frameBridge.post(messageType, messagePayload, responseId),
@@ -267,9 +287,11 @@ export function createXiaobaiOsLifecycle({
                     );
                     return;
                 }
+                pendingAppId = null;
                 activeAppId = appId;
                 frameBridge.post('app/activation-result', { ok: true, appId, state: state ?? null }, requestId);
             } catch (error) {
+                if (activationGeneration === appActivationGeneration) {pendingAppId = null;}
                 frameBridge.post(
                     'app/activation-result',
                     {
@@ -372,6 +394,7 @@ export function createXiaobaiOsLifecycle({
         }
         launcher.addEventListener('click', open);
         unsubscribeChatChanged = subscribeChatChanged(handleChatChanged);
+        unsubscribeAppDescriptorsChanged = subscribeAppDescriptorsChanged(handleAppDescriptorsChanged);
         windowTarget.addEventListener('pagehide', handlePageHide);
         appRuntime.startBackground?.();
         initialized = true;
@@ -389,6 +412,8 @@ export function createXiaobaiOsLifecycle({
         appRuntime.stopBackground?.();
         unsubscribeChatChanged?.();
         unsubscribeChatChanged = null;
+        unsubscribeAppDescriptorsChanged?.();
+        unsubscribeAppDescriptorsChanged = null;
         windowTarget.removeEventListener('pagehide', handlePageHide);
         launcher?.removeEventListener('click', open);
         launcher?.remove();

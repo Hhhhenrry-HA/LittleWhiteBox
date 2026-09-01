@@ -122,7 +122,7 @@ U1 → A1a → swipe A1b → 保存 U2
 - 事件监听器同步捕获后立即返回，不阻塞 U2 的主 RP 生成；
 - Map/Tasks 同时需要工作时合并为一次 Agent 请求；
 - 领域各自提供 Prompt、工具、staging 和提交；
-- 切聊、关开关、消息或 swipe 改变、领域 revision 改变时，迟到结果作废；
+- 切聊、关开关、消息或 swipe 改变、领域 revision 改变时，尚未进入根保存 commit point 的迟到结果作废；保存请求已经发出后保留真实提交结果，不伪造回滚；
 - 所有 participant 关闭时不读取 Agent 配置，更不做网络检查。
 
 后台队列、AbortController、running/error 是当前运行临时态。打开 APP、切换页面或 OS 启动不会自动调用模型。
@@ -194,12 +194,15 @@ Map 与 Tasks 的 Agent 工具只修改内存 staged state；请求成功且边�
 - 三款纯规则赌场游戏；
 - Agent API 系统 APP、共享配置编辑、普通 OS Agent gateway 与通用 Agent bundle；
 - 四次元壁已改为消费统一 gateway，不再拥有 API 设置入口或专属 Agent bundle；
+- Map 双层地图、显式维护/重建、主 RP 空间摘要与两级开关；
+- 首个真实自动维护纵切：accepted-turn source、FIFO coordinator、保存栅栏、Provider-aware tool loop、结果归纳、薄 runner facade、Map participant、取消与迟到提交守卫；
 - 根级单写队列、CAS、actionId 幂等、跨领域原子提交与保存确认。
 
 ### 已完成终态设计、尚未施工
 
-- Map 双层地图，以及随完整 Map 一起落地的首个自动维护纵切；
-- Tasks 正式任务状态机、钱包结算，以及第二个 participant 接入后的双领域合并维护。
+- Tasks 正式任务状态机、钱包结算、Prompt/工具/Session、UI 与真实 participant 注册。通用 runner 已具备同 job 多 participant 的一次 Provider 会话和分领域提交能力，Tasks 不再另造编排链。
+
+Map 的当前交付口径以[Map APP 终态设计](./map-app-target-design.md)第 12 节为准：代码检查与真实 SillyTavern 浏览器验收是两层证据，任一未执行都不能写成“完整收尾”。
 
 ### 未进入设计
 
@@ -216,12 +219,12 @@ Map 与 Tasks 的 Agent 工具只修改内存 staged state；请求成功且边�
 
 该阶段只完成已有消费者立即需要的 Agent 能力。Map/Tasks 的设置字段、开关、runtime、participant 和`host/maintenance`均不在此阶段预建。
 
-### 阶段 B：完整 Map 与第一个真实维护消费者（下一阶段）
+### 阶段 B：完整 Map 与第一个真实维护消费者
 
 1. 实现独立 Map 数据模型、不变量和 intent compiler。
 2. 实现 Map repository/application service、空间 Prompt runtime，以及归 Map 自己所有的 Prompt、工具、staged mutation 和 participant。
 3. 实现 Atlas/Scene UI、SVG renderer、材质、本地图标和显式维护/重建交互。
-4. Map participant 成为真实消费者时，同阶段实现其所需的 accepted-turn source、业务无关的 maintenance runner、队列、取消和迟到提交守卫；其中不得出现 Tasks 字段、Prompt 或预留分支。
+4. Map participant 成为真实消费者时，同阶段实现 accepted-turn source、FIFO coordinator、保存栅栏、Provider-aware tool loop、结果归纳和薄 runner facade；其中不得出现 Tasks 字段、Prompt 或预留分支。
 5. Map 完整可用后才增加 Map 用户级设置、host/shell 注册和两个入口：扩展设置页的「APP 启用」与 Map 内的「自动维护」。完成 User 接受边界、零隐式 API 和真实浏览器验收后一起交付。
 
 ### 阶段 C：完整 Tasks 与第二个维护消费者

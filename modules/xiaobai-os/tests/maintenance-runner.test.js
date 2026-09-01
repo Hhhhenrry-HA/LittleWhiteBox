@@ -1,0 +1,639 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import { createMaintenanceRegistry } from '../host/maintenance/registry.js';
+import { createMaintenanceRunner } from '../host/maintenance/runner.js';
+import { aggregateMaintenanceStatus } from '../host/maintenance/outcome.js';
+
+const user = mes => ({ is_user: true, is_system: false, mes, name: 'Alice' });
+const assistant = mes => ({ is_user: false, is_system: false, mes, name: 'Narrator', swipe_id: 0 });
+const surface = (messages = [user('U1'), assistant('A1')]) => ({
+    identityKey: 'chat:one', messages, playerName: 'Alice', assistantName: 'Narrator',
+});
+
+function deferred() {
+    let resolve;
+    let reject;
+    const promise = new Promise((resolvePromise, rejectPromise) => {
+        resolve = resolvePromise;
+        reject = rejectPromise;
+    });
+    return { promise, resolve, reject };
+}
+
+const flush = () => new Promise(resolve => globalThis.setTimeout(resolve, 0));
+
+function validConfig(provider = 'sillytavern-openai-compatible') {
+    return {
+        enabled: true,
+        currentPresetName: 'maintenance',
+        presets: {
+            maintenance: {
+                provider,
+                modelConfigs: {
+                    [provider]: { model: 'test-model', apiKey: provider.startsWith('sillytavern-') ? '' : 'test-key' },
+                },
+            },
+        },
+    };
+}
+
+function functionTool(name) {
+    return { type: 'function', function: { name, parameters: { type: 'object', properties: {} } } };
+}
+
+function createParticipant(id, options = {}) {
+    const records = { commits: 0, invalidations: [], sessions: [], toolCalls: [] };
+    const participant = {
+        id,
+        isEnabled: options.isEnabled || (() => true),
+        createSession(source, mode) {
+            records.sessions.push({ source, mode });
+            let staged = options.initiallyStaged === true;
+            let failed = false;
+            return {
+                participantId: id,
+                prompt: `Maintain ${id}.`,
+                tools: options.tools || [],
+                async executeTool(name, args) {
+                    records.toolCalls.push({ name, args });
+                    if (options.executeTool) {
+                        const result = await options.executeTool(name, args);
+                        if (result?.ok === false) {failed = true;} else {staged = options.stageOnTool !== false; failed = false;}
+                        return result;
+                    }
+                    staged = options.stageOnTool !== false;
+                    failed = false;
+                    return { ok: true, status: staged ? 'updated' : 'unchanged', changed: staged };
+                },
+                canCommit: () => options.canCommit ? options.canCommit(staged, records) : staged,
+                getResult: () => ({ status: failed ? (staged ? 'partial' : 'failed') : staged ? 'updated' : 'unchanged', changed: staged }),
+                async commit(guard) {
+                    if (!guard()) {throw new Error('stale source');}
+                    if (options.commit) {await options.commit(guard, records);}
+                    else {records.commits += 1;}
+                },
+                invalidate(reason) {records.invalidations.push(reason); staged = false;},
+            };
+        },
+    };
+    return { participant, records };
+}
+
+function createWriteGate(initial = 'ready') {
+    let state = initial;
+    const listeners = new Set();
+    return {
+        getState: () => state,
+        subscribe(listener) {listeners.add(listener); return () => listeners.delete(listener);},
+        set(next) {state = next; listeners.forEach(listener => listener(next));},
+        notify(observed) {listeners.forEach(listener => listener(observed));},
+    };
+}
+
+function createHarness({ participants = [], chat = surface(), provider = 'sillytavern-openai-compatible', agent, gate = createWriteGate(), generationActive = false } = {}) {
+    let currentSurface = chat;
+    const calls = { loadConfig: 0, openSession: 0, run: 0, requests: [] };
+    const resolvedAgent = agent || { supportsSessionToolLoop: false, async run() {return { text: 'no changes' };} };
+    const gateway = {
+        async loadConfig() {calls.loadConfig += 1; return validConfig(provider);},
+        async openSession() {
+            calls.openSession += 1;
+            return {
+                providerConfig: { provider },
+                supportsSessionToolLoop: resolvedAgent.supportsSessionToolLoop === true,
+                async run(request) {
+                    calls.run += 1;
+                    calls.requests.push(structuredClone({ ...request, signal: undefined }));
+                    return await resolvedAgent.run(request, calls.run);
+                },
+            };
+        },
+    };
+    const runner = createMaintenanceRunner({
+        registry: createMaintenanceRegistry(participants),
+        gateway,
+        writeGate: gate,
+        captureSurface: () => currentSurface,
+        isGenerationActive: () => generationActive,
+        onError: () => undefined,
+    });
+    return { calls, gate, runner, setSurface: next => {currentSurface = next;} };
+}
+
+test('aggregate outcome reports partial only when some participant actually preserved a change', () => {
+    const result = (participantId, status, changed = false) => ({ participantId, status, changed });
+    assert.equal(aggregateMaintenanceStatus([
+        result('map', 'failed'), result('tasks', 'skipped'),
+    ]), 'failed');
+    assert.equal(aggregateMaintenanceStatus([
+        result('map', 'failed'), result('tasks', 'unchanged'),
+    ]), 'failed');
+    assert.equal(aggregateMaintenanceStatus([
+        result('map', 'failed'), result('tasks', 'updated', true),
+    ]), 'partial');
+});
+
+test('registry and disabled automatic mode perform no capture-adjacent Agent work', async () => {
+    const disabled = createParticipant('map', { isEnabled: mode => mode !== 'automatic' });
+    const harness = createHarness({ participants: [disabled.participant] });
+    assert.equal(harness.runner.handleMessageSent(1), false);
+    await flush();
+    assert.deepEqual(harness.calls, { loadConfig: 0, openSession: 0, run: 0, requests: [] });
+    assert.throws(() => createMaintenanceRegistry([disabled.participant, disabled.participant]), /Duplicate/);
+});
+
+test('accepted turns captured while saving stay FIFO and do no config, adapter, or API work until ready', async () => {
+    const gate = createWriteGate('saving');
+    const first = createParticipant('map', { tools: [functionTool('map_edit')] });
+    let round = 0;
+    const harness = createHarness({
+        participants: [first.participant],
+        chat: surface([user('U1'), assistant('A1'), user('U2')]),
+        gate,
+        agent: { async run() {round += 1; return round === 1 ? { toolCalls: [{ id: 'one', name: 'map_edit', arguments: '{}' }] } : { text: 'done' }; } },
+    });
+    assert.equal(harness.runner.handleMessageSent(2), true);
+    await flush();
+    assert.equal(first.records.sessions.length, 0);
+    assert.deepEqual(harness.calls, { loadConfig: 0, openSession: 0, run: 0, requests: [] });
+
+    gate.set('ready');
+    await flush();
+    await flush();
+    assert.equal(first.records.sessions.length, 1);
+    assert.equal(first.records.commits, 1);
+    assert.equal(harness.calls.openSession, 1);
+    assert.equal(harness.calls.run, 2);
+});
+
+test('a write gate raised during session creation blocks all Agent work until ready', async () => {
+    const gate = createWriteGate();
+    const sessionGate = deferred();
+    const map = createParticipant('map');
+    const participant = {
+        ...map.participant,
+        async createSession(source, mode) {
+            await sessionGate.promise;
+            return map.participant.createSession(source, mode);
+        },
+    };
+    const harness = createHarness({ participants: [participant], gate });
+    const pending = harness.runner.runManual('map');
+
+    await flush();
+    gate.set('saving');
+    sessionGate.resolve();
+    await flush();
+    assert.equal(harness.calls.loadConfig, 0);
+    assert.equal(harness.calls.openSession, 0);
+    assert.equal(harness.calls.run, 0);
+
+    gate.set('ready');
+    const outcome = await pending;
+    assert.equal(outcome.status, 'unchanged');
+    assert.equal(harness.calls.loadConfig, 1);
+    assert.equal(harness.calls.openSession, 1);
+    assert.equal(harness.calls.run, 1);
+});
+
+test('a write gate raised after a tool call pauses the next provider round', async () => {
+    const gate = createWriteGate();
+    const map = createParticipant('map', {
+        tools: [functionTool('map_edit')],
+        executeTool() {
+            gate.set('saving');
+            return { ok: true, status: 'updated', changed: true };
+        },
+    });
+    const harness = createHarness({
+        participants: [map.participant],
+        gate,
+        agent: {
+            async run(_request, round) {
+                return round === 1
+                    ? { toolCalls: [{ id: 'edit', name: 'map_edit', arguments: '{}' }] }
+                    : { text: 'done' };
+            },
+        },
+    });
+    const pending = harness.runner.runManual('map');
+    await flush();
+    assert.equal(harness.calls.run, 1);
+    assert.equal(map.records.commits, 0);
+
+    gate.set('ready');
+    const outcome = await pending;
+    assert.equal(outcome.status, 'updated');
+    assert.equal(harness.calls.run, 2);
+    assert.equal(map.records.commits, 1);
+});
+
+test('a ready notification for another identity cannot cross the current write gate', async () => {
+    const gate = createWriteGate('saving');
+    const map = createParticipant('map');
+    const harness = createHarness({ participants: [map.participant], gate });
+    const pending = harness.runner.runManual('map');
+    await flush();
+
+    gate.notify('ready');
+    await flush();
+    assert.equal(map.records.sessions.length, 0);
+    assert.equal(harness.calls.loadConfig, 0);
+
+    gate.set('ready');
+    const outcome = await pending;
+    assert.equal(outcome.status, 'unchanged');
+    assert.equal(map.records.sessions.length, 1);
+});
+
+test('one job opens one adapter and ordinary providers receive complete assistant/tool history', async () => {
+    const map = createParticipant('map', { tools: [functionTool('map_edit')] });
+    const harness = createHarness({
+        participants: [map.participant],
+        agent: { async run(_request, round) {return round === 1 ? { toolCalls: [{ id: 'call-1', name: 'map_edit', arguments: '{"value":1}' }] } : { text: 'done' }; } },
+    });
+    const outcome = await harness.runner.runManual('map');
+    assert.equal(outcome.status, 'updated');
+    assert.deepEqual(outcome.committedParticipantIds, ['map']);
+    assert.equal(harness.calls.openSession, 1);
+    assert.equal(harness.calls.run, 2);
+    assert.equal(harness.calls.requests[0].messages.length, 1);
+    assert.equal(harness.calls.requests[1].messages[1].role, 'assistant');
+    assert.equal(harness.calls.requests[1].messages[2].role, 'tool');
+    assert.deepEqual(map.records.toolCalls, [{ name: 'map_edit', args: { value: 1 } }]);
+});
+
+test('session-capable providers continue with toolResponses on the same adapter', async () => {
+    const map = createParticipant('map', { tools: [functionTool('map_edit')] });
+    const harness = createHarness({
+        participants: [map.participant],
+        provider: 'google',
+        agent: {
+            supportsSessionToolLoop: true,
+            async run(_request, round) {return round === 1 ? { toolCalls: [{ id: 'google-1', providerId: 'provider-1', name: 'map_edit', arguments: '{}' }] } : { text: 'done' };},
+        },
+    });
+    const outcome = await harness.runner.runManual('map');
+    assert.equal(outcome.status, 'updated');
+    assert.equal(harness.calls.openSession, 1);
+    assert.equal(harness.calls.requests[1].messages.length, 0);
+    assert.deepEqual(harness.calls.requests[1].toolResponses, [{
+        id: 'google-1', name: 'map_edit', providerId: 'provider-1', response: { ok: true, status: 'updated', changed: true },
+    }]);
+});
+
+test('an empty session conclusion uses one finalAnswerReminderText continuation', async () => {
+    const map = createParticipant('map', { tools: [functionTool('map_edit')] });
+    const harness = createHarness({
+        participants: [map.participant],
+        provider: 'google',
+        agent: {
+            supportsSessionToolLoop: true,
+            async run(request, round) {
+                if (round === 1) {return { toolCalls: [{ id: 'google-1', name: 'map_edit', arguments: '{}' }] };}
+                if (round === 2) {return {};}
+                assert.match(request.finalAnswerReminderText, /finish this maintenance run/);
+                assert.deepEqual(request.messages, []);
+                return { text: 'done' };
+            },
+        },
+    });
+    const outcome = await harness.runner.runManual('map');
+    assert.equal(outcome.status, 'updated');
+    assert.equal(harness.calls.run, 3);
+    assert.equal(harness.calls.openSession, 1);
+});
+
+test('an empty provider response is a failure rather than a false unchanged result', async () => {
+    const map = createParticipant('map');
+    const harness = createHarness({
+        participants: [map.participant],
+        agent: { async run() {return {};} },
+    });
+    const outcome = await harness.runner.runManual('map');
+    assert.equal(outcome.status, 'failed');
+    assert.equal(outcome.participantResults[0].status, 'failed');
+    assert.equal(map.records.commits, 0);
+});
+
+test('tool argument errors are returned to the model and a corrected retry keeps the session alive', async () => {
+    const map = createParticipant('map', { tools: [functionTool('map_edit')] });
+    const harness = createHarness({
+        participants: [map.participant],
+        agent: {
+            async run(request, round) {
+                if (round === 1) {return { toolCalls: [{ id: 'bad', name: 'map_edit', arguments: '{bad json' }] };}
+                if (round === 2) {
+                    assert.match(request.messages.at(-1).content, /invalid_tool_arguments_json|Correct the arguments/);
+                    return { toolCalls: [{ id: 'fixed', name: 'map_edit', arguments: '{"fixed":true}' }] };
+                }
+                return { text: 'done' };
+            },
+        },
+    });
+    const outcome = await harness.runner.runManual('map');
+    assert.equal(outcome.status, 'updated');
+    assert.equal(map.records.invalidations.length, 0);
+    assert.deepEqual(map.records.toolCalls, [{ name: 'map_edit', args: { fixed: true } }]);
+    assert.equal(map.records.commits, 1);
+});
+
+test('an unknown tool is resolved only by a valid tool call in a later provider round', async () => {
+    const map = createParticipant('map', { tools: [functionTool('map_edit')] });
+    const harness = createHarness({
+        participants: [map.participant],
+        agent: {
+            async run(request, round) {
+                if (round === 1) {return { toolCalls: [{ id: 'wrong', name: 'unknown_map_tool', arguments: '{}' }] };}
+                if (round === 2) {
+                    assert.match(request.messages.at(-1).content, /unknown_tool/);
+                    return { toolCalls: [{ id: 'fixed', name: 'map_edit', arguments: '{}' }] };
+                }
+                return { text: 'done' };
+            },
+        },
+    });
+    const outcome = await harness.runner.runManual('map');
+    assert.equal(outcome.status, 'updated');
+    assert.deepEqual(outcome.committedParticipantIds, ['map']);
+    assert.equal(map.records.commits, 1);
+});
+
+test('an unrepaired tool argument error cannot be reported as unchanged', async () => {
+    const map = createParticipant('map', { tools: [functionTool('map_edit')] });
+    const harness = createHarness({
+        participants: [map.participant],
+        agent: {
+            async run(_request, round) {
+                return round === 1
+                    ? { toolCalls: [{ id: 'bad', name: 'map_edit', arguments: '{bad json' }] }
+                    : { text: 'cannot repair' };
+            },
+        },
+    });
+    const outcome = await harness.runner.runManual('map');
+    assert.equal(outcome.status, 'failed');
+    assert.equal(outcome.participantResults[0].status, 'failed');
+    assert.equal(map.records.commits, 0);
+});
+
+test('three identical failures inject a brake and a fourth ends without a write', async () => {
+    const map = createParticipant('map', { tools: [functionTool('map_edit')] });
+    const harness = createHarness({
+        participants: [map.participant],
+        agent: {
+            async run(request, round) {
+                if (round === 4) {assert.match(request.messages.at(-1).content, /Repeated identical failure/);}
+                return { toolCalls: [{ id: `bad-${round}`, name: 'map_edit', arguments: '{bad json' }] };
+            },
+        },
+    });
+    const outcome = await harness.runner.runManual('map');
+    assert.equal(outcome.status, 'failed');
+    assert.equal(harness.calls.run, 4);
+    assert.equal(map.records.commits, 0);
+});
+
+test('round limit commits legal staging as partial and fails when nothing legal was staged', async () => {
+    const staged = createParticipant('map', { tools: [functionTool('map_edit')] });
+    const partialHarness = createHarness({
+        participants: [staged.participant],
+        agent: { async run(_request, round) {return { toolCalls: [{ id: `call-${round}`, name: 'map_edit', arguments: `{"round":${round}}` }] };} },
+    });
+    const partial = await partialHarness.runner.runManual('map');
+    assert.equal(partialHarness.calls.run, 12);
+    assert.equal(partial.status, 'partial');
+    assert.equal(staged.records.commits, 1);
+
+    const readOnly = createParticipant('map', { tools: [functionTool('map_read')], stageOnTool: false });
+    const failedHarness = createHarness({
+        participants: [readOnly.participant],
+        agent: { async run(_request, round) {return { toolCalls: [{ id: `read-${round}`, name: 'map_read', arguments: '{}' }] };} },
+    });
+    const failed = await failedHarness.runner.runManual('map');
+    assert.equal(failed.status, 'failed');
+    assert.equal(readOnly.records.commits, 0);
+});
+
+test('provider failure after a legal tool result commits that staging as partial', async () => {
+    const map = createParticipant('map', { tools: [functionTool('map_edit')] });
+    const harness = createHarness({
+        participants: [map.participant],
+        agent: {
+            async run(_request, round) {
+                if (round === 1) {return { toolCalls: [{ id: 'edit', name: 'map_edit', arguments: '{}' }] };}
+                throw new Error('provider unavailable');
+            },
+        },
+    });
+    const outcome = await harness.runner.runManual('map');
+    assert.equal(outcome.status, 'partial');
+    assert.equal(map.records.commits, 1);
+});
+
+test('failed tool results participate in the repeated-failure brake', async () => {
+    const map = createParticipant('map', {
+        tools: [functionTool('map_edit')],
+        executeTool: () => ({ ok: false, status: 'failed', changed: false, error: 'bad intent' }),
+    });
+    const harness = createHarness({
+        participants: [map.participant],
+        agent: {
+            async run(request, round) {
+                if (round === 4) {assert.match(request.messages.at(-1).content, /Repeated identical failure/);}
+                return { toolCalls: [{ id: `bad-${round}`, name: 'map_edit', arguments: '{}' }] };
+            },
+        },
+    });
+    const outcome = await harness.runner.runManual('map');
+    assert.equal(outcome.status, 'failed');
+    assert.equal(harness.calls.run, 4);
+    assert.equal(map.records.commits, 0);
+});
+
+test('chat changes and switch invalidation discard active staging', async () => {
+    let enabled = true;
+    const response = deferred();
+    const map = createParticipant('map', {
+        tools: [functionTool('map_edit')],
+        isEnabled: () => enabled,
+    });
+    const harness = createHarness({ participants: [map.participant], agent: { run: () => response.promise } });
+    const pending = harness.runner.runManual('map');
+    await flush();
+    enabled = false;
+    harness.runner.cancelForeground('map', 'map-disabled');
+    response.resolve({ toolCalls: [{ id: 'late', name: 'map_edit', arguments: '{}' }] });
+    const outcome = await pending;
+    assert.equal(outcome.status, 'cancelled');
+    assert.equal(map.records.toolCalls.length, 0);
+    assert.equal(map.records.commits, 0);
+});
+
+test('a cancellation after persistence starts preserves the committed outcome', async () => {
+    const persistenceStarted = deferred();
+    const persistenceFinished = deferred();
+    const map = createParticipant('map', {
+        initiallyStaged: true,
+        async commit(guard, records) {
+            if (!guard()) {throw new Error('stale source');}
+            persistenceStarted.resolve();
+            await persistenceFinished.promise;
+            records.commits += 1;
+        },
+    });
+    const harness = createHarness({ participants: [map.participant] });
+    const pending = harness.runner.runManual('map');
+    await persistenceStarted.promise;
+
+    harness.runner.handleChatChanged();
+    persistenceFinished.resolve();
+    const outcome = await pending;
+
+    assert.equal(map.records.commits, 1);
+    assert.equal(outcome.status, 'updated');
+    assert.deepEqual(outcome.committedParticipantIds, ['map']);
+    assert.equal(outcome.reason, 'cancelled-after-commit');
+});
+
+test('a cancellation before a later participant commit preserves earlier committed results', async () => {
+    const laterCommitCheckStarted = deferred();
+    const releaseLaterCommitCheck = deferred();
+    const map = createParticipant('map', { initiallyStaged: true });
+    const tasks = createParticipant('tasks', {
+        initiallyStaged: true,
+        async canCommit(staged) {
+            laterCommitCheckStarted.resolve();
+            await releaseLaterCommitCheck.promise;
+            return staged;
+        },
+    });
+    const harness = createHarness({
+        participants: [map.participant, tasks.participant],
+        chat: surface([user('U1'), assistant('A1'), user('U2')]),
+    });
+    assert.equal(harness.runner.handleMessageSent(2), true);
+    await laterCommitCheckStarted.promise;
+
+    harness.runner.handleChatChanged();
+    releaseLaterCommitCheck.resolve();
+    await flush();
+    await flush();
+
+    assert.equal(map.records.commits, 1);
+    assert.equal(tasks.records.commits, 0);
+    assert.equal(harness.runner.getStatus('map').message, 'partial');
+    assert.equal(harness.runner.getStatus('tasks').message, 'partial');
+    assert.notEqual(harness.runner.getStatus('map').lastRunAt, null);
+    assert.equal(harness.runner.getStatus('tasks').lastRunAt, null);
+});
+
+test('an automatic participant excluded during session creation cannot revive after its switch is re-enabled', async () => {
+    let enabled = true;
+    const sessionGate = deferred();
+    const map = createParticipant('map', {
+        tools: [functionTool('map_edit')],
+        isEnabled: mode => mode !== 'automatic' || enabled,
+    });
+    const participant = {
+        ...map.participant,
+        async createSession(source, mode) {
+            await sessionGate.promise;
+            return map.participant.createSession(source, mode);
+        },
+    };
+    const harness = createHarness({
+        participants: [participant],
+        chat: surface([user('U1'), assistant('A1'), user('U2')]),
+    });
+
+    assert.equal(harness.runner.handleMessageSent(2), true);
+    await flush();
+    enabled = false;
+    harness.runner.invalidateAutomatic('map', 'automatic-disabled');
+    enabled = true;
+    sessionGate.resolve();
+    await flush();
+    await flush();
+
+    assert.equal(map.records.commits, 0);
+    assert.equal(harness.calls.loadConfig, 0);
+    assert.equal(harness.calls.openSession, 0);
+    assert.equal(harness.calls.run, 0);
+});
+
+test('enabled domains share one provider request but retain separate sessions and commits', async () => {
+    const map = createParticipant('map', { tools: [functionTool('map_edit')] });
+    const tasks = createParticipant('tasks', { tools: [functionTool('tasks_edit')] });
+    let round = 0;
+    const harness = createHarness({
+        participants: [map.participant, tasks.participant],
+        chat: surface([user('U1'), assistant('A1'), user('U2')]),
+        agent: {
+            async run() {
+                round += 1;
+                return round === 1 ? { toolCalls: [
+                    { id: 'm', name: 'map_edit', arguments: '{}' },
+                    { id: 't', name: 'tasks_edit', arguments: '{}' },
+                ] } : { text: 'done' };
+            },
+        },
+    });
+    assert.equal(harness.runner.handleMessageSent(2), true);
+    await flush();
+    await flush();
+    assert.equal(harness.calls.openSession, 1);
+    assert.equal(map.records.commits, 1);
+    assert.equal(tasks.records.commits, 1);
+});
+
+test('a failed participant remains visible when another domain completes', async () => {
+    const broken = {
+        id: 'map',
+        isEnabled: () => true,
+        createSession() {throw new Error('map unavailable');},
+    };
+    const tasks = createParticipant('tasks', { tools: [functionTool('tasks_edit')] });
+    const harness = createHarness({
+        participants: [broken, tasks.participant],
+        chat: surface([user('U1'), assistant('A1'), user('U2')]),
+        agent: {
+            async run(_request, round) {
+                return round === 1
+                    ? { toolCalls: [{ id: 't', name: 'tasks_edit', arguments: '{}' }] }
+                    : { text: 'done' };
+            },
+        },
+    });
+
+    assert.equal(harness.runner.handleMessageSent(2), true);
+    await flush();
+    await flush();
+    const mapStatus = harness.runner.getStatus('map');
+    assert.equal(mapStatus.state, 'error');
+    assert.equal(tasks.records.commits, 1);
+});
+
+test('capture and Agent configuration failures never call a provider', async () => {
+    const map = createParticipant('map');
+    const captureHarness = createHarness({ participants: [map.participant], generationActive: true });
+    const skipped = await captureHarness.runner.runManual('map');
+    assert.equal(skipped.status, 'skipped');
+    assert.equal(captureHarness.calls.loadConfig, 0);
+
+    const configCalls = { open: 0 };
+    const runner = createMaintenanceRunner({
+        registry: createMaintenanceRegistry([map.participant]),
+        gateway: {
+            loadConfig: async () => ({ ...validConfig(), enabled: false }),
+            openSession: async () => {configCalls.open += 1; throw new Error('must not open');},
+        },
+        captureSurface: () => surface(),
+        isGenerationActive: () => false,
+    });
+    const failed = await runner.runManual('map');
+    assert.equal(failed.status, 'failed');
+    assert.equal(configCalls.open, 0);
+    assert.deepEqual(failed.failedParticipantIds, ['map']);
+});

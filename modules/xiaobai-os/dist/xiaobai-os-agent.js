@@ -3228,7 +3228,7 @@ function to(e = {}) {
     ...e.effectiveConfig ? { effectiveConfig: e.effectiveConfig } : {}
   };
 }
-var U0 = Object.freeze([
+var F0 = Object.freeze([
   Object.freeze({
     value: "inherit",
     label: "跟随模型默认"
@@ -3271,7 +3271,7 @@ function Es(e = "") {
   const t = tg(e);
   return t.includes("deepseek") ? "deepseek" : t.includes("kimi") || t.includes("moonshot") ? "kimi" : t.includes("gemini") ? "gemini" : t.includes("claude") ? "claude" : /(?:^|[/_.-])gpt(?:\d|[/_.-]|$)/.test(t) || /(?:^|[/_.-])o\d+(?:[/_.-]|$)/.test(t) ? "openai" : "";
 }
-var F0 = Object.freeze({
+var O0 = Object.freeze({
   minimal: "最小",
   low: "低",
   medium: "中",
@@ -20897,25 +20897,25 @@ var S0 = class {
       reason: "malformed_native_tool_host_error"
     }), await r(this.buildPayload(e, !0, t));
   }
-}, O0 = Object.freeze([{
+}, G0 = Object.freeze([{
   value: "default",
   label: "默认权限"
 }, {
   value: "full",
   label: "完全权限"
-}]), G0 = Object.freeze([{
+}]), B0 = Object.freeze([{
   value: "deny",
   label: "禁止"
 }, {
   value: "allow",
   label: "允许"
-}]), B0 = Object.freeze([{
+}]), q0 = Object.freeze([{
   value: "native",
   label: "原生 Tool Calling"
 }, {
   value: "tagged-json",
   label: "Tagged JSON 兼容模式"
-}]), q0 = Object.freeze([
+}]), H0 = Object.freeze([
   {
     value: "openai-responses",
     label: "OpenAI Responses"
@@ -21202,25 +21202,36 @@ async function L0(e, t = {}) {
     providerLabel: n === "openai-responses" ? "OpenAI Responses" : "OpenAI-Compatible"
   });
 }
-function H0(e = {}) {
+function V0(e = {}) {
   bI(typeof e.requestHeadersProvider == "function" ? e.requestHeadersProvider : null);
 }
-async function V0(e) {
-  return await Xp(e.providerConfig || {}, { missingApiKeyMessage: "请先在共享 Agent API 配置中填写当前预设的 API Key。" }).chat({
-    systemPrompt: String(e.systemPrompt || ""),
-    messages: Array.isArray(e.messages) ? e.messages : [],
-    tools: Array.isArray(e.tools) ? e.tools : [],
-    temperature: e.temperature,
-    maxTokens: e.maxTokens,
-    reasoning: e.reasoning,
-    signal: e.signal,
-    onStreamProgress: e.onStreamProgress
+function U0(e) {
+  const t = Xp(e || {}, { missingApiKeyMessage: "请先在共享 Agent API 配置中填写当前预设的 API Key。" });
+  return Object.freeze({
+    supportsSessionToolLoop: t.supportsSessionToolLoop === !0,
+    async run(n) {
+      return await t.chat({
+        systemPrompt: String(n.systemPrompt || ""),
+        messages: Array.isArray(n.messages) ? n.messages : [],
+        tools: Array.isArray(n.tools) ? n.tools : [],
+        temperature: n.temperature,
+        maxTokens: n.maxTokens,
+        reasoning: n.reasoning,
+        signal: n.signal,
+        onStreamProgress: n.onStreamProgress,
+        toolResponses: n.toolResponses,
+        finalAnswerReminderText: n.finalAnswerReminderText
+      });
+    }
   });
 }
-async function J0(e, t = {}) {
-  return await L0(e, { signal: t.signal });
+async function J0(e) {
+  return await U0(e.providerConfig).run(e);
 }
 async function K0(e, t = {}) {
+  return await L0(e, { signal: t.signal });
+}
+async function W0(e, t = {}) {
   const n = globalThis.performance?.now?.() ?? Date.now(), o = await Xp(e, { missingApiKeyMessage: "请先填写当前预设的 API Key。" }).chat({
     systemPrompt: "这是一次由用户主动发起的连接测试。只回复 OK。",
     messages: [{
@@ -21240,8 +21251,9 @@ async function K0(e, t = {}) {
   };
 }
 export {
-  H0 as configureXiaobaiOsAgent,
-  J0 as pullXiaobaiOsAgentModels,
-  V0 as runXiaobaiOsAgent,
-  K0 as testXiaobaiOsAgentConnection
+  V0 as configureXiaobaiOsAgent,
+  U0 as openXiaobaiOsAgentSession,
+  K0 as pullXiaobaiOsAgentModels,
+  J0 as runXiaobaiOsAgent,
+  W0 as testXiaobaiOsAgentConnection
 };

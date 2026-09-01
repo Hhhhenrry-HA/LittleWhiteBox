@@ -24,6 +24,15 @@ function flushTasks() {
     return new Promise(resolve => globalThis.setTimeout(resolve, 0));
 }
 
+function mountAgentSettingsPanel(root) {
+    const { document } = parseHTML(`<!doctype html><html><body>${buildAgentSettingsPanelMarkup({
+        showAssistantPermissions: false,
+        showDelegateSettings: false,
+        showTavilySettings: false,
+    })}</body></html>`);
+    root.replaceChildren(...document.body.childNodes);
+}
+
 function installDom() {
     const previousDocument = globalThis.document;
     const previousWindow = globalThis.window;
@@ -60,11 +69,7 @@ test('OS Agent form preserves Agent Core fields that it intentionally hides', ()
     const config = normalizeAgentConfig({ tavilyApiKey: 'keep-tavily-secret' });
     const state = createPanelState(config);
     let savedPayload = null;
-    root.innerHTML = buildAgentSettingsPanelMarkup({
-        showAssistantPermissions: false,
-        showDelegateSettings: false,
-        showTavilySettings: false,
-    });
+    mountAgentSettingsPanel(root);
     const panel = createAgentSettingsPanel({
         state,
         saveConfig: request => {savedPayload = request.payload;},
@@ -87,11 +92,7 @@ test('OS Agent form does not pull models until the user clicks the pull action',
     const root = document.querySelector('#root');
     const state = createPanelState(normalizeAgentConfig({}));
     let pullCalls = 0;
-    root.innerHTML = buildAgentSettingsPanelMarkup({
-        showAssistantPermissions: false,
-        showDelegateSettings: false,
-        showTavilySettings: false,
-    });
+    mountAgentSettingsPanel(root);
     const panel = createAgentSettingsPanel({
         state,
         pullModels: async () => {

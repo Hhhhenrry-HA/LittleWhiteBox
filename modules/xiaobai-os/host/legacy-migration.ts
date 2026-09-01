@@ -7,12 +7,16 @@ import type {
     FourthWallGlobalSettings,
     FourthWallMessageData,
 } from '../apps/fourth-wall/types.js';
+import type { MapSettings } from '../apps/map/types.js';
 import type {
     XiaobaiOsChatData as XiaobaiOsChatDataRoot,
     XiaobaiOsSettings as XiaobaiOsSettingsRoot,
 } from '../types.js';
 
-type XiaobaiOsSettings = XiaobaiOsSettingsRoot<{ fourthWall: FourthWallGlobalSettings }>;
+type XiaobaiOsSettings = XiaobaiOsSettingsRoot<{
+    fourthWall: FourthWallGlobalSettings;
+    map: MapSettings;
+}>;
 type XiaobaiOsChatData = XiaobaiOsChatDataRoot<
     { fourthWall?: FourthWallChatState; [appId: string]: unknown },
     Record<string, unknown>
@@ -20,7 +24,7 @@ type XiaobaiOsChatData = XiaobaiOsChatDataRoot<
 
 type UnknownRecord = Record<string, unknown>;
 
-export const XIAOBAI_OS_SETTINGS_SCHEMA_VERSION = 1 as const;
+export const XIAOBAI_OS_SETTINGS_SCHEMA_VERSION = 2 as const;
 export const XIAOBAI_OS_CHAT_SCHEMA_VERSION = 2 as const;
 
 export const LEGACY_FOURTH_WALL_SETTING_KEYS = Object.freeze([
@@ -132,6 +136,15 @@ function validateFourthWallGlobalSettings(value: unknown, path: string): asserts
     validatePromptTemplates(settings.promptTemplates, `${path}.promptTemplates`);
 }
 
+function validateMapSettings(value: unknown, path: string): asserts value is MapSettings {
+    const settings = requireRecord(value, path);
+    requireBoolean(settings.enabled, `${path}.enabled`);
+    requireBoolean(settings.autoMaintenance, `${path}.autoMaintenance`);
+    if (settings.autoMaintenance && !settings.enabled) {
+        fail('INVALID_CURRENT_DATA', path, 'autoMaintenance requires enabled');
+    }
+}
+
 function validateMessage(
     value: unknown,
     path: string,
@@ -199,6 +212,10 @@ export function createDefaultXiaobaiOsSettings(): XiaobaiOsSettings {
         enabled: false,
         apps: {
             fourthWall: createDefaultFourthWallGlobalSettings(),
+            map: {
+                enabled: false,
+                autoMaintenance: false,
+            },
         },
     };
 }
@@ -211,6 +228,7 @@ export function validateXiaobaiOsSettings(value: unknown): value is XiaobaiOsSet
     requireBoolean(root.enabled, 'xiaobaiOs.enabled');
     const apps = requireRecord(root.apps, 'xiaobaiOs.apps');
     validateFourthWallGlobalSettings(apps.fourthWall, 'xiaobaiOs.apps.fourthWall');
+    validateMapSettings(apps.map, 'xiaobaiOs.apps.map');
     return true;
 }
 
@@ -295,6 +313,10 @@ export function migrateLegacySettings(extensionSettings: unknown): {
                         'fourthWallPromptTemplates.bottom',
                     ),
                 },
+            },
+            map: {
+                enabled: false,
+                autoMaintenance: false,
             },
         },
     };

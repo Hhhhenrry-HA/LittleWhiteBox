@@ -9,6 +9,8 @@ function createHarness({ appRuntime = {} } = {}) {
         <div id="send-controls"><button id="message_preview_btn"></button><button id="send_but"></button></div>
     </body></html>`);
     let chatChanged = null;
+    let appDescriptorsChanged = null;
+    let appDescriptors = [{ id: 'fourth-wall', name: '四次元壁' }];
     let subscriptions = 0;
     let unsubscriptions = 0;
     let bridgeDisposals = 0;
@@ -42,8 +44,12 @@ function createHarness({ appRuntime = {} } = {}) {
                 chatChanged = null;
             };
         },
+        subscribeAppDescriptorsChanged(handler) {
+            appDescriptorsChanged = handler;
+            return () => {appDescriptorsChanged = null;};
+        },
         getInitSnapshot: () => ({ theme: 'dark', chat: null }),
-        getAppDescriptors: () => [{ id: 'fourth-wall', name: '四次元壁' }],
+        getAppDescriptors: () => appDescriptors,
         appRuntime: {
             cancelAll: reason => runtimeCalls.push(['cancelAll', reason]),
             cancelForeground: reason => runtimeCalls.push(['cancelForeground', reason]),
@@ -57,11 +63,13 @@ function createHarness({ appRuntime = {} } = {}) {
         bridgeDisposals: () => bridgeDisposals,
         bridgeOptions: () => bridgeOptions,
         chatChanged: () => chatChanged,
+        appDescriptorsChanged: () => appDescriptorsChanged,
         document,
         lifecycle,
         posts,
         runtimeCalls,
         subscriptions: () => subscriptions,
+        setAppDescriptors(next) {appDescriptors = next;},
         unsubscriptions: () => unsubscriptions,
         window,
     };
@@ -174,6 +182,56 @@ test('an async app request cannot settle as success after the same app is reopen
     const response = harness.posts.find(item => item.requestId === 'stale-request');
     assert.equal(response.type, 'fourth-wall/result');
     assert.deepEqual(response.payload, { ok: false, error: 'app_inactive' });
+});
+
+test('descriptor changes update an open shell and deactivate an app that was removed', async () => {
+    const harness = createHarness({ appRuntime: { activate: async () => ({}) } });
+    harness.lifecycle.init();
+    harness.lifecycle.open();
+    const options = harness.bridgeOptions();
+    await options.onReady(options.bridge);
+    await options.onMessage({
+        type: 'app/activate',
+        requestId: 'activate-1',
+        payload: { appId: 'fourth-wall' },
+    }, options.bridge);
+
+    harness.setAppDescriptors([{ id: 'agent-api', name: 'Agent API' }]);
+    harness.appDescriptorsChanged()();
+
+    assert.deepEqual(harness.runtimeCalls.at(-1), ['deactivate', 'fourth-wall', 'app-disabled']);
+    assert.deepEqual(harness.posts.at(-1), {
+        type: 'os/apps-changed',
+        payload: { apps: [{ id: 'agent-api', name: 'Agent API' }] },
+        requestId: undefined,
+    });
+});
+
+test('removing an app while activation is pending prevents a late success', async () => {
+    let finishActivation;
+    const harness = createHarness({
+        appRuntime: {
+            activate: () => new Promise(resolve => {finishActivation = resolve;}),
+        },
+    });
+    harness.lifecycle.init();
+    harness.lifecycle.open();
+    const options = harness.bridgeOptions();
+    const pending = options.onMessage({
+        type: 'app/activate',
+        requestId: 'activate-pending',
+        payload: { appId: 'fourth-wall' },
+    }, options.bridge);
+    await Promise.resolve();
+
+    harness.setAppDescriptors([]);
+    harness.appDescriptorsChanged()();
+    finishActivation({ stale: true });
+    await pending;
+
+    const response = harness.posts.find(item => item.requestId === 'activate-pending');
+    assert.deepEqual(response.payload, { ok: false, error: 'activation_cancelled' });
+    assert.equal(harness.runtimeCalls.some(call => call[0] === 'cancelForeground' && call[1] === 'app-disabled'), true);
 });
 
 test('chat changes close the foreground window without unloading the launcher', () => {
