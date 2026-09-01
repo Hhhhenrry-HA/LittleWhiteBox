@@ -190,11 +190,6 @@ export type GameActivityDetail =
     | GamePushActivityDetail
     | GameLadderActivityDetail;
 
-export type GamePublicActivityDetail =
-    | Omit<GameDiceActivityDetail, 'dealerDice'>
-    | GamePushActivityDetail
-    | GameLadderActivityDetail;
-
 export interface GameActivity {
     id: string;
     sourceId: string;
@@ -269,7 +264,7 @@ export interface GameCommandResult {
 export interface GamePublicActivityRecord {
     id: string;
     sourceId: string;
-    detail: GamePublicActivityDetail;
+    detail: GameActivityDetail;
     amountIn: number;
     payout: number;
     net: number;

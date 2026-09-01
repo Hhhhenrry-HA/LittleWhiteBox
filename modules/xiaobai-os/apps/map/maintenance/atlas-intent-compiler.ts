@@ -2,6 +2,9 @@ import type { AcceptedTurnPlayer } from '../../../host/maintenance/accepted-turn
 import type { MapDomainEdit } from '../../../domains/map/edit.js';
 import {
     MAX_MAP_ACTORS,
+    MAX_MAP_BRIEF_LENGTH,
+    MAX_MAP_ID_LENGTH,
+    MAX_MAP_LABEL_LENGTH,
     MAX_MAP_LINKS,
     MAX_MAP_LOCATIONS,
 } from '../../../domains/map/invariants.js';
@@ -44,7 +47,7 @@ function stableTextHash(value: string): string {
 function stableLinkId(from: string, to: string, kind: string, bidirectional: boolean): string {
     const endpoints = bidirectional ? [from, to].sort() : [from, to];
     const readable = `link:${endpoints.join(':')}:${kind}`;
-    return Array.from(readable).length <= 80
+    return Array.from(readable).length <= MAX_MAP_ID_LENGTH
         ? readable
         : `link:${stableTextHash(`${bidirectional ? 'both' : 'one'}:${endpoints.join(':')}:${kind}`)}:${kind}`;
 }
@@ -239,7 +242,7 @@ export function compileAtlasIntent(
             const status = enumToken(raw.status, LOCATION_STATUSES) || existing?.status || 'mentioned';
             const location: MapLocation = { ...(existing || { key, name, scale, status }), key, name, scale, status };
             if (parent) {location.parent = parent;} else if (raw.parent === null || raw.parent === '') {delete location.parent;}
-            const brief = intentText(raw.brief, '', 500);
+            const brief = intentText(raw.brief, '', MAX_MAP_BRIEF_LENGTH);
             if (brief) {location.brief = brief;}
             if (applyItem('locations', index, key, [{ op: 'upsert-location', location }], 'Create the parent first or correct this location.')) {
                 pending.splice(cursor, 1);
@@ -278,7 +281,7 @@ export function compileAtlasIntent(
         }
         const [canonicalFrom, canonicalTo] = bidirectional ? [from, to].sort() : [from, to];
         const link: MapLink = { id, from: canonicalFrom, to: canonicalTo, kind, bidirectional };
-        const label = intentText(raw.label, '', 160);
+        const label = intentText(raw.label, '', MAX_MAP_LABEL_LENGTH);
         if (label) {link.label = label;}
         applyItem('links', index, id, [{ op: 'upsert-link', link }], 'Create both endpoint locations before this link.');
     });
@@ -303,7 +306,10 @@ export function compileAtlasIntent(
         }
         const displayName = actorKey === 'player'
             ? player.displayName
-            : intentText(raw.displayName, actorKey);
+            : intentText(
+                raw.displayName,
+                working.atlas.actors.find(actor => actor.actorKey === actorKey)?.displayName || actorKey,
+            );
         applyItem('actors', index, actorKey, actorMoveEdits(working, { actorKey, displayName, locationKey }), 'Use an existing location key.');
     });
 

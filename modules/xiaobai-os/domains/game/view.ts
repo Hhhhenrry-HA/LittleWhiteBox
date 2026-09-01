@@ -12,7 +12,6 @@ import {
     throwGameError,
     type GameClientView,
     type GameDomainV1,
-    type GamePublicActivityDetail,
     type GamePublicActivityRecord,
     type GamePublicGameView,
 } from './types.js';
@@ -41,28 +40,11 @@ function projectActiveGame(state: ReturnType<typeof replayGameEvents>): GamePubl
     return createGameLadderGameView(state.activeGame.game);
 }
 
-function publicActivityDetail(
-    detail: ReturnType<typeof flattenGameActivities>[number]['detail'],
-): GamePublicActivityDetail {
-    if (detail.kind === 'dice') {
-        return {
-            kind: detail.kind,
-            outcome: detail.outcome,
-            challenger: detail.challenger,
-            finalBid: { ...detail.finalBid },
-            bids: detail.bids.map((bid) => ({ ...bid })),
-            playerDice: [...detail.playerDice],
-            matchingDiceCount: detail.matchingDiceCount,
-        };
-    }
-    return structuredClone(detail);
-}
-
 function publicActivity(record: ReturnType<typeof flattenGameActivities>[number]): GamePublicActivityRecord {
     return {
         id: record.id,
         sourceId: record.sourceId,
-        detail: publicActivityDetail(record.detail),
+        detail: structuredClone(record.detail),
         amountIn: record.amountIn,
         payout: record.payout,
         net: record.net,

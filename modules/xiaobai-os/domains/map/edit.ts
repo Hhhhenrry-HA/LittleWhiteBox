@@ -45,9 +45,14 @@ function replaceByKey<T>(items: T[], value: T, keyOf: (item: T) => string): void
 
 function applyEdit(candidate: MapDomainV1, edit: MapDomainEdit): void {
     switch (edit.op) {
-        case 'upsert-location':
-            replaceByKey(candidate.atlas.locations, edit.location, location => location.key);
+        case 'upsert-location': {
+            const location = structuredClone(edit.location);
+            if (candidate.atlas.actors.some(actor => actor.actorKey === 'player' && actor.locationKey === location.key)) {
+                location.status = 'visited';
+            }
+            replaceByKey(candidate.atlas.locations, location, item => item.key);
             return;
+        }
         case 'remove-location':
             candidate.atlas.locations = candidate.atlas.locations.filter(location => location.key !== edit.locationKey);
             return;
@@ -57,9 +62,14 @@ function applyEdit(candidate: MapDomainV1, edit: MapDomainEdit): void {
         case 'remove-link':
             candidate.atlas.links = candidate.atlas.links.filter(link => link.id !== edit.linkId);
             return;
-        case 'set-actor-position':
+        case 'set-actor-position': {
             replaceByKey(candidate.atlas.actors, edit.position, actor => actor.actorKey);
+            if (edit.position.actorKey === 'player') {
+                const location = candidate.atlas.locations.find(item => item.key === edit.position.locationKey);
+                if (location) {location.status = 'visited';}
+            }
             return;
+        }
         case 'remove-actor-position':
             candidate.atlas.actors = candidate.atlas.actors.filter(actor => actor.actorKey !== edit.actorKey);
             return;

@@ -293,7 +293,7 @@ test('CAS append is immutable and idempotent action replay precedes stale-token 
     }), error => error.code === 'game_revision_conflict');
 });
 
-test('public views hide every deck and dealer die while remaining deep copies', () => {
+test('public views hide live decks and dealer dice, publish settled hands, and stay deep copies', () => {
     const push = createGamePushGame({ id: 'private-push' }, createGameSequenceRandom(Array(9).fill(0)));
     const pushDomain = startPush(createEmptyGameDomain(), 1, push).domain;
     const pushView = createGameView({ domain: pushDomain });
@@ -336,6 +336,13 @@ test('public views hide every deck and dealer die while remaining deep copies', 
         }],
     }).domain;
     const terminalView = createGameView({ domain: diceDomain });
-    assert.equal(Object.hasOwn(terminalView.activities[0].detail, 'dealerDice'), false);
-    assert.equal(JSON.stringify(terminalView).includes('dealerDice'), false);
+    // A settled hand is a showdown: the dealer's dice become public so the
+    // player can see how the challenge actually resolved. Hiding them while the
+    // game is live is asserted above.
+    assert.deepEqual(terminalView.activities[0].detail.dealerDice, [...settled.dealerDice]);
+    terminalView.activities[0].detail.dealerDice[0] = 6;
+    assert.deepEqual(
+        createGameView({ domain: diceDomain }).activities[0].detail.dealerDice,
+        [...settled.dealerDice],
+    );
 });

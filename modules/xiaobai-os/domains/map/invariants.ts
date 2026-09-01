@@ -36,14 +36,14 @@ export const MAX_MAP_LOCATIONS = 512;
 export const MAX_MAP_LINKS = 1_024;
 export const MAX_MAP_ACTORS = 256;
 export const MAX_MAP_POINTS = 64;
+export const MAX_MAP_ID_LENGTH = 80;
+export const MAX_MAP_NAME_LENGTH = 120;
+export const MAX_MAP_LABEL_LENGTH = 160;
+export const MAX_MAP_BRIEF_LENGTH = 500;
+export const MAX_MAP_COORDINATE = 100_000;
+export const MAX_MAP_DIMENSION = 100_000;
 
 const MAX_SCENES = 256;
-const MAX_ID_LENGTH = 80;
-const MAX_NAME_LENGTH = 120;
-const MAX_LABEL_LENGTH = 160;
-const MAX_BRIEF_LENGTH = 500;
-const MAX_COORDINATE = 100_000;
-const MAX_DIMENSION = 100_000;
 const FORBIDDEN_RECORD_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
 const LOCATION_SCALES = new Set<MapLocationScale>([
@@ -119,7 +119,7 @@ function requireString(value: unknown, path: string, maxLength: number): string 
 }
 
 function requireId(value: unknown, path: string): string {
-    const id = requireString(value, path, MAX_ID_LENGTH);
+    const id = requireString(value, path, MAX_MAP_ID_LENGTH);
     if (FORBIDDEN_RECORD_KEYS.has(id)) {fail('map_invalid_domain', path, 'uses a reserved key');}
     return id;
 }
@@ -132,14 +132,14 @@ function requireEnum<T extends string>(value: unknown, allowed: ReadonlySet<T>, 
 }
 
 function requireCoordinate(value: unknown, path: string): number {
-    if (typeof value !== 'number' || !Number.isFinite(value) || Math.abs(value) > MAX_COORDINATE) {
+    if (typeof value !== 'number' || !Number.isFinite(value) || Math.abs(value) > MAX_MAP_COORDINATE) {
         fail('map_invalid_domain', path, 'must be a finite bounded coordinate');
     }
     return value;
 }
 
 function requireDimension(value: unknown, path: string): number {
-    if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0 || value > MAX_DIMENSION) {
+    if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0 || value > MAX_MAP_DIMENSION) {
         fail('map_invalid_domain', path, 'must be a positive bounded dimension');
     }
     return value;
@@ -230,7 +230,7 @@ function validateElement(value: unknown, path: string): MapElement {
         element.icon = requireEnum(record.icon, ICON_TOKENS, `${path}.icon`);
     }
     if (Object.hasOwn(record, 'label')) {
-        element.label = requireString(record.label, `${path}.label`, MAX_LABEL_LENGTH);
+        element.label = requireString(record.label, `${path}.label`, MAX_MAP_LABEL_LENGTH);
     }
     if (Object.hasOwn(record, 'actorKey')) {element.actorKey = requireId(record.actorKey, `${path}.actorKey`);}
     if (Object.hasOwn(record, 'material')) {
@@ -269,7 +269,7 @@ function validateScene(value: unknown, path: string): MapScene {
     });
     const scene: MapScene = {
         key: requireId(record.key, `${path}.key`),
-        name: requireString(record.name, `${path}.name`, MAX_NAME_LENGTH),
+        name: requireString(record.name, `${path}.name`, MAX_MAP_NAME_LENGTH),
         status: requireEnum(record.status, SCENE_STATUSES, `${path}.status`),
         viewBox: [
             requireCoordinate(record.viewBox[0], `${path}.viewBox.0`),
@@ -290,14 +290,14 @@ function validateLocation(value: unknown, path: string): MapLocation {
     requireKeys(record, ['key', 'name', 'scale', 'status'], ['parent', 'sceneKey', 'brief'], path);
     const location: MapLocation = {
         key: requireId(record.key, `${path}.key`),
-        name: requireString(record.name, `${path}.name`, MAX_NAME_LENGTH),
+        name: requireString(record.name, `${path}.name`, MAX_MAP_NAME_LENGTH),
         scale: requireEnum(record.scale, LOCATION_SCALES, `${path}.scale`),
         status: requireEnum(record.status, LOCATION_STATUSES, `${path}.status`),
     };
     if (Object.hasOwn(record, 'parent')) {location.parent = requireId(record.parent, `${path}.parent`);}
     if (Object.hasOwn(record, 'sceneKey')) {location.sceneKey = requireId(record.sceneKey, `${path}.sceneKey`);}
     if (Object.hasOwn(record, 'brief')) {
-        location.brief = requireString(record.brief, `${path}.brief`, MAX_BRIEF_LENGTH);
+        location.brief = requireString(record.brief, `${path}.brief`, MAX_MAP_BRIEF_LENGTH);
     }
     return location;
 }
@@ -316,7 +316,7 @@ function validateLink(value: unknown, path: string): MapLink {
         bidirectional: record.bidirectional,
     };
     if (Object.hasOwn(record, 'label')) {
-        link.label = requireString(record.label, `${path}.label`, MAX_LABEL_LENGTH);
+        link.label = requireString(record.label, `${path}.label`, MAX_MAP_LABEL_LENGTH);
     }
     return link;
 }
@@ -326,7 +326,7 @@ function validateActor(value: unknown, path: string): MapActorPosition {
     requireKeys(record, ['actorKey', 'displayName', 'locationKey'], [], path);
     return {
         actorKey: requireId(record.actorKey, `${path}.actorKey`),
-        displayName: requireString(record.displayName, `${path}.displayName`, MAX_NAME_LENGTH),
+        displayName: requireString(record.displayName, `${path}.displayName`, MAX_MAP_NAME_LENGTH),
         locationKey: requireId(record.locationKey, `${path}.locationKey`),
     };
 }

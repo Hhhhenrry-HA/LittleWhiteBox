@@ -201,16 +201,41 @@ participant 的运行 token 属于 job 临时态；领域 revision 在`createSes
 interface MaintenanceParticipant {
     id: string;
     isEnabled(mode: MaintenanceMode): boolean;
-    createSession(source: AcceptedTurnSource, mode: MaintenanceMode): MaintenanceSession;
+    createSession(
+        source: AcceptedTurnSource,
+        mode: MaintenanceMode,
+    ): MaintenanceSession | null | Promise<MaintenanceSession | null>;
+}
+
+interface MaintenanceDataMessage {
+    readonly role: 'user';
+    readonly name?: string;
+    readonly content: string;
+}
+
+interface MaintenanceSession {
+    readonly participantId: string;
+    readonly prompt: string; // 只含可信静态规则和可信运行模式
+    readonly dataMessages?: readonly MaintenanceDataMessage[]; // 不可信领域数据
+    readonly tools: readonly MaintenanceFunctionDeclaration[];
+    // executeTool / getResult / canCommit / commit / invalidate 保持既有协议
 }
 ```
 
-- participant 自己读取领域状态、构造 Prompt、声明工具、校验参数并维护 staged state。
-- runner 只拼接已启用 participant 的静态规则、上下文和工具。
+- participant 自己读取领域状态、构造静态 Prompt、声明工具、校验参数并维护 staged state；当前没有领域工作时返回`null`，不能创建一个空 Session 迫使 runner 读取配置。
+- runner 先创建所有已启用 participant 的 Session。全部返回`null`时，在`gateway.loadConfig()`和`openSession()`之前以`skipped/no-work`结束；部分为`null`时只运行其余 Session。
+- runner 的 system prompt 只由通用静态规则和各 Session 的静态`prompt`组成。每个 Session 的动态领域投影放在自己的`dataMessages`，玩家身份与接受消息放在 runner 单独构造的 user message；角色卡、任务、地图实体、聊天文本和用户名都不得拼进 system prompt。
 - Agent 工具先写 participant 的内存 staging context，不在模型循环中直接保存聊天数据。
 - 请求完成后，各 participant 分别通过根 store 提交；Map 失败不抹掉一个已经合法提交的 Task，反之亦然。
 - Tasks 的状态与 Economy 资金腿仍必须在它自己的单次根 mutation 中原子提交。
 - Agent 没有通用“写 OS 根”“改余额”或“任意执行 JS”工具。
+
+Provider-aware tool loop 只拥有传输和编排错误，不复制领域失败状态：
+
+- 已成功进入`session.executeTool()`并返回结构化`ok:false`的调用由所属 Session 按实体/调用身份追踪；loop 只把结果回喂模型并参与相同失败签名刹车，不能再按工具名保存一份“未解决失败”；
+- JSON 参数无法解析、未知工具或`executeTool()`抛异常等未形成结构化领域结果的情况，才由 loop 记录调用级失败；已知工具的调用级失败归属其 participant，未知工具暂为未归属；
+- 后续成功进入同一 participant Session 的工具调用清除该 participant 的调用级失败；后续任一合法已声明工具调用表示未知工具名已被纠正，可清除更早的未归属失败；
+- 最终领域`updated/unchanged/partial/failed`以`session.getResult()`为准，loop 只在仍有调用级失败、Provider 失败或轮次耗尽时按已有 staging 覆盖为 partial/failed。
 
 四次元壁的用户发送、任务大厅刷新和候选人生成是独立的显式请求，不与接受轮 maintenance 合并；它们只共用配置和 gateway。
 
@@ -223,7 +248,7 @@ interface MaintenanceParticipant {
 - 切聊、OS cleanup 或 OS 总开关关闭时，中止 active job 并清空当前运行队列。若某 participant 已安装根候选并发出宿主保存请求，该次保存无法物理撤回；等待它落定、保留真实 committed outcome，再取消其余 participant 和后续 job。
 - 单个 APP 关闭时只移除该 participant；同一请求中的其他 participant 可继续。
 - API 配置缺失、未启用或读取失败时，本次 job 以本地错误结束，不发供应商请求。
-- 工具解析、参数和可恢复执行错误以结构化结果回喂模型，不销毁 Session；同签名连续三次失败注入刹车，第四次结束，Provider 回合上限为 12。
+- 工具解析、参数和可恢复执行错误以结构化结果回喂模型，不销毁 Session；同一工具名、原始参数与结构化结果组成相同失败签名，连续三次时注入刹车，第四次结束，Provider 回合上限为 12。
 - Provider 后续失败或轮次耗尽时，已有合法 staging 的 participant 以 partial 提交；没有合法变化的 participant 为 failed。单个 participant 的领域错误不能跨领域冒充成功。
 - outcome 明确区分`updated/unchanged/partial/failed/cancelled/skipped`并携带逐 participant 结果；UI只翻译稳定状态，内部错误只写日志。
 - 运行错误和“上次维护”提示只活在当前页面进程。
@@ -265,6 +290,9 @@ OS 扩展设置最终包含 Fourth Wall 设置与 Map/Tasks 两级开关，但�
 | User 保存后只入队一次 | accepted source/runner 集成测试 |
 | swipe、regenerate、Assistant 回复零请求 | 宿主事件集成测试 |
 | participant 全关时连配置都不读取 | runner 单测 |
+| 已启用 participant 全部返回 no-work 时连配置都不读取 | runner 单测 |
+| 动态领域数据、玩家名和接受消息只进入 user messages | Provider 请求结构集成测试 |
+| 领域工具换名修正同一实体失败后不残留假 partial | Session + runner 集成测试 |
 | APP 开关始终可重新进入，关闭时同步停止 runtime/Prompt/participant | 设置 repository + lifecycle 集成测试 |
 | 关闭 APP 会清除自动维护偏好，重新开启不产生隐式调用 | 设置 repository 集成测试 |
 | 切聊、关开关、改 swipe 使迟到提交失效 | runner + chat store 集成测试 |

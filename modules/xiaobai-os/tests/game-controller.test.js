@@ -158,7 +158,10 @@ async function activate(harness, { waitForPreparation = true } = {}) {
 }
 
 function assertNoHiddenFields(value) {
-    const forbidden = new Set(['dealerDice', 'deck', 'random', 'privateState']);
+    // `dealerDice` is not forbidden outright: a settled hand publishes it so the
+    // showdown can be rendered. Only a live game must keep it secret, which is
+    // asserted separately below.
+    const forbidden = new Set(['deck', 'random', 'privateState']);
     const visit = current => {
         if (!current || typeof current !== 'object') {return;}
         for (const [key, child] of Object.entries(current)) {
@@ -167,6 +170,13 @@ function assertNoHiddenFields(value) {
         }
     };
     visit(value);
+    if (value?.activeGame) {
+        assert.equal(
+            Object.hasOwn(value.activeGame, 'dealerDice'),
+            false,
+            'live game leaked dealerDice',
+        );
+    }
 }
 
 test('Game prepares a missing Economy only and strips hidden service fields', async () => {

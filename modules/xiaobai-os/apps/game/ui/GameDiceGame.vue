@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import type { GameDiceBidView, GameDiceGameView } from '../types.js';
+import type { GameDiceBidFace, GameDiceBidView, GameDiceGameView } from '../types.js';
+import { GAME_DIE_PIPS } from './die-pips.js';
+import GameDie from './GameDie.vue';
 
 const props = defineProps<{
     game: GameDiceGameView;
@@ -13,21 +15,54 @@ const emit = defineEmits<{
     lobby: [];
 }>();
 
-function bidKey(bid: GameDiceBidView): string {
-    return `${bid.count}:${bid.face}`;
+/** A 1 is wild, so it can never be named as a bid face. */
+const BID_FACES: readonly GameDiceBidFace[] = [2, 3, 4, 5, 6];
+
+const opening = props.game.legalBids[0] || { count: 1, face: 2 as GameDiceBidFace };
+const count = ref(opening.count);
+const face = ref<GameDiceBidFace>(opening.face);
+
+const currentBid = computed(() => props.game.bids.at(-1) || null);
+const minimumRaise = computed(() => props.game.legalBids[0] || null);
+
+const countBounds = computed(() => {
+    const counts = props.game.legalBids.map(bid => bid.count);
+    if (counts.length === 0) {return { min: 1, max: 10 };}
+    return { min: Math.min(...counts), max: Math.max(...counts) };
+});
+
+const chosenBid = computed(() => props.game.legalBids.find(
+    bid => bid.count === count.value && bid.face === face.value,
+) || null);
+
+function faceAvailable(candidate: GameDiceBidFace): boolean {
+    return props.game.legalBids.some(bid => bid.face === candidate);
 }
 
-const selectedBid = ref(bidKey(props.game.legalBids[0] || { count: 1, face: 2 }));
-const chosenBid = computed(() => props.game.legalBids.find(bid => bidKey(bid) === selectedBid.value) || null);
-const currentBid = computed(() => props.game.bids.at(-1) || null);
+function stepCount(delta: number): void {
+    const next = count.value + delta;
+    const { min, max } = countBounds.value;
+    if (next >= min && next <= max) {count.value = next;}
+}
 
-watch(() => props.game.legalBids.map(bidKey).join('|'), () => {
-    if (!chosenBid.value && props.game.legalBids[0]) {selectedBid.value = bidKey(props.game.legalBids[0]);}
+// The face is a preference and survives the round; the count has to track the
+// table, so it is only pulled up when the old value can no longer be legal.
+watch(() => countBounds.value.min, (min) => {
+    if (count.value < min) {count.value = min;}
 });
 
 function submitBid(): void {
     if (chosenBid.value && !props.writeDisabledReason) {
         emit('bid', { count: chosenBid.value.count, face: chosenBid.value.face });
+    }
+}
+
+function submitMinimumRaise(): void {
+    const raise = minimumRaise.value;
+    if (raise && !props.writeDisabledReason) {
+        count.value = raise.count;
+        face.value = raise.face;
+        emit('bid', { count: raise.count, face: raise.face });
     }
 }
 </script>
@@ -57,30 +92,82 @@ function submitBid(): void {
             <div class="game-player-hand">
                 <span>你的骰子</span>
                 <div class="game-dice-row">
-                    <b v-for="(die, index) in game.playerDice" :key="index" class="game-die">{{ die }}</b>
+                    <GameDie
+                        v-for="(die, index) in game.playerDice"
+                        :key="index"
+                        :value="die"
+                        :delay="index * 85"
+                    />
                 </div>
                 <small>一点可代替任意叫面</small>
             </div>
         </div>
 
+        <div v-if="game.legalActions.includes('bid')" class="game-bid-builder">
+            <div class="game-bid-count" role="group" aria-label="叫牌数量">
+                <button
+                    type="button"
+                    :disabled="Boolean(writeDisabledReason) || count <= countBounds.min"
+                    aria-label="减少数量"
+                    @click="stepCount(-1)"
+                >
+                    −
+                </button>
+                <strong>{{ count }}</strong>
+                <button
+                    type="button"
+                    :disabled="Boolean(writeDisabledReason) || count >= countBounds.max"
+                    aria-label="增加数量"
+                    @click="stepCount(1)"
+                >
+                    +
+                </button>
+                <small>枚</small>
+            </div>
+
+            <div class="game-bid-faces" role="group" aria-label="叫牌点数">
+                <button
+                    v-for="option in BID_FACES"
+                    :key="option"
+                    type="button"
+                    class="game-face-chip"
+                    :class="{ 'is-active': option === face }"
+                    :disabled="Boolean(writeDisabledReason) || !faceAvailable(option)"
+                    :aria-pressed="option === face"
+                    :aria-label="`${option} 点`"
+                    @click="face = option"
+                >
+                    <span class="game-face-pips">
+                        <i
+                            v-for="([row, column], index) in GAME_DIE_PIPS[option]"
+                            :key="index"
+                            :style="{ gridArea: `${row} / ${column}` }"
+                        />
+                    </span>
+                </button>
+            </div>
+        </div>
+
         <div class="game-dice-controls">
-            <label v-if="game.legalActions.includes('bid')" class="game-bid-picker">
-                <span>下一口合法叫数</span>
-                <select v-model="selectedBid" :disabled="Boolean(writeDisabledReason)">
-                    <option v-for="bid in game.legalBids" :key="bidKey(bid)" :value="bidKey(bid)">
-                        {{ bid.count }} 枚 {{ bid.face }} 点
-                    </option>
-                </select>
-            </label>
+            <button
+                v-if="game.legalActions.includes('bid') && minimumRaise"
+                type="button"
+                class="game-table-button game-min-raise"
+                :disabled="Boolean(writeDisabledReason)"
+                :title="writeDisabledReason"
+                @click="submitMinimumRaise"
+            >
+                最小加叫 {{ minimumRaise.count }} × {{ minimumRaise.face }}
+            </button>
             <button
                 v-if="game.legalActions.includes('bid')"
                 type="button"
                 class="game-primary-action"
                 :disabled="Boolean(writeDisabledReason) || !chosenBid"
-                :title="writeDisabledReason"
+                :title="chosenBid ? writeDisabledReason : '这口叫数不高于桌面叫数'"
                 @click="submitBid"
             >
-                加叫
+                加叫 {{ count }} × {{ face }}
             </button>
             <button
                 v-if="game.legalActions.includes('challenge')"

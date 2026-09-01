@@ -23,6 +23,13 @@ function mapContent(domain: MapDomainV1): Pick<MapDomainV1, 'atlas' | 'scenes'> 
     return { atlas: domain.atlas, scenes: domain.scenes };
 }
 
+function sceneKey(domain: MapDomainV1, requested: string): string {
+    const location = domain.atlas.locations.find(candidate => candidate.key === requested)
+        || domain.atlas.locations.find(candidate => candidate.sceneKey === requested)
+        || domain.atlas.locations.find(candidate => candidate.name === requested);
+    return location?.sceneKey || location?.key || requested;
+}
+
 export function createMapMaintenanceSession(
     map: MapService,
     source: AcceptedTurnSource,
@@ -50,10 +57,14 @@ export function createMapMaintenanceSession(
         contextId: string,
         compiled: { domain: MapDomainV1; edits: readonly MapDomainEdit[]; result: MapToolResult },
     ): MapToolResult => {
-        const failureKey = (item: Pick<MapToolItemReport, 'collection' | 'id'>): string => (
-            `${scope}:${contextId}:${item.collection || 'call'}:${item.collection ? item.id || '*' : '*'}`
-        );
         const callFailureKey = (context: string): string => `${scope}:${context}:call:*`;
+        const failureKey = (item: Pick<MapToolItemReport, 'collection' | 'id'>): string => {
+            if (!item.collection || !item.id) {return callFailureKey(contextId);}
+            const collection = scope === 'scene' && (item.collection === 'elements' || item.collection === 'remove')
+                ? 'element'
+                : item.collection;
+            return `${scope}:${contextId}:${collection}:${item.id}`;
+        };
         staged = compiled.domain;
         if (compiled.result.ok) {
             unresolvedFailures.delete(callFailureKey(contextId));
@@ -79,19 +90,19 @@ export function createMapMaintenanceSession(
             }
             if (name === MAP_MAINTENANCE_TOOL_NAMES.SCENE_READ) {
                 if (!isRecord(args)) {throw new TypeError('MapSceneRead expects an object.');}
+                const unknown = Object.keys(args).filter(key => key !== 'scene');
+                if (unknown.length) {throw new TypeError(`MapSceneRead has unsupported fields: ${unknown.join(', ')}.`);}
                 const key = intentId(args.scene);
                 if (!key) {throw new TypeError('MapSceneRead.scene is required.');}
-                const location = staged.atlas.locations.find(candidate => (
-                    candidate.key === key || candidate.sceneKey === key || candidate.name === key
-                ));
-                const sceneKey = location?.sceneKey || key;
-                return mapToolResult({ data: { revision: staged.revision, scene: structuredClone(staged.scenes[sceneKey] || null) } });
+                const keyForScene = sceneKey(staged, key);
+                return mapToolResult({ data: { revision: staged.revision, scene: structuredClone(staged.scenes[keyForScene] || null) } });
             }
             if (name === MAP_MAINTENANCE_TOOL_NAMES.ATLAS_EDIT) {
                 return acceptCompile('atlas', 'world', compileAtlasIntent(staged, args, source.player));
             }
             if (name === MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT) {
-                const scene = isRecord(args) ? intentId(args.scene, '*') : '*';
+                const requestedScene = isRecord(args) ? intentId(args.scene, '*') : '*';
+                const scene = sceneKey(staged, requestedScene);
                 return acceptCompile('scene', scene, compileSceneIntent(staged, args, source.player));
             }
             throw new TypeError(`Unknown map maintenance tool: ${name}`);

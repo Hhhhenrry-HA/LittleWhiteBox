@@ -66,6 +66,7 @@ export interface GameDiceRecordDetailView {
     finalBid: Required<GameDiceBidView>;
     bids: Array<Required<GameDiceBidView>>;
     playerDice: GameDieFace[];
+    dealerDice: GameDieFace[];
     matchingDiceCount: number;
 }
 

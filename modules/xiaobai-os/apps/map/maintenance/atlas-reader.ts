@@ -18,6 +18,7 @@ const ALLOWED_ARGUMENTS = new Set([
 const DEFAULT_ATLAS_READ_LIMIT = 30;
 
 export const MAX_ATLAS_READ_LIMIT = 300;
+export const MAX_ATLAS_QUERY_LENGTH = 120;
 
 type AgentMapLocation = Omit<MapLocation, 'sceneKey'>;
 
@@ -117,7 +118,7 @@ export function readAtlas(domain: MapDomainV1, value: unknown): MapToolResult {
         });
     }
 
-    const query = normalizedText(value.query, 'query', 120);
+    const query = normalizedText(value.query, 'query', MAX_ATLAS_QUERY_LENGTH);
     const offset = integerArgument(value.offset, 'offset', 0, 0, Number.MAX_SAFE_INTEGER);
     const limit = integerArgument(value.limit, 'limit', DEFAULT_ATLAS_READ_LIMIT, 1, MAX_ATLAS_READ_LIMIT);
     if (mode === 'locations') {

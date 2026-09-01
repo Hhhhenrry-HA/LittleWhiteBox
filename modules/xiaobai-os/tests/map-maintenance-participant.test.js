@@ -155,6 +155,105 @@ test('scene intent tolerates inference and pollution, saves valid siblings, and 
     assert.equal(elements.find(element => element.id === 'caption').shape, 'label');
 });
 
+test('removing a skipped element resolves that entity failure across scene aliases', async () => {
+    const harness = createHarness();
+    const session = await harness.participant.createSession(acceptedSource(), 'manual');
+    const mixed = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT, {
+        scene: 'failure-room',
+        title: 'Failure Room',
+        elements: [
+            { id: 'valid', cat: 'marker', shape: 'icon', geo: { at: [20, 20] } },
+            { id: 'bad-a', cat: 'wall', shape: 'rect', geo: { size: [20, 10] } },
+            { id: 'bad-b', cat: 'wall', shape: 'rect', geo: { size: [30, 10] } },
+        ],
+    });
+    assert.equal(mixed.status, 'partial');
+
+    const firstRemoval = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT, {
+        scene: 'Failure Room', remove: ['bad-a'],
+    });
+    assert.equal(firstRemoval.status, 'unchanged');
+    assert.equal(session.getResult().status, 'partial');
+
+    const secondRemoval = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT, {
+        scene: 'Failure Room', remove: ['bad-b'],
+    });
+    assert.equal(secondRemoval.status, 'unchanged');
+    assert.equal(session.getResult().status, 'updated');
+});
+
+test('scene failure identity falls back to a stable location key before scene creation', async () => {
+    const harness = createHarness();
+    const session = await harness.participant.createSession(acceptedSource(), 'manual');
+    await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.ATLAS_EDIT, {
+        locations: [{ key: 'stable-room', name: 'Display Room' }],
+    });
+    const failed = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT, {
+        scene: 'Display Room',
+        elements: [{ id: 'broken', cat: 'wall', shape: 'rect', geo: { size: [20, 10] } }],
+    });
+    assert.equal(failed.status, 'failed');
+    assert.equal(session.getResult().status, 'partial');
+
+    await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT, {
+        scene: 'stable-room', remove: ['broken'],
+    });
+    assert.equal(session.getResult().status, 'updated');
+});
+
+test('valid retries clear unidentified Scene and Atlas item failures as call failures', async () => {
+    const harness = createHarness();
+    const sceneSession = await harness.participant.createSession(acceptedSource(), 'manual');
+    const sceneMixed = await sceneSession.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT, {
+        scene: 'Scene Retry',
+        elements: [
+            { id: 'valid', cat: 'marker', shape: 'icon', geo: { at: [20, 20] } },
+            { cat: 'marker', shape: 'icon', geo: { at: [40, 20] } },
+        ],
+    });
+    assert.equal(sceneMixed.status, 'partial');
+    assert.equal(sceneSession.getResult().status, 'partial');
+    await sceneSession.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT, {
+        scene: 'Scene Retry',
+        elements: [{ id: 'fixed', cat: 'marker', shape: 'icon', geo: { at: [40, 20] } }],
+    });
+    assert.equal(sceneSession.getResult().status, 'updated');
+
+    const atlasSession = await harness.participant.createSession(acceptedSource(), 'manual');
+    const atlasMixed = await atlasSession.executeTool(MAP_MAINTENANCE_TOOL_NAMES.ATLAS_EDIT, {
+        locations: [
+            { key: 'valid-place', name: 'Valid Place' },
+            { name: 'Missing Key' },
+        ],
+    });
+    assert.equal(atlasMixed.status, 'partial');
+    assert.equal(atlasSession.getResult().status, 'partial');
+    await atlasSession.executeTool(MAP_MAINTENANCE_TOOL_NAMES.ATLAS_EDIT, {
+        locations: [{ key: 'fixed-place', name: 'Fixed Place' }],
+    });
+    assert.equal(atlasSession.getResult().status, 'updated');
+});
+
+test('exact location keys take precedence over colliding scene display names', async () => {
+    const harness = createHarness();
+    const session = await harness.participant.createSession(acceptedSource(), 'manual');
+    await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.ATLAS_EDIT, {
+        locations: [
+            { key: 'source', name: 'target' },
+            { key: 'target', name: 'Destination' },
+        ],
+    });
+    await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT, {
+        scene: 'target',
+        elements: [{ id: 'target-marker', cat: 'marker', shape: 'icon', geo: { at: [20, 20] } }],
+    });
+
+    const source = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_READ, { scene: 'source' });
+    const target = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_READ, { scene: 'target' });
+    assert.equal(source.data.scene, null);
+    assert.deepEqual(target.data.scene.elements.map(element => element.id), ['target-marker']);
+});
+
 test('tool collection limits are declared and oversized calls fail before staging', async () => {
     const harness = createHarness();
     const session = await harness.participant.createSession(acceptedSource(), 'manual');
@@ -173,6 +272,9 @@ test('tool collection limits are declared and oversized calls fail before stagin
     assert.equal(elementProperties.cat.enum.includes('ground'), false);
     assert.equal(Object.hasOwn(elementProperties.geo.properties, 'icon'), false);
     assert.equal(Object.hasOwn(elementProperties, 'icon'), true);
+    assert.deepEqual(elementProperties.id.type, 'string');
+    assert.deepEqual(sceneTool.function.parameters.required, ['scene']);
+    assert.equal(sceneTool.function.parameters.properties.remove.maxItems, MAX_SCENE_ELEMENTS);
 
     const sceneResult = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT, {
         scene: 'Oversized Scene',
@@ -357,6 +459,211 @@ test('same-scene player updates and same-location Atlas edits preserve the actor
     });
     const read = await second.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_READ, { scene: 'Inn Room' });
     assert.equal(read.data.scene.elements.some(element => element.actorKey === 'player'), true);
+});
+
+test('Scene element patches preserve omitted fields, clear optional fields with null, and support deletion', async () => {
+    const harness = createHarness();
+    const session = await harness.participant.createSession(acceptedSource(), 'manual');
+    await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT, {
+        scene: 'Workshop',
+        mood: 'warm',
+        elements: [{
+            id: 'worktable',
+            cat: 'furniture',
+            kind: 'marker',
+            shape: 'rect',
+            geo: { center: [100, 80], size: [60, 30] },
+            label: 'Workbench',
+            icon: 'table',
+            material: 'wood',
+            certainty: 'confirmed',
+        }],
+    });
+
+    const moved = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT, {
+        scene: 'Workshop',
+        elements: [{ id: 'worktable', geo: { center: [160, 120], size: [60, 30] } }],
+    });
+    assert.equal(moved.status, 'updated');
+    let read = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_READ, { scene: 'Workshop' });
+    let table = read.data.scene.elements.find(element => element.id === 'worktable');
+    assert.deepEqual(table, {
+        id: 'worktable',
+        category: 'furniture',
+        kind: 'marker',
+        shape: 'rect',
+        geometry: { x: 130, y: 105, width: 60, height: 30 },
+        label: 'Workbench',
+        icon: 'table',
+        material: 'wood',
+        certainty: 'confirmed',
+    });
+
+    const cleared = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT, {
+        scene: 'Workshop',
+        mood: null,
+        elements: [{ id: 'worktable', kind: null, label: null, icon: null, material: null, certainty: null }],
+    });
+    assert.equal(cleared.status, 'updated');
+    read = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_READ, { scene: 'Workshop' });
+    table = read.data.scene.elements.find(element => element.id === 'worktable');
+    assert.equal(Object.hasOwn(read.data.scene, 'mood'), false);
+    for (const field of ['kind', 'label', 'icon', 'material', 'certainty']) {
+        assert.equal(Object.hasOwn(table, field), false);
+    }
+
+    const removed = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT, {
+        scene: 'Workshop',
+        remove: ['worktable'],
+    });
+    assert.equal(removed.status, 'updated');
+    read = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_READ, { scene: 'Workshop' });
+    assert.equal(read.data.scene.elements.some(element => element.id === 'worktable'), false);
+});
+
+test('actor movement uses the merged canonical element and preserves an existing NPC name', async () => {
+    const harness = createHarness();
+    const session = await harness.participant.createSession(acceptedSource(), 'manual');
+    await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT, {
+        scene: 'Inn',
+        elements: [{ id: 'keeper-inn', cat: 'actor', actorKey: 'keeper', shape: 'icon', geo: { at: [80, 80] }, label: 'Mara' }],
+    });
+    await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT, {
+        scene: 'Cellar',
+        elements: [{ id: 'cellar-floor', cat: 'terrain', shape: 'rect', geo: { center: [100, 100], size: [180, 140] } }],
+    });
+
+    const incompleteMove = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT, {
+        scene: 'Cellar',
+        elements: [{ id: 'keeper-cellar', geo: { at: [70, 90] } }],
+    });
+    assert.equal(incompleteMove.status, 'failed');
+    assert.equal(incompleteMove.skipped[0].reason, 'new_element_requires_category:keeper-cellar');
+    let atlas = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.ATLAS_READ, { mode: 'actors', actorKey: 'keeper' });
+    assert.deepEqual(atlas.data.actors, [{ actorKey: 'keeper', displayName: 'Mara', locationKey: 'Inn' }]);
+    let cellar = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_READ, { scene: 'Cellar' });
+    assert.equal(cellar.data.scene.elements.some(element => element.id === 'keeper-cellar'), false);
+
+    const movedByScene = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT, {
+        scene: 'Cellar',
+        elements: [{ id: 'keeper-cellar', cat: 'actor', actorKey: 'keeper', shape: 'icon', geo: { at: [70, 90] } }],
+    });
+    assert.equal(movedByScene.status, 'updated');
+    atlas = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.ATLAS_READ, { mode: 'actors', actorKey: 'keeper' });
+    assert.deepEqual(atlas.data.actors, [{ actorKey: 'keeper', displayName: 'Mara', locationKey: 'Cellar' }]);
+    const inn = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_READ, { scene: 'Inn' });
+    assert.equal(inn.data.scene.elements.some(element => element.actorKey === 'keeper'), false);
+
+    const movedInsideScene = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT, {
+        scene: 'Cellar',
+        elements: [{ id: 'keeper-cellar', geo: { at: [90, 110] } }],
+    });
+    assert.equal(movedInsideScene.status, 'updated');
+    atlas = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.ATLAS_READ, { mode: 'actors', actorKey: 'keeper' });
+    assert.deepEqual(atlas.data.actors, [{ actorKey: 'keeper', displayName: 'Mara', locationKey: 'Cellar' }]);
+    cellar = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_READ, { scene: 'Cellar' });
+    const keeper = cellar.data.scene.elements.find(element => element.id === 'keeper-cellar');
+    assert.equal(keeper.category, 'actor');
+    assert.equal(keeper.actorKey, 'keeper');
+    assert.deepEqual(keeper.geometry, { x: 90, y: 110 });
+
+    const movedByAtlas = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.ATLAS_EDIT, {
+        actors: [{ actorKey: 'keeper', locationKey: 'Inn' }],
+    });
+    assert.equal(movedByAtlas.status, 'updated');
+    atlas = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.ATLAS_READ, { mode: 'actors', actorKey: 'keeper' });
+    assert.deepEqual(atlas.data.actors, [{ actorKey: 'keeper', displayName: 'Mara', locationKey: 'Inn' }]);
+    cellar = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_READ, { scene: 'Cellar' });
+    assert.equal(cellar.data.scene.elements.some(element => element.actorKey === 'keeper'), false);
+});
+
+test('existing element category and actor identity cannot be rewritten by a patch', async () => {
+    const harness = createHarness();
+    const session = await harness.participant.createSession(acceptedSource(), 'manual');
+    await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT, indoorFixture);
+
+    const patched = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT, {
+        scene: 'Inn Room',
+        elements: [
+            { id: 'player-room', cat: 'not-a-category', kind: 'actor', actorKey: 'keeper', geo: { at: [240, 190] } },
+            { id: 'room-terrain', cat: 'marker', geo: { center: [200, 150], size: [300, 200] } },
+            { id: 'keeper-room', cat: 'actor', kind: 'player', actorKey: 'keeper', shape: 'icon', geo: { at: [160, 120] }, label: 'Mara' },
+        ],
+    });
+    assert.equal(patched.status, 'updated');
+    assert.match(patched.warnings.join('\n'), /unsupported category.*stable/);
+    assert.match(patched.warnings.join('\n'), /actorKey change.*stable/);
+    assert.match(patched.warnings.join('\n'), /category change.*stable/);
+    assert.match(patched.warnings.join('\n'), /Ignored player kind/);
+
+    const scene = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_READ, { scene: 'Inn Room' });
+    const player = scene.data.scene.elements.find(element => element.id === 'player-room');
+    const terrain = scene.data.scene.elements.find(element => element.id === 'room-terrain');
+    assert.equal(player.category, 'actor');
+    assert.equal(player.actorKey, 'player');
+    assert.equal(player.kind, 'player');
+    assert.equal(player.label, 'Alice');
+    assert.deepEqual(player.geometry, { x: 240, y: 190 });
+    assert.equal(terrain.category, 'terrain');
+    assert.equal(scene.data.scene.elements.find(element => element.id === 'keeper-room').actorKey, 'keeper');
+
+    const actors = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.ATLAS_READ, { mode: 'actors' });
+    assert.deepEqual(actors.data.actors, [
+        { actorKey: 'player', displayName: 'Alice', locationKey: 'Inn Room' },
+        { actorKey: 'keeper', displayName: 'Mara', locationKey: 'Inn Room' },
+    ]);
+});
+
+test('a canonical player element marks its location visited without playerHere', async () => {
+    const harness = createHarness();
+    const session = await harness.participant.createSession(acceptedSource(), 'manual');
+    const result = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT, {
+        scene: 'Quiet Room',
+        status: 'mentioned',
+        elements: [
+            { id: 'floor', cat: 'terrain', shape: 'rect', geo: { center: [100, 80], size: [180, 120] } },
+            { id: 'player-quiet-room', cat: 'actor', kind: 'player', actorKey: 'player', shape: 'icon', geo: { at: [100, 90] } },
+        ],
+    });
+    assert.equal(result.status, 'updated');
+
+    const locations = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.ATLAS_READ, {
+        mode: 'locations', query: 'Quiet Room',
+    });
+    assert.equal(locations.data.locations[0].status, 'visited');
+});
+
+test('Scene tools report unsupported fields precisely while retaining the geo.icon tolerance', async () => {
+    const harness = createHarness();
+    const rootSession = await harness.participant.createSession(acceptedSource(), 'manual');
+    const rootFailure = await rootSession.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT, {
+        scene: 'Gallery', elements: [], operation: 'draw',
+    });
+    assert.equal(rootFailure.status, 'failed');
+    assert.equal(rootFailure.skipped[0].reason, 'scene_has_unsupported_fields');
+    assert.match(rootFailure.skipped[0].hint, /operation/);
+
+    const itemSession = await harness.participant.createSession(acceptedSource(), 'manual');
+    const mixed = await itemSession.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT, {
+        scene: 'Gallery',
+        elements: [
+            { id: 'valid', cat: 'marker', shape: 'icon', geo: { at: [40, 40], icon: 'marker' } },
+            { id: 'bad-element', cat: 'marker', shape: 'icon', geo: { at: [60, 40] }, position: [60, 40] },
+            { id: 'bad-geo', cat: 'marker', shape: 'icon', geo: { at: [80, 40], position: [80, 40] } },
+        ],
+    });
+    assert.equal(mixed.status, 'partial');
+    assert.deepEqual(mixed.skipped.map(item => item.reason), [
+        'element_has_unsupported_fields:position',
+        'geo_has_unsupported_fields:position',
+    ]);
+    const read = await itemSession.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_READ, { scene: 'Gallery' });
+    assert.deepEqual(read.data.scene.elements.map(element => element.id), ['valid']);
+    assert.equal(read.data.scene.elements[0].icon, 'marker');
+    assert.throws(
+        () => itemSession.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_READ, { scene: 'Gallery', extra: true }),
+        /unsupported fields: extra/,
+    );
 });
 
 test('all-invalid and zero-write rebuilds do not create or replace Map data', async () => {

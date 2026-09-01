@@ -1,4 +1,11 @@
-import { MAX_MAP_POINTS, parseMapDomain } from '../../../domains/map/invariants.js';
+import {
+    MAX_MAP_COORDINATE,
+    MAX_MAP_DIMENSION,
+    MAX_MAP_ID_LENGTH,
+    MAX_MAP_NAME_LENGTH,
+    MAX_MAP_POINTS,
+    parseMapDomain,
+} from '../../../domains/map/invariants.js';
 import { applyMapDomainEdits, type MapDomainEdit } from '../../../domains/map/edit.js';
 import type { MapDomainV1 } from '../../../domains/map/types.js';
 
@@ -11,7 +18,7 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-export function intentText(value: unknown, fallback = '', maximum = 120): string {
+export function intentText(value: unknown, fallback = '', maximum = MAX_MAP_NAME_LENGTH): string {
     if (typeof value !== 'string') {return fallback;}
     const normalized = value
         .normalize('NFKC')
@@ -22,13 +29,18 @@ export function intentText(value: unknown, fallback = '', maximum = 120): string
 }
 
 export function intentId(value: unknown, fallback = ''): string {
-    const id = intentText(value, fallback, 80);
+    const id = intentText(value, fallback, MAX_MAP_ID_LENGTH);
     return ['__proto__', 'constructor', 'prototype'].includes(id) ? fallback : id;
 }
 
 export function finiteNumber(value: unknown): number | null {
     const result = typeof value === 'number' ? value : Number.NaN;
-    return Number.isFinite(result) && Math.abs(result) <= 100_000 ? result : null;
+    return Number.isFinite(result) && Math.abs(result) <= MAX_MAP_COORDINATE ? result : null;
+}
+
+export function positiveNumber(value: unknown): number | null {
+    const result = typeof value === 'number' ? value : Number.NaN;
+    return Number.isFinite(result) && result > 0 && result <= MAX_MAP_DIMENSION ? result : null;
 }
 
 export function point(value: unknown): [number, number] | null {
@@ -39,8 +51,10 @@ export function point(value: unknown): [number, number] | null {
 }
 
 export function positivePair(value: unknown): [number, number] | null {
-    const result = point(value);
-    return result && result[0] > 0 && result[1] > 0 ? result : null;
+    if (!Array.isArray(value) || value.length !== 2) {return null;}
+    const width = positiveNumber(value[0]);
+    const height = positiveNumber(value[1]);
+    return width === null || height === null ? null : [width, height];
 }
 
 export function points(value: unknown): Array<[number, number]> | null {

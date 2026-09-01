@@ -2,14 +2,20 @@
 import { computed, onBeforeUnmount, onMounted, ref, toRaw } from 'vue';
 import type { XiaobaiOsAppProps } from '../../../shell/app-src/app-registry.js';
 import type {
+    GameActiveGameView,
     GameClientState,
     GameDiceBidView,
+    GameDiceRecordDetailView,
     GameKind,
     GameLadderChoice,
+    GameLadderGameView,
+    GamePushGameView,
     GameRecordPageView,
+    GameRecordView,
 } from '../types.js';
 import GameActionDialog from './GameActionDialog.vue';
 import GameDiceGame from './GameDiceGame.vue';
+import GameDiceReveal from './GameDiceReveal.vue';
 import GameLadderGame from './GameLadderGame.vue';
 import GameLobby from './GameLobby.vue';
 import GamePushGame from './GamePushGame.vue';
@@ -37,6 +43,22 @@ interface PendingAction {
     danger?: boolean;
 }
 
+/**
+ * A finished hand the table still has to play out. The server has already
+ * settled it, but the last card, die or step has not been shown yet, so the
+ * table is kept mounted on a snapshot of its final frame.
+ */
+type GameEnding =
+    | { kind: 'dice'; record: GameRecordView; detail: GameDiceRecordDetailView }
+    | { kind: 'push'; record: GameRecordView; game: GamePushGameView }
+    | { kind: 'ladder'; record: GameRecordView; game: GameLadderGameView };
+
+/**
+ * Outcomes whose last move still has to be shown. `cashed-out` is absent on
+ * purpose: the player chose to stop, so nothing is left to find out.
+ */
+const OUTCOMES_NEEDING_PLAYOUT: ReadonlySet<string> = new Set(['busted', 'failed', 'cleared', 'capped']);
+
 const REQUEST_TIMEOUT_MS = 35_000;
 const props = defineProps<XiaobaiOsAppProps>();
 const state = ref(structuredClone(toRaw(props.initialState as GameClientState)));
@@ -50,6 +72,7 @@ const recordsError = ref('');
 const pending = ref<PendingAction | null>(null);
 const failedAction = ref<{ request: GameWriteRequest; actionId: string } | null>(null);
 const latestResultId = ref('');
+const ending = ref<GameEnding | null>(null);
 let unsubscribe = () => {};
 let requestGeneration = 0;
 let actionSequence = 0;
@@ -64,6 +87,17 @@ const writeDisabledReason = computed(() => {
 });
 const refreshDisabled = computed(() => refreshing.value || actionBusy.value || requiresConfirmation.value || state.value.status === 'conflict');
 const latestResult = computed(() => state.value.records.find(record => record.id === latestResultId.value) || null);
+
+// While a hand is being played out the table runs on the ending snapshot, so it
+// stays mounted after the server has already cleared the active game.
+const pushTable = computed<GamePushGameView | null>(() => {
+    if (ending.value?.kind === 'push') {return ending.value.game;}
+    return state.value.activeGame?.kind === 'push' ? state.value.activeGame : null;
+});
+const ladderTable = computed<GameLadderGameView | null>(() => {
+    if (ending.value?.kind === 'ladder') {return ending.value.game;}
+    return state.value.activeGame?.kind === 'ladder' ? state.value.activeGame : null;
+});
 
 function createActionId(): string {
     if (typeof globalThis.crypto?.randomUUID === 'function') {return `game-ui:${globalThis.crypto.randomUUID()}`;}
@@ -88,6 +122,30 @@ function readableError(error: unknown): string {
     return '游戏操作未完成，请稍后重试。';
 }
 
+function captureEnding(previous: GameActiveGameView, record: GameRecordView): GameEnding | null {
+    // A hand that ended on the player's own terms has nothing left to show.
+    if (!OUTCOMES_NEEDING_PLAYOUT.has(record.outcome) && record.detail.kind !== 'dice') {return null;}
+    if (previous.kind === 'dice' && record.detail.kind === 'dice') {
+        return { kind: 'dice', record, detail: record.detail };
+    }
+    if (previous.kind === 'push' && record.detail.kind === 'push') {
+        return { kind: 'push', record, game: previous };
+    }
+    if (previous.kind === 'ladder' && record.detail.kind === 'ladder') {
+        return { kind: 'ladder', record, game: previous };
+    }
+    return null;
+}
+
+function dismissReveal(): void {
+    ending.value = null;
+}
+
+function leaveTo(target: GamePage): void {
+    dismissReveal();
+    page.value = target;
+}
+
 function applyState(next: GameClientState): void {
     const previousGame = state.value.activeGame;
     state.value = structuredClone(next);
@@ -97,11 +155,18 @@ function applyState(next: GameClientState): void {
     recordsError.value = '';
     if (previousGame && !next.activeGame) {
         const result = next.records.find(record => record.gameId === previousGame.id);
-        latestResultId.value = result?.id || '';
-        page.value = 'lobby';
+        const captured = result ? captureEnding(previousGame, result) : null;
+        if (captured) {
+            ending.value = captured;
+            latestResultId.value = '';
+            page.value = captured.kind;
+        } else {
+            latestResultId.value = result?.id || '';
+            page.value = 'lobby';
+        }
     } else if (next.activeGame && page.value !== 'records' && page.value !== 'lobby') {
         page.value = next.activeGame.kind;
-    } else if (!next.activeGame && page.value !== 'records') {
+    } else if (!next.activeGame && page.value !== 'records' && !ending.value) {
         page.value = 'lobby';
     }
 }
@@ -319,7 +384,7 @@ onBeforeUnmount(() => {
         </header>
 
         <nav class="game-nav" aria-label="游戏页面">
-            <button type="button" :class="{ 'is-active': page === 'lobby' }" @click="page = 'lobby'">大厅</button>
+            <button type="button" :class="{ 'is-active': page === 'lobby' }" @click="leaveTo('lobby')">大厅</button>
             <button
                 v-if="state.activeGame"
                 type="button"
@@ -328,7 +393,7 @@ onBeforeUnmount(() => {
             >
                 当前牌桌<i />
             </button>
-            <button type="button" :class="{ 'is-active': page === 'records' }" @click="page = 'records'">记录</button>
+            <button type="button" :class="{ 'is-active': page === 'records' }" @click="leaveTo('records')">记录</button>
         </nav>
 
         <aside v-if="state.message || errorMessage" class="game-notice" :class="`is-${state.status}`" role="status">
@@ -373,23 +438,33 @@ onBeforeUnmount(() => {
                 :write-disabled-reason="writeDisabledReason"
                 @bid="bid => performAction({ endpoint: 'game/dice/bid', gameId: state.activeGame?.id || '', bid })"
                 @challenge="openChallenge"
-                @lobby="page = 'lobby'"
+                @lobby="leaveTo('lobby')"
+            />
+            <GameDiceReveal
+                v-else-if="page === 'dice' && ending?.kind === 'dice'"
+                :record="ending.record"
+                :detail="ending.detail"
+                @done="leaveTo('lobby')"
             />
             <GamePushGame
-                v-else-if="page === 'push' && state.activeGame?.kind === 'push'"
-                :game="state.activeGame"
+                v-else-if="page === 'push' && pushTable"
+                :game="pushTable"
                 :write-disabled-reason="writeDisabledReason"
+                :ending="ending?.kind === 'push' ? ending.record : null"
                 @draw="performAction({ endpoint: 'game/push/draw', gameId: state.activeGame?.id || '' })"
                 @cash-out="openCashOut('push')"
-                @lobby="page = 'lobby'"
+                @lobby="leaveTo('lobby')"
+                @finished="leaveTo('lobby')"
             />
             <GameLadderGame
-                v-else-if="page === 'ladder' && state.activeGame?.kind === 'ladder'"
-                :game="state.activeGame"
+                v-else-if="page === 'ladder' && ladderTable"
+                :game="ladderTable"
                 :write-disabled-reason="writeDisabledReason"
+                :ending="ending?.kind === 'ladder' ? ending.record : null"
                 @step="choice => performAction({ endpoint: 'game/ladder/step', gameId: state.activeGame?.id || '', choice })"
                 @cash-out="openCashOut('ladder')"
-                @lobby="page = 'lobby'"
+                @lobby="leaveTo('lobby')"
+                @finished="leaveTo('lobby')"
             />
             <GameRecords
                 v-else-if="page === 'records'"

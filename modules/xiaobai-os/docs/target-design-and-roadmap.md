@@ -41,9 +41,9 @@ OS 有三类用户级设置入口：
 
 Agent provider、model、apiKey 等不得复制进 OS 设置或聊天数据。OS 桌面常驻一个「Agent API」系统 APP，四次元壁删除原专属入口。
 
-Map/Tasks 均采用两级用户级开关：APP 启用决定图标、Prompt 和 runtime 是否注册；自动维护决定所有普通聊天的 User 接受轮是否为该领域产生 Agent 工作。两项默认关闭。APP 启用复选框只放在 SillyTavern 扩展设置现有的「小白 OS」区块，保证图标隐藏后仍可重新开启；自动维护只放在对应 APP 内，并明确标注作用范围。关闭 APP 必须在同一次设置写入中把自动维护重置为关闭，重新启用不会自行恢复后台 API 消耗。
+Map/Tasks 均采用两级用户级开关：APP 启用决定图标、Prompt 和 runtime 是否对外可用；自动维护决定所有普通聊天的 User 接受轮是否为该领域产生 Agent 工作。两项默认关闭。participant 在 production composition 中静态注册，运行时关闭通过`isEnabled`和 invalidation 停用，不重建 registry。APP 启用复选框只放在 SillyTavern 扩展设置现有的「小白 OS」区块，保证图标隐藏后仍可重新开启；自动维护只放在对应 APP 内，并明确标注作用范围。关闭 APP 必须在同一次设置写入中把自动维护重置为关闭，重新启用不会自行恢复后台 API 消耗。
 
-扩展设置通过`modules/xiaobai-os/index.ts`导出的窄命令写唯一 settings repository。运行时启停由 host registry 完成，shell 不直接读写扩展设置；关闭正在显示的 APP 时先返回桌面，再清 Prompt、注销 participant 和中止该领域请求。某 APP 的复选框只随完整功能一起交付，不能先出现无页面的占位开关。
+扩展设置通过`modules/xiaobai-os/index.ts`导出的窄命令写唯一 settings repository。运行时启停由 availability runtime 和静态 host registry 共同完成，shell 不直接读写扩展设置；关闭正在显示的 APP 时先返回桌面，再清 Prompt、使 participant 不可选中并 invalidate 在途维护、中止该领域前台请求。某 APP 的复选框只随完整功能一起交付，不能先出现无页面的占位开关。
 
 完整契约见[Agent API 设置与后台维护终态设计](./agent-api-and-maintenance-target-design.md)。
 
@@ -100,7 +100,7 @@ interface XiaobaiOsChatData {
 }
 ```
 
-Task 事件额外保存当时的`assistantTurn`，即当前聊天已完成的普通 Assistant 回复总数；离场 NPC 任务只用它派生自上次任务事件以来的经过量。它不标识消息，不产生删除回滚，生命周期随 Task 事件链。
+Task 事件额外保存当时的`observedAssistantCount`，即动作边界看到的非 User、非 system Assistant 消息总数；离场 NPC 任务只用它派生自上次任务事件以来的非负经过量。它不标识消息，不产生删除回滚，生命周期随 Task 事件链。
 
 Agent 配置、运行队列、请求状态、页面路由、缩放、表单草稿和模型原始响应均不进入聊天数据。运行时只认当前数据模型；上游真实 Fourth Wall 格式只在 migration 入口一次性转换，测试线自己的旧 Map/Tasks schema、开关和协议不留兼容分支。
 
@@ -120,9 +120,9 @@ U1 → A1a → swipe A1b → 保存 U2
 - U2 不属于本次维护证据；
 - Assistant 回复、流式、swipe、regenerate、continue 不触发；
 - 事件监听器同步捕获后立即返回，不阻塞 U2 的主 RP 生成；
-- Map/Tasks 同时需要工作时合并为一次 Agent 请求；
+- Map/Tasks 同时需要工作时合并为同一个 Agent adapter 和 Provider tool loop；工具往返仍可能包含多个 Provider 回合；
 - 领域各自提供 Prompt、工具、staging 和提交；
-- 切聊、关开关、消息或 swipe 改变、领域 revision 改变时，尚未进入根保存 commit point 的迟到结果作废；保存请求已经发出后保留真实提交结果，不伪造回滚；
+- 切聊、关开关、消息或 swipe 改变、领域 revision 或相关实体 CAS 改变时，尚未进入根保存 commit point 的迟到结果作废；保存请求已经发出后保留真实提交结果，不伪造回滚；
 - 所有 participant 关闭时不读取 Agent 配置，更不做网络检查。
 
 后台队列、AbortController、running/error 是当前运行临时态。打开 APP、切换页面或 OS 启动不会自动调用模型。
@@ -145,7 +145,7 @@ Map 读取被 User 继续后确认的上一轮，只维护已确认空间事实�
 
 Tasks 的任务大厅刷新和候选人招募只能由用户明确触发；接取、发布、选人、撤回是确定性状态机；只有既有 active 任务可在接受轮中自动 progress/complete/fail。任务 Prompt 可向主 RP 注入安全的只读活动任务摘要。
 
-任务状态和 Economy 资金腿由可信应用服务原子提交，Agent 不能直接改钱。完整契约见[Tasks APP 终态设计](./tasks-app-target-design.md)。
+任务状态和 Economy 资金腿由可信应用服务原子提交，Agent 不能直接改钱。完整契约见[Tasks APP 终态设计](./tasks-app-target-design.md)，可执行顺序见[Tasks APP 施工方案](./tasks-app-implementation-plan.md)。
 
 ### 银行
 
@@ -198,9 +198,9 @@ Map 与 Tasks 的 Agent 工具只修改内存 staged state；请求成功且边�
 - 首个真实自动维护纵切：accepted-turn source、FIFO coordinator、保存栅栏、Provider-aware tool loop、结果归纳、薄 runner facade、Map participant、取消与迟到提交守卫；
 - 根级单写队列、CAS、actionId 幂等、跨领域原子提交与保存确认。
 
-### 已完成终态设计、尚未施工
+### 终态与施工文档已闭合、尚未施工
 
-- Tasks 正式任务状态机、钱包结算、Prompt/工具/Session、UI 与真实 participant 注册。通用 runner 已具备同 job 多 participant 的一次 Provider 会话和分领域提交能力，Tasks 不再另造编排链。
+- Tasks 的产品流程、状态机、持久格式、响应编译、钱包结算、Prompt/工具/Session、UI、保存边界和 participant 接入已形成施工合同，但代码尚未开始。现有 runner 已具备同 job 多 participant 的一个 Provider tool loop 和分领域提交能力；Tasks 作为第二个真实消费者时仍需完成三项最小通用改造：`createSession = null`的 no-work 短路、动态领域数据的 user `dataMessages`通道，以及移除按工具名重复追踪领域失败。不得把它们误写成 Tasks 已实现，也不得另造编排链。实施以[Tasks APP 施工方案](./tasks-app-implementation-plan.md)为准。
 
 Map 的当前交付口径以[Map APP 终态设计](./map-app-target-design.md)第 12 节为准：代码检查与真实 SillyTavern 浏览器验收是两层证据，任一未执行都不能写成“完整收尾”。
 
@@ -229,12 +229,12 @@ Map 的当前交付口径以[Map APP 终态设计](./map-app-target-design.md)�
 
 ### 阶段 C：完整 Tasks 与第二个维护消费者
 
-1. 实现 board parser、Task 事件状态机和投影。
-2. 实现 Task/Economy escrow 协议与跨领域不变量。
-3. 实现大厅、发布、候选人、活动任务、历史与详情 UI。
-4. 实现显式 board/candidate 请求、active-task maintenance participant 和主 RP Prompt。
-5. Tasks participant 成为第二个真实消费者后才增加 Tasks 用户级设置与注册，并验收 Map/Tasks 同一接受轮合并为一次 Agent 请求、各自 staged、各自事务提交。
-6. 用 Task 事件的`assistantTurn`实现 NPC 离场经过量；Tasks 完整可用后才一起暴露扩展设置页的「APP 启用」和 Tasks 内的「自动维护」，完成自动结算、切聊/迟到结果和移动端验收。
+1. 按施工方案 A–B 完成纯事件状态机、投影、Task/Economy escrow 与交叉不变量。
+2. 按施工方案 C 完成独立 board/candidate Prompt、上下文边界、宽容响应编译和显式无工具请求。
+3. 按施工方案 D 完成三个高层维护工具和 Tasks Session，同时完成由第二消费者触发的三项通用改造：no-work 短路、system/static 与 user/dataMessages 分层、调用级错误与领域失败去重；验收 Map/Tasks 一个 Provider session、各自 staged、各自事务提交。
+4. 按施工方案 E–F 完成主 RP Prompt、Controller，以及大厅、发布、候选人、活动任务、历史、详情和设置 UI。
+5. 全部内部能力完成后才按施工方案 G 一次性加入 Tasks 用户设置、host/shell 注册、扩展设置启用入口和 APP 内自动维护入口。
+6. 完成自动结算、迟到/取消/保存边界、真实 Provider、移动端和全量工程检查后交付；详细完成定义不在路线图重复，以两份 Tasks 文档为准。
 
 每个阶段独立通盘 review、验证和提交。终态文档描述的公共结构不等于独立的先行施工阶段：没有真实 participant 时不创建空 runner，没有完整 APP 时不创建其字段、开关或注册。不得先造一个含业务分支的`world-manager.ts`，也不得用“以后再拆”接受临时上帝文件。
 

@@ -105,6 +105,7 @@ function presentRecordDetail(record: GamePublicActivityRecord): GameRecordDetail
             },
             bids: detail.bids.map((bid) => ({ count: bid.count, face: bid.face, by: bid.by })),
             playerDice: [...detail.playerDice],
+            dealerDice: [...detail.dealerDice],
             matchingDiceCount: detail.matchingDiceCount,
         };
     }

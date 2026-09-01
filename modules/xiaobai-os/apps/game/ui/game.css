@@ -264,16 +264,165 @@
 .game-player-hand > span { color: var(--game-brass); font-size: 9px; letter-spacing: .1em; }
 .game-player-hand > small { color: #849b91; font-size: 8px; }
 .game-dice-row { display: flex; gap: 7px; justify-content: center; }
-.game-die { animation: game-die-settle 260ms ease-out both; background: #e9dfca; border-radius: 6px; box-shadow: 0 4px 0 #9f9279, 0 7px 12px rgba(0, 0, 0, .25); color: #163a31; display: grid; font: 800 17px Georgia, serif; height: 38px; place-items: center; width: 38px; }
-.game-die:nth-child(2) { animation-delay: 35ms; }
-.game-die:nth-child(3) { animation-delay: 70ms; }
-.game-die:nth-child(4) { animation-delay: 105ms; }
-.game-die:nth-child(5) { animation-delay: 140ms; }
+/* Three layers on purpose: `filter` is a grouping property, so keeping it on
+   the same element as `perspective` risks flattening the cube. */
+.game-die {
+    --game-die-size: 38px;
+    filter: drop-shadow(0 4px 4px rgba(2, 12, 10, .5));
+    height: var(--game-die-size);
+    position: relative;
+    width: var(--game-die-size);
+}
 
-.game-dice-controls { align-items: end; display: grid; gap: 9px; grid-template-columns: minmax(0, 1fr) auto auto; }
-.game-bid-picker { display: grid; gap: 5px; }
-.game-bid-picker > span { color: var(--game-muted); font-size: 8px; }
-.game-bid-picker select { appearance: none; background: #0a211c; border: 1px solid rgba(200, 163, 90, .34); color: var(--game-ink); font-size: 11px; min-height: 42px; outline: none; padding: 8px 28px 8px 10px; }
+.game-die-stage { height: 100%; perspective: calc(var(--game-die-size) * 13); width: 100%; }
+
+/* Light lives here rather than on the faces: it must not rotate with the cube,
+   otherwise whichever face is turned forward reads as unlit. Sitting outside
+   the perspective layer is what lets z-index hold it above the die. */
+.game-die::after {
+    background: radial-gradient(122% 112% at 25% 15%, rgba(255, 252, 240, .2), transparent 56%);
+    border-radius: 50%;
+    content: "";
+    inset: -6%;
+    pointer-events: none;
+    position: absolute;
+    z-index: 2;
+}
+
+.game-die-cube { height: 100%; position: relative; transform-style: preserve-3d; width: 100%; }
+
+.game-die-face {
+    background:
+        linear-gradient(var(--game-die-shade, transparent), var(--game-die-shade, transparent)),
+        radial-gradient(128% 128% at 27% 20%, #fffdf6 0%, #f4ecd8 34%, #e0d4b8 72%, #c3b492 100%);
+    border-radius: calc(var(--game-die-size) * .18);
+    box-shadow:
+        inset 0 0 0 1px rgba(120, 96, 52, .34),
+        inset 0 1.5px 1px rgba(255, 255, 255, .95),
+        inset 0 calc(var(--game-die-size) * -.07) calc(var(--game-die-size) * .12) rgba(88, 68, 34, .32);
+    height: 100%;
+    position: absolute;
+    width: 100%;
+}
+
+.game-die-face.is-front { transform: translateZ(calc(var(--game-die-size) / 2)); }
+.game-die-face.is-back { --game-die-shade: rgba(28, 44, 38, .16); transform: rotateY(180deg) translateZ(calc(var(--game-die-size) / 2)); }
+.game-die-face.is-right { --game-die-shade: rgba(28, 44, 38, .1); transform: rotateY(90deg) translateZ(calc(var(--game-die-size) / 2)); }
+.game-die-face.is-left { --game-die-shade: rgba(28, 44, 38, .13); transform: rotateY(-90deg) translateZ(calc(var(--game-die-size) / 2)); }
+.game-die-face.is-top { --game-die-shade: rgba(255, 253, 244, .1); transform: rotateX(90deg) translateZ(calc(var(--game-die-size) / 2)); }
+.game-die-face.is-bottom { --game-die-shade: rgba(28, 44, 38, .2); transform: rotateX(-90deg) translateZ(calc(var(--game-die-size) / 2)); }
+
+.game-die-pips { display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); inset: 17%; place-items: center; position: absolute; }
+
+/* Engraved, not embossed: dark rim inside the top of the pit, brass bounce at
+   the bottom, and a highlight just below the pit on the die surface. */
+.game-die-pip {
+    background: radial-gradient(circle at 50% 76%, #7a6636 0%, #40331a 55%, #241b0b 100%);
+    border-radius: 50%;
+    box-shadow:
+        inset 0 1.5px 2px rgba(0, 0, 0, .8),
+        inset 0 -1px 1.5px rgba(234, 208, 146, .45),
+        0 1px 0 rgba(255, 255, 255, .78);
+    height: 68%;
+    width: 68%;
+}
+
+/* The hit glow must avoid `transform`: the roll animation owns that property on
+   both the shell and the cube, and a Web Animations keyframe outranks CSS. */
+.game-die.is-hit { animation: game-die-hit 900ms ease-out forwards; }
+.game-die.is-hit .game-die-stage { animation: game-die-hit-pop 460ms ease-out; }
+
+.game-dice-reveal .game-reveal-eyebrow { align-self: center; color: var(--game-brass); font: 700 8px Bahnschrift, sans-serif; letter-spacing: .18em; }
+
+.game-reveal-cloth {
+    align-content: center;
+    background:
+        radial-gradient(ellipse at center, rgba(40, 102, 83, .72), rgba(7, 34, 29, .96) 70%),
+        var(--game-felt);
+    border: 1px solid rgba(200, 163, 90, .32);
+    border-radius: 46% 46% 12px 12px / 15% 15% 12px 12px;
+    box-shadow: inset 0 0 45px rgba(0, 0, 0, .34), 0 13px 25px rgba(0, 0, 0, .2);
+    cursor: pointer;
+    display: grid;
+    gap: 15px;
+    min-height: 320px;
+    padding: 26px 18px 20px;
+    position: relative;
+}
+
+.game-reveal-cloth::after { border: 1px solid rgba(200, 163, 90, .12); border-radius: inherit; content: ''; inset: 5px; pointer-events: none; position: absolute; }
+.game-reveal-side { display: grid; gap: 8px; justify-items: center; }
+.game-reveal-side > span { color: var(--game-brass); font-size: 9px; letter-spacing: .1em; }
+
+.game-reveal-tally {
+    align-items: baseline;
+    animation: game-result-in 320ms ease-out both;
+    display: flex;
+    gap: 7px;
+    justify-content: center;
+    margin: 0;
+}
+
+.game-reveal-tally > span { color: var(--game-muted); font-size: 9px; }
+.game-reveal-tally strong { color: var(--game-brass-bright); font: 700 30px/1 Bahnschrift, sans-serif; }
+
+.game-reveal-verdict {
+    animation: game-result-in 320ms ease-out both;
+    color: #b8c0b5;
+    display: grid;
+    font-size: 10px;
+    gap: 5px;
+    justify-items: center;
+    margin: 0;
+    text-align: center;
+}
+
+.game-reveal-verdict strong { font: 650 13px "Noto Serif SC", serif; }
+.game-reveal-verdict.is-holds strong { color: var(--game-brass-bright); }
+.game-reveal-verdict.is-broken strong { color: #dc877a; }
+
+.game-reveal-outcome {
+    align-items: center;
+    animation: game-result-in 320ms ease-out both;
+    display: flex;
+    gap: 12px;
+    padding-top: 2px;
+}
+
+.game-reveal-outcome strong { font: 650 13px "Noto Serif SC", serif; }
+.game-reveal-outcome em { color: var(--game-brass-bright); font: normal 700 13px Bahnschrift, sans-serif; margin-right: auto; }
+.game-reveal-outcome.is-loss em { color: #dc877a; }
+.game-reveal-hint { color: var(--game-muted); font-size: 9px; margin: 0; text-align: center; }
+
+.game-dice-controls { display: flex; flex-wrap: wrap; gap: 9px; }
+.game-dice-controls > .game-primary-action,
+.game-dice-controls > .game-danger-action { flex: 1 1 96px; }
+.game-bid-builder { align-items: center; display: grid; gap: 11px; grid-template-columns: auto minmax(0, 1fr); }
+
+.game-bid-count { align-items: center; background: rgba(4, 20, 17, .55); border: 1px solid rgba(200, 163, 90, .3); display: flex; gap: 3px; padding: 4px 8px 4px 4px; }
+.game-bid-count button { background: transparent; border: 1px solid rgba(200, 163, 90, .34); color: var(--game-brass-bright); cursor: pointer; font: 400 16px/1 Bahnschrift, sans-serif; height: 30px; width: 27px; }
+.game-bid-count button:disabled { border-color: #33443e; color: #55645e; cursor: default; }
+.game-bid-count strong { color: var(--game-brass-bright); font: 700 22px/1 Bahnschrift, sans-serif; min-width: 30px; text-align: center; }
+.game-bid-count small { color: var(--game-muted); font-size: 9px; }
+
+.game-bid-faces { display: grid; gap: 5px; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+
+.game-face-chip {
+    aspect-ratio: 1;
+    background: rgba(4, 20, 17, .55);
+    border: 1px solid rgba(200, 163, 90, .28);
+    cursor: pointer;
+    display: grid;
+    padding: 0;
+    place-items: center;
+}
+
+.game-face-chip.is-active { background: var(--game-brass); border-color: var(--game-brass-bright); }
+.game-face-chip:disabled { border-color: #2c3b36; cursor: default; opacity: .4; }
+.game-face-pips { display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); height: 62%; place-items: center; width: 62%; }
+.game-face-pips i { background: var(--game-brass-bright); border-radius: 50%; height: 4px; width: 4px; }
+.game-face-chip.is-active .game-face-pips i { background: #10231e; }
+.game-min-raise { white-space: nowrap; }
 .game-primary-action,
 .game-secondary-action,
 .game-danger-action { cursor: pointer; font-size: 11px; min-height: 42px; padding: 8px 15px; }
@@ -299,6 +448,27 @@
     padding: 28px 16px;
     position: relative;
 }
+
+.game-flip-slot { height: 65px; margin: 0 auto 4px; perspective: 700px; position: relative; width: 43px; z-index: 2; }
+.game-flip-card { height: 100%; position: relative; transform-style: preserve-3d; transition: transform 660ms cubic-bezier(.32, .72, .38, 1); width: 100%; }
+.game-flip-slot.is-flipped .game-flip-card { transform: rotateY(180deg); }
+
+.game-flip-back,
+.game-flip-front {
+    align-items: center;
+    backface-visibility: hidden;
+    border-radius: 4px;
+    box-shadow: 0 5px 8px rgba(0, 0, 0, .28);
+    display: flex;
+    inset: 0;
+    justify-content: center;
+    position: absolute;
+}
+
+.game-flip-back { background: repeating-linear-gradient(45deg, #8c382f 0 3px, #672920 3px 6px); border: 2px solid #c7a45b; }
+.game-flip-front { font: 800 21px Georgia, serif; transform: rotateY(180deg); }
+.game-flip-front.is-coin { background: #b99248; border: 2px solid #e7cf92; box-shadow: inset 0 0 0 3px #80652f, 0 5px 8px rgba(0, 0, 0, .28); color: #372b14; }
+.game-flip-front.is-bomb { background: #571f1a; border: 2px solid #b65b4e; box-shadow: inset 0 0 14px rgba(0, 0, 0, .6), 0 0 16px rgba(182, 91, 78, .5); color: #ea9d90; }
 
 .game-coin-stack { align-items: center; display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; min-height: 58px; position: relative; z-index: 2; }
 .game-empty-stack { color: #82978e; font-size: 10px; letter-spacing: .12em; }
@@ -327,6 +497,12 @@
 .game-ladder-floor.is-complete span { background: var(--game-brass); color: #17271f; }
 .game-ladder-floor.is-complete small { color: var(--game-brass-bright); }
 .game-ladder-floor.is-next { box-shadow: inset 0 0 0 1px rgba(200, 163, 90, .25); }
+.game-ladder-floor.is-judging { animation: game-ladder-judging 620ms ease-in-out infinite; background: rgba(159, 123, 51, .18); }
+.game-ladder-floor.is-judging span { border-color: var(--game-brass-bright); color: var(--game-brass-bright); }
+.game-ladder-floor.is-risen { animation: game-ladder-risen 620ms ease-out; }
+.game-ladder-floor.is-fallen { animation: game-ladder-fallen 620ms ease-out both; background: rgba(124, 42, 36, .38); border-color: #b65b4e; }
+.game-ladder-floor.is-fallen span { background: #b65b4e; border-color: #e5a096; color: #2a100d; }
+.game-ladder-floor.is-fallen small { color: #e5a096; }
 .game-ladder-purse { align-self: center; display: grid; gap: 4px; min-width: 88px; text-align: right; }
 .game-ladder-purse span { color: var(--game-muted); font-size: 8px; }
 .game-ladder-purse strong { color: var(--game-brass-bright); font: 700 22px Bahnschrift, sans-serif; }
@@ -339,6 +515,7 @@
 .game-ladder-choices small { color: var(--game-muted); font-size: 8px; }
 .game-ladder-choices strong { font: 700 13px Bahnschrift, sans-serif; margin-top: 3px; }
 .game-ladder-choices em { color: #8da198; font-size: 8px; font-style: normal; }
+.game-ladder-settling { animation: game-ladder-settling 1s ease-in-out infinite; color: var(--game-brass-bright); font-size: 11px; letter-spacing: .06em; margin: 0; padding: 13px 0; text-align: center; }
 .game-ladder-cashout { background: var(--game-brass); border: 1px solid var(--game-brass); color: #10231e; cursor: pointer; font-size: 11px; font-weight: 800; min-height: 44px; }
 .game-ladder-cashout:disabled { cursor: default; opacity: .42; }
 
@@ -394,9 +571,39 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes game-die-settle {
-    from { opacity: 0; transform: translateY(-7px) rotate(7deg); }
-    to { opacity: 1; transform: translateY(0) rotate(0); }
+@keyframes game-die-hit {
+    0% { filter: drop-shadow(0 4px 4px rgba(2, 12, 10, .5)) drop-shadow(0 0 0 rgba(234, 208, 146, 0)); }
+    24% { filter: drop-shadow(0 4px 4px rgba(2, 12, 10, .5)) drop-shadow(0 0 13px rgba(234, 208, 146, .95)); }
+    100% { filter: drop-shadow(0 4px 4px rgba(2, 12, 10, .5)) drop-shadow(0 0 6px rgba(234, 208, 146, .6)); }
+}
+
+@keyframes game-die-hit-pop {
+    0% { transform: scale(1); }
+    42% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+}
+
+@keyframes game-ladder-judging {
+    0%, 100% { box-shadow: inset 0 0 0 1px rgba(200, 163, 90, .3); }
+    50% { box-shadow: inset 0 0 0 1px rgba(234, 208, 146, .85), inset 0 0 18px rgba(234, 208, 146, .3); }
+}
+
+@keyframes game-ladder-settling {
+    0%, 100% { opacity: .5; }
+    50% { opacity: 1; }
+}
+
+@keyframes game-ladder-risen {
+    0% { box-shadow: inset 0 0 24px rgba(234, 208, 146, .8); }
+    100% { box-shadow: inset 0 0 0 rgba(234, 208, 146, 0); }
+}
+
+@keyframes game-ladder-fallen {
+    0% { transform: translateY(-7px); }
+    22% { transform: translateX(4px); }
+    42% { transform: translateX(-4px); }
+    62% { transform: translateX(3px); }
+    100% { transform: translateY(0); }
 }
 
 @keyframes game-coin-drop {
@@ -424,7 +631,7 @@
     .game-card { gap: 9px; grid-template-columns: 43px minmax(0, 1fr) auto; padding: 11px; }
     .game-glyph { height: 41px; width: 41px; }
     .game-dice-row { gap: 5px; }
-    .game-die { height: 34px; width: 34px; }
+    .game-die { --game-die-size: 34px; }
     .game-ladder-stage { grid-template-columns: 1fr; }
     .game-ladder-purse { text-align: center; }
 }
@@ -437,6 +644,21 @@
 
 @media (prefers-reduced-motion: reduce) {
     .game-result-banner,
-    .game-die,
+    .game-reveal-tally,
+    .game-reveal-verdict,
+    .game-reveal-outcome,
     .game-revealed-coin { animation: none; }
+    .game-flip-card { transition: none; }
+    .game-ladder-floor.is-judging,
+    .game-ladder-floor.is-risen,
+    .game-ladder-floor.is-fallen { animation: none; }
+    .game-ladder-settling { animation: none; }
+
+    /* Keep the settled glow; only the pulse that leads to it is dropped. */
+    .game-die.is-hit {
+        animation: none;
+        filter: drop-shadow(0 4px 4px rgba(2, 12, 10, .5)) drop-shadow(0 0 6px rgba(234, 208, 146, .6));
+    }
+
+    .game-die.is-hit .game-die-stage { animation: none; }
 }

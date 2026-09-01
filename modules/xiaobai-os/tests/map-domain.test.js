@@ -173,6 +173,25 @@ test('canonical domain edits remain atomic and advance revision once', () => {
     assert.deepEqual(changed, snapshot);
 });
 
+test('canonical player position keeps the actual location visited', () => {
+    const domain = validDomain();
+    const keptVisited = applyMapDomainEdits(domain, [{
+        op: 'upsert-location',
+        location: { ...domain.atlas.locations.find(entry => entry.key === 'hall'), status: 'mentioned' },
+    }]);
+    assert.equal(keptVisited.atlas.locations.find(entry => entry.key === 'hall').status, 'visited');
+
+    const moved = applyMapDomainEdits(keptVisited, [
+        {
+            op: 'upsert-location',
+            location: { ...keptVisited.atlas.locations.find(entry => entry.key === 'street'), status: 'mentioned' },
+        },
+        { op: 'remove-element', sceneKey: 'hall-scene', elementId: 'player-icon' },
+        { op: 'set-actor-position', position: { actorKey: 'player', displayName: 'Player', locationKey: 'street' } },
+    ]);
+    assert.equal(moved.atlas.locations.find(entry => entry.key === 'street').status, 'visited');
+});
+
 test('dependent removals can be ordered freely when their final state is valid', () => {
     const domain = validDomain();
     const removed = applyMapDomainEdits(domain, [
