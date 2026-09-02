@@ -6,6 +6,7 @@ import type {
     XiaobaiOsWriteState,
 } from '../../host/chat-data-store.js';
 import { ensureEconomy, listTransactions, postAction, projectBalances, reverseTransaction } from './ledger.js';
+import { upgradeEconomyLedger } from './migration.js';
 import { validateLedger } from './invariants.js';
 import type {
     EconomyLedgerV2,
@@ -20,6 +21,7 @@ export interface EconomyRepository {
     hasCurrent: () => boolean;
     readCurrent: () => EconomyLedgerV2 | null;
     ensureCurrent: () => Promise<EconomyLedgerV2>;
+    prepareCurrent: () => Promise<void>;
     getPlayerBalance: () => number;
     listCurrentTransactions: (options?: { beforeSequence?: number; limit?: number }) => EconomyTransactionPage;
     postCurrent: (
@@ -50,8 +52,9 @@ function emptyRoot(): XiaobaiOsChatData {
 function readLedger(root: XiaobaiOsChatData | null): EconomyLedgerV2 | null {
     const value = root?.domains.economy;
     if (value === undefined) {return null;}
-    validateLedger(value);
-    return structuredClone(value);
+    const ledger = upgradeEconomyLedger(value) ?? value;
+    validateLedger(ledger);
+    return structuredClone(ledger);
 }
 
 export function createEconomyRepository(
@@ -66,12 +69,38 @@ export function createEconomyRepository(
 
     function ensureCurrent(): Promise<EconomyLedgerV2> {
         return store.mutateCurrent((current) => {
-            const existing = readLedger(current);
-            if (existing) {return { next: current, result: existing };}
+            if (current) {
+                const value = current.domains.economy;
+                if (value !== undefined) {
+                    const upgraded = upgradeEconomyLedger(value);
+                    const ledger = upgraded ?? value;
+                    validateLedger(ledger);
+                    if (!upgraded) {return { next: current, result: structuredClone(ledger) };}
+                    const next = structuredClone(current);
+                    next.domains.economy = upgraded;
+                    return { next, result: structuredClone(upgraded) };
+                }
+            }
             const next = current ? structuredClone(current) : emptyRoot();
             const ledger = ensureEconomy(undefined, ledgerDependencies);
             next.domains.economy = structuredClone(ledger);
             return { next, result: structuredClone(ledger) };
+        });
+    }
+
+    function prepareCurrent(): Promise<void> {
+        return store.mutateCurrent((current) => {
+            if (!current) {return { next: current, result: undefined };}
+            const value = current.domains.economy;
+            if (value === undefined) {return { next: current, result: undefined };}
+            const upgraded = upgradeEconomyLedger(value);
+            if (!upgraded) {
+                validateLedger(value);
+                return { next: current, result: undefined };
+            }
+            const next = structuredClone(current);
+            next.domains.economy = upgraded;
+            return { next, result: undefined };
         });
     }
 
@@ -129,6 +158,7 @@ export function createEconomyRepository(
         hasCurrent: () => readCurrent() !== null,
         readCurrent,
         ensureCurrent,
+        prepareCurrent,
         getPlayerBalance,
         listCurrentTransactions,
         postCurrent,

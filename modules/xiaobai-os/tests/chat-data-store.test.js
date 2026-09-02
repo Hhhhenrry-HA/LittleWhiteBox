@@ -7,7 +7,7 @@ function root(value) {
     return { schemaVersion: 2, apps: {}, domains: { sample: value } };
 }
 
-function createHarness(validators = {}) {
+function createHarness() {
     const identity = { key: 'character:1:chat-a', chatId: 'chat-a' };
     const metadata = {};
     const state = {
@@ -22,7 +22,7 @@ function createHarness(validators = {}) {
         getChatMetadata: current => current?.key === state.identity?.key ? state.metadata : null,
         saveChatMetadata: transaction => state.save(transaction),
         readPersistedXiaobaiOs: () => state.read(),
-    }, validators);
+    });
     return { state, store };
 }
 
@@ -107,18 +107,14 @@ test('confirmation restores the previous root or freezes a third-party conflict'
 
 test('adopting malformed or unreadable server data keeps the conflict frozen', async (t) => {
     t.mock.method(console, 'error', () => undefined);
-    const harness = createHarness({
-        domains: {
-            sample(value) {if (value !== 'before' && value !== 'candidate') {throw new Error('invalid sample');}},
-        },
-    });
+    const harness = createHarness();
     harness.state.persisted = root('before');
     harness.state.metadata.extensions = { LittleWhiteBox: { xiaobaiOs: root('before') } };
     harness.state.save = async () => {
         throw Object.assign(new Error('unknown result'), { code: 'SAVE_UNCONFIRMED', uncertain: true });
     };
     await assert.rejects(harness.store.mutateCurrent(() => ({ next: root('candidate'), result: true })));
-    harness.state.persisted = root('invalid-server');
+    harness.state.persisted = { schemaVersion: 999, apps: {}, domains: {} };
     assert.deepEqual(await harness.store.confirmPending(), { status: 'conflict' });
     assert.deepEqual(await harness.store.adoptServerState(), { status: 'conflict' });
     assert.equal(harness.store.getWriteState(), 'conflict');
@@ -248,36 +244,27 @@ test('metadata effects roll back when installing the candidate root fails', asyn
     assert.deepEqual(target, { legacy: { keep: true } });
 });
 
-test('the root store validates registered branches and preserves unowned optional branches', async () => {
-    const validators = {
-        domains: {
-            sample(value, path) {
-                if (value !== 'valid' && value !== 'next') {throw new Error(`${path}:invalid`);}
-            },
-        },
-    };
-    const { state, store } = createHarness(validators);
+test('the root store treats app data as opaque and preserves unrelated branches', async () => {
+    const { state, store } = createHarness();
     state.metadata.extensions = {
         LittleWhiteBox: {
             xiaobaiOs: {
                 schemaVersion: 2,
                 apps: { futureApp: { untouched: true } },
-                domains: { sample: 'valid', futureDomain: { untouched: true } },
+                domains: { brokenApp: 'not-a-valid-domain', healthyApp: { revision: 1 } },
             },
         },
     };
 
     await store.mutateCurrent(current => {
         const next = structuredClone(current);
-        next.domains.sample = 'next';
+        next.domains.healthyApp = { revision: 2 };
         return { next, result: true };
     });
     assert.deepEqual(store.readCurrent().apps.futureApp, { untouched: true });
-    assert.deepEqual(store.readCurrent().domains.futureDomain, { untouched: true });
-    assert.deepEqual(state.persisted.domains.futureDomain, { untouched: true });
-
-    state.metadata.extensions.LittleWhiteBox.xiaobaiOs.domains.sample = 'invalid';
-    assert.throws(() => store.readCurrent(), /xiaobaiOs\.domains\.sample:invalid/);
+    assert.equal(store.readCurrent().domains.brokenApp, 'not-a-valid-domain');
+    assert.equal(state.persisted.domains.brokenApp, 'not-a-valid-domain');
+    assert.deepEqual(store.readCurrent().domains.healthyApp, { revision: 2 });
 });
 
 test('the root store publishes candidate and terminal write states to transient subscribers', async () => {

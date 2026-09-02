@@ -24,6 +24,12 @@ const WALLET_SOURCE_LABELS: Readonly<Record<string, string>> = Object.freeze({
     bank: '银行',
     shop: '商店',
 });
+const WALLET_TRANSACTION_TITLES: Readonly<Record<string, string>> = Object.freeze({
+    'Game stake escrow': '游戏下注',
+    'Game reserve funding': '游戏奖池补足',
+    'Game payout': '游戏派奖',
+    'Game loss settlement': '游戏输局结算',
+});
 
 interface WalletActivation {
     chatIdentity: string;
@@ -58,11 +64,15 @@ function sourceLabel(transaction: EconomyTransaction): string {
     return WALLET_SOURCE_LABELS[transaction.sourceDomain] || transaction.sourceDomain;
 }
 
+function transactionTitle(transaction: EconomyTransaction): string {
+    return WALLET_TRANSACTION_TITLES[transaction.title] || transaction.title;
+}
+
 function projectTransaction(transaction: EconomyTransaction): WalletTransactionView {
     return {
         id: transaction.id,
         sequence: transaction.sequence,
-        title: transaction.title,
+        title: transactionTitle(transaction),
         note: transaction.note,
         source: sourceLabel(transaction),
         sourceDomain: transaction.sourceDomain,

@@ -259,7 +259,6 @@ function buildRuntimeConfig() {
     const settings = getAssistantSettings();
     const currentPreset = settings.presets?.[settings.currentPresetName] || buildDefaultPreset();
     return {
-        enabled: !!settings.enabled,
         updatedAt: Number(settings.updatedAt) || 0,
         provider: currentPreset.provider || 'openai-compatible',
         workspaceFileName: settings.workspaceFileName || DEFAULT_WORKSPACE_FILE,

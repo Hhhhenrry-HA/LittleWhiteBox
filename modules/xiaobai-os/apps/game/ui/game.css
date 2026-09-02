@@ -330,8 +330,8 @@
 
 /* The hit glow must avoid `transform`: the roll animation owns that property on
    both the shell and the cube, and a Web Animations keyframe outranks CSS. */
-.game-die.is-hit { animation: game-die-hit 900ms ease-out forwards; }
-.game-die.is-hit .game-die-stage { animation: game-die-hit-pop 460ms ease-out; }
+.game-die.is-hit { animation: game-die-hit 520ms ease-out forwards; }
+.game-die.is-hit .game-die-stage { animation: game-die-hit-pop 320ms ease-out; }
 
 .game-reveal-heading { grid-template-columns: 1fr; }
 

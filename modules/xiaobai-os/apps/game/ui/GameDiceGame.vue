@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import type { GameDiceBidFace, GameDiceBidView, GameDiceGameView } from '../types.js';
 import { GAME_DIE_PIPS } from './die-pips.js';
+import { GAME_DIE_STAGGER_MS } from './game-motion.js';
 import GameDie from './GameDie.vue';
 
 const props = defineProps<{
@@ -96,7 +97,7 @@ function submitMinimumRaise(): void {
                         v-for="(die, index) in game.playerDice"
                         :key="index"
                         :value="die"
-                        :delay="index * 85"
+                        :delay="index * GAME_DIE_STAGGER_MS"
                     />
                 </div>
                 <small>一点可代替任意叫面</small>

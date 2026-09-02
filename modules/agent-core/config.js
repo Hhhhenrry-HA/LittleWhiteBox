@@ -308,7 +308,6 @@ export function normalizeAgentSettings(saved = {}, options = {}) {
     const tavilySettings = resolveGlobalTavilySettings(saved, legacyPresetName, currentPresetName);
 
     return {
-        enabled: !!saved.enabled,
         workspaceFileName: normalizeWorkspaceName(saved.workspaceFileName || defaultWorkspaceFileName),
         jsApiPermission: normalizeJsApiPermission(saved.jsApiPermission),
         currentPresetName,

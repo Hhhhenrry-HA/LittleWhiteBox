@@ -1,13 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { validateLedger } from '../domains/economy/invariants.js';
 import { createEconomyRepository } from '../domains/economy/repository.js';
-import { validateShopDomain } from '../domains/shop/invariants.js';
 import { createShopEffectReceipt, projectShopState } from '../domains/shop/timeline.js';
 import { createShopEffectDeliveryQueue } from '../apps/shop/application/effect-delivery-queue.js';
 import { createShopService } from '../apps/shop/application/service.js';
-import { validateShopEconomyConsistency } from '../apps/shop/application/root-protocol.js';
 import { createChatDataStore } from '../host/chat-data-store.js';
 
 function deferred() {
@@ -51,9 +48,6 @@ function createHarness() {
             await state.saveImpl(transaction);
         },
         readPersistedXiaobaiOs: async identity => structuredClone(chats.get(identity.key)?.persisted),
-    }, {
-        domains: { economy: validateLedger, shop: validateShopDomain },
-        root: validateShopEconomyConsistency,
     });
     let clock = 1_000;
     let transactionId = 0;

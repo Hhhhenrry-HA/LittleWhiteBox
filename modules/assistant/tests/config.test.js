@@ -14,13 +14,14 @@ import {
 } from '../../agent-core/settings-repository.js';
 
 test('assistant settings default jsApiPermission to deny', () => {
-    const settings = normalizeAgentSettings({});
+    const settings = normalizeAgentSettings({ enabled: false });
     const config = normalizeAgentConfig({});
 
     assert.equal(AGENT_SETTINGS_CONFIG_VERSION, 1);
     assert.equal(settings.configVersion, 1);
     assert.equal(settings.jsApiPermission, DEFAULT_JSAPI_PERMISSION);
     assert.equal(config.jsApiPermission, DEFAULT_JSAPI_PERMISSION);
+    assert.equal(Object.hasOwn(settings, 'enabled'), false);
 });
 
 test('assistant API defaults use a neutral temperature and an explicit output limit', () => {

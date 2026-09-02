@@ -9,7 +9,6 @@ import { createMapService } from '../apps/map/application/service.js';
 import {
     MAX_MAP_LOCATIONS,
     MAX_SCENE_ELEMENTS,
-    validateMapDomain,
 } from '../domains/map/invariants.js';
 import { createChatDataStore } from '../host/chat-data-store.js';
 
@@ -41,7 +40,7 @@ function createHarness(initialMap = null) {
             persisted = structuredClone(transaction.xiaobaiOs);
         },
         readPersistedXiaobaiOs: async () => structuredClone(persisted),
-    }, { domains: { map: validateMapDomain } });
+    });
     const map = createMapService(store);
     let settings = { autoMaintenance: false };
     const participant = createMapMaintenanceParticipant({ map, readSettings: () => ({ ...settings }) });

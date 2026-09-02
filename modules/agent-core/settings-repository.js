@@ -70,7 +70,6 @@ export function mergeSharedAgentSettings(current = {}, patch = {}, options = {})
     );
     return normalizeAgentSettings({
         ...normalizedCurrent,
-        enabled: typeof patch.enabled === 'boolean' ? patch.enabled : normalizedCurrent.enabled,
         workspaceFileName: patch.workspaceFileName ?? normalizedCurrent.workspaceFileName,
         jsApiPermission: normalizeJsApiPermission(patch.jsApiPermission ?? normalizedCurrent.jsApiPermission),
         tavilyApiKey: patch.tavilyApiKey ?? normalizedCurrent.tavilyApiKey,

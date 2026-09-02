@@ -26,7 +26,6 @@ const flush = () => new Promise(resolve => globalThis.setTimeout(resolve, 0));
 
 function validConfig(provider = 'sillytavern-openai-compatible') {
     return {
-        enabled: true,
         currentPresetName: 'maintenance',
         presets: {
             maintenance: {
@@ -785,10 +784,12 @@ test('capture and Agent configuration failures never call a provider', async () 
     assert.equal(captureHarness.calls.loadConfig, 0);
 
     const configCalls = { open: 0 };
+    const missingModel = validConfig();
+    missingModel.presets.maintenance.modelConfigs['sillytavern-openai-compatible'].model = '';
     const runner = createMaintenanceRunner({
         registry: createMaintenanceRegistry([map.participant]),
         gateway: {
-            loadConfig: async () => ({ ...validConfig(), enabled: false }),
+            loadConfig: async () => missingModel,
             openSession: async () => {configCalls.open += 1; throw new Error('must not open');},
         },
         captureSurface: () => surface(),
@@ -798,4 +799,25 @@ test('capture and Agent configuration failures never call a provider', async () 
     assert.equal(failed.status, 'failed');
     assert.equal(configCalls.open, 0);
     assert.deepEqual(failed.failedParticipantIds, ['map']);
+});
+
+test('legacy disabled Agent settings do not block configured maintenance', async () => {
+    const map = createParticipant('map');
+    let openCount = 0;
+    const runner = createMaintenanceRunner({
+        registry: createMaintenanceRegistry([map.participant]),
+        gateway: {
+            loadConfig: async () => ({ ...validConfig(), enabled: false }),
+            async openSession() {
+                openCount += 1;
+                return { providerConfig: { provider: 'sillytavern-openai-compatible' }, async run() {return { text: 'done' };} };
+            },
+        },
+        captureSurface: () => surface(),
+        isGenerationActive: () => false,
+    });
+
+    const outcome = await runner.runManual('map');
+    assert.equal(outcome.status, 'unchanged');
+    assert.equal(openCount, 1);
 });

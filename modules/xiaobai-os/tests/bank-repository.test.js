@@ -1,10 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { validateBankDomain } from '../domains/bank/invariants.js';
 import { createBankService } from '../apps/bank/application/service.js';
 import { validateBankEconomyConsistency } from '../apps/bank/application/root-protocol.js';
-import { validateLedger } from '../domains/economy/invariants.js';
 import { projectBalances } from '../domains/economy/ledger.js';
 import { createEconomyRepository } from '../domains/economy/repository.js';
 import { createChatDataStore } from '../host/chat-data-store.js';
@@ -36,9 +34,6 @@ function createHarness(randomValues = []) {
             await state.saveImpl(transaction);
         },
         readPersistedXiaobaiOs: async () => structuredClone(chat.persisted),
-    }, {
-        domains: { economy: validateLedger, bank: validateBankDomain },
-        root: validateBankEconomyConsistency,
     });
     let clock = 1_000;
     let transactionId = 0;

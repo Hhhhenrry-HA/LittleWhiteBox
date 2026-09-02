@@ -76,6 +76,7 @@ function createHarness({ economyOpened = true, writeState = 'ready', records = n
     const allRecords = records || view.activities;
     const commands = [];
     const generationListeners = new Set();
+    const dataListeners = new Set();
     let generationActive = false;
     let ensureCalls = 0;
     const record = method => async (input) => {
@@ -129,7 +130,10 @@ function createHarness({ economyOpened = true, writeState = 'ready', records = n
             generationListeners.add(listener);
             return () => generationListeners.delete(listener);
         },
-        subscribeData() {return () => {};},
+        subscribeData(listener) {
+            dataListeners.add(listener);
+            return () => dataListeners.delete(listener);
+        },
     });
     controller.startBackground();
     return {
@@ -142,6 +146,8 @@ function createHarness({ economyOpened = true, writeState = 'ready', records = n
             generationActive = active;
             generationListeners.forEach(listener => listener(active));
         },
+        setView(next) {view = structuredClone(next);},
+        publishData() {dataListeners.forEach(listener => listener({ identityKey: host.identity.key }));},
     };
 }
 
@@ -311,4 +317,23 @@ test('Game publishes main-generation state without invoking a game command', asy
     const pushed = harness.host.posts.findLast(post => post.type === 'game/state').payload.state;
     assert.equal(pushed.generationActive, true);
     assert.deepEqual(harness.commands, []);
+});
+
+test('Game publishes a transient saving candidate before persistence completes', async () => {
+    const harness = createHarness();
+    await activate(harness);
+    harness.setView({
+        ...baseView('saving'),
+        revision: 3,
+        eventId: 'event-3',
+        lockedAmount: 0,
+        activeGame: undefined,
+    });
+
+    harness.publishData();
+
+    const pushed = harness.host.posts.findLast(post => post.type === 'game/state').payload.state;
+    assert.equal(pushed.status, 'saving');
+    assert.equal(pushed.revision, 3);
+    assert.equal(pushed.activeGame, null);
 });

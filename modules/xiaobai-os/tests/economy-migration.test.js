@@ -4,7 +4,7 @@ import test from 'node:test';
 import { validateLedger } from '../domains/economy/invariants.js';
 import { projectBalances } from '../domains/economy/ledger.js';
 import { upgradeEconomyLedger } from '../domains/economy/migration.js';
-import { upgradeXiaobaiOsChatData } from '../host/chat-data-upgrade.js';
+import { createEconomyRepository } from '../domains/economy/repository.js';
 import { createChatDataStore } from '../host/chat-data-store.js';
 
 const EMPTY_PREFIX_HASH = 'sha256:7d0895b5e4a7170fe97ae325c8d441725fd5973b733dc8938469f794c01feee3';
@@ -93,12 +93,9 @@ function createHarness(initialRoot = root()) {
             await state.save(transaction);
         },
         readPersistedXiaobaiOs: async () => structuredClone(state.persisted),
-    }, {
-        domains: { economy: validateLedger },
-    }, {
-        upgradeRoot: upgradeXiaobaiOsChatData,
     });
-    return { state, store };
+    const economy = createEconomyRepository(store);
+    return { economy, state, store };
 }
 
 test('real Economy V1 transactions upgrade to V2 without changing ledger facts', () => {
@@ -135,54 +132,54 @@ test('the V1 converter rejects non-canonical legacy data and ignores current V2'
 });
 
 test('chat data projects legacy Economy immediately and persists one clean upgrade', async () => {
-    const { state, store } = createHarness();
+    const { economy, state } = createHarness();
 
-    const projected = store.readCurrent();
-    assert.equal(projected.domains.economy.schemaVersion, 2);
+    const projected = economy.readCurrent();
+    assert.equal(projected.schemaVersion, 2);
     assert.equal(state.metadata.extensions.LittleWhiteBox.xiaobaiOs.domains.economy.schemaVersion, 1);
 
-    await store.prepareCurrent();
+    await economy.prepareCurrent();
     assert.equal(state.saveCount, 1);
     assert.equal(state.persisted.domains.economy.schemaVersion, 2);
     assert.equal(Object.hasOwn(state.persisted.domains.economy.transactions[0], 'anchor'), false);
     assert.deepEqual(state.persisted.apps.futureApp, { keep: true });
     assert.deepEqual(state.persisted.domains.futureDomain, { keep: true });
 
-    await store.prepareCurrent();
+    await economy.prepareCurrent();
     assert.equal(state.saveCount, 1);
 });
 
 test('a failed upgrade save restores V1 and a later preparation retries cleanly', async () => {
-    const { state, store } = createHarness();
+    const { economy, state, store } = createHarness();
     state.save = async () => {
         throw Object.assign(new Error('save unavailable'), { code: 'SAVE_UNAVAILABLE' });
     };
 
-    await assert.rejects(store.prepareCurrent(), error => error.code === 'SAVE_UNAVAILABLE');
+    await assert.rejects(economy.prepareCurrent(), error => error.code === 'SAVE_UNAVAILABLE');
     assert.equal(store.getWriteState(), 'ready');
     assert.equal(state.metadata.extensions.LittleWhiteBox.xiaobaiOs.domains.economy.schemaVersion, 1);
-    assert.equal(store.readCurrent().domains.economy.schemaVersion, 2);
+    assert.equal(economy.readCurrent().schemaVersion, 2);
 
     state.save = async transaction => {state.persisted = structuredClone(transaction.xiaobaiOs);};
-    await store.prepareCurrent();
+    await economy.prepareCurrent();
     assert.equal(state.persisted.domains.economy.schemaVersion, 2);
 });
 
 test('adopting a valid V1 server root keeps it readable and upgrades it on the next preparation', async () => {
-    const { state, store } = createHarness();
+    const { economy, state, store } = createHarness();
     state.save = async () => {
         throw Object.assign(new Error('unknown result'), { code: 'SAVE_UNCONFIRMED', uncertain: true });
     };
-    await assert.rejects(store.prepareCurrent(), error => error.code === 'SAVE_UNCONFIRMED');
+    await assert.rejects(economy.prepareCurrent(), error => error.code === 'SAVE_UNCONFIRMED');
 
     state.persisted = root(legacyLedger(25));
     assert.deepEqual(await store.confirmPending(), { status: 'conflict' });
     assert.deepEqual(await store.adoptServerState(), { status: 'adopted' });
     assert.equal(store.getWriteState(), 'ready');
-    assert.equal(projectBalances(store.readCurrent().domains.economy).player, 100);
+    assert.equal(projectBalances(economy.readCurrent()).player, 100);
     assert.equal(state.metadata.extensions.LittleWhiteBox.xiaobaiOs.domains.economy.schemaVersion, 1);
 
     state.save = async transaction => {state.persisted = structuredClone(transaction.xiaobaiOs);};
-    await store.prepareCurrent();
+    await economy.prepareCurrent();
     assert.equal(state.persisted.domains.economy.schemaVersion, 2);
 });

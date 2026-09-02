@@ -295,7 +295,7 @@ export function createMaintenanceJobExecutor(
             report(error);
             return failedJobOutcome(job, active.map(run => run.participant.id), 'config-load-failed');
         }
-        if (!config.enabled || !String(providerConfig.model || '').trim()
+        if (!String(providerConfig.model || '').trim()
             || (!isSillyTavernProvider(providerConfig.provider) && !String(providerConfig.apiKey || '').trim())) {
             return failedJobOutcome(job, active.map(run => run.participant.id), 'agent-not-configured');
         }

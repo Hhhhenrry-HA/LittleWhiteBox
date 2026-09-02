@@ -40,7 +40,6 @@ interface PendingAction {
     heading: string;
     summary: string;
     confirmLabel: string;
-    busyLabel: string;
     danger?: boolean;
 }
 
@@ -209,7 +208,6 @@ async function performAction(request: GameWriteRequest, actionId = createActionI
             REQUEST_TIMEOUT_MS,
         ) as { result: GameClientState };
         if (generation !== requestGeneration) {return false;}
-        pending.value = null;
         applyState(response.result);
         if (response.result.activeGame) {page.value = response.result.activeGame.kind;}
         return true;
@@ -232,10 +230,10 @@ async function performAction(request: GameWriteRequest, actionId = createActionI
 function openStart(kind: GameKind, bet: number): void {
     if (writeDisabledReason.value || state.value.activeGame) {return;}
     const copy = kind === 'dice'
-        ? { heading: '确认入席秘骰对决', summary: `托管 ¤ ${bet}，胜出返还下注的 1.8 倍。`, confirmLabel: '确认入席', busyLabel: '正在落座…' }
+        ? { heading: '确认入席秘骰对决', summary: `托管 ¤ ${bet}，胜出返还下注的 1.8 倍。`, confirmLabel: '确认入席' }
         : kind === 'push'
-            ? { heading: '确认揭开第一张牌', summary: '托管 ¤ 50。金币可以累积，炸弹会立即结束本局。', confirmLabel: '确认揭牌', busyLabel: '正在揭牌…' }
-            : { heading: '确认踏上鎏金阶梯', summary: `托管 ¤ ${bet}，首层成功后才可收手。`, confirmLabel: '确认登阶', busyLabel: '正在登阶…' };
+            ? { heading: '确认揭开第一张牌', summary: '托管 ¤ 50。金币可以累积，炸弹会立即结束本局。', confirmLabel: '确认揭牌' }
+            : { heading: '确认踏上鎏金阶梯', summary: `托管 ¤ ${bet}，首层成功后才可收手。`, confirmLabel: '确认登阶' };
     const request: GameWriteRequest = kind === 'dice'
         ? { endpoint: 'game/dice/start', bet }
         : kind === 'push'
@@ -254,7 +252,6 @@ function openChallenge(): void {
         heading: '现在开骰？',
         summary: '双方骰盅将同时揭开，按桌面最终叫牌直接判定输赢。',
         confirmLabel: '确认开骰',
-        busyLabel: '正在开骰…',
         danger: true,
     };
     actionError.value = '';
@@ -272,21 +269,22 @@ function openCashOut(kind: 'push' | 'ladder'): void {
         heading: '现在收手？',
         summary: `本局将结束，并返还 ¤ ${amount}。`,
         confirmLabel: '收手入账',
-        busyLabel: '正在结算…',
     };
     actionError.value = '';
 }
 
-async function confirmPendingAction(): Promise<void> {
+function confirmPendingAction(): void {
     const action = pending.value;
-    if (action) {await performAction(action.request, action.actionId);}
+    if (!action) {return;}
+    // The dialog only confirms intent. Persistence continues without covering
+    // the table, and the transient candidate state starts the playout.
+    pending.value = null;
+    void performAction(action.request, action.actionId);
 }
 
 function closeDialog(): void {
-    if (!actionBusy.value) {
-        pending.value = null;
-        actionError.value = '';
-    }
+    pending.value = null;
+    actionError.value = '';
 }
 
 async function refresh(): Promise<void> {
@@ -355,11 +353,6 @@ onMounted(() => {
         if (message.type === 'game/state') {
             const next = (message.payload as { state: GameClientState }).state;
             if (!actionBusy.value) {requestGeneration += 1;}
-            if (pending.value && (next.revision !== state.value.revision || next.eventId !== state.value.eventId)) {
-                // A new Game revision acknowledges the pending table action.
-                // Drop its modal before a terminal playout can mount beneath it.
-                pending.value = null;
-            }
             actionError.value = '';
             failedAction.value = null;
             applyState(next);
@@ -491,9 +484,6 @@ onBeforeUnmount(() => {
             :heading="pending.heading"
             :summary="pending.summary"
             :confirm-label="pending.confirmLabel"
-            :busy-label="pending.busyLabel"
-            :busy="actionBusy"
-            :error="actionError"
             :danger="pending.danger"
             @cancel="closeDialog"
             @confirm="confirmPendingAction"

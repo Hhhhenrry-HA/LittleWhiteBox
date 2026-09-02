@@ -12,28 +12,63 @@ interface ActiveRuntime {
     generation: number;
 }
 
+export interface XiaobaiOsRuntimeServiceRegistration {
+    id: string;
+    runtime: XiaobaiOsAppRuntime;
+}
+
+export interface XiaobaiOsRuntimeFailure {
+    runtimeId: string;
+    operation: keyof XiaobaiOsAppRuntime;
+    error: unknown;
+}
+
+export interface XiaobaiOsAppRuntimeRegistryOptions {
+    onError?: (failure: XiaobaiOsRuntimeFailure) => void;
+}
+
 function invokeAll(
-    runtimes: readonly XiaobaiOsAppRuntime[],
+    runtimes: readonly XiaobaiOsRuntimeServiceRegistration[],
+    operationName: keyof XiaobaiOsAppRuntime,
     operation: (runtime: XiaobaiOsAppRuntime) => void,
+    onError: (failure: XiaobaiOsRuntimeFailure) => void,
 ): void {
-    for (const runtime of runtimes) {
-        operation(runtime);
+    for (const { id, runtime } of runtimes) {
+        try {
+            operation(runtime);
+        } catch (error) {
+            onError({ runtimeId: id, operation: operationName, error });
+        }
     }
 }
 
 export function createAppRuntimeRegistry(
     registrations: readonly XiaobaiOsAppRuntimeRegistration[],
-    services: readonly XiaobaiOsAppRuntime[] = [],
+    services: readonly XiaobaiOsRuntimeServiceRegistration[] = [],
+    {
+        onError = ({ runtimeId, operation, error }) => {
+            console.error(`[LittleWhiteBox] 小白 OS 运行单元失败 (${runtimeId}.${operation})`, error);
+        },
+    }: XiaobaiOsAppRuntimeRegistryOptions = {},
 ): XiaobaiOsAppRuntimeRouter {
     const byId = new Map<string, XiaobaiOsAppRuntime>();
+    const appRuntimes: XiaobaiOsRuntimeServiceRegistration[] = [];
     const descriptors = Object.freeze(registrations.map(({ descriptor, runtime }) => {
         if (!descriptor.id || byId.has(descriptor.id)) {
             throw new Error(`duplicate_or_empty_xiaobai_os_app_id:${descriptor.id}`);
         }
         byId.set(descriptor.id, runtime);
+        appRuntimes.push({ id: `app:${descriptor.id}`, runtime });
         return Object.freeze({ ...descriptor });
     }));
-    const runtimes = [...new Set([...byId.values(), ...services])];
+    const runtimeIds = new Set(appRuntimes.map(({ id }) => id));
+    for (const service of services) {
+        if (!service.id || runtimeIds.has(service.id)) {
+            throw new Error(`duplicate_or_empty_xiaobai_os_runtime_id:${service.id}`);
+        }
+        runtimeIds.add(service.id);
+    }
+    const runtimes = [...appRuntimes, ...services];
     let active: ActiveRuntime | null = null;
     let generation = 0;
 
@@ -69,14 +104,23 @@ export function createAppRuntimeRegistry(
         if (active?.runtime === runtime) {
             active = null;
         }
-        runtime.deactivate?.(reason);
+        try {
+            runtime.deactivate?.(reason);
+        } catch (error) {
+            onError({ runtimeId: `app:${appId}`, operation: 'deactivate', error });
+        }
     }
 
     function cancelForeground(reason: string): void {
         generation += 1;
         const current = active;
         active = null;
-        current?.runtime.cancelForeground?.(reason);
+        if (!current) {return;}
+        try {
+            current.runtime.cancelForeground?.(reason);
+        } catch (error) {
+            onError({ runtimeId: `app:${current.appId}`, operation: 'cancelForeground', error });
+        }
     }
 
     return Object.freeze({
@@ -90,22 +134,22 @@ export function createAppRuntimeRegistry(
         cancelAll(reason: string) {
             generation += 1;
             active = null;
-            invokeAll(runtimes, (runtime) => runtime.cancelAll?.(reason));
+            invokeAll(runtimes, 'cancelAll', runtime => runtime.cancelAll?.(reason), onError);
         },
         handleWindowOpened() {
-            invokeAll(runtimes, (runtime) => runtime.handleWindowOpened?.());
+            invokeAll(runtimes, 'handleWindowOpened', runtime => runtime.handleWindowOpened?.(), onError);
         },
         handleWindowClosed(reason: string) {
-            invokeAll(runtimes, (runtime) => runtime.handleWindowClosed?.(reason));
+            invokeAll(runtimes, 'handleWindowClosed', runtime => runtime.handleWindowClosed?.(reason), onError);
         },
         handleChatChanged() {
-            invokeAll(runtimes, (runtime) => runtime.handleChatChanged?.());
+            invokeAll(runtimes, 'handleChatChanged', runtime => runtime.handleChatChanged?.(), onError);
         },
         startBackground() {
-            invokeAll(runtimes, (runtime) => runtime.startBackground?.());
+            invokeAll(runtimes, 'startBackground', runtime => runtime.startBackground?.(), onError);
         },
         stopBackground() {
-            invokeAll(runtimes, (runtime) => runtime.stopBackground?.());
+            invokeAll(runtimes, 'stopBackground', runtime => runtime.stopBackground?.(), onError);
         },
     });
 }

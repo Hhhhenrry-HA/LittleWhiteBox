@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createMapService } from '../apps/map/application/service.js';
-import { validateMapDomain } from '../domains/map/invariants.js';
 import { createEmptyMapDomain } from '../domains/map/state.js';
 import { createChatDataStore } from '../host/chat-data-store.js';
 
@@ -49,7 +48,7 @@ function createHarness(initialRoot = null) {
             await state.saveImpl(transaction);
         },
         readPersistedXiaobaiOs: async () => structuredClone(chat.persisted),
-    }, { domains: { map: validateMapDomain } });
+    });
 
     return { chat, map: createMapService(store), state, store };
 }

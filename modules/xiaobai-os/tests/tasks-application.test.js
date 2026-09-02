@@ -4,10 +4,8 @@ import test from 'node:test';
 import { createTaskIdFactory } from '../apps/tasks/application/ids.js';
 import { createTasksService } from '../apps/tasks/application/service.js';
 import { validateTaskEconomyConsistency } from '../apps/tasks/application/root-protocol.js';
-import { validateLedger } from '../domains/economy/invariants.js';
 import { projectBalances } from '../domains/economy/ledger.js';
 import { createEconomyRepository } from '../domains/economy/repository.js';
-import { validateTaskDomain } from '../domains/tasks/invariants.js';
 import { createChatDataStore } from '../host/chat-data-store.js';
 
 const allowCommit = () => true;
@@ -70,9 +68,6 @@ function createHarness() {
             await state.saveImpl(transaction);
         },
         readPersistedXiaobaiOs: async () => structuredClone(chat.persisted),
-    }, {
-        domains: { economy: validateLedger, tasks: validateTaskDomain },
-        root: validateTaskEconomyConsistency,
     });
     let clock = 1_000;
     const now = () => ++clock;

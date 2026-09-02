@@ -138,7 +138,7 @@ export function createTaskGenerationRequests({
     function assertConfigured(value: unknown): void {
         const config = normalizeAgentSettings((value || {}) as UnknownRecord);
         const provider = resolveActiveProviderConfig(config);
-        if (!config.enabled || !String(provider.model || '').trim()
+        if (!String(provider.model || '').trim()
             || (!isSillyTavernProvider(provider.provider) && !String(provider.apiKey || '').trim())) {
             throw new Error('tasks_agent_not_configured');
         }

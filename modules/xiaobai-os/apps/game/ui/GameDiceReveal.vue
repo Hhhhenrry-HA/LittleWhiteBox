@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import type { GameDiceRecordDetailView, GameDieFace, GameRecordView } from '../types.js';
 import GameDie from './GameDie.vue';
+import { GAME_DIE_STAGGER_MS, gameDiceRevealTimeline } from './game-motion.js';
 
 const props = defineProps<{
     record: GameRecordView;
@@ -13,11 +14,6 @@ const emit = defineEmits<{ done: [] }>();
 /** Each stage only ever adds information, so skipping ahead is always safe. */
 type RevealStage = 'rolling' | 'counting' | 'verdict' | 'settled';
 const STAGE_ORDER: readonly RevealStage[] = ['rolling', 'counting', 'verdict', 'settled'];
-const DIE_STAGGER_MS = 85;
-const ROLL_SETTLE_MS = 1500;
-const COUNT_MS = 700;
-const VERDICT_MS = 620;
-
 const stage = ref<RevealStage>('rolling');
 const timers: number[] = [];
 
@@ -37,12 +33,17 @@ function skipToEnd(): void {
     stage.value = 'settled';
 }
 
+function prefersReducedMotion(): boolean {
+    return typeof window !== 'undefined'
+        && typeof window.matchMedia === 'function'
+        && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
 /** A 1 stands in for any called face, so it counts as a hit too. */
 function isHit(die: GameDieFace): boolean {
     return die === 1 || die === props.detail.finalBid.face;
 }
 
-const dealerStagger = computed(() => props.detail.dealerDice.length * DIE_STAGGER_MS);
 const bidHolds = computed(() => props.detail.matchingDiceCount >= props.detail.finalBid.count);
 const challengerLabel = computed(() => (props.detail.challenger === 'player' ? '你' : '庄家'));
 const bidderLabel = computed(() => (props.detail.finalBid.by === 'player' ? '你' : '庄家'));
@@ -50,14 +51,17 @@ const playerOutcomeLabel = computed(() => (props.record.outcome === 'player-win'
 const signedNet = computed(() => `${props.record.net > 0 ? '+' : ''}${props.record.net} 小白币`);
 
 onMounted(() => {
-    if (typeof window === 'undefined') {
+    if (typeof window === 'undefined' || prefersReducedMotion()) {
         stage.value = 'settled';
         return;
     }
-    const countAt = dealerStagger.value + ROLL_SETTLE_MS;
-    timers.push(window.setTimeout(() => {stage.value = 'counting';}, countAt));
-    timers.push(window.setTimeout(() => {stage.value = 'verdict';}, countAt + COUNT_MS));
-    timers.push(window.setTimeout(() => {stage.value = 'settled';}, countAt + COUNT_MS + VERDICT_MS));
+    const timeline = gameDiceRevealTimeline(Math.max(
+        props.detail.dealerDice.length,
+        props.detail.playerDice.length,
+    ));
+    timers.push(window.setTimeout(() => {stage.value = 'counting';}, timeline.countAt));
+    timers.push(window.setTimeout(() => {stage.value = 'verdict';}, timeline.verdictAt));
+    timers.push(window.setTimeout(() => {stage.value = 'settled';}, timeline.settledAt));
 });
 
 onUnmounted(clearTimers);
@@ -82,7 +86,7 @@ onUnmounted(clearTimers);
                         v-for="(die, index) in detail.dealerDice"
                         :key="`dealer:${index}`"
                         :value="die"
-                        :delay="index * DIE_STAGGER_MS"
+                        :delay="index * GAME_DIE_STAGGER_MS"
                         :highlight="reachedStage('counting') && isHit(die)"
                     />
                 </div>
@@ -95,7 +99,7 @@ onUnmounted(clearTimers);
                         v-for="(die, index) in detail.playerDice"
                         :key="`player:${index}`"
                         :value="die"
-                        :delay="index * DIE_STAGGER_MS"
+                        :delay="index * GAME_DIE_STAGGER_MS"
                         :highlight="reachedStage('counting') && isHit(die)"
                     />
                 </div>

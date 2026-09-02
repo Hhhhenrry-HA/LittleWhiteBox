@@ -38,28 +38,17 @@ import { createShopEffectDeliveryQueue } from '../apps/shop/application/effect-d
 import { createShopController } from '../apps/shop/host/controller.js';
 import { createShopMessageReceipts } from '../apps/shop/host/message-receipts.js';
 import { createShopPromptRuntime } from '../apps/shop/host/prompt-runtime.js';
-import { validateBankDomain } from '../domains/bank/invariants.js';
 import { createBankService } from '../apps/bank/application/service.js';
-import { validateBankEconomyConsistency } from '../apps/bank/application/root-protocol.js';
-import { validateGameDomain } from '../domains/game/invariants.js';
 import { createGameService } from '../apps/game/application/service.js';
-import { validateGameEconomyConsistency } from '../apps/game/application/root-protocol.js';
 import { createShopService } from '../apps/shop/application/service.js';
-import { readShopDomain, validateShopEconomyConsistency } from '../apps/shop/application/root-protocol.js';
-import { validateShopDomain } from '../domains/shop/invariants.js';
-import { validateTaskDomain } from '../domains/tasks/invariants.js';
-import { validateTaskEconomyConsistency } from '../apps/tasks/application/root-protocol.js';
+import { readShopDomain } from '../apps/shop/application/root-protocol.js';
 import { WALLET_APP_DESCRIPTOR } from '../apps/wallet/descriptor.js';
 import { createWalletController } from '../apps/wallet/host/controller.js';
-import { validateLedger } from '../domains/economy/invariants.js';
 import { createEconomyRepository } from '../domains/economy/repository.js';
-import { validateMapDomain } from '../domains/map/invariants.js';
 import { buildMapPromptBlock } from '../domains/map/projection.js';
 import { createAppRuntimeRegistry } from './app-runtime-registry.js';
 import { createXiaobaiOsAgentGateway } from './agent/gateway.js';
-import { upgradeXiaobaiOsChatData } from './chat-data-upgrade.js';
 import { createChatDataStore } from './chat-data-store.js';
-import { validateFourthWallChatState } from './legacy-migration.js';
 import { createDefaultXiaobaiOsSettings } from './settings-normalization.js';
 import { createXiaobaiOsLifecycle, type XiaobaiOsLifecycle } from './lifecycle.js';
 import { createMainGenerationRuntime } from './main-generation-runtime.js';
@@ -84,44 +73,22 @@ const TASKS_PROMPT_KEY = 'xiaobai_os_tasks_context';
 const hostStylesheet = `${extensionFolderPath}/modules/xiaobai-os/host.css`;
 const frameSource = `${extensionFolderPath}/modules/xiaobai-os/shell/xiaobai-os.html`;
 
-function validateProductionRoot(value: unknown, path: string): void {
-    validateShopEconomyConsistency(value, path);
-    validateBankEconomyConsistency(value, path);
-    validateGameEconomyConsistency(value, path);
-    validateTaskEconomyConsistency(value, path);
-}
-
 export function createProductionLifecycle(
     settingsRepository: XiaobaiOsSettingsRepository,
 ): XiaobaiOsLifecycle {
     const lifecycleEvents = createModuleEvents('xiaobaiOs');
-    const chatStore = createChatDataStore(
-        createSillyTavernChatAdapter(),
-        {
-            apps: { fourthWall: validateFourthWallChatState },
-            domains: {
-                economy: validateLedger,
-                shop: validateShopDomain,
-                bank: validateBankDomain,
-                game: validateGameDomain,
-                map: validateMapDomain,
-                tasks: validateTaskDomain,
-            },
-            root: validateProductionRoot,
-        },
-        { upgradeRoot: upgradeXiaobaiOsChatData },
-    );
-    const prepareCurrentChatData = () => {
+    const chatStore = createChatDataStore(createSillyTavernChatAdapter());
+    const economy = createEconomyRepository(chatStore);
+    const prepareCurrentEconomy = () => {
         if (!getSillyTavernChatIdentity()) {return;}
-        void chatStore.prepareCurrent().catch((error) => {
-            console.error('[LittleWhiteBox] 小白 OS 聊天数据升级失败', error);
+        void economy.prepareCurrent().catch((error) => {
+            console.error('[LittleWhiteBox] 小白 OS 钱包数据升级失败', error);
         });
     };
-    const chatDataPreparationRuntime = {
-        startBackground: prepareCurrentChatData,
-        handleChatChanged: prepareCurrentChatData,
+    const economyDataPreparationRuntime = {
+        startBackground: prepareCurrentEconomy,
+        handleChatChanged: prepareCurrentEconomy,
     };
-    const economy = createEconomyRepository(chatStore);
     const map = createMapService(chatStore);
     const tasks = createTasksService(chatStore, {
         getPlayerDisplayName(identityKey) {
@@ -481,15 +448,15 @@ export function createProductionLifecycle(
         { descriptor: MAP_APP_DESCRIPTOR, runtime: mapRuntime },
         { descriptor: TASKS_APP_DESCRIPTOR, runtime: taskRuntime },
     ], [
-        chatDataPreparationRuntime,
-        mainGenerationRuntime,
-        shopPromptRuntime,
-        shopDeliveryLifecycle,
-        mapPromptRuntime,
-        mapSettingsRuntime,
-        taskPromptRuntime,
-        taskSettingsRuntime,
-        maintenanceLifecycle,
+        { id: 'service:economy-data-preparation', runtime: economyDataPreparationRuntime },
+        { id: 'service:main-generation', runtime: mainGenerationRuntime },
+        { id: 'service:shop-prompt', runtime: shopPromptRuntime },
+        { id: 'service:shop-delivery', runtime: shopDeliveryLifecycle },
+        { id: 'service:map-prompt', runtime: mapPromptRuntime },
+        { id: 'service:map-settings', runtime: mapSettingsRuntime },
+        { id: 'service:tasks-prompt', runtime: taskPromptRuntime },
+        { id: 'service:tasks-settings', runtime: taskSettingsRuntime },
+        { id: 'service:maintenance', runtime: maintenanceLifecycle },
     ]);
     return createXiaobaiOsLifecycle({
         stylesheetHref: hostStylesheet,

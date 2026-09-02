@@ -24,19 +24,6 @@ export interface XiaobaiOsChatAdapter {
     readPersistedXiaobaiOs: (identity: XiaobaiOsChatIdentityInput) => Promise<unknown>;
 }
 
-export type XiaobaiOsBranchValidator = (value: unknown, path: string) => void;
-
-export interface XiaobaiOsChatDataValidators {
-    apps?: Readonly<Record<string, XiaobaiOsBranchValidator>>;
-    domains?: Readonly<Record<string, XiaobaiOsBranchValidator>>;
-    root?: XiaobaiOsBranchValidator;
-}
-
-export interface XiaobaiOsChatDataStoreOptions {
-    /** Returns a current root only when the supplied root is a supported historical format. */
-    upgradeRoot?: (value: unknown) => XiaobaiOsChatData | null;
-}
-
 export interface RootMutationMetadataEffect {
     apply: () => void;
     rollback: () => void;
@@ -69,7 +56,6 @@ export interface AdoptServerResult {
 
 export interface XiaobaiOsChatDataStore {
     readCurrent: () => XiaobaiOsChatData | null;
-    prepareCurrent: () => Promise<void>;
     mutateCurrent: <T>(
         command: (
             current: XiaobaiOsChatData | null,
@@ -140,28 +126,10 @@ function isUnconfirmedSave(error: unknown): boolean {
     return isRecord(error) && (error.code === 'SAVE_UNCONFIRMED' || error.uncertain === true);
 }
 
-function validateBranches(
-    branches: Record<string, unknown>,
-    validators: Readonly<Record<string, XiaobaiOsBranchValidator>> | undefined,
-    path: string,
-): void {
-    for (const [branchId, validate] of Object.entries(validators || {})) {
-        if (Object.hasOwn(branches, branchId)) {
-            validate(branches[branchId], `${path}.${branchId}`);
-        }
-    }
-}
-
-function assertValidRoot(
-    value: unknown,
-    validators: XiaobaiOsChatDataValidators,
-): asserts value is XiaobaiOsChatData {
+function assertValidRoot(value: unknown): asserts value is XiaobaiOsChatData {
     if (!validateXiaobaiOsChatData(value)) {
         throw new XiaobaiOsDataError('INVALID_CURRENT_DATA', 'Xiaobai OS chat data is invalid');
     }
-    validateBranches(value.apps, validators.apps, 'xiaobaiOs.apps');
-    validateBranches(value.domains, validators.domains, 'xiaobaiOs.domains');
-    validators.root?.(value, 'xiaobaiOs');
 }
 
 function createWriteQueue() {
@@ -238,8 +206,6 @@ function installOptionalRoot(metadata: UnknownRecord, value: unknown): void {
 
 export function createChatDataStore(
     adapter: XiaobaiOsChatAdapter,
-    validators: XiaobaiOsChatDataValidators = {},
-    options: XiaobaiOsChatDataStoreOptions = {},
 ): XiaobaiOsChatDataStore {
     if (
         typeof adapter?.getChatIdentity !== 'function' ||
@@ -317,16 +283,8 @@ export function createChatDataStore(
     }
 
     function parseRoot(value: unknown): XiaobaiOsChatData {
-        try {
-            assertValidRoot(value, validators);
-            return cloneXiaobaiOsData(value);
-        } catch (currentError) {
-            if (!options.upgradeRoot) {throw currentError;}
-            const upgraded = options.upgradeRoot(cloneXiaobaiOsData(value));
-            if (upgraded === null) {throw currentError;}
-            assertValidRoot(upgraded, validators);
-            return cloneXiaobaiOsData(upgraded);
-        }
+        assertValidRoot(value);
+        return cloneXiaobaiOsData(value);
     }
 
     function readRoot(metadata: UnknownRecord): XiaobaiOsChatData | null {
@@ -379,7 +337,7 @@ export function createChatDataStore(
                 throw new TypeError('root mutation must return a complete mutation plan');
             }
             const candidate = plan.next === null ? undefined : cloneXiaobaiOsData(plan.next);
-            if (candidate !== undefined) {assertValidRoot(candidate, validators);}
+            if (candidate !== undefined) {assertValidRoot(candidate);}
             await options.beforeCommit?.();
             assertStillCurrent(captured);
 
@@ -436,10 +394,6 @@ export function createChatDataStore(
         });
     }
 
-    function prepareCurrent(): Promise<void> {
-        return mutateCurrent(current => ({ next: current, result: undefined }));
-    }
-
     function confirmPending(): Promise<ConfirmResult> {
         let requestedIdentity: XiaobaiOsChatIdentityInput;
         try {
@@ -462,7 +416,7 @@ export function createChatDataStore(
             }
             assertStillCurrent(captured);
             if (jsonValuesEqual(persisted, pending.candidate)) {
-                if (pending.candidate !== undefined) {assertValidRoot(pending.candidate, validators);}
+                if (pending.candidate !== undefined) {assertValidRoot(pending.candidate);}
                 installOptionalRoot(captured.metadata, cloneXiaobaiOsData(pending.candidate));
                 pendingSaves.delete(requestedKey);
                 setWriteState(requestedKey, 'ready');
@@ -521,7 +475,6 @@ export function createChatDataStore(
 
     return Object.freeze({
         readCurrent,
-        prepareCurrent,
         mutateCurrent,
         confirmPending,
         adoptServerState,

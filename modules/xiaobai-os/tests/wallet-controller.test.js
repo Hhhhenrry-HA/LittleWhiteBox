@@ -96,6 +96,23 @@ function ledgerWithTransactions(count) {
     return ledger;
 }
 
+function ledgerWithGameStake() {
+    let id = 0;
+    const dependencies = { now: () => 3_000 + id, createId: () => `game-fixture-${++id}` };
+    const opening = ensureEconomy(undefined, dependencies);
+    return postTransaction(opening, {
+        idempotencyKey: 'game:historical:stake',
+        actionId: 'game-ui:historical:1',
+        fromAccountId: 'player',
+        toAccountId: 'escrow:game:historical',
+        amount: 10,
+        kind: 'game_stake',
+        title: 'Game stake escrow',
+        sourceDomain: 'game',
+        sourceId: 'historical',
+    }, dependencies).ledger;
+}
+
 test('wallet activation opens exactly once and an existing wallet is immediately ready', async () => {
     const { controller, host } = createHarness();
     const state = await controller.activate({
@@ -128,6 +145,17 @@ test('wallet activation opens exactly once and an existing wallet is immediately
     assert.equal(existing.host.saveCount, 0);
     await nextTask();
     assert.equal(existing.host.posts.length, 0);
+});
+
+test('wallet localizes a canonical historical Game transaction without rewriting the ledger', () => {
+    const ledger = ledgerWithGameStake();
+    const { controller, host } = createHarness({ ledger });
+    const state = controller.activate({
+        post: (type, payload) => {host.posts.push({ type, payload }); return true;},
+    });
+
+    assert.equal(state.transactions[0].title, '游戏下注');
+    assert.equal(ledger.transactions.find(transaction => transaction.sourceDomain === 'game').title, 'Game stake escrow');
 });
 
 test('an unconfirmed opening still opens the wallet with its frozen candidate and can be confirmed', async () => {

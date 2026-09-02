@@ -1,15 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { validateGameDomain } from '../domains/game/invariants.js';
 import { toPostInputs } from '../apps/game/application/action-policy.js';
 import { createGameService } from '../apps/game/application/service.js';
 import {
-    startGameStakeLeg,
     readGameDomain,
     validateGameEconomyConsistency,
 } from '../apps/game/application/root-protocol.js';
-import { validateLedger } from '../domains/economy/invariants.js';
 import { ensureEconomy, postAction, projectBalances } from '../domains/economy/ledger.js';
 import { createEconomyRepository } from '../domains/economy/repository.js';
 import { appendGameEvent, createEmptyGameDomain, getGameCasToken } from '../domains/game/timeline.js';
@@ -61,9 +58,6 @@ function createHarness(randomValues = [], options = {}) {
             await state.saveImpl(transaction);
         },
         readPersistedXiaobaiOs: async () => structuredClone(chat.persisted),
-    }, {
-        domains: { game: validateGameDomain, economy: validateLedger },
-        root: validateGameEconomyConsistency,
     });
     let clock = 1_000;
     const now = () => ++clock;
@@ -126,6 +120,15 @@ test('read-only Game view uses Economy balance without creating a Game domain', 
     assert.equal(harness.state.saveCount, 0);
 });
 
+test('corrupt Game data is contained to Game and does not block Economy consumers', async () => {
+    const harness = createHarness();
+    await openEconomy(harness);
+    harness.chat.metadata.extensions.LittleWhiteBox.xiaobaiOs.domains.game = 'corrupt-game-data';
+
+    assert.equal(harness.economy.getPlayerBalance(), 100);
+    assert.throws(() => harness.game.readCurrent(), error => error.code === 'game_invalid_domain');
+});
+
 test('Game economy replay derives a Push stake from its frozen start result', () => {
     const gameId = 'push-frozen-stake';
     const actionId = 'push-frozen-stake:start';
@@ -152,7 +155,14 @@ test('Game economy replay derives a Push stake from its frozen start result', ()
     const opening = ensureEconomy(undefined, { now: () => 1_000, createId: () => 'tx-opening' });
     const ledger = postAction(
         opening,
-        toPostInputs([startGameStakeLeg(gameId, 75)], actionId, gameId),
+        toPostInputs([{
+            idempotencyKey: `game:${gameId}:stake`,
+            fromAccountId: 'player',
+            toAccountId: `escrow:game:${gameId}`,
+            amount: 75,
+            kind: 'game_stake',
+            title: 'Game stake escrow',
+        }], actionId, gameId),
         { now: () => 1_001, createId: () => 'tx-stake' },
     ).ledger;
 

@@ -5,7 +5,6 @@ import { createTaskGenerationRequests } from '../apps/tasks/generation/request.j
 
 function validConfig() {
     return {
-        enabled: true,
         currentPresetName: 'tasks',
         presets: {
             tasks: {
@@ -122,6 +121,17 @@ test('board generation uses one tool-free provider round and commits only after 
     assert.deepEqual(state.requests[0].messages.map(message => message.role), ['system', 'system', 'user', 'user']);
     assert.equal(state.captureCount, 4);
     assert.deepEqual(state.reports, []);
+});
+
+test('a legacy disabled flag cannot block a configured Agent request', async () => {
+    const { requests, state } = createHarness({
+        loadConfig: () => ({ ...validConfig(), enabled: false }),
+    });
+    const result = await requests.refreshBoard();
+
+    assert.equal(result.changed, true);
+    assert.equal(state.openSessionCount, 1);
+    assert.equal(state.requests.length, 1);
 });
 
 test('a context change at the final commit guard cancels the board result without a write or error report', async () => {

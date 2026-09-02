@@ -2,6 +2,7 @@
 import { onMounted, onUnmounted, ref, watch } from 'vue';
 import type { GameDieFace } from '../types.js';
 import { GAME_DIE_PIPS } from './die-pips.js';
+import { GAME_DIE_ROLL_MS } from './game-motion.js';
 
 const props = withDefaults(defineProps<{
     value: GameDieFace;
@@ -28,8 +29,6 @@ const FACE_UP: Readonly<Record<GameDieFace, readonly [number, number]>> = {
     5: [-90, 0],
     6: [180, 0],
 };
-
-const ROLL_MS = 1100;
 
 function cubeTransform(x: number, y: number): string {
     // The roll is fully three-dimensional, but the result face settles square
@@ -81,7 +80,7 @@ function roll(): void {
         { transform: cubeTransform(x - spinX, y - spinY), easing: 'cubic-bezier(.11,.58,.32,1)' },
         { transform: cubeTransform(x + 13, y + 9), offset: 0.84, easing: 'cubic-bezier(.36,0,.4,1)' },
         { transform: cubeTransform(x, y) },
-    ], { duration: ROLL_MS, delay: props.delay, fill: 'both' });
+    ], { duration: GAME_DIE_ROLL_MS, delay: props.delay, fill: 'both' });
 
     hopAnimation = shell.value?.animate([
         { transform: 'translateY(-16px) scale(1.06)', easing: 'cubic-bezier(.4,0,.7,1)' },
@@ -90,7 +89,7 @@ function roll(): void {
         { transform: 'translateY(0) scale(1)', offset: 0.82, easing: 'cubic-bezier(.2,0,.4,1)' },
         { transform: 'translateY(-1.5px) scale(1)', offset: 0.9 },
         { transform: 'translateY(0) scale(1)' },
-    ], { duration: ROLL_MS, delay: props.delay, fill: 'both' }) ?? null;
+    ], { duration: GAME_DIE_ROLL_MS, delay: props.delay, fill: 'both' }) ?? null;
 }
 
 onMounted(roll);
