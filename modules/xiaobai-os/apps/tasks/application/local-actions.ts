@@ -3,7 +3,6 @@ import {
     collectTaskIdentityIds,
     normalizeTaskActionId,
     normalizeTaskCandidates,
-    sameTaskValue,
 } from '../../../domains/tasks/invariants.js';
 import { acceptTaskListing, publishTask, replaceTaskBoard } from '../../../domains/tasks/commands/create.js';
 import { assignTaskCandidate, cancelTask, replaceTaskCandidates } from '../../../domains/tasks/commands/recruitment.js';
@@ -75,11 +74,6 @@ function normalizeCandidateDrafts(
         ...structuredClone(draft),
         candidateId: createCandidateId(index),
     })));
-}
-
-function candidateFacts(candidate: TaskCandidate): TaskCandidateDraft {
-    const { candidateId: _candidateId, ...draft } = candidate;
-    return draft;
 }
 
 export function createTaskLocalActions(context: TaskApplicationContext) {
@@ -163,12 +157,6 @@ export function createTaskLocalActions(context: TaskApplicationContext) {
                 candidates = normalizeCandidateDrafts(input.candidates, index => (
                     existing.candidates[index]?.candidateId ?? `task-candidate-replay-${index}`
                 ));
-                if (!sameTaskValue(candidates.map(candidateFacts), existing.candidates.map(candidateFacts))) {
-                    candidates = candidates.map((candidate, index) => ({
-                        ...candidate,
-                        candidateId: existing.candidates[index]?.candidateId ?? candidate.candidateId,
-                    }));
-                }
             } else {
                 const occupied = collectTaskIdentityIds(prepared.domain);
                 occupied.add(actionId);

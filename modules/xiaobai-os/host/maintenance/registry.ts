@@ -32,6 +32,7 @@ export interface MaintenanceSession {
     readonly tools: readonly MaintenanceFunctionDeclaration[];
     executeTool: (name: string, args: unknown) => unknown | Promise<unknown>;
     canCommit: () => boolean | Promise<boolean>;
+    /** Reports domain-owned semantic tool failures as well as staged changes. */
     getResult: () => MaintenanceParticipantResult;
     commit: (beforeCommit: MaintenanceCommitGuard) => unknown | Promise<unknown>;
     invalidate?: (reason: string) => void;

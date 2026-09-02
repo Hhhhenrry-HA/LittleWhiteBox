@@ -173,6 +173,16 @@ test('board compiler extracts surrounded JSON, repairs trailing commas once, and
     assert.deepEqual([...result.warnings].sort(), ['tasks_item_fields_ignored', 'tasks_root_fields_ignored']);
 });
 
+test('board compiler canonicalizes whitespace after either specific-timing colon', () => {
+    for (const timing of ['特定时机： 黄昏', '特定时机:  黄昏']) {
+        const result = compileTaskBoardResponse(JSON.stringify({ tasks: [
+            listing('禁忌', { posture: '深介入', timing }),
+        ] }));
+        assert.equal(result.ok, true);
+        assert.equal(result.data.listings[0].timing, '特定时机：黄昏');
+    }
+});
+
 test('board compiler preserves valid siblings and reports the bad direction item', () => {
     const tasks = completeBoard();
     tasks[2] = { ...tasks[2], reward: 300 };

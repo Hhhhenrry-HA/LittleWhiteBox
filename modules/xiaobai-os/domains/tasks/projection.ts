@@ -118,7 +118,7 @@ function applyTaskEvent(records: Map<string, TaskRecord>, event: TaskEvent): voi
         current.status = 'completed';
         current.resultSummary = event.resultSummary;
     } else {
-        if (current.status !== 'active' || !current.issuer) {invalid(`event.${event.eventId}.fail`);}
+        if (current.status !== 'active') {invalid(`event.${event.eventId}.fail`);}
         current.status = 'failed';
         current.resultSummary = event.resultSummary;
     }

@@ -128,6 +128,19 @@ export function normalizeTaskDisplayName(value: unknown): string {
     return normalizeTaskText(value, 120, { required: true, singleLine: true, field: 'displayName' });
 }
 
+/** Canonicalizes the user-facing timing vocabulary shared by generation and persistence. */
+export function normalizeTaskTiming(value: unknown): TaskTiming {
+    const timing = normalizeTaskText(value, 40, {
+        required: true,
+        singleLine: true,
+        field: 'listing.timing',
+    });
+    if (timing === '现在就行' || timing === '任意时候') {return timing;}
+    const specific = /^特定时机\s*[:：]\s*(.+)$/u.exec(timing)?.[1]?.trim();
+    if (!specific) {badInput('listing.timing');}
+    return `特定时机：${specific}`;
+}
+
 function optionalText(record: Record<string, unknown>, key: string, maxLength: number, singleLine = false): string | undefined {
     if (!Object.hasOwn(record, key)) {return undefined;}
     const text = normalizeTaskText(record[key], maxLength, { singleLine, field: key });
@@ -150,13 +163,7 @@ export function normalizeTaskListing(value: unknown): TaskListing {
         required: true, singleLine: true, field: 'listing.posture',
     });
     if (!POSTURES.has(posture)) {badInput('listing.posture');}
-    const normalizedTiming = normalizeTaskText(record.timing, 40, {
-        required: true, singleLine: true, field: 'listing.timing',
-    });
-    const timing = normalizedTiming.startsWith('特定时机:')
-        ? `特定时机：${normalizedTiming.slice('特定时机:'.length)}`
-        : normalizedTiming;
-    if (timing !== '现在就行' && timing !== '任意时候' && !/^特定时机：\S/u.test(timing)) {badInput('listing.timing');}
+    const timing = normalizeTaskTiming(record.timing);
     if (posture === '易介入' && timing.startsWith('特定时机：')) {badInput('listing.timing');}
     const reward = normalizeReward(record.reward);
     const directionRange = TASK_DIRECTION_REWARD_RANGES[tags[0] as keyof typeof TASK_DIRECTION_REWARD_RANGES];

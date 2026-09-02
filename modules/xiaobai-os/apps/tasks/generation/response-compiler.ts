@@ -10,8 +10,8 @@ import {
     type TaskBoardGrade,
     type TaskListingDraft,
     type TaskPosture,
-    type TaskTiming,
 } from '../../../domains/tasks/types.js';
+import { normalizeTaskTiming } from '../../../domains/tasks/invariants.js';
 import type {
     BoardCompileResult,
     CandidateCompileResult,
@@ -256,14 +256,9 @@ function compileBoardItem(value: unknown, warnings: string[]): TaskListingDraft 
         throw new CompileFailure('grade_reward_mismatch');
     }
 
-    const normalizedTiming = normalizeSingleLine(value.timing, 40);
-    const timing = (normalizedTiming.startsWith('特定时机:')
-        ? `特定时机：${normalizedTiming.slice('特定时机:'.length)}`
-        : normalizedTiming) as TaskTiming;
-    const specificTiming = timing.startsWith('特定时机：') && timing.slice('特定时机：'.length).trim().length > 0;
-    if (timing !== '现在就行' && timing !== '任意时候' && !specificTiming) {
-        throw new CompileFailure('timing_invalid');
-    }
+    let timing;
+    try {timing = normalizeTaskTiming(value.timing);} catch {throw new CompileFailure('timing_invalid');}
+    const specificTiming = timing.startsWith('特定时机：');
     if (posture === '易介入' && specificTiming) {throw new CompileFailure('timing_invalid');}
 
     const requirements = normalizeSingleLine(value.requirements, 64, false);
