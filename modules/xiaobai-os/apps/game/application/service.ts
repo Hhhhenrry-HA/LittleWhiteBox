@@ -5,7 +5,7 @@ import type {
 } from '../../../host/chat-data-store.js';
 import type { XiaobaiOsChatData } from '../../../types.js';
 import { postAction, projectBalances } from '../../../domains/economy/ledger.js';
-import type { EconomyLedgerV1 } from '../../../domains/economy/types.js';
+import type { EconomyLedgerV2 } from '../../../domains/economy/types.js';
 import { gameRandomSource } from '../../../domains/game/random.js';
 import {
     appendGameEvent,
@@ -97,7 +97,7 @@ interface GameServiceDependencies {
 
 export interface PreparedRoot {
     root: XiaobaiOsChatData;
-    ledger: EconomyLedgerV1;
+    ledger: EconomyLedgerV2;
     game: GameDomainV1;
     state: GameState;
 }

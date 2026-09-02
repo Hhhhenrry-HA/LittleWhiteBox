@@ -1,5 +1,5 @@
 import { projectBalances } from '../../../domains/economy/ledger.js';
-import { EconomyError, type EconomyLedgerV1 } from '../../../domains/economy/types.js';
+import { EconomyError, type EconomyLedgerV2 } from '../../../domains/economy/types.js';
 import {
     throwBankError,
     type BankAction,
@@ -99,7 +99,7 @@ export function createActivities(
     });
 }
 
-export function assertPlayerCanFund(ledger: EconomyLedgerV1, settlements: readonly BankPosition[], amount: number): void {
+export function assertPlayerCanFund(ledger: EconomyLedgerV2, settlements: readonly BankPosition[], amount: number): void {
     const balance = projectBalances(ledger).player || 0;
     const available = settlements.reduce((total, position) => total + payoutFor(position, false), balance);
     if (!Number.isSafeInteger(available) || available < amount) {

@@ -1,7 +1,7 @@
 import type { XiaobaiOsChatData } from '../../../types.js';
 import { validateLedger } from '../../../domains/economy/invariants.js';
 import { projectBalances } from '../../../domains/economy/ledger.js';
-import type { EconomyLedgerV1 } from '../../../domains/economy/types.js';
+import type { EconomyLedgerV2 } from '../../../domains/economy/types.js';
 import { getShopContract } from '../../../domains/shop/catalog.js';
 import { validateShopDomain } from '../../../domains/shop/invariants.js';
 import type { ShopDomainV2 } from '../../../domains/shop/types.js';
@@ -10,7 +10,7 @@ export function emptyShopRoot(): XiaobaiOsChatData {
     return { schemaVersion: 2, apps: {}, domains: {} };
 }
 
-export function readEconomyLedger(root: XiaobaiOsChatData | null): EconomyLedgerV1 | null {
+export function readEconomyLedger(root: XiaobaiOsChatData | null): EconomyLedgerV2 | null {
     const value = root?.domains.economy;
     if (value === undefined) {return null;}
     validateLedger(value);

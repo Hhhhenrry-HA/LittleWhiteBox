@@ -1,5 +1,5 @@
 import { extension_settings, getContext } from '../../../../../../extensions.js';
-import { default_user_avatar, getRequestHeaders, saveSettings as saveSillyTavernSettings } from '../../../../../../../script.js';
+import { default_user_avatar, getRequestHeaders, saveSettingsDebounced } from '../../../../../../../script.js';
 import { EXT_ID } from '../../../core/constants.js';
 import type { XiaobaiOsChatIdentity, XiaobaiOsChatIdentityInput } from '../types.js';
 import type {
@@ -190,26 +190,6 @@ async function readPersistedChat(
     return persisted as PersistedChatHeader[];
 }
 
-async function readPersistedSettings(): Promise<unknown> {
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), CHAT_READBACK_TIMEOUT_MS);
-    try {
-        const response = await fetch('/api/settings/get', {
-            method: 'POST',
-            headers: getRequestHeaders(),
-            body: JSON.stringify({}),
-            cache: 'no-cache',
-            signal: controller.signal,
-        });
-        if (!response.ok) {
-            throw new Error(`设置读回失败（HTTP ${response.status}）`);
-        }
-        return await response.json();
-    } finally {
-        window.clearTimeout(timeout);
-    }
-}
-
 function resolveCharacterAvatar(context: SillyTavernContext): string {
     const characterId =
         context.characterId === null || context.characterId === undefined ? '' : String(context.characterId);
@@ -325,32 +305,8 @@ export function createSillyTavernSettingsAdapter(): XiaobaiOsSettingsAdapter {
             settingsRoot[EXT_ID] ||= {};
             return settingsRoot[EXT_ID];
         },
-        async saveSettings() {
-            const expected = structuredClone(settingsRoot[EXT_ID]?.xiaobaiOs);
-            let saveError: unknown;
-            try {
-                await waitForHostSave(saveSillyTavernSettings);
-            } catch (error) {
-                saveError = error;
-            }
-            try {
-                const payload = await readPersistedSettings();
-                const settings = isRecord(payload) && typeof payload.settings === 'string' ? payload.settings : '';
-                const persisted: unknown = settings ? JSON.parse(settings) : null;
-                const persistedSettings =
-                    isRecord(persisted) && isRecord(persisted.extension_settings) ? persisted.extension_settings : null;
-                const persistedExtension =
-                    persistedSettings && isRecord(persistedSettings[EXT_ID]) ? persistedSettings[EXT_ID] : null;
-                if (!jsonValuesEqual(persistedExtension?.xiaobaiOs, expected)) {
-                    throw new Error('服务端设置不包含本次小白 OS 修改');
-                }
-            } catch (cause) {
-                throw createSaveError('SAVE_UNCONFIRMED', '无法确认小白 OS 设置已经保存', {
-                    cause,
-                    saveError,
-                    uncertain: true,
-                });
-            }
+        saveSettings() {
+            saveSettingsDebounced();
         },
     };
 }

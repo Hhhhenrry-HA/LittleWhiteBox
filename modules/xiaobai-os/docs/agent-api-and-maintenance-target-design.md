@@ -17,8 +17,8 @@
 | 外部依赖 | SillyTavern `MESSAGE_SENT`与聊天上下文、`agent-core`、`AssistantStorage`、根 chat data store |
 | 注册入口 | `production-composition.ts`注册系统 APP、Agent gateway、maintenance runner 和领域 participant；shell 注册桌面组件 |
 | 删除路径 | 删除系统 APP与 host 注册，四次元壁/Map/Tasks 改回各自显式依赖；不得留下 Fourth Wall 转发弹窗 |
-| 兼容对象 | 保留当前共享 Agent 配置格式、上游真实 Fourth Wall 设置迁移及已发布 OS settings V1/V2→V3 升级；旧 Map/Tasks `enabled`只在升级入口拒绝或移除，不进入运行时 |
-| 最少测试 | 设置读写冲突、User 后单次触发、swipe/regenerate 不触发、关闭时零请求、切聊/关开关使迟到结果失效、领域提交隔离 |
+| 兼容对象 | 保留当前共享 Agent 配置格式与上游真实 Fourth Wall 设置迁移；用户点名保留的 OS `enabled`及 APP 偏好在无版本归一化时原值保留，旧根版本标记和旧 Map/Tasks `enabled`不进入现行设置 |
+| 最少测试 | 共享 Agent 配置冲突、OS 偏好持久化、User 后单次触发、swipe/regenerate 不触发、关闭时零请求、切聊/关开关使迟到结果失效、领域提交隔离 |
 
 ## 3. 终态结构
 
@@ -266,7 +266,7 @@ Map/Tasks 是否向主 RP 投影当前状态，由各 APP 自己的 prompt runti
 
 ## 11. 数据、迁移与删除
 
-OS 扩展设置当前包含 Fourth Wall 设置与`map.autoMaintenance`、`tasks.autoMaintenance`，不包含 Map/Tasks enabled 或 Agent 凭据。`prepare()`在升级边界把冻结的 settings V1 和已发布 settings V2 一次性转换到 V3，并移除旧式 Map/Tasks `enabled`字段；转换后 validator 和运行时只认当前模型，不保留双读兼容壳。未来增加必填 Tasks 设置时必须再提升 schema 并提供一次性升级。
+OS 扩展设置当前包含总开关、Fourth Wall 设置与`map.autoMaintenance`、`tasks.autoMaintenance`，不包含 Map/Tasks enabled 或 Agent 凭据。它是普通 SillyTavern 用户偏好：内存修改后调用宿主`saveSettingsDebounced()`，不做额外`/api/settings/get`读回确认，也不建立 OS 根 settings schema。`prepare()`只把入口数据投影成当前形状并保留现有`enabled`和有效 APP 偏好；Fourth Wall、Map、Tasks 各自补默认值，旧根版本标记和旧 Map/Tasks `enabled`不再写回。未来增加 APP 设置时由该 APP 的 normalizer 负责，不能提升整个 OS 版本或让无关 APP 阻断总开关。
 
 移除这套能力时：
 

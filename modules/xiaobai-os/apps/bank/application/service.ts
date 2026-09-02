@@ -5,7 +5,7 @@ import type {
 } from '../../../host/chat-data-store.js';
 import type { XiaobaiOsChatData } from '../../../types.js';
 import { postAction, projectBalances } from '../../../domains/economy/ledger.js';
-import type { EconomyLedgerV1 } from '../../../domains/economy/types.js';
+import type { EconomyLedgerV2 } from '../../../domains/economy/types.js';
 import { bankRandomSource } from '../../../domains/bank/random.js';
 import { appendBankEvent, createEmptyBankDomain, replayBankEvents } from '../../../domains/bank/timeline.js';
 import {
@@ -86,7 +86,7 @@ interface BankServiceDependencies {
 
 export interface PreparedBankRoot {
     root: XiaobaiOsChatData;
-    ledger: EconomyLedgerV1;
+    ledger: EconomyLedgerV2;
     domain: BankDomainV1;
     state: BankState;
     assistantTurn: number;

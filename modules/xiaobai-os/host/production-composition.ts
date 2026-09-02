@@ -57,11 +57,10 @@ import { validateMapDomain } from '../domains/map/invariants.js';
 import { buildMapPromptBlock } from '../domains/map/projection.js';
 import { createAppRuntimeRegistry } from './app-runtime-registry.js';
 import { createXiaobaiOsAgentGateway } from './agent/gateway.js';
+import { upgradeXiaobaiOsChatData } from './chat-data-upgrade.js';
 import { createChatDataStore } from './chat-data-store.js';
-import {
-    createDefaultXiaobaiOsSettings,
-    validateFourthWallChatState,
-} from './legacy-migration.js';
+import { validateFourthWallChatState } from './legacy-migration.js';
+import { createDefaultXiaobaiOsSettings } from './settings-normalization.js';
 import { createXiaobaiOsLifecycle, type XiaobaiOsLifecycle } from './lifecycle.js';
 import { createMainGenerationRuntime } from './main-generation-runtime.js';
 import { createMaintenanceRegistry } from './maintenance/registry.js';
@@ -96,18 +95,32 @@ export function createProductionLifecycle(
     settingsRepository: XiaobaiOsSettingsRepository,
 ): XiaobaiOsLifecycle {
     const lifecycleEvents = createModuleEvents('xiaobaiOs');
-    const chatStore = createChatDataStore(createSillyTavernChatAdapter(), {
-        apps: { fourthWall: validateFourthWallChatState },
-        domains: {
-            economy: validateLedger,
-            shop: validateShopDomain,
-            bank: validateBankDomain,
-            game: validateGameDomain,
-            map: validateMapDomain,
-            tasks: validateTaskDomain,
+    const chatStore = createChatDataStore(
+        createSillyTavernChatAdapter(),
+        {
+            apps: { fourthWall: validateFourthWallChatState },
+            domains: {
+                economy: validateLedger,
+                shop: validateShopDomain,
+                bank: validateBankDomain,
+                game: validateGameDomain,
+                map: validateMapDomain,
+                tasks: validateTaskDomain,
+            },
+            root: validateProductionRoot,
         },
-        root: validateProductionRoot,
-    });
+        { upgradeRoot: upgradeXiaobaiOsChatData },
+    );
+    const prepareCurrentChatData = () => {
+        if (!getSillyTavernChatIdentity()) {return;}
+        void chatStore.prepareCurrent().catch((error) => {
+            console.error('[LittleWhiteBox] 小白 OS 聊天数据升级失败', error);
+        });
+    };
+    const chatDataPreparationRuntime = {
+        startBackground: prepareCurrentChatData,
+        handleChatChanged: prepareCurrentChatData,
+    };
     const economy = createEconomyRepository(chatStore);
     const map = createMapService(chatStore);
     const tasks = createTasksService(chatStore, {
@@ -468,6 +481,7 @@ export function createProductionLifecycle(
         { descriptor: MAP_APP_DESCRIPTOR, runtime: mapRuntime },
         { descriptor: TASKS_APP_DESCRIPTOR, runtime: taskRuntime },
     ], [
+        chatDataPreparationRuntime,
         mainGenerationRuntime,
         shopPromptRuntime,
         shopDeliveryLifecycle,

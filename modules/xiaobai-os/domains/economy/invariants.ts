@@ -4,7 +4,7 @@ import {
     OPENING_GRANT_AMOUNT,
     OPENING_GRANT_IDEMPOTENCY_KEY,
     EconomyError,
-    type EconomyLedgerV1,
+    type EconomyLedgerV2,
     type EconomyTransaction,
 } from './types.js';
 
@@ -66,8 +66,8 @@ function assertOpeningGrant(transaction: EconomyTransaction): void {
     }
 }
 
-export function validateLedger(value: unknown): asserts value is EconomyLedgerV1 {
-    const ledger = exactRecord(value, ['schemaVersion', 'transactions'], 'economy ledger') as unknown as Partial<EconomyLedgerV1>;
+export function validateLedger(value: unknown): asserts value is EconomyLedgerV2 {
+    const ledger = exactRecord(value, ['schemaVersion', 'transactions'], 'economy ledger') as unknown as Partial<EconomyLedgerV2>;
     if (ledger.schemaVersion !== ECONOMY_SCHEMA_VERSION) {
         throw new EconomyError('economy_unsupported_version', 'unsupported economy schema version');
     }

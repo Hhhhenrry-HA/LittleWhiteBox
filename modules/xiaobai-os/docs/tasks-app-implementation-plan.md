@@ -394,7 +394,7 @@ activate 和每个状态写成功都返回新的完整`TasksPresentation`（历�
 
 已执行：
 
-1. settings schema 升级到下一版本并在`prepare()`提供一次性转换，加入`apps.tasks:{autoMaintenance:false}`；升级后 validator 和运行时只认新模型，不保留缺字段双读。
+1. Tasks 设置 normalizer 提供`apps.tasks:{autoMaintenance:false}`默认值；OS 根设置不因新增 APP 提升版本，也不保留缺字段双读。
 2. settings repository 只增加类型化`setTasksAutoMaintenance`命令；不存在 Tasks enabled 字段或命令。
 3. production composition 一次性静态注册 Tasks domain validator、Task/Economy root validator、service、participant、prompt runtime、settings runtime、controller 和 descriptor。settings runtime 只在关闭自动维护时立即 invalidate 自动 job，不控制 APP 可见性。
 4. maintenance registry 从`[map]`变为`[map,tasks]`，不增加业务分支。

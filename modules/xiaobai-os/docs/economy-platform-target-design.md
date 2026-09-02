@@ -11,20 +11,20 @@ Economy 为普通小白 OS 提供一套小而可靠的资金事实：开户、�
 | 项目 | 结论 |
 | --- | --- |
 | 功能所有者 | `domains/economy`拥有资金规则；`repository.ts`接入根 store |
-| 唯一事实来源 | `EconomyLedgerV1.transactions` |
+| 唯一事实来源 | `EconomyLedgerV2.transactions` |
 | 持久态 | 不可变交易 |
 | 临时态 | 根写队列、保存中/未确认状态、余额和分页投影 |
 | 外部依赖 | `XiaobaiOsChatDataStore`、时间与 ID 生成器 |
 | 注册入口 | production composition 的 domain validator 与 Economy repository |
 | 删除路径 | 下线资金消费者，删除目录/注册，清理`domains.economy` |
-| 兼容对象 | 当前 OS 根格式与真实上游迁移 fixture；不兼容测试线旧 anchor schema |
+| 兼容对象 | 用户明确保留的已发布 Economy V1 anchor 账本；仅在 chat-data 升级边界一次性转换 |
 | 最少测试 | 账本不变量、幂等/冲正、根保存失败、跨领域原子资金 |
 
 ## 3. 持久格式
 
 ```ts
-interface EconomyLedgerV1 {
-    schemaVersion: 1;
+interface EconomyLedgerV2 {
+    schemaVersion: 2;
     transactions: EconomyTransaction[];
 }
 
@@ -55,12 +55,14 @@ interface EconomyTransaction {
 3. 玩家账户不得透支。
 4. 同一 action 的多条资金腿连续出现，不能被其他 action 穿插。
 5. 同一 idempotencyKey 重放必须与原意图完全相同；不同意图报冲突。
-6. 开户 action 固定为`economy:opening-grant:v1`且只能出现一次，赠送 100 小白币；action、source 与金额共同构成不可修改的 V1 创世事实。
+6. 开户 action 固定为`economy:opening-grant:v1`且只能出现一次，赠送 100 小白币；action、source 与金额共同构成不可修改的创世事实。
 7. reversal 是一笔方向相反的新交易；被冲正交易、来源和金额可验证，开户赠礼不可冲正。
 
 余额只是对所有资金腿的投影。
 
-100 小白币不是“当前开户活动”或可调整常量。直接修改它会使所有既有 V1 账本在加载时失效；若未来需要改变新账户的创世规则，必须先定义明确的新账本版本/升级边界，不能让 V1 validator 用新金额重判历史。
+100 小白币不是“当前开户活动”或可调整常量。直接修改它会使所有既有账本在加载时失效；若未来需要改变新账户的创世规则，必须先定义明确的新账本版本/升级边界，不能让当前 validator 用新金额重判历史。
+
+已发布的 Economy V1 每条流水带剧情`anchor`。V2 删除该错误耦合；统一 chat-data 入口严格验证真实 V1 格式、移除 anchor 并保存为 V2。转换失败保留原值且允许重试，成功后运行时和各 APP 不再读取 V1。
 
 ## 5. 跨领域原子提交
 

@@ -1,4 +1,4 @@
-import { createDefaultXiaobaiOsSettings } from './host/legacy-migration.js';
+import { createDefaultXiaobaiOsSettings } from './host/settings-normalization.js';
 import type { XiaobaiOsLifecycle } from './host/lifecycle.js';
 import { createProductionLifecycle } from './host/production-composition.js';
 import { createSettingsRepository } from './host/settings-repository.js';

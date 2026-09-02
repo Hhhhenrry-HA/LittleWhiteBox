@@ -8,7 +8,7 @@ import type {
 import { ensureEconomy, listTransactions, postAction, projectBalances, reverseTransaction } from './ledger.js';
 import { validateLedger } from './invariants.js';
 import type {
-    EconomyLedgerV1,
+    EconomyLedgerV2,
     EconomyPostActionResult,
     EconomyPostResult,
     EconomyTransactionPage,
@@ -18,8 +18,8 @@ import type {
 
 export interface EconomyRepository {
     hasCurrent: () => boolean;
-    readCurrent: () => EconomyLedgerV1 | null;
-    ensureCurrent: () => Promise<EconomyLedgerV1>;
+    readCurrent: () => EconomyLedgerV2 | null;
+    ensureCurrent: () => Promise<EconomyLedgerV2>;
     getPlayerBalance: () => number;
     listCurrentTransactions: (options?: { beforeSequence?: number; limit?: number }) => EconomyTransactionPage;
     postCurrent: (
@@ -47,7 +47,7 @@ function emptyRoot(): XiaobaiOsChatData {
     return { schemaVersion: 2, apps: {}, domains: {} };
 }
 
-function readLedger(root: XiaobaiOsChatData | null): EconomyLedgerV1 | null {
+function readLedger(root: XiaobaiOsChatData | null): EconomyLedgerV2 | null {
     const value = root?.domains.economy;
     if (value === undefined) {return null;}
     validateLedger(value);
@@ -60,11 +60,11 @@ export function createEconomyRepository(
 ): EconomyRepository {
     const ledgerDependencies = { now, ...(createId ? { createId } : {}) };
 
-    function readCurrent(): EconomyLedgerV1 | null {
+    function readCurrent(): EconomyLedgerV2 | null {
         return readLedger(store.readCurrent());
     }
 
-    function ensureCurrent(): Promise<EconomyLedgerV1> {
+    function ensureCurrent(): Promise<EconomyLedgerV2> {
         return store.mutateCurrent((current) => {
             const existing = readLedger(current);
             if (existing) {return { next: current, result: existing };}

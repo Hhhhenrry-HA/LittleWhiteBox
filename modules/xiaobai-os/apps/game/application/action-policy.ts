@@ -1,5 +1,5 @@
 import { projectBalances } from '../../../domains/economy/ledger.js';
-import { EconomyError, type EconomyLedgerV1, type PostTransactionInput } from '../../../domains/economy/types.js';
+import { EconomyError, type EconomyLedgerV2, type PostTransactionInput } from '../../../domains/economy/types.js';
 import {
     throwGameError,
     type GameAction,
@@ -120,7 +120,7 @@ export function requireActiveGame(
     return active;
 }
 
-export function assertPlayerFunds(ledger: EconomyLedgerV1, amount: number): void {
+export function assertPlayerFunds(ledger: EconomyLedgerV2, amount: number): void {
     if ((projectBalances(ledger).player || 0) < amount) {
         throw new EconomyError('economy_insufficient_funds', 'player cannot be overdrawn');
     }

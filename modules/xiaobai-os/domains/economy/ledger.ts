@@ -5,7 +5,7 @@ import {
     OPENING_GRANT_AMOUNT,
     OPENING_GRANT_IDEMPOTENCY_KEY,
     EconomyError,
-    type EconomyLedgerV1,
+    type EconomyLedgerV2,
     type EconomyPostActionResult,
     type EconomyPostResult,
     type EconomyTransaction,
@@ -56,14 +56,14 @@ function sameInput(transaction: EconomyTransaction, input: PostTransactionInput)
 }
 
 export function ensureEconomy(
-    ledger: EconomyLedgerV1 | undefined,
+    ledger: EconomyLedgerV2 | undefined,
     { now = Date.now, createId = defaultCreateId }: LedgerDependencies = {},
-): EconomyLedgerV1 {
+): EconomyLedgerV2 {
     if (ledger) {
         validateLedger(ledger);
         return structuredClone(ledger);
     }
-    const created: EconomyLedgerV1 = {
+    const created: EconomyLedgerV2 = {
         schemaVersion: ECONOMY_SCHEMA_VERSION,
         transactions: [{
             id: createId(),
@@ -86,7 +86,7 @@ export function ensureEconomy(
 }
 
 export function postTransaction(
-    ledger: EconomyLedgerV1,
+    ledger: EconomyLedgerV2,
     input: PostTransactionInput,
     { now = Date.now, createId = defaultCreateId }: LedgerDependencies = {},
 ): EconomyPostResult {
@@ -111,7 +111,7 @@ export function postTransaction(
 }
 
 export function postAction(
-    ledger: EconomyLedgerV1,
+    ledger: EconomyLedgerV2,
     inputs: readonly PostTransactionInput[],
     dependencies: LedgerDependencies = {},
 ): EconomyPostActionResult {
@@ -173,7 +173,7 @@ export function postAction(
 }
 
 export function reverseTransaction(
-    ledger: EconomyLedgerV1,
+    ledger: EconomyLedgerV2,
     input: ReverseTransactionInput,
     dependencies: LedgerDependencies = {},
 ): EconomyPostResult {
@@ -201,7 +201,7 @@ export function reverseTransaction(
     }, dependencies);
 }
 
-export function projectBalances(ledger: EconomyLedgerV1): Readonly<Record<string, number>> {
+export function projectBalances(ledger: EconomyLedgerV2): Readonly<Record<string, number>> {
     validateLedger(ledger);
     const balances: Record<string, number> = {};
     for (const transaction of ledger.transactions) {
@@ -212,7 +212,7 @@ export function projectBalances(ledger: EconomyLedgerV1): Readonly<Record<string
 }
 
 export function listTransactions(
-    ledger: EconomyLedgerV1,
+    ledger: EconomyLedgerV2,
     { beforeSequence = Number.POSITIVE_INFINITY, limit = 18 }: { beforeSequence?: number; limit?: number } = {},
 ): EconomyTransactionPage {
     validateLedger(ledger);

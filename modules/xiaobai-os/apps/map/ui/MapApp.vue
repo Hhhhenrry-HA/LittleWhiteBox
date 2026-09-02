@@ -233,9 +233,6 @@ function readableError(error: unknown, action: MapRequestAction): string {
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes('聊天已切换')) {return '聊天已切换，请重新打开地图。';}
     if (message.includes('map_revision_conflict')) {return '地图已被另一项操作更新，请重新读取后再试。';}
-    if (message.includes('无法确认小白 OS 设置已经保存')) {
-        return '自动维护已按当前选择运行，但服务端保存结果未确认。';
-    }
     if (message === 'host_request_timeout') {
         return action === 'maintain' || action === 'rebuild'
             ? '等待 AI 处理超时；后台结果仍可能稍后送达，请勿立即重复操作。'

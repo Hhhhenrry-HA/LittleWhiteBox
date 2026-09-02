@@ -1,7 +1,7 @@
 import type { XiaobaiOsChatData } from '../../../types.js';
 import { validateLedger } from '../../../domains/economy/invariants.js';
 import { projectBalances } from '../../../domains/economy/ledger.js';
-import type { EconomyLedgerV1, PostTransactionInput } from '../../../domains/economy/types.js';
+import type { EconomyLedgerV2, PostTransactionInput } from '../../../domains/economy/types.js';
 import { createEmptyTaskDomain, validateTaskDomain } from '../../../domains/tasks/invariants.js';
 import { replayTaskEvents, visitProjectedTaskEvents } from '../../../domains/tasks/projection.js';
 import { TaskError, type TaskDomainV1, type TaskEvent, type TaskRecord } from '../../../domains/tasks/types.js';
@@ -13,7 +13,7 @@ const TASK_COUNTERPARTY_PREFIX = 'counterparty:task:';
 export interface PreparedTaskRoot {
     root: XiaobaiOsChatData;
     domain: TaskDomainV1;
-    ledger: EconomyLedgerV1;
+    ledger: EconomyLedgerV2;
 }
 
 function inconsistent(detail: string): never {
@@ -31,7 +31,7 @@ export function readTaskDomain(root: XiaobaiOsChatData | null): TaskDomainV1 | n
     return structuredClone(value);
 }
 
-export function readTaskEconomyLedger(root: XiaobaiOsChatData | null): EconomyLedgerV1 | null {
+export function readTaskEconomyLedger(root: XiaobaiOsChatData | null): EconomyLedgerV2 | null {
     const value = root?.domains.economy;
     if (value === undefined) {return null;}
     validateLedger(value);
@@ -114,7 +114,7 @@ function expectedTransactions(domain: TaskDomainV1): PostTransactionInput[] {
 }
 
 function isTaskTransaction(
-    transaction: EconomyLedgerV1['transactions'][number],
+    transaction: EconomyLedgerV2['transactions'][number],
     actionIds: ReadonlySet<string>,
 ): boolean {
     return transaction.sourceDomain === TASK_SOURCE_DOMAIN
@@ -127,7 +127,7 @@ function isTaskTransaction(
 }
 
 function sameTransaction(
-    actual: EconomyLedgerV1['transactions'][number],
+    actual: EconomyLedgerV2['transactions'][number],
     expected: PostTransactionInput,
 ): boolean {
     return actual.idempotencyKey === expected.idempotencyKey
@@ -175,7 +175,7 @@ export function validateTaskEconomyConsistency(value: unknown, path = 'xiaobaiOs
 export function installPreparedTaskRoot(
     prepared: PreparedTaskRoot,
     domain: TaskDomainV1,
-    ledger: EconomyLedgerV1,
+    ledger: EconomyLedgerV2,
 ): XiaobaiOsChatData {
     prepared.root.domains.tasks = structuredClone(domain);
     prepared.root.domains.economy = structuredClone(ledger);

@@ -1,7 +1,7 @@
 import type { XiaobaiOsChatData } from '../../../types.js';
 import { validateLedger } from '../../../domains/economy/invariants.js';
 import { projectBalances } from '../../../domains/economy/ledger.js';
-import type { EconomyLedgerV1, PostTransactionInput } from '../../../domains/economy/types.js';
+import type { EconomyLedgerV2, PostTransactionInput } from '../../../domains/economy/types.js';
 import { validateBankDomain } from '../../../domains/bank/invariants.js';
 import { replayBankEvents } from '../../../domains/bank/timeline.js';
 import {
@@ -19,7 +19,7 @@ export function emptyBankRoot(): XiaobaiOsChatData {
     return { schemaVersion: 2, apps: {}, domains: {} };
 }
 
-export function readEconomyLedger(root: XiaobaiOsChatData | null): EconomyLedgerV1 | null {
+export function readEconomyLedger(root: XiaobaiOsChatData | null): EconomyLedgerV2 | null {
     const value = root?.domains.economy;
     if (value === undefined) {return null;}
     validateLedger(value);
@@ -101,7 +101,7 @@ export function buildBankTransactions(event: BankEvent): PostTransactionInput[] 
 }
 
 function isBankRelatedTransaction(
-    transaction: EconomyLedgerV1['transactions'][number],
+    transaction: EconomyLedgerV2['transactions'][number],
     bankActionIds: ReadonlySet<string>,
 ): boolean {
     return transaction.sourceDomain === BANK_SOURCE_DOMAIN
@@ -113,7 +113,7 @@ function isBankRelatedTransaction(
         || transaction.toAccountId.startsWith(BANK_ESCROW_PREFIX);
 }
 
-function sameLeg(transaction: EconomyLedgerV1['transactions'][number], expected: PostTransactionInput): boolean {
+function sameLeg(transaction: EconomyLedgerV2['transactions'][number], expected: PostTransactionInput): boolean {
     return transaction.idempotencyKey === expected.idempotencyKey
         && transaction.actionId === expected.actionId
         && transaction.fromAccountId === expected.fromAccountId

@@ -71,7 +71,6 @@ OS 总开关通过`modules/xiaobai-os/index.ts`导出的窄命令写唯一 setti
 
 ```ts
 interface XiaobaiOsSettings {
-    schemaVersion: 3;
     enabled: boolean;
     apps: {
         fourthWall: FourthWallGlobalSettings;
@@ -90,7 +89,7 @@ interface XiaobaiOsChatData {
         fourthWall?: FourthWallData;
     };
     domains: {
-        economy?: EconomyLedgerV1;
+        economy?: EconomyLedgerV2;
         bank?: BankDomainV1;
         game?: GameDomainV1;
         shop?: ShopDomainV2;
@@ -102,7 +101,7 @@ interface XiaobaiOsChatData {
 
 Task 事件额外保存当时的`observedAssistantCount`，即动作边界看到的非 User、非 system Assistant 消息总数；离场 NPC 任务只用它派生自上次任务事件以来的非负经过量。它不标识消息，不产生删除回滚，生命周期随 Task 事件链。
 
-Agent 配置、运行队列、请求状态、页面路由、缩放、表单草稿和模型原始响应均不进入聊天数据。运行时只认当前数据模型；上游真实 Fourth Wall 格式与已发布 OS settings V1 只在 migration 入口一次性转换，旧式 V2 的`map.enabled`也在`prepare()`移除，运行时不留兼容分支。
+Agent 配置、运行队列、请求状态、页面路由、缩放、表单草稿和模型原始响应均不进入聊天数据。用户级 OS 偏好与剧情总结、画图一样直接使用 SillyTavern 扩展设置和宿主防抖保存，不建立根 schema 状态机；总开关及各 APP 设置由各自 normalizer 补默认值，旧根版本标记和旧 Map/Tasks `enabled`在入口归一化后不再保存。上游真实 Fourth Wall 格式和用户明确保留的 Economy V1 anchor 账本只在各自入口一次性转换，运行时不留双读分支。
 
 ### 分支语义
 
@@ -233,7 +232,7 @@ Map 的当前交付口径以[Map APP 终态设计](./map-app-target-design.md)�
 2. 按施工方案 C 完成独立 board/candidate Prompt、上下文边界、宽容响应编译和显式无工具请求。
 3. 按施工方案 D 完成三个高层维护工具和 Tasks Session，同时完成由第二消费者触发的三项通用改造：no-work 短路、静态 system rules/共享 system data/领域 user data/接受证据分层、调用级错误与领域失败去重；验收 Map/Tasks 一个 Provider session、各自 staged、各自事务提交。
 4. 按施工方案 E–F 完成主 RP Prompt、Controller，以及大厅、发布、候选人、活动任务、历史、详情和设置 UI。
-5. 已按施工方案 G 升级 settings、加入`tasks.autoMaintenance`、host/shell 固定注册和 APP 内自动维护入口。
+5. 已按施工方案 G 加入`tasks.autoMaintenance`的 APP 自有默认值、host/shell 固定注册和 APP 内自动维护入口。
 6. 完成自动结算、迟到/取消/保存边界、真实 Provider、移动端和全量工程检查后交付；详细完成定义不在路线图重复，以两份 Tasks 文档为准。
 
 每个阶段独立通盘 review、验证和提交。终态文档描述的公共结构不等于独立的先行施工阶段：没有真实 participant 时不创建空 runner，没有完整 APP 时不创建其字段、开关或注册。不得先造一个含业务分支的`world-manager.ts`，也不得用“以后再拆”接受临时上帝文件。

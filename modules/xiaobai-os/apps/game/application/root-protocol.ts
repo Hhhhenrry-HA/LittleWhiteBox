@@ -1,7 +1,7 @@
 import type { XiaobaiOsChatData } from '../../../types.js';
 import { validateLedger } from '../../../domains/economy/invariants.js';
 import { projectBalances } from '../../../domains/economy/ledger.js';
-import type { EconomyLedgerV1 } from '../../../domains/economy/types.js';
+import type { EconomyLedgerV2 } from '../../../domains/economy/types.js';
 import { validateGameDomain } from '../../../domains/game/invariants.js';
 import { replayGameEvents } from '../../../domains/game/timeline.js';
 import type {
@@ -24,7 +24,7 @@ export function emptyGameRoot(): XiaobaiOsChatData {
     return { schemaVersion: 2, apps: {}, domains: {} };
 }
 
-export function readEconomyLedger(root: XiaobaiOsChatData | null): EconomyLedgerV1 | null {
+export function readEconomyLedger(root: XiaobaiOsChatData | null): EconomyLedgerV2 | null {
     const value = root?.domains.economy;
     if (value === undefined) {return null;}
     validateLedger(value);
@@ -101,7 +101,7 @@ function expectedEconomyLegs(event: GameEvent): GameEconomyLeg[] {
 }
 
 function isGameEconomyTransaction(
-    transaction: EconomyLedgerV1['transactions'][number],
+    transaction: EconomyLedgerV2['transactions'][number],
     gameActionIds: ReadonlySet<string>,
 ): boolean {
     return transaction.sourceDomain === GAME_SOURCE_DOMAIN
@@ -114,7 +114,7 @@ function isGameEconomyTransaction(
 }
 
 function sameEconomyLeg(
-    transaction: EconomyLedgerV1['transactions'][number],
+    transaction: EconomyLedgerV2['transactions'][number],
     event: GameEvent,
     expected: GameEconomyLeg,
 ): boolean {

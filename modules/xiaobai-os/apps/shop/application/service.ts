@@ -5,7 +5,7 @@ import type {
 } from '../../../host/chat-data-store.js';
 import type { XiaobaiOsChatData } from '../../../types.js';
 import { postAction } from '../../../domains/economy/ledger.js';
-import type { EconomyLedgerV1 } from '../../../domains/economy/types.js';
+import type { EconomyLedgerV2 } from '../../../domains/economy/types.js';
 import { getShopContract } from '../../../domains/shop/catalog.js';
 import { parseShopEffectReceipt } from '../../../domains/shop/invariants.js';
 import {
@@ -111,7 +111,7 @@ export function createShopService(
 
     function prepareRoot(
         current: XiaobaiOsChatData | null,
-    ): { root: XiaobaiOsChatData; ledger: EconomyLedgerV1; shop: ShopDomainV2 } {
+    ): { root: XiaobaiOsChatData; ledger: EconomyLedgerV2; shop: ShopDomainV2 } {
         const base = current ? structuredClone(current) : emptyShopRoot();
         const ledger = readEconomyLedger(base);
         if (!ledger) {throw new Error('economy_not_opened');}

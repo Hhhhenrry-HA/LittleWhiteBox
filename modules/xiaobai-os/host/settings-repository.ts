@@ -1,16 +1,19 @@
 import {
     cloneXiaobaiOsData,
-    LEGACY_FOURTH_WALL_SETTING_KEYS,
-    migrateLegacySettings,
-    type LegacyFourthWallSettingKey,
-    upgradeXiaobaiOsSettings,
-    validateXiaobaiOsSettings,
     XiaobaiOsDataError,
 } from './legacy-migration.js';
 import type { FourthWallGlobalSettings } from '../apps/fourth-wall/types.js';
 import type { MapSettings } from '../apps/map/types.js';
 import type { TasksSettings } from '../apps/tasks/types.js';
 import type { XiaobaiOsSettings as XiaobaiOsSettingsRoot } from '../types.js';
+import { jsonValuesEqual } from './json-values-equal.js';
+import {
+    isXiaobaiOsSettings,
+    LEGACY_FOURTH_WALL_SETTING_KEYS,
+    migrateUpstreamFourthWallSettings,
+    normalizeXiaobaiOsSettings,
+    type LegacyFourthWallSettingKey,
+} from './settings-normalization.js';
 
 type XiaobaiOsSettings = XiaobaiOsSettingsRoot<{
     fourthWall: FourthWallGlobalSettings;
@@ -44,13 +47,9 @@ function isRecord(value: unknown): value is UnknownRecord {
 }
 
 function assertValidSettings(value: unknown): asserts value is XiaobaiOsSettings {
-    if (!validateXiaobaiOsSettings(value)) {
+    if (!isXiaobaiOsSettings(value)) {
         throw new XiaobaiOsDataError('INVALID_CURRENT_DATA', 'Xiaobai OS settings are invalid');
     }
-}
-
-function isUnconfirmedSave(error: unknown): boolean {
-    return isRecord(error) && (error.code === 'SAVE_UNCONFIRMED' || error.uncertain === true);
 }
 
 function requireSettingsRoot(adapter: XiaobaiOsSettingsAdapter): UnknownRecord {
@@ -70,17 +69,10 @@ function createWriteQueue() {
     };
 }
 
-function restoreLegacySettings(root: UnknownRecord, snapshots: ReadonlyMap<LegacyFourthWallSettingKey, unknown>): void {
-    for (const [key, value] of snapshots) {
-        if (!Object.hasOwn(root, key)) {
-            root[key] = value;
-        }
-    }
-}
-
 /**
  * Creates the sole repository for persistent Xiaobai OS extension settings.
- *
+ * Settings are ordinary SillyTavern preferences: mutations install in memory
+ * immediately and ask the host to persist them through its normal save path.
  */
 export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): XiaobaiOsSettingsRepository {
     if (typeof adapter?.getExtensionSettings !== 'function' || typeof adapter?.saveSettings !== 'function') {
@@ -110,21 +102,10 @@ export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): Xia
         }
     }
 
-    async function saveInstalled(
-        installed: XiaobaiOsSettings,
-        rollback: () => void,
-    ): Promise<XiaobaiOsSettings> {
-        try {
-            await adapter.saveSettings();
-        } catch (error) {
-            if (isUnconfirmedSave(error)) {
-                publish(installed);
-            } else {
-                rollback();
-            }
-            throw error;
-        }
+    async function saveInstalled(installed: XiaobaiOsSettings): Promise<XiaobaiOsSettings> {
+        publishMutationInstalled(installed);
         publish(installed);
+        await adapter.saveSettings();
         return cloneXiaobaiOsData(installed);
     }
 
@@ -140,34 +121,24 @@ export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): Xia
     async function prepare(): Promise<XiaobaiOsSettings> {
         return enqueueWrite(async () => {
             const root = requireSettingsRoot(adapter);
-            if (Object.hasOwn(root, 'xiaobaiOs')) {
-                const previous = root.xiaobaiOs;
-                const upgraded = upgradeXiaobaiOsSettings(previous);
-                if (upgraded) {
-                    const installed = cloneXiaobaiOsData(upgraded);
-                    root.xiaobaiOs = installed;
-                    return saveInstalled(installed, () => {
-                        if (root.xiaobaiOs === installed) {
-                            root.xiaobaiOs = previous;
-                        }
-                    });
+            const hadSettings = Object.hasOwn(root, 'xiaobaiOs');
+            const previous = root.xiaobaiOs;
+            const migration = hadSettings
+                ? {
+                    value: normalizeXiaobaiOsSettings(previous),
+                    legacyKeys: LEGACY_FOURTH_WALL_SETTING_KEYS.filter((key) => Object.hasOwn(root, key)),
                 }
-                assertValidSettings(root.xiaobaiOs);
-                return cloneXiaobaiOsData(root.xiaobaiOs);
-            }
-
-            const migration = migrateLegacySettings(root);
-            const legacySnapshots = new Map(migration.legacyKeys.map((key) => [key, cloneXiaobaiOsData(root[key])]));
-            const installed = migration.value;
+                : migrateUpstreamFourthWallSettings(root);
+            const installed = cloneXiaobaiOsData(migration.value);
+            const changed = !hadSettings
+                || !jsonValuesEqual(previous, installed)
+                || migration.legacyKeys.length > 0;
             root.xiaobaiOs = installed;
             migration.legacyKeys.forEach((key) => delete root[key]);
-
-            return saveInstalled(installed, () => {
-                if (root.xiaobaiOs === installed) {
-                    delete root.xiaobaiOs;
-                }
-                restoreLegacySettings(root, legacySnapshots);
-            });
+            if (changed) {
+                await adapter.saveSettings();
+            }
+            return cloneXiaobaiOsData(installed);
         });
     }
 
@@ -189,12 +160,7 @@ export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): Xia
             assertValidSettings(next);
             const installed = cloneXiaobaiOsData(next);
             root.xiaobaiOs = installed;
-            publishMutationInstalled(installed);
-            return saveInstalled(installed, () => {
-                if (root.xiaobaiOs === installed) {
-                    root.xiaobaiOs = previous;
-                }
-            });
+            return saveInstalled(installed);
         });
     }
 
