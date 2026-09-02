@@ -3367,7 +3367,7 @@ var gr = "openai-compatible", Us = "默认", mr = "default", hd = "deny", Ot = 3
     temperature: 1,
     maxTokens: Ot,
     sendTemperature: !0,
-    toolMode: "native"
+    toolMode: "tagged-json"
   },
   "sillytavern-openai-compatible": {
     baseUrl: "",
@@ -3376,7 +3376,7 @@ var gr = "openai-compatible", Us = "默认", mr = "default", hd = "deny", Ot = 3
     temperature: 1,
     maxTokens: Ot,
     sendTemperature: !0,
-    toolMode: "native"
+    toolMode: "tagged-json"
   },
   "sillytavern-claude": {
     baseUrl: "",
@@ -11069,49 +11069,49 @@ var $y = { class: "tasks-app" }, xy = { class: "tasks-app-header" }, Sy = { clas
   },
   emits: ["purchase"],
   setup(e) {
-    const t = e, a = /* @__PURE__ */ K("all"), n = z(() => {
-      const o = /* @__PURE__ */ new Map();
-      for (const d of t.catalog) o.set(d.category, d.categoryLabel);
+    const t = e, a = /* @__PURE__ */ K("all"), n = z(() => t.catalog.filter((d) => d.onShelf)), l = z(() => {
+      const d = /* @__PURE__ */ new Map();
+      for (const p of n.value) d.set(p.category, p.categoryLabel);
       return [{
         id: "all",
         label: "全部"
-      }, ...Array.from(o, ([d, p]) => ({
-        id: d,
-        label: p
+      }, ...Array.from(d, ([p, c]) => ({
+        id: p,
+        label: c
       }))];
-    }), l = z(() => a.value === "all" ? t.catalog : t.catalog.filter((o) => o.category === a.value));
-    function i(o) {
-      return t.writeDisabledReason ? t.writeDisabledReason : r(o);
+    }), i = z(() => a.value === "all" ? n.value : n.value.filter((d) => d.category === a.value));
+    function r(d) {
+      return t.writeDisabledReason ? t.writeDisabledReason : o(d);
     }
-    function r(o) {
-      return o.purchaseLimit !== null && o.purchasedCount >= o.purchaseLimit ? "此奇物已达购买上限" : t.balance < o.price ? `还差 ${o.price - t.balance} 小白币` : "";
+    function o(d) {
+      return d.purchaseLimit !== null && d.purchasedCount >= d.purchaseLimit ? "此奇物已达购买上限" : t.balance < d.price ? `还差 ${d.price - t.balance} 小白币` : "";
     }
-    return (o, d) => (g(), b("section", Ik, [
-      s("header", Pk, [d[0] || (d[0] = s("div", null, [s("span", null, "CURIO CABINET"), s("h2", { id: "shop-shelf-title" }, "今日陈列")], -1)), s("small", null, m(l.value.length) + " 件奇物", 1)]),
-      s("nav", Ok, [(g(!0), b(Z, null, de(n.value, (p) => (g(), b("button", {
-        key: p.id,
+    return (d, p) => (g(), b("section", Ik, [
+      s("header", Pk, [p[0] || (p[0] = s("div", null, [s("span", null, "CURIO CABINET"), s("h2", { id: "shop-shelf-title" }, "今日陈列")], -1)), s("small", null, m(i.value.length) + " 件奇物", 1)]),
+      s("nav", Ok, [(g(!0), b(Z, null, de(l.value, (c) => (g(), b("button", {
+        key: c.id,
         type: "button",
-        class: te({ "is-active": a.value === p.id }),
-        onClick: (c) => a.value = p.id
-      }, m(p.label), 11, Rk))), 128))]),
-      s("div", Lk, [(g(!0), b(Z, null, de(l.value, (p) => (g(), b("article", {
-        key: p.id,
+        class: te({ "is-active": a.value === c.id }),
+        onClick: (y) => a.value = c.id
+      }, m(c.label), 11, Rk))), 128))]),
+      s("div", Lk, [(g(!0), b(Z, null, de(i.value, (c) => (g(), b("article", {
+        key: c.id,
         class: "shop-product-card"
-      }, [s("div", Bk, m(p.name.slice(0, 1)), 1), s("div", Nk, [
-        s("div", Dk, [s("h3", null, m(p.name), 1), s("span", null, m(p.categoryLabel), 1)]),
-        s("p", null, m(p.description), 1),
-        s("small", null, m(p.durationLabel), 1),
+      }, [s("div", Bk, m(c.name.slice(0, 1)), 1), s("div", Nk, [
+        s("div", Dk, [s("h3", null, m(c.name), 1), s("span", null, m(c.categoryLabel), 1)]),
+        s("p", null, m(c.description), 1),
+        s("small", null, m(c.durationLabel), 1),
         s("div", qk, [
-          s("strong", null, [d[1] || (d[1] = s("i", null, "¤", -1)), re(m(p.price), 1)]),
-          p.quantity ? (g(), b("span", Uk, "持有 " + m(p.quantity), 1)) : j("", !0),
+          s("strong", null, [p[1] || (p[1] = s("i", null, "¤", -1)), re(m(c.price), 1)]),
+          c.quantity ? (g(), b("span", Uk, "持有 " + m(c.quantity), 1)) : j("", !0),
           s("button", {
             type: "button",
-            disabled: !!i(p),
-            title: i(p),
-            onClick: (c) => o.$emit("purchase", p)
-          }, m(p.purchaseLimit !== null && p.purchasedCount >= p.purchaseLimit ? "已购得" : "购入"), 9, Fk)
+            disabled: !!r(c),
+            title: r(c),
+            onClick: (y) => d.$emit("purchase", c)
+          }, m(c.purchaseLimit !== null && c.purchasedCount >= c.purchaseLimit ? "已购得" : "购入"), 9, Fk)
         ]),
-        r(p) ? (g(), b("p", jk, m(r(p)), 1)) : j("", !0)
+        o(c) ? (g(), b("p", jk, m(o(c)), 1)) : j("", !0)
       ])]))), 128))])
     ]));
   }

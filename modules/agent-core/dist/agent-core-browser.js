@@ -81,7 +81,7 @@ var j0 = Object.freeze([{
     temperature: 1,
     maxTokens: tt,
     sendTemperature: !0,
-    toolMode: "native"
+    toolMode: "tagged-json"
   },
   "sillytavern-openai-compatible": {
     baseUrl: "",
@@ -90,7 +90,7 @@ var j0 = Object.freeze([{
     temperature: 1,
     maxTokens: tt,
     sendTemperature: !0,
-    toolMode: "native"
+    toolMode: "tagged-json"
   },
   "sillytavern-claude": {
     baseUrl: "",
