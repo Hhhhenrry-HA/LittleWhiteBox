@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { BankActivityView } from '../types.js';
+import BankProductIcon from './BankProductIcon.vue';
 
 defineProps<{
     activities: BankActivityView[];
@@ -24,15 +25,15 @@ const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
 <template>
     <section aria-labelledby="bank-records-title">
         <header class="bank-section-heading">
-            <div><span>SETTLEMENT ARCHIVE</span><h2 id="bank-records-title">金融记录</h2></div>
+            <h2 id="bank-records-title">金融记录</h2>
             <small>{{ total }} 笔</small>
         </header>
         <div v-if="!activities.length" class="bank-empty-state">
-            <span>簿</span><strong>尚无兑付记录</strong><p>头寸到期领取或提前支取后，结果会归档在这里。</p>
+            <span><BankProductIcon kind="records" /></span><strong>尚无兑付记录</strong><p>头寸到期领取或提前支取后，结果会归档在这里。</p>
         </div>
         <div v-else class="bank-record-list">
             <article v-for="activity in activities" :key="activity.id" class="bank-record-row">
-                <span class="bank-record-mark">{{ activity.kind === 'deposit' ? '定' : '理' }}</span>
+                <span class="bank-record-mark"><BankProductIcon :kind="activity.kind" /></span>
                 <div class="bank-record-main">
                     <header><strong>{{ activity.productName }}</strong><span>{{ activity.resultLabel }}</span></header>
                     <dl>

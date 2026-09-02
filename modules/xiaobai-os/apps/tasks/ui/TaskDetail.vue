@@ -16,10 +16,10 @@ function dateTime(value: number): string {
 <template>
     <section class="tasks-page tasks-detail-page">
         <header class="tasks-page-heading"><button type="button" class="tasks-back" @click="emit('back')">← 返回</button><span v-if="detail" class="tasks-detail-status" :data-status="detail.task.status">{{ statusLabel[detail.task.status] }}</span></header>
-        <div v-if="loading" class="tasks-empty"><span>READING CONTRACT</span><h3>正在读取合同</h3></div>
+        <div v-if="loading" class="tasks-empty"><h3>正在读取任务…</h3></div>
         <template v-else-if="detail">
             <article class="tasks-contract-sheet">
-                <header><div><small>{{ detail.task.grade }} / {{ detail.task.source === 'received' ? 'WORLD CONTRACT' : 'PLAYER CONTRACT' }}</small><h2>{{ detail.task.title }}</h2></div><strong>¤ {{ detail.task.reward }}</strong></header>
+                <header><div><small>{{ detail.task.grade }} · {{ detail.task.source === 'received' ? '大厅任务' : '我的任务' }}</small><h2>{{ detail.task.title }}</h2></div><strong>¤ {{ detail.task.reward }}</strong></header>
                 <div class="tasks-party-line"><span>出资方<strong>{{ detail.task.issuer.displayName }}</strong></span><i>→</i><span>执行方<strong>{{ detail.task.assignee?.displayName || '等待指派' }}</strong></span></div>
                 <dl>
                     <div><dt>唯一完成目标</dt><dd>{{ detail.task.objective }}</dd></div>
@@ -32,12 +32,12 @@ function dateTime(value: number): string {
                 </dl>
             </article>
             <section class="tasks-timeline">
-                <h3>合同时间线</h3>
+                <h3>任务进展</h3>
                 <ol>
-                    <li v-for="item in detail.timeline" :key="item.eventId"><i /><div><small>R{{ item.taskRevision }} · {{ dateTime(item.createdAt) }}</small><p>{{ item.summary }}</p></div></li>
+                    <li v-for="item in detail.timeline" :key="item.eventId"><i /><div><small>{{ dateTime(item.createdAt) }}</small><p>{{ item.summary }}</p></div></li>
                 </ol>
             </section>
         </template>
-        <div v-else class="tasks-empty"><span>CONTRACT UNAVAILABLE</span><h3>合同无法读取</h3></div>
+        <div v-else class="tasks-empty"><h3>任务无法读取</h3><p>请返回后重试。</p></div>
     </section>
 </template>

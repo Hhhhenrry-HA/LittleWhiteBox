@@ -117,8 +117,8 @@ function maintenanceMessage(outcome: MaintenanceRunOutcome): string {
     if (outcome.status === 'unchanged') {return '无需更新';}
     if (outcome.status === 'partial') {return '部分任务状态已保存';}
     if (outcome.status === 'cancelled') {return '已取消';}
-    if (outcome.status === 'skipped') {return '当前没有可维护的新任务状态';}
-    return '维护失败';
+    if (outcome.status === 'skipped') {return '当前没有需要更新的任务进展';}
+    return '任务更新失败';
 }
 
 export function createTaskController({

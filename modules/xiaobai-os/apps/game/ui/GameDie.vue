@@ -29,13 +29,13 @@ const FACE_UP: Readonly<Record<GameDieFace, readonly [number, number]>> = {
     6: [180, 0],
 };
 
-/** Kept off-axis so a settled die still reads as a solid, not a flat card. */
-const REST_TILT = 'rotateX(-17deg) rotateY(26deg)';
-
 const ROLL_MS = 1100;
 
 function cubeTransform(x: number, y: number): string {
-    return `${REST_TILT} rotateX(${x}deg) rotateY(${y}deg)`;
+    // The roll is fully three-dimensional, but the result face settles square
+    // to the player. Showing three readable faces at rest makes the actual
+    // value ambiguous on a phone-sized table.
+    return `rotateX(${x}deg) rotateY(${y}deg)`;
 }
 
 function prefersReducedMotion(): boolean {
@@ -111,7 +111,12 @@ watch(() => props.value, roll);
     >
         <div class="game-die-stage">
             <div ref="cube" class="game-die-cube">
-                <div v-for="side in FACES" :key="side.side" class="game-die-face" :class="side.side">
+                <div
+                    v-for="side in FACES"
+                    :key="side.side"
+                    class="game-die-face"
+                    :class="[side.side, { 'is-result': side.face === value }]"
+                >
                     <div class="game-die-pips">
                         <i
                             v-for="([row, column], index) in GAME_DIE_PIPS[side.face]"

@@ -65,14 +65,6 @@
     min-width: 0;
 }
 
-.wallet-ui-kicker {
-    color: var(--wallet-ui-tint);
-    font-size: 11px;
-    font-weight: 650;
-    letter-spacing: .07em;
-    text-transform: uppercase;
-}
-
 .wallet-ui-title {
     font-size: 21px;
     font-weight: 680;

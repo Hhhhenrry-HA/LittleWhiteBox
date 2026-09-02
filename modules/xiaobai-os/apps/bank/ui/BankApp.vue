@@ -228,7 +228,7 @@ onBeforeUnmount(() => {
 <template>
     <main class="bank-app">
         <header class="bank-header">
-            <div><span class="bank-header-kicker">JADE RESERVE · 01</span><h1>白银金库</h1></div>
+            <div><h1>白银金库</h1></div>
             <div class="bank-header-balance"><small>可用余额</small><strong>¤ {{ state.balance.toLocaleString('zh-CN') }}</strong></div>
             <button type="button" class="bank-refresh" :disabled="refreshDisabled" title="重新读取金库" @click="refresh">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M18.2 9A7 7 0 0 0 6.1 6.7L4 9m16 6-2.1 2.3A7 7 0 0 1 5.8 15" /></svg>

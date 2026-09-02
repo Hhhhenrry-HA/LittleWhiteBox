@@ -172,7 +172,7 @@ function Ze(e) {
 function $i(e, t) {
   return typeof e == "boolean" ? e : t;
 }
-function zv() {
+function qv() {
   return {
     enabled: !1,
     apps: {
@@ -7091,7 +7091,7 @@ function $p(e) {
   };
 }
 function Op(e) {
-  return e.status === "updated" ? "任务已更新" : e.status === "unchanged" ? "无需更新" : e.status === "partial" ? "部分任务状态已保存" : e.status === "cancelled" ? "已取消" : e.status === "skipped" ? "当前没有可维护的新任务状态" : "维护失败";
+  return e.status === "updated" ? "任务已更新" : e.status === "unchanged" ? "无需更新" : e.status === "partial" ? "部分任务状态已保存" : e.status === "cancelled" ? "已取消" : e.status === "skipped" ? "当前没有需要更新的任务进展" : "任务更新失败";
 }
 function Rp({ tasks: e, economy: t, generation: n, settings: r, maintenance: i, getChatIdentity: a, isMainGenerationActive: o, subscribeGeneration: c, subscribeData: s, report: u = (d) => console.error("[LittleWhiteBox] Tasks controller failed", d) }) {
   let d = null, l = null, f = !1, h = 0, g = 0, y = !1, p = !1, m = null, w = null, C = null, E = null;
@@ -12666,7 +12666,7 @@ function cr(e, t) {
     toAccountId: to(e),
     amount: t,
     kind: "game_stake",
-    title: "Game stake escrow"
+    title: "游戏下注"
   };
 }
 function kd(e, t, n) {
@@ -12677,21 +12677,21 @@ function kd(e, t, n) {
     toAccountId: r,
     amount: n - t,
     kind: "game_reserve",
-    title: "Game reserve funding"
+    title: "游戏奖池补足"
   }), n > 0 && i.push({
     idempotencyKey: `game:${e}:payout`,
     fromAccountId: r,
     toAccountId: "player",
     amount: n,
     kind: "game_payout",
-    title: "Game payout"
+    title: "游戏派奖"
   }), n < t && i.push({
     idempotencyKey: `game:${e}:loss`,
     fromAccountId: r,
     toAccountId: "system:sink",
     amount: t - n,
     kind: "game_loss",
-    title: "Game loss settlement"
+    title: "游戏输局结算"
   }), i;
 }
 function sI(e) {
@@ -13307,43 +13307,49 @@ var AI = Object.freeze({
   id: "wallet",
   name: "钱包",
   accent: "#a9660f"
-}), _s = 18;
+}), _s = 18, SI = Object.freeze({
+  economy: "小白 OS",
+  game: "游戏",
+  tasks: "任务",
+  bank: "银行",
+  shop: "商店"
+});
 function Ad(e) {
   return e !== null && typeof e == "object" && !Array.isArray(e);
 }
-function SI(e) {
+function EI(e) {
   return typeof e == "string" ? e : String(e?.key || "");
 }
-function EI(e) {
+function CI(e) {
   return Ad(e) && (e.code === "SAVE_UNCONFIRMED" || e.uncertain === !0);
 }
-function CI(e) {
+function TI(e) {
   return e.toAccountId === "player" ? "income" : e.fromAccountId === "player" ? "expense" : "transfer";
 }
-function TI(e) {
-  return e.kind === "opening_grant" ? "小白 OS" : e.sourceDomain;
-}
 function xI(e) {
+  return SI[e.sourceDomain] || e.sourceDomain;
+}
+function $I(e) {
   return {
     id: e.id,
     sequence: e.sequence,
     title: e.title,
     note: e.note,
-    source: TI(e),
+    source: xI(e),
     sourceDomain: e.sourceDomain,
     amount: e.amount,
-    direction: CI(e),
+    direction: TI(e),
     createdAt: e.createdAt
   };
 }
 function ks(e) {
   return {
-    transactions: e.transactions.map(xI),
+    transactions: e.transactions.map($I),
     nextCursor: e.nextCursor,
     hasMore: e.hasMore
   };
 }
-function $I(e, t) {
+function OI(e, t) {
   return e === "conflict" ? {
     status: "conflict",
     message: "服务端账本与当前候选不一致。请刷新酒馆后再继续。"
@@ -13361,10 +13367,10 @@ function $I(e, t) {
     message: "钱包尚未完成开户，请重新读取。"
   };
 }
-function OI({ economy: e, getChatIdentity: t, subscribeData: n }) {
+function RI({ economy: e, getChatIdentity: t, subscribeData: n }) {
   let r = null, i = null, a = null;
   function o() {
-    return SI(t());
+    return EI(t());
   }
   function c(m = {}) {
     if (!r) throw new Error("钱包 APP 未激活");
@@ -13376,7 +13382,7 @@ function OI({ economy: e, getChatIdentity: t, subscribeData: n }) {
     if (c(w) !== m) throw new Error("钱包页面已切换，请重试");
   }
   function u(m) {
-    const w = e.readCurrent(), C = e.listCurrentTransactions({ limit: _s }), E = $I(e.getWriteState(), w !== null), v = {
+    const w = e.readCurrent(), C = e.listCurrentTransactions({ limit: _s }), E = OI(e.getWriteState(), w !== null), v = {
       chatIdentity: m,
       currency: "小白币",
       balance: e.getPlayerBalance(),
@@ -13404,7 +13410,7 @@ function OI({ economy: e, getChatIdentity: t, subscribeData: n }) {
       try {
         await e.ensureCurrent();
       } catch (m) {
-        if (!EI(m)) throw m;
+        if (!CI(m)) throw m;
       }
   }
   function f(m) {
@@ -13493,7 +13499,7 @@ function Qn(e) {
   const t = e?.domains.economy;
   return t === void 0 ? null : (_e(t), structuredClone(t));
 }
-function RI(e, { now: t = Date.now, createId: n } = {}) {
+function NI(e, { now: t = Date.now, createId: n } = {}) {
   const r = {
     now: t,
     ...n ? { createId: n } : {}
@@ -13571,7 +13577,7 @@ function RI(e, { now: t = Date.now, createId: n } = {}) {
 function zt(e, t) {
   for (const n of e) t(n);
 }
-function NI(e, t = []) {
+function DI(e, t = []) {
   const n = /* @__PURE__ */ new Map(), r = Object.freeze(e.map(({ descriptor: l, runtime: f }) => {
     if (!l.id || n.has(l.id)) throw new Error(`duplicate_or_empty_xiaobai_os_app_id:${l.id}`);
     return n.set(l.id, f), Object.freeze({ ...l });
@@ -13635,16 +13641,16 @@ function NI(e, t = []) {
   });
 }
 var er = null;
-function DI(e) {
+function MI(e) {
   const t = String(e || "");
   return /^(?:[a-z][a-z\d+.-]*:)?\/\//i.test(t) || t.startsWith("/") || t.startsWith("./") || t.startsWith("../") ? t : `/${t}`;
 }
 function ki() {
-  return er || (er = import(DI(`${da}/modules/xiaobai-os/dist/xiaobai-os-agent.js`)).then((e) => (e.configureXiaobaiOsAgent?.({ requestHeadersProvider: () => $s?.() || {} }), e)).catch((e) => {
+  return er || (er = import(MI(`${da}/modules/xiaobai-os/dist/xiaobai-os-agent.js`)).then((e) => (e.configureXiaobaiOsAgent?.({ requestHeadersProvider: () => $s?.() || {} }), e)).catch((e) => {
     throw er = null, e;
   })), er;
 }
-function MI(e = {}) {
+function PI(e = {}) {
   const t = String(e.source || "xiaobai-os-agent-api"), n = {
     loadConfig: async () => await jd({ storage: oo }),
     saveConfig: async (r) => await Kd(r, {
@@ -13686,7 +13692,7 @@ function MI(e = {}) {
   };
   return Object.freeze(n);
 }
-var PI = 1, LI = "sha256:7d0895b5e4a7170fe97ae325c8d441725fd5973b733dc8938469f794c01feee3", BI = /^sha256:[0-9a-f]{64}$/, As = [
+var LI = 1, BI = "sha256:7d0895b5e4a7170fe97ae325c8d441725fd5973b733dc8938469f794c01feee3", jI = /^sha256:[0-9a-f]{64}$/, As = [
   "id",
   "sequence",
   "idempotencyKey",
@@ -13710,18 +13716,18 @@ function aa(e, t, n) {
   if (i.length !== a.length || i.some((o, c) => o !== a[c])) throw new F("economy_invalid_legacy_data", `${n} has non-canonical fields`);
   return e;
 }
-function jI(e, t) {
+function KI(e, t) {
   const n = aa(e, ["floor", "prefixHash"], t);
   if (!Number.isInteger(n.floor) || Number(n.floor) < -1) throw new F("economy_invalid_legacy_data", `${t}.floor must be an integer at least -1`);
-  if (typeof n.prefixHash != "string" || !BI.test(n.prefixHash)) throw new F("economy_invalid_legacy_data", `${t}.prefixHash must be a SHA-256 hash`);
+  if (typeof n.prefixHash != "string" || !jI.test(n.prefixHash)) throw new F("economy_invalid_legacy_data", `${t}.prefixHash must be a SHA-256 hash`);
   return {
     floor: Number(n.floor),
     prefixHash: n.prefixHash
   };
 }
-function KI(e) {
+function GI(e) {
   const t = e[0];
-  if (t.anchor.floor !== -1 || t.anchor.prefixHash !== LI) throw new F("economy_invalid_legacy_data", "legacy economy opening grant must use the empty story anchor");
+  if (t.anchor.floor !== -1 || t.anchor.prefixHash !== BI) throw new F("economy_invalid_legacy_data", "legacy economy opening grant must use the empty story anchor");
   for (let n = 1; n < e.length; n += 1) {
     const r = e[n - 1], i = e[n];
     if (r.actionId === i.actionId) {
@@ -13729,37 +13735,37 @@ function KI(e) {
     } else if (i.anchor.floor < r.anchor.floor) throw new F("economy_invalid_legacy_data", "legacy economy action anchors cannot move backward");
   }
 }
-function GI(e) {
+function zI(e) {
   if (!e || typeof e != "object" || Array.isArray(e)) return null;
   const t = e.schemaVersion;
-  if (t === 2 || t !== PI) return null;
+  if (t === 2 || t !== LI) return null;
   const n = aa(e, ["schemaVersion", "transactions"], "legacy economy ledger");
   if (!Array.isArray(n.transactions) || n.transactions.length === 0) throw new F("economy_invalid_legacy_data", "legacy economy ledger must contain the opening grant");
   const r = [], i = [];
   n.transactions.forEach((o, c) => {
-    const s = aa(o, o && typeof o == "object" && !Array.isArray(o) && Object.hasOwn(o, "reversalOfTransactionId") ? [...As, "reversalOfTransactionId"] : As, `legacy economy transaction ${c + 1}`), u = jI(s.anchor, `legacy economy transaction ${c + 1}.anchor`), { anchor: d, ...l } = s, f = l;
+    const s = aa(o, o && typeof o == "object" && !Array.isArray(o) && Object.hasOwn(o, "reversalOfTransactionId") ? [...As, "reversalOfTransactionId"] : As, `legacy economy transaction ${c + 1}`), u = KI(s.anchor, `legacy economy transaction ${c + 1}.anchor`), { anchor: d, ...l } = s, f = l;
     r.push({
       ...f,
       anchor: u
     }), i.push(f);
-  }), KI(r);
+  }), GI(r);
   const a = {
     schemaVersion: 2,
     transactions: i
   };
   return _e(a), a;
 }
-function zI(e) {
+function qI(e) {
   Ia(e);
   const t = e;
   if (!Object.hasOwn(t.domains, "economy")) return null;
-  const n = GI(t.domains.economy);
+  const n = zI(t.domains.economy);
   if (n === null) return null;
   const r = Z(t);
   return r.domains.economy = n, r;
 }
-var qI = "LittleWhiteBox-XiaobaiOS";
-function UI({ iframe: e, onReady: t, onMessage: n, windowTarget: r = window } = {}) {
+var UI = "LittleWhiteBox-XiaobaiOS";
+function FI({ iframe: e, onReady: t, onMessage: n, windowTarget: r = window } = {}) {
   if (!e) throw new TypeError("frame bridge requires an iframe");
   const i = e;
   let a = !1, o = !1;
@@ -13769,7 +13775,7 @@ function UI({ iframe: e, onReady: t, onMessage: n, windowTarget: r = window } = 
         type: l,
         requestId: String(h || ""),
         payload: f
-      }, qI);
+      }, UI);
     },
     isReady() {
       return a && !o;
@@ -13795,11 +13801,11 @@ function UI({ iframe: e, onReady: t, onMessage: n, windowTarget: r = window } = 
   }
   return i.addEventListener("load", s), r.addEventListener("message", u), c;
 }
-var Sd = "xiaobaix-os-button", tr = "xiaobaix-os-host-styles", Ed = "xiaobaix-os-overlay", FI = "xiaobaix-os-iframe";
-function WI(e) {
+var Sd = "xiaobaix-os-button", tr = "xiaobaix-os-host-styles", Ed = "xiaobaix-os-overlay", WI = "xiaobaix-os-iframe";
+function VI(e) {
   return e !== null && typeof e == "object" && !Array.isArray(e);
 }
-var Ss = "http://www.w3.org/2000/svg", VI = [
+var Ss = "http://www.w3.org/2000/svg", HI = [
   {
     x: "2.5",
     y: "2.5",
@@ -13824,28 +13830,28 @@ var Ss = "http://www.w3.org/2000/svg", VI = [
     opacity: ".85"
   }
 ];
-function HI(e) {
+function XI(e) {
   const t = e.createElementNS(Ss, "svg");
   t.setAttribute("viewBox", "0 0 24 24"), t.setAttribute("fill", "currentColor"), t.setAttribute("aria-hidden", "true"), t.setAttribute("focusable", "false");
-  for (const n of VI) {
+  for (const n of HI) {
     const r = e.createElementNS(Ss, "rect");
     for (const [i, a] of Object.entries(n)) r.setAttribute(i, a);
     t.append(r);
   }
   return t;
 }
-function XI(e) {
+function YI(e) {
   const t = e.createElement("button");
-  return t.id = Sd, t.type = "button", t.className = "xiaobaix-os-button interactable", t.title = "打开小白 OS", t.setAttribute("aria-label", "打开小白 OS"), t.setAttribute("aria-haspopup", "dialog"), t.setAttribute("aria-controls", Ed), t.append(HI(e)), t;
+  return t.id = Sd, t.type = "button", t.className = "xiaobaix-os-button interactable", t.title = "打开小白 OS", t.setAttribute("aria-label", "打开小白 OS"), t.setAttribute("aria-haspopup", "dialog"), t.setAttribute("aria-controls", Ed), t.append(XI(e)), t;
 }
-function YI(e, t) {
+function JI(e, t) {
   const n = e.getElementById("send_but");
   if (!n) throw new Error("xiaobai_os_send_button_unavailable");
   (e.getElementById("message_preview_btn") || n).before(t);
 }
-function JI({ documentTarget: e = document, windowTarget: t = window, stylesheetHref: n, frameSrc: r, subscribeChatChanged: i = () => () => {
+function ZI({ documentTarget: e = document, windowTarget: t = window, stylesheetHref: n, frameSrc: r, subscribeChatChanged: i = () => () => {
 }, subscribeAppDescriptorsChanged: a = () => () => {
-}, getInitSnapshot: o = () => ({}), getAppDescriptors: c = () => [], appRuntime: s = {}, bridgeFactory: u = UI, onError: d = (l) => console.error("[LittleWhiteBox] 小白 OS 运行失败", l) } = {}) {
+}, getInitSnapshot: o = () => ({}), getAppDescriptors: c = () => [], appRuntime: s = {}, bridgeFactory: u = FI, onError: d = (l) => console.error("[LittleWhiteBox] 小白 OS 运行失败", l) } = {}) {
   if (!n || !r) throw new TypeError("xiaobai OS lifecycle requires stylesheetHref and frameSrc");
   const l = n, f = r;
   let h = !1, g = null, y = null, p = null, m = null, w = null, C = null, E = null, v = null, A = null, b = 0, _ = 0;
@@ -13922,7 +13928,7 @@ function JI({ documentTarget: e = document, windowTarget: t = window, stylesheet
       return;
     }
     if (D === "app/activate") {
-      const Ee = String(WI(G) && G.appId || "");
+      const Ee = String(VI(G) && G.appId || "");
       if (!c().find((_t) => _t.id === Ee)) {
         x.post("app/activation-result", {
           ok: !1,
@@ -13983,7 +13989,7 @@ function JI({ documentTarget: e = document, windowTarget: t = window, stylesheet
       return p?.focus(), !0;
     b += 1;
     const N = b;
-    return y = e.createElement("div"), y.id = Ed, y.className = "xiaobaix-os-overlay", p = e.createElement("iframe"), p.id = FI, p.className = "xiaobaix-os-frame", p.src = f, p.title = "小白 OS", p.setAttribute("allow", "clipboard-read; clipboard-write"), y.append(p), e.body.append(y), m = u({
+    return y = e.createElement("div"), y.id = Ed, y.className = "xiaobaix-os-overlay", p = e.createElement("iframe"), p.id = WI, p.className = "xiaobaix-os-frame", p.src = f, p.title = "小白 OS", p.setAttribute("allow", "clipboard-read; clipboard-write"), y.append(p), e.body.append(y), m = u({
       iframe: p,
       windowTarget: t,
       onReady: (x) => B(x, N),
@@ -13997,7 +14003,7 @@ function JI({ documentTarget: e = document, windowTarget: t = window, stylesheet
     N.persisted || ae();
   }
   function fe() {
-    return h || (I(), g = e.getElementById(Sd), g || (g = XI(e), YI(e, g)), g.addEventListener("click", U), w = i(Q), C = a(T), t.addEventListener("pagehide", ee), s.startBackground?.(), h = !0), !0;
+    return h || (I(), g = e.getElementById(Sd), g || (g = YI(e), JI(e, g)), g.addEventListener("click", U), w = i(Q), C = a(T), t.addEventListener("pagehide", ee), s.startBackground?.(), h = !0), !0;
   }
   function ae() {
     !h && !g && !y && !e.getElementById(tr) || (b += 1, s.cancelAll?.("cleanup"), R("cleanup"), $(), s.stopBackground?.(), w?.(), w = null, C?.(), C = null, t.removeEventListener("pagehide", ee), g?.removeEventListener("click", U), g?.remove(), g = null, e.getElementById(tr)?.remove(), h = !1);
@@ -14014,7 +14020,7 @@ function JI({ documentTarget: e = document, windowTarget: t = window, stylesheet
 function Es(e) {
   return !e || e === "normal" || e === "regenerate" || e === "swipe" || e === "continue";
 }
-function ZI({ readHostGenerating: e, subscribe: t }) {
+function QI({ readHostGenerating: e, subscribe: t }) {
   const n = /* @__PURE__ */ new Set();
   let r = !1, i = !1, a = !1, o = null;
   function c() {
@@ -14064,7 +14070,7 @@ function ZI({ readHostGenerating: e, subscribe: t }) {
     }
   });
 }
-function QI(e) {
+function ev(e) {
   if (!Array.isArray(e)) throw new TypeError("Maintenance participants must be an array.");
   const t = /* @__PURE__ */ Object.create(null), n = e.map((i) => {
     const a = String(i?.id || "").trim();
@@ -14087,17 +14093,17 @@ function QI(e) {
     }
   });
 }
-var ev = 80, tv = 120;
+var tv = 80, nv = 120;
 function ro(e) {
   return e !== null && typeof e == "object" && !Array.isArray(e);
 }
 function jr(e) {
   return ro(e) ? typeof e.identityKey == "string" && Array.isArray(e.messages) : !1;
 }
-function nv(e) {
+function rv(e) {
   return e.is_system === !0 ? "system" : e.is_user === !0 ? "user" : e.role === "system" || e.role === "user" || e.role === "assistant" ? e.role : "assistant";
 }
-function rv(e) {
+function iv(e) {
   for (const t of [
     "mes",
     "content",
@@ -14105,36 +14111,36 @@ function rv(e) {
   ]) if (typeof e[t] == "string") return e[t];
   return "";
 }
-function iv(e) {
+function av(e) {
   const t = e.swipe_id;
   return typeof t == "string" || typeof t == "number" && Number.isFinite(t) ? t : null;
 }
 function Sn(e, t) {
   if (typeof e != "string") return t;
   const n = e.normalize("NFKC").replace(/[\u0000-\u001f\u007f-\u009f]/gu, " ").replace(/\s+/gu, " ").trim();
-  return Array.from(n).slice(0, tv).join("") || t;
+  return Array.from(n).slice(0, nv).join("") || t;
 }
-function av(e, t, n) {
+function ov(e, t, n) {
   const r = Sn((ro(e) ? e : {}).name, "");
   return r || (t === "user" ? Sn(n?.playerName, "User") : t === "assistant" ? Sn(n?.assistantName, "Assistant") : "System");
 }
 function Cd(e, t, n) {
   if (!ro(e)) return null;
-  const r = nv(e);
+  const r = rv(e);
   return {
     index: t,
     role: r,
-    text: rv(e),
-    swipeId: iv(e),
-    speakerName: av(e, r, n)
+    text: iv(e),
+    swipeId: av(e),
+    speakerName: ov(e, r, n)
   };
 }
-function ov(e) {
+function sv(e) {
   return e.text.trim().length > 0;
 }
 function Ot(e, t, n) {
   const r = Cd(e, t, n);
-  return !r || r.role === "system" || !ov(r) ? null : Object.freeze({
+  return !r || r.role === "system" || !sv(r) ? null : Object.freeze({
     index: r.index,
     role: r.role,
     text: r.text,
@@ -14168,7 +14174,7 @@ function Tt(e) {
     reason: e
   });
 }
-function sv(e) {
+function cv(e) {
   const t = [];
   let n = e.messages.length - 1;
   for (; n >= 0; ) {
@@ -14180,7 +14186,7 @@ function sv(e) {
   const r = Ot(e.messages[n], n, e);
   return !r || r.role !== "user" ? null : (t.unshift(r), t);
 }
-function cv(e, t) {
+function dv(e, t) {
   if (!jr(e) || !Number.isSafeInteger(t) || t < 0 || t !== e.messages.length - 1) return null;
   const n = Ot(e.messages[t], t, e);
   if (!n || n.role !== "user") return null;
@@ -14197,13 +14203,13 @@ function cv(e, t) {
   else if (e.messages.slice(0, t).some((o, c) => Cd(o, c, e)?.role === "user")) return null;
   return io(e, r, n);
 }
-function dv(e, { generationActive: t }) {
+function uv(e, { generationActive: t }) {
   if (t) return Tt("generation-active");
   if (!jr(e)) return Tt("chat-unavailable");
-  const n = sv(e);
+  const n = cv(e);
   return n ? Td(io(e, n)) : Tt("no-complete-assistant");
 }
-function uv(e, { generationActive: t, maxMessages: n = ev }) {
+function lv(e, { generationActive: t, maxMessages: n = tv }) {
   if (t) return Tt("generation-active");
   if (!jr(e)) return Tt("chat-unavailable");
   if (!Number.isSafeInteger(n) || n <= 0) return Tt("invalid-message-limit");
@@ -14215,12 +14221,12 @@ function Cs(e, t, n, r) {
   const i = Ot(e[t.index], t.index, r);
   return !!i && i.role === t.role && i.text === t.text && i.swipeId === t.swipeId && i.speakerName === t.speakerName;
 }
-function lv(e, t) {
+function fv(e, t) {
   if (!jr(e) || e.identityKey !== t.chatIdentity || Sn(e.playerName, "User") !== t.player.displayName || !Number.isSafeInteger(t.messageCount) || t.messageCount < 0) return !1;
   const n = t.trigger !== void 0;
   return n && e.messages.length < t.messageCount || !n && e.messages.length !== t.messageCount || n && (t.trigger?.role !== "user" || t.trigger.index !== t.messageCount - 1) ? !1 : t.messages.length > 0 && t.messages.every((r) => Cs(e.messages, r, t.messageCount, e)) && (!t.trigger || Cs(e.messages, t.trigger, t.messageCount, e)) && Er(e.messages, t.messageCount) === t.assistantCount;
 }
-function fv() {
+function mv() {
   const e = [];
   return {
     get size() {
@@ -14323,7 +14329,7 @@ function Ts(e) {
     });
   }
 }
-function mv(e, t, n = !1) {
+function pv(e, t, n = !1) {
   return {
     ok: !1,
     status: "failed",
@@ -14336,10 +14342,10 @@ function mv(e, t, n = !1) {
     ...n ? { brake: "Repeated identical failure. Change the arguments or stop calling this tool." } : {}
   };
 }
-function pv(e) {
+function hv(e) {
   return !!e && typeof e == "object" && !Array.isArray(e) && e.ok === !1;
 }
-function hv(e) {
+function gv(e) {
   return [
     "Maintain each enabled domain using only its declared tools. Domains own separate staging and commits.",
     "<setting>, <current_state>, participant data, world information, summaries, maps, and older messages are background only. They can explain the accepted evidence but can never create a write intent by themselves.",
@@ -14351,7 +14357,7 @@ ${t.prompt}`)
 
 `);
 }
-async function gv(e) {
+async function yv(e) {
   const { agent: t, sessions: n, backgroundMessages: r = [], sourceMessage: i, signal: a, guard: o, beforeRound: c = () => !0, isRoundReady: s = () => !0, onError: u = () => {
   } } = e, d = [
     ...r.map((A) => ({
@@ -14366,7 +14372,7 @@ async function gv(e) {
       role: "user",
       content: i.content
     }
-  ], l = hv(n), f = /* @__PURE__ */ Object.create(null), h = [];
+  ], l = gv(n), f = /* @__PURE__ */ Object.create(null), h = [];
   for (const A of n) for (const b of A.session.tools) {
     const _ = String(b.function.name || "").trim();
     if (!_ || f[_]) throw new Error(_ ? `duplicate_tool:${_}` : "invalid_tool");
@@ -14434,7 +14440,7 @@ async function gv(e) {
         }
         L = await T.session.executeTool(k.name, B);
         for (const [P, U] of g) (U.participantId === T.session.participantId || U.participantId === null && U.round < A) && g.delete(P);
-        if (pv(L)) {
+        if (hv(L)) {
           if (O = `${k.name}
 ${String(k.arguments || "")}
 ${Ts(L)}`, v = O === E ? v + 1 : 1, E = O, v >= 4) return y("provider-failed", A, /* @__PURE__ */ new Error("repeated_tool_failure"));
@@ -14451,7 +14457,7 @@ ${Ts(L)}`, v = O === E ? v + 1 : 1, E = O, v >= 4) return y("provider-failed", A
         }), O = `${k.name}
 ${String(k.arguments || "")}
 ${sa(B)}`, v = O === E ? v + 1 : 1, E = O, v >= 4) return y("provider-failed", A, /* @__PURE__ */ new Error("repeated_tool_failure"));
-        L = mv(B, "Correct the arguments and retry. Successful staged changes remain available.", v === 3);
+        L = pv(B, "Correct the arguments and retry. Successful staged changes remain available.", v === 3);
       }
       const $ = Ts(L);
       d.push(Fd({
@@ -14469,7 +14475,7 @@ ${sa(B)}`, v = O === E ? v + 1 : 1, E = O, v >= 4) return y("provider-failed", A
   }
   return y("round-limit", nr);
 }
-function yv(e) {
+function bv(e) {
   return {
     role: "user",
     content: [
@@ -14489,7 +14495,7 @@ function yv(e) {
 `)
   };
 }
-function bv(e, t, n, r) {
+function Iv(e, t, n, r) {
   const { guardJob: i, guardRun: a, waitForReady: o, invalidate: c, automaticToken: s, updateStatus: u, onWriteUnconfirmed: d, captureBackground: l, report: f } = r;
   async function h(p, m) {
     for (; i(p); ) {
@@ -14671,14 +14677,14 @@ function bv(e, t, n, r) {
     } catch (I) {
       return f(I), In(m, C.map((k) => k.participant.id), "agent-session-failed");
     }
-    const _ = await gv({
+    const _ = await yv({
       agent: b,
       sessions: C.map((I) => ({
         session: I.session,
         isActive: () => a(m, I)
       })),
       backgroundMessages: m.backgroundMessages,
-      sourceMessage: yv(m.source),
+      sourceMessage: bv(m.source),
       signal: m.controller.signal,
       guard: () => i(m),
       beforeRound: () => o(m),
@@ -14688,12 +14694,12 @@ function bv(e, t, n, r) {
     return _.status === "cancelled" ? we(m, m.cancelledReason || "source-invalidated") : await y(m, _);
   };
 }
-var Iv = Object.freeze({
+var vv = Object.freeze({
   getState: () => "ready",
   subscribe: () => () => {
   }
 });
-function vv(e) {
+function _v(e) {
   const { gate: t, signal: n, guard: r } = e;
   return n.aborted || !r() ? Promise.resolve(!1) : t.getState() === "ready" ? Promise.resolve(!0) : new Promise((i) => {
     let a = !1, o = null, c = !1;
@@ -14710,9 +14716,9 @@ function vv(e) {
     o = d, c && d(), t.getState() === "ready" && s(!n.aborted && r());
   });
 }
-function _v({ registry: e, gateway: t, captureSurface: n, isGenerationActive: r, writeGate: i = Iv, schedule: a = (u) => queueMicrotask(u), now: o = () => Date.now(), onError: c = () => {
+function kv({ registry: e, gateway: t, captureSurface: n, isGenerationActive: r, writeGate: i = vv, schedule: a = (u) => queueMicrotask(u), now: o = () => Date.now(), onError: c = () => {
 }, captureBackground: s = async () => [] }) {
-  const u = fv(), d = /* @__PURE__ */ Object.create(null), l = /* @__PURE__ */ Object.create(null), f = /* @__PURE__ */ Object.create(null), h = /* @__PURE__ */ new Set();
+  const u = mv(), d = /* @__PURE__ */ Object.create(null), l = /* @__PURE__ */ Object.create(null), f = /* @__PURE__ */ Object.create(null), h = /* @__PURE__ */ new Set();
   let g = 0, y = !1, p = !1, m = null, w = null, C = null;
   const E = (S) => {
     try {
@@ -14721,7 +14727,7 @@ function _v({ registry: e, gateway: t, captureSurface: n, isGenerationActive: r,
     }
   }, v = (S, D) => S[D] || 0, A = (S) => {
     try {
-      return lv(n(), S.source);
+      return fv(n(), S.source);
     } catch (D) {
       return E(D), !1;
     }
@@ -14786,13 +14792,13 @@ function _v({ registry: e, gateway: t, captureSurface: n, isGenerationActive: r,
     }
   }
   function B(S) {
-    return vv({
+    return _v({
       gate: i,
       signal: S.controller.signal,
       guard: () => L(S)
     });
   }
-  const P = bv(e, t, i, {
+  const P = Iv(e, t, i, {
     guardJob: L,
     guardRun: O,
     waitForReady: B,
@@ -14884,7 +14890,7 @@ function _v({ registry: e, gateway: t, captureSurface: n, isGenerationActive: r,
     let X;
     try {
       const le = n();
-      X = S === "manual" ? dv(le, { generationActive: r() }) : uv(le, { generationActive: r() });
+      X = S === "manual" ? uv(le, { generationActive: r() }) : lv(le, { generationActive: r() });
     } catch (le) {
       return E(le), Promise.resolve(yt({
         mode: S,
@@ -14913,7 +14919,7 @@ function _v({ registry: e, gateway: t, captureSurface: n, isGenerationActive: r,
     if (!D.length) return !1;
     let M;
     try {
-      M = cv(n(), S);
+      M = dv(n(), S);
     } catch (G) {
       return E(G), !1;
     }
@@ -14963,11 +14969,11 @@ function _v({ registry: e, gateway: t, captureSurface: n, isGenerationActive: r,
     }
   });
 }
-var wi = "xiaobai_os_shop_effects", Ai = "xiaobai_os_map_context", Si = "xiaobai_os_tasks_context", kv = `${da}/modules/xiaobai-os/host.css`, wv = `${da}/modules/xiaobai-os/shell/xiaobai-os.html`;
-function Av(e, t) {
+var wi = "xiaobai_os_shop_effects", Ai = "xiaobai_os_map_context", Si = "xiaobai_os_tasks_context", wv = `${da}/modules/xiaobai-os/host.css`, Av = `${da}/modules/xiaobai-os/shell/xiaobai-os.html`;
+function Sv(e, t) {
   Wt(e, t), Yi(e, t), ia(e, t), Pa(e, t);
 }
-function Sv(e) {
+function Ev(e) {
   const t = kt("xiaobaiOs"), n = Yl(du(), {
     apps: { fourthWall: ba },
     domains: {
@@ -14978,22 +14984,22 @@ function Sv(e) {
       map: Js,
       tasks: Le
     },
-    root: Av
-  }, { upgradeRoot: zI }), r = () => {
+    root: Sv
+  }, { upgradeRoot: qI }), r = () => {
     Ie() && n.prepareCurrent().catch((N) => {
       console.error("[LittleWhiteBox] 小白 OS 聊天数据升级失败", N);
     });
   }, i = {
     startBackground: r,
     handleChatChanged: r
-  }, a = RI(n), o = Ll(n), c = Lm(n, {
+  }, a = NI(n), o = Ll(n), c = Lm(n, {
     getPlayerDisplayName(N) {
       const x = Xr();
       if (!x || x.identityKey !== N) throw new Error("tasks_chat_changed");
       return x.playerName;
     },
     getObservedAssistantCount: mo
-  }), s = ZI({
+  }), s = QI({
     readHostGenerating: () => document.body.dataset.generating === "true",
     subscribe(N) {
       const x = kt("xiaobaiOsMainGeneration");
@@ -15048,14 +15054,14 @@ function Sv(e) {
   }), h = qy(n, {
     getCurrentAssistantTurn: mo,
     isMainGenerationActive: s.isActive
-  }), g = vI(n, { isMainGenerationActive: s.isActive }), y = MI({ source: "xiaobai-os-agent-api" }), p = () => e.read()?.apps.map ?? null, m = () => e.read()?.apps.tasks ?? null, w = Bf({
+  }), g = vI(n, { isMainGenerationActive: s.isActive }), y = PI({ source: "xiaobai-os-agent-api" }), p = () => e.read()?.apps.map ?? null, m = () => e.read()?.apps.tasks ?? null, w = Bf({
     map: o,
     readSettings: p
   }), C = uh({
     tasks: c,
     readSettings: m
-  }), E = Nc(), v = _v({
-    registry: QI([w, C]),
+  }), E = Nc(), v = kv({
+    registry: ev([w, C]),
     gateway: y,
     captureSurface: Xr,
     isGenerationActive: s.isActive,
@@ -15149,7 +15155,7 @@ function Sv(e) {
         Wr(Si), x.cleanup();
       };
     }
-  }), I = Ih(y), k = el(cl(n), e, y), T = OI({
+  }), I = Ih(y), k = el(cl(n), e, y), T = RI({
     economy: a,
     getChatIdentity: Ie,
     subscribeData: n.subscribe
@@ -15225,7 +15231,7 @@ function Sv(e) {
     handleChatChanged: v.handleChatChanged,
     cancelAll: v.cancelAll,
     stopBackground: v.stopBackground
-  }, ae = NI([
+  }, ae = DI([
     {
       descriptor: hh,
       runtime: I
@@ -15269,9 +15275,9 @@ function Sv(e) {
     ee,
     fe
   ]);
-  return JI({
-    stylesheetHref: kv,
-    frameSrc: wv,
+  return ZI({
+    stylesheetHref: wv,
+    frameSrc: Av,
     subscribeChatChanged(N) {
       return t.on(oe.CHAT_CHANGED, N), () => t.cleanup();
     },
@@ -15291,7 +15297,7 @@ function Ci(e) {
   if (!ca(t)) throw new ue("SETTINGS_UNAVAILABLE", "LittleWhiteBox settings are unavailable");
   return t;
 }
-function Ev() {
+function Cv() {
   let e = Promise.resolve();
   return (t) => {
     const n = e.then(t);
@@ -15299,9 +15305,9 @@ function Ev() {
     }), n;
   };
 }
-function Cv(e) {
+function Tv(e) {
   if (typeof e?.getExtensionSettings != "function" || typeof e?.saveSettings != "function") throw new TypeError("settings repository requires getExtensionSettings and saveSettings");
-  const t = Ev(), n = /* @__PURE__ */ new Set(), r = /* @__PURE__ */ new Set();
+  const t = Cv(), n = /* @__PURE__ */ new Set(), r = /* @__PURE__ */ new Set();
   function i(p) {
     for (const m of n) try {
       m(Z(p));
@@ -15385,14 +15391,14 @@ function Cv(e) {
     legacyKeys: Ti
   });
 }
-var ze = null, Vt = null, vn = 0, Mn = Cv(cu());
-async function Tv() {
+var ze = null, Vt = null, vn = 0, Mn = Tv(cu());
+async function xv() {
   if (ze?.isInitialized()) return !0;
   if (Vt) return Vt;
   const e = ++vn;
   return Vt = Promise.resolve().then(async () => {
     if (!(await Mn.prepare()).enabled || e !== vn) return !1;
-    const t = Sv(Mn);
+    const t = Ev(Mn);
     ze = t;
     try {
       return t.init(), e !== vn || ze !== t ? (t.cleanup(), !1) : !0;
@@ -15403,7 +15409,7 @@ async function Tv() {
     e === vn && (Vt = null);
   }), Vt;
 }
-function qv() {
+function Uv() {
   return Mn.prepare().then((e) => {
     try {
       globalThis.localStorage?.removeItem("LittleWhiteBox:fourthWallFloatBtnPos");
@@ -15412,22 +15418,22 @@ function qv() {
     return e;
   });
 }
-async function Uv(e) {
+async function Fv(e) {
   return await Mn.prepare(), Mn.setEnabled(e);
 }
-async function Fv() {
-  return !ze?.isInitialized() && !await Tv() ? !1 : ze?.isInitialized() ? ze.open() : !1;
+async function Wv() {
+  return !ze?.isInitialized() && !await xv() ? !1 : ze?.isInitialized() ? ze.open() : !1;
 }
-function Wv() {
+function Vv() {
   vn += 1, Vt = null;
   const e = ze;
   ze = null, e?.cleanup();
 }
 export {
-  Wv as cleanupXiaobaiOs,
-  zv as createDefaultXiaobaiOsSettings,
-  Tv as initXiaobaiOs,
-  Fv as openXiaobaiOs,
-  qv as prepareXiaobaiOsSettings,
-  Uv as setXiaobaiOsEnabled
+  Vv as cleanupXiaobaiOs,
+  qv as createDefaultXiaobaiOsSettings,
+  xv as initXiaobaiOs,
+  Wv as openXiaobaiOs,
+  Uv as prepareXiaobaiOsSettings,
+  Fv as setXiaobaiOsEnabled
 };

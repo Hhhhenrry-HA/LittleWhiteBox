@@ -73,7 +73,7 @@ function ladderReason(): string {
                 <div class="game-copy">
                     <span class="game-card-index">TABLE 01</span>
                     <h3>秘骰对决</h3>
-                    <p>五骰藏锋，一点为百搭。抬高叫数，或当场质疑庄家。</p>
+                    <p>五骰藏锋，一点为百搭。抬高叫数，或当场开骰验牌。</p>
                     <ul>
                         <li>下注 50–500</li>
                         <li>胜出返还 1.8 倍</li>

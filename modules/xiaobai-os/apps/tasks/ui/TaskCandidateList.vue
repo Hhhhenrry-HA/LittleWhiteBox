@@ -33,5 +33,5 @@ const emit = defineEmits<{
             </button>
         </article>
     </div>
-    <p v-else class="tasks-inline-empty">候选席空置。可以发起一次招募，也可以直接撤回托管。</p>
+    <p v-else class="tasks-inline-empty">还没有候选人，请先招募；不再需要该任务时也可以撤回。</p>
 </template>

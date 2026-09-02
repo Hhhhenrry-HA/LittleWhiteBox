@@ -3,6 +3,7 @@ defineProps<{
     heading: string;
     summary: string;
     confirmLabel: string;
+    busyLabel: string;
     busy: boolean;
     error: string;
     danger?: boolean;
@@ -24,7 +25,7 @@ defineEmits<{
             <div class="game-dialog-actions">
                 <button type="button" :disabled="busy" @click="$emit('cancel')">再想想</button>
                 <button type="button" class="is-primary" :class="{ 'is-danger': danger }" :disabled="busy" @click="$emit('confirm')">
-                    {{ busy ? '正在落账…' : confirmLabel }}
+                    {{ busy ? busyLabel : confirmLabel }}
                 </button>
             </div>
         </section>

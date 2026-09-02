@@ -49,7 +49,7 @@ export function startGameStakeLeg(gameId: string, amount: number): GameEconomyLe
         toAccountId: escrowAccount(gameId),
         amount,
         kind: 'game_stake',
-        title: 'Game stake escrow',
+        title: '游戏下注',
     };
 }
 
@@ -63,7 +63,7 @@ export function gameSettlementLegs(gameId: string, amountIn: number, payout: num
             toAccountId: escrow,
             amount: payout - amountIn,
             kind: 'game_reserve',
-            title: 'Game reserve funding',
+            title: '游戏奖池补足',
         });
     }
     if (payout > 0) {
@@ -73,7 +73,7 @@ export function gameSettlementLegs(gameId: string, amountIn: number, payout: num
             toAccountId: 'player',
             amount: payout,
             kind: 'game_payout',
-            title: 'Game payout',
+            title: '游戏派奖',
         });
     }
     if (payout < amountIn) {
@@ -83,7 +83,7 @@ export function gameSettlementLegs(gameId: string, amountIn: number, payout: num
             toAccountId: 'system:sink',
             amount: amountIn - payout,
             kind: 'game_loss',
-            title: 'Game loss settlement',
+            title: '游戏输局结算',
         });
     }
     return legs;

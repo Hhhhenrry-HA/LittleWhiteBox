@@ -132,7 +132,7 @@ onBeforeUnmount(() => {
 
 <template>
     <main class="wallet-ui-app wallet-app">
-        <WalletAppHeader kicker="Wallet" title="钱包" />
+        <WalletAppHeader title="钱包" />
 
         <div class="wallet-ui-scroll">
             <WalletBalanceCard :balance="state.balance" :currency="state.currency" :status="state.status" />

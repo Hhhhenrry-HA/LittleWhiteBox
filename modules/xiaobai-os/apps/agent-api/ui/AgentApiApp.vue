@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, toRaw } 
 import { normalizeAgentConfig } from '../../../../agent-core/config.js';
 import { createAgentSettingsPanel } from '../../../../agent-core/ui/settings-panel.js';
 import { buildAgentSettingsPanelMarkup } from '../../../../agent-core/ui/settings-markup.js';
+import '../../../../agent-core/ui/settings-surface.css';
 import type { XiaobaiOsAppProps } from '../../../shell/app-src/app-registry.js';
 import type { AgentApiClientState, AgentApiConnectionResult } from '../types.js';
 import './agent-api.css';
@@ -21,7 +22,7 @@ const initialState = structuredClone(toRaw(props.initialState as AgentApiClientS
 const clientState = ref<AgentApiClientState>(initialState);
 const panelRoot = ref<HTMLElement | null>(null);
 const connectionStatus = ref<'idle' | 'testing' | 'success' | 'error'>('idle');
-const connectionMessage = ref('尚未测试。打开页面和保存配置都不会自动连接供应商。');
+const connectionMessage = ref('连接尚未测试');
 let unsubscribe = () => {};
 let saveResetTimer: ReturnType<typeof setTimeout> | null = null;
 let reloadGeneration = 0;
@@ -62,7 +63,7 @@ function scheduleSaveFeedbackReset(): void {
 async function handleSaveConfig(request: SaveRequest): Promise<void> {
     const patch = request.payload || {};
     panelState.configSave = { status: 'saving', requestId: '', error: '' };
-    panelState.inlineToastText = '正在保存共享配置…';
+    panelState.inlineToastText = '正在保存配置…';
     renderPanel();
     try {
         const response = await props.bridge.request('agent-api/save', { patch }, 35_000) as {
@@ -79,7 +80,7 @@ async function handleSaveConfig(request: SaveRequest): Promise<void> {
         panelState.configExternalChangePending = false;
         panelState.configFormSyncPending = true;
         panelState.configSave = { status: 'success', requestId: '', error: '' };
-        panelState.inlineToastText = '已保存；小白酒馆、画图、Ebook 与 OS 将读取同一份配置。';
+        panelState.inlineToastText = '配置已保存';
     } catch (error) {
         const message = describeError(error);
         panelState.configSave = { status: 'error', requestId: '', error: message };
@@ -168,7 +169,7 @@ async function testConnection(): Promise<void> {
         }, NETWORK_TIMEOUT_MS) as { result: AgentApiConnectionResult };
         const result = response.result;
         connectionStatus.value = 'success';
-        connectionMessage.value = `${result.provider || 'Provider'} · ${result.model || '当前模型'} · ${result.latencyMs} ms`;
+        connectionMessage.value = `${result.provider || '当前服务'} · ${result.model || '当前模型'} · ${result.latencyMs} 毫秒`;
     } catch (error) {
         connectionStatus.value = 'error';
         connectionMessage.value = describeError(error);
@@ -201,40 +202,32 @@ onBeforeUnmount(() => {
 
 <template>
     <main class="agent-api-app">
-        <header class="agent-api-header">
-            <div>
-                <span>System service</span>
-                <h1>Agent API</h1>
-                <p>一份配置，供小白酒馆、画图、Ebook 与 OS 共同使用。</p>
-            </div>
-            <i aria-hidden="true"><b /> API</i>
-        </header>
-
         <div class="agent-api-scroll">
-            <section class="agent-api-connection" :class="`is-${connectionStatus}`" aria-labelledby="agent-api-connection-title">
-                <div>
-                    <small>CONNECTION CHECK</small>
-                    <h2 id="agent-api-connection-title">当前连接</h2>
-                    <p aria-live="polite">{{ connectionMessage }}</p>
-                </div>
-                <button type="button" :disabled="!configReady || connectionBusy" @click="testConnection">
-                    {{ connectionBusy ? '测试中…' : '测试当前连接' }}
-                </button>
-            </section>
+            <div class="agent-api-content">
+                <header class="agent-api-header">
+                    <h1>Agent API 配置</h1>
+                    <p>共享 Agent 主预设</p>
+                </header>
 
-            <section v-if="clientState.status === 'loading'" class="agent-api-state" aria-live="polite">
-                <i aria-hidden="true" />
-                <div><strong>正在读取共享配置</strong><span>页面打开不会连接模型供应商。</span></div>
-            </section>
+                <section v-if="clientState.status === 'loading'" class="agent-api-state" aria-live="polite">
+                    正在读取配置
+                </section>
 
-            <section v-else-if="clientState.status === 'error'" class="agent-api-state is-error" role="alert">
-                <div><strong>配置暂时无法读取</strong><span>{{ clientState.message }}</span></div>
-                <button type="button" @click="reloadConfig()">重新读取</button>
-            </section>
+                <section v-else-if="clientState.status === 'error'" class="agent-api-state is-error" role="alert">
+                    <div><strong>配置暂时无法读取</strong><span>{{ clientState.message }}</span></div>
+                    <button type="button" @click="reloadConfig()">重新读取</button>
+                </section>
 
-            <section v-show="configReady" class="agent-api-panel" aria-label="共享 Agent API 配置">
-                <div ref="panelRoot" />
-            </section>
+                <section v-show="configReady" class="agent-api-panel xb-agent-settings-surface" aria-label="Agent API 配置">
+                    <div ref="panelRoot" />
+                    <div class="agent-api-connection" :class="`is-${connectionStatus}`">
+                        <p aria-live="polite">{{ connectionMessage }}</p>
+                        <button type="button" :disabled="!configReady || connectionBusy" @click="testConnection">
+                            {{ connectionBusy ? '测试中…' : '测试当前连接' }}
+                        </button>
+                    </div>
+                </section>
+            </div>
         </div>
     </main>
 </template>

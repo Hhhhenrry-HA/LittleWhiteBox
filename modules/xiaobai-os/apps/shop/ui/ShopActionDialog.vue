@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive } from 'vue';
 import type { ShopActivationView, ShopCatalogItemView } from '../types.js';
+import ShopItemIcon from './ShopItemIcon.vue';
 
 const props = defineProps<{
     mode: 'purchase' | 'use' | 'deactivate';
@@ -45,10 +46,9 @@ function submit(): void {
         @keydown.esc.stop.prevent="!busy && $emit('cancel')"
     >
         <form method="dialog" class="shop-dialog-card" @submit.prevent="submit">
-            <span class="shop-dialog-kicker">SEALED DECISION</span>
             <h2 :id="`shop-dialog-${mode}`">{{ title }}</h2>
             <div class="shop-dialog-item">
-                <span aria-hidden="true">{{ item.name.slice(0, 1) }}</span>
+                <span><ShopItemIcon :name="item.icon" /></span>
                 <div><strong>{{ item.name }}</strong><small>{{ item.durationLabel }}</small></div>
             </div>
 

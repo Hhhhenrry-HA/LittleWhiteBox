@@ -21,14 +21,14 @@ const emit = defineEmits<{
 <template>
     <section class="tasks-page">
         <header class="tasks-page-heading">
-            <div><small>PLAYER ESCROW DESK</small><h2>我发布的任务</h2></div>
+            <div><h2>我发布的任务</h2></div>
             <button type="button" class="tasks-primary-button" :disabled="Boolean(disabledReason)" :title="disabledReason" @click="emit('publish')">发布新任务</button>
         </header>
-        <div v-if="!records.length" class="tasks-empty"><span>NO OPEN RECRUITMENT</span><h3>没有正在招募的委托</h3><p>发布任务会立即从钱包锁定报酬，但不会调用 Agent；招募候选人时才会调用。</p></div>
+        <div v-if="!records.length" class="tasks-empty"><h3>还没有发布任务</h3><p>点击右上角“发布新任务”创建委托。</p></div>
         <div v-else class="tasks-published-list">
             <article v-for="task in records" :key="task.taskId" class="tasks-published-card">
                 <header>
-                    <div><small>CUSTOM / ESCROW LOCKED</small><h3>{{ task.title }}</h3></div>
+                    <div><small>招募中 · 报酬已托管</small><h3>{{ task.title }}</h3></div>
                     <strong>¤ {{ task.reward }}</strong>
                 </header>
                 <dl>
@@ -38,15 +38,14 @@ const emit = defineEmits<{
                     <div v-if="task.risk"><dt>风险</dt><dd>{{ task.risk }}</dd></div>
                 </dl>
                 <div class="tasks-published-actions">
-                    <button type="button" @click="emit('detail', task.taskId)">查看合同</button>
+                    <button type="button" @click="emit('detail', task.taskId)">查看详情</button>
                     <button
                         type="button"
-                        class="tasks-agent-button"
                         :disabled="writeBusy || Boolean(candidateBusyTaskId) || Boolean(disabledReason)"
                         :title="disabledReason"
                         @click="emit('recruit', task)"
                     >
-                        {{ candidateBusyTaskId === task.taskId ? '正在招募…' : '招募候选人（使用 Agent）' }}
+                        {{ candidateBusyTaskId === task.taskId ? '正在招募…' : '招募候选人' }}
                     </button>
                     <button type="button" class="is-danger" :disabled="writeBusy || Boolean(disabledReason)" :title="disabledReason" @click="emit('cancel', task)">撤回并退款</button>
                 </div>

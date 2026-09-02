@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import type { ShopActivationView, ShopCatalogItemView } from '../types.js';
+import ShopItemIcon from './ShopItemIcon.vue';
 
 const props = defineProps<{
     catalog: ShopCatalogItemView[];
@@ -29,10 +30,7 @@ const historyByItem = computed(() => {
 <template>
     <section class="shop-inventory" aria-labelledby="shop-inventory-title">
         <header class="shop-section-heading">
-            <div>
-                <span>PRIVATE COLLECTION</span>
-                <h2 id="shop-inventory-title">我的奇物</h2>
-            </div>
+            <h2 id="shop-inventory-title">我的奇物</h2>
             <small>{{ held.reduce((total, item) => total + item.quantity, 0) }} 件可用</small>
         </header>
         <p v-if="writeDisabledReason" class="shop-write-reason" role="status">{{ writeDisabledReason }}</p>
@@ -41,7 +39,7 @@ const historyByItem = computed(() => {
             <header><h3 id="shop-active-title">生效中</h3><span>{{ active.length }}</span></header>
             <div v-if="active.length" class="shop-activation-list">
                 <article v-for="activation in active" :key="activation.activationId" class="shop-activation-card">
-                    <div class="shop-mini-mark" aria-hidden="true">{{ activation.name.slice(0, 1) }}</div>
+                    <div class="shop-mini-mark"><ShopItemIcon :name="activation.icon" /></div>
                     <div>
                         <h4>{{ activation.name }}</h4>
                         <p v-for="parameter in activation.parameters" :key="parameter.label">
@@ -67,7 +65,7 @@ const historyByItem = computed(() => {
             <header><h3 id="shop-held-title">持有</h3><span>{{ held.length }}</span></header>
             <div v-if="held.length" class="shop-held-grid">
                 <article v-for="item in held" :key="item.id" class="shop-held-card">
-                    <div class="shop-mini-mark" aria-hidden="true">{{ item.name.slice(0, 1) }}</div>
+                    <div class="shop-mini-mark"><ShopItemIcon :name="item.icon" /></div>
                     <div>
                         <h4>{{ item.name }}</h4>
                         <p>{{ item.durationLabel }}</p>

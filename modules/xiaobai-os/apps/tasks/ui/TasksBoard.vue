@@ -16,22 +16,21 @@ const emit = defineEmits<{
 <template>
     <section class="tasks-page tasks-board-page">
         <header class="tasks-page-heading">
-            <div><small>WORLD CONTRACT FEED / 06 CHANNELS</small><h2>世界任务大厅</h2></div>
+            <div><h2>世界任务大厅</h2></div>
             <button
                 type="button"
-                class="tasks-agent-button"
+                class="tasks-primary-button"
                 :disabled="busy || Boolean(disabledReason)"
                 :title="disabledReason"
                 @click="emit('refresh')"
             >
-                <span aria-hidden="true">✦</span>{{ busy ? '正在刷新…' : '刷新任务（使用 Agent）' }}
+                {{ busy ? '正在刷新…' : '刷新任务' }}
             </button>
         </header>
 
         <div v-if="!board" class="tasks-empty">
-            <span>NO CONTRACT SIGNAL</span>
-            <h3>大厅暂时没有委托</h3>
-            <p>打开页面不会调用模型。只有点击刷新后，任务终端才读取当前聊天资料生成一组尚未发生的委托。</p>
+            <h3>当前没有任务</h3>
+            <p>请点击右上角“刷新任务”获取新任务。</p>
         </div>
         <div v-else class="tasks-board-grid">
             <article v-for="listing in board.listings" :key="listing.listingId" class="tasks-listing" :class="{ 'is-accepted': listing.accepted }">

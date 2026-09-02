@@ -46,6 +46,8 @@ const dealerStagger = computed(() => props.detail.dealerDice.length * DIE_STAGGE
 const bidHolds = computed(() => props.detail.matchingDiceCount >= props.detail.finalBid.count);
 const challengerLabel = computed(() => (props.detail.challenger === 'player' ? '你' : '庄家'));
 const bidderLabel = computed(() => (props.detail.finalBid.by === 'player' ? '你' : '庄家'));
+const playerOutcomeLabel = computed(() => (props.record.outcome === 'player-win' ? '你赢了' : '你输了'));
+const signedNet = computed(() => `${props.record.net > 0 ? '+' : ''}${props.record.net} 小白币`);
 
 onMounted(() => {
     if (typeof window === 'undefined') {
@@ -63,13 +65,16 @@ onUnmounted(clearTimers);
 
 <template>
     <section class="game-table game-dice-reveal" aria-labelledby="game-reveal-title">
-        <header class="game-table-heading">
-            <span class="game-reveal-eyebrow">SHOWDOWN</span>
-            <div><span>{{ challengerLabel }}提出质疑</span><h2 id="game-reveal-title">摊牌</h2></div>
-            <strong>{{ bidderLabel }}叫 {{ detail.finalBid.count }} × {{ detail.finalBid.face }} 点</strong>
+        <header class="game-table-heading game-reveal-heading">
+            <div><span>SHOWDOWN</span><h2 id="game-reveal-title">开骰</h2></div>
         </header>
 
         <div class="game-reveal-cloth" @click="skipToEnd">
+            <div class="game-reveal-call">
+                <span>最终叫牌 · {{ bidderLabel }}</span>
+                <strong>{{ detail.finalBid.count }} 枚 {{ detail.finalBid.face }} 点</strong>
+            </div>
+
             <div class="game-reveal-side">
                 <span>庄家</span>
                 <div class="game-dice-row">
@@ -97,20 +102,28 @@ onUnmounted(clearTimers);
             </div>
 
             <p v-if="reachedStage('counting')" class="game-reveal-tally">
-                <span>{{ detail.finalBid.face }} 点合计（1 点通配）</span>
+                <span>实际开出（{{ detail.finalBid.face }} 点及 1 点）</span>
                 <strong>{{ detail.matchingDiceCount }}</strong>
                 <span>枚</span>
             </p>
 
-            <p v-if="reachedStage('verdict')" class="game-reveal-verdict" :class="bidHolds ? 'is-holds' : 'is-broken'">
-                实际 {{ detail.matchingDiceCount }} 枚 {{ bidHolds ? '≥' : '<' }} 叫数 {{ detail.finalBid.count }} 枚
-                <strong>{{ bidHolds ? '叫牌成立，质疑失败' : '叫牌不成立，质疑得手' }}</strong>
-            </p>
+            <div
+                v-if="reachedStage('verdict')"
+                class="game-reveal-verdict"
+                :class="`is-${record.outcomeTone}`"
+                role="status"
+                aria-live="polite"
+            >
+                <small>本局结果</small>
+                <div><strong>{{ playerOutcomeLabel }}</strong><em>{{ signedNet }}</em></div>
+                <p>
+                    实际 {{ detail.matchingDiceCount }} 枚 {{ bidHolds ? '≥' : '<' }} 叫牌 {{ detail.finalBid.count }} 枚；
+                    {{ challengerLabel }}开骰，{{ bidderLabel }}的叫牌{{ bidHolds ? '成立' : '不成立' }}。
+                </p>
+            </div>
         </div>
 
-        <div v-if="reachedStage('settled')" class="game-reveal-outcome" :class="`is-${record.outcomeTone}`">
-            <strong>{{ record.outcomeLabel }}</strong>
-            <em>{{ record.net > 0 ? '+' : '' }}{{ record.net }} 小白币</em>
+        <div v-if="reachedStage('settled')" class="game-reveal-actions">
             <button type="button" class="game-primary-action" @click="emit('done')">回到大厅</button>
         </div>
         <p v-else class="game-reveal-hint">点击牌桌跳过</p>

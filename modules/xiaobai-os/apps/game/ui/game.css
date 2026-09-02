@@ -20,13 +20,14 @@
 }
 
 .game-header {
-    align-items: end;
+    align-items: center;
     background: linear-gradient(180deg, rgba(3, 13, 11, .16), rgba(3, 13, 11, .68));
     border-bottom: 1px solid rgba(200, 163, 90, .28);
     display: grid;
     gap: 14px;
     grid-template-columns: minmax(0, 1fr) auto 38px;
-    padding: 45px 18px 13px;
+    min-height: 76px;
+    padding: 14px 18px;
     position: relative;
 }
 
@@ -41,7 +42,6 @@
     right: 18%;
 }
 
-.game-brand > span,
 .game-eyebrow,
 .game-table-heading > div > span,
 .game-section-heading > div > span,
@@ -267,7 +267,7 @@
 /* Three layers on purpose: `filter` is a grouping property, so keeping it on
    the same element as `perspective` risks flattening the cube. */
 .game-die {
-    --game-die-size: 38px;
+    --game-die-size: 40px;
     filter: drop-shadow(0 4px 4px rgba(2, 12, 10, .5));
     height: var(--game-die-size);
     position: relative;
@@ -311,6 +311,7 @@
 .game-die-face.is-left { --game-die-shade: rgba(28, 44, 38, .13); transform: rotateY(-90deg) translateZ(calc(var(--game-die-size) / 2)); }
 .game-die-face.is-top { --game-die-shade: rgba(255, 253, 244, .1); transform: rotateX(90deg) translateZ(calc(var(--game-die-size) / 2)); }
 .game-die-face.is-bottom { --game-die-shade: rgba(28, 44, 38, .2); transform: rotateX(-90deg) translateZ(calc(var(--game-die-size) / 2)); }
+.game-die-face.is-result { --game-die-shade: transparent; }
 
 .game-die-pips { display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); inset: 17%; place-items: center; position: absolute; }
 
@@ -332,7 +333,7 @@
 .game-die.is-hit { animation: game-die-hit 900ms ease-out forwards; }
 .game-die.is-hit .game-die-stage { animation: game-die-hit-pop 460ms ease-out; }
 
-.game-dice-reveal .game-reveal-eyebrow { align-self: center; color: var(--game-brass); font: 700 8px Bahnschrift, sans-serif; letter-spacing: .18em; }
+.game-reveal-heading { grid-template-columns: 1fr; }
 
 .game-reveal-cloth {
     align-content: center;
@@ -344,15 +345,19 @@
     box-shadow: inset 0 0 45px rgba(0, 0, 0, .34), 0 13px 25px rgba(0, 0, 0, .2);
     cursor: pointer;
     display: grid;
-    gap: 15px;
+    gap: 14px;
     min-height: 320px;
-    padding: 26px 18px 20px;
+    padding: 20px 18px;
     position: relative;
 }
 
 .game-reveal-cloth::after { border: 1px solid rgba(200, 163, 90, .12); border-radius: inherit; content: ''; inset: 5px; pointer-events: none; position: absolute; }
+.game-reveal-call { align-items: center; border-bottom: 1px solid rgba(200, 163, 90, .2); display: flex; gap: 10px; justify-content: center; margin: 0 auto; padding: 0 14px 10px; width: min(100%, 260px); }
+.game-reveal-call span { color: var(--game-muted); font-size: 9px; }
+.game-reveal-call strong { color: var(--game-brass-bright); font: 700 17px/1 Bahnschrift, sans-serif; }
 .game-reveal-side { display: grid; gap: 8px; justify-items: center; }
 .game-reveal-side > span { color: var(--game-brass); font-size: 9px; letter-spacing: .1em; }
+.game-reveal-side .game-die { --game-die-size: 42px; }
 
 .game-reveal-tally {
     align-items: baseline;
@@ -368,18 +373,29 @@
 
 .game-reveal-verdict {
     animation: game-result-in 320ms ease-out both;
-    color: #b8c0b5;
+    background: rgba(4, 20, 17, .78);
+    border: 1px solid rgba(234, 208, 146, .42);
     display: grid;
-    font-size: 10px;
-    gap: 5px;
-    justify-items: center;
-    margin: 0;
+    gap: 7px;
+    margin: 0 auto;
+    padding: 12px 14px;
     text-align: center;
+    width: min(100%, 300px);
 }
 
-.game-reveal-verdict strong { font: 650 13px "Noto Serif SC", serif; }
-.game-reveal-verdict.is-holds strong { color: var(--game-brass-bright); }
-.game-reveal-verdict.is-broken strong { color: #dc877a; }
+.game-reveal-verdict > small { color: var(--game-muted); font-size: 8px; letter-spacing: .16em; }
+.game-reveal-verdict > div { align-items: baseline; display: flex; gap: 12px; justify-content: center; }
+.game-reveal-verdict strong { color: var(--game-brass-bright); font: 700 26px/1.1 "Noto Serif SC", serif; }
+.game-reveal-verdict em { color: var(--game-brass-bright); font: normal 700 13px Bahnschrift, sans-serif; }
+.game-reveal-verdict p { color: #b8c0b5; font-size: 9px; line-height: 1.55; margin: 0; }
+.game-reveal-verdict.is-loss { border-color: rgba(220, 135, 122, .5); }
+.game-reveal-verdict.is-loss strong,
+.game-reveal-verdict.is-loss em { color: #e58e82; }
+
+.game-reveal-actions {
+    animation: game-result-in 320ms ease-out both;
+    display: grid;
+}
 
 .game-reveal-outcome {
     align-items: center;
@@ -622,7 +638,7 @@
 }
 
 @media (max-width: 390px) {
-    .game-header { gap: 9px; padding-left: 13px; padding-right: 13px; }
+    .game-header { gap: 9px; min-height: 65px; padding: 11px 13px; }
     .game-brand h1 { font-size: 20px; }
     .game-funds { gap: 8px; }
     .game-funds > span + span { padding-left: 8px; }
@@ -631,13 +647,13 @@
     .game-card { gap: 9px; grid-template-columns: 43px minmax(0, 1fr) auto; padding: 11px; }
     .game-glyph { height: 41px; width: 41px; }
     .game-dice-row { gap: 5px; }
-    .game-die { --game-die-size: 34px; }
+    .game-die { --game-die-size: 38px; }
+    .game-reveal-side .game-die { --game-die-size: 39px; }
     .game-ladder-stage { grid-template-columns: 1fr; }
     .game-ladder-purse { text-align: center; }
 }
 
 @media (max-height: 650px) {
-    .game-header { padding-top: 39px; }
     .game-dice-cloth { min-height: 245px; }
     .game-push-stage { min-height: 205px; }
 }
@@ -646,6 +662,7 @@
     .game-result-banner,
     .game-reveal-tally,
     .game-reveal-verdict,
+    .game-reveal-actions,
     .game-reveal-outcome,
     .game-revealed-coin { animation: none; }
     .game-flip-card { transition: none; }

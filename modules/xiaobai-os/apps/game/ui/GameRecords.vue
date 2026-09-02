@@ -53,7 +53,7 @@ function formatTime(value: number): string {
                         <summary>查看公开牌局</summary>
                         <div v-if="record.detail.kind === 'dice'" class="game-record-detail">
                             <p>终局叫数：{{ record.detail.finalBid.count }} 枚 {{ record.detail.finalBid.face }} 点</p>
-                            <p>实际匹配：{{ record.detail.matchingDiceCount }} 枚 · {{ record.detail.challenger === 'player' ? '玩家' : '庄家' }}质疑</p>
+                            <p>实际匹配：{{ record.detail.matchingDiceCount }} 枚 · {{ record.detail.challenger === 'player' ? '玩家' : '庄家' }}开骰</p>
                             <p>你的骰子：{{ record.detail.playerDice.join(' · ') }}</p>
                         </div>
                         <div v-else-if="record.detail.kind === 'push'" class="game-record-detail">

@@ -177,7 +177,7 @@ function submitMinimumRaise(): void {
                 :title="writeDisabledReason"
                 @click="emit('challenge')"
             >
-                质疑
+                开骰
             </button>
         </div>
 

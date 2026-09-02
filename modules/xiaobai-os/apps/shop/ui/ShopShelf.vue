@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import type { ShopCatalogItemView } from '../types.js';
+import ShopItemIcon from './ShopItemIcon.vue';
 
 const props = defineProps<{
     catalog: ShopCatalogItemView[];
@@ -38,10 +39,7 @@ function purchaseHint(item: ShopCatalogItemView): string {
 <template>
     <section class="shop-shelf" aria-labelledby="shop-shelf-title">
         <header class="shop-section-heading">
-            <div>
-                <span>CURIO CABINET</span>
-                <h2 id="shop-shelf-title">今日陈列</h2>
-            </div>
+            <h2 id="shop-shelf-title">今日陈列</h2>
             <small>{{ visibleItems.length }} 件奇物</small>
         </header>
 
@@ -59,7 +57,7 @@ function purchaseHint(item: ShopCatalogItemView): string {
 
         <div class="shop-product-grid">
             <article v-for="item in visibleItems" :key="item.id" class="shop-product-card">
-                <div class="shop-product-mark" aria-hidden="true">{{ item.name.slice(0, 1) }}</div>
+                <div class="shop-product-mark"><ShopItemIcon :name="item.icon" /></div>
                 <div class="shop-product-copy">
                     <div class="shop-product-title">
                         <h3>{{ item.name }}</h3>

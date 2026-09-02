@@ -30,13 +30,10 @@
 }
 
 .bank-header::after { background: linear-gradient(90deg, var(--bank-brass), transparent); bottom: -1px; content: ""; height: 1px; left: 18px; opacity: .8; position: absolute; width: 72px; }
-.bank-header-kicker,
-.bank-section-heading > div > span,
-.bank-dialog-kicker { color: var(--bank-brass); font-size: 8px; font-weight: 800; letter-spacing: .2em; }
 .bank-header h1,
 .bank-section-heading h2,
 .bank-dialog h2 { font-family: "Noto Serif SC", "Songti SC", serif; }
-.bank-header h1 { font-size: 22px; letter-spacing: .12em; margin: 2px 0 0; }
+.bank-header h1 { font-size: 22px; letter-spacing: .12em; margin: 0; }
 .bank-header-balance { border-left: 1px solid rgba(196, 167, 101, .22); display: grid; padding-left: 12px; }
 .bank-header-balance small { color: var(--bank-muted); font-size: 8px; }
 .bank-header-balance strong { color: var(--bank-brass-bright); font: 700 14px/1.5 "DIN Alternate", Bahnschrift, sans-serif; white-space: nowrap; }
@@ -59,7 +56,7 @@
 
 .bank-scroll { min-height: 0; overflow: hidden auto; padding: 18px 15px 32px; scrollbar-color: rgba(196, 167, 101, .45) transparent; }
 .bank-section-heading { align-items: end; display: flex; justify-content: space-between; padding: 0 2px 13px; }
-.bank-section-heading h2 { font-size: 19px; letter-spacing: .08em; margin: 2px 0 0; }
+.bank-section-heading h2 { font-size: 19px; letter-spacing: .08em; margin: 0; }
 .bank-section-heading > small { color: var(--bank-muted); font-size: 9px; }
 .bank-section-intro { border-left: 2px solid rgba(196, 167, 101, .5); color: var(--bank-muted); font-size: 10px; line-height: 1.65; margin: 0 1px 14px; padding: 1px 0 1px 10px; }
 
@@ -98,7 +95,8 @@
 .bank-vault-portals i { color: var(--bank-brass); font-size: 18px; font-style: normal; }
 .bank-portal-mark,
 .bank-position-mark,
-.bank-record-mark { border: 1px solid rgba(196, 167, 101, .5); color: var(--bank-brass); display: grid; font-family: "Songti SC", serif; height: 32px; place-items: center; width: 32px; }
+.bank-record-mark { border: 1px solid rgba(196, 167, 101, .5); color: var(--bank-brass); display: grid; height: 32px; place-items: center; width: 32px; }
+.bank-product-icon { fill: none; height: 62%; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.5; width: 62%; }
 
 .bank-product-grid { display: grid; gap: 11px; }
 .bank-product-card { background: linear-gradient(140deg, rgba(27, 128, 107, .1), transparent 38%), var(--bank-panel); border: 1px solid rgba(196, 167, 101, .2); box-shadow: 0 10px 25px rgba(0, 0, 0, .18); overflow: hidden; padding: 14px; position: relative; }
@@ -107,7 +105,7 @@
 .bank-product-index { color: #54746a; font: 700 10px Georgia, serif; }
 .bank-product-card h3 { font: 650 15px "Noto Serif SC", "Songti SC", serif; letter-spacing: .06em; margin: 2px 0 0; }
 .bank-product-card header small { color: var(--bank-muted); font-size: 8px; }
-.bank-product-seal { border: 1px solid var(--bank-brass); color: var(--bank-brass); display: grid; font-family: "Songti SC", serif; height: 28px; place-items: center; transform: rotate(3deg); width: 28px; }
+.bank-product-seal { border: 1px solid var(--bank-brass); color: var(--bank-brass); display: grid; height: 28px; place-items: center; transform: rotate(3deg); width: 28px; }
 .bank-fund-card > p { color: var(--bank-muted); font-size: 9px; line-height: 1.55; margin: 10px 0 0 38px; }
 .bank-risk-badge { border: 1px solid #497265; color: #8ab6a8; font-size: 8px; padding: 4px 6px; }
 .bank-risk-badge.is-medium { border-color: #89743c; color: #cbb270; }
@@ -153,7 +151,7 @@
 .bank-sealed-copy { border-left: 1px solid #42675c; color: #738a81; font-size: 8px; line-height: 1.5; margin: 11px 0 0 43px; padding-left: 8px; }
 
 .bank-empty-state { border: 1px dashed rgba(196, 167, 101, .2); color: var(--bank-muted); display: grid; margin-top: 8px; min-height: 165px; padding: 24px; place-items: center; text-align: center; }
-.bank-empty-state > span { border: 1px solid rgba(196, 167, 101, .35); color: var(--bank-brass); display: grid; font-family: "Songti SC", serif; height: 38px; place-items: center; width: 38px; }
+.bank-empty-state > span { border: 1px solid rgba(196, 167, 101, .35); color: var(--bank-brass); display: grid; height: 38px; place-items: center; width: 38px; }
 .bank-empty-state strong { color: var(--bank-ink); font: 600 12px "Noto Serif SC", "Songti SC", serif; }
 .bank-empty-state p { font-size: 9px; line-height: 1.5; margin: 0; }
 .bank-record-list { border: 1px solid rgba(196, 167, 101, .15); }
@@ -178,9 +176,9 @@
 .bank-dialog { background: rgba(1, 7, 6, .82); border: 0; color: var(--bank-ink); display: grid; height: 100%; inset: 0; margin: 0; max-height: none; max-width: none; padding: 18px; place-items: center; position: fixed; width: 100%; z-index: 20; }
 .bank-dialog-card { background: linear-gradient(145deg, rgba(13, 89, 76, .18), transparent 38%), #091c1a; border: 1px solid rgba(196, 167, 101, .48); box-shadow: 0 26px 70px rgba(0, 0, 0, .65); max-height: calc(100% - 24px); overflow: hidden auto; padding: 22px; position: relative; width: min(100%, 330px); }
 .bank-dialog-card::before { border: 1px solid rgba(196, 167, 101, .12); content: ""; inset: 6px; pointer-events: none; position: absolute; }
-.bank-dialog h2 { font-size: 20px; letter-spacing: .08em; margin: 3px 0 0; }
+.bank-dialog h2 { font-size: 20px; letter-spacing: .08em; margin: 0; }
 .bank-dialog-subject { align-items: center; border-bottom: 1px solid rgba(196, 167, 101, .18); border-top: 1px solid rgba(196, 167, 101, .18); display: flex; gap: 11px; margin: 16px 0; padding: 11px 0; }
-.bank-dialog-subject > span { border: 1px solid var(--bank-brass); color: var(--bank-brass); display: grid; font-family: "Songti SC", serif; height: 35px; place-items: center; transform: rotate(-2deg); width: 35px; }
+.bank-dialog-subject > span { border: 1px solid var(--bank-brass); color: var(--bank-brass); display: grid; height: 35px; place-items: center; transform: rotate(-2deg); width: 35px; }
 .bank-dialog-subject strong { display: block; font: 650 13px "Noto Serif SC", "Songti SC", serif; }
 .bank-dialog-subject small { color: var(--bank-muted); font-size: 8px; }
 .bank-dialog-field { display: grid; gap: 6px; }

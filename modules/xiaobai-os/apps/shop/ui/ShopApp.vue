@@ -158,7 +158,6 @@ onBeforeUnmount(() => {
     <main class="shop-app">
         <header class="shop-header">
             <div>
-                <span class="shop-header-kicker">VERMILION CABINET</span>
                 <h1>奇物商店</h1>
             </div>
             <div class="shop-balance" aria-label="小白币余额"><small>余额</small><strong>¤ {{ state.balance }}</strong></div>

@@ -15,7 +15,7 @@ defineEmits<{
 <template>
     <section aria-labelledby="bank-funds-title">
         <header class="bank-section-heading">
-            <div><span>MANAGED FUNDS</span><h2 id="bank-funds-title">浮动理财</h2></div>
+            <h2 id="bank-funds-title">浮动理财</h2>
             <small>到期前不揭晓结果</small>
         </header>
         <p class="bank-section-intro">收益在开户时封存，到期后才会公开。理财锁定期间不可提前退出。</p>

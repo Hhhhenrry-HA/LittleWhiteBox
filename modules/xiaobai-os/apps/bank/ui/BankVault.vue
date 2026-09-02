@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { BankPage } from '../types.js';
+import BankProductIcon from './BankProductIcon.vue';
 
 defineProps<{
     balance: number;
@@ -23,14 +24,14 @@ defineEmits<{
             <div class="bank-vault-ring"><span>III</span><i /><span>VI</span><i /><span>IX</span></div>
         </div>
         <header class="bank-section-heading bank-vault-heading">
-            <div><span>PRIVATE RESERVE</span><h2 id="bank-vault-title">金库总览</h2></div>
+            <h2 id="bank-vault-title">金库总览</h2>
             <small>第 {{ currentTurn }} 回合</small>
         </header>
 
         <div class="bank-balance-panel">
             <span>可用资产</span>
             <strong><small>¤</small>{{ balance.toLocaleString('zh-CN') }}</strong>
-            <div><span>小白币活期余额</span><i>AVAILABLE</i></div>
+            <div><span>小白币活期余额</span><i>随时可用</i></div>
         </div>
 
         <div class="bank-vault-metrics">
@@ -59,13 +60,13 @@ defineEmits<{
 
         <div class="bank-vault-portals">
             <button type="button" @click="$emit('navigate', 'deposits')">
-                <span class="bank-portal-mark">定</span><strong>定期存单</strong><small>{{ depositCount }} 笔持有</small><i>›</i>
+                <span class="bank-portal-mark"><BankProductIcon kind="deposit" /></span><strong>定期存单</strong><small>{{ depositCount }} 笔持有</small><i>›</i>
             </button>
             <button type="button" @click="$emit('navigate', 'funds')">
-                <span class="bank-portal-mark">理</span><strong>浮动理财</strong><small>{{ fundCount }} 笔持有</small><i>›</i>
+                <span class="bank-portal-mark"><BankProductIcon kind="fund" /></span><strong>浮动理财</strong><small>{{ fundCount }} 笔持有</small><i>›</i>
             </button>
             <button type="button" @click="$emit('navigate', 'records')">
-                <span class="bank-portal-mark">簿</span><strong>金融记录</strong><small>查阅历史兑付</small><i>›</i>
+                <span class="bank-portal-mark"><BankProductIcon kind="records" /></span><strong>金融记录</strong><small>查阅历史兑付</small><i>›</i>
             </button>
         </div>
     </section>

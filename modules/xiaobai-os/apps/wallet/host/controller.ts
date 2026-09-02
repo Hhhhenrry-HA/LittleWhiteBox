@@ -17,6 +17,13 @@ import type {
 
 type UnknownRecord = Record<string, unknown>;
 const WALLET_PAGE_SIZE = 18;
+const WALLET_SOURCE_LABELS: Readonly<Record<string, string>> = Object.freeze({
+    economy: '小白 OS',
+    game: '游戏',
+    tasks: '任务',
+    bank: '银行',
+    shop: '商店',
+});
 
 interface WalletActivation {
     chatIdentity: string;
@@ -48,8 +55,7 @@ function transactionDirection(transaction: EconomyTransaction): WalletTransactio
 }
 
 function sourceLabel(transaction: EconomyTransaction): string {
-    if (transaction.kind === 'opening_grant') {return '小白 OS';}
-    return transaction.sourceDomain;
+    return WALLET_SOURCE_LABELS[transaction.sourceDomain] || transaction.sourceDomain;
 }
 
 function projectTransaction(transaction: EconomyTransaction): WalletTransactionView {

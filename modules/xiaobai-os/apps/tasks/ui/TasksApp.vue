@@ -20,7 +20,7 @@ import './tasks.css';
 
 type TasksPage = 'board' | 'active' | 'published' | 'history' | 'settings' | 'publish' | 'detail';
 const REQUEST_TIMEOUT_MS = 35_000;
-const AGENT_TIMEOUT_MS = 180_000;
+const GENERATION_TIMEOUT_MS = 180_000;
 const props = defineProps<XiaobaiOsAppProps>();
 
 function fallbackState(): TasksPresentation {
@@ -75,30 +75,18 @@ let unsubscribe = () => {};
 
 const requiresConfirmation = computed(() => state.value.status === 'unconfirmed');
 const writeDisabledReason = computed(() => {
-    if (writeBusy.value) {return '正在保存上一项合同操作';}
+    if (writeBusy.value) {return '正在处理上一项任务操作';}
     if (state.value.status === 'loading') {return '任务数据正在准备';}
     if (state.value.status === 'saving') {return '任务与资金正在保存';}
     if (state.value.status === 'unconfirmed') {return '请先核实上一次保存结果';}
     if (state.value.status === 'conflict') {return '请先采用服务端数据';}
-    if (state.value.status === 'blocked') {return state.value.message || '任务终端暂时不可用';}
-    if (state.value.generationActive) {return '主剧情或任务 Agent 正在生成';}
+    if (state.value.status === 'blocked') {return state.value.message || '任务暂时不可用';}
+    if (state.value.generationActive) {return '正在生成内容，请稍后';}
     return '';
 });
-const agentDisabledReason = computed(() => (
-    writeDisabledReason.value || (maintenanceBusy.value ? '任务维护正在运行' : '')
+const generationDisabledReason = computed(() => (
+    writeDisabledReason.value || (maintenanceBusy.value ? '正在更新任务' : '')
 ));
-const statusLabel = computed(() => {
-    if (boardBusy.value) {return '正在刷新大厅';}
-    if (candidateBusyTaskId.value) {return '正在招募候选';}
-    if (maintenanceBusy.value || state.value.maintenance.state === 'running') {return '正在维护任务';}
-    if (state.value.status === 'loading') {return '正在准备终端';}
-    if (state.value.status === 'saving') {return '正在保存';}
-    if (state.value.status === 'unconfirmed') {return '保存待核实';}
-    if (state.value.status === 'conflict') {return '保存冲突';}
-    if (state.value.status === 'blocked') {return '终端受阻';}
-    return '合同链路正常';
-});
-
 function applyState(next: TasksPresentation): void {
     if (!next || typeof next.chatIdentity !== 'string') {return;}
     state.value = structuredClone(next);
@@ -116,10 +104,10 @@ function readableError(error: unknown): string {
     if (code === 'tasks_insufficient_funds') {return '小白币余额不足，任务没有发布。';}
     if (code === 'tasks_state_changed' || code === 'tasks_listing_already_accepted') {return '任务状态已经变化，请按最新状态重试。';}
     if (code === 'tasks_terminal') {return '该任务已经结束，不能再次操作。';}
-    if (code === 'tasks_publish_invalid' || code === 'tasks_request_invalid') {return '合同内容不完整或超出允许范围。';}
+    if (code === 'tasks_publish_invalid' || code === 'tasks_request_invalid') {return '任务内容不完整或超出允许范围。';}
     if (code === 'tasks_write_blocked' || code === 'tasks_generation_active') {return '当前有生成或保存正在进行，请稍后重试。';}
-    if (code === 'tasks_chat_changed') {return '聊天已经切换，请重新打开任务终端。';}
-    if (code === 'host_request_timeout') {return '等待终端响应超时；后台保存或 Agent 请求仍可能稍后完成，请勿立即重复。';}
+    if (code === 'tasks_chat_changed') {return '聊天已经切换，请重新打开任务。';}
+    if (code === 'host_request_timeout') {return '操作响应超时，结果可能稍后返回，请勿立即重复。';}
     return '任务操作未完成，请稍后重试。';
 }
 
@@ -142,16 +130,16 @@ function announce(message: string): void {
 }
 
 async function refreshBoard(): Promise<void> {
-    if (boardBusy.value || agentDisabledReason.value) {return;}
+    if (boardBusy.value || generationDisabledReason.value) {return;}
     boardBusy.value = true;
     errorMessage.value = '';
     const version = stateVersion;
     try {
-        const body = await request('tasks/refresh', {}, AGENT_TIMEOUT_MS);
+        const body = await request('tasks/refresh', {}, GENERATION_TIMEOUT_MS);
         if (!mounted) {return;}
         applyResponseState(body, version);
         const outcome = isRecord(body) && isRecord(body.outcome) ? body.outcome : null;
-        announce(typeof outcome?.message === 'string' ? outcome.message : '任务大厅请求已结束');
+        announce(typeof outcome?.message === 'string' ? outcome.message : '任务已刷新');
     } catch (error) {if (mounted) {errorMessage.value = readableError(error);}}
     finally {if (mounted) {boardBusy.value = false;}}
 }
@@ -169,7 +157,7 @@ async function acceptListing(boardId: string, listingId: string): Promise<void> 
 }
 
 async function recruit(task: TaskRecord): Promise<void> {
-    if (candidateBusyTaskId.value || agentDisabledReason.value) {return;}
+    if (candidateBusyTaskId.value || generationDisabledReason.value) {return;}
     candidateBusyTaskId.value = task.taskId;
     const version = stateVersion;
     try {
@@ -177,7 +165,7 @@ async function recruit(task: TaskRecord): Promise<void> {
             taskId: task.taskId,
             expectedTaskRevision: task.taskRevision,
             expectedEventId: task.eventId,
-        }, AGENT_TIMEOUT_MS);
+        }, GENERATION_TIMEOUT_MS);
         applyResponseState(body, version);
         const outcome = isRecord(body) && isRecord(body.outcome) ? body.outcome : null;
         announce(typeof outcome?.message === 'string' ? outcome.message : '招募请求已结束');
@@ -244,19 +232,19 @@ async function setAutoMaintenance(enabled: boolean): Promise<void> {
     try {
         const body = await request('tasks/settings/update', { autoMaintenance: enabled });
         applyResponseState(body, version);
-        announce(enabled ? '普通聊天自动维护已开启。' : '普通聊天自动维护已关闭。');
+        announce(enabled ? '已开启任务进展自动更新。' : '已关闭任务进展自动更新。');
     } catch (error) {errorMessage.value = readableError(error);}
     finally {settingsBusy.value = false;}
 }
 
 async function maintainOnce(): Promise<void> {
-    if (maintenanceBusy.value || agentDisabledReason.value) {return;}
+    if (maintenanceBusy.value || generationDisabledReason.value) {return;}
     maintenanceBusy.value = true;
     const version = stateVersion;
     try {
-        const body = await request('tasks/maintenance/run', {}, AGENT_TIMEOUT_MS);
+        const body = await request('tasks/maintenance/run', {}, GENERATION_TIMEOUT_MS);
         applyResponseState(body, version);
-        announce(isRecord(body) && typeof body.message === 'string' ? body.message : '任务维护已结束');
+        announce(isRecord(body) && typeof body.message === 'string' ? body.message : '任务已更新');
     } catch (error) {errorMessage.value = readableError(error);}
     finally {maintenanceBusy.value = false;}
 }
@@ -349,9 +337,8 @@ onBeforeUnmount(() => {
 <template>
     <main class="tasks-app">
         <header class="tasks-app-header">
-            <div class="tasks-brand"><span aria-hidden="true"><i /><i /><i /></span><div><small>XIAOBAI FORMAL CONTRACT NETWORK</small><h1>任务终端</h1></div></div>
+            <div class="tasks-brand"><span aria-hidden="true"><i /><i /><i /></span><div><h1>任务</h1></div></div>
             <div class="tasks-balance"><small>可用余额</small><strong>¤ {{ state.playerBalance }}</strong></div>
-            <div class="tasks-status"><i :class="{ 'is-alert': state.status !== 'ready' }" /><span>{{ statusLabel }}</span></div>
         </header>
 
         <aside v-if="state.message || errorMessage || actionMessage" class="tasks-notice" :class="{ 'is-error': Boolean(errorMessage) || state.status === 'conflict' || state.status === 'blocked', 'is-warning': requiresConfirmation }" role="status">
@@ -362,11 +349,11 @@ onBeforeUnmount(() => {
         </aside>
 
         <div class="tasks-content">
-            <TasksBoard v-if="page === 'board'" :board="state.board" :busy="boardBusy" :disabled-reason="agentDisabledReason" @refresh="refreshBoard" @accept="acceptListing" />
+            <TasksBoard v-if="page === 'board'" :board="state.board" :busy="boardBusy" :disabled-reason="generationDisabledReason" @refresh="refreshBoard" @accept="acceptListing" />
             <TasksActive v-else-if="page === 'active'" :records="state.active" @detail="openDetail" />
             <TasksPublished v-else-if="page === 'published'" :records="state.recruiting" :candidate-busy-task-id="candidateBusyTaskId" :write-busy="writeBusy" :disabled-reason="writeDisabledReason" @recruit="recruit" @assign="assign" @cancel="cancelTask" @detail="openDetail" @publish="go('publish')" />
             <TasksHistory v-else-if="page === 'history'" :history="state.history" :loading="historyBusy" @detail="openDetail" @load-more="loadMoreHistory" />
-            <TasksSettings v-else-if="page === 'settings'" :auto-maintenance="state.settings.autoMaintenance" :settings-busy="settingsBusy" :maintenance-busy="maintenanceBusy || state.maintenance.state === 'running'" :disabled-reason="agentDisabledReason" @update="setAutoMaintenance" @maintain="maintainOnce" />
+            <TasksSettings v-else-if="page === 'settings'" :auto-maintenance="state.settings.autoMaintenance" :settings-busy="settingsBusy" :maintenance-busy="maintenanceBusy || state.maintenance.state === 'running'" :disabled-reason="generationDisabledReason" @update="setAutoMaintenance" @maintain="maintainOnce" />
             <TaskPublishForm v-else-if="page === 'publish'" :balance="state.playerBalance" :busy="writeBusy" :disabled-reason="writeDisabledReason" @submit="requestPublish" @cancel="go('published')" />
             <TaskDetail v-else :detail="detail" :loading="detailBusy" @back="go(previousPage)" />
         </div>
@@ -381,7 +368,7 @@ onBeforeUnmount(() => {
 
         <div v-if="pendingPublish" class="tasks-dialog-backdrop" @click.self="!writeBusy && (pendingPublish = null)">
             <section class="tasks-dialog" role="alertdialog" aria-modal="true" aria-labelledby="tasks-publish-confirm-title">
-                <small>ESCROW COMMITMENT</small><h2 id="tasks-publish-confirm-title">确认发布并托管报酬？</h2>
+                <h2 id="tasks-publish-confirm-title">确认发布任务？</h2>
                 <p>“{{ pendingPublish.title }}”将立即从钱包锁定 <strong>¤ {{ pendingPublish.reward }}</strong>。招募期间可以撤回；选定执行者后不能撤回。</p>
                 <div><button type="button" :disabled="writeBusy" @click="pendingPublish = null">返回修改</button><button type="button" class="tasks-primary-button" :disabled="Boolean(writeDisabledReason)" :title="writeDisabledReason || undefined" @click="confirmPublish">{{ writeBusy ? '正在保存…' : '确认发布' }}</button></div>
             </section>

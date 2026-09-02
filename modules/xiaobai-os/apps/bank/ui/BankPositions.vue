@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { BankDepositPositionView, BankFundPositionView } from '../types.js';
+import BankProductIcon from './BankProductIcon.vue';
 
 defineProps<{
     deposits: BankDepositPositionView[];
@@ -17,7 +18,7 @@ defineEmits<{
 <template>
     <section aria-labelledby="bank-positions-title">
         <header class="bank-section-heading">
-            <div><span>SEALED POSITIONS</span><h2 id="bank-positions-title">我的头寸</h2></div>
+            <h2 id="bank-positions-title">我的头寸</h2>
             <button
                 v-if="claimableCount"
                 type="button"
@@ -37,7 +38,7 @@ defineEmits<{
             <header><h3>定期存单</h3><span>{{ deposits.length }}</span></header>
             <article v-for="position in deposits" :key="position.id" class="bank-position-card">
                 <div class="bank-position-top">
-                    <span class="bank-position-mark">定</span>
+                    <span class="bank-position-mark"><BankProductIcon kind="deposit" /></span>
                     <div><h4>{{ position.name }}</h4><small>本金 ¤ {{ position.principal.toLocaleString('zh-CN') }}</small></div>
                     <span class="bank-position-status" :class="{ 'is-due': position.claimable }">{{ position.statusLabel }}</span>
                 </div>
@@ -63,7 +64,7 @@ defineEmits<{
             <header><h3>浮动理财</h3><span>{{ investments.length }}</span></header>
             <article v-for="position in investments" :key="position.id" class="bank-position-card">
                 <div class="bank-position-top">
-                    <span class="bank-position-mark">理</span>
+                    <span class="bank-position-mark"><BankProductIcon kind="fund" /></span>
                     <div><h4>{{ position.name }}</h4><small>{{ position.riskLabel }} · 本金 ¤ {{ position.principal.toLocaleString('zh-CN') }}</small></div>
                     <span class="bank-position-status" :class="{ 'is-due': position.claimable }">{{ position.statusLabel }}</span>
                 </div>

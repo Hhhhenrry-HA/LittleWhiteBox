@@ -5,6 +5,7 @@ import type {
     BankDepositProductView,
     BankFundProductView,
 } from '../types.js';
+import BankProductIcon from './BankProductIcon.vue';
 
 const props = defineProps<{
     mode: 'deposit-open' | 'fund-open' | 'withdraw';
@@ -54,11 +55,10 @@ function submit(): void {
         @keydown.esc.stop.prevent="!busy && $emit('cancel')"
     >
         <form method="dialog" class="bank-dialog-card" @submit.prevent="submit">
-            <span class="bank-dialog-kicker">VAULT AUTHORIZATION</span>
             <h2 :id="`bank-dialog-${mode}`">{{ title }}</h2>
 
             <div class="bank-dialog-subject">
-                <span>{{ mode === 'withdraw' ? '取' : mode === 'deposit-open' ? '定' : '理' }}</span>
+                <span><BankProductIcon :kind="mode === 'withdraw' ? 'withdraw' : mode === 'deposit-open' ? 'deposit' : 'fund'" /></span>
                 <div>
                     <strong>{{ position?.name || product?.name }}</strong>
                     <small v-if="product">{{ product.lockLabel }}</small>

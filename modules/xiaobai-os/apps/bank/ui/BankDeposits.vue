@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { BankDepositProductView } from '../types.js';
+import BankProductIcon from './BankProductIcon.vue';
 
 defineProps<{
     products: BankDepositProductView[];
@@ -15,7 +16,7 @@ defineEmits<{
 <template>
     <section aria-labelledby="bank-deposits-title">
         <header class="bank-section-heading">
-            <div><span>FIXED CERTIFICATES</span><h2 id="bank-deposits-title">定期存单</h2></div>
+            <h2 id="bank-deposits-title">定期存单</h2>
             <small>到期收益确定</small>
         </header>
         <p class="bank-section-intro">本金锁定至约定回合。到期前可提前支取，最终到账额会在确认时明确列出。</p>
@@ -24,7 +25,7 @@ defineEmits<{
                 <header>
                     <span class="bank-product-index">0{{ index + 1 }}</span>
                     <div><small>{{ product.lockLabel }}</small><h3>{{ product.name }}</h3></div>
-                    <span class="bank-product-seal">定</span>
+                    <span class="bank-product-seal"><BankProductIcon kind="deposit" /></span>
                 </header>
                 <div class="bank-rate-block">
                     <span>到期收益率</span><strong>{{ product.interestLabel }}</strong><small>固定收益</small>
