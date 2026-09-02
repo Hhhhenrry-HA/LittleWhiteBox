@@ -76,7 +76,7 @@ function ladderReason(): string {
                     <p>五骰藏锋，一点为百搭。抬高叫数，或当场质疑庄家。</p>
                     <ul>
                         <li>下注 50–500</li>
-                        <li>胜出返还 1.9 倍</li>
+                        <li>胜出返还 1.8 倍</li>
                     </ul>
                 </div>
                 <label class="game-bet-field">

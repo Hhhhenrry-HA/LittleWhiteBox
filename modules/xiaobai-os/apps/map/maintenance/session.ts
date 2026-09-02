@@ -1,4 +1,7 @@
-import { XiaobaiOsCommittedMutationError } from '../../../host/chat-data-store.js';
+import {
+    XiaobaiOsCommittedMutationError,
+    XiaobaiOsUnconfirmedMutationError,
+} from '../../../host/chat-data-store.js';
 import type { AcceptedTurnSource } from '../../../host/maintenance/accepted-turn-source.js';
 import type {
     MaintenanceMode,
@@ -81,7 +84,8 @@ export function createMapMaintenanceSession(
 
     return Object.freeze({
         participantId: 'map',
-        prompt: buildMapMaintenancePrompt(mode, source.player),
+        prompt: buildMapMaintenancePrompt(mode),
+        dataMessages: Object.freeze([]),
         tools: MAP_MAINTENANCE_TOOLS,
         executeTool(name: string, args: unknown) {
             assertActive();
@@ -129,8 +133,10 @@ export function createMapMaintenanceSession(
                 committed = true;
                 return result;
             } catch (error) {
-                if (!(error instanceof XiaobaiOsCommittedMutationError)) {throw error;}
+                if (!(error instanceof XiaobaiOsCommittedMutationError)
+                    && !(error instanceof XiaobaiOsUnconfirmedMutationError)) {throw error;}
                 committed = true;
+                if (error instanceof XiaobaiOsUnconfirmedMutationError) {throw error;}
                 return undefined;
             }
         },

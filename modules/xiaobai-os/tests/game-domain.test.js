@@ -223,8 +223,8 @@ test('Dice validation rejects dealer decisions outside the shared policy', () =>
                 matchingDiceCount,
             },
             amountIn: 50,
-            payout: 95,
-            net: 45,
+            payout: 90,
+            net: 40,
         }],
     }), error => error.code === 'game_invalid_domain');
 
@@ -235,6 +235,8 @@ test('Dice validation rejects dealer decisions outside the shared policy', () =>
         changes: [{ kind: 'game-started', game: { kind: 'dice', game: low } }],
         activities: [],
     }).domain;
+    // The shared policy answers this spot with {4,2}; any other dealer bid,
+    // legal or not, must be rejected as an unauthored dealer decision.
     assert.throws(() => append(lowStarted, 2, {
         kind: 'dice-bid', gameId: low.id, bid: { count: 3, face: 6 },
     }, {
@@ -242,7 +244,7 @@ test('Dice validation rejects dealer decisions outside the shared policy', () =>
             kind: 'game-advanced',
             game: {
                 kind: 'dice',
-                game: { ...low, bids: [{ by: 'player', count: 3, face: 6 }, { by: 'dealer', count: 4, face: 2 }] },
+                game: { ...low, bids: [{ by: 'player', count: 3, face: 6 }, { by: 'dealer', count: 4, face: 3 }] },
             },
         }],
         activities: [],

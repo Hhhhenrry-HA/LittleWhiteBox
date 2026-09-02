@@ -7,6 +7,7 @@ import type {
     XiaobaiOsChatSaveTransaction,
 } from './chat-data-store.js';
 import { jsonValuesEqual } from './json-values-equal.js';
+import { countAssistantTurns } from './assistant-turn-count.js';
 import type { XiaobaiOsSettingsAdapter } from './settings-repository.js';
 
 type UnknownRecord = Record<string, unknown>;
@@ -424,10 +425,7 @@ export function getSillyTavernAssistantTurnCount(expectedIdentityKey?: string): 
     if (!identity || (expectedIdentityKey && identity.key !== expectedIdentityKey)) {
         throw createSaveError('CHAT_CHANGED', '读取回合数前聊天已经切换');
     }
-    return (context.chat || []).reduce(
-        (count, message) => count + Number(message.is_user !== true && message.is_system !== true),
-        0,
-    );
+    return countAssistantTurns(context.chat || []);
 }
 
 export function getSillyTavernChatIdentity(): XiaobaiOsChatIdentity | null {

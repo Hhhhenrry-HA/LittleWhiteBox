@@ -181,7 +181,7 @@ test('dice profit is funded from reserve and paid from an emptied escrow', async
         bid: { count: 10, face: 6 },
     }));
 
-    assert.equal(settled.balance, 145);
+    assert.equal(settled.balance, 140);
     assert.equal(settled.activeGame, undefined);
     assert.deepEqual(gameTransactions(harness).map(transaction => ({
         from: transaction.fromAccountId,
@@ -189,15 +189,15 @@ test('dice profit is funded from reserve and paid from an emptied escrow', async
         amount: transaction.amount,
     })), [
         { from: 'player', to: `escrow:game:${started.activeGame.id}`, amount: 50 },
-        { from: 'counterparty:game:reserve', to: `escrow:game:${started.activeGame.id}`, amount: 45 },
-        { from: `escrow:game:${started.activeGame.id}`, to: 'player', amount: 95 },
+        { from: 'counterparty:game:reserve', to: `escrow:game:${started.activeGame.id}`, amount: 40 },
+        { from: `escrow:game:${started.activeGame.id}`, to: 'player', amount: 90 },
     ]);
     assert.equal(escrowBalance(harness, started.activeGame.id), 0);
     assert.deepEqual({
         amountIn: settled.activities[0].amountIn,
         payout: settled.activities[0].payout,
         net: settled.activities[0].net,
-    }, { amountIn: 50, payout: 95, net: 45 });
+    }, { amountIn: 50, payout: 90, net: 40 });
     assert.equal(harness.state.randomCalls, 10);
 });
 

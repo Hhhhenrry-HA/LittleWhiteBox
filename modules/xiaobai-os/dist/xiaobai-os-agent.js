@@ -19160,10 +19160,19 @@ function fs(e, t = "") {
     u.role === "tool" && u.tool_call_id && (y.tool_call_id = u.tool_call_id), _ ? y.tool_calls = g : p.length && (y.tool_calls = p), r.push(Sc(y, t));
   });
   const a = String(e.systemPrompt || "").trim();
-  return a && r[0]?.role !== "system" && r.unshift({
+  if (a) if (r[0]?.role === "system") {
+    const u = String(r[0].content || "").trim();
+    r[0] = {
+      ...r[0],
+      content: [a, u === a ? "" : u].filter(Boolean).join(`
+
+`)
+    };
+  } else r.unshift({
     role: "system",
     content: a
-  }), Lp(r, t);
+  });
+  return Lp(r, t);
 }
 function Ec(e) {
   const t = (e.tools || []).map((r) => [`- ${r.function.name}: ${r.function.description || ""}`.trim(), `  参数 JSON Schema: ${JSON.stringify(r.function.parameters || {})}`].join(`
@@ -19186,7 +19195,7 @@ ${t}` : ""
 }
 function hs(e, t = "") {
   const n = /* @__PURE__ */ new Map(), o = [];
-  return (Array.isArray(e.messages) ? e.messages : []).forEach((r) => {
+  if ((Array.isArray(e.messages) ? e.messages : []).forEach((r) => {
     if (r.role === "assistant") {
       const i = jC(r);
       if (i.length) {
@@ -19230,16 +19239,20 @@ function hs(e, t = "") {
       role: r.role,
       content: r.content
     });
-  }), !o.length || o[0].role !== "system" ? o.unshift({
+  }), !o.length || o[0].role !== "system") o.unshift({
     role: "system",
     content: Ec(e)
-  }) : o[0] = {
-    ...o[0],
-    content: Ec({
-      ...e,
-      systemPrompt: o[0].content || e.systemPrompt
-    })
-  }, Lp(o, t);
+  });
+  else {
+    const r = String(o[0].content || "").trim(), i = String(e.systemPrompt || "").trim();
+    o[0] = {
+      ...o[0],
+      content: [Ec(e), r === i ? "" : r].filter(Boolean).join(`
+
+`)
+    };
+  }
+  return Lp(o, t);
 }
 function wc(e, t, n) {
   typeof e.onStreamProgress == "function" && e.onStreamProgress({

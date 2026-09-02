@@ -185,12 +185,11 @@ Actor 缺少 actorKey 时使用稳定 element id；非 Actor 的 actorKey 被忽
 
 打开 APP、切换 Atlas/Scene、选择地点、拖拽和缩放都只读本地数据。只有自动接受轮或用户明确点击「维护一次」「重建」才可调用 Agent。
 
-## 7. 自动维护与开关
+## 7. 自动维护开关
 
-- Map 的「APP 启用」只在 SillyTavern 扩展设置的「小白 OS」区块；Map 内只放用户级的「所有普通聊天自动维护」。关闭 APP 会同时把自动维护重置为关闭，重新启用不会自行恢复 API 消耗。
-- `enabled=false`：隐藏 Map、移除空间 Prompt、注销 participant，保留聊天地图数据。
-- `enabled=true, autoMaintenance=false`：可查看地图和使用显式维护按钮；User 发送不产生 Map API 工作。
-- `enabled=true, autoMaintenance=true`：User 消息保存后，处理刚被确认的上一接受轮。
+- Map 随小白 OS 固定注册并显示在桌面，不存在 Map 专属`enabled`字段或扩展设置复选框。
+- `autoMaintenance=false`：仍可查看地图、使用显式维护按钮和主 RP 空间 Prompt；User 发送不产生 Map API 工作。
+- `autoMaintenance=true`：User 消息保存后，处理刚被确认的上一接受轮。
 
 Map 无法在本地可靠判断一轮 RP 是否包含新地点或移动，因此最后一种模式会让每个有效接受轮都参加 maintenance 请求，即使 Agent 最终判断无需写地图。开关旁必须直接说明这一调用成本，不能写成“仅地图变化时调用”。
 
@@ -198,19 +197,19 @@ Map 无法在本地可靠判断一轮 RP 是否包含新地点或移动，因此
 
 「维护一次」只处理聊天尾部最新的完整 User + 当前所选 Assistant 内容；这次明确点击不要求自动维护已开启。没有完整轮或正在生成时只显示本地提示，不调用 API。「从当前聊天建立/重建地图」才允许扫描更长历史并以完整候选 Map 一次替换旧 Map，两者不能共用含糊按钮。
 
-根保存进入 commit point 前，运行中切聊、关闭开关、Map revision 改变、接受消息被编辑/删除/换 swipe 都会使迟到 staging 作废。根候选已经安装并发出宿主保存请求后无法物理回滚；此时保留实际提交结果并停止后续 participant/job，不能向用户伪报“未保存”。API/解析失败不改变旧 Map。
+根保存进入 commit point 前，运行中切聊、关闭自动维护、Map revision 改变、接受消息被编辑/删除/换 swipe 都会使自动 job 的迟到 staging 作废。根候选已经安装并发出宿主保存请求后无法物理回滚；此时保留实际提交结果并停止后续 participant/job，不能向用户伪报“未保存”。API/解析失败不改变旧 Map。
 
 ## 8. 主 RP 空间摘要
 
-Map 启用且已有当前位置时，自己的 prompt runtime 在主生成的`IN_CHAT`、depth 1、system role 安装一段只读空间摘要，帮助下一回复保持方向与位置连续。它使用独立 extension prompt key，不与 Tasks 或 Shop 拼成共享业务 Prompt：
+小白 OS 运行且 Map 已有当前位置时，自己的 prompt runtime 在主生成的`IN_CHAT`、depth 1、system role 安装`<current_map>`只读空间摘要。它使用独立 extension prompt key，不与 Tasks 或 Shop 拼成共享业务 Prompt，只输出：
 
-- 当前地点、上级地点、直接相邻地点；
-- 当前地点中的已确认人物；
-- 当前 Scene 的出入口和少量关键锚点。
+- 当前地点与概况、上级地点；
+- 相邻地点最多 8、已探索地点最多 8、已知未到达地点最多 8；
+- 非玩家人物位置最多 12。
 
-不注入完整几何坐标、全部已知地点、模型原始文本或未确认信息。所有 label/brief 经过限长和 XML/宏编码，放在明确的 data block 中；静态系统指令说明其为事实数据而非命令。
+主剧情不投影任何 Scene：不输出当前场景、场景人物、出入口、可互动、主表面/地形，也不暴露 key、坐标、shape、category、revision、材质或模型原始文本。所有 name/brief 经过限长和 XML/宏编码；最终 4,000 字符安全栅栏按完整 XML 区块裁减，绝不截断标签、地点名或半条记录。
 
-该投影不调用 API，自动维护关闭时仍可使用；Map APP 禁用、无有效地图、dry-run 结束、生成停止或切聊时必须清空。安装/移除沿用现有 generation interceptor 生命周期，代码和字段选择仍归 Map 自己所有。
+该投影不调用 API，自动维护关闭时仍可使用；无有效地图、dry-run 结束、生成停止、切聊或 OS cleanup 时必须清空。安装/移除沿用现有 generation interceptor 生命周期，代码和字段选择仍归 Map 自己所有。
 
 ## 9. UI 与美术
 
@@ -230,9 +229,9 @@ Map 外壳使用 OS 黑色主题，地图画布默认暗色/蓝图风，不搬�
 
 - malformed tool call 只拒绝对应 staged edit；若没有合法变化则不保存。
 - 工具解析、参数和可恢复执行错误会作为结构化结果回喂模型；同签名连续失败三次会收到刹车提示，第四次终止，单次 Session 最多 12 个 Provider 回合。
-- Provider 后续失败或达到轮次上限时，已有合法 staging 以 partial 提交；没有合法变化则 failed。切聊、关闭开关、来源变化或取消会使尚未进入根保存 commit point 的 staging 整体失效。
+- Provider 后续失败或达到轮次上限时，已有合法 staging 以 partial 提交；没有合法变化则 failed。切聊、关闭自动维护、来源变化或取消会使自动 job 中尚未进入根保存 commit point 的 staging 整体失效。
 - Map root 保存明确失败时保留旧 Map；保存结果不确定时沿用根 store 的候选/确认机制，不重复调用模型。
-- 关闭窗口只销毁 UI 临时态，不停止已获准的自动维护；显式维护/重建在离开 Map、再次发起同类请求或关闭 APP 时请求 abort。关闭自动维护只使自动 job 失效，切聊和关闭 APP 使两类请求都失效；若宿主保存已经发出，则等待该次保存落定并如实报告已提交结果，不声称能够撤回。
+- 关闭窗口只销毁 UI 临时态，不停止已获准的自动维护；显式维护/重建在离开 Map、再次发起同类请求或 OS cleanup 时请求 abort。关闭自动维护只使自动 job 失效，切聊和 OS cleanup 使两类请求都失效；若宿主保存已经发出，则等待该次保存落定并如实报告已提交结果，不声称能够撤回。
 - 删除 Map 功能时直接清理`domains.map`，不迁入 Tavern、不保留旧类型或读取壳。
 - 共享 Material Symbols 字体是扩展级通用资产，不随 Map 删除。
 
@@ -241,7 +240,7 @@ Map 外壳使用 OS 黑色主题，地图画布默认暗色/蓝图风，不搬�
 - Atlas 父级无环、引用完整、玩家位置唯一；
 - Scene key/element key 唯一，geometry 与 shape 匹配，禁止任意样式/URL；
 - intent 编译对合法宽容输入稳定，对超限/悬空引用整体拒绝；
-- 自动关闭与打开 APP 均为零 Agent 请求；
+- 自动维护开关切换与打开 APP 均为零 Agent 请求；
 - User 接受轮只产生一次 staged maintenance，swipe/regenerate 不产生；
 - revision、聊天 identity、消息文本或 swipe 改变会拒绝尚未进入保存 commit point 的迟到提交；保存已开始后的取消会保留真实提交结果；
 - 主 RP 摘要只含安全的当前空间事实，生命周期结束后无残留；
@@ -254,10 +253,10 @@ Map 外壳使用 OS 黑色主题，地图画布默认暗色/蓝图风，不搬�
 
 发布前仍需在真实 SillyTavern 浏览器完成以下手工验收，未执行前不得写成已通过：
 
-1. 默认关闭：扩展设置中 Map 默认未勾选，桌面无图标；启用后图标即时出现，关闭当前 Map 时返回桌面并隐藏图标，自动维护同时复位为关闭。
+1. 固定入口：OS 启用时 Map 图标固定出现在桌面；自动维护默认关闭，切换它不隐藏图标、不清空间 Prompt。
 2. 只读 UI：打开空地图、切换场景/世界、选择地点、拖拽、滚轮/按钮缩放、复位和开关自动维护均不产生 Agent 请求；桌面与窄屏布局无溢出或不可读原生控件。
 3. 显式维护：无完整 Assistant 尾轮和主生成进行中均只给本地提示；「维护一次」只处理最新完整尾轮，「建立/重建」读取限定历史，成功后 Atlas/Scene 即时刷新。
 4. 自动边界：仅发送下一条 User 后为上一接受轮触发一次；Assistant、swipe、regenerate、continue、打开 APP 和切页均为零触发；关闭自动维护后，尚未进入保存 commit point 的迟到结果不提交。
 5. 聊天与保存：维护中切聊、编辑证据或换 swipe 会丢弃尚未开始保存的迟到结果；保存已经发出时不伪报取消或回滚。保存未确认时显示冻结状态，维护/重建不调用模型，确认后恢复。
-6. 主 RP Prompt：Map 启用且存在当前位置时注入安全摘要；生成预检失败、正常结束、停止、切聊及关闭 Map 后 prompt key 无残留。
+6. 主 RP Prompt：OS 运行且存在当前位置时注入安全摘要；生成预检失败、正常结束、停止、切聊及 OS cleanup 后 prompt key 无残留。
 7. 真实供应商：使用已配置 provider 各完成一次维护和重建，确认工具轮次可结束、失败不覆盖旧地图、聊天元数据读回后 Map revision 与 UI 一致。

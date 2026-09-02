@@ -241,7 +241,7 @@ test('managed settings lock includes the X button position and Xiaobai OS contro
     const root = {
         getElementById(id) {
             requestedIds.push(id);
-            return ['xiaobaix_xposition_btn', 'xiaobaix_os_enabled', 'xiaobaix_os_map_enabled'].includes(id) ? control : null;
+            return ['xiaobaix_xposition_btn', 'xiaobaix_os_enabled'].includes(id) ? control : null;
         },
     };
 
@@ -249,7 +249,6 @@ test('managed settings lock includes the X button position and Xiaobai OS contro
 
     assert.equal(requestedIds.includes('xiaobaix_xposition_btn'), true);
     assert.equal(requestedIds.includes('xiaobaix_os_enabled'), true);
-    assert.equal(requestedIds.includes('xiaobaix_os_map_enabled'), true);
     assert.equal(control.disabled, true);
     assert.equal(attributes.get('aria-disabled'), 'true');
     assert.equal(classes.has('disabled-control'), true);

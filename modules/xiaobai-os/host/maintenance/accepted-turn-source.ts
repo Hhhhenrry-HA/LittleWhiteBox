@@ -1,3 +1,5 @@
+import { countAssistantTurns } from '../assistant-turn-count.js';
+
 type UnknownRecord = Record<string, unknown>;
 
 const DEFAULT_REBUILD_MESSAGE_LIMIT = 80;
@@ -141,15 +143,6 @@ function ordinaryMessage(
     });
 }
 
-function countCompletedAssistants(messages: readonly unknown[], boundary: number): number {
-    let count = 0;
-    for (let index = 0; index < boundary; index += 1) {
-        const message = normalizeMessage(messages[index], index);
-        if (message?.role === 'assistant' && hasText(message)) {count += 1;}
-    }
-    return count;
-}
-
 function createSource(
     surface: AcceptedTurnChatSurface,
     messages: readonly NormalizedMessageSnapshot[],
@@ -160,7 +153,7 @@ function createSource(
         chatIdentity: surface.identityKey,
         messages: Object.freeze([...messages]),
         messageCount,
-        assistantCount: countCompletedAssistants(surface.messages, messageCount),
+        assistantCount: countAssistantTurns(surface.messages, messageCount),
         player: Object.freeze({
             actorKey: 'player' as const,
             displayName: normalizeParticipantName(surface.playerName, 'User'),
@@ -305,5 +298,5 @@ export function matchesAcceptedTurnSource(
     return source.messages.length > 0
         && source.messages.every(message => sameMessage(surface.messages, message, source.messageCount, surface))
         && (!source.trigger || sameMessage(surface.messages, source.trigger, source.messageCount, surface))
-        && countCompletedAssistants(surface.messages, source.messageCount) === source.assistantCount;
+        && countAssistantTurns(surface.messages, source.messageCount) === source.assistantCount;
 }

@@ -19,7 +19,6 @@ import {
     initXiaobaiOs,
     prepareXiaobaiOsSettings,
     setXiaobaiOsEnabled,
-    setXiaobaiOsMapEnabled,
 } from "./modules/xiaobai-os/dist/xiaobai-os-host.js";
 import { configureButtonCollapseRuntime, initButtonCollapse } from "./widgets/button-collapse.js";
 import { initVariablesPanel, cleanupVariablesPanel, configureVariablesPanelRuntime } from "./modules/variables/variables-panel.js";
@@ -550,7 +549,7 @@ function toggleSettingsControls(enabled) {
     const controls = [
         'xiaobaix_recorded_enabled', 'xiaobaix_preview_enabled',
         'scheduled_tasks_enabled', 'xiaobaix_template_enabled',
-        'xiaobaix_immersive_enabled', 'xiaobaix_os_enabled', 'xiaobaix_os_map_enabled',
+        'xiaobaix_immersive_enabled', 'xiaobaix_os_enabled',
         'xiaobaix_variables_panel_enabled',
         'xiaobaix_use_blob', 'xiaobaix_variables_core_enabled', 'xiaobaix_variables_mode', 'xiaobaix_render_enabled',
         'xiaobaix_max_rendered', 'xiaobaix_story_outline_enabled', 'xiaobaix_story_summary_enabled',
@@ -597,12 +596,6 @@ function syncFeatureActionButtons() {
     if (drawButton) {
         drawButton.disabled = !isXiaobaixEnabled;
         drawButton.classList.toggle('disabled-action', !isXiaobaixEnabled);
-    }
-    const mapToggle = document.getElementById('xiaobaix_os_map_enabled');
-    if (mapToggle) {
-        const enabled = isXiaobaixEnabled && !CHAT_SURFACE_MANAGED && settings.xiaobaiOs?.enabled === true;
-        mapToggle.disabled = !enabled;
-        mapToggle.classList.toggle('disabled-control', !enabled);
     }
     lockTauriTavernChatSurfaceSettings();
 }
@@ -773,35 +766,6 @@ async function setupSettings() {
                 toastr.error(`切换小白 OS 失败：${error?.message || error}`);
             } finally {
                 this.disabled = !isXiaobaixEnabled;
-                syncFeatureActionButtons();
-            }
-        });
-
-        $("#xiaobaix_os_map_enabled").prop("checked", !xiaobaiOsSettingsError && settings.xiaobaiOs?.apps?.map?.enabled === true).on("change", async function () {
-            if (!isXiaobaixEnabled || CHAT_SURFACE_MANAGED || settings.xiaobaiOs?.enabled !== true) return;
-            const enabled = $(this).prop('checked') === true;
-            this.disabled = true;
-            try {
-                const current = await setXiaobaiOsMapEnabled(enabled);
-                xiaobaiOsSettingsError = null;
-                settings.xiaobaiOs = current;
-            } catch (error) {
-                if (isXiaobaiOsSaveUnconfirmed(error)) {
-                    try {
-                        settings.xiaobaiOs = await prepareXiaobaiOsSettings();
-                    } catch (readError) {
-                        console.error('[LittleWhiteBox] 读取未确认的 Map 设置失败:', readError);
-                    }
-                    const effectiveEnabled = settings.xiaobaiOs?.apps?.map?.enabled ?? enabled;
-                    $(this).prop('checked', effectiveEnabled);
-                    console.warn('[LittleWhiteBox] Map 设置保存结果未确认:', error);
-                    toastr.warning(`Map 已按当前选择运行，但服务端保存结果未确认：${error?.message || error}`);
-                    return;
-                }
-                $(this).prop('checked', settings.xiaobaiOs?.apps?.map?.enabled === true);
-                console.error('[LittleWhiteBox] 切换 Map 失败:', error);
-                toastr.error(`切换 Map 失败：${error?.message || error}`);
-            } finally {
                 syncFeatureActionButtons();
             }
         });
@@ -1022,14 +986,6 @@ async function setupSettings() {
             const osToggle = document.getElementById('xiaobaix_os_enabled');
             if (osToggle) osToggle.checked = false;
             try {
-                const mapToggle = document.getElementById('xiaobaix_os_map_enabled');
-                try {
-                    settings.xiaobaiOs = await setXiaobaiOsMapEnabled(false);
-                } catch (error) {
-                    if (!isXiaobaiOsSaveUnconfirmed(error)) throw error;
-                    console.warn('[LittleWhiteBox] Map 重置保存结果未确认:', error);
-                }
-                if (mapToggle) mapToggle.checked = settings.xiaobaiOs?.apps?.map?.enabled === true;
                 settings.xiaobaiOs = await setXiaobaiOsEnabled(false);
                 cleanupXiaobaiOs();
                 moduleCleanupFunctions.delete('xiaobaiOs');

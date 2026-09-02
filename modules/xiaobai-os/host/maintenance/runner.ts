@@ -16,7 +16,7 @@ import {
     type MaintenanceSessionRun,
 } from './job.js';
 import { createMaintenanceOutcome, type MaintenanceRunOutcome } from './outcome.js';
-import type { MaintenanceMode, MaintenanceParticipant, MaintenanceRegistry } from './registry.js';
+import type { MaintenanceDataMessage, MaintenanceMode, MaintenanceParticipant, MaintenanceRegistry } from './registry.js';
 import {
     ALWAYS_READY_WRITE_GATE,
     type MaintenanceRootWriteGate,
@@ -45,6 +45,7 @@ export interface MaintenanceRunnerDependencies {
     readonly schedule?: (callback: () => void) => void;
     readonly now?: () => number;
     readonly onError?: (error: unknown) => void;
+    readonly captureBackground?: (source: AcceptedTurnSource, mode: MaintenanceMode) => readonly MaintenanceDataMessage[] | Promise<readonly MaintenanceDataMessage[]>;
 }
 
 export interface MaintenanceRunner {
@@ -70,6 +71,7 @@ export function createMaintenanceRunner({
     schedule = callback => queueMicrotask(callback),
     now = () => Date.now(),
     onError = () => undefined,
+    captureBackground = async () => [],
 }: MaintenanceRunnerDependencies): MaintenanceRunner {
     const queue = createFifoCoordinator<MaintenanceQueuedJob>();
     const statuses: Record<string, MaintenanceStatus> = Object.create(null) as Record<string, MaintenanceStatus>;
@@ -108,6 +110,10 @@ export function createMaintenanceRunner({
         if (run.invalid) {return;}
         run.invalid = true;
         try {run.session.invalidate?.(reason);} catch (error) {report(error);}
+    };
+    const onWriteUnconfirmed = (job: MaintenanceQueuedJob, reason: string): void => {
+        cancelJob(job, reason);
+        for (const queued of queue.drain()) {cancelJob(queued, reason);}
     };
     const enabled = (run: MaintenanceSessionRun, mode: MaintenanceMode): boolean => {
         try {return run.participant.isEnabled(mode);}
@@ -165,6 +171,8 @@ export function createMaintenanceRunner({
         invalidate,
         automaticToken: participantId => token(automaticTokens, participantId),
         updateStatus,
+        onWriteUnconfirmed,
+        captureBackground,
         report,
     });
 
@@ -190,9 +198,9 @@ export function createMaintenanceRunner({
                 for (const id of outcome.participantIds) {
                     const result = outcome.participantResults.find(candidate => candidate.participantId === id);
                     updateStatus(id, {
-                        state: outcome.status === 'failed' || result?.status === 'failed' ? 'error' : 'idle',
+                        state: result?.status === 'failed' ? 'error' : 'idle',
                         mode: job.mode,
-                        message: outcome.status,
+                        message: result?.status || outcome.status,
                         ...(result && ['updated', 'unchanged', 'partial'].includes(result.status)
                             ? { lastRunAt: completedAt }
                             : {}),
@@ -231,6 +239,7 @@ export function createMaintenanceRunner({
             controller: new AbortController(),
             sessions: [],
             earlyResults: [],
+            backgroundMessages: [],
             cancelledReason: '',
             committing: false,
             settled: false,

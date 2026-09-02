@@ -1,0 +1,52 @@
+import type { XiaobaiOsWriteState } from '../../host/chat-data-store.js';
+import type { TaskBoard, TaskEvent, TaskPublishedForm, TaskRecord } from '../../domains/tasks/types.js';
+
+export interface TasksSettings {
+    autoMaintenance: boolean;
+}
+
+export type TasksClientStatus = 'ready' | 'loading' | 'saving' | 'unconfirmed' | 'conflict' | 'blocked';
+export type TasksMaintenanceOutcome = 'none' | 'updated' | 'unchanged' | 'partial' | 'failed' | 'cancelled' | 'no-work';
+
+export interface TaskBoardPresentation extends Omit<TaskBoard, 'listings'> {
+    listings: Array<TaskBoard['listings'][number] & { accepted: boolean }>;
+}
+
+export interface TaskHistoryPage {
+    items: TaskRecord[];
+    nextCursor: string | null;
+    hasMore: boolean;
+}
+
+export interface TasksPresentation {
+    chatIdentity: string;
+    status: TasksClientStatus;
+    message: string;
+    writeState: XiaobaiOsWriteState;
+    settings: TasksSettings;
+    playerBalance: number;
+    generationActive: boolean;
+    board: TaskBoardPresentation | null;
+    active: TaskRecord[];
+    recruiting: TaskRecord[];
+    history: TaskHistoryPage;
+    maintenance: {
+        state: 'idle' | 'running';
+        lastOutcome: TasksMaintenanceOutcome;
+    };
+}
+
+export interface TaskTimelineItem {
+    eventId: string;
+    kind: TaskEvent['kind'];
+    taskRevision: number;
+    createdAt: number;
+    summary: string;
+}
+
+export interface TaskDetailPresentation {
+    task: TaskRecord;
+    timeline: TaskTimelineItem[];
+}
+
+export type { TaskEvent, TaskPublishedForm, TaskRecord };

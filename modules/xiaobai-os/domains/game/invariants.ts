@@ -1,6 +1,8 @@
 import {
     assertGameDiceGameWaitingForPlayer,
     countGameDiceBidMatches,
+    GAME_DICE_PAYOUT_DENOMINATOR,
+    GAME_DICE_PAYOUT_NUMERATOR,
     getGameDiceDealerResponsePolicy,
     isGameDiceBidHigher,
     normalizeGameDiceBet,
@@ -279,7 +281,9 @@ function validateActivityDetail(value: unknown, amountIn: number, paid: number):
         try {bet = normalizeGameDiceBet(amountIn);} catch {return invalid('activity.amountIn');}
         const bidHolds = matchingDiceCount >= finalBid.count;
         const playerWins = bidHolds ? finalBid.by === 'player' : detail.challenger === 'player';
-        const expectedPayout = playerWins ? multiplyGameAmount(bet, 19, 10) : 0;
+        const expectedPayout = playerWins
+            ? multiplyGameAmount(bet, GAME_DICE_PAYOUT_NUMERATOR, GAME_DICE_PAYOUT_DENOMINATOR)
+            : 0;
         if ((detail.outcome === 'player-win') !== playerWins || paid !== expectedPayout) {
             return invalid('activity.detail.dice-result');
         }

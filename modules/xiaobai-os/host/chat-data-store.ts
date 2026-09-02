@@ -51,7 +51,7 @@ export interface RootMutationPlan<T> {
 }
 
 export interface RootMutationOptions {
-    beforeCommit?: () => void;
+    beforeCommit?: () => void | Promise<void>;
 }
 
 export interface ConfirmResult {
@@ -93,6 +93,16 @@ export class XiaobaiOsCommittedMutationError extends XiaobaiOsDataError {
     constructor(message: string) {
         super('CHAT_CHANGED', message);
         this.name = 'XiaobaiOsCommittedMutationError';
+    }
+}
+
+export class XiaobaiOsUnconfirmedMutationError extends XiaobaiOsDataError {
+    readonly mutationCommitted = true as const;
+    readonly uncertain = true as const;
+
+    constructor(message: string) {
+        super('SAVE_UNCONFIRMED', message);
+        this.name = 'XiaobaiOsUnconfirmedMutationError';
     }
 }
 
@@ -350,7 +360,7 @@ export function createChatDataStore(
             }
             const candidate = plan.next === null ? undefined : cloneXiaobaiOsData(plan.next);
             if (candidate !== undefined) {assertValidRoot(candidate, validators);}
-            options.beforeCommit?.();
+            await options.beforeCommit?.();
             assertStillCurrent(captured);
 
             const previousValue = previous === null ? undefined : cloneXiaobaiOsData(previous);
@@ -389,6 +399,9 @@ export function createChatDataStore(
                         candidate,
                         metadataEffect: plan.metadataEffect,
                     });
+                    throw new XiaobaiOsUnconfirmedMutationError(
+                        error instanceof Error ? error.message : 'Xiaobai OS save result is unconfirmed',
+                    );
                 } else {
                     installOptionalRoot(captured.metadata, previousValue);
                     plan.metadataEffect?.rollback();

@@ -11,7 +11,6 @@ export interface MapPromptEventHandlers {
 }
 
 export interface MapPromptRuntimeDependencies {
-    readonly isEnabled: () => boolean;
     readonly readCurrentMap: () => MapDomainV1 | null;
     readonly setPrompt: (value: string) => void;
     readonly subscribe: (handlers: MapPromptEventHandlers) => () => void;
@@ -24,7 +23,6 @@ export type MapPromptRuntime = Pick<
 >;
 
 export function createMapPromptRuntime({
-    isEnabled,
     readCurrentMap,
     setPrompt,
     subscribe,
@@ -39,7 +37,6 @@ export function createMapPromptRuntime({
     function intercept(): void {
         clearPrompt();
         try {
-            if (!isEnabled()) {return;}
             const map = readCurrentMap();
             if (!map) {return;}
             const prompt = buildMapPromptBlock(map);

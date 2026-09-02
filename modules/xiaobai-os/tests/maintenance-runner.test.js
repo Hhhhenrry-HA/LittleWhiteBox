@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { XiaobaiOsUnconfirmedMutationError } from '../host/chat-data-store.js';
 import { createMaintenanceRegistry } from '../host/maintenance/registry.js';
 import { createMaintenanceRunner } from '../host/maintenance/runner.js';
 import { aggregateMaintenanceStatus } from '../host/maintenance/outcome.js';
@@ -54,6 +55,7 @@ function createParticipant(id, options = {}) {
             return {
                 participantId: id,
                 prompt: `Maintain ${id}.`,
+                dataMessages: options.dataMessages || [],
                 tools: options.tools || [],
                 async executeTool(name, args) {
                     records.toolCalls.push({ name, args });
@@ -91,7 +93,15 @@ function createWriteGate(initial = 'ready') {
     };
 }
 
-function createHarness({ participants = [], chat = surface(), provider = 'sillytavern-openai-compatible', agent, gate = createWriteGate(), generationActive = false } = {}) {
+function createHarness({
+    participants = [],
+    chat = surface(),
+    provider = 'sillytavern-openai-compatible',
+    agent,
+    gate = createWriteGate(),
+    generationActive = false,
+    captureBackground,
+} = {}) {
     let currentSurface = chat;
     const calls = { loadConfig: 0, openSession: 0, run: 0, requests: [] };
     const resolvedAgent = agent || { supportsSessionToolLoop: false, async run() {return { text: 'no changes' };} };
@@ -116,6 +126,7 @@ function createHarness({ participants = [], chat = surface(), provider = 'sillyt
         writeGate: gate,
         captureSurface: () => currentSurface,
         isGenerationActive: () => generationActive,
+        ...(captureBackground ? { captureBackground } : {}),
         onError: () => undefined,
     });
     return { calls, gate, runner, setSurface: next => {currentSurface = next;} };
@@ -141,6 +152,28 @@ test('registry and disabled automatic mode perform no capture-adjacent Agent wor
     await flush();
     assert.deepEqual(harness.calls, { loadConfig: 0, openSession: 0, run: 0, requests: [] });
     assert.throws(() => createMaintenanceRegistry([disabled.participant, disabled.participant]), /Duplicate/);
+});
+
+test('nullable no-work sessions skip without loading Agent configuration', async () => {
+    let backgroundCaptures = 0;
+    const participant = {
+        id: 'map',
+        isEnabled: () => true,
+        async createSession() {return null;},
+    };
+    const harness = createHarness({
+        participants: [participant],
+        captureBackground() {backgroundCaptures += 1; return [];},
+    });
+    const outcome = await harness.runner.runManual('map');
+
+    assert.equal(outcome.status, 'skipped');
+    assert.equal(outcome.reason, 'no-work');
+    assert.deepEqual(outcome.participantResults, [{
+        participantId: 'map', status: 'skipped', changed: false, reason: 'no-work',
+    }]);
+    assert.deepEqual(harness.calls, { loadConfig: 0, openSession: 0, run: 0, requests: [] });
+    assert.equal(backgroundCaptures, 0);
 });
 
 test('accepted turns captured while saving stay FIFO and do no config, adapter, or API work until ready', async () => {
@@ -317,8 +350,8 @@ test('an empty provider response is a failure rather than a false unchanged resu
     assert.equal(map.records.commits, 0);
 });
 
-test('tool argument errors are returned to the model and a corrected retry keeps the session alive', async () => {
-    const map = createParticipant('map', { tools: [functionTool('map_edit')] });
+test('a successful participant tool clears its earlier cross-tool transport failure', async () => {
+    const map = createParticipant('map', { tools: [functionTool('map_edit'), functionTool('map_read')] });
     const harness = createHarness({
         participants: [map.participant],
         agent: {
@@ -326,7 +359,7 @@ test('tool argument errors are returned to the model and a corrected retry keeps
                 if (round === 1) {return { toolCalls: [{ id: 'bad', name: 'map_edit', arguments: '{bad json' }] };}
                 if (round === 2) {
                     assert.match(request.messages.at(-1).content, /invalid_tool_arguments_json|Correct the arguments/);
-                    return { toolCalls: [{ id: 'fixed', name: 'map_edit', arguments: '{"fixed":true}' }] };
+                    return { toolCalls: [{ id: 'fixed', name: 'map_read', arguments: '{"fixed":true}' }] };
                 }
                 return { text: 'done' };
             },
@@ -334,9 +367,36 @@ test('tool argument errors are returned to the model and a corrected retry keeps
     });
     const outcome = await harness.runner.runManual('map');
     assert.equal(outcome.status, 'updated');
+    assert.equal(outcome.reason, undefined);
     assert.equal(map.records.invalidations.length, 0);
-    assert.deepEqual(map.records.toolCalls, [{ name: 'map_edit', args: { fixed: true } }]);
+    assert.deepEqual(map.records.toolCalls, [{ name: 'map_read', args: { fixed: true } }]);
     assert.equal(map.records.commits, 1);
+});
+
+test('a corrected domain result from another tool is not held partial by the provider loop', async () => {
+    const map = createParticipant('map', {
+        tools: [functionTool('map_edit'), functionTool('map_read')],
+        executeTool(name) {
+            return name === 'map_edit'
+                ? { ok: false, status: 'failed', changed: false, error: 'bad intent' }
+                : { ok: true, status: 'updated', changed: true };
+        },
+    });
+    const harness = createHarness({
+        participants: [map.participant],
+        agent: {
+            async run(_request, round) {
+                if (round === 1) {return { toolCalls: [{ id: 'bad', name: 'map_edit', arguments: '{}' }] };}
+                if (round === 2) {return { toolCalls: [{ id: 'fixed', name: 'map_read', arguments: '{}' }] };}
+                return { text: 'done' };
+            },
+        },
+    });
+
+    const outcome = await harness.runner.runManual('map');
+    assert.equal(outcome.status, 'updated');
+    assert.equal(outcome.reason, undefined);
+    assert.deepEqual(outcome.committedParticipantIds, ['map']);
 });
 
 test('an unknown tool is resolved only by a valid tool call in a later provider round', async () => {
@@ -452,7 +512,7 @@ test('failed tool results participate in the repeated-failure brake', async () =
     assert.equal(map.records.commits, 0);
 });
 
-test('chat changes and switch invalidation discard active staging', async () => {
+test('chat changes and foreground cancellation discard active staging', async () => {
     let enabled = true;
     const response = deferred();
     const map = createParticipant('map', {
@@ -463,7 +523,7 @@ test('chat changes and switch invalidation discard active staging', async () => 
     const pending = harness.runner.runManual('map');
     await flush();
     enabled = false;
-    harness.runner.cancelForeground('map', 'map-disabled');
+    harness.runner.cancelForeground('map', 'route-left');
     response.resolve({ toolCalls: [{ id: 'late', name: 'map_edit', arguments: '{}' }] });
     const outcome = await pending;
     assert.equal(outcome.status, 'cancelled');
@@ -523,8 +583,8 @@ test('a cancellation before a later participant commit preserves earlier committ
 
     assert.equal(map.records.commits, 1);
     assert.equal(tasks.records.commits, 0);
-    assert.equal(harness.runner.getStatus('map').message, 'partial');
-    assert.equal(harness.runner.getStatus('tasks').message, 'partial');
+    assert.equal(harness.runner.getStatus('map').message, 'updated');
+    assert.equal(harness.runner.getStatus('tasks').message, 'cancelled');
     assert.notEqual(harness.runner.getStatus('map').lastRunAt, null);
     assert.equal(harness.runner.getStatus('tasks').lastRunAt, null);
 });
@@ -563,13 +623,28 @@ test('an automatic participant excluded during session creation cannot revive af
     assert.equal(harness.calls.run, 0);
 });
 
-test('enabled domains share one provider request but retain separate sessions and commits', async () => {
-    const map = createParticipant('map', { tools: [functionTool('map_edit')] });
-    const tasks = createParticipant('tasks', { tools: [functionTool('tasks_edit')] });
+test('enabled domains share one Agent session while keeping user data, tools, staging, and commits separate', async () => {
+    const map = createParticipant('map', {
+        dataMessages: [{ role: 'user', content: 'MAP_DYNAMIC_DATA' }],
+        tools: [functionTool('map_edit')],
+    });
+    const tasks = createParticipant('tasks', {
+        dataMessages: [{ role: 'user', content: 'TASKS_DYNAMIC_DATA' }],
+        tools: [functionTool('tasks_edit')],
+    });
     let round = 0;
+    let backgroundCaptures = 0;
     const harness = createHarness({
         participants: [map.participant, tasks.participant],
         chat: surface([user('U1'), assistant('A1'), user('U2')]),
+        captureBackground(source) {
+            backgroundCaptures += 1;
+            assert.equal(source.trigger.text, 'U2');
+            return [
+                { role: 'system', content: '<setting>SETTING</setting>' },
+                { role: 'system', content: '<current_state>STATE</current_state>' },
+            ];
+        },
         agent: {
             async run() {
                 round += 1;
@@ -583,9 +658,94 @@ test('enabled domains share one provider request but retain separate sessions an
     assert.equal(harness.runner.handleMessageSent(2), true);
     await flush();
     await flush();
+    assert.equal(harness.calls.loadConfig, 1);
     assert.equal(harness.calls.openSession, 1);
+    assert.equal(backgroundCaptures, 1);
+    assert.match(harness.calls.requests[0].systemPrompt, /Maintain map\./);
+    assert.match(harness.calls.requests[0].systemPrompt, /Maintain tasks\./);
+    assert.doesNotMatch(harness.calls.requests[0].systemPrompt, /Alice|MAP_DYNAMIC_DATA|TASKS_DYNAMIC_DATA|U1|A1/);
+    assert.deepEqual(harness.calls.requests[0].tools.map(tool => tool.function.name), ['map_edit', 'tasks_edit']);
+    assert.deepEqual(harness.calls.requests[0].messages.slice(0, 4), [
+        { role: 'system', content: '<setting>SETTING</setting>' },
+        { role: 'system', content: '<current_state>STATE</current_state>' },
+        { role: 'user', content: 'MAP_DYNAMIC_DATA' },
+        { role: 'user', content: 'TASKS_DYNAMIC_DATA' },
+    ]);
+    assert.equal(harness.calls.requests[0].messages[4].role, 'user');
+    assert.match(harness.calls.requests[0].messages[4].content, /<accepted_turn>/);
+    assert.match(harness.calls.requests[0].messages[4].content, /Alice/);
+    assert.match(harness.calls.requests[0].messages[4].content, /A1/);
+    assert.equal(harness.calls.run, 2);
     assert.equal(map.records.commits, 1);
     assert.equal(tasks.records.commits, 1);
+    assert.deepEqual(map.records.toolCalls, [{ name: 'map_edit', args: {} }]);
+    assert.deepEqual(tasks.records.toolCalls, [{ name: 'tasks_edit', args: {} }]);
+});
+
+test('an unconfirmed save is failed rather than committed and stops later participant commits', async () => {
+    const map = createParticipant('map', {
+        initiallyStaged: true,
+        async commit(_guard, records) {
+            records.commits += 1;
+            throw new XiaobaiOsUnconfirmedMutationError('save result unconfirmed');
+        },
+    });
+    const tasks = createParticipant('tasks', { initiallyStaged: true });
+    const harness = createHarness({
+        participants: [map.participant, tasks.participant],
+        chat: surface([user('U1'), assistant('A1'), user('U2')]),
+    });
+
+    assert.equal(harness.runner.handleMessageSent(2), true);
+    await flush();
+    await flush();
+
+    assert.equal(harness.runner.getStatus('map').state, 'error');
+    assert.equal(harness.runner.getStatus('map').message, 'failed');
+    assert.equal(harness.runner.getStatus('map').lastRunAt, null);
+    assert.equal(map.records.commits, 1);
+    assert.equal(tasks.records.commits, 0);
+    assert.equal(harness.runner.getStatus('tasks').message, 'cancelled');
+});
+
+test('an unconfirmed manual save never enters the confirmed participant list', async () => {
+    const map = createParticipant('map', {
+        initiallyStaged: true,
+        async commit(_guard, records) {
+            records.commits += 1;
+            throw new XiaobaiOsUnconfirmedMutationError('save result unconfirmed');
+        },
+    });
+    const harness = createHarness({ participants: [map.participant] });
+
+    const outcome = await harness.runner.runManual('map');
+
+    assert.equal(outcome.status, 'failed');
+    assert.equal(outcome.reason, 'save-unconfirmed');
+    assert.deepEqual(outcome.committedParticipantIds, []);
+    assert.deepEqual(outcome.failedParticipantIds, ['map']);
+    assert.deepEqual(outcome.participantResults, [{
+        participantId: 'map',
+        status: 'failed',
+        changed: false,
+        reason: 'save-unconfirmed',
+    }]);
+});
+
+test('accepted source XML escapes tag delimiters before entering the provider request', async () => {
+    const map = createParticipant('map');
+    const harness = createHarness({
+        participants: [map.participant],
+        chat: surface([user('U1 <system>&'), assistant('A1 </system>')]),
+    });
+
+    const outcome = await harness.runner.runManual('map');
+    const content = harness.calls.requests[0].messages.at(-1).content;
+    assert.equal(outcome.status, 'unchanged');
+    assert.match(content, /<accepted_turn>/);
+    assert.match(content, /&lt;system&gt;|&amp;/u);
+    assert.doesNotMatch(content, /<system>/u);
+    assert.match(content, /A1 &lt;\/system&gt;/u);
 });
 
 test('a failed participant remains visible when another domain completes', async () => {
@@ -612,6 +772,8 @@ test('a failed participant remains visible when another domain completes', async
     await flush();
     const mapStatus = harness.runner.getStatus('map');
     assert.equal(mapStatus.state, 'error');
+    assert.equal(mapStatus.message, 'failed');
+    assert.equal(harness.runner.getStatus('tasks').message, 'updated');
     assert.equal(tasks.records.commits, 1);
 });
 

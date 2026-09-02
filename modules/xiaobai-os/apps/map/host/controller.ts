@@ -104,12 +104,8 @@ export function createMapController({
         return identityKey(getChatIdentity());
     }
 
-    function mapEnabled(): boolean {
-        return settings.read()?.apps.map.enabled === true;
-    }
-
     function assertActivation(payload: UnknownRecord = {}): MapActivation {
-        if (!activation || !mapEnabled()) {throw new Error('地图 APP 未激活');}
+        if (!activation) {throw new Error('地图 APP 未激活');}
         const current = currentChatIdentity();
         if (!current || current !== activation.chatIdentity || String(payload.chatIdentity || '') !== current) {
             throw new Error('聊天已切换，请重新打开地图');
@@ -144,7 +140,7 @@ export function createMapController({
 
     function emitCurrentState(): void {
         const current = activation;
-        if (!current || currentChatIdentity() !== current.chatIdentity || !mapEnabled()) {return;}
+        if (!current || currentChatIdentity() !== current.chatIdentity) {return;}
         try {
             emitState(current);
         } catch {
@@ -156,7 +152,6 @@ export function createMapController({
         cancelForeground('app-reactivated');
         const chatIdentity = currentChatIdentity();
         if (!chatIdentity) {throw new Error('请先打开一个聊天');}
-        if (!mapEnabled()) {throw new Error('地图 APP 已关闭');}
         activation = { chatIdentity, post: context.post };
         return buildState(chatIdentity);
     }

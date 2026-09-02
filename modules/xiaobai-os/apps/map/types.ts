@@ -2,7 +2,6 @@ import type { XiaobaiOsWriteState } from '../../host/chat-data-store.js';
 import type { MapDomainV1 } from '../../domains/map/types.js';
 
 export interface MapSettings {
-    enabled: boolean;
     autoMaintenance: boolean;
 }
 

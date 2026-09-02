@@ -42,9 +42,10 @@ test('migrates the frozen upstream settings and removes only legacy fields', asy
 
     const current = await repository.prepare();
 
-    assert.equal(current.schemaVersion, 2);
+    assert.equal(current.schemaVersion, 3);
     assert.equal(current.enabled, true);
-    assert.deepEqual(current.apps.map, { enabled: false, autoMaintenance: false });
+    assert.deepEqual(current.apps.map, { autoMaintenance: false });
+    assert.deepEqual(current.apps.tasks, { autoMaintenance: false });
     assert.deepEqual(current.apps.fourthWall.image, { enablePrompt: true });
     assert.deepEqual(current.apps.fourthWall.voice, { enabled: true });
     assert.deepEqual(current.apps.fourthWall.commentary, { enabled: true, probability: 73 });
@@ -83,10 +84,11 @@ test('fills only missing legacy settings with frozen upstream defaults', async (
     assert.equal(current.apps.fourthWall.promptTemplates.topuser, '');
     assert.ok(current.apps.fourthWall.promptTemplates.confirm.length > 0);
     assert.equal(current.apps.fourthWall.commentary.probability, 30);
-    assert.deepEqual(current.apps.map, { enabled: false, autoMaintenance: false });
+    assert.deepEqual(current.apps.map, { autoMaintenance: false });
+    assert.deepEqual(current.apps.tasks, { autoMaintenance: false });
 });
 
-test('rejects the superseded test-line schema instead of carrying a runtime compatibility path', async () => {
+test('prepare upgrades the frozen schema V1 once and installs only the current model', async () => {
     const settings = {
         xiaobaiOs: {
             schemaVersion: 1,
@@ -98,8 +100,63 @@ test('rejects the superseded test-line schema instead of carrying a runtime comp
     const repository = createSettingsRepository(createAdapter(settings, async () => { saves += 1; }));
 
     assert.throws(() => repository.read(), error => error.code === 'UNSUPPORTED_SETTINGS_VERSION');
-    await assert.rejects(repository.setEnabled(false), error => error.code === 'UNSUPPORTED_SETTINGS_VERSION');
+    const current = await repository.prepare();
+
+    assert.equal(saves, 1);
+    assert.equal(current.schemaVersion, 3);
+    assert.equal(current.enabled, true);
+    assert.deepEqual(current.apps.fourthWall, createFourthWallSettings());
+    assert.deepEqual(current.apps.map, { autoMaintenance: false });
+    assert.deepEqual(current.apps.tasks, { autoMaintenance: false });
+    assert.equal(Object.hasOwn(settings.xiaobaiOs.apps.map, 'enabled'), false);
+    assert.deepEqual(repository.read(), current);
+});
+
+test('prepare normalizes the shipped schema V2 Map settings without a runtime compatibility path', async () => {
+    const settings = {
+        xiaobaiOs: {
+            schemaVersion: 2,
+            enabled: true,
+            apps: {
+                fourthWall: createFourthWallSettings(),
+                map: { enabled: true, autoMaintenance: true },
+                discardedTestApp: { enabled: true },
+            },
+        },
+    };
+    let saves = 0;
+    const repository = createSettingsRepository(createAdapter(settings, async () => { saves += 1; }));
+
+    assert.throws(() => repository.read(), error => error.code === 'UNSUPPORTED_SETTINGS_VERSION');
+    const current = await repository.prepare();
+
+    assert.equal(saves, 1);
+    assert.deepEqual(current.apps.map, { autoMaintenance: true });
+    assert.deepEqual(current.apps.tasks, { autoMaintenance: false });
+    assert.equal(Object.hasOwn(current.apps, 'discardedTestApp'), false);
+    assert.equal(Object.hasOwn(settings.xiaobaiOs.apps.map, 'enabled'), false);
+});
+
+test('prepare rejects a fabricated schema V2 shape that omitted Map enabled', async () => {
+    const settings = {
+        xiaobaiOs: {
+            schemaVersion: 2,
+            enabled: true,
+            apps: {
+                fourthWall: createFourthWallSettings(),
+                map: { autoMaintenance: true },
+            },
+        },
+    };
+    let saves = 0;
+    const repository = createSettingsRepository(createAdapter(settings, async () => { saves += 1; }));
+
+    await assert.rejects(repository.prepare(), error => (
+        error.code === 'INVALID_LEGACY_DATA'
+        && error.path === 'xiaobaiOs.apps.map.enabled'
+    ));
     assert.equal(saves, 0);
+    assert.equal(settings.xiaobaiOs.schemaVersion, 2);
 });
 
 test('rejects an unknown current settings version without changing or saving it', async () => {
@@ -118,6 +175,23 @@ test('rejects an unknown current settings version without changing or saving it'
 
 test('restores every legacy setting when the migration save fails', async () => {
     const settings = await loadFixture();
+    const before = structuredClone(settings);
+    const repository = createSettingsRepository(createAdapter(settings, async () => {
+        throw new Error('settings save failed');
+    }));
+
+    await assert.rejects(repository.prepare(), /settings save failed/);
+    assert.deepEqual(settings, before);
+});
+
+test('restores schema V1 settings when the upgrade save fails', async () => {
+    const settings = {
+        xiaobaiOs: {
+            schemaVersion: 1,
+            enabled: true,
+            apps: { fourthWall: createFourthWallSettings() },
+        },
+    };
     const before = structuredClone(settings);
     const repository = createSettingsRepository(createAdapter(settings, async () => {
         throw new Error('settings save failed');
@@ -156,30 +230,54 @@ test('keeps a settings candidate whose server save result is unconfirmed', async
     assert.equal(repository.read().enabled, false);
 });
 
-test('enforces map setting implications atomically', async () => {
+test('updates the sole Map automatic-maintenance setting atomically', async () => {
     const settings = await loadFixture();
     const repository = createSettingsRepository(createAdapter(settings));
     await repository.prepare();
 
     const automatic = await repository.setMapAutoMaintenance(true);
-    assert.deepEqual(automatic.apps.map, { enabled: true, autoMaintenance: true });
-
-    const disabled = await repository.setMapEnabled(false);
-    assert.deepEqual(disabled.apps.map, { enabled: false, autoMaintenance: false });
-
-    await repository.setMapEnabled(true);
+    assert.deepEqual(automatic.apps.map, { autoMaintenance: true });
     const manual = await repository.setMapAutoMaintenance(false);
-    assert.deepEqual(manual.apps.map, { enabled: true, autoMaintenance: false });
+    assert.deepEqual(manual.apps.map, { autoMaintenance: false });
 });
 
-test('rejects current settings that enable automatic Map maintenance while Map is disabled', () => {
+test('updates the sole Tasks automatic-maintenance setting atomically', async () => {
+    const settings = await loadFixture();
+    const repository = createSettingsRepository(createAdapter(settings));
+    await repository.prepare();
+
+    const automatic = await repository.setTasksAutoMaintenance(true);
+    assert.deepEqual(automatic.apps.tasks, { autoMaintenance: true });
+    const manual = await repository.setTasksAutoMaintenance(false);
+    assert.deepEqual(manual.apps.tasks, { autoMaintenance: false });
+});
+
+test('rejects current settings that still contain the removed Map enabled field', () => {
     const settings = {
         xiaobaiOs: {
-            schemaVersion: 2,
+            schemaVersion: 3,
             enabled: true,
             apps: {
                 fourthWall: createFourthWallSettings(),
-                map: { enabled: false, autoMaintenance: true },
+                map: { enabled: true, autoMaintenance: false },
+                tasks: { autoMaintenance: false },
+            },
+        },
+    };
+    const repository = createSettingsRepository(createAdapter(settings));
+
+    assert.throws(() => repository.read(), error => error.code === 'INVALID_CURRENT_DATA');
+});
+
+test('rejects current settings that still contain the removed Tasks enabled field', () => {
+    const settings = {
+        xiaobaiOs: {
+            schemaVersion: 3,
+            enabled: true,
+            apps: {
+                fourthWall: createFourthWallSettings(),
+                map: { autoMaintenance: false },
+                tasks: { enabled: true, autoMaintenance: false },
             },
         },
     };
@@ -201,25 +299,25 @@ test('publishes retained settings only after successful or unconfirmed saves', a
     const published = [];
     const unsubscribe = repository.subscribe(current => published.push(current));
 
-    await repository.setMapEnabled(true);
+    await repository.setMapAutoMaintenance(true);
     assert.equal(published.length, 1);
-    assert.deepEqual(published[0].apps.map, { enabled: true, autoMaintenance: false });
+    assert.deepEqual(published[0].apps.map, { autoMaintenance: true });
 
     const beforeFailure = repository.read();
     saveResult = 'failure';
-    await assert.rejects(repository.setMapAutoMaintenance(true), /settings save failed/);
+    await assert.rejects(repository.setMapAutoMaintenance(false), /settings save failed/);
     assert.equal(published.length, 1);
     assert.deepEqual(repository.read(), beforeFailure);
 
     saveResult = 'unconfirmed';
-    await assert.rejects(repository.setMapAutoMaintenance(true), error => error.code === 'SAVE_UNCONFIRMED');
+    await assert.rejects(repository.setMapAutoMaintenance(false), error => error.code === 'SAVE_UNCONFIRMED');
     assert.equal(published.length, 2);
-    assert.deepEqual(published[1].apps.map, { enabled: true, autoMaintenance: true });
-    assert.deepEqual(repository.read().apps.map, { enabled: true, autoMaintenance: true });
+    assert.deepEqual(published[1].apps.map, { autoMaintenance: false });
+    assert.deepEqual(repository.read().apps.map, { autoMaintenance: false });
 
     unsubscribe();
     saveResult = 'success';
-    await repository.setMapAutoMaintenance(false);
+    await repository.setMapAutoMaintenance(true);
     assert.equal(published.length, 2);
 });
 
@@ -237,12 +335,12 @@ test('notifies execution fences as soon as a settings mutation is installed', as
     repository.subscribeMutationInstalled(current => installed.push(current));
     repository.subscribe(current => published.push(current));
 
-    const write = repository.setMapEnabled(true);
+    const write = repository.setMapAutoMaintenance(true);
     await new Promise(resolve => globalThis.setImmediate(resolve));
-    assert.deepEqual(installed.map(current => current.apps.map.enabled), [true]);
+    assert.deepEqual(installed.map(current => current.apps.map.autoMaintenance), [true]);
     assert.deepEqual(published, []);
 
     saveGate.resolve();
     await write;
-    assert.deepEqual(published.map(current => current.apps.map.enabled), [true]);
+    assert.deepEqual(published.map(current => current.apps.map.autoMaintenance), [true]);
 });

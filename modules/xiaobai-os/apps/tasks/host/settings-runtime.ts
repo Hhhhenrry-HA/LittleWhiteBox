@@ -1,0 +1,43 @@
+import type { MaintenanceRunner } from '../../../host/maintenance/runner.js';
+import type { XiaobaiOsSettingsRepository } from '../../../host/settings-repository.js';
+import type { XiaobaiOsAppRuntime } from '../../../types.js';
+import type { TasksSettings } from '../types.js';
+
+interface TaskSettingsRuntimeDependencies {
+    settings: Pick<XiaobaiOsSettingsRepository, 'read' | 'subscribe' | 'subscribeMutationInstalled'>;
+    maintenance: Pick<MaintenanceRunner, 'cancelForeground' | 'invalidateAutomatic'>;
+}
+
+export function createTaskSettingsRuntime({
+    settings,
+    maintenance,
+}: TaskSettingsRuntimeDependencies): Pick<XiaobaiOsAppRuntime, 'startBackground' | 'stopBackground'> {
+    let current: TasksSettings | null = null;
+    let unsubscribe: (() => void) | null = null;
+    let unsubscribeMutationInstalled: (() => void) | null = null;
+
+    return Object.freeze({
+        startBackground() {
+            if (unsubscribe) {return;}
+            current = settings.read()?.apps.tasks ?? null;
+            unsubscribe = settings.subscribe(next => {current = next.apps.tasks;});
+            unsubscribeMutationInstalled = settings.subscribeMutationInstalled((next) => {
+                if (!next.enabled) {
+                    maintenance.cancelForeground('tasks', 'os-disabled');
+                    maintenance.invalidateAutomatic('tasks', 'os-disabled');
+                } else if (current?.autoMaintenance && !next.apps.tasks.autoMaintenance) {
+                    maintenance.invalidateAutomatic('tasks', 'automatic-disabled');
+                }
+            });
+        },
+        stopBackground() {
+            unsubscribe?.();
+            unsubscribeMutationInstalled?.();
+            unsubscribe = null;
+            unsubscribeMutationInstalled = null;
+            current = null;
+            maintenance.cancelForeground('tasks', 'stopped');
+            maintenance.invalidateAutomatic('tasks', 'stopped');
+        },
+    });
+}

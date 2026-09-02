@@ -11,7 +11,6 @@ function createHarness() {
         settingsListener: null,
         statusListener: null,
         autoMaintenance: false,
-        enabled: true,
         writeState: 'ready',
         status: { state: 'idle', mode: null, message: '', lastRunAt: null },
         calls: [],
@@ -26,7 +25,7 @@ function createHarness() {
         adoptServerState: async () => {host.writeState = 'ready'; return { status: 'adopted' };},
     };
     const settings = {
-        read: () => ({ apps: { map: { enabled: host.enabled, autoMaintenance: host.autoMaintenance } } }),
+        read: () => ({ apps: { map: { autoMaintenance: host.autoMaintenance } } }),
         async setMapAutoMaintenance(enabled) {
             host.autoMaintenance = enabled;
             host.settingsListener?.(settings.read());

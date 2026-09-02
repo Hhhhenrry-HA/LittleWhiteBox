@@ -79,6 +79,19 @@ test('automatic capture accepts consecutive greetings before the first User', ()
     ]);
 });
 
+test('assistantCount includes empty non-system Assistant messages outside the accepted evidence', () => {
+    const chat = surface([
+        assistant(''),
+        user('U1'),
+        assistant('A1'),
+        user('U2'),
+    ]);
+
+    const source = captureAutomaticAcceptedTurn(chat, 3);
+    assert.deepEqual(source?.messages, [snapshot(1, 'user', 'U1'), snapshot(2, 'assistant', 'A1')]);
+    assert.equal(source?.assistantCount, 2);
+});
+
 test('adapter aliases are normalized without trimming or coercing captured text', () => {
     const chat = surface([
         { role: 'user', content: ' user alias ' },

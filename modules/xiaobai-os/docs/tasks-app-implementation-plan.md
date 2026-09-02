@@ -2,9 +2,9 @@
 
 ## 1. 交付目标
 
-本阶段一次性交付可用的普通 OS Tasks：领域状态机、世界 board、玩家发布/招募、Economy 托管结算、活动任务维护、主 RP 投影、两级开关和完整 UI。
+本阶段一次性交付可用的普通 OS Tasks：领域状态机、世界 board、玩家发布/招募、Economy 托管结算、活动任务维护、主 RP 投影、自动维护设置和完整 UI。
 
-施工期间可以按下列顺序提交内部代码，但在步骤 G 完成前不得注册半成品 APP、设置字段或桌面入口。终态语义以[Tasks APP 终态设计](./tasks-app-target-design.md)为准；本方案不重新解释产品规则。
+施工期间可以按下列顺序提交内部代码；当前步骤 G 已完成，Tasks 已注册为完整 APP。终态语义以[Tasks APP 终态设计](./tasks-app-target-design.md)为准；本方案不重新解释产品规则。
 
 ## 2. 最终目录和职责
 
@@ -42,7 +42,7 @@ modules/xiaobai-os/
 │  │  ├─ context-adapter.ts    # SillyTavern 卡片/persona/聊天/世界书快照
 │  │  ├─ maintenance-participant.ts
 │  │  ├─ prompt-runtime.ts     # 主 RP 只读任务投影
-│  │  ├─ availability-runtime.ts
+│  │  ├─ settings-runtime.ts     # 自动维护关闭时的即时执行栅栏
 │  │  ├─ presentation.ts
 │  │  └─ controller.ts
 │  ├─ ui/
@@ -256,12 +256,12 @@ adoptServerState(): Promise<AdoptServerResult>;
 
 ### 改动
 
-1. `context-adapter.ts`捕获终态第 7.1 节唯一`TaskGenerationContext`和判别式`TaskGenerationBoundary`；直接从`getContext()`复制允许的角色卡/persona/消息字段，世界书只调用`getWorldInfoPrompt(..., 8192, true)`，把`worldInfoBefore/worldInfoAfter`映射为文本，并从`worldInfoDepth[*].entries`展开文本。输出纯快照，不把 host 对象泄漏到 APP，也不把 task revision/eventId 发送给模型。
-2. `generation/context.ts`统一做名字/正文规范化、容量裁剪、knownNames 去重以及`safePromptJson`序列化；后者必须额外转义`< > &`，Prompt builder 不再各自清洗或手写标签拼接。
-3. Board/Candidate Prompt 按终态第 7.2 节分别实现成命名静态段落；动态 context/task 只能进入 user message。不得写一个带 mode 分支的巨型字符串生成器，也不得用 Tavern Prompt import 或复制其 system 数据层。
+1. `context-adapter.ts`只捕获终态第 7.1 节唯一`TaskGenerationContext`；请求层在同一时点把它与 board/task CAS 组装为判别式`TaskGenerationBoundary`。adapter 直接从`getContext()`复制允许的角色卡/persona/消息字段。世界书调用`getWorldInfoPrompt(..., hostMaxContext, true, globalScanData)`，同步宿主“扫描包含说话人名”设置，并传入已展开 persona/角色卡扫描资料；把`worldInfoBefore/worldInfoAfter`映射为文本，并从`worldInfoDepth[*].entries`展开文本。输出纯快照，不把 host 对象泄漏到 APP，也不把 task revision/eventId 发送给模型。
+2. `generation/context.ts`统一做名字/正文规范化与容量裁剪；共享 XML formatter 负责动态资料的 XML/宿主宏转义。`safePromptJson`只用于 XML 内仍需保留 JSON 结构的领域投影：编码`< > &`，并只在 JSON 字符串内部编码花括号，保证宿主宏不展开且整体仍可无损解析。
+3. Board/Candidate Prompt 按终态第 7.2 节分别实现，严格组装静态职责、system`<setting>`、system`<current_state>`、user`<task_data>`和 user 命令五层。不得写一个带 mode 分支的巨型字符串生成器，也不得 import Tavern 运行时代码。
 4. `response-compiler.ts`实现终态第 7.3 节的有界 JSON 提取、一次尾随逗号修复、闭合 reason、每项白名单编译和 partial 结果。Compiler 只返回无 ID board/candidate drafts；Candidates 先以规范字段比较现值，相同则返回既有 IDs/unchanged，不同才返回 drafts。
 5. `generation/request.ts`在本地前置条件满足后才`loadConfig → openSession → run`。一次请求一个 session、一个 Provider 回合、`tools:[]`；不为无工具请求扩展 gateway。保存前通过同一 adapter 重捕获并深比较唯一 context snapshot，再检查 token、主生成、expected boardId 或 task revision/eventId CAS 和根写门；全部通过后调用 application service，由 service 分配本批 ID 并执行唯一根 mutation，generation 不 import ID factory 或 store。
-6. board 和 candidate 各有独立 AbortController。切聊、关 APP、离开所属页面和新同类请求只取消保存前的旧请求。
+6. board 和 candidate 各有独立 AbortController。切聊、OS cleanup、离开所属页面和新同类请求只取消保存前的旧请求。
 
 ### 验证
 
@@ -282,14 +282,14 @@ MaintenanceSession | null | Promise<MaintenanceSession | null>
 ```
 
 1. `null`统一表示 participant 当前没有领域工作。job executor 为其记录`skipped/no-work`；所有 participant 都返回 null 时，在`gateway.loadConfig`之前结束。
-2. `MaintenanceSession`增加终态 8.4 的通用`dataMessages?: MaintenanceDataMessage[]`。Provider loop 只把静态 prompt 放 system，把各 participant 的动态数据与 accepted source 放 user messages；不得把 TaskRecord 或 Tasks 标签硬编码进 common runner。
+2. `MaintenanceSession`使用终态 8.4 的通用`dataMessages`；runner 在 participant 确认有工作后捕获共享 system`<setting>/<current_state>`，再放各 participant 的 user data 与 user`<accepted_turn>`。不得把 TaskRecord、Map 字段或 Story Summary 类型硬编码进 common runner。
 3. Provider loop 对已进入领域 Session 的`ok:false`只负责回喂和重复签名刹车，不按工具名保存第二份未解决状态；JSON 解析/未知工具/execute throw 仍作为调用级传输失败追踪。最终领域失败由`session.getResult()`判定。
 
-Map participant 仍返回 Session，公开行为不变；它只把玩家展示名从 Map system prompt 移到 runner 已有 accepted-source user message。必须补 runner 集成测试证明：null participant 不读取配置；dataMessages、玩家名和 accepted text 不进入 system；Map 已有实体失败仍由 Map Session 保留；Tasks 跨工具修正不会留下按工具名产生的假 partial。不为内部分支写源码字符串测试。
+Map participant 仍返回 Session，公开行为不变；玩家展示名只来自 runner 的`<accepted_turn>`。必须补 runner 集成测试证明：null participant 不捕获背景、不读取配置；共享背景只出现一次；触发 User 与未来 L2 不进入背景；Map 已有实体失败仍由 Map Session 保留；Tasks 跨工具修正不会留下按工具名产生的假 partial。不为内部分支写源码字符串测试。
 
 ### D2. Tasks 自有链路
 
-1. participant 对 rebuild 返回 disabled；automatic 还要求 autoMaintenance，manual 只要求 APP enabled。
+1. participant 对 rebuild 返回 disabled；automatic 要求 autoMaintenance，manual 在 OS 运行期间固定可用。
 2. createSession 读取当前投影，只选择`source.assistantCount > lastObservedAssistantCount`的 active 任务；无合格任务返回 null。Session 冻结入选任务各自的 revision/eventId 和 source.assistantCount，不用全局 domain revision 让无关 board 或其他任务变化误伤本次维护。
 3. Prompt 只包含终态第 8.2 节静态规则；active 投影放 Session dataMessages，接受消息由 runner 统一放另一个 user message。
 4. 三个工具严格使用终态第 8.3 节 schema/description，只调用 command compiler，不触碰 store/Economy；Session 以 taskId 跟踪每任务一个 changed command 和实体失败，以 participant call key 跟踪无 taskId 失败。
@@ -298,7 +298,7 @@ Map participant 仍返回 Session，公开行为不变；它只把玩家展示�
 
 ### 验证
 
-- 无符合来源边界的 active、automatic job 下自动开关关闭、Tasks disabled 均在配置读取前结束；新接取/新指派任务不得消费其 active 事件之前的接受轮；
+- 无符合来源边界的 active 或 automatic job 下自动开关关闭时，均在配置读取前结束；新接取/新指派任务不得消费其 active 事件之前的接受轮；
 - 同任务尚未成功 staging 时可换另一个 Task 工具修正失败；已有 changed command 后，相同命令幂等、不同命令拒绝且不能覆盖 staging；不同任务可同时 stage；其他 task 的成功不能误清实体失败；
 - 混合合法/非法工具、修参、重复失败刹车、Provider 后续失败和 12 回合上限；
 - task CAS、接受消息、chat identity、自动 token 任一变化时保存前无写入；
@@ -309,8 +309,8 @@ Map participant 仍返回 Session，公开行为不变；它只把玩家展示�
 
 ### 改动
 
-1. `prompt-runtime.ts`只消费已提交 Task 投影，生成终态第 11 节安全数据块；使用 Tasks 自己的 extension prompt key。
-2. 生命周期与现有 Map prompt runtime 相同：generation start/intercept/request built/end/stop/chat change/disable 全部有明确清理。
+1. `prompt-runtime.ts`只消费已提交 Task 投影，按终态第 11 节生成 `<active_tasks>`自然语言块：仅最新 5 个 active/recruiting，包含标题、等级、标签、缘由与线索、目标、要求、地点、时机、风险、报酬和此前进展，不注入终态或内部身份字段；使用 Tasks 自己的 extension prompt key。
+2. 生命周期与现有 Map prompt runtime 相同：generation start/intercept/request built/end/stop/chat change/OS cleanup 全部有明确清理。
 3. Controller 激活时同步读取已有 Tasks/Economy；首次缺 Economy 时立即返回 loading 并后台复用开户流程。
 4. Controller 只接收领域 ID、用户表单、CAS 和 iframe 请求相关 ID；领域 actionId 由 host 创建并在一次动作的保存/重试中固定。发布表单按终态 6.1 的独立上限校验，不能误套 board 的短文本限制。presentation 负责稳定文案，绝不把内部错误传进 iframe。
 5. host/frame 消息按 board、candidate、local mutation、maintenance、save confirmation 分组；每类在途状态彼此独立，不能用一个全局 busy 卡死只读页面。
@@ -323,7 +323,7 @@ interface TasksPresentation {
     status: 'ready' | 'loading' | 'saving' | 'unconfirmed' | 'conflict' | 'blocked';
     message: string;
     writeState: 'ready' | 'saving' | 'unconfirmed' | 'conflict';
-    settings: { enabled: boolean; autoMaintenance: boolean };
+    settings: { autoMaintenance: boolean };
     playerBalance: number;
     generationActive: boolean;
     board: null | {
@@ -391,13 +391,13 @@ activate 和每个状态写成功都返回新的完整`TasksPresentation`（历�
 
 ## 9. 步骤 G：设置、注册和一次性公开
 
-仅在 A–F 完整后执行：
+已执行：
 
-1. 当前 settings V2 直接加入`apps.tasks:{enabled:false,autoMaintenance:false}`并更新 validator/default/tests；测试线没有需保留的旧 Tasks 设置格式。
-2. settings repository 增加类型化 Tasks enabled/autoMaintenance 命令；关闭 APP 原子清 auto，开启 auto 蕴含 enabled。
-3. production composition 一次性静态注册 Tasks domain validator、Task/Economy root validator、service、participant、prompt runtime、availability runtime、controller 和 descriptor。运行时关闭只通过 availability、`isEnabled`和 invalidation 停用，不重建 registry。
+1. settings schema 升级到下一版本并在`prepare()`提供一次性转换，加入`apps.tasks:{autoMaintenance:false}`；升级后 validator 和运行时只认新模型，不保留缺字段双读。
+2. settings repository 只增加类型化`setTasksAutoMaintenance`命令；不存在 Tasks enabled 字段或命令。
+3. production composition 一次性静态注册 Tasks domain validator、Task/Economy root validator、service、participant、prompt runtime、settings runtime、controller 和 descriptor。settings runtime 只在关闭自动维护时立即 invalidate 自动 job，不控制 APP 可见性。
 4. maintenance registry 从`[map]`变为`[map,tasks]`，不增加业务分支。
-5. shell app registry 加载 Tasks UI；扩展设置加入唯一 APP enabled 勾选项。
+5. shell app registry 加载 Tasks UI；descriptor 随 OS 固定出现在桌面，扩展设置不增加 Tasks 入口。
 6. manifest/build entry/import graph 纳入新增文件，运行产物不得引用 Tavern Tasks。
 
 ## 10. 测试取舍

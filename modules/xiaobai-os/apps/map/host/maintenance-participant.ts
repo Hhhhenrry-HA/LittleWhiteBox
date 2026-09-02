@@ -19,7 +19,7 @@ export function createMapMaintenanceParticipant({
         id: 'map',
         isEnabled(mode: MaintenanceMode) {
             const settings = readSettings();
-            return settings?.enabled === true && (mode !== 'automatic' || settings.autoMaintenance === true);
+            return mode !== 'automatic' || settings?.autoMaintenance === true;
         },
         createSession(source: AcceptedTurnSource, mode: MaintenanceMode) {
             return createMapMaintenanceSession(map, source, mode);

@@ -62,11 +62,6 @@ export async function setXiaobaiOsEnabled(enabled: boolean) {
     return settingsRepository.setEnabled(enabled);
 }
 
-export async function setXiaobaiOsMapEnabled(enabled: boolean) {
-    await settingsRepository.prepare();
-    return settingsRepository.setMapEnabled(enabled);
-}
-
 export async function openXiaobaiOs(): Promise<boolean> {
     if (!runtime?.isInitialized()) {
         const initialized = await initXiaobaiOs();

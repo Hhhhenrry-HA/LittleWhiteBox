@@ -71,6 +71,7 @@ import {
 } from "./data/store.js";
 import { normalizeCharacterAliases } from "./data/character-aliases.js";
 import { isRelationFact, parseRelationTarget } from "./data/fact-predicates.js";
+import { formatStorySummaryL2Events } from "./prompt-events.js";
 
 // prompt text builder
 import {
@@ -2721,6 +2722,21 @@ export function getStorySummaryForEna() {
 
 export function getStorySummaryMemoryText() {
     return formatStorySummaryMemoryText(getSummaryStore());
+}
+
+/**
+ * Returns an optional, source-bounded L2 event projection for other prompt owners.
+ * This never exposes the Story Summary store or non-event memory layers.
+ */
+export function getStorySummaryL2EventText({
+    throughMessageIndex,
+    maxCharacters = 20_000,
+} = {}) {
+    if (!isStorySummaryConsumableForCurrentChat()) return "";
+    return formatStorySummaryL2Events(getSummaryStore()?.json?.events, {
+        throughMessageIndex,
+        maxCharacters,
+    });
 }
 
 function getNextFactIdValue(facts) {

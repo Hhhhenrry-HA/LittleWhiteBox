@@ -43,7 +43,7 @@ function createHarness(initialMap = null) {
         readPersistedXiaobaiOs: async () => structuredClone(persisted),
     }, { domains: { map: validateMapDomain } });
     const map = createMapService(store);
-    let settings = { enabled: true, autoMaintenance: false };
+    let settings = { autoMaintenance: false };
     const participant = createMapMaintenanceParticipant({ map, readSettings: () => ({ ...settings }) });
     return { map, participant, writes, setSettings: next => {settings = { ...next };} };
 }
@@ -73,14 +73,22 @@ const outdoorFixture = {
     ],
 };
 
-test('participant product switches do not treat root write readiness as product availability', () => {
+test('participant always supports explicit maintenance and gates only automatic maintenance', () => {
     const { participant, setSettings } = createHarness();
     assert.equal(participant.isEnabled('manual'), true);
     assert.equal(participant.isEnabled('automatic'), false);
-    setSettings({ enabled: true, autoMaintenance: true });
+    setSettings({ autoMaintenance: true });
     assert.equal(participant.isEnabled('automatic'), true);
-    setSettings({ enabled: false, autoMaintenance: true });
-    assert.equal(participant.isEnabled('manual'), false);
+    setSettings({ autoMaintenance: false });
+    assert.equal(participant.isEnabled('manual'), true);
+});
+
+test('Map keeps captured player data out of its static system prompt', async () => {
+    const { participant } = createHarness();
+    const session = await participant.createSession(acceptedSource(), 'manual');
+    assert.deepEqual(session.dataMessages, []);
+    assert.doesNotMatch(session.prompt, /Alice/);
+    assert.match(session.prompt, /display name is supplied with the accepted source data/);
 });
 
 test('indoor and outdoor first-map fixtures create observable scenes and use the captured player identity', async () => {

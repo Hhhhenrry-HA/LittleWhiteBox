@@ -11,13 +11,13 @@
 | 项目 | 结论 |
 | --- | --- |
 | 功能所有者 | `agent-core`拥有共享配置格式和供应商调用；`apps/agent-api`拥有 OS 设置界面；`host/agent`拥有普通 OS 调用桥；`host/maintenance`拥有接受轮捕获和运行编排 |
-| 唯一事实来源 | Agent 配置继续是`AssistantStorage`中的`settings`；OS APP 开关是`xiaobaiOs`扩展设置；运行队列只在内存 |
-| 持久态 | 共享 Agent 配置、Map/Tasks 的启用与自动维护偏好 |
+| 唯一事实来源 | Agent 配置继续是`AssistantStorage`中的`settings`；OS 总开关与 Map/Tasks 自动维护偏好在`xiaobaiOs`扩展设置；运行队列只在内存 |
+| 持久态 | 共享 Agent 配置、OS 总开关、Map/Tasks 的自动维护偏好 |
 | 临时态 | 配置草稿、连接测试、模型列表、接受轮快照、请求队列、AbortController、running/error/last-run UI 状态 |
 | 外部依赖 | SillyTavern `MESSAGE_SENT`与聊天上下文、`agent-core`、`AssistantStorage`、根 chat data store |
 | 注册入口 | `production-composition.ts`注册系统 APP、Agent gateway、maintenance runner 和领域 participant；shell 注册桌面组件 |
 | 删除路径 | 删除系统 APP与 host 注册，四次元壁/Map/Tasks 改回各自显式依赖；不得留下 Fourth Wall 转发弹窗 |
-| 兼容对象 | 保留当前共享 Agent 配置格式和上游真实 Fourth Wall 设置迁移；不兼容测试线专属旧 OS 开关或旧弹窗协议 |
+| 兼容对象 | 保留当前共享 Agent 配置格式、上游真实 Fourth Wall 设置迁移及已发布 OS settings V1/V2→V3 升级；旧 Map/Tasks `enabled`只在升级入口拒绝或移除，不进入运行时 |
 | 最少测试 | 设置读写冲突、User 后单次触发、swipe/regenerate 不触发、关闭时零请求、切聊/关开关使迟到结果失效、领域提交隔离 |
 
 ## 3. 终态结构
@@ -49,16 +49,16 @@ modules/xiaobai-os/
 
 OS Agent bundle 取代当前由 Fourth Wall 命名和拥有的 Agent bundle。供应商适配、配置规范化和设置表单行为继续复用`agent-core`；四次元壁只向 gateway 提交自己的 prompt 和请求选项。
 
-### 3.1 终态结构与施工顺序
+### 3.1 终态结构与已落地边界
 
-本节目录树描述全部功能完成后的终态，不代表`host/maintenance`应先于业务 APP 单独施工。
+本节目录树是当前结构，不代表`host/maintenance`可以脱离业务 APP 单独扩张。
 
 - Agent API APP、Agent gateway 和通用 Agent bundle 已完成，因为四次元壁是它们当下的真实消费者。
-- 下一步先实现完整 Map。只有 Map 的领域、Prompt、工具和 participant 已经存在时，才在同一阶段实现它实际需要的 accepted-turn source 与业务无关 runner，并在 Map 完整可用后暴露 Map 两级开关。
-- Tasks 未完成前，不增加 Tasks 设置字段、命令、开关、runtime、注册或占位 participant。
-- 通用 runner 在 Map 阶段已经按终态支持多个 participant 共用一个 Provider Session；当前只有 Map 是生产 participant。Tasks 完整交付时只注册自己的 Prompt、工具、Session 和事务，再以真实双领域行为复验聚合，不另起 runner。
+- Map 交付自己的领域、Prompt、工具、Session、UI 和 participant 时，同阶段引入了 accepted-turn source 与业务无关 runner；Map 固定注册桌面入口，自动维护开关只在 APP 内。
+- Tasks 已交付自己的领域、Prompt、工具、Session、UI、资金事务和 participant，没有在通用 runner 中增加 Tasks 状态分支。
+- Map 与 Tasks 是两个真实 participant；同一接受轮可共用一个 Provider Session，但各自拥有 staging、结果和提交事务。
 
-因此，“打开 APP 不检查 API”“关闭开关不调用 API”“只由已保存 User 确认上一轮”是 Map/Tasks 交付时必须满足的运行契约，不是脱离 APP 预建空基础设施的理由。
+“打开 APP 不检查 API”“关闭自动维护不调用 API”“只由已保存 User 确认上一轮”是现行运行契约。未来增加自动领域时，仍必须先有完整业务所有者和真实消费者，再通过 participant 注册接入，不能预建空基础设施。
 
 ## 4. 统一 Agent API 设置
 
@@ -76,7 +76,7 @@ AssistantStorage / LittleWhiteBox_Assistant.json / settings
 
 ### 4.2 桌面 APP
 
-- 「Agent API」是 OS 系统 APP，只要 OS 本身启用就常驻桌面，不受 Map/Tasks 扩展开关控制。
+- 「Agent API」、Map 和 Tasks 都随 OS 固定注册；只要 OS 本身启用就常驻桌面。
 - 四次元壁删除「Agent API 配置」按钮、`open-agent-settings`frame action、专属 dialog 和对应测试，不保留代理入口。
 - Map、Tasks、四次元壁不显示 provider/model/key 表单；它们只消费 gateway。
 - 打开 APP 只读取共享配置，不联系模型供应商；拉取模型、连接测试必须由用户明确点击。
@@ -114,33 +114,29 @@ interface XiaobaiOsAgentGateway {
 - maintenance 每个 job 只调用一次`openSession`并复用同一个 adapter；一次性`run`保留给四次元壁等真实消费者。
 - `run`只在明确的前台动作或 maintenance job 已经获准时调用供应商。
 - `testConnection`只能由 Agent API APP 的显式操作触发。
-- gateway 不判断哪个 APP 启用，不读 Map/Tasks 数据，不拥有 Prompt。
+- gateway 不判断 participant 是否参与请求，不读 Map/Tasks 数据，不拥有 Prompt。
 - API APP 是 gateway 的设置界面，不是其他 APP 的运行依赖；关闭设置页面不影响四次元壁或后台任务。
 
-## 6. 两级开关与入口
+## 6. APP 入口与自动维护
 
-Map 和 Tasks 各有两个不同语义的用户级开关：
+Map 和 Tasks 是与银行相同的固定桌面 APP，不存在各自的产品启用开关。两者各自只有一个用户级自动维护开关：
 
 | 开关 | 关闭后的行为 |
 | --- | --- |
-| APP 启用 | 桌面不显示该 APP；停止该 APP 的后台 participant 和主聊天 Prompt 投影；聊天数据保留 |
 | 自动维护 | APP 仍可打开和读取；不为该领域创建后台工作，不读取 Agent 配置，不调用供应商 |
 
-两项默认均关闭，但入口不放在同一处：
-
-- Map、Tasks 的「APP 启用」复选框只放在 SillyTavern 扩展设置现有的「小白 OS」区块，紧邻 OS 总开关。即使 APP 图标已经隐藏，用户仍能从这里重新开启。
 - 「自动维护」只放在对应 APP 的设置页，不复制到扩展设置，也不放进 Agent API APP。它是用户级偏好，作用于所有普通聊天，因此 UI 必须明确标注「所有普通聊天自动维护」。Tasks 没有 active 任务时可本地返回 null；Map 是否出现新空间事实需由 Agent 判断，所以开启 Map 自动维护就表示每个有效接受轮都参加请求，即使最终无需更新地图。这个成本差异必须写在开关说明中。
-- `autoMaintenance=true`蕴含`enabled=true`。关闭 APP 时同一次设置 mutation 把该 APP 的自动维护重置为`false`；重新开启后仍需用户在 APP 内再次明确开启自动维护，不能恢复一个隐藏的付费行为。
+- 自动维护默认关闭。切换它不改变桌面图标、APP runtime 或主聊天只读 Prompt，也不影响用户明确点击的维护/重建/刷新请求。
 
-两种开关本身都只保存用户级偏好，不读取 Agent 配置、不发请求，也不创建聊天数据。扩展设置通过 OS `index.ts`导出的窄设置命令写唯一 settings repository，不能直接改`extension_settings`；shell 也不能自行解释或保存设置。
+自动维护开关只保存用户级偏好，不读取 Agent 配置、不发请求，也不创建聊天数据。APP Controller 通过唯一 settings repository 的窄命令保存，shell 不自行解释或保存设置。
 
-终态 settings repository 为`map|tasks`提供类型化的`setAppEnabled`、`setAutoMaintenance`和当前运行内变更订阅，但命令与字段随对应完整 APP 一起加入：Map 阶段只加入 Map，Tasks 阶段再加入 Tasks，不预建尚无所有者的配置。扩展设置 handler 与 APP Controller 只能调用这些命令；repository 在确定保存成功后发布新快照，确定失败则恢复旧值且不切 runtime。若宿主保存结果不确定，沿用现有 settings 候选语义：保留当前内存候选、按候选切换 runtime并明确提示“保存未确认”，不另造第二套 pending 开关。
+终态 settings repository 为`map|tasks`分别提供类型化的`setAutoMaintenance`和当前运行内变更订阅，但命令与字段随对应完整 APP 一起加入：Map 阶段只加入 Map，Tasks 阶段再加入 Tasks，不预建尚无所有者的配置。APP Controller 只能调用这些命令；repository 在确定保存成功后发布新快照，确定失败则恢复旧值。若宿主保存结果不确定，沿用现有 settings 候选语义：保留当前内存候选、按候选执行并明确提示“保存未确认”，不另造第二套 pending 开关。
 
-运行中的启停由`app-runtime-registry`应用：开启后注册该 APP 的 descriptor、runtime 和主 Prompt runtime；关闭后若该 APP 正在显示，shell 先回到桌面，再移除 descriptor、清空 Prompt、注销 participant 并 abort 该领域请求。对应 APP 完成前，其开关、配置字段和注册入口均不存在；不能先交付能勾选却没有完整页面与领域行为的半成品入口。
+完整 APP 在 production composition 和 shell 中静态注册 descriptor、runtime、主 Prompt runtime 与 participant；OS cleanup 统一清 Prompt、取消请求并停止后台。对应 APP 完成前，其配置字段和注册入口均不存在，不能先交付没有完整页面与领域行为的占位图标。
 
 用户可在具体 APP 内通过标明会使用 Agent 的「维护一次」「重建」或「刷新」按钮发起显式请求。
 
-若运行中关闭自动维护，该领域的自动 job token 立即失效并请求 abort；即使供应商仍返回，进入根保存 commit point 前也必须再次检查 token 并丢弃迟到结果。显式「维护一次」使用独立的前台授权 token，不依赖自动维护开关，但关闭整个 APP 仍会使它失效。设置 mutation 的 installed 通知只负责这条即时执行栅栏，稳定发布只切换 Prompt/页面生命周期，不重复推进取消 token。
+若运行中关闭自动维护，该领域的自动 job token 立即失效并请求 abort；即使供应商仍返回，进入根保存 commit point 前也必须再次检查 token 并丢弃迟到结果。显式「维护一次」使用独立的前台授权 token，不依赖自动维护开关；离开所属页面或 OS cleanup 才使前台请求失效。设置 mutation 的 installed 通知只负责自动 job 的即时执行栅栏，稳定发布不切换 Prompt 或页面生命周期。
 
 ## 7. 接受轮触发语义
 
@@ -195,7 +191,7 @@ participant 的运行 token 属于 job 临时态；领域 revision 在`createSes
 
 ## 8. 一次请求、领域自有
 
-同一接受轮中，只要至少一个已启用 participant 需要维护，runner 组装一次 Agent 请求。Map 与 Tasks 各自提供：
+同一接受轮中，只要至少一个 participant 已开启自动维护且有工作，runner 组装一次 Agent 请求。Map 与 Tasks 各自提供：
 
 ```ts
 interface MaintenanceParticipant {
@@ -208,23 +204,22 @@ interface MaintenanceParticipant {
 }
 
 interface MaintenanceDataMessage {
-    readonly role: 'user';
-    readonly name?: string;
+    readonly role: 'system' | 'user';
     readonly content: string;
 }
 
 interface MaintenanceSession {
     readonly participantId: string;
     readonly prompt: string; // 只含可信静态规则和可信运行模式
-    readonly dataMessages?: readonly MaintenanceDataMessage[]; // 不可信领域数据
+    readonly dataMessages: readonly MaintenanceDataMessage[]; // 不可信领域数据
     readonly tools: readonly MaintenanceFunctionDeclaration[];
     // executeTool / getResult / canCommit / commit / invalidate 保持既有协议
 }
 ```
 
 - participant 自己读取领域状态、构造静态 Prompt、声明工具、校验参数并维护 staged state；当前没有领域工作时返回`null`，不能创建一个空 Session 迫使 runner 读取配置。
-- runner 先创建所有已启用 participant 的 Session。全部返回`null`时，在`gateway.loadConfig()`和`openSession()`之前以`skipped/no-work`结束；部分为`null`时只运行其余 Session。
-- runner 的 system prompt 只由通用静态规则和各 Session 的静态`prompt`组成。每个 Session 的动态领域投影放在自己的`dataMessages`，玩家身份与接受消息放在 runner 单独构造的 user message；角色卡、任务、地图实体、聊天文本和用户名都不得拼进 system prompt。
+- runner 先为当前 mode 可参与的 participant 创建 Session。全部返回`null`时，在`gateway.loadConfig()`和`openSession()`之前以`skipped/no-work`结束；部分为`null`时只运行其余 Session。
+- runner 的静态 system rules 只由通用规则和各 Session 的`prompt`组成。共享背景以 system data message 发送`<setting>/<current_state>`，每个 Session 的动态领域投影放在自己的 user`dataMessages`，玩家身份与接受消息放在 runner 单独构造的 user`<accepted_turn>`；动态资料不得拼进静态 rules。
 - Agent 工具先写 participant 的内存 staging context，不在模型循环中直接保存聊天数据。
 - 请求完成后，各 participant 分别通过根 store 提交；Map 失败不抹掉一个已经合法提交的 Task，反之亦然。
 - Tasks 的状态与 Economy 资金腿仍必须在它自己的单次根 mutation 中原子提交。
@@ -244,9 +239,8 @@ Provider-aware tool loop 只拥有传输和编排错误，不复制领域失败�
 - 当前聊天只有一条 FIFO maintenance 队列，不并行维护两个接受轮。
 - 新 User 到来时前一 job 可继续；后一个等待前一个完成，避免旧结果覆盖新状态。
 - 关闭 OS 窗口不影响已经获准的自动 job；自动维护属于 host 后台，不由页面寿命拥有。
-- 「维护一次」、重建、board 刷新和候选招募属于前台请求；离开对应 APP/页面、再次发起同类请求或关闭 APP 时请求 abort，尚未进入保存 commit point 的迟到结果不得提交。
+- 「维护一次」、重建、board 刷新和候选招募属于前台请求；离开对应 APP/页面、再次发起同类请求或 OS cleanup 时请求 abort，尚未进入保存 commit point 的迟到结果不得提交。
 - 切聊、OS cleanup 或 OS 总开关关闭时，中止 active job 并清空当前运行队列。若某 participant 已安装根候选并发出宿主保存请求，该次保存无法物理撤回；等待它落定、保留真实 committed outcome，再取消其余 participant 和后续 job。
-- 单个 APP 关闭时只移除该 participant；同一请求中的其他 participant 可继续。
 - API 配置缺失、未启用或读取失败时，本次 job 以本地错误结束，不发供应商请求。
 - 工具解析、参数和可恢复执行错误以结构化结果回喂模型，不销毁 Session；同一工具名、原始参数与结构化结果组成相同失败签名，连续三次时注入刹车，第四次结束，Provider 回合上限为 12。
 - Provider 后续失败或轮次耗尽时，已有合法 staging 的 participant 以 partial 提交；没有合法变化的 participant 为 failed。单个 participant 的领域错误不能跨领域冒充成功。
@@ -263,14 +257,16 @@ Map/Tasks 是否向主 RP 投影当前状态，由各 APP 自己的 prompt runti
 - 不经过 maintenance runner；
 - 不调用 Agent API；
 - 使用已提交领域状态的只读、安全摘要；
-- 在 APP 禁用时立即移除；
+- 在 OS cleanup 时立即移除；
 - 遵守现有主生成生命周期，不能遗留 extension prompt。
 
-这样“自动维护关闭”只代表不花费后台 Agent 调用，不会意外禁用用户已经明确启用的静态任务/地图连续性提示。
+这样“自动维护关闭”只代表不花费后台 Agent 调用，不会意外禁用静态任务/地图连续性提示。
+
+维护 Agent 的共享宿主背景由`host/prompt-context`捕获，核心层只认识有界背景消息，不导入 Map、Tasks 或 Story Summary 领域类型。消息顺序固定为：system`<setting>`、system`<current_state>`、各 participant 自有 user data、最后 user`<accepted_turn>`。setting、世界书、L2 事件、Map 摘要和旧消息只能解释背景，只有`<accepted_turn>`能产生本次写入意图。自动维护的背景只取接受轮之前最近 4 条消息；触发维护的下一条 User 不进入请求；Map rebuild 不注入旧 Map 摘要。participant 全部返回 no-work 后不得捕获背景、读取 Agent 配置或创建 adapter。
 
 ## 11. 数据、迁移与删除
 
-OS 扩展设置最终包含 Fourth Wall 设置与 Map/Tasks 两级开关，但不包含 Agent 凭据。测试线自己的旧 OS 开关格式直接整理为当前结构；唯一保留的设置迁移是已存在的上游 Fourth Wall 真实格式到当前 OS 格式。
+OS 扩展设置当前包含 Fourth Wall 设置与`map.autoMaintenance`、`tasks.autoMaintenance`，不包含 Map/Tasks enabled 或 Agent 凭据。`prepare()`在升级边界把冻结的 settings V1 和已发布 settings V2 一次性转换到 V3，并移除旧式 Map/Tasks `enabled`字段；转换后 validator 和运行时只认当前模型，不保留双读兼容壳。未来增加必填 Tasks 设置时必须再提升 schema 并提供一次性升级。
 
 移除这套能力时：
 
@@ -289,13 +285,13 @@ OS 扩展设置最终包含 Fourth Wall 设置与 Map/Tasks 两级开关，但�
 | Agent API 路由立即显示，慢配置读取有可见 loading 且不触发 host timeout | 浏览器集成测试 |
 | User 保存后只入队一次 | accepted source/runner 集成测试 |
 | swipe、regenerate、Assistant 回复零请求 | 宿主事件集成测试 |
-| participant 全关时连配置都不读取 | runner 单测 |
-| 已启用 participant 全部返回 no-work 时连配置都不读取 | runner 单测 |
-| 动态领域数据、玩家名和接受消息只进入 user messages | Provider 请求结构集成测试 |
+| 所有自动维护均关闭时连配置都不读取 | runner 单测 |
+| 参与自动维护的 participant 全部返回 no-work 时连配置都不读取 | runner 单测 |
+| 共享背景/领域资料/接受证据按 system data、user data、user evidence 固定分层 | Provider 请求结构集成测试 |
 | 领域工具换名修正同一实体失败后不残留假 partial | Session + runner 集成测试 |
-| APP 开关始终可重新进入，关闭时同步停止 runtime/Prompt/participant | 设置 repository + lifecycle 集成测试 |
-| 关闭 APP 会清除自动维护偏好，重新开启不产生隐式调用 | 设置 repository 集成测试 |
-| 切聊、关开关、改 swipe 使迟到提交失效 | runner + chat store 集成测试 |
+| Map/Tasks 随 OS 固定出现，自动维护开关不影响 runtime/Prompt | lifecycle + Prompt 集成测试 |
+| 关闭自动维护立即使自动 job 失效且不影响显式请求 | 设置 repository + runner 集成测试 |
+| 切聊、关自动维护、改 swipe 使迟到提交失效 | runner + chat store 集成测试 |
 | 手动维护只读取最新完整接受轮，并且只运行被点击领域 | accepted source/runner 集成测试 |
 | Map/Tasks 一次请求但领域提交互不冒充 | participant 集成测试 |
 | Fourth Wall 原有生成行为不因设置入口迁移改变 | Fourth Wall Controller 公开行为回归 |

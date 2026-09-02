@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createChatDataStore } from '../host/chat-data-store.js';
+import { createChatDataStore, XiaobaiOsUnconfirmedMutationError } from '../host/chat-data-store.js';
 
 function root(value) {
     return { schemaVersion: 2, apps: {}, domains: { sample: value } };
@@ -42,7 +42,7 @@ test('an unconfirmed save freezes later writes until the candidate is confirmed'
     };
     await assert.rejects(
         store.mutateCurrent(() => ({ next: root('candidate'), result: true })),
-        error => error.code === 'SAVE_UNCONFIRMED',
+        error => error instanceof XiaobaiOsUnconfirmedMutationError && error.mutationCommitted === true,
     );
     assert.equal(store.getWriteState(), 'unconfirmed');
     assert.deepEqual(writeStates, ['saving', 'unconfirmed']);

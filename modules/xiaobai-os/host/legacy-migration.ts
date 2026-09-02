@@ -8,6 +8,7 @@ import type {
     FourthWallMessageData,
 } from '../apps/fourth-wall/types.js';
 import type { MapSettings } from '../apps/map/types.js';
+import type { TasksSettings } from '../apps/tasks/types.js';
 import type {
     XiaobaiOsChatData as XiaobaiOsChatDataRoot,
     XiaobaiOsSettings as XiaobaiOsSettingsRoot,
@@ -16,6 +17,7 @@ import type {
 type XiaobaiOsSettings = XiaobaiOsSettingsRoot<{
     fourthWall: FourthWallGlobalSettings;
     map: MapSettings;
+    tasks: TasksSettings;
 }>;
 type XiaobaiOsChatData = XiaobaiOsChatDataRoot<
     { fourthWall?: FourthWallChatState; [appId: string]: unknown },
@@ -24,7 +26,7 @@ type XiaobaiOsChatData = XiaobaiOsChatDataRoot<
 
 type UnknownRecord = Record<string, unknown>;
 
-export const XIAOBAI_OS_SETTINGS_SCHEMA_VERSION = 2 as const;
+export const XIAOBAI_OS_SETTINGS_SCHEMA_VERSION = 3 as const;
 export const XIAOBAI_OS_CHAT_SCHEMA_VERSION = 2 as const;
 
 export const LEGACY_FOURTH_WALL_SETTING_KEYS = Object.freeze([
@@ -126,23 +128,38 @@ function validatePromptTemplates(value: unknown, path: string, code = 'INVALID_C
     requireString(templates.bottom, `${path}.bottom`, code);
 }
 
-function validateFourthWallGlobalSettings(value: unknown, path: string): asserts value is FourthWallGlobalSettings {
-    const settings = requireRecord(value, path);
-    requireBoolean(requireRecord(settings.image, `${path}.image`).enablePrompt, `${path}.image.enablePrompt`);
-    requireBoolean(requireRecord(settings.voice, `${path}.voice`).enabled, `${path}.voice.enabled`);
-    const commentary = requireRecord(settings.commentary, `${path}.commentary`);
-    requireBoolean(commentary.enabled, `${path}.commentary.enabled`);
-    requireInteger(commentary.probability, `${path}.commentary.probability`, 1, 99);
-    validatePromptTemplates(settings.promptTemplates, `${path}.promptTemplates`);
+function validateFourthWallGlobalSettings(
+    value: unknown,
+    path: string,
+    code = 'INVALID_CURRENT_DATA',
+): asserts value is FourthWallGlobalSettings {
+    const settings = requireRecord(value, path, code);
+    requireBoolean(
+        requireRecord(settings.image, `${path}.image`, code).enablePrompt,
+        `${path}.image.enablePrompt`,
+        code,
+    );
+    requireBoolean(requireRecord(settings.voice, `${path}.voice`, code).enabled, `${path}.voice.enabled`, code);
+    const commentary = requireRecord(settings.commentary, `${path}.commentary`, code);
+    requireBoolean(commentary.enabled, `${path}.commentary.enabled`, code);
+    requireInteger(commentary.probability, `${path}.commentary.probability`, 1, 99, code);
+    validatePromptTemplates(settings.promptTemplates, `${path}.promptTemplates`, code);
 }
 
 function validateMapSettings(value: unknown, path: string): asserts value is MapSettings {
     const settings = requireRecord(value, path);
-    requireBoolean(settings.enabled, `${path}.enabled`);
-    requireBoolean(settings.autoMaintenance, `${path}.autoMaintenance`);
-    if (settings.autoMaintenance && !settings.enabled) {
-        fail('INVALID_CURRENT_DATA', path, 'autoMaintenance requires enabled');
+    if (Object.hasOwn(settings, 'enabled')) {
+        fail('INVALID_CURRENT_DATA', `${path}.enabled`, 'is a legacy field');
     }
+    requireBoolean(settings.autoMaintenance, `${path}.autoMaintenance`);
+}
+
+function validateTasksSettings(value: unknown, path: string): asserts value is TasksSettings {
+    const settings = requireRecord(value, path);
+    if (Object.hasOwn(settings, 'enabled')) {
+        fail('INVALID_CURRENT_DATA', `${path}.enabled`, 'is a legacy field');
+    }
+    requireBoolean(settings.autoMaintenance, `${path}.autoMaintenance`);
 }
 
 function validateMessage(
@@ -213,7 +230,9 @@ export function createDefaultXiaobaiOsSettings(): XiaobaiOsSettings {
         apps: {
             fourthWall: createDefaultFourthWallGlobalSettings(),
             map: {
-                enabled: false,
+                autoMaintenance: false,
+            },
+            tasks: {
                 autoMaintenance: false,
             },
         },
@@ -229,7 +248,78 @@ export function validateXiaobaiOsSettings(value: unknown): value is XiaobaiOsSet
     const apps = requireRecord(root.apps, 'xiaobaiOs.apps');
     validateFourthWallGlobalSettings(apps.fourthWall, 'xiaobaiOs.apps.fourthWall');
     validateMapSettings(apps.map, 'xiaobaiOs.apps.map');
+    validateTasksSettings(apps.tasks, 'xiaobaiOs.apps.tasks');
     return true;
+}
+
+export function upgradeXiaobaiOsSettings(value: unknown): XiaobaiOsSettings | null {
+    const root = requireRecord(value, 'xiaobaiOs');
+    if (root.schemaVersion === XIAOBAI_OS_SETTINGS_SCHEMA_VERSION) {
+        return null;
+    }
+    if (root.schemaVersion !== 1 && root.schemaVersion !== 2) {
+        fail(
+            'UNSUPPORTED_SETTINGS_VERSION',
+            'xiaobaiOs.schemaVersion',
+            `must equal ${XIAOBAI_OS_SETTINGS_SCHEMA_VERSION}`,
+        );
+    }
+    const apps = requireRecord(
+        root.apps,
+        'xiaobaiOs.apps',
+        'INVALID_LEGACY_DATA',
+    );
+
+    if (root.schemaVersion === 1) {
+        const enabled = requireBoolean(root.enabled, 'xiaobaiOs.enabled', 'INVALID_LEGACY_DATA');
+        validateFourthWallGlobalSettings(
+            apps.fourthWall,
+            'xiaobaiOs.apps.fourthWall',
+            'INVALID_LEGACY_DATA',
+        );
+        const upgraded: XiaobaiOsSettings = {
+            schemaVersion: XIAOBAI_OS_SETTINGS_SCHEMA_VERSION,
+            enabled,
+            apps: {
+                fourthWall: clone(apps.fourthWall),
+                map: { autoMaintenance: false },
+                tasks: { autoMaintenance: false },
+            },
+        };
+        validateXiaobaiOsSettings(upgraded);
+        return upgraded;
+    }
+
+    validateFourthWallGlobalSettings(
+        apps.fourthWall,
+        'xiaobaiOs.apps.fourthWall',
+        'INVALID_LEGACY_DATA',
+    );
+    const map = requireRecord(apps.map, 'xiaobaiOs.apps.map', 'INVALID_LEGACY_DATA');
+    const autoMaintenance = requireBoolean(
+        map.autoMaintenance,
+        'xiaobaiOs.apps.map.autoMaintenance',
+        'INVALID_LEGACY_DATA',
+    );
+    const mapEnabled = requireBoolean(
+        map.enabled,
+        'xiaobaiOs.apps.map.enabled',
+        'INVALID_LEGACY_DATA',
+    );
+    if (autoMaintenance && !mapEnabled) {
+        fail('INVALID_LEGACY_DATA', 'xiaobaiOs.apps.map', 'autoMaintenance requires enabled');
+    }
+    const upgraded: XiaobaiOsSettings = {
+        schemaVersion: XIAOBAI_OS_SETTINGS_SCHEMA_VERSION,
+        enabled: requireBoolean(root.enabled, 'xiaobaiOs.enabled', 'INVALID_LEGACY_DATA'),
+        apps: {
+            fourthWall: clone(apps.fourthWall) as FourthWallGlobalSettings,
+            map: { autoMaintenance },
+            tasks: { autoMaintenance: false },
+        },
+    };
+    validateXiaobaiOsSettings(upgraded);
+    return upgraded;
 }
 
 export function validateXiaobaiOsChatData(value: unknown): value is XiaobaiOsChatData {
@@ -315,7 +405,9 @@ export function migrateLegacySettings(extensionSettings: unknown): {
                 },
             },
             map: {
-                enabled: false,
+                autoMaintenance: false,
+            },
+            tasks: {
                 autoMaintenance: false,
             },
         },

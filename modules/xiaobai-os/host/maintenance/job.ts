@@ -5,7 +5,7 @@ import {
     type MaintenanceParticipantOutcome,
     type MaintenanceRunOutcome,
 } from './outcome.js';
-import type { MaintenanceMode, MaintenanceParticipant, MaintenanceSession } from './registry.js';
+import type { MaintenanceDataMessage, MaintenanceMode, MaintenanceParticipant, MaintenanceSession } from './registry.js';
 
 export interface MaintenanceSessionRun {
     readonly participant: MaintenanceParticipant;
@@ -24,6 +24,7 @@ export interface MaintenanceQueuedJob {
     controller: AbortController;
     sessions: MaintenanceSessionRun[];
     earlyResults: MaintenanceParticipantOutcome[];
+    backgroundMessages: MaintenanceDataMessage[];
     cancelledReason: string;
     committing: boolean;
     settled: boolean;

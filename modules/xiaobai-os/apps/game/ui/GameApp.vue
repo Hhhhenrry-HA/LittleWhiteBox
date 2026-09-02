@@ -231,7 +231,7 @@ async function performAction(request: GameWriteRequest, actionId = createActionI
 function openStart(kind: GameKind, bet: number): void {
     if (writeDisabledReason.value || state.value.activeGame) {return;}
     const copy = kind === 'dice'
-        ? { heading: '确认入席秘骰对决', summary: `托管 ¤ ${bet}，胜出返还下注的 1.9 倍。`, confirmLabel: '确认入席' }
+        ? { heading: '确认入席秘骰对决', summary: `托管 ¤ ${bet}，胜出返还下注的 1.8 倍。`, confirmLabel: '确认入席' }
         : kind === 'push'
             ? { heading: '确认揭开第一张牌', summary: '托管 ¤ 50。金币可以累积，炸弹会立即结束本局。', confirmLabel: '确认揭牌' }
             : { heading: '确认踏上鎏金阶梯', summary: `托管 ¤ ${bet}，首层成功后才可收手。`, confirmLabel: '确认登阶' };

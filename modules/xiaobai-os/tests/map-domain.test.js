@@ -217,13 +217,11 @@ test('prompt projection is local, confirmed-only, escaped, and bounded', () => {
     });
     const prompt = buildMapPromptBlock(domain);
 
-    assert.match(prompt, /<current /);
-    assert.match(prompt, /<parent /);
-    assert.match(prompt, /<adjacent /);
+    assert.match(prompt, /<current_map>/);
+    assert.match(prompt, /<current_location /);
     assert.match(prompt, /Keeper &amp; &quot;friend&quot;/);
     assert.match(prompt, /Hall &lt;unsafe&gt; &#123;&#123;macro&#125;&#125;/);
-    assert.match(prompt, /<exit /);
-    assert.match(prompt, /<anchor /);
+    assert.doesNotMatch(prompt, /<exit |<anchor |<scene|<element|geometry|shape=/);
     assert.doesNotMatch(prompt, /Secret rumor|<unsafe>|\{\{macro\}\}/);
     assert.ok(prompt.length <= MAX_MAP_PROMPT_CHARS);
 
@@ -234,4 +232,80 @@ test('prompt projection is local, confirmed-only, escaped, and bounded', () => {
     ));
     assert.equal(buildMapPromptBlock(noPlayer), '');
     assert.equal(buildMapPromptBlock({ malformed: true }), '');
+});
+
+test('prompt projection skips an oversized record but still packs later complete records', () => {
+    const noisyName = '&'.repeat(80);
+    const noisyBrief = '&'.repeat(160);
+    const domain = {
+        schemaVersion: MAP_DOMAIN_SCHEMA_VERSION,
+        revision: 1,
+        atlas: {
+            locations: [
+                location('current', { name: 'Current', status: 'visited' }),
+                location('adjacent-a', { name: noisyName, brief: noisyBrief, status: 'visited' }),
+                location('adjacent-b', { name: noisyName, brief: noisyBrief, status: 'visited' }),
+                location('oversized-visited', { name: noisyName, brief: noisyBrief, status: 'visited' }),
+                location('compact-visited', { name: 'Compact place', brief: 'Still fits', status: 'visited' }),
+            ],
+            links: [
+                { id: 'a', from: 'current', to: 'adjacent-a', kind: 'road', bidirectional: true, label: '&'.repeat(64) },
+                { id: 'b', from: 'current', to: 'adjacent-b', kind: 'road', bidirectional: true, label: '&'.repeat(64) },
+            ],
+            actors: [{ actorKey: 'player', displayName: 'Player', locationKey: 'current' }],
+        },
+        scenes: {},
+    };
+
+    const prompt = buildMapPromptBlock(domain);
+    assert.match(prompt, /Compact place/);
+    assert.match(prompt, /<visited_locations>[\s\S]*<\/visited_locations>/u);
+    assert.equal(Array.from(prompt).length <= MAX_MAP_PROMPT_CHARS, true);
+    assert.equal(prompt.endsWith('</current_map>'), true);
+});
+
+test('prompt projection exposes every allowed Atlas section with its public item caps', () => {
+    const parent = location('parent', { name: 'Parent place', scale: 'building', status: 'visited', brief: 'Parent overview' });
+    const known = Array.from({ length: 9 }, (_, index) => location(`known-${index}`, {
+        name: `Known ${index}`, status: 'mentioned', brief: `Known overview ${index}`,
+    }));
+    const adjacent = Array.from({ length: 9 }, (_, index) => location(`adjacent-${index}`, {
+        name: `Adjacent ${index}`, status: 'visited', brief: `Adjacent overview ${index}`,
+    }));
+    const visited = Array.from({ length: 9 }, (_, index) => location(`visited-${index}`, {
+        name: `Visited ${index}`, status: 'visited', brief: `Visited overview ${index}`,
+    }));
+    const domain = {
+        schemaVersion: MAP_DOMAIN_SCHEMA_VERSION,
+        revision: 99,
+        atlas: {
+            locations: [
+                parent,
+                location('current', { name: 'Current place', parent: parent.key, brief: 'Current overview' }),
+                ...known,
+                ...adjacent,
+                ...visited,
+            ],
+            links: adjacent.map((entry, index) => ({
+                id: `route-${index}`, from: 'current', to: entry.key, kind: 'road', bidirectional: true,
+            })),
+            actors: [
+                { actorKey: 'player', displayName: 'Player', locationKey: 'current' },
+                ...Array.from({ length: 13 }, (_, index) => ({
+                    actorKey: `actor-${index}`, displayName: `Actor ${index}`, locationKey: 'current',
+                })),
+            ],
+        },
+        scenes: {},
+    };
+
+    const prompt = buildMapPromptBlock(domain);
+    assert.match(prompt, /Current place[^\n]*Current overview/u);
+    assert.match(prompt, /Parent place[^\n]*Parent overview/u);
+    assert.equal((prompt.match(/<adjacent /gu) || []).length, 8);
+    assert.equal((prompt.match(/<known_unvisited_locations>[\s\S]*?<\/known_unvisited_locations>/u)?.[0].match(/<location /gu) || []).length, 8);
+    assert.equal((prompt.match(/<visited_locations>[\s\S]*?<\/visited_locations>/u)?.[0].match(/<location /gu) || []).length, 8);
+    assert.equal((prompt.match(/<actor /gu) || []).length, 12);
+    assert.doesNotMatch(prompt, /Adjacent 8|Known 8|Actor 12|revision|actorKey|locationKey|sceneKey/u);
+    assert.equal(Array.from(prompt).length <= MAX_MAP_PROMPT_CHARS, true);
 });

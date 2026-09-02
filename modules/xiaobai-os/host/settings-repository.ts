@@ -3,16 +3,19 @@ import {
     LEGACY_FOURTH_WALL_SETTING_KEYS,
     migrateLegacySettings,
     type LegacyFourthWallSettingKey,
+    upgradeXiaobaiOsSettings,
     validateXiaobaiOsSettings,
     XiaobaiOsDataError,
 } from './legacy-migration.js';
 import type { FourthWallGlobalSettings } from '../apps/fourth-wall/types.js';
 import type { MapSettings } from '../apps/map/types.js';
+import type { TasksSettings } from '../apps/tasks/types.js';
 import type { XiaobaiOsSettings as XiaobaiOsSettingsRoot } from '../types.js';
 
 type XiaobaiOsSettings = XiaobaiOsSettingsRoot<{
     fourthWall: FourthWallGlobalSettings;
     map: MapSettings;
+    tasks: TasksSettings;
 }>;
 
 type UnknownRecord = Record<string, unknown>;
@@ -26,8 +29,8 @@ export interface XiaobaiOsSettingsRepository {
     prepare: () => Promise<XiaobaiOsSettings>;
     read: () => XiaobaiOsSettings | null;
     setEnabled: (enabled: boolean) => Promise<XiaobaiOsSettings>;
-    setMapEnabled: (enabled: boolean) => Promise<XiaobaiOsSettings>;
     setMapAutoMaintenance: (enabled: boolean) => Promise<XiaobaiOsSettings>;
+    setTasksAutoMaintenance: (enabled: boolean) => Promise<XiaobaiOsSettings>;
     mutateFourthWall: (
         action: (current: FourthWallGlobalSettings) => FourthWallGlobalSettings,
     ) => Promise<XiaobaiOsSettings>;
@@ -138,6 +141,17 @@ export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): Xia
         return enqueueWrite(async () => {
             const root = requireSettingsRoot(adapter);
             if (Object.hasOwn(root, 'xiaobaiOs')) {
+                const previous = root.xiaobaiOs;
+                const upgraded = upgradeXiaobaiOsSettings(previous);
+                if (upgraded) {
+                    const installed = cloneXiaobaiOsData(upgraded);
+                    root.xiaobaiOs = installed;
+                    return saveInstalled(installed, () => {
+                        if (root.xiaobaiOs === installed) {
+                            root.xiaobaiOs = previous;
+                        }
+                    });
+                }
                 assertValidSettings(root.xiaobaiOs);
                 return cloneXiaobaiOsData(root.xiaobaiOs);
             }
@@ -194,28 +208,22 @@ export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): Xia
         });
     }
 
-    function setMapEnabled(enabled: boolean): Promise<XiaobaiOsSettings> {
-        if (typeof enabled !== 'boolean') {
-            throw new TypeError('map enabled must be a boolean');
-        }
-        return mutate((next) => {
-            next.apps.map.enabled = enabled;
-            if (!enabled) {
-                next.apps.map.autoMaintenance = false;
-            }
-            return next;
-        });
-    }
-
     function setMapAutoMaintenance(enabled: boolean): Promise<XiaobaiOsSettings> {
         if (typeof enabled !== 'boolean') {
             throw new TypeError('map auto-maintenance must be a boolean');
         }
         return mutate((next) => {
             next.apps.map.autoMaintenance = enabled;
-            if (enabled) {
-                next.apps.map.enabled = true;
-            }
+            return next;
+        });
+    }
+
+    function setTasksAutoMaintenance(enabled: boolean): Promise<XiaobaiOsSettings> {
+        if (typeof enabled !== 'boolean') {
+            throw new TypeError('tasks auto-maintenance must be a boolean');
+        }
+        return mutate((next) => {
+            next.apps.tasks.autoMaintenance = enabled;
             return next;
         });
     }
@@ -256,8 +264,8 @@ export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): Xia
         prepare,
         read,
         setEnabled,
-        setMapEnabled,
         setMapAutoMaintenance,
+        setTasksAutoMaintenance,
         mutateFourthWall,
         subscribe,
         subscribeMutationInstalled,

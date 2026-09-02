@@ -36,7 +36,6 @@ function currentMap() {
 }
 
 function createHarness() {
-    let enabled = true;
     let autoMaintenance = false;
     let map = currentMap();
     let handlers = null;
@@ -45,7 +44,6 @@ function createHarness() {
     const prompts = [];
     const errors = [];
     const runtime = createMapPromptRuntime({
-        isEnabled: () => enabled,
         readCurrentMap() {
             reads += 1;
             if (map instanceof Error) {throw map;}
@@ -68,7 +66,6 @@ function createHarness() {
         runtime,
         setAutoMaintenance(value) {autoMaintenance = value;},
         get autoMaintenance() {return autoMaintenance;},
-        setEnabled(value) {enabled = value;},
         setMap(value) {map = value;},
     };
 }
@@ -82,11 +79,10 @@ test('main-generation interception installs only the safe current Map projection
     harness.handlers.intercept();
     assert.equal(harness.reads, 1);
     assert.equal(harness.prompts[0], '');
-    assert.match(harness.prompts.at(-1), /<xiaobai_os_map_context>/);
+    assert.match(harness.prompts.at(-1), /<current_map>/);
     assert.match(harness.prompts.at(-1), /Hall &lt;unsafe&gt; &#123;&#123;macro&#125;&#125;/);
-    assert.match(harness.prompts.at(-1), /South door/);
-    assert.match(harness.prompts.at(-1), /Counter/);
-    assert.doesNotMatch(harness.prompts.at(-1), /Rumored chest/);
+    assert.doesNotMatch(harness.prompts.at(-1), /South door|Counter|Rumored chest/);
+    assert.doesNotMatch(harness.prompts.at(-1), /scene|element|geometry|shape=|category=/i);
     assert.doesNotMatch(harness.prompts.at(-1), /<unsafe>|\{\{macro\}\}/);
 
     harness.handlers.requestBuilt();
@@ -99,7 +95,7 @@ test('main-generation interception installs only the safe current Map projection
     assert.equal(harness.prompts.at(-1), '');
 });
 
-test('disabled and settings-only activity neither reads Map state nor installs a prompt', () => {
+test('settings-only activity does not read Map state or duplicate subscriptions', () => {
     const harness = createHarness();
     harness.runtime.startBackground();
     harness.runtime.startBackground();
@@ -110,10 +106,8 @@ test('disabled and settings-only activity neither reads Map state nor installs a
     assert.equal(harness.reads, 0);
     assert.deepEqual(harness.prompts, []);
 
-    harness.setEnabled(false);
-    harness.handlers.intercept();
     assert.equal(harness.reads, 0);
-    assert.deepEqual(harness.prompts, ['']);
+    assert.deepEqual(harness.prompts, []);
 });
 
 test('every cancellation boundary clears a previously installed Map prompt', () => {

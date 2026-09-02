@@ -7,6 +7,8 @@ import { GAME_APP_DESCRIPTOR } from '../../apps/game/descriptor.js';
 import GameApp from '../../apps/game/ui/GameApp.vue';
 import { MAP_APP_DESCRIPTOR } from '../../apps/map/descriptor.js';
 import MapApp from '../../apps/map/ui/MapApp.vue';
+import { TASKS_APP_DESCRIPTOR } from '../../apps/tasks/descriptor.js';
+import TasksApp from '../../apps/tasks/ui/TasksApp.vue';
 import { FOURTH_WALL_APP_DESCRIPTOR } from '../../apps/fourth-wall/descriptor.js';
 import FourthWallApp from '../../apps/fourth-wall/ui/FourthWallApp.vue';
 import { SHOP_APP_DESCRIPTOR } from '../../apps/shop/descriptor.js';
@@ -63,5 +65,10 @@ export const xiaobaiOsApps: readonly XiaobaiOsAppDefinition[] = Object.freeze([
         ...MAP_APP_DESCRIPTOR,
         iconPaths: ['M11 16l13-6 16 6 13-6v38l-13 6-16-6-13 6z', 'M24 10v38M40 16v38M18 31l6-3 8 3 8-4 7 3'],
         component: MapApp,
+    },
+    {
+        ...TASKS_APP_DESCRIPTOR,
+        iconPaths: ['M17 12h30a5 5 0 0 1 5 5v35H12V17a5 5 0 0 1 5-5z', 'M21 23h22M21 32h22M21 41h14', 'M18 9h28v8H18z'],
+        component: TasksApp,
     },
 ]);

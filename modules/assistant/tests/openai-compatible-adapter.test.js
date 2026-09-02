@@ -32,6 +32,33 @@ test('tagged-json prompt honors required, named, and none tool choices', () => {
     assert.match(buildSystem('none'), /本轮不得调用工具，不得输出 <tool_call> 标签。/);
 });
 
+test('openai-compatible requests preserve the trusted system prompt before system data messages', () => {
+    const task = {
+        systemPrompt: 'trusted static rules',
+        tools: [{
+            type: 'function',
+            function: {
+                name: 'Read',
+                description: 'Read file.',
+                parameters: { type: 'object', properties: {} },
+            },
+        }],
+        messages: [
+            { role: 'system', name: 'setting', content: '<setting>untrusted data</setting>' },
+            { role: 'system', name: 'current_state', content: '<current_state>facts</current_state>' },
+            { role: 'user', content: 'run' },
+        ],
+    };
+
+    const native = buildNativeMessages(task);
+    assert.match(native[0].content, /^trusted static rules\n\n<setting>/u);
+    assert.equal(native[1].content, '<current_state>facts</current_state>');
+
+    const tagged = buildTaggedMessages(task);
+    assert.match(tagged[0].content, /^trusted static rules[\s\S]*<setting>untrusted data<\/setting>$/u);
+    assert.equal(tagged[1].content, '<current_state>facts</current_state>');
+});
+
 test('request inspection redacts credentials without hiding token limits', () => {
     assert.deepEqual(redactRequestSecrets({
         Authorization: 'Bearer secret',

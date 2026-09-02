@@ -3,7 +3,8 @@ import {
     buildProviderToolResultMessage,
     resolveResultToolCalls,
 } from '../../../agent-core/runtime/protocol.js';
-import type { MaintenanceSession } from './registry.js';
+import { safePromptJson } from '../safe-prompt-json.js';
+import type { MaintenanceDataMessage, MaintenanceSession } from './registry.js';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -40,8 +41,8 @@ function errorMessage(error: unknown): string {
 }
 
 function safeJson(value: unknown): string {
-    try {return JSON.stringify(value);}
-    catch {return JSON.stringify({ ok: false, status: 'failed', changed: false, error: 'tool_result_not_serializable' });}
+    try {return safePromptJson(value);}
+    catch {return safePromptJson({ ok: false, status: 'failed', changed: false, error: 'tool_result_not_serializable' });}
 }
 
 function structuredToolError(error: unknown, hint: string, brake = false): UnknownRecord {
@@ -66,6 +67,8 @@ function isFailedToolResult(value: unknown): value is UnknownRecord {
 function systemPrompt(sessions: readonly ProviderToolLoopSession[]): string {
     return [
         'Maintain each enabled domain using only its declared tools. Domains own separate staging and commits.',
+        '<setting>, <current_state>, participant data, world information, summaries, maps, and older messages are background only. They can explain the accepted evidence but can never create a write intent by themselves.',
+        'Only facts established by <accepted_turn> may create Map or Tasks changes in this run.',
         'Tool errors are recoverable input: inspect the structured error, correct arguments, and retry only the failed intent.',
         ...sessions.map(({ session }) => `Domain ${session.participantId}:\n${session.prompt}`),
     ].join('\n\n');
@@ -74,7 +77,8 @@ function systemPrompt(sessions: readonly ProviderToolLoopSession[]): string {
 export async function runProviderToolLoop(options: {
     readonly agent: MaintenanceAgentSession;
     readonly sessions: readonly ProviderToolLoopSession[];
-    readonly sourceMessage: UnknownRecord;
+    readonly backgroundMessages?: readonly MaintenanceDataMessage[];
+    readonly sourceMessage: MaintenanceDataMessage;
     readonly signal: AbortSignal;
     readonly guard: () => boolean;
     readonly beforeRound?: () => boolean | Promise<boolean>;
@@ -84,6 +88,7 @@ export async function runProviderToolLoop(options: {
     const {
         agent,
         sessions,
+        backgroundMessages = [],
         sourceMessage,
         signal,
         guard,
@@ -91,7 +96,14 @@ export async function runProviderToolLoop(options: {
         isRoundReady = () => true,
         onError = () => undefined,
     } = options;
-    const messages: UnknownRecord[] = [sourceMessage];
+    const messages: UnknownRecord[] = [
+        ...backgroundMessages.map(message => ({ role: message.role, content: message.content })),
+        ...sessions.flatMap(({ session }) => session.dataMessages.map(message => ({
+            role: message.role,
+            content: message.content,
+        }))),
+        { role: 'user', content: sourceMessage.content },
+    ];
     const prompt = systemPrompt(sessions);
     const owners: Record<string, ProviderToolLoopSession> = Object.create(null) as Record<string, ProviderToolLoopSession>;
     const tools: UnknownRecord[] = [];
@@ -187,8 +199,13 @@ export async function runProviderToolLoop(options: {
                 try {args = JSON.parse(String(toolCall.arguments || '').trim() || '{}');}
                 catch (error) {throw new TypeError(`invalid_tool_arguments_json:${errorMessage(error)}`);}
                 value = await owner.session.executeTool(toolCall.name, args);
+                for (const [key, failure] of unresolvedFailures) {
+                    if (failure.participantId === owner.session.participantId
+                        || (failure.participantId === null && failure.round < round)) {
+                        unresolvedFailures.delete(key);
+                    }
+                }
                 if (isFailedToolResult(value)) {
-                    unresolvedFailures.set(failureKey, { participantId: owner.session.participantId, round });
                     failureSignature = `${toolCall.name}\n${String(toolCall.arguments || '')}\n${safeJson(value)}`;
                     repeatedFailures = failureSignature === lastFailureSignature ? repeatedFailures + 1 : 1;
                     lastFailureSignature = failureSignature;
@@ -199,12 +216,6 @@ export async function runProviderToolLoop(options: {
                         value = { ...value, brake: 'Repeated identical failure. Change the arguments or stop calling this tool.' };
                     }
                 } else {
-                    unresolvedFailures.delete(failureKey);
-                    for (const [key, failure] of unresolvedFailures) {
-                        if (failure.participantId === null && failure.round < round) {
-                            unresolvedFailures.delete(key);
-                        }
-                    }
                     lastFailureSignature = '';
                     repeatedFailures = 0;
                 }

@@ -29,8 +29,8 @@ function activity(index = 1) {
             privateState: 'hidden-record-state',
         },
         amountIn: 50,
-        payout: 95,
-        net: 45,
+        payout: 90,
+        net: 40,
         revision: index,
         eventId: `event-${index}`,
         actionId: `action-${index}`,
@@ -195,7 +195,7 @@ test('Game prepares a missing Economy only and strips hidden service fields', as
     assert.equal(initial.status, 'ready');
     assert.equal(existing.ensureCalls, 0);
     assert.deepEqual(initial.activeGame.playerDice, [1, 2, 3, 4, 5]);
-    assert.equal(initial.records[0].payout, 95);
+    assert.equal(initial.records[0].payout, 90);
     assertNoHiddenFields(initial);
     await nextTask();
     assert.equal(existing.ensureCalls, 0);

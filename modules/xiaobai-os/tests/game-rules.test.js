@@ -23,6 +23,7 @@ import {
     createGameDiceGameView,
     getGameDiceBidProbabilityForDealer,
     getGameDiceDealerResponsePolicy,
+    getGameDiceOpponentBidCredibility,
     isGameDiceBidHigher,
     listGameLegalDiceBids,
     respondToGameDicePlayerBid,
@@ -133,37 +134,82 @@ test('dice wildcards, bid ordering, and dealer probability preserve the game con
     assert.equal(getGameDiceBidProbabilityForDealer([3, 3, 3, 3, 3], { count: 1, face: 3 }), 1);
 });
 
-test('dice dealer thresholds settle or raise with only the required random draw', () => {
-    const highRandom = trackedRandom([]);
-    const high = respondToGameDicePlayerBid(
-        diceGame({ dealerDice: [3, 3, 3, 3, 3] }),
-        { count: 1, face: 3 },
-        highRandom.source,
-    );
-    assert.equal(high.kind, 'continued');
-    assert.deepEqual(getGameDiceDealerResponsePolicy([3, 3, 3, 3, 3], { count: 1, face: 3 }), {
-        kind: 'raise', dealerBid: { count: 1, face: 4 },
-    });
-    assert.deepEqual(highRandom.bounds, []);
+test('dice dealer raises on its own faces instead of the cheapest legal bid', () => {
+    // Holding five 3s, the dealer must press with its own face rather than
+    // announce a 4 it does not hold at all.
+    const raise = getGameDiceDealerResponsePolicy([3, 3, 3, 3, 3], { count: 1, face: 3 });
+    assert.deepEqual(raise, { kind: 'raise', dealerBid: { count: 2, face: 3 } });
 
-    const lowRandom = trackedRandom([]);
-    const low = respondToGameDicePlayerBid(
-        diceGame({ dealerDice: [2, 2, 3, 4, 5] }),
-        { count: 3, face: 6 },
-        lowRandom.source,
-    );
-    assert.equal(low.kind, 'settled');
-    assert.deepEqual(getGameDiceDealerResponsePolicy([2, 2, 3, 4, 5], { count: 3, face: 6 }), {
+    // Wildcards count toward the dealer's own face when it picks the raise.
+    assert.deepEqual(getGameDiceDealerResponsePolicy([1, 1, 6, 6, 6], { count: 4, face: 6 }), {
+        kind: 'raise', dealerBid: { count: 5, face: 6 },
+    });
+
+    // The choice is driven by the hidden hand, so the same player bid draws
+    // different faces from different dealer hands.
+    const fromThrees = getGameDiceDealerResponsePolicy([3, 3, 3, 3, 3], { count: 2, face: 6 });
+    const fromTwos = getGameDiceDealerResponsePolicy([2, 2, 3, 4, 5], { count: 2, face: 6 });
+    assert.notDeepEqual(fromThrees.dealerBid, fromTwos.dealerBid);
+});
+
+test('dice dealer does not challenge bids the player is guaranteed to hold', () => {
+    // A player holding three 6s bids {3,6}. The dealer holds no 6 at all, so a
+    // model that assumes the player bids at random rates this at 21% and
+    // challenges - and loses every time, because the bid cannot fail.
+    const dealerDice = [2, 2, 3, 4, 5];
+    const playerBid = { count: 3, face: 6 };
+    assert.ok(getGameDiceBidProbabilityForDealer(dealerDice, playerBid) < 0.25);
+    assert.ok(getGameDiceOpponentBidCredibility(dealerDice, playerBid) > 0.4);
+    assert.notEqual(getGameDiceDealerResponsePolicy(dealerDice, playerBid).kind, 'challenge');
+
+    // Crediting part of the count to the bidder never exceeds their five dice.
+    assert.equal(getGameDiceOpponentBidCredibility(dealerDice, { count: 10, face: 6 }), 0);
+});
+
+test('dice dealer weighs challenging against the raise it would have to make', () => {
+    // Credibility alone (0.33) would not trigger a challenge here; the dealer
+    // challenges because every raise left to it is worth almost nothing.
+    const dealerDice = [2, 3, 4, 5, 6];
+    const playerBid = { count: 6, face: 2 };
+    assert.ok(getGameDiceOpponentBidCredibility(dealerDice, playerBid) > 0.3);
+    assert.deepEqual(getGameDiceDealerResponsePolicy(dealerDice, playerBid), { kind: 'challenge' });
+
+    // With no legal raise at all the dealer can only challenge.
+    assert.deepEqual(getGameDiceDealerResponsePolicy(dealerDice, { count: 10, face: 6 }), {
         kind: 'challenge',
     });
-    assert.deepEqual(lowRandom.bounds, []);
+});
 
+test('dice dealer settles or raises with only the required random draw', () => {
+    const raiseRandom = trackedRandom([]);
+    const raised = respondToGameDicePlayerBid(
+        diceGame({ dealerDice: [3, 3, 3, 3, 3] }),
+        { count: 1, face: 3 },
+        raiseRandom.source,
+    );
+    assert.equal(raised.kind, 'continued');
+    assert.deepEqual(raiseRandom.bounds, []);
+
+    const challengeRandom = trackedRandom([]);
+    const challenged = respondToGameDicePlayerBid(
+        diceGame({ dealerDice: [2, 2, 3, 4, 5] }),
+        { count: 5, face: 6 },
+        challengeRandom.source,
+    );
+    assert.equal(challenged.kind, 'settled');
+    assert.deepEqual(getGameDiceDealerResponsePolicy([2, 2, 3, 4, 5], { count: 5, face: 6 }), {
+        kind: 'challenge',
+    });
+    assert.deepEqual(challengeRandom.bounds, []);
+
+    // Only a genuine coin-flip spot consumes randomness.
     const middleRandom = trackedRandom([1]);
     const middle = respondToGameDicePlayerBid(
         diceGame({ dealerDice: [2, 2, 3, 4, 5] }),
-        { count: 2, face: 6 },
+        { count: 3, face: 6 },
         middleRandom.source,
     );
+    assert.equal(getGameDiceDealerResponsePolicy([2, 2, 3, 4, 5], { count: 3, face: 6 }).kind, 'random');
     assert.equal(middle.kind, 'continued');
     assert.deepEqual(middleRandom.bounds, [2]);
 });
@@ -178,7 +224,7 @@ test('dice challenges settle both sides and reject illegal actions before random
         ],
     }));
     assert.equal(playerWin.outcome, 'player-win');
-    assert.equal(playerWin.payout, 95);
+    assert.equal(playerWin.payout, 90);
     assert.throws(
         () => advanceGameDiceGame(diceGame(), { kind: 'challenge' }, trackedRandom([]).source),
         /game_dice_challenge_invalid/,

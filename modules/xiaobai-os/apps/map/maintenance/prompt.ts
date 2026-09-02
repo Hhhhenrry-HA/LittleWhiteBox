@@ -1,4 +1,3 @@
-import type { AcceptedTurnPlayer } from '../../../host/maintenance/accepted-turn-source.js';
 import type { MaintenanceMode } from '../../../host/maintenance/registry.js';
 
 // ============================================================
@@ -31,7 +30,7 @@ const DATA_MODEL = [
     '- Atlas: the world graph of locations, routes between them, and where actors are.',
     '- Scenes: one drawable floor plan per place.',
     'A location owns at most one scene, and MapSceneEdit is what links them.',
-    'There is no current/main/active map, no docType/docId, no low-level ops, no Tavern files, no floors, and no rollback state. Do not ask for them.',
+    'There is no separate current/main/active map document, no docType/docId, no low-level ops, no Tavern files, no floors, and no rollback state. Do not ask for them.',
 ].join('\n');
 
 // ============================================================
@@ -193,12 +192,12 @@ const BASE_PROMPT = [
     SCENE_COMPOSITION,
 ].join('\n');
 
-export function buildMapMaintenancePrompt(mode: MaintenanceMode, player: AcceptedTurnPlayer): string {
+export function buildMapMaintenancePrompt(mode: MaintenanceMode): string {
     return [
         BASE_PROMPT,
         '',
         '# This job',
-        `The player is actorKey="player", displayName=${JSON.stringify(player.displayName)}.`,
+        'The player is actorKey="player". Their display name is supplied with the accepted source data.',
         mode === 'rebuild'
             ? 'Rebuild mode: reconstruct only the map facts confirmed in the supplied accepted history. Do not preserve old map content that the history does not support.'
             : 'Incremental mode: apply only the map changes established by the supplied accepted turn.',

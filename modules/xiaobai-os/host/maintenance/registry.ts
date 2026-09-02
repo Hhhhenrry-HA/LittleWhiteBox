@@ -20,9 +20,15 @@ export interface MaintenanceParticipantResult {
     readonly changed: boolean;
 }
 
+export interface MaintenanceDataMessage {
+    readonly role: 'system' | 'user';
+    readonly content: string;
+}
+
 export interface MaintenanceSession {
     readonly participantId: string;
     readonly prompt: string;
+    readonly dataMessages: readonly MaintenanceDataMessage[];
     readonly tools: readonly MaintenanceFunctionDeclaration[];
     executeTool: (name: string, args: unknown) => unknown | Promise<unknown>;
     canCommit: () => boolean | Promise<boolean>;
@@ -37,7 +43,7 @@ export interface MaintenanceParticipant {
     createSession: (
         source: AcceptedTurnSource,
         mode: MaintenanceMode,
-    ) => MaintenanceSession | Promise<MaintenanceSession>;
+    ) => MaintenanceSession | null | Promise<MaintenanceSession | null>;
 }
 
 export interface MaintenanceRegistry {

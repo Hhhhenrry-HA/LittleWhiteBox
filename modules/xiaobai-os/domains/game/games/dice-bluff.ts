@@ -19,10 +19,23 @@ import {
 export const GAME_DICE_MIN_BET = 50 as const;
 export const GAME_DICE_MAX_BET = 500 as const;
 export const GAME_DICE_BET_STEP = 10 as const;
-export const GAME_DICE_PAYOUT_NUMERATOR = 19 as const;
+/**
+ * Dice is a symmetric duel, so equilibrium sits near a 50% win rate and the
+ * payout multiplier is the only real house edge. At 1.9x that edge is 5%, which
+ * a heuristic dealer cannot defend against a best-responding player; 1.8x puts
+ * the worst observed case at ~96% RTP, in line with push and ladder.
+ */
+export const GAME_DICE_PAYOUT_NUMERATOR = 18 as const;
 export const GAME_DICE_PAYOUT_DENOMINATOR = 10 as const;
-export const GAME_DICE_DEALER_CHALLENGE_THRESHOLD = 0.25 as const;
-export const GAME_DICE_DEALER_RAISE_THRESHOLD = 0.55 as const;
+/**
+ * How much of an opponent's announced count is credited to their own hand.
+ * A bidder holding `h` of a face expects the other five dice to add ~5/3, so
+ * they announce roughly `h + 2`; reading the count back through this offset is
+ * what keeps the dealer from mistaking "I hold none" for "that cannot hold".
+ */
+export const GAME_DICE_INFORMED_BID_OFFSET = 2 as const;
+/** Gap required before the dealer commits instead of leaving it to chance. */
+export const GAME_DICE_DEALER_DECISION_MARGIN = 0.1 as const;
 
 export interface CreateGameDiceGameInput {
     id: string;
@@ -32,6 +45,11 @@ export interface CreateGameDiceGameInput {
 export type GameDiceDealerResponsePolicy =
     | { kind: 'challenge' }
     | { kind: 'raise' | 'random'; dealerBid: GameDiceBidValue };
+
+export interface GameDiceDealerRaise {
+    bid: GameDiceBidValue;
+    confidence: number;
+}
 
 function assertGameId(value: unknown): string {
     if (typeof value !== 'string' || !value.trim()) {throwGameError('game_id_required');}
@@ -157,18 +175,71 @@ export function getGameDiceBidProbabilityForDealer(
     return gameBinomialAtLeastProbability(5, 1 / 3, normalized.count - knownMatches);
 }
 
+/**
+ * Probability that a bid announced BY THE OPPONENT holds.
+ *
+ * Unlike {@link getGameDiceBidProbabilityForDealer}, this must not treat the
+ * opponent's hand as uniformly random: they chose the bid while looking at it.
+ * Crediting part of the announced count to their own hand is what stops the
+ * dealer from reading "I hold none of that face" as "that bid cannot hold" and
+ * challenging bids the opponent is guaranteed to make.
+ */
+export function getGameDiceOpponentBidCredibility(
+    dice: GameDiceTuple,
+    bid: GameDiceBidValue,
+): number {
+    assertDiceTuple(dice, 'opponent-credibility-dice');
+    const normalized = normalizeGameDiceBid(bid, 'player');
+    const knownMatches = countGameDiceMatches(dice, normalized.face);
+    const assumedSelfHeld = Math.max(0, Math.min(5, normalized.count - GAME_DICE_INFORMED_BID_OFFSET));
+    return gameBinomialAtLeastProbability(
+        5 - assumedSelfHeld,
+        1 / 3,
+        normalized.count - knownMatches - assumedSelfHeld,
+    );
+}
+
+/**
+ * Picks the raise the dealer is most likely to hold, breaking ties toward the
+ * smallest legal raise, and reports that confidence so the caller can weigh
+ * raising against challenging. Because the ranking depends on the hidden dealer
+ * dice, the player cannot predict the dealer's face without seeing that hand.
+ */
+export function selectGameDiceDealerRaise(
+    dealerDice: GameDiceTuple,
+    rawBid: GameDiceBidValue,
+): GameDiceDealerRaise | undefined {
+    const playerBid = normalizeGameDiceBid(rawBid, 'player');
+    let selected: GameDiceDealerRaise | undefined;
+    for (const candidate of listGameLegalDiceBids(playerBid)) {
+        const confidence = getGameDiceBidProbabilityForDealer(dealerDice, candidate);
+        if (!selected || confidence > selected.confidence) {
+            selected = { bid: candidate, confidence };
+        }
+    }
+    return selected;
+}
+
+/**
+ * The dealer weighs challenging against the raise it would otherwise have to
+ * make. Judging the player's bid alone is not enough: a dealer that only asks
+ * "is their bid credible?" keeps calling all the way up the ladder and gets
+ * executed once the count outruns what either hand can cover.
+ */
 export function getGameDiceDealerResponsePolicy(
     dealerDice: GameDiceTuple,
     rawBid: GameDiceBidValue,
 ): GameDiceDealerResponsePolicy {
     const playerBid = normalizeGameDiceBid(rawBid, 'player');
-    const dealerBid = listGameLegalDiceBids(playerBid)[0];
-    if (!dealerBid) {return { kind: 'challenge' };}
-    const probability = getGameDiceBidProbabilityForDealer(dealerDice, playerBid);
-    if (probability < GAME_DICE_DEALER_CHALLENGE_THRESHOLD) {return { kind: 'challenge' };}
+    const raise = selectGameDiceDealerRaise(dealerDice, playerBid);
+    if (!raise) {return { kind: 'challenge' };}
+    const challengeValue = 1 - getGameDiceOpponentBidCredibility(dealerDice, playerBid);
+    if (challengeValue > raise.confidence + GAME_DICE_DEALER_DECISION_MARGIN) {
+        return { kind: 'challenge' };
+    }
     return {
-        kind: probability > GAME_DICE_DEALER_RAISE_THRESHOLD ? 'raise' : 'random',
-        dealerBid,
+        kind: raise.confidence > challengeValue + GAME_DICE_DEALER_DECISION_MARGIN ? 'raise' : 'random',
+        dealerBid: raise.bid,
     };
 }
 
