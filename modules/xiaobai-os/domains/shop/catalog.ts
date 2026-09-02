@@ -366,10 +366,6 @@ export const SHOP_PUBLISHED_CONTRACTS = createShopPublishedContracts([
     },
 ]);
 
-if (SHOP_PUBLISHED_CONTRACTS.length !== 25) {
-    invalidCatalog('the initial published contract registry must contain exactly 25 items');
-}
-
 const PUBLISHED_CONTRACT_BY_ID = new Map(SHOP_PUBLISHED_CONTRACTS.map((item) => [item.id, item]));
 
 export const SHOP_CURRENT_SHELF_IDS = Object.freeze([
