@@ -147,7 +147,7 @@ function optionalText(record: Record<string, unknown>, key: string, maxLength: n
     return text || undefined;
 }
 
-export function normalizeTaskListing(value: unknown): TaskListing {
+function normalizeTaskListingFacts(value: unknown): TaskListing {
     const record = requireRecord(value, 'listing');
     requireKeys(record, [
         'listingId', 'grade', 'tags', 'posture', 'title', 'hook', 'objective', 'location', 'timing', 'risk', 'reward',
@@ -164,12 +164,7 @@ export function normalizeTaskListing(value: unknown): TaskListing {
     });
     if (!POSTURES.has(posture)) {badInput('listing.posture');}
     const timing = normalizeTaskTiming(record.timing);
-    if (posture === '易介入' && timing.startsWith('特定时机：')) {badInput('listing.timing');}
     const reward = normalizeReward(record.reward);
-    const directionRange = TASK_DIRECTION_REWARD_RANGES[tags[0] as keyof typeof TASK_DIRECTION_REWARD_RANGES];
-    const gradeRange = TASK_GRADE_REWARD_RANGES[grade as keyof typeof TASK_GRADE_REWARD_RANGES];
-    if (reward < directionRange[0] || reward > directionRange[1]
-        || reward < gradeRange[0] || reward > gradeRange[1]) {badInput('listing.reward');}
     const requirements = optionalText(record, 'requirements', 64, true);
     return {
         listingId: normalizeTaskIdentity(record.listingId),
@@ -187,18 +182,44 @@ export function normalizeTaskListing(value: unknown): TaskListing {
     };
 }
 
-export function normalizeTaskListings(value: unknown): TaskListing[] {
+/** Applies the current board-generation policy to one canonical V1 listing. */
+export function normalizeTaskBoardListing(value: unknown): TaskListing {
+    const listing = normalizeTaskListingFacts(value);
+    if (listing.posture === '易介入' && listing.timing.startsWith('特定时机：')) {badInput('listing.timing');}
+    const directionRange = TASK_DIRECTION_REWARD_RANGES[
+        listing.tags[0] as keyof typeof TASK_DIRECTION_REWARD_RANGES
+    ];
+    const gradeRange = TASK_GRADE_REWARD_RANGES[listing.grade];
+    if (listing.reward < directionRange[0] || listing.reward > directionRange[1]
+        || listing.reward < gradeRange[0] || listing.reward > gradeRange[1]) {badInput('listing.reward');}
+    return listing;
+}
+
+function normalizeTaskListingCollection(
+    value: unknown,
+    normalize: (entry: unknown) => TaskListing,
+    enforceCurrentOrder: boolean,
+): TaskListing[] {
     if (!Array.isArray(value) || value.length < 1 || value.length > TASK_MAX_BOARD_LISTINGS) {badInput('listings');}
-    const listings = value.map(normalizeTaskListing);
+    const listings = value.map(normalize);
     const ids = new Set<string>();
     let previousDirection = -1;
     for (const listing of listings) {
         const direction = TASK_DIRECTIONS.indexOf(listing.tags[0] as typeof TASK_DIRECTIONS[number]);
-        if (ids.has(listing.listingId) || direction <= previousDirection) {badInput('listings.order');}
+        if (ids.has(listing.listingId)) {badInput('listings.ids');}
+        if (enforceCurrentOrder && direction <= previousDirection) {badInput('listings.order');}
         ids.add(listing.listingId);
         previousDirection = direction;
     }
     return listings;
+}
+
+export function normalizeTaskBoardListings(value: unknown): TaskListing[] {
+    return normalizeTaskListingCollection(value, normalizeTaskBoardListing, true);
+}
+
+function normalizePersistedTaskListings(value: unknown): TaskListing[] {
+    return normalizeTaskListingCollection(value, normalizeTaskListingFacts, false);
 }
 
 export function normalizeTaskCandidate(value: unknown): TaskCandidate {
@@ -341,7 +362,7 @@ function validateEvent(value: unknown, index: number): TaskEvent {
             listingId: canonicalId(event.listingId, `${detail}.listingId`),
             issuer: validateParty(event.issuer, `${detail}.issuer`) as Extract<TaskParty, { kind: 'world' }>,
             assignee: validateParty(event.assignee, `${detail}.assignee`) as Extract<TaskParty, { kind: 'player' }>,
-            listing: canonicalDomainValue(event.listing, normalizeTaskListing, `${detail}.listing`) };
+            listing: canonicalDomainValue(event.listing, normalizeTaskListingFacts, `${detail}.listing`) };
     }
     if (event.kind === 'published') {
         const form = canonicalDomainValue({ title: event.title, objective: event.objective,
@@ -368,7 +389,7 @@ function validateBoard(value: unknown): TaskBoard | null {
     requireKeys(board, ['boardId', 'listings', 'generatedAt'], [], 'board', true);
     return {
         boardId: canonicalId(board.boardId, 'board.boardId'),
-        listings: canonicalDomainValue(board.listings, normalizeTaskListings, 'board.listings'),
+        listings: canonicalDomainValue(board.listings, normalizePersistedTaskListings, 'board.listings'),
         generatedAt: (() => {
             const timestamp = canonicalInteger(board.generatedAt, 0, 'board.generatedAt');
             return timestamp <= MAX_DATE_MS ? timestamp : invalid('board.generatedAt');

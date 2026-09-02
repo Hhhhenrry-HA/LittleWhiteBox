@@ -7,7 +7,7 @@ import { assignTaskCandidate, cancelTask, replaceTaskCandidates } from '../domai
 import {
     TASK_CANCELLED_SUMMARY,
     createEmptyTaskDomain,
-    normalizeTaskListing,
+    normalizeTaskBoardListing,
     validateTaskDomain,
 } from '../domains/tasks/invariants.js';
 import {
@@ -67,8 +67,8 @@ function cas(record) {
     return { expectedTaskRevision: record.taskRevision, expectedEventId: record.eventId };
 }
 
-test('V1 normalization enforces partial board legality, order and capacities without truncation', () => {
-    const normalized = normalizeTaskListing({ ...listing(), title: '  Ａ\u0000 任务  ' });
+test('current board normalization enforces legality, order and capacities without truncation', () => {
+    const normalized = normalizeTaskBoardListing({ ...listing(), title: '  Ａ\u0000 任务  ' });
     assert.equal(normalized.title, 'A 任务');
     const partial = replaceTaskBoard(createEmptyTaskDomain(), {
         expectedBoardId: null,
@@ -82,10 +82,39 @@ test('V1 normalization enforces partial board legality, order and capacities wit
         expectedBoardId: null, boardId: 'board-2',
         listings: [listing('listing-2', '窥秘'), listing('listing-1', '禁忌')], generatedAt: 10,
     }), error => error.code === 'task_invalid_input');
-    assert.throws(() => normalizeTaskListing({ ...listing(), title: '甲'.repeat(13) }),
+    assert.throws(() => normalizeTaskBoardListing({ ...listing(), title: '甲'.repeat(13) }),
         error => error.code === 'task_invalid_input');
-    assert.throws(() => normalizeTaskListing({ ...listing(), reward: 149 }),
+    assert.throws(() => normalizeTaskBoardListing({ ...listing(), reward: 149 }),
         error => error.code === 'task_invalid_input');
+});
+
+test('persisted board rewards remain frozen facts while new boards use the current ranges', () => {
+    let domain = replaceTaskBoard(createEmptyTaskDomain(), {
+        expectedBoardId: null,
+        boardId: 'board-frozen-reward',
+        listings: [listing('listing-frozen-reward')],
+        generatedAt: 10,
+    }).domain;
+    domain = acceptTaskListing(domain, {
+        actionId: 'accept-frozen-reward',
+        taskId: 'task-frozen-reward',
+        boardId: 'board-frozen-reward',
+        listingId: 'listing-frozen-reward',
+        playerDisplayName: '主人',
+        observedAssistantCount: 1,
+    }, environment(['event-frozen-reward']).value).domain;
+    const historical = structuredClone(domain);
+    historical.board.listings[0].reward = 1_000;
+    historical.events[0].listing.reward = 1_000;
+
+    assert.doesNotThrow(() => validateTaskDomain(historical));
+    assert.equal(projectTaskRecord(historical, 'task-frozen-reward').reward, 1_000);
+    assert.throws(() => replaceTaskBoard(createEmptyTaskDomain(), {
+        expectedBoardId: null,
+        boardId: 'board-current-policy',
+        listings: [{ ...listing('listing-current-policy'), reward: 1_000 }],
+        generatedAt: 10,
+    }), error => error.code === 'task_invalid_input');
 });
 
 test('accept and publish create exact frozen facts with globally unique IDs and pure projections', () => {

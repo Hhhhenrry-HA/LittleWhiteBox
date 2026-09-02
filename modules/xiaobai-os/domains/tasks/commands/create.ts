@@ -5,7 +5,7 @@ import {
     normalizeTaskActionId,
     normalizeTaskDisplayName,
     normalizeTaskIdentity,
-    normalizeTaskListings,
+    normalizeTaskBoardListings,
     normalizeTaskPublishedForm,
     normalizeTaskTimestamp,
     requireTaskCommandKeys,
@@ -78,7 +78,7 @@ export function replaceTaskBoard(domain: TaskDomainV1, input: ReplaceTaskBoardIn
     const command = requireTaskCommandKeys(input, ['expectedBoardId', 'boardId', 'listings', 'generatedAt']);
     const expectedBoardId = command.expectedBoardId === null ? null : normalizeTaskIdentity(command.expectedBoardId);
     const boardId = normalizeTaskIdentity(command.boardId);
-    const listings = normalizeTaskListings(command.listings);
+    const listings = normalizeTaskBoardListings(command.listings);
     const generatedAt = normalizeTaskTimestamp(command.generatedAt);
     if ((domain.board?.boardId ?? null) !== expectedBoardId) {throw new TaskError('task_board_conflict');}
     assertFreshTaskIdentities(domain, [boardId, ...listings.map(listing => listing.listingId)]);
