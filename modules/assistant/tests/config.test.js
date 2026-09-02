@@ -33,6 +33,33 @@ test('assistant API defaults use a neutral temperature and an explicit output li
     assert.equal(main.maxTokens, 32000);
     assert.equal(delegate.temperature, 1);
     assert.equal(delegate.maxTokens, 32000);
+    assert.equal(main.toolMode, 'tagged-json');
+    assert.equal(main.reasoning.mode, 'inherit');
+    assert.equal(config.modelConfigs['sillytavern-openai-compatible'].toolMode, 'tagged-json');
+});
+
+test('assistant API defaults do not replace an existing user tool selection', async () => {
+    const stored = normalizeAgentSettings({
+        currentPresetName: '已有配置',
+        presets: {
+            已有配置: {
+                provider: 'openai-compatible',
+                modelConfigs: {
+                    'openai-compatible': {
+                        model: 'saved-model',
+                        toolMode: 'native',
+                    },
+                },
+            },
+        },
+    });
+    const storage = {
+        async getStrict() {return structuredClone(stored);},
+    };
+
+    const loaded = await loadSharedAgentSettings({ storage });
+
+    assert.equal(resolveActiveProviderConfig(loaded).toolMode, 'native');
 });
 
 test('assistant API presets preserve independent main and delegate output limits', () => {
