@@ -80,6 +80,8 @@ Agent 只负责提出任务文本、候选人文本和活动任务的高层状�
 | 掠夺 | 稀缺目标引来竞争者，成功独占、失败损失 | 80–150 |
 | 怪癖 | 离谱要求被严肃对待，表面可笑而内里不安 | 15–40 |
 
+这张表是当前 board 生成与替换入口的产品策略，不是读取历史时反复执行的判决器。Agent 新提交的 listing 必须满足当前方向、报酬区间、grade、posture/timing 和排序规则；结果保存后，其字段是已发布事实，后续加载只按 V1 canonical 合同验证，不因产品策略调整而失效。
+
 任务字段语义：
 
 - `objective`是唯一完成目标，只能有一个可判定动作；禁止“调查真相”“处理此事”等没有终点的表述；
@@ -245,6 +247,17 @@ type TaskEvent =
 ```
 
 事件按数组顺序重放。每个 taskId 的`taskRevision`从 1 连续增长；`eventId`和`actionId`在整个 Tasks domain 内唯一。`TaskDomainV1.revision`在每个成功的 board 替换或任务 mutation 后加一；一次 maintenance 批量提交多个任务事件时只加一。
+
+### 6.1 持久事实与当前生成策略
+
+V1 持久 validator 只验证 canonical 字段、V1 枚举、容量、身份唯一性、revision、事件关系和冻结 reward；它不调用当前 board 报酬区间、grade-range、3/2/1 posture 配额或方向排序策略重新审判已保存数据。
+
+- `accepted`冻结当时 listing 的完整字段与 reward；`published`冻结玩家提交的 reward；
+- accepted/published、执行者、候选人、progress 和终态都只由事件链投影；
+- settlement/refund 始终使用事件中冻结的 reward，不读取当前生成范围；
+- 当前策略只约束新的 board 生成/替换和新的用户命令；V1 reducer 是不可变历史合同，未来规则变化不得修改旧事件含义。
+
+若未来需要改变 V1 字段或事件语义，必须引入明确的新版本升级边界；不能在日常加载中加当前规则兜底或兼容集合。
 
 投影得到的唯一公开记录固定为：
 
@@ -869,6 +882,7 @@ Provider 原文、错误堆栈、内部 code 和工具 hint 只进日志。原�
 ## 13. 失败、分支与删除
 
 - board/candidate API 或解析失败保留旧数据；部分合法结果按第 7.3 节保存并明确显示 partial；
+- 新 board 输入受当前方向/等级/reward/posture/timing 策略约束；既有 board 与任务只按 V1 持久合同读取，旧冻结 reward 不被当前区间否定；
 - maintenance 工具失败只影响所属任务；Map 可独立提交；
 - 创建 SillyTavern 聊天分支时接受宿主复制的 Tasks + Economy metadata 快照，此后两个分支独立推进；
 - 编辑、删除、换 swipe 不回滚已提交任务，不退托管、不追回报酬；

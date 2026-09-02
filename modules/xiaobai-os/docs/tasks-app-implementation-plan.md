@@ -214,9 +214,9 @@ adoptServerState(): Promise<AdoptServerResult>;
 ### 改动
 
 1. 按终态第 6 节定义当前 V1 类型，不增加旧版本 union。
-2. `invariants.ts`严格验证 exact keys、schemaVersion、domain revision、board 为 1–6 项且方向唯一并按固定顺序、board/listing/candidate/task/event/action 身份唯一、字段长度和每任务连续 revision；accepted 的 board/listing 组合不得重复，assigned 的 partyId 必须来自前一候选快照。它不得要求持久 board 恰好六项或满足 3/2/1 posture；那是完整生成目标，partial board 仍合法。
+2. `invariants.ts`严格验证 exact keys、schemaVersion、domain revision、board 容量、board/listing/candidate/task/event/action 身份唯一、V1 枚举、字段长度、冻结 reward 和每任务连续 revision；accepted 的 board/listing 组合不得重复，assigned 的 partyId 必须来自前一候选快照。持久 validator 不执行当前方向排序、报酬区间、grade-range 或 3/2/1 posture 策略；这些只属于新 board 的生成/替换入口，partial board 仍合法。
 3. `projection.ts`从事件得到 TaskRecord、当前 task revision/eventId、状态、候选人、累计进展和 Assistant 基线。
-4. 三组 command 文件接收规范化高层命令，返回完整 next domain + created event + changed；不读 store、不读 Economy、不生成账户。
+4. 三组 command 文件接收规范化高层命令，返回完整 next domain + created event + changed；accept/publish 把 reward 和合同字段冻结进事件，不读 store、不读 Economy、不生成账户。
 5. 相同 actionId 的同意图返回既有结果，不同意图报`task_action_conflict`；CAS 失败不创建 ID、不改变输入。
 6. assign 必须从当前候选快照复制完整资料并令`assignee.partyId === candidate.candidateId`；cancel 的 resultSummary 由领域命令生成，不能把 iframe 文本写进终态事件。
 
@@ -232,13 +232,14 @@ adoptServerState(): Promise<AdoptServerResult>;
 - 用公开事件/命令输入验证全部合法和非法状态转移；
 - 验证终态不可重开、同 board listing 不可重复接取、candidate 只作用于玩家发布任务；
 - 验证累计 progress 替换、Assistant 计数下降只产生 0 差值；
+- 验证超出当前生成区间但 canonical 合法的旧冻结 reward 可读取，而相同值作为新 board 输入仍被当前策略拒绝；
 - 类型检查证明所有 union 分支闭合，不测试函数名或文件位置。
 
 ## 4. 步骤 B：Economy 原子协议与应用服务
 
 ### 改动
 
-1. `root-protocol.ts`只负责从 Task event 推导 funding/settlement/refund 流水和验证完整根；账户、金额、方向和 idempotency key 不接收 UI/Agent 输入。
+1. `root-protocol.ts`只负责从 Task event 的冻结 reward 推导 funding/settlement/refund 流水和验证完整根；账户、金额、方向和 idempotency key 不接收 UI/Agent 输入，也不查询当前报酬区间。
 2. `local-actions.ts`在一次`store.mutateCurrent`中读取 current Tasks + Economy，执行领域命令、资金腿、交叉校验并安装候选根。
 3. `maintenance-commit.ts`接收 Session 固定的 staged commands，在一个 Tasks mutation 中重做 task CAS，再生成全部 Task events 和相应 Economy 流水。
 4. `service.ts`暴露 read、accept、publish、replaceCandidates、assign、cancel、commitMaintenance、writeState、confirmPending/adoptServerState 的薄接口。

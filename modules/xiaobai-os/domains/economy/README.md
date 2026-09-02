@@ -4,7 +4,7 @@ Economy 是普通小白 OS 的共享资金领域。它只拥有账户规则、�
 
 ## 唯一事实来源
 
-余额由`EconomyLedgerV1.transactions`重算，绝不另存 balance、checkpoint、缓存或剧情快照。开户赠礼是第一笔受保护流水；业务纠错通过追加 reversal 表达，不修改历史交易。
+余额由`EconomyLedgerV1.transactions`重算，绝不另存 balance、checkpoint、缓存或剧情快照。`economy:opening-grant:v1`及其 100 小白币金额是 V1 创世合同，不是可调产品配置；开户赠礼是第一笔受保护流水。业务纠错通过追加 reversal 表达，不修改历史交易。
 
 ## 文件职责
 

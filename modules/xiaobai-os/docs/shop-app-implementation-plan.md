@@ -5,7 +5,7 @@
 | 项目 | 结论 |
 | --- | --- |
 | 功能所有者 | Shop 领域 |
-| 唯一事实来源 | Shop V2 事件链；余额仍以 Economy 流水为准 |
+| 唯一事实来源 | Shop V2 事件链 + 不可变发布合同；余额仍以 Economy 流水为准 |
 | 持久态 | purchase/activate/deactivate/deliver 事件、规范化参数、Assistant 消息效果收据 |
 | 临时态 | 当前生成 pending、regenerate 暂存收据、按聊天在途交付队列、extension prompt、页面筛选/弹窗/busy |
 | 外部依赖 | Economy、根 store、SillyTavern generation 事件、generate interceptor、extension prompt、消息 extra |
@@ -20,18 +20,19 @@
 
 ### A. 纯 Shop 领域
 
-1. 固定 25 件商品的 ID、价格、`replies/manual/permanent`期限、输入、叠加和可信规则。
-2. 定义只含事件数组的`ShopDomainV2`。
-3. 实现 purchase、activate、deactivate、deliver 与 actionId/CAS。
-4. 重放事件得到库存、购买次数、activation 和`appliedCount`。
-5. 生成下一条新回复的效果收据；只有 deliver 才消耗有限次数或确认结束规则。
-6. 规范化并编码用户参数，不把用户文本拼进可信规则。
+1. 把首批 25 件商品登记为不可变发布合同，另以 ID 列表定义当前货架。
+2. 发布合同 ID 一旦使用，其价格、`replies/manual/permanent`期限、输入、叠加和可信规则不可原地修改；改版必须使用新 ID，旧合同只允许下架。
+3. 定义只含事件数组的`ShopDomainV2`。
+4. 实现 purchase、activate、deactivate、deliver 与 actionId/CAS；只有 purchase 查询当前货架，其余历史与投影路径查询发布合同库。
+5. 重放事件得到库存、购买次数、activation 和`appliedCount`。
+6. 生成下一条新回复的效果收据；只有 deliver 才消耗有限次数或确认结束规则。
+7. 规范化并编码用户参数，不把用户文本拼进可信规则，也不持久化可信规则副本。
 
 ### B. Economy 原子购买
 
-1. purchase 校验目录、购买上限、CAS 与余额。
+1. purchase 校验当前货架、购买上限、CAS 与余额；下架合同拒绝新购。
 2. 在一个根 mutation 中同时生成 Shop purchase event 与 Economy 扣款交易。
-3. 按 actionId 验证价格、方向、来源和一一对应关系。
+3. 历史核账按发布合同验证 actionId、冻结价格、方向、来源和一一对应关系，不受货架变化影响。
 4. activate/deactivate/deliver 不制造资金流水。
 
 ### C. 回复收据与 Prompt runtime
@@ -58,6 +59,7 @@
 ## 3. 必须通过的回归
 
 - 购买只扣一次；明确失败时余额与库存一起恢复。
+- 下架合同不可新购，但既有 purchase、库存、activation、Prompt 和 Economy 核账保持有效。
 - 使用只消耗一件库存，不再扣款。
 - 一条 normal 回复最多增加一次`appliedCount`。
 - 前一个根保存很慢时，连续 normal 回复也不能读回同一份有限效果。

@@ -27,15 +27,17 @@
 1. 定义一个 active game 与终局 activity 的线性事件。
 2. append 校验 CAS；actionId 重放先比较明确意图。
 3. 事件成功后重放得到唯一当前状态。
-4. 校验 revision、eventId/actionId/gameId、活动净额和私有转换。
+4. 持久解析与历史重放独立于`games/`当前策略：只校验 V1 生命周期、已保存私有事实、结果类别、金额安全和状态连续性。
+5. 骰子历史不重选庄家叫价或重算赔率；Push 历史从`game-started`读取下注；Ladder 历史不调用当前倍率、层数或封顶参数。
+6. active game 的下一次命令仍交给当前状态机严格校验；新策略不得反向改变已经保存的 event/activity。
 
 ### C. Economy 组合
 
-1. 开局创建下注 escrow 资金腿。
+1. 开局按当前命令策略创建下注 escrow 资金腿，并把实际下注冻结在`game-started`结果中。
 2. 中间动作不记账。
 3. 终局创建 reserve/payout/loss 资金腿，过滤 0 金额。
 4. 在同一候选根中安装 Game 与 Economy。
-5. 交叉校验 event、资金腿顺序和 active escrow。
+5. 交叉校验从保存事件中的 amountIn/payout 推导资金腿顺序和 active escrow，禁止从当前常量重建历史资金。
 
 ### D. Controller 与 UI
 
@@ -48,6 +50,8 @@
 ## 3. 回归重点
 
 - action 重放不会重抽骰子/牌堆或重复扣款；
+- 历史庄家叫价、胜局倍率、Push 下注/牌堆参数和 Ladder 步骤即使不符合当前策略，只要记录与账本自洽仍可读取；
+- 新开局和 active game 的下一动作仍使用当前赔率、下注与阶梯规则；
 - 明确失败和未确认保存不会产生半个赌局；
 - 聊天正文与 Assistant 数量变化后 Game 根完全不变；
 - 切聊或页面重开使迟到结果失效；

@@ -10,7 +10,8 @@ Shop 是普通酒馆小白 OS 自己的消费与回复效果领域。玩家购�
 
 | 内容 | 所有者 |
 | --- | --- |
-| 25 件固定商品与可信规则 | `domains/shop/catalog.ts` |
+| 25 件首批不可变发布合同与可信规则 | `domains/shop/catalog.ts`的`SHOP_PUBLISHED_CONTRACTS` |
+| 当前可购买商品 | `domains/shop/catalog.ts`的`SHOP_CURRENT_SHELF_IDS` |
 | 购买、使用、关闭、成功投递事实 | `domains/shop/timeline.ts` |
 | 库存、激活与剩余次数投影 | `domains/shop/timeline.ts` |
 | 回复效果 Prompt | `domains/shop/prompt.ts` |
@@ -21,9 +22,20 @@ Shop 是普通酒馆小白 OS 自己的消费与回复效果领域。玩家购�
 
 Shop 不拥有余额、聊天正文、模型请求、全局剧情状态或消息历史。
 
+### 2.1 发布合同与货架
+
+商品合同是已经发布的业务事实，不是每次加载时可重算的临时目录：
+
+- 历史 purchase、库存、activation、效果 Prompt 和 Shop/Economy 核账始终按发布合同 ID 读取合同库；
+- 新购买只允许当前货架中的合同；下架不删除合同，也不使既有购买、库存或效果失效；
+- 同一合同 ID 的价格、输入、期限、叠加方式和可信规则不得原地修改；未来改版发布新 ID，再把旧 ID 从货架移除；
+- 合同库与货架都属于代码内可信事实，不把可篡改的 Prompt 或合同副本写进聊天数据。
+
+首批 25 个合同就是本版本的起始发布库；测试线没有需要迁移的旧库存，因此不增加旧目录读取、退休商品样本或兼容分支。
+
 ## 3. 唯一事实来源
 
-`ShopDomainV2`只持久化连续事件：
+`ShopDomainV2`只持久化连续事件，事件中的 itemId 指向不可变发布合同，而不是当前货架：
 
 - `purchase`：确认扣款并增加一件库存；
 - `activate`：不可逆地消费一件库存并创建效果实例；
@@ -70,7 +82,7 @@ Prompt runtime 只保存当前运行内的临时生成状态：
 
 ## 6. Prompt 安全
 
-可信规则是代码内评审的静态指令。用户参数必须经过 NFKC 规范化、控制字符移除、空白折叠、Unicode code point 限长和 XML/宏编码，只能进入参数数据区。
+可信规则是发布合同内评审的静态指令。用户参数必须经过 NFKC 规范化、控制字符移除、空白折叠、Unicode code point 限长和 XML/宏编码，只能进入参数数据区。
 
 Prompt 不输出价格、余额、revision、actionId 或 eventId。没有效果时不安装空块；历史收据只能引用当前 Shop 事件链中真实存在的 activation。
 
@@ -89,6 +101,7 @@ Prompt 不输出价格、余额、revision、actionId 或 eventId。没有效果
 最低必要验证覆盖：
 
 - 目录与参数安全；
+- 发布合同与货架分离：下架合同不能新购，但历史事件、库存、效果和核账仍可解释；
 - 事件重放、库存、叠加、有限次数和结束规则；
 - 购买与扣款原子提交、actionId 幂等和 CAS；
 - normal 的一次投递、停止/dry-run/空回复不投递；

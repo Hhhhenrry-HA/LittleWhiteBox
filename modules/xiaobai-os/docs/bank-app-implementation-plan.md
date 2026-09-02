@@ -5,7 +5,7 @@
 | 项目 | 结论 |
 | --- | --- |
 | 功能所有者 | Bank 领域 |
-| 唯一事实来源 | Bank 事件链；资金仍以 Economy 流水为准 |
+| 唯一事实来源 | Bank 事件链 + 不可变发布合同；资金仍以 Economy 流水为准 |
 | 持久态 | command/result、冻结合同、Assistant 回合、金融活动 |
 | 临时态 | 当前头寸投影、剩余期限、可领取状态、分页、操作弹窗 |
 | 外部依赖 | Economy、根 store、Assistant 回复计数、主生成 guard |
@@ -17,12 +17,13 @@
 
 ### A. 纯领域
 
-1. 固定六款产品，金额与百分比全部使用整数。
-2. 建立 Bank event、position、activity 与 CAS 类型。
-3. 实现开立、提前支取、到期结算和线性重放。
-4. 浮动收益只在新开立理财且所有校验通过后抽取。
-5. Public view 在锁定期移除 resolvedReturnBps 与 settlementAmount。
-6. 校验 revision、ID、合同可重算、活动净额和事件状态转换。
+1. 将六款产品登记为不可变发布合同，另以 ID 列表定义当前货架；金额与百分比全部使用整数。
+2. 同一合同 ID 不得原地修改，改版发布新 ID；历史读取与结算查询合同库，新开立查询当前货架。
+3. 建立 Bank event、position、activity 与 CAS 类型。
+4. 实现开立、提前支取、到期结算和线性重放。
+5. 浮动收益只在新开立理财且所有校验通过后抽取。
+6. Public view 在锁定期移除 resolvedReturnBps 与 settlementAmount。
+7. 校验 revision、ID、发布合同可重算、活动净额和事件状态转换；产品下架不能使历史头寸失效。
 
 ### B. Application
 
@@ -48,5 +49,6 @@
 - 早退同时结算其他到期头寸时，所有 escrow 与活动一次提交。
 - 保存失败不留下半个头寸；确认未知结果不重复抽收益。
 - 已有 Economy 的激活不发后台读取。
+- 下架合同不可新开，但既有头寸仍按发布合同正常投影、提前支取或到期结算。
 
 不创建剧情 adapter、hash、anchor、write gate 或 reconciler，也不为测试线旧实现保留字段。

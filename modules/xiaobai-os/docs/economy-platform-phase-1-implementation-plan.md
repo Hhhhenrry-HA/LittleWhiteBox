@@ -41,7 +41,7 @@ Economy repository 消费根 store，不反向拥有宿主事件。Wallet 只消
 ### B. Economy 纯规则
 
 1. 定义只含交易数组的 schema v1。
-2. 开户写固定 action 与 100 小白币赠礼。
+2. 开户写固定`economy:opening-grant:v1` action 与 100 小白币赠礼；两者是 V1 创世合同，不抽成可调产品配置，也不得原地修改。
 3. 实现单腿与多腿记账、余额投影、流水分页。
 4. 校验金额、账户、sequence、action 连续性和玩家不可透支。
 5. 幂等判断先于 CAS 之外的副作用；重放不生成新 ID、不保存。
@@ -96,6 +96,7 @@ APP 激活状态：
 ## 6. 完成定义
 
 - 当前聊天开户一次且只产生一笔赠礼；
+- V1 开户 action/source/100 小白币由 validator 固定，后续产品改动不改变既有账本含义；
 - Wallet 已有数据时同步可用；
 - 不调用`/api/chats/get`来打开经济 APP；
 - 无 Web Crypto 依赖；

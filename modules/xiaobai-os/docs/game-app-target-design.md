@@ -11,7 +11,8 @@ domains/game/
 ├─ games/             三个纯状态机
 ├─ types.ts           私有状态、事件、活动、公开 DTO
 ├─ timeline.ts        线性事件与 CAS/幂等
-├─ invariants.ts      事件和私有状态校验
+├─ invariants.ts      持久格式与冻结事实校验
+├─ history.ts         V1 生命周期与历史连续性
 ├─ view.ts            私有信息裁剪
 ├─ money.ts
 └─ random.ts
@@ -37,6 +38,16 @@ Game 只拥有游戏状态。余额属于 Economy；根队列属于 host；UI �
 
 操作弹窗、动画、busy、主生成状态和分页是临时态。
 
+### 3.1 当前策略与历史事实
+
+三个`games/`状态机只负责新开局和 active game 的下一次动作。已保存事件由`history.ts`按 V1 历史合同重放：
+
+- 骰子核对骰面、叫价顺序、挑战者与输赢类别，但不重新选择庄家叫价，也不按当前赔率重算 payout；
+- 翻倍游戏核对已保存下注、牌堆、抽取顺序、揭示数量与终态，不用当前固定下注或金币价值重建旧局；
+- 阶梯核对已保存步骤、选择、金额连续性与终态，不用当前倍率、层数或封顶策略重算旧局。
+
+历史层仍严格验证事件格式、ID/revision、生命周期、状态连续性、安全金额、`net = payout - amountIn`和 Economy 资金腿。产品参数变化只能影响以后接受的新动作；不能原地改变既有事件的含义。
+
 ## 4. 资金协议
 
 开始游戏时，下注从 player 进入`escrow:game:<gameId>`。中间动作不写资金。终局时：
@@ -46,7 +57,7 @@ Game 只拥有游戏状态。余额属于 Economy；根队列属于 host；UI �
 - 亏损从 escrow 进入 sink；
 - 结算后 escrow 必须为 0。
 
-Game event 与资金腿在一次根 mutation 中提交。交叉不变量从每个 event 重建预期资金腿并拒绝孤儿交易或 escrow 偏差。
+Game event 与资金腿在一次根 mutation 中提交。交叉不变量从 event 已冻结的下注与 payout 重建预期资金腿并拒绝孤儿交易或 escrow 偏差，不读取当前游戏参数重算旧结果。
 
 ## 5. 命令、安全与随机
 
@@ -64,4 +75,4 @@ Game event 与资金腿在一次根 mutation 中提交。交叉不变量从每�
 
 删除 Game 前处理 active game escrow，再删除`apps/game`、`domains/game`、注册和`domains.game`数据。
 
-最低验收：三款纯规则状态机、随机边界、私有投影、CAS/幂等、托管/派彩原子性、失败恢复、聊天内容无关、移动端可玩性。
+最低验收：三款纯规则状态机、当前策略只约束新动作、历史冻结事实不被新策略重判、随机边界、私有投影、CAS/幂等、托管/派彩原子性、失败恢复、聊天内容无关、移动端可玩性。
