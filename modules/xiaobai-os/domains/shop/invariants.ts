@@ -1,11 +1,11 @@
-import { getShopItem } from './catalog.js';
+import { getShopContract } from './catalog.js';
 import {
     SHOP_EFFECT_RECEIPT_VERSION,
     SHOP_SCHEMA_VERSION,
     ShopError,
     type ShopAction,
     type ShopActivation,
-    type ShopCatalogItem,
+    type ShopItemContract,
     type ShopDomainV2,
     type ShopEffectReceipt,
     type ShopEvent,
@@ -60,7 +60,7 @@ function normalizeText(value: unknown, maxLength: number): string {
 
 /** Reduces untrusted values to the declared catalog fields and canonical text. */
 export function normalizeShopParameters(
-    item: Readonly<ShopCatalogItem>,
+    item: Readonly<ShopItemContract>,
     rawParameters: Record<string, unknown> = {},
 ): Record<string, string> {
     const source = isRecord(rawParameters) ? rawParameters : {};
@@ -79,7 +79,7 @@ export function normalizeShopParameters(
 }
 
 export function shopActivationKey(
-    item: Readonly<ShopCatalogItem>,
+    item: Readonly<ShopItemContract>,
     parameters: Record<string, string>,
 ): string {
     return `${item.id}:${JSON.stringify(item.inputs.map((definition) => [
@@ -88,7 +88,7 @@ export function shopActivationKey(
     ]))}`;
 }
 
-function parametersAreCanonical(item: Readonly<ShopCatalogItem>, value: unknown): value is Record<string, string> {
+function parametersAreCanonical(item: Readonly<ShopItemContract>, value: unknown): value is Record<string, string> {
     if (!isRecord(value) || Object.values(value).some((entry) => typeof entry !== 'string')) {return false;}
     try {
         const normalized = normalizeShopParameters(item, value);
@@ -106,12 +106,12 @@ function validateAction(value: unknown): ShopAction {
     const kind = value.kind;
     if (kind === 'purchase') {
         requireExactKeys(value, ['kind', 'itemId'], 'purchase action');
-        const item = getShopItem(requireCanonicalId(value.itemId, 'action.itemId', 80));
+        const item = getShopContract(requireCanonicalId(value.itemId, 'action.itemId', 80));
         return { kind, itemId: item.id };
     }
     if (kind === 'activate') {
         requireExactKeys(value, ['kind', 'itemId', 'activationId', 'parameters'], 'activate action');
-        const item = getShopItem(requireCanonicalId(value.itemId, 'action.itemId', 80));
+        const item = getShopContract(requireCanonicalId(value.itemId, 'action.itemId', 80));
         const activationId = requireCanonicalId(value.activationId, 'action.activationId', 200);
         if (!parametersAreCanonical(item, value.parameters)) {
             throw new ShopError('shop_invalid_domain', `activation parameters are not canonical: ${item.id}`);
@@ -120,7 +120,7 @@ function validateAction(value: unknown): ShopAction {
     }
     if (kind === 'deactivate') {
         requireExactKeys(value, ['kind', 'itemId', 'activationId'], 'deactivate action');
-        const item = getShopItem(requireCanonicalId(value.itemId, 'action.itemId', 80));
+        const item = getShopContract(requireCanonicalId(value.itemId, 'action.itemId', 80));
         return {
             kind,
             itemId: item.id,
@@ -167,13 +167,13 @@ function validateEventShape(value: unknown, expectedRevision: number): ShopEvent
     };
 }
 
-function isActive(activation: ShopActivation, item: Readonly<ShopCatalogItem>): boolean {
+function isActive(activation: ShopActivation, item: Readonly<ShopItemContract>): boolean {
     if (item.duration.kind === 'permanent') {return true;}
     if (item.duration.kind === 'manual') {return activation.deactivatedByEventId === undefined;}
     return activation.appliedCount < item.duration.applications;
 }
 
-function hasPendingTransition(activation: ShopActivation, item: Readonly<ShopCatalogItem>): boolean {
+function hasPendingTransition(activation: ShopActivation, item: Readonly<ShopItemContract>): boolean {
     if (activation.transitionDeliveredByEventId) {return false;}
     if (item.duration.kind === 'replies') {
         return activation.appliedCount === item.duration.applications && !!item.expirationRule;
@@ -189,7 +189,7 @@ function applyEventState(
 ): void {
     const action = event.action;
     if (action.kind === 'purchase') {
-        const item = getShopItem(action.itemId);
+        const item = getShopContract(action.itemId);
         const purchasedCount = (purchaseCounts.get(item.id) || 0) + 1;
         if (item.purchaseLimit !== undefined && purchasedCount > item.purchaseLimit) {
             throw new ShopError('shop_invalid_domain', `purchase limit exceeded: ${item.id}`);
@@ -199,7 +199,7 @@ function applyEventState(
         return;
     }
     if (action.kind === 'activate') {
-        const item = getShopItem(action.itemId);
+        const item = getShopContract(action.itemId);
         if (activations.has(action.activationId)) {
             throw new ShopError('shop_invalid_domain', `activationId is duplicated: ${action.activationId}`);
         }
@@ -225,7 +225,7 @@ function applyEventState(
         return;
     }
     if (action.kind === 'deactivate') {
-        const item = getShopItem(action.itemId);
+        const item = getShopContract(action.itemId);
         const activation = activations.get(action.activationId);
         if (!activation || activation.itemId !== item.id) {
             throw new ShopError('shop_invalid_domain', `deactivation target is missing: ${action.activationId}`);
@@ -239,7 +239,7 @@ function applyEventState(
     for (const activationId of action.consumedActivationIds) {
         const activation = activations.get(activationId);
         if (!activation) {throw new ShopError('shop_invalid_domain', `delivery target is missing: ${activationId}`);}
-        const item = getShopItem(activation.itemId);
+        const item = getShopContract(activation.itemId);
         if (item.duration.kind !== 'replies' || !isActive(activation, item)) {
             throw new ShopError('shop_invalid_domain', `delivery cannot consume effect: ${activationId}`);
         }
@@ -247,7 +247,7 @@ function applyEventState(
     }
     for (const activationId of action.transitionActivationIds) {
         const activation = activations.get(activationId);
-        if (!activation || !hasPendingTransition(activation, getShopItem(activation.itemId))) {
+        if (!activation || !hasPendingTransition(activation, getShopContract(activation.itemId))) {
             throw new ShopError('shop_invalid_domain', `delivery has no pending transition: ${activationId}`);
         }
         activation.transitionDeliveredByEventId = event.eventId;

@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createShopCatalog, getShopItem, listShopCatalog } from '../domains/shop/catalog.js';
+import {
+    createShopPublishedContracts,
+    createShopShelf,
+    getShopContract,
+    getShopShelfContract,
+    listShopPublishedContracts,
+    listShopShelfContracts,
+} from '../domains/shop/catalog.js';
 import { normalizeShopParameters, parseShopEffectReceipt, validateShopDomain } from '../domains/shop/invariants.js';
 import {
     activateShopItem,
@@ -43,11 +50,23 @@ function deliver(domain, deps, actionId) {
     }), deps);
 }
 
-test('catalog and parameter normalization expose only reviewed immutable contracts', () => {
-    assert.equal(listShopCatalog().length, 25);
-    assert.throws(() => getShopItem('missing'), error => error.code === 'shop_item_missing');
-    const flower = getShopItem('flower');
-    assert.throws(() => createShopCatalog([flower, { ...flower }]), error => error.code === 'shop_invalid_catalog');
+test('published contracts and the current shelf have separate immutable ownership', () => {
+    assert.equal(listShopPublishedContracts().length, 25);
+    assert.equal(listShopShelfContracts().length, 25);
+    assert.throws(() => getShopContract('missing'), error => error.code === 'shop_item_missing');
+    const flower = getShopContract('flower');
+    assert.throws(
+        () => createShopPublishedContracts([flower, { ...flower }]),
+        error => error.code === 'shop_invalid_catalog',
+    );
+    const shelfWithoutFlower = createShopShelf(
+        listShopShelfContracts().map(item => item.id).filter(id => id !== flower.id),
+    );
+    assert.throws(
+        () => getShopShelfContract(flower.id, shelfWithoutFlower),
+        error => error.code === 'shop_item_not_for_sale',
+    );
+    assert.equal(getShopContract(flower.id), flower);
     assert.deepEqual(
         normalizeShopParameters(flower, { targetName: '  Ａ\u0000\n　Ｂ  ', ignored: 'not persisted' }),
         { targetName: 'A B' },
@@ -75,7 +94,7 @@ test('a finite effect consumes exactly one application per delivered new reply a
     let domain = buyAndActivate(
         createEmptyShopState(), deps, 'no-anger-sticker', 'sticker-a', { targetName: '艾拉' },
     );
-    const item = getShopItem('no-anger-sticker');
+    const item = getShopContract('no-anger-sticker');
 
     for (let index = 1; index <= 5; index += 1) {
         const receipt = createShopEffectReceipt(domain);
@@ -168,5 +187,5 @@ test('inventory, consumed items and delivery counts have no conversation input t
     assert.deepEqual(projectShopState(domain), committed);
     assert.equal(committed.inventory.flower.quantity, 0);
     assert.equal(committed.activations[0].appliedCount, 1);
-    assert.equal(isShopActivationActive(committed.activations[0], getShopItem('flower')), false);
+    assert.equal(isShopActivationActive(committed.activations[0], getShopContract('flower')), false);
 });

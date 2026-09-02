@@ -6,7 +6,7 @@ import type {
 import type { XiaobaiOsChatData } from '../../../types.js';
 import { postAction } from '../../../domains/economy/ledger.js';
 import type { EconomyLedgerV1 } from '../../../domains/economy/types.js';
-import { getShopItem } from '../../../domains/shop/catalog.js';
+import { getShopContract } from '../../../domains/shop/catalog.js';
 import { parseShopEffectReceipt } from '../../../domains/shop/invariants.js';
 import {
     activateShopItem,
@@ -132,7 +132,7 @@ export function createShopService(
             const shopResult = purchaseShopItem(prepared.shop, {
                 ...input,
             }, shopDependencies);
-            const item = getShopItem(input.itemId);
+            const item = getShopContract(input.itemId);
             const economyResult = postAction(prepared.ledger, [{
                 idempotencyKey: `shop:purchase:${input.actionId}`,
                 actionId: input.actionId,

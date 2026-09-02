@@ -13,14 +13,15 @@ defineEmits<{
 }>();
 
 const selectedCategory = ref('all');
+const shelfItems = computed(() => props.catalog.filter(item => item.onShelf));
 const categories = computed(() => {
     const found = new Map<string, string>();
-    for (const item of props.catalog) {found.set(item.category, item.categoryLabel);}
+    for (const item of shelfItems.value) {found.set(item.category, item.categoryLabel);}
     return [{ id: 'all', label: '全部' }, ...Array.from(found, ([id, label]) => ({ id, label }))];
 });
 const visibleItems = computed(() => selectedCategory.value === 'all'
-    ? props.catalog
-    : props.catalog.filter(item => item.category === selectedCategory.value));
+    ? shelfItems.value
+    : shelfItems.value.filter(item => item.category === selectedCategory.value));
 
 function purchaseDisabledReason(item: ShopCatalogItemView): string {
     if (props.writeDisabledReason) {return props.writeDisabledReason;}

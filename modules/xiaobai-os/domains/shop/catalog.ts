@@ -1,6 +1,6 @@
 import {
     ShopError,
-    type ShopCatalogItem,
+    type ShopItemContract,
     type ShopInputDefinition,
 } from './types.js';
 
@@ -99,7 +99,7 @@ function requireCatalogText(value: unknown, field: string, maxLength: number): s
     return value;
 }
 
-function validateRule(item: ShopCatalogItem, field: keyof ShopCatalogItem, declaredTags: Set<string>): void {
+function validateRule(item: ShopItemContract, field: keyof ShopItemContract, declaredTags: Set<string>): void {
     const value = item[field];
     if (value === undefined) {return;}
     const rule = requireCatalogText(value, `${item.id}.${String(field)}`, 2_000);
@@ -113,7 +113,7 @@ function validateRule(item: ShopCatalogItem, field: keyof ShopCatalogItem, decla
     }
 }
 
-function validateCatalogItem(item: ShopCatalogItem, ids: Set<string>): void {
+function validatePublishedContract(item: ShopItemContract, ids: Set<string>): void {
     requireCatalogText(item.id, 'item.id', 80);
     if (!ITEM_ID_PATTERN.test(item.id) || ids.has(item.id)) {
         invalidCatalog(`item id is invalid or duplicated: ${item.id}`);
@@ -184,10 +184,12 @@ function validateCatalogItem(item: ShopCatalogItem, ids: Set<string>): void {
     }
 }
 
-export function createShopCatalog(items: readonly ShopCatalogItem[]): readonly Readonly<ShopCatalogItem>[] {
+export function createShopPublishedContracts(
+    items: readonly ShopItemContract[],
+): readonly Readonly<ShopItemContract>[] {
     if (!Array.isArray(items)) {invalidCatalog('catalog must be an array');}
     const ids = new Set<string>();
-    for (const item of items) {validateCatalogItem(item, ids);}
+    for (const item of items) {validatePublishedContract(item, ids);}
     return Object.freeze(items.map((item) => Object.freeze({
         ...item,
         duration: Object.freeze({ ...item.duration }),
@@ -195,7 +197,7 @@ export function createShopCatalog(items: readonly ShopCatalogItem[]): readonly R
     })));
 }
 
-export const SHOP_CATALOG = createShopCatalog([
+export const SHOP_PUBLISHED_CONTRACTS = createShopPublishedContracts([
     {
         id: 'flower', name: '花', icon: 'local_florist', category: 'emotion', price: 50,
         description: '一束新鲜的花。作用于下一条新回复，目标会正面接收你的心意。',
@@ -364,23 +366,87 @@ export const SHOP_CATALOG = createShopCatalog([
     },
 ]);
 
-if (SHOP_CATALOG.length !== 25) {invalidCatalog('the fixed catalog must contain exactly 25 items');}
-
-const CATALOG_BY_ID = new Map(SHOP_CATALOG.map((item) => [item.id, item]));
-
-export function findShopItem(itemId = ''): Readonly<ShopCatalogItem> | null {
-    const id = String(itemId || '').trim();
-    return id ? CATALOG_BY_ID.get(id) || null : null;
+if (SHOP_PUBLISHED_CONTRACTS.length !== 25) {
+    invalidCatalog('the initial published contract registry must contain exactly 25 items');
 }
 
-export function getShopItem(itemId = ''): Readonly<ShopCatalogItem> {
+const PUBLISHED_CONTRACT_BY_ID = new Map(SHOP_PUBLISHED_CONTRACTS.map((item) => [item.id, item]));
+
+export const SHOP_CURRENT_SHELF_IDS = Object.freeze([
+    'flower',
+    'gift-box',
+    'no-anger-sticker',
+    'worship-filter',
+    'jealousy-seed',
+    'memory-smoother',
+    'memory-eraser',
+    'identity-card',
+    'personality-reversal',
+    'truth-serum',
+    'privacy-camera',
+    'absolute-obedience',
+    'invisibility-cloak',
+    'reality-decree',
+    'star-aura',
+    'honest-world',
+    'peace-aura',
+    'plain-face',
+    'reshape-card',
+    'healing-touch',
+    'time-stop-watch',
+    'era-gate',
+    'warp-talisman',
+    'barrier',
+    'weather-call',
+] as const);
+
+export function createShopShelf(
+    contractIds: readonly string[],
+): readonly Readonly<ShopItemContract>[] {
+    if (!Array.isArray(contractIds) || new Set(contractIds).size !== contractIds.length) {
+        invalidCatalog('shelf contract ids must be a unique array');
+    }
+    return Object.freeze(contractIds.map((id) => {
+        const contract = PUBLISHED_CONTRACT_BY_ID.get(id);
+        if (!contract) {return invalidCatalog(`shelf references unpublished contract: ${id}`);}
+        return contract;
+    }));
+}
+
+const SHOP_CURRENT_SHELF = createShopShelf(SHOP_CURRENT_SHELF_IDS);
+const CURRENT_SHELF_ID_SET = new Set(SHOP_CURRENT_SHELF_IDS);
+
+export function findShopContract(itemId = ''): Readonly<ShopItemContract> | null {
+    const id = String(itemId || '').trim();
+    return id ? PUBLISHED_CONTRACT_BY_ID.get(id) || null : null;
+}
+
+export function getShopContract(itemId = ''): Readonly<ShopItemContract> {
     const id = String(itemId || '').trim();
     if (!id) {throw new ShopError('shop_item_id_required');}
-    const item = CATALOG_BY_ID.get(id);
+    const item = PUBLISHED_CONTRACT_BY_ID.get(id);
     if (!item) {throw new ShopError('shop_item_missing', `unknown shop item: ${id}`);}
     return item;
 }
 
-export function listShopCatalog(): readonly Readonly<ShopCatalogItem>[] {
-    return SHOP_CATALOG;
+export function getShopShelfContract(
+    itemId = '',
+    shelf: readonly Readonly<ShopItemContract>[] = SHOP_CURRENT_SHELF,
+): Readonly<ShopItemContract> {
+    const contract = getShopContract(itemId);
+    const shelfIds: ReadonlySet<string> = shelf === SHOP_CURRENT_SHELF
+        ? CURRENT_SHELF_ID_SET
+        : new Set(shelf.map(item => item.id));
+    if (!shelfIds.has(contract.id)) {
+        throw new ShopError('shop_item_not_for_sale', `shop item is not on the current shelf: ${contract.id}`);
+    }
+    return contract;
+}
+
+export function listShopPublishedContracts(): readonly Readonly<ShopItemContract>[] {
+    return SHOP_PUBLISHED_CONTRACTS;
+}
+
+export function listShopShelfContracts(): readonly Readonly<ShopItemContract>[] {
+    return SHOP_CURRENT_SHELF;
 }

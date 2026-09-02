@@ -1,4 +1,8 @@
-import { listShopCatalog } from '../../../domains/shop/catalog.js';
+import {
+    getShopContract,
+    listShopPublishedContracts,
+    listShopShelfContracts,
+} from '../../../domains/shop/catalog.js';
 import { isShopActivationActive, shopRemainingApplications } from '../../../domains/shop/timeline.js';
 import type { ShopServiceView } from '../application/service.js';
 import type { ShopActivationView, ShopClientState, ShopClientStatus } from '../types.js';
@@ -14,7 +18,7 @@ const CATEGORY_LABELS: Readonly<Record<string, string>> = Object.freeze({
     physics: '现实',
 });
 
-function durationLabel(duration: ReturnType<typeof listShopCatalog>[number]['duration']): string {
+function durationLabel(duration: ReturnType<typeof listShopPublishedContracts>[number]['duration']): string {
     if (duration.kind === 'manual') {return '持续至手动关闭';}
     if (duration.kind === 'permanent') {return '永久生效';}
     return duration.applications === 1 ? '作用于下一条新回复' : `作用于接下来 ${duration.applications} 条新回复`;
@@ -38,8 +42,7 @@ function resolveStatus(
 function activationView(
     activation: ShopServiceView['projection']['activations'][number],
 ): ShopActivationView {
-    const item = listShopCatalog().find((candidate) => candidate.id === activation.itemId);
-    if (!item) {throw new Error(`shop_item_missing:${activation.itemId}`);}
+    const item = getShopContract(activation.itemId);
     const active = isShopActivationActive(activation, item);
     const closed = item.duration.kind === 'manual' && activation.deactivatedByEventId !== undefined;
     const remaining = shopRemainingApplications(activation, item);
@@ -75,6 +78,7 @@ export function presentShopState({
     generationActive: boolean;
 }): ShopClientState {
     const status = resolveStatus(serviceView);
+    const shelfIds = new Set(listShopShelfContracts().map(item => item.id));
     return {
         chatIdentity,
         currency: '小白币',
@@ -83,7 +87,7 @@ export function presentShopState({
         eventId: serviceView.projection.eventId,
         ...status,
         generationActive,
-        catalog: listShopCatalog().map((item) => {
+        catalog: listShopPublishedContracts().map((item) => {
             const inventory = serviceView.projection.inventory[item.id];
             return {
                 id: item.id,
@@ -95,6 +99,7 @@ export function presentShopState({
                 description: item.description,
                 duration: item.duration.kind,
                 durationLabel: durationLabel(item.duration),
+                onShelf: shelfIds.has(item.id),
                 inputs: item.inputs.map((input) => ({
                     key: input.key,
                     label: input.label,

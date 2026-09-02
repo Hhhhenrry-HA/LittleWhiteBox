@@ -2,7 +2,7 @@ import type { XiaobaiOsChatData } from '../../../types.js';
 import { validateLedger } from '../../../domains/economy/invariants.js';
 import { projectBalances } from '../../../domains/economy/ledger.js';
 import type { EconomyLedgerV1 } from '../../../domains/economy/types.js';
-import { getShopItem } from '../../../domains/shop/catalog.js';
+import { getShopContract } from '../../../domains/shop/catalog.js';
 import { validateShopDomain } from '../../../domains/shop/invariants.js';
 import type { ShopDomainV2 } from '../../../domains/shop/types.js';
 
@@ -40,7 +40,7 @@ export function validateShopEconomyConsistency(value: unknown, path = 'xiaobaiOs
     }
     for (const event of purchaseEvents) {
         if (event.action.kind !== 'purchase') {continue;}
-        const item = getShopItem(event.action.itemId);
+        const item = getShopContract(event.action.itemId);
         const matches = purchaseTransactions.filter((transaction) => transaction.actionId === event.actionId);
         if (
             matches.length !== 1

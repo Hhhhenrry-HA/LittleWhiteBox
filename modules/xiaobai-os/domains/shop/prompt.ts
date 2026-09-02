@@ -1,9 +1,9 @@
-import { getShopItem } from './catalog.js';
+import { getShopContract } from './catalog.js';
 import { normalizeShopParameters, parseShopEffectReceipt } from './invariants.js';
 import {
     ShopError,
     type ShopActivation,
-    type ShopCatalogItem,
+    type ShopItemContract,
     type ShopEffectReceipt,
     type ShopStateProjection,
 } from './types.js';
@@ -27,7 +27,7 @@ export function escapeShopPromptParameter(value: string): string {
 }
 
 function buildParameters(
-    item: Readonly<ShopCatalogItem>,
+    item: Readonly<ShopItemContract>,
     parameters: Record<string, string>,
 ): string[] {
     const normalized = normalizeShopParameters(item, parameters);
@@ -42,7 +42,7 @@ function buildParameters(
 }
 
 function buildEffect(
-    item: Readonly<ShopCatalogItem>,
+    item: Readonly<ShopItemContract>,
     activation: ShopActivation,
     rule: string,
 ): string {
@@ -66,24 +66,24 @@ export function buildShopPromptBlock(
     rawReceipt: ShopEffectReceipt,
 ): string {
     const receipt = parseShopEffectReceipt(rawReceipt);
-    const active: Array<{ activation: ShopActivation; item: Readonly<ShopCatalogItem> }> = [];
-    const transitions: Array<{ activation: ShopActivation; item: Readonly<ShopCatalogItem>; rule: string }> = [];
+    const active: Array<{ activation: ShopActivation; item: Readonly<ShopItemContract> }> = [];
+    const transitions: Array<{ activation: ShopActivation; item: Readonly<ShopItemContract>; rule: string }> = [];
 
     for (const activationId of receipt.transitionActivationIds) {
         const activation = requireActivation(projection, activationId);
-        const item = getShopItem(activation.itemId);
+        const item = getShopContract(activation.itemId);
         const rule = item.duration.kind === 'manual' ? item.deactivationRule : item.expirationRule;
         if (!rule) {throw new ShopError('shop_effect_receipt_invalid', `transition rule is missing: ${activationId}`);}
         transitions.push({ activation, item, rule });
     }
     for (const activationId of receipt.activeActivationIds) {
         const activation = requireActivation(projection, activationId);
-        active.push({ activation, item: getShopItem(activation.itemId) });
+        active.push({ activation, item: getShopContract(activation.itemId) });
     }
     if (active.length === 0 && transitions.length === 0) {return '';}
 
     const blocks = transitions.map(({ activation, item, rule }) => buildEffect(item, activation, rule));
-    const footerItems = new Map<string, Readonly<ShopCatalogItem>>();
+    const footerItems = new Map<string, Readonly<ShopItemContract>>();
     for (const { activation, item } of active) {
         blocks.push(buildEffect(item, activation, item.trustedRule));
         if (item.groupFooterRule) {footerItems.set(item.id, item);}

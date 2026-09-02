@@ -17,6 +17,7 @@ export interface ShopCatalogItemView {
     description: string;
     duration: 'replies' | 'manual' | 'permanent';
     durationLabel: string;
+    onShelf: boolean;
     inputs: ShopInputView[];
     purchaseLimit: number | null;
     purchasedCount: number;

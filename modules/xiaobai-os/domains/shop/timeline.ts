@@ -1,4 +1,4 @@
-import { getShopItem } from './catalog.js';
+import { getShopContract, getShopShelfContract } from './catalog.js';
 import {
     normalizeShopParameters,
     parseShopEffectReceipt,
@@ -16,7 +16,7 @@ import {
     type ShopAction,
     type ShopActivation,
     type ShopCasToken,
-    type ShopCatalogItem,
+    type ShopItemContract,
     type ShopCommandContext,
     type ShopCommandDependencies,
     type ShopCommandResult,
@@ -158,7 +158,7 @@ export function getShopCasToken(domain: ShopDomainV2): ShopCasToken {
 
 export function isShopActivationActive(
     activation: ShopActivation,
-    item: Readonly<ShopCatalogItem>,
+    item: Readonly<ShopItemContract>,
 ): boolean {
     if (item.duration.kind === 'permanent') {return true;}
     if (item.duration.kind === 'manual') {return activation.deactivatedByEventId === undefined;}
@@ -167,13 +167,13 @@ export function isShopActivationActive(
 
 export function shopRemainingApplications(
     activation: ShopActivation,
-    item: Readonly<ShopCatalogItem>,
+    item: Readonly<ShopItemContract>,
 ): number | null {
     if (item.duration.kind !== 'replies') {return null;}
     return Math.max(0, item.duration.applications - activation.appliedCount);
 }
 
-function hasPendingTransition(activation: ShopActivation, item: Readonly<ShopCatalogItem>): boolean {
+function hasPendingTransition(activation: ShopActivation, item: Readonly<ShopItemContract>): boolean {
     if (activation.transitionDeliveredByEventId) {return false;}
     if (item.duration.kind === 'replies') {
         return activation.appliedCount === item.duration.applications && !!item.expirationRule;
@@ -246,7 +246,7 @@ export function createShopEffectReceipt(domain: ShopDomainV2): ShopEffectReceipt
     const activeActivationIds: string[] = [];
     const transitionActivationIds: string[] = [];
     for (const activation of projection.activations) {
-        const item = getShopItem(activation.itemId);
+        const item = getShopContract(activation.itemId);
         if (isShopActivationActive(activation, item)) {activeActivationIds.push(activation.activationId);}
         if (hasPendingTransition(activation, item)) {transitionActivationIds.push(activation.activationId);}
     }
@@ -273,7 +273,7 @@ export function deliverShopEffects(
     const projection = projectShopState(domain);
     const consumedActivationIds = receipt.activeActivationIds.filter((activationId) => {
         const activation = projection.activations.find(entry => entry.activationId === activationId);
-        return !!activation && getShopItem(activation.itemId).duration.kind === 'replies';
+        return !!activation && getShopContract(activation.itemId).duration.kind === 'replies';
     });
     const action: ShopAction = {
         kind: 'deliver',
@@ -303,11 +303,12 @@ export function purchaseShopItem(
     dependencies: ShopCommandDependencies = {},
 ): ShopCommandResult {
     validateShopDomain(domain);
-    const item = getShopItem(input.itemId);
+    const item = getShopContract(input.itemId);
     const context = normalizeContext(input);
     const action: ShopAction = { kind: 'purchase', itemId: item.id };
     const replay = replayExisting(domain, context.actionId, action);
     if (replay) {return replay;}
+    getShopShelfContract(item.id);
     assertCas(domain, context);
     const purchasedCount = projectShopState(domain).inventory[item.id]?.purchasedCount || 0;
     if (item.purchaseLimit !== undefined && purchasedCount >= item.purchaseLimit) {
@@ -322,7 +323,7 @@ export function activateShopItem(
     dependencies: ShopCommandDependencies = {},
 ): ShopCommandResult {
     validateShopDomain(domain);
-    const item = getShopItem(input.itemId);
+    const item = getShopContract(input.itemId);
     const context = normalizeContext(input);
     const activationId = normalizeId(input.activationId, 'shop_activation_id_required');
     const parameters = normalizeShopParameters(item, input.parameters);
@@ -353,7 +354,7 @@ export function deactivateShopItem(
     dependencies: ShopCommandDependencies = {},
 ): ShopCommandResult {
     validateShopDomain(domain);
-    const item = getShopItem(input.itemId);
+    const item = getShopContract(input.itemId);
     const context = normalizeContext(input);
     const activationId = normalizeId(input.activationId, 'shop_activation_id_required');
     const action: ShopAction = { kind: 'deactivate', itemId: item.id, activationId };

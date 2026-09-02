@@ -28,7 +28,7 @@ export interface ShopInputDefinition {
     maxLength: number;
 }
 
-export interface ShopCatalogItem {
+export interface ShopItemContract {
     id: string;
     name: string;
     icon: string;
@@ -156,6 +156,7 @@ export type ShopErrorCode =
     | 'shop_invalid_catalog'
     | 'shop_item_id_required'
     | 'shop_item_missing'
+    | 'shop_item_not_for_sale'
     | 'shop_action_required'
     | 'shop_action_conflict'
     | 'shop_activation_id_required'
