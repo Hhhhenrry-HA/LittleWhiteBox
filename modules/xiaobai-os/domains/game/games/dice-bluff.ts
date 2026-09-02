@@ -1,4 +1,4 @@
-import { multiplyGameAmount } from '../money.js';
+import { assertPositiveGameAmount, multiplyGameAmount } from '../money.js';
 import { nextGameRandomInt, rollGameDie } from '../random.js';
 import {
     throwGameError,
@@ -146,7 +146,7 @@ function assertDiceTuple(value: readonly GameDieFace[], detail: string): void {
 export function assertGameDiceGameWaitingForPlayer(game: GamePrivateDiceGame): void {
     if (!game || typeof game !== 'object') {throwGameError('game_invalid', 'dice-game');}
     assertGameId(game.id);
-    normalizeGameDiceBet(game.bet);
+    assertPositiveGameAmount(game.bet, 'dice-bet');
     assertDiceTuple(game.playerDice, 'player-dice');
     assertDiceTuple(game.dealerDice, 'dealer-dice');
     if (!Array.isArray(game.bids) || game.bids.length % 2 !== 0) {

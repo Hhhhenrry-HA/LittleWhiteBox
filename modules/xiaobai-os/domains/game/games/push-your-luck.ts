@@ -1,4 +1,5 @@
 import { shuffleGameValues } from '../random.js';
+import { assertGamePayout, assertPositiveGameAmount } from '../money.js';
 import {
     throwGameError,
     type GamePrivatePushGame,
@@ -46,15 +47,12 @@ export function createGamePushGame(
 export function assertActiveGamePushGame(game: GamePrivatePushGame): void {
     if (!game || typeof game !== 'object') {throwGameError('game_invalid', 'push-game');}
     assertGameId(game.id);
-    if (game.bet !== GAME_PUSH_BET || !Array.isArray(game.deck)
-        || game.deck.length !== GAME_PUSH_COIN_COUNT + GAME_PUSH_BOMB_COUNT
-        || game.deck.filter((card) => card === 'coin').length !== GAME_PUSH_COIN_COUNT
-        || game.deck.filter((card) => card === 'bomb').length !== GAME_PUSH_BOMB_COUNT
+    assertPositiveGameAmount(game.bet, 'push-bet');
+    if (!Array.isArray(game.deck) || game.deck.length === 0
         || game.deck.some((card) => card !== 'coin' && card !== 'bomb')
-        || !Number.isSafeInteger(game.drawIndex) || game.drawIndex < 0 || game.drawIndex >= GAME_PUSH_COIN_COUNT
+        || !Number.isSafeInteger(game.drawIndex) || game.drawIndex < 0 || game.drawIndex >= game.deck.length
         || !Number.isSafeInteger(game.revealedCoins) || game.revealedCoins !== game.drawIndex
-        || !Number.isSafeInteger(game.cashoutAmount)
-        || game.cashoutAmount !== game.revealedCoins * GAME_PUSH_COIN_VALUE
+        || !Number.isSafeInteger(game.cashoutAmount) || game.cashoutAmount < 0
         || game.deck.slice(0, game.drawIndex).some((card) => card !== 'coin')) {
         throwGameError('game_invalid', 'push-game');
     }
@@ -92,15 +90,15 @@ export function drawGamePushCard(game: GamePrivatePushGame): GamePushTransition 
     if (card !== 'coin') {throwGameError('game_invalid', 'push-card');}
 
     const revealedCoins = game.revealedCoins + 1;
-    const cashoutAmount = revealedCoins * GAME_PUSH_COIN_VALUE;
-    if (revealedCoins === GAME_PUSH_COIN_COUNT) {
+    const cashoutAmount = assertGamePayout(game.cashoutAmount + GAME_PUSH_COIN_VALUE, 'push-cashout');
+    if (!game.deck.slice(game.drawIndex + 1).includes('coin')) {
         return { kind: 'settled', settlement: createPushSettlement(game, 'cleared', cashoutAmount, revealedCoins) };
     }
     return {
         kind: 'continued',
         game: {
             id: game.id,
-            bet: GAME_PUSH_BET,
+            bet: game.bet,
             deck: [...game.deck],
             drawIndex: game.drawIndex + 1,
             revealedCoins,
@@ -132,7 +130,7 @@ export function createGamePushGameView(game: GamePrivatePushGame): GamePushGameV
     return {
         kind: 'push',
         id: game.id,
-        bet: GAME_PUSH_BET,
+        bet: game.bet,
         revealedCoins: game.revealedCoins,
         cashoutAmount: game.cashoutAmount,
         ...getGamePushStatistics(game),

@@ -1,4 +1,4 @@
-import { GAME_MAX_PAYOUT, multiplyGameAmount } from '../money.js';
+import { assertPositiveGameAmount, GAME_MAX_PAYOUT, multiplyGameAmount } from '../money.js';
 import { drawGameProbabilityBasisPoints } from '../random.js';
 import {
     throwGameError,
@@ -97,20 +97,18 @@ function currentLadderAmount(game: GamePrivateLadderGame): number {
 export function assertActiveGameLadderGame(game: GamePrivateLadderGame): void {
     if (!game || typeof game !== 'object') {throwGameError('game_invalid', 'ladder-game');}
     assertGameId(game.id);
-    const bet = normalizeGameLadderBet(game.bet);
-    if (game.riskBase !== calculateGameLadderRiskBase(bet)
-        || !Array.isArray(game.steps) || game.steps.length >= GAME_LADDER_MAX_FLOORS) {
+    assertPositiveGameAmount(game.bet, 'ladder-bet');
+    assertPositiveGameAmount(game.riskBase, 'ladder-risk-base');
+    if (!Array.isArray(game.steps)) {
         throwGameError('game_invalid', 'ladder-game');
     }
-    let amount = game.riskBase;
     for (let index = 0; index < game.steps.length; index += 1) {
         const step = game.steps[index];
-        if (!step || step.floor !== index + 1) {throwGameError('game_invalid', 'ladder-step');}
-        const expected = calculateGameLadderSuccessAmount(amount, step.choice);
-        if (step.amountAfterSuccess !== expected || expected >= GAME_MAX_PAYOUT) {
+        if (!step || step.floor !== index + 1
+            || !GAME_LADDER_OPTIONS.some(option => option.choice === step.choice)) {
             throwGameError('game_invalid', 'ladder-step');
         }
-        amount = expected;
+        assertPositiveGameAmount(step.amountAfterSuccess, 'ladder-step-amount');
     }
 }
 
@@ -143,6 +141,7 @@ export function stepGameLadderGame(
     random: GameRandomSource,
 ): GameLadderTransition {
     assertActiveGameLadderGame(game);
+    if (game.steps.length >= GAME_LADDER_MAX_FLOORS) {throwGameError('game_invalid', 'ladder-max-floors');}
     const option = getGameLadderOption(choice);
     const floor = game.steps.length + 1;
     const success = drawGameProbabilityBasisPoints(random) < option.successProbabilityBps;
@@ -210,7 +209,7 @@ export function advanceGameLadderGame(
 export function createGameLadderGameView(game: GamePrivateLadderGame): GameLadderGameView {
     assertActiveGameLadderGame(game);
     const cashoutAmount = currentLadderAmount(game);
-    const nextChoices: GameLadderChoiceView[] = GAME_LADDER_OPTIONS.map((option) => ({
+    const nextChoices: GameLadderChoiceView[] = game.steps.length >= GAME_LADDER_MAX_FLOORS ? [] : GAME_LADDER_OPTIONS.map((option) => ({
         choice: option.choice,
         successProbabilityBps: option.successProbabilityBps,
         successAmount: calculateGameLadderSuccessAmount(cashoutAmount, option.choice),
@@ -225,6 +224,8 @@ export function createGameLadderGameView(game: GamePrivateLadderGame): GameLadde
         canCashOut: game.steps.length > 0,
         steps: game.steps.map((step) => ({ ...step })),
         nextChoices,
-        legalActions: game.steps.length > 0 ? ['step', 'cash-out'] : ['step'],
+        legalActions: game.steps.length >= GAME_LADDER_MAX_FLOORS
+            ? ['cash-out']
+            : (game.steps.length > 0 ? ['step', 'cash-out'] : ['step']),
     };
 }

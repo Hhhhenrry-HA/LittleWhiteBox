@@ -26,7 +26,7 @@ export type GamePushCard = 'coin' | 'bomb';
 
 export interface GamePrivatePushGame {
     id: string;
-    bet: 50;
+    bet: number;
     deck: GamePushCard[];
     drawIndex: number;
     revealedCoins: number;
@@ -128,7 +128,7 @@ export interface GameDiceGameView {
 export interface GamePushGameView {
     kind: 'push';
     id: string;
-    bet: 50;
+    bet: number;
     revealedCoins: number;
     cashoutAmount: number;
     remainingCards: number;

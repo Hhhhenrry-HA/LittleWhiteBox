@@ -194,7 +194,7 @@ test('dice terminal activity exactly matches the private transition', () => {
     assert.throws(() => validateGameDomain(forged), error => error.code === 'game_invalid_domain');
 });
 
-test('Dice validation rejects dealer decisions outside the shared policy', () => {
+test('persisted Dice facts do not replay current dealer or payout policy', () => {
     const high = {
         id: 'dice-policy-high',
         bet: 50,
@@ -210,7 +210,7 @@ test('Dice validation rejects dealer decisions outside the shared policy', () =>
     }).domain;
     const playerBid = { by: 'player', count: 1, face: 3 };
     const matchingDiceCount = countGameDiceBidMatches(high, playerBid);
-    assert.throws(() => append(highStarted, 2, {
+    const settledByHistoricalDealer = append(highStarted, 2, {
         kind: 'dice-bid', gameId: high.id, bid: { count: 1, face: 3 },
     }, {
         changes: [{ kind: 'game-ended', gameId: high.id }],
@@ -223,10 +223,11 @@ test('Dice validation rejects dealer decisions outside the shared policy', () =>
                 matchingDiceCount,
             },
             amountIn: 50,
-            payout: 90,
-            net: 40,
+            payout: 95,
+            net: 45,
         }],
-    }), error => error.code === 'game_invalid_domain');
+    });
+    assert.equal(flattenGameActivities(settledByHistoricalDealer.domain)[0].payout, 95);
 
     const low = { ...high, id: 'dice-policy-low', dealerDice: [2, 2, 3, 4, 5] };
     const lowStarted = append(createEmptyGameDomain(), 1, {
@@ -235,9 +236,9 @@ test('Dice validation rejects dealer decisions outside the shared policy', () =>
         changes: [{ kind: 'game-started', game: { kind: 'dice', game: low } }],
         activities: [],
     }).domain;
-    // The shared policy answers this spot with {4,2}; any other dealer bid,
-    // legal or not, must be rejected as an unauthored dealer decision.
-    assert.throws(() => append(lowStarted, 2, {
+    // The current dealer would choose another response. History only requires
+    // the recorded dealer raise to be a legal continuation of the bid chain.
+    const historicalRaise = append(lowStarted, 2, {
         kind: 'dice-bid', gameId: low.id, bid: { count: 3, face: 6 },
     }, {
         changes: [{
@@ -248,7 +249,8 @@ test('Dice validation rejects dealer decisions outside the shared policy', () =>
             },
         }],
         activities: [],
-    }), error => error.code === 'game_invalid_domain');
+    });
+    assert.equal(replayGameEvents(historicalRaise.domain).activeGame.game.bids.at(-1).face, 3);
 
     assert.throws(() => append(highStarted, 2, {
         kind: 'dice-bid', gameId: high.id, bid: { count: 1, face: 3 },
@@ -257,11 +259,92 @@ test('Dice validation rejects dealer decisions outside the shared policy', () =>
             kind: 'game-advanced',
             game: {
                 kind: 'dice',
-                game: { ...high, bids: [playerBid, { by: 'dealer', count: 1, face: 5 }] },
+                game: { ...high, bids: [playerBid, { by: 'dealer', count: 1, face: 2 }] },
             },
         }],
         activities: [],
     }), error => error.code === 'game_invalid_domain');
+});
+
+test('persisted Push and Ladder facts do not replay current stake, coin, multiplier, floor, or cap policy', () => {
+    const push = {
+        id: 'push-frozen-policy',
+        bet: 75,
+        deck: ['coin', 'coin', 'bomb'],
+        drawIndex: 0,
+        revealedCoins: 0,
+        cashoutAmount: 0,
+    };
+    let pushDomain = append(createEmptyGameDomain(), 1, {
+        kind: 'push-start', gameId: push.id,
+    }, {
+        changes: [{ kind: 'game-started', game: { kind: 'push', game: push } }],
+        activities: [],
+    }).domain;
+    const pushed = { ...push, drawIndex: 1, revealedCoins: 1, cashoutAmount: 30 };
+    pushDomain = append(pushDomain, 2, {
+        kind: 'push-draw', gameId: push.id,
+    }, {
+        changes: [{ kind: 'game-advanced', game: { kind: 'push', game: pushed } }],
+        activities: [],
+    }).domain;
+    assert.equal(createGameView({ domain: pushDomain }).activeGame.bet, 75);
+    const currentPushTransition = drawGamePushCard(replayGameEvents(pushDomain).activeGame.game);
+    assert.equal(currentPushTransition.kind, 'settled');
+    assert.equal(currentPushTransition.settlement.payout, 80);
+    pushDomain = append(pushDomain, 3, {
+        kind: 'push-cash-out', gameId: push.id,
+    }, {
+        changes: [{ kind: 'game-ended', gameId: push.id }],
+        activities: [{
+            id: 'activity-push-frozen-policy', sourceId: push.id,
+            detail: { kind: 'push', outcome: 'cashed-out', revealedCoins: 1 },
+            amountIn: 75, payout: 30, net: -45,
+        }],
+    }).domain;
+    assert.equal(flattenGameActivities(pushDomain)[0].payout, 30);
+
+    const ladder = { id: 'ladder-frozen-policy', bet: 40, riskBase: 37, steps: [] };
+    let ladderDomain = append(createEmptyGameDomain(), 1, {
+        kind: 'ladder-start', gameId: ladder.id, bet: ladder.bet,
+    }, {
+        changes: [{ kind: 'game-started', game: { kind: 'ladder', game: ladder } }],
+        activities: [],
+    }).domain;
+    for (let floor = 1; floor <= 6; floor += 1) {
+        const previous = replayGameEvents(ladderDomain).activeGame.game;
+        const next = {
+            ...previous,
+            steps: [...previous.steps, { floor, choice: 'safe', amountAfterSuccess: 30 + floor * 10 }],
+        };
+        ladderDomain = append(ladderDomain, floor + 1, {
+            kind: 'ladder-step', gameId: ladder.id, choice: 'safe',
+        }, {
+            changes: [{ kind: 'game-advanced', game: { kind: 'ladder', game: next } }],
+            activities: [],
+        }).domain;
+    }
+    const activeLadder = replayGameEvents(ladderDomain).activeGame.game;
+    assert.deepEqual(createGameView({ domain: ladderDomain }).activeGame.legalActions, ['cash-out']);
+    ladderDomain = append(ladderDomain, 8, {
+        kind: 'ladder-cash-out', gameId: ladder.id,
+    }, {
+        changes: [{ kind: 'game-ended', gameId: ladder.id }],
+        activities: [{
+            id: 'activity-ladder-frozen-policy', sourceId: ladder.id,
+            detail: {
+                kind: 'ladder', outcome: 'cashed-out',
+                steps: activeLadder.steps.map(step => ({
+                    floor: step.floor,
+                    choice: step.choice,
+                    success: true,
+                    amountAfterStep: step.amountAfterSuccess,
+                })),
+            },
+            amountIn: 40, payout: 90, net: 50,
+        }],
+    }).domain;
+    assert.equal(flattenGameActivities(ladderDomain)[0].detail.steps.length, 6);
 });
 
 test('CAS append is immutable and idempotent action replay precedes stale-token checks', () => {

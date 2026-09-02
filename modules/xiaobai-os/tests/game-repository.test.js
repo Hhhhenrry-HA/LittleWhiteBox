@@ -2,14 +2,17 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { validateGameDomain } from '../domains/game/invariants.js';
+import { toPostInputs } from '../apps/game/application/action-policy.js';
 import { createGameService } from '../apps/game/application/service.js';
 import {
+    startGameStakeLeg,
     readGameDomain,
     validateGameEconomyConsistency,
 } from '../apps/game/application/root-protocol.js';
 import { validateLedger } from '../domains/economy/invariants.js';
+import { ensureEconomy, postAction, projectBalances } from '../domains/economy/ledger.js';
 import { createEconomyRepository } from '../domains/economy/repository.js';
-import { projectBalances } from '../domains/economy/ledger.js';
+import { appendGameEvent, createEmptyGameDomain, getGameCasToken } from '../domains/game/timeline.js';
 import { createChatDataStore } from '../host/chat-data-store.js';
 
 function command(view, actionId, extra = {}) {
@@ -121,6 +124,43 @@ test('read-only Game view uses Economy balance without creating a Game domain', 
     assert.equal(Object.hasOwn(view, 'domain'), false);
     assert.equal(Object.hasOwn(harness.store.readCurrent().domains, 'game'), false);
     assert.equal(harness.state.saveCount, 0);
+});
+
+test('Game economy replay derives a Push stake from its frozen start result', () => {
+    const gameId = 'push-frozen-stake';
+    const actionId = 'push-frozen-stake:start';
+    const game = appendGameEvent(createEmptyGameDomain(), {
+        ...getGameCasToken(createEmptyGameDomain()),
+        eventId: 'game-event-frozen-stake',
+        actionId,
+        command: { kind: 'push-start', gameId },
+        result: {
+            changes: [{
+                kind: 'game-started',
+                game: {
+                    kind: 'push',
+                    game: {
+                        id: gameId, bet: 75, deck: ['bomb', 'coin'],
+                        drawIndex: 0, revealedCoins: 0, cashoutAmount: 0,
+                    },
+                },
+            }],
+            activities: [],
+        },
+        createdAt: 1_001,
+    }).domain;
+    const opening = ensureEconomy(undefined, { now: () => 1_000, createId: () => 'tx-opening' });
+    const ledger = postAction(
+        opening,
+        toPostInputs([startGameStakeLeg(gameId, 75)], actionId, gameId),
+        { now: () => 1_001, createId: () => 'tx-stake' },
+    ).ledger;
+
+    assert.doesNotThrow(() => validateGameEconomyConsistency({
+        schemaVersion: 2,
+        apps: {},
+        domains: { economy: ledger, game },
+    }));
 });
 
 test('all three starts atomically escrow their bet in one root save', async t => {

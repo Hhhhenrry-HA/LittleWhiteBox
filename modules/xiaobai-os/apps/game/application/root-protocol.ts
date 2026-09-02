@@ -2,7 +2,6 @@ import type { XiaobaiOsChatData } from '../../../types.js';
 import { validateLedger } from '../../../domains/economy/invariants.js';
 import { projectBalances } from '../../../domains/economy/ledger.js';
 import type { EconomyLedgerV1 } from '../../../domains/economy/types.js';
-import { GAME_PUSH_BET } from '../../../domains/game/games/push-your-luck.js';
 import { validateGameDomain } from '../../../domains/game/invariants.js';
 import { replayGameEvents } from '../../../domains/game/timeline.js';
 import type {
@@ -91,10 +90,12 @@ export function gameSettlementLegs(gameId: string, amountIn: number, payout: num
 }
 
 function expectedEconomyLegs(event: GameEvent): GameEconomyLeg[] {
-    if (event.command.kind === 'dice-start' || event.command.kind === 'ladder-start') {
-        return [startGameStakeLeg(event.command.gameId, event.command.bet)];
+    if (event.command.kind === 'dice-start' || event.command.kind === 'push-start'
+        || event.command.kind === 'ladder-start') {
+        const change = event.result.changes[0];
+        if (change?.kind !== 'game-started') {return [];}
+        return [startGameStakeLeg(event.command.gameId, change.game.game.bet)];
     }
-    if (event.command.kind === 'push-start') {return [startGameStakeLeg(event.command.gameId, GAME_PUSH_BET)];}
     const activity = event.result.activities[0];
     return activity ? gameSettlementLegs(event.command.gameId, activity.amountIn, activity.payout) : [];
 }
