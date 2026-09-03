@@ -210,3 +210,100 @@ export function prepareRegeneration(
     session.history = session.history.slice(0, userIndex + 1);
     return { state: next, userInput };
 }
+
+
+function requirePersistedRecord(value: unknown, path: string): Record<string, unknown> {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        throw new FourthWallStateError('INVALID_CURRENT_DATA', `${path} must be an object`);
+    }
+    return value as Record<string, unknown>;
+}
+
+function requireExactKeys(value: Record<string, unknown>, expected: readonly string[], path: string): void {
+    const actual = Object.keys(value).sort();
+    const canonical = [...expected].sort();
+    if (actual.length !== canonical.length || actual.some((key, index) => key !== canonical[index])) {
+        throw new FourthWallStateError('INVALID_CURRENT_DATA', `${path} has non-canonical fields`);
+    }
+}
+
+function requirePersistedString(value: unknown, path: string): string {
+    if (typeof value !== 'string') {
+        throw new FourthWallStateError('INVALID_CURRENT_DATA', `${path} must be a string`);
+    }
+    return value;
+}
+
+function requirePersistedInteger(value: unknown, path: string, min: number, max: number): number {
+    if (!Number.isInteger(value) || Number(value) < min || Number(value) > max) {
+        throw new FourthWallStateError('INVALID_CURRENT_DATA', `${path} must be an integer from ${min} to ${max}`);
+    }
+    return Number(value);
+}
+
+export function validateFourthWallChatState(
+    value: unknown,
+    path = 'partitions.fourthWall',
+): asserts value is FourthWallChatState {
+    const state = requirePersistedRecord(value, path);
+    requireExactKeys(state, ['settings', 'sessions', 'activeSessionId'], path);
+    const settings = requirePersistedRecord(state.settings, `${path}.settings`);
+    requireExactKeys(
+        settings,
+        ['maxChatLayers', 'maxMetaTurns', 'stream', 'disableAssistantPrefill'],
+        `${path}.settings`,
+    );
+    requirePersistedInteger(settings.maxChatLayers, `${path}.settings.maxChatLayers`, 1, 9999);
+    requirePersistedInteger(settings.maxMetaTurns, `${path}.settings.maxMetaTurns`, 1, 9999);
+    if (typeof settings.stream !== 'boolean' || typeof settings.disableAssistantPrefill !== 'boolean') {
+        throw new FourthWallStateError('INVALID_CURRENT_DATA', `${path}.settings flags must be boolean`);
+    }
+    if (!Array.isArray(state.sessions) || state.sessions.length === 0) {
+        throw new FourthWallStateError('INVALID_CURRENT_DATA', `${path}.sessions must not be empty`);
+    }
+    const ids = new Set<string>();
+    for (const [index, rawSession] of state.sessions.entries()) {
+        const session = requirePersistedRecord(rawSession, `${path}.sessions[${index}]`);
+        requireExactKeys(session, ['id', 'name', 'createdAt', 'history'], `${path}.sessions[${index}]`);
+        const id = requirePersistedString(session.id, `${path}.sessions[${index}].id`);
+        if (!id || ids.has(id)) {
+            throw new FourthWallStateError('INVALID_CURRENT_DATA', `${path}.sessions ids must be non-empty and unique`);
+        }
+        ids.add(id);
+        requirePersistedString(session.name, `${path}.sessions[${index}].name`);
+        if (!Number.isFinite(session.createdAt)) {
+            throw new FourthWallStateError('INVALID_CURRENT_DATA', `${path}.sessions[${index}].createdAt must be finite`);
+        }
+        if (!Array.isArray(session.history)) {
+            throw new FourthWallStateError('INVALID_CURRENT_DATA', `${path}.sessions[${index}].history must be an array`);
+        }
+        for (const [messageIndex, rawMessage] of session.history.entries()) {
+            const message = requirePersistedRecord(
+                rawMessage,
+                `${path}.sessions[${index}].history[${messageIndex}]`,
+            );
+            const messageKeys = ['role', 'content', 'ts'];
+            if (message.thinking !== undefined) { messageKeys.push('thinking'); }
+            if (message.type !== undefined) { messageKeys.push('type'); }
+            requireExactKeys(message, messageKeys, `${path}.sessions[${index}].history[${messageIndex}]`);
+            if (message.role !== 'user' && message.role !== 'ai') {
+                throw new FourthWallStateError('INVALID_CURRENT_DATA', 'fourth-wall message role is invalid');
+            }
+            requirePersistedString(message.content, 'fourth-wall message content');
+            if (!Number.isFinite(message.ts)) {
+                throw new FourthWallStateError('INVALID_CURRENT_DATA', 'fourth-wall message timestamp must be finite');
+            }
+            if (message.thinking !== undefined) { requirePersistedString(message.thinking, 'message.thinking'); }
+            if (message.type !== undefined) { requirePersistedString(message.type, 'message.type'); }
+        }
+    }
+    const activeSessionId = requirePersistedString(state.activeSessionId, `${path}.activeSessionId`);
+    if (!ids.has(activeSessionId)) {
+        throw new FourthWallStateError('INVALID_CURRENT_DATA', `${path}.activeSessionId must reference a session`);
+    }
+}
+
+export function parseFourthWallChatState(value: unknown): FourthWallChatState {
+    validateFourthWallChatState(value);
+    return structuredClone(value);
+}

@@ -31,7 +31,7 @@ import {
     requireActiveGame,
     terminalAction,
 } from './action-policy.js';
-import { startGameStakeLeg } from './root-protocol.js';
+import { startGameStakeLeg } from './economy-protocol.js';
 import type {
     GameBidDiceCommand,
     GameCommand,
@@ -40,14 +40,14 @@ import type {
     GameStartDiceCommand,
     GameStartLadderCommand,
     GameStepLadderCommand,
-    PreparedRoot,
+    PreparedGameContext,
     RunGameAction,
 } from './service.js';
 
 interface GameCommandDependencies {
     random: GameRandomSource;
     runAction: RunGameAction;
-    unusedGameId: (prepared: PreparedRoot, kind: 'dice' | 'push' | 'ladder') => string;
+    unusedGameId: (prepared: PreparedGameContext, kind: 'dice' | 'push' | 'ladder') => string;
 }
 
 export function createGameCommands({ random, runAction, unusedGameId }: GameCommandDependencies) {
@@ -55,7 +55,7 @@ export function createGameCommands({ random, runAction, unusedGameId }: GameComm
         return runAction(input, { kind: 'dice-start', bet: input.bet }, (prepared) => {
             assertNoActiveGame(prepared.state);
             const bet = normalizeGameDiceBet(input.bet);
-            assertPlayerFunds(prepared.ledger, bet);
+            assertPlayerFunds(prepared.balance, bet);
             const game = createGameDiceGame({ id: unusedGameId(prepared, 'dice'), bet }, random);
             const command: GameAction = { kind: 'dice-start', gameId: game.id, bet };
             return {
@@ -114,7 +114,7 @@ export function createGameCommands({ random, runAction, unusedGameId }: GameComm
     function startPush(input: GameServiceCommand): Promise<GameServiceView> {
         return runAction(input, { kind: 'push-start' }, (prepared) => {
             assertNoActiveGame(prepared.state);
-            assertPlayerFunds(prepared.ledger, GAME_PUSH_BET);
+            assertPlayerFunds(prepared.balance, GAME_PUSH_BET);
             const game = createGamePushGame({ id: unusedGameId(prepared, 'push') }, random);
             const command: GameAction = { kind: 'push-start', gameId: game.id };
             return {
@@ -162,7 +162,7 @@ export function createGameCommands({ random, runAction, unusedGameId }: GameComm
         return runAction(input, { kind: 'ladder-start', bet: input.bet }, (prepared) => {
             assertNoActiveGame(prepared.state);
             const bet = normalizeGameLadderBet(input.bet);
-            assertPlayerFunds(prepared.ledger, bet);
+            assertPlayerFunds(prepared.balance, bet);
             const game = createGameLadderGame({ id: unusedGameId(prepared, 'ladder'), bet });
             const command: GameAction = { kind: 'ladder-start', gameId: game.id, bet };
             return {

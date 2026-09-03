@@ -20,6 +20,7 @@ function createHarness() {
     };
     const map = {
         readCurrent: () => ({ map: host.mapData, writeState: host.writeState }),
+        refreshCurrent: async () => ({ map: host.mapData, writeState: host.writeState }),
         getWriteState: () => host.writeState,
         confirmPending: async () => ({ status: 'confirmed' }),
         adoptServerState: async () => {host.writeState = 'ready'; return { status: 'adopted' };},
@@ -77,7 +78,7 @@ function activation(host) {
 
 test('Map activation is read-only and its maintenance endpoints return stable outcome copy', async () => {
     const { controller, host } = createHarness();
-    const state = controller.activate(activation(host));
+    const state = await controller.activate(activation(host));
 
     assert.equal(state.status, 'ready');
     assert.equal(state.map, null);
@@ -97,12 +98,12 @@ test('Map activation is read-only and its maintenance endpoints return stable ou
     assert.deepEqual(host.calls.filter(call => call[0] !== 'cancel'), [['manual'], ['rebuild']]);
 });
 
-test('Map subscriptions publish only for the active chat and expose maintenance state', () => {
+test('Map subscriptions publish only while their activation still owns the current chat', async () => {
     const { controller, host } = createHarness();
-    controller.activate(activation(host));
+    await controller.activate(activation(host));
 
-    host.dataListener({ identityKey: 'other', writeState: 'ready' });
-    assert.equal(host.posts.length, 0);
+    host.dataListener();
+    assert.equal(host.posts.length, 1);
 
     host.status = { state: 'running', mode: 'rebuild', message: '', lastRunAt: null };
     host.statusListener('map', host.status);
@@ -111,12 +112,12 @@ test('Map subscriptions publish only for the active chat and expose maintenance 
 
     host.identity = { key: 'character:1:chat-b' };
     host.dataListener({ identityKey: 'character:1:chat-a', writeState: 'ready' });
-    assert.equal(host.posts.length, 1);
+    assert.equal(host.posts.length, 2);
 });
 
 test('leaving Map cancels foreground work and rejects stale page requests', async () => {
     const { controller, host } = createHarness();
-    controller.activate(activation(host));
+    await controller.activate(activation(host));
     controller.deactivate('route-left');
 
     assert.deepEqual(host.calls.at(-1), ['cancel', 'route-left']);
@@ -132,7 +133,7 @@ test('leaving Map cancels foreground work and rejects stale page requests', asyn
 test('write-gated maintenance is delegated to the runner and conflict recovery adopts server data', async () => {
     const { controller, host } = createHarness();
     host.writeState = 'unconfirmed';
-    controller.activate(activation(host));
+    await controller.activate(activation(host));
     const payload = { chatIdentity: host.identity.key };
 
     assert.equal((await controller.handleMessage({ type: 'map/maintain-once', payload })).message, '地图无需更新。');
@@ -149,7 +150,7 @@ test('failed outcomes never expose internal reasons to the Map page', async () =
         failedParticipantIds: ['map'], participantResults: [{ participantId: 'map', status: 'failed', changed: false }],
         reason: 'provider_secret_stack_and_key',
     };
-    controller.activate(activation(host));
+    await controller.activate(activation(host));
     const result = await controller.handleMessage({
         type: 'map/maintain-once', payload: { chatIdentity: host.identity.key },
     });

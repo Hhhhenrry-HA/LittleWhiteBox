@@ -37,17 +37,17 @@ Agent 只负责提出任务文本、候选人文本和活动任务的高层状�
 | 响应协议 | 无工具的一次 JSON 输出；逐条保留合法 sibling | 采用 | board/candidate compiler，不进入 maintenance tool loop |
 | 活动任务工具 | `TaskProgress`、`TaskComplete`、`TaskFail`三个高层工具 | 采用 | `apps/tasks/maintenance`拥有；Agent 不见领域 patch 或 Economy |
 | 目标语义 | objective 是唯一完成目标，requirements 只约束执行 | 采用 | Prompt、工具说明和领域状态机共同约束 |
-| 托管结算 | 接取/发布先托管；完成付给执行者；失败退回出资方 | 采用 | Tasks application 与 Economy 在一次根 mutation 中提交 |
-| 任务存储 | IndexedDB task versions、current marker、sessionId | 不采用 | 普通 OS 使用当前聊天`domains.tasks`事件链 |
-| 剧情边界 | `anchorOrder`、Phone boundary、楼层可见性 | 不采用 | 普通 OS 使用现有`AcceptedTurnSource`和 chat identity |
+| 托管结算 | 接取/发布先托管；完成付给执行者；失败退回出资方 | 采用 | Tasks Scoped transaction 调用 Economy Capability，以一次 sidecar 提交落定 |
+| 任务存储 | IndexedDB task versions、current marker、sessionId | 不采用 | 普通 OS 使用当前聊天 sidecar 的`tasks`分区事件链 |
+| 剧情边界 | `anchorOrder`、Phone boundary、楼层可见性 | 不采用 | 普通 OS 使用现有`AcceptedTurnSource`和消息来源校验 |
 | 删除/回滚 | 版本、board 和资金随楼层回滚 | 不采用 | 普通 OS 的游戏、道具、资金和任务均不随删楼回滚 |
-| Board epoch | 为回滚后同 revision 的旧请求防护 | 不采用 | 普通 OS 无回滚；`boardId + root queue`足以拒绝迟到替换 |
+| Board epoch | 为回滚后同 revision 的旧请求防护 | 不采用 | 普通 OS 无回滚；`boardId + Kernel FIFO`足以拒绝迟到替换 |
 | 离场经过量 | 任务版本保存楼层锚点 | 调整 | 保存`observedAssistantCount`，只计算非负差值，不建立楼层映射 |
 | 生成上下文 | Tavern 自有角色卡、世界书、memory/status/map | 调整 | Tasks 自己从当前 SillyTavern 聊天、角色卡、persona 和激活世界书构造只读上下文 |
-| 自动维护编排 | Tavern manager、lease、accepted-state transaction | 不采用 | 使用普通 OS 现有 maintenance runner；Tasks 只注册 participant |
+| 自动维护编排 | Tavern manager、lease、accepted-state transaction | 不采用 | 使用普通 OS Maintenance Capability；Tasks 只注册 participant |
 | 历史重建 | Tavern 可按 anchor 读历史状态 | 不采用 | Tasks 没有 rebuild mode，也不扫描历史重造合同 |
 
-这里的“采用”指用户能观察到相同流程与判定心智；普通 OS 仍保存自己的格式并走自己的根 store。
+这里的“采用”指用户能观察到相同流程与判定心智；普通 OS 仍保存自己的格式并走 OS Kernel 的分区事务。
 
 ## 3. 开工检查结论
 
@@ -57,10 +57,10 @@ Agent 只负责提出任务文本、候选人文本和活动任务的高层状�
 | 唯一事实来源 | `TaskDomainV1.events`是任务状态来源；`TaskDomainV1.board`是当前未接取候选快照；Economy 流水是资金来源 |
 | 持久态 | board、任务事件、创建时冻结事实、候选人、出资/执行方、最近观察到的 Assistant 回复数 |
 | 临时态 | 表单草稿、页面路由、筛选/分页、API 请求、AbortController、maintenance staging、运行错误和状态提示 |
-| 外部依赖 | Economy、根 chat data store、共享 Agent gateway、maintenance runner、SillyTavern 当前聊天/角色/世界书和主生成生命周期 |
-| 注册入口 | settings、domain validator、Task/Economy 交叉不变量、service、participant、prompt runtime、descriptor/runtime、shell APP |
-| 删除路径 | 先结清所有非终态 escrow，再删`apps/tasks`、`domains/tasks`及注册并清理`domains.tasks`；既有 Economy 流水保留 |
-| 真实兼容对象 | 当前普通 OS 根、Economy V1、SillyTavern、浏览器/WebView、共享供应商协议；没有旧 Tasks 产品数据 |
+| 外部依赖 | ScopedChatStore、Economy/Agent/Maintenance Capability、SillyTavern 当前聊天/角色/世界书和主生成生命周期 |
+| 注册入口 | Tasks module、`tasks`分区 parser、Capability 依赖、participant、prompt runtime、Host/Shell catalog |
+| 删除路径 | 先结清所有非终态 escrow，再删`apps/tasks`、`domains/tasks`及两处 catalog/participant 注册并清理`tasks`分区；既有 Economy 流水按产品策略保留 |
+| 真实兼容对象 | SillyTavern、浏览器/WebView、共享供应商协议；没有正式线 Tasks/Economy 数据，测试线旧根不迁移 |
 | 最少必要测试 | 状态转移、响应编译、CAS/幂等、escrow 原子性、Session staging、零隐式 API、接受轮/取消/保存、关键 UI 浏览器路径 |
 
 ## 4. 产品流程
@@ -104,7 +104,7 @@ Agent 只负责提出任务文本、候选人文本和活动任务的高层状�
 发布流程：
 
 1. 校验用户输入、当前 Tasks CAS 和玩家余额；
-2. 在一个根 mutation 中执行`player → escrow:task:<taskId>`并创建`recruiting`任务；
+2. 在一个 Tasks Scoped transaction 中调用 Economy Capability，执行`player → escrow:task:<taskId>`并创建`recruiting`任务；
 3. 用户点击「招募候选人」时才调用 Agent；
 4. 合法候选结果替换该任务当前候选列表；
 5. 用户选择一人后写`assigned`事件，任务进入`active`并清空候选列表。
@@ -150,7 +150,7 @@ Agent 只负责提出任务文本、候选人文本和活动任务的高层状�
 | active | fail | CAS 匹配；存在原出资方 | failed |
 | completed/failed/cancelled | 任意状态命令 | 终态不可重开 | 拒绝 |
 
-所有会产生`TaskEvent`的写动作由 host Controller、candidate generation request 或 maintenance Session 创建并固定`actionId`；iframe 只提供请求相关 ID，不得提供领域 actionId。同一 actionId 只有完全相同的命令可以幂等重放；不同命令复用时是冲突。Board 替换没有 TaskEvent，使用请求 token、预期 boardId 和根写队列防迟到，不虚构 actionId。对既有任务的 UI 动作携带`expectedTaskRevision + expectedEventId`，避免服务器状态被采用后出现同 revision 不同任务版本的误写。
+所有会产生`TaskEvent`的写动作由 Host Controller、candidate generation request 或 maintenance Session 创建并固定`actionId`；iframe 只提供请求相关 ID，不得提供领域 actionId。同一 actionId 只有完全相同的命令可以幂等重放；不同命令复用时是冲突。Board 替换没有 TaskEvent，使用请求 token、预期 boardId 和 Kernel FIFO 防迟到，不虚构 actionId。对既有任务的 UI 动作携带`expectedTaskRevision + expectedEventId`，避免服务端 sidecar 被重新读取后出现同 revision 不同任务版本的误写。
 
 Agent 工具只提供`taskId + revision`。Session 已在创建时捕获每个任务的`expectedEventId`，提交时仍以完整 CAS 校验；模型不能选择 eventId、actionId 或账户。
 
@@ -296,7 +296,7 @@ interface TaskRecord {
 
 投影默认文案由代码派生：accepted 为“已接取任务”，published 为“等待应征者”，assigned 为“<候选人>已接取任务”；`progressed`随后替换累计进展。`progressSummary`不是逐轮日志，只保留与 objective 直接相关的已确认状态和剩余差距，最长 120 Unicode code point。
 
-`observedAssistantCount`使用普通 OS 现有定义：当前聊天中非 User、非 system 的 Assistant 消息数量。它不是消息 ID、楼层或回滚锚点。maintenance 使用接受来源捕获的`source.assistantCount`；本地任务动作在主生成空闲时从绑定 chat identity 读取一次。离场经过量固定为：
+`observedAssistantCount`使用普通 OS 现有定义：当前聊天中非 User、非 system 的 Assistant 消息数量。它不是消息 ID、楼层或回滚锚点。maintenance 使用接受来源捕获的`source.assistantCount`；本地任务动作在主生成空闲时从当前绑定聊天读取一次。离场经过量固定为：
 
 ```text
 elapsedAssistantReplies = max(0, source.assistantCount - task.lastObservedAssistantCount)
@@ -317,13 +317,13 @@ elapsedAssistantReplies = max(0, source.assistantCount - task.lastObservedAssist
 - candidate 的 name 最长 120，其余四个字段各最长 2,000；resultSummary 最长 2,000；
 - 所有 TaskParty displayName 最长 120；由候选人形成的 world party 资料沿用对应 candidate 上限；`cancelled.resultSummary`由代码固定为本地撤回文案，不接收用户或 Agent 自由文本；
 - 当前 board 包含 1–6 项，按固定六方向顺序保存且方向唯一；完整生成目标是六项和 3/2/1 posture 配额，但部分成功的 board 仍是合法持久数据。候选列表永远最多四人；
-- Tasks 不人为限制历史事件条数；与现有 Economy/Shop/Bank 一样由字段不变量和根保存能力约束，不能在任务仍有 escrow 时因任意历史上限阻止结算。
+- Tasks 不人为限制历史事件条数；与现有 Economy/Shop/Bank 一样由字段不变量和分区容量约束，不能在任务仍有 escrow 时因任意历史上限阻止结算。
 
 ## 7. Board 与候选人生成协议
 
 ### 7.1 Tasks 自有上下文
 
-显式生成请求由`apps/tasks/generation`构造下列唯一上下文。不得把整个`getContext()`、聊天 metadata、OS 根或 Tavern Tasks 投进模型：
+显式生成请求由`apps/tasks/generation`构造下列唯一上下文。不得把整个`getContext()`、聊天 metadata、sidecar Envelope 或 Tavern Tasks 投进模型：
 
 ```ts
 interface TaskGenerationContext {
@@ -357,13 +357,13 @@ interface TaskGenerationContext {
 type TaskGenerationBoundary =
     | {
         kind: 'board';
-        chatIdentity: string;
+        chatScopeToken: string;       // Kernel 为当前 osId/binding activation 签发，不进入模型
         contextSnapshot: TaskGenerationContext;
         expectedBoardId: string | null;
     }
     | {
         kind: 'candidates';
-        chatIdentity: string;
+        chatScopeToken: string;
         contextSnapshot: TaskGenerationContext;
         taskId: string;
         expectedTaskRevision: number;
@@ -377,9 +377,9 @@ type TaskGenerationBoundary =
 
 `storyEvents`只能调用 Story Summary 的`getStorySummaryL2EventText({ throughMessageIndex, maxCharacters: 20_000 })`窄接口。接口只投影 events 的时间、标题、参与者和摘要，只接受`_addedAt <= throughMessageIndex`的完整事件块；从最新事件向前装箱后恢复时间正序。Story Summary 不可消费、关闭、读取失败或没有合格事件时整块缺席，普通 OS 不读取它的 metadata/store。
 
-上下文快照只作为五层请求中的 XML 资料块使用，不再序列化成单一上下文 JSON。保存前由同一个 adapter 重新捕获并规范化，要求 chat identity 与整个快照深相等。实际参与请求的消息、swipe、角色卡、persona、激活世界书、L2 事件或玩家身份变化会使迟到结果失效；未进入有界上下文的旧消息不构成虚假依赖。边界只活在本次请求中，不持久化。
+上下文快照只作为五层请求中的 XML 资料块使用，不再序列化成单一上下文 JSON。保存前由同一个 adapter 重新捕获并规范化，要求 osId/binding 与整个快照深相等。实际参与请求的消息、swipe、角色卡、persona、激活世界书、L2 事件或玩家身份变化会使迟到结果失效；未进入有界上下文的旧消息不构成虚假依赖。边界只活在本次请求中，不持久化。
 
-角色卡、persona、世界书、L2 事件、Map 摘要、近邻消息和任务文本全部放进明确 XML 资料块；资料消息可以使用 system 角色，但其中的命令和输出要求始终不可信。上下文捕获失败、主生成正在运行或 chat identity 改变时不调用 Agent；世界书解析器单独失败可降级为空并记录日志，不能伪造世界设定。L2 事件只通过 Story Summary 的窄接口读取，最多 20,000 字符并按完整事件块裁剪。
+角色卡、persona、世界书、L2 事件、Map 摘要、近邻消息和任务文本全部放进明确 XML 资料块；资料消息可以使用 system 角色，但其中的命令和输出要求始终不可信。上下文捕获失败、主生成正在运行或 osId/binding 改变时不调用 Agent；世界书解析器单独失败可降级为空并记录日志，不能伪造世界设定。L2 事件只通过 Story Summary 的窄接口读取，最多 20,000 字符并按完整事件块裁剪。
 
 不读取 Tavern memory/status；普通 OS Map 只通过自己的安全 Atlas 投影进入`<current_state>`，不读取其 store 或 Scene，不保存这份上下文。
 
@@ -555,7 +555,7 @@ Candidates 编译规则：
 
 Board 只要至少一项合法即为 changed，因此完整六项为 updated、保留部分合法项为 partial；它没有 unchanged 结果。Candidates 先按五个规范字段和顺序与当前列表比较，不把 candidateId 参与比较：空数组或三至四个合法项、无 skipped 且内容完全相同时返回既有列表及 IDs/unchanged；有 skipped 或非空合法结果少于三人时状态优先为 partial，即使合法 survivors 与当前列表相同，此时`changed:false`且 data mode 为 unchanged；内容确实不同时返回无 ID drafts。完整合法为 updated，协议不完整但有可用 sibling 为 partial。`failed`始终表示没有可提交候选。
 
-Request 只有在 compiler 给出 changed 的 updated/partial 后才调用应用服务。Application 在授权 token、context snapshot、board/task CAS、主生成和根写门第一次检查全部通过后，使用 Tasks 私有 ID factory 为本次 board/listing 或 candidate batch 分配并查重 ID，再进入唯一根 mutation；第二次`beforeCommit`失败时整批候选不安装。unchanged 不分配 ID、不产生事件或保存。Provider 明确以 length/max_tokens 截断时优先使用`response_truncated`，不伪装成普通 JSON 错误。
+Request 只有在 compiler 给出 changed 的 updated/partial 后才调用应用服务。Application 在授权 token、context snapshot、board/task CAS、主生成和 Kernel 文件写状态第一次检查全部通过后，使用 Tasks 私有 ID factory 为本次 board/listing 或 candidate batch 分配并查重 ID，再进入唯一 Scoped transaction；上传前 guard 失败时整批候选不安装。unchanged 不分配 ID、不产生事件或保存。Provider 明确以 length/max_tokens 截断时优先使用`response_truncated`，不伪装成普通 JSON 错误。
 
 ## 8. 活动任务 Prompt、工具与 Session
 
@@ -733,7 +733,7 @@ TaskFail
 - Session 最终状态：有 changed staging 且仍有失败为 partial；有 changed staging 且无失败为 updated；无 staging 且有失败为 failed；无 staging 且无失败为 unchanged；
 - 参数/解析/可恢复领域错误由通用 Provider tool loop 结构化回喂；同签名连续三次失败刹车、第四次结束，最多 12 个 Provider 回合。
 
-请求正常结束时，Session 以一次 Tasks 根 mutation 提交全部 staged commands。Provider 后续失败或达到轮次上限时，有合法 staging 则按 common runner 规则 partial 提交；没有合法 staging 则 failed。单个坏任务不能拖死其他任务的合法 staged command。
+请求正常结束时，Session 以一次 Tasks Scoped transaction 提交全部 staged commands。Provider 后续失败或达到轮次上限时，有合法 staging 则按 common runner 规则 partial 提交；没有合法 staging 则 failed。单个坏任务不能拖死其他任务的合法 staged command。
 
 ### 8.4 无工作短路
 
@@ -800,7 +800,7 @@ Task/Economy 交叉不变量：
 - 玩家余额不能透支；世界 counterparty 可作为外部任务出资/收款边界，不在 UI 中显示余额；
 - Agent 永远不能改 reward、选择账户、追加罚款/补偿或创建第二份奖励。
 
-所有资金事件和任务事件在同一个候选根内生成、交叉校验并由一次`store.mutateCurrent`保存。明确保存失败一起恢复；保存结果不确定时保留已安装候选并冻结写入，确认前不重复结算，也不调用新的 Tasks Agent 请求。
+所有资金事件和任务事件在同一个 Scoped transaction 中生成、交叉校验，形成一个 sidecar candidate 并以一个 commitId 上传。明确保存失败时两分区都不发布；结果不确定时由 Kernel 保留同一 candidate 并冻结当前聊天写入，确认前不重复结算，也不调用新的 Tasks Agent 请求。
 
 Wallet 只展示 Economy 流水，不提供任务操作入口。
 
@@ -819,22 +819,22 @@ Wallet 只展示 Economy 流水，不提供任务操作入口。
 | 操作 | Agent | 条件 |
 | --- | --- | --- |
 | 打开/离开 APP、切页、查看 board/详情/历史 | 否 | 只读本地投影 |
-| 接取、发布、选人、撤回 | 否 | 确定性根 mutation |
-| 刷新世界 board | 是 | 用户明确点击；写门 ready；主生成空闲 |
-| 招募/刷新候选人 | 是 | 用户明确点击；目标仍 recruiting；写门 ready；主生成空闲 |
+| 接取、发布、选人、撤回 | 否 | 确定性 Scoped transaction |
+| 刷新世界 board | 是 | 用户明确点击；Kernel 文件状态 ready；主生成空闲 |
+| 招募/刷新候选人 | 是 | 用户明确点击；目标仍 recruiting；Kernel 文件状态 ready；主生成空闲 |
 | 自动维护 | 是 | User 保存后上一接受轮；开关开启；至少一项 active 的基线早于该来源 |
 | 维护一次 | 是 | 用户明确点击；最新完整接受轮；至少一项 active 的基线早于该来源 |
 | 从聊天重建 Tasks | 不存在 | 不提供入口 |
 
-Board/candidate 每次显式请求只加载一次配置、创建一个 Agent session、执行一次无工具调用。切聊、离开所属页面、OS cleanup 或再次发起同类请求时 abort；迟到结果必须通过 chat identity、授权 token、board/task CAS 和根写门检查。
+Board/candidate 每次显式请求只加载一次配置、创建一个 Agent session、执行一次无工具调用。切聊、离开所属页面、OS cleanup 或再次发起同类请求时 abort；迟到结果必须通过 osId/binding、app activation token、board/task CAS 和 Kernel 文件写状态检查。
 
-Maintenance 使用现有 FIFO、来源校验和 participant token。Tasks 与 Map 都有工作时共用一个 Agent adapter 和 Provider tool loop，但各有 Prompt、工具、领域 Session、staging、结果和根 mutation；一方失败不能撤销或冒充另一方。
+Maintenance 使用现有 FIFO、来源校验和 participant token。Tasks 与 Map 都有工作时共用一个 Agent adapter 和 Provider tool loop，但各有 Prompt、工具、领域 Session、staging、结果和 Scoped transaction；一方失败不能撤销或冒充另一方。
 
 ### 10.3 保存 commit point
 
-根候选安装并向宿主发出保存请求之前，切聊、OS cleanup、关闭对应自动开关、接受消息变化、task revision/eventId 改变或主动取消都会丢弃尚未提交的自动 staging；前台请求另由离开所属页面取消。
+sidecar replace 发出之前，切聊、OS cleanup、关闭对应自动开关、接受消息变化、task revision/eventId 改变或主动取消都会丢弃尚未提交的自动 staging；前台请求另由离开所属页面取消。
 
-保存请求已经发出后无法物理回滚。此时必须等待真实保存结果：成功就保留任务/资金并报告已提交，明确失败则根 store 恢复，结果未知则进入 unconfirmed。UI 和文档都不能声称“任何时刻都能取消”。
+sidecar replace 已经发出后无法物理回滚。此时必须等待真实保存结果：confirmed 才发布任务/资金快照，明确失败则不发布，结果未知则进入文件级 unconfirmed。UI 和文档都不能声称“任何时刻都能取消”。
 
 ## 11. 主 RP 任务投影
 
@@ -884,12 +884,12 @@ Provider 原文、错误堆栈、内部 code 和工具 hint 只进日志。原�
 - board/candidate API 或解析失败保留旧数据；部分合法结果按第 7.3 节保存并明确显示 partial；
 - 新 board 输入受当前方向/等级/reward/posture/timing 策略约束；既有 board 与任务只按 V1 持久合同读取，旧冻结 reward 不被当前区间否定；
 - maintenance 工具失败只影响所属任务；Map 可独立提交；
-- 创建 SillyTavern 聊天分支时接受宿主复制的 Tasks + Economy metadata 快照，此后两个分支独立推进；
+- 创建 SillyTavern 聊天分支时由 Kernel 复制父 sidecar 的已确认 Tasks + Economy 分区并生成新 osId，此后两个分支独立推进；
 - 编辑、删除、换 swipe 不回滚已提交任务，不退托管、不追回报酬；
-- conflict 的「采用服务端数据」沿用根 store：服务端根读取并完整校验成功后才替换本地候选并恢复 ready；失败继续 conflict；
-- 删除 Tasks 功能时使用当时当前 schema 的一次性退场流程，不在本阶段预埋永久 migration：先在 Tasks validator 仍注册时，为所有 active 世界任务写 failed + 原 world counterparty refund；玩家发布的 recruiting 写 cancelled + player refund，active 写 failed + player refund；整批保存成完全合法的终态 Tasks/Economy 根，明确成功前不得进入下一步；
-- 随后的移除版本在升级边界删除`domains.tasks`和 Tasks 设置，同时停止注册 Tasks/Economy 交叉 validator。既有与清理产生的 Tasks Economy 流水作为普通不可变账本历史保留，继续由 Economy 通用 validator 校验，但不再要求一个已删除的 Tasks domain 反向证明；
-- 退场中断时保留完整 Tasks domain 并可重试，不能留下仍有余额的`escrow:task:*`。过渡版本完成后删除一次性退场代码，不留下旧类型、旧设置字段或永久兼容读取器。
+- conflict 的「采用服务端数据」属于 Kernel 文件级动作：服务端 Envelope 读取并验证成功后才替换本地候选并恢复 ready；失败继续 conflict；
+- 删除 Tasks 功能时使用当时当前 schema 的一次性退场流程，不在本阶段预埋永久 migration：先在 Tasks module 与 Economy Capability 仍注册时，为所有 active 世界任务写 failed + 原 world counterparty refund；玩家发布的 recruiting 写 cancelled + player refund，active 写 failed + player refund；整批以一次 Scoped transaction 保存成合法的终态 Tasks/Economy 分区，confirmed 前不得进入下一步；
+- 随后的移除版本在升级边界删除`tasks`分区和 Tasks 设置，同时停止注册 Tasks/Economy 交叉检查。既有与清理产生的 Tasks Economy 流水按明确产品策略处理；若保留，则继续由 Economy 通用不变量校验，但不再要求一个已删除的 Tasks 分区反向证明；
+- 退场中断时保留完整`tasks`分区并可重试，不能留下仍有余额的`escrow:task:*`。过渡版本完成后删除一次性退场代码，不留下旧类型、旧设置字段或永久兼容读取器。
 
 ## 14. 公开验收样例
 
@@ -917,7 +917,7 @@ Provider 原文、错误堆栈、内部 code 和工具 hint 只进日志。原�
 
 输入：玩家发布 60 币任务并选择 NPC；maintenance 对正确 revision 调用 Complete。
 
-预期：published 时 player -60、escrow +60；assigned/progress 不动钱；completed 时 escrow -60、NPC counterparty +60；任务与两笔资金各自在同次根 mutation 中出现。
+预期：published 时 player -60、escrow +60；assigned/progress 不动钱；completed 时 escrow -60、NPC counterparty +60；任务与两笔资金各自在同一次 sidecar commit 中出现。
 
 ### 14.5 目标唯一性
 
@@ -933,7 +933,7 @@ Provider 原文、错误堆栈、内部 code 和工具 hint 只进日志。原�
 
 输入：工具已经 stage Complete，但保存尚未开始时切聊。
 
-预期：staging 和结算均丢弃。若根候选已安装并发出保存后才切聊，则等待实际结果，成功时任务和资金保留，不能报告取消成功。
+预期：staging 和结算均丢弃。若 sidecar replace 已发出后才切聊，则等待实际结果，confirmed 时任务和资金保留，不能报告取消成功。
 
 ### 14.7 任务不得倒吃旧轮
 

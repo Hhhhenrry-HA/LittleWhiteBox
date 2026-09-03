@@ -27,7 +27,7 @@ import type {
     FourthWallGlobalSettingsPatch,
 } from '../types.js';
 import type { XiaobaiOsAppRuntime, XiaobaiOsChatIdentity } from '../../../types.js';
-import type { RootMutationOptions } from '../../../host/chat-data-store.js';
+import type { FourthWallMutationOptions } from './repository.js';
 import type { FourthWallImageProtocol } from './image-protocol.js';
 import type { FourthWallVoiceProtocol } from './voice-protocol.js';
 
@@ -38,7 +38,7 @@ interface ControllerChatRepository {
     readCurrentChatFourthWall: () => FourthWallChatState | null;
     mutateCurrentChatFourthWall: (
         action: (current: FourthWallChatState) => FourthWallChatState,
-        options?: RootMutationOptions,
+        options?: FourthWallMutationOptions,
     ) => Promise<FourthWallChatState>;
 }
 

@@ -1,4 +1,5 @@
-import type { XiaobaiOsAgentGateway } from '../../../host/agent/gateway.js';
+import type { XiaobaiOsAgentGateway } from '../../../capabilities/agent/gateway.js';
+import type { XiaobaiOsExecutionScope } from '../../../kernel/execution-scope.js';
 import type { XiaobaiOsHostFrameMessage } from '../../../host/frame-bridge.js';
 import type { XiaobaiOsAppActivationContext, XiaobaiOsAppRuntime } from '../../../types.js';
 import type { AgentApiClientState } from '../types.js';
@@ -25,6 +26,7 @@ function loadingState(): AgentApiClientState {
 
 export function createAgentApiController(
     gateway: XiaobaiOsAgentGateway,
+    execution?: XiaobaiOsExecutionScope,
 ): XiaobaiOsAppRuntime & {
     activate: NonNullable<XiaobaiOsAppRuntime['activate']>;
     handleMessage: NonNullable<XiaobaiOsAppRuntime['handleMessage']>;
@@ -56,12 +58,13 @@ export function createAgentApiController(
     }
 
     function scheduleInitialLoad(current: AgentApiActivation): void {
-        globalThis.setTimeout(() => {
+        const load = async () => {
             if (!isCurrent(current)) {return;}
-            void readState().then((state) => {
-                if (isCurrent(current)) {current.post('agent-api/state', { state });}
-            });
-        }, 0);
+            const state = await readState();
+            if (isCurrent(current)) {current.post('agent-api/state', { state });}
+        };
+        if (execution) { execution.setTimeout(load, 0); }
+        else { globalThis.setTimeout(() => { void load(); }, 0); }
     }
 
     function beginNetworkOperation(): AbortController {
@@ -137,6 +140,8 @@ export function createAgentApiController(
             updatedAt: Number(detail.updatedAt) || 0,
         });
     }
+
+    execution?.addCleanup(() => cancelForeground('execution-disposed'));
 
     return Object.freeze({
         activate,

@@ -1,13 +1,9 @@
-import {
-    XiaobaiOsCommittedMutationError,
-    XiaobaiOsUnconfirmedMutationError,
-} from '../../../host/chat-data-store.js';
-import type { AcceptedTurnSource } from '../../../host/maintenance/accepted-turn-source.js';
+import type { AcceptedTurnSource } from '../../../capabilities/maintenance/accepted-turn-source.js';
 import type {
     MaintenanceCommitGuard,
     MaintenanceParticipantResult,
     MaintenanceSession,
-} from '../../../host/maintenance/registry.js';
+} from '../../../capabilities/maintenance/registry.js';
 import type { TaskRecord } from '../../../domains/tasks/types.js';
 import type { TaskMaintenanceCommand, TasksService } from '../application/service.js';
 import { compileTaskMaintenanceCommand } from './command-compiler.js';
@@ -15,7 +11,7 @@ import { buildTaskMaintenanceDataMessage, TASK_MAINTENANCE_PROMPT } from './prom
 import { TASK_MAINTENANCE_TOOLS } from './tool-contract.js';
 
 export function createTaskMaintenanceSession(
-    tasks: TasksService,
+    tasks: Pick<TasksService, 'readCurrent' | 'createActionId' | 'commitMaintenance'>,
     source: AcceptedTurnSource,
     recordsValue: readonly TaskRecord[],
 ): MaintenanceSession {
@@ -89,10 +85,12 @@ export function createTaskMaintenanceSession(
                 committed = true;
                 return result;
             } catch (error) {
-                if (!(error instanceof XiaobaiOsCommittedMutationError)
-                    && !(error instanceof XiaobaiOsUnconfirmedMutationError)) {throw error;}
+                const failure = error !== null && typeof error === 'object'
+                    ? error as { mutationCommitted?: unknown; uncertain?: unknown }
+                    : null;
+                if (failure?.mutationCommitted !== true && failure?.uncertain !== true) {throw error;}
                 committed = true;
-                if (error instanceof XiaobaiOsUnconfirmedMutationError) {throw error;}
+                if (failure.uncertain === true) {throw error;}
                 return undefined;
             }
         },

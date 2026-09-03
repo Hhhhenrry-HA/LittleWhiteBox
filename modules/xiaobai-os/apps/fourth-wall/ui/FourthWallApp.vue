@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, toRaw } from 'vue';
-import type { XiaobaiOsAppProps } from '../../../shell/app-src/app-registry.js';
+import type { XiaobaiOsAppProps } from '../../../shell/app-contract.js';
 import FourthWallConversation from './FourthWallConversation.vue';
 import FourthWallPromptEditor from './FourthWallPromptEditor.vue';
 import FourthWallSettings from './FourthWallSettings.vue';

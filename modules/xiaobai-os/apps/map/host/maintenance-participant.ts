@@ -1,7 +1,7 @@
 import type { MapService } from '../application/service.js';
 import type { MapSettings } from '../types.js';
-import type { MaintenanceMode, MaintenanceParticipant } from '../../../host/maintenance/registry.js';
-import type { AcceptedTurnSource } from '../../../host/maintenance/accepted-turn-source.js';
+import type { MaintenanceMode, MaintenanceParticipant } from '../../../capabilities/maintenance/registry.js';
+import type { AcceptedTurnSource } from '../../../capabilities/maintenance/accepted-turn-source.js';
 import { createMapMaintenanceSession } from '../maintenance/session.js';
 
 export { MAP_MAINTENANCE_TOOL_NAMES } from '../maintenance/tool-contract.js';
@@ -21,7 +21,8 @@ export function createMapMaintenanceParticipant({
             const settings = readSettings();
             return mode !== 'automatic' || settings?.autoMaintenance === true;
         },
-        createSession(source: AcceptedTurnSource, mode: MaintenanceMode) {
+        async createSession(source: AcceptedTurnSource, mode: MaintenanceMode) {
+            await map.refreshCurrent();
             return createMapMaintenanceSession(map, source, mode);
         },
     });

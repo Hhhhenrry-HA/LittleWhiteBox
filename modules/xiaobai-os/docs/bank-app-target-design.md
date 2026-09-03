@@ -11,10 +11,10 @@ Bank 是围绕钱包的独立金融领域，提供三款定期存单和三款浮
 | 内容 | 所有者 |
 | --- | --- |
 | 已发布产品合同、当前货架、头寸、冻结合同、金融活动 | `domains/bank` |
-| 余额与流水 | `domains/economy` |
-| Bank/Economy 原子组合 | `apps/bank/application` |
+| 余额、流水与资金写入 | Economy Capability、`domains/economy` |
+| Bank/Economy 原子组合 | `apps/bank/application`中的 Scoped transaction |
 | Assistant 回合读取、iframe 与 UI | `apps/bank/host`、`ui` |
-| 保存、队列、identity | `host/chat-data-store` |
+| sidecar、队列、osId/binding 与保存确认 | OS Kernel |
 
 Bank 不拥有聊天消息、剧情状态、全局时钟或第二份余额。
 
@@ -60,13 +60,13 @@ Assistant 数量可以因删除或切换可见回复而下降。此时只重新�
 - 提前支取：按冻结的提前支取额关闭目标，同时可结算其他已到期头寸。
 - 金额为 0 的资金腿不写流水。
 
-Bank event 与全部资金腿共用 actionId，在一个根 mutation 中提交。交叉不变量校验每个事件的预期资金腿、孤儿交易和每个开放 position 的 escrow 余额。
+Bank event 与全部资金腿共用 actionId，在一次 Scoped transaction 中形成同一个 sidecar candidate，并以一个 commitId 上传。交叉不变量只读取 Bank 分区与 caller-bound Economy 视图，校验每个事件的预期资金腿、孤儿交易和每个开放 position 的 escrow 余额。
 
 ## 6. 并发与失败
 
 写入校验 actionId、`revision + eventId`、产品、金额和头寸状态。新动作在主生成期间禁用，避免回合边界变化；已提交 action 的幂等重放不重新生成 ID 或随机数。
 
-明确保存失败恢复 Bank 与 Economy 的旧根；未确认保存保留候选并冻结写入，确认时不重抽收益。
+明确保存失败不发布 Bank 与 Economy 新快照；未确认上传由 Kernel 保留同一个 candidate 并冻结当前聊天写入，确认或重试时不重抽收益。
 
 ## 7. UI 与性能
 
@@ -74,6 +74,6 @@ Bank event 与全部资金腿共用 actionId，在一个根 mutation 中提交�
 
 ## 8. 删除与验收
 
-删除 Bank 前先确定开放 escrow 的清理策略，再删除`apps/bank`、`domains/bank`、host/shell 注册及`domains.bank`数据。
+删除 Bank 前先确定开放 escrow 的清理策略，再删除`apps/bank`、`domains/bank`、Host/Shell catalog 注册及`bank`分区。Economy 既有流水按明确产品策略处理，不能由 Kernel 猜测。
 
 最低验收：发布合同与货架分离、产品数学、回合倒退只改投影、随机只抽一次、幂等/CAS、原子开立结算、escrow 归零、保存失败与未确认、私有收益不泄漏、已有数据立即打开。

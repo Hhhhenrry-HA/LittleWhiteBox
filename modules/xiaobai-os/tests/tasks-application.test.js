@@ -1,14 +1,25 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import {
+    createEconomyCapabilityRegistrations,
+    ECONOMY_READ_CAPABILITY,
+    ECONOMY_TRANSACTION_CAPABILITY,
+} from '../capabilities/economy/index.js';
+import { AGENT_CAPABILITY } from '../capabilities/agent/index.js';
+import { MAINTENANCE_CAPABILITY } from '../capabilities/maintenance/index.js';
+import { MAP_CONTEXT_CAPABILITY } from '../apps/map/context-capability.js';
 import { createTaskIdFactory } from '../apps/tasks/application/ids.js';
 import { createTasksService } from '../apps/tasks/application/service.js';
-import { validateTaskEconomyConsistency } from '../apps/tasks/application/root-protocol.js';
-import { projectBalances } from '../domains/economy/ledger.js';
-import { createEconomyRepository } from '../domains/economy/repository.js';
-import { createChatDataStore } from '../host/chat-data-store.js';
+import { createTasksModule } from '../apps/tasks/module.js';
+import { TASKS_PARTITION } from '../apps/tasks/partition.js';
+import { ensureEconomy, projectBalances } from '../domains/economy/ledger.js';
+import { createCapabilityRegistry } from '../kernel/capability-registry.js';
+import { XiaobaiOsPartitionRegistry } from '../kernel/partition-registry.js';
+import { createTransactionCoordinator } from '../kernel/transaction-coordinator.js';
 
 const allowCommit = () => true;
+const binding = { kind: 'character', ownerLocator: 'tasks.png', chatId: 'chat-a' };
 
 function listing() {
     return {
@@ -26,14 +37,14 @@ function listing() {
     };
 }
 
-function publishedForm() {
+function publishedForm(reward = 80) {
     return {
         title: '护送药箱',
         objective: '把药箱送到南门诊所',
         requirements: '保持药箱直立',
         location: '南门诊所',
         risk: '道路可能封锁',
-        reward: 80,
+        reward,
     };
 }
 
@@ -47,80 +58,95 @@ function candidate() {
     };
 }
 
-function createHarness() {
-    const identity = { key: 'character:tasks:chat-a', chatId: 'chat-a' };
-    const chat = { metadata: {}, persisted: undefined, assistantCount: 3 };
+async function createHarness() {
+    let opaqueId = 0;
+    let kernelId = 0;
+    let clock = 1_000;
+    const initialLedger = ensureEconomy(undefined, { now: () => ++clock, createId: () => 'tx-opening' });
     const state = {
-        saveCount: 0,
-        transactionId: 0,
-        opaqueId: 0,
-        saveImpl: null,
-        persist(transaction) {
-            chat.persisted = structuredClone(transaction.xiaobaiOs);
+        writes: [],
+        replaceImpl: null,
+        capture: {
+            identityKey: 'character:tasks.png:chat-a',
+            binding,
+            reference: { formatVersion: 1, osId: 'tasks-os' },
+        },
+        persisted: {
+            formatVersion: 1,
+            osId: 'tasks-os',
+            binding,
+            revision: 0,
+            commitId: 'commit-0',
+            partitions: {
+                economy: initialLedger,
+                unrelated: { owner: 'another-app', value: 7 },
+            },
         },
     };
-    state.saveImpl = async transaction => state.persist(transaction);
-    const store = createChatDataStore({
-        getChatIdentity: () => identity,
-        getChatMetadata: () => chat.metadata,
-        async saveChatMetadata(transaction) {
-            state.saveCount += 1;
-            await state.saveImpl(transaction);
+    const storage = {
+        read: async () => structuredClone(state.persisted),
+        async replace(input) {
+            state.writes.push(structuredClone(input));
+            if (state.replaceImpl) { return await state.replaceImpl(input); }
+            state.persisted = structuredClone(input.candidate);
+            return { status: 'confirmed' };
         },
-        readPersistedXiaobaiOs: async () => structuredClone(chat.persisted),
+        delete: async () => 'deleted',
+    };
+    const capabilities = createCapabilityRegistry(createEconomyCapabilityRegistrations());
+    const partitions = new XiaobaiOsPartitionRegistry();
+    for (const registration of capabilities.partitions()) { partitions.register(registration); }
+    partitions.register(TASKS_PARTITION);
+    const coordinator = createTransactionCoordinator({
+        storage,
+        partitions,
+        capabilityBinder: capabilities,
+        chatReferences: {
+            capture: () => structuredClone(state.capture),
+            isCurrent: captured => captured.identityKey === state.capture.identityKey,
+            install: async () => ({ status: 'confirmed' }),
+        },
+        createId: () => `commit-${++kernelId}`,
     });
-    let clock = 1_000;
-    const now = () => ++clock;
-    const economy = createEconomyRepository(store, {
-        now,
-        createId: () => `tx-${++state.transactionId}`,
+    await capabilities.install({
+        createStore: (registration, allowedCapabilities) =>
+            coordinator.createScopedStore(registration, { allowedCapabilities }),
+        files: coordinator,
     });
-    const tasks = createTasksService(store, {
-        now,
-        ids: createTaskIdFactory({ randomUuid: () => `opaque-${++state.opaqueId}`, now }),
-        createTransactionId: () => `tx-${++state.transactionId}`,
+    const economy = capabilities.require(ECONOMY_READ_CAPABILITY);
+    const store = coordinator.createScopedStore(TASKS_PARTITION, {
+        allowedCapabilities: [ECONOMY_TRANSACTION_CAPABILITY],
+    });
+    const tasks = createTasksService(store, coordinator, economy, {
+        now: () => ++clock,
+        ids: createTaskIdFactory({ randomUuid: () => `opaque-${++opaqueId}`, now: () => clock }),
         getPlayerDisplayName: () => '主人',
-        getObservedAssistantCount: () => chat.assistantCount,
+        getObservedAssistantCount: () => 3,
     });
-    return { chat, economy, state, store, tasks };
+    await tasks.refreshCurrent();
+    return { capabilities, coordinator, economy, state, store, tasks };
 }
 
-async function openEconomy(harness) {
-    await harness.economy.ensureCurrent();
-    harness.state.saveCount = 0;
+function ledgerOf(harness) {
+    return harness.state.persisted.partitions.economy;
 }
-
-test('reading Tasks before Economy exists returns an empty local view', () => {
-    const harness = createHarness();
-    assert.deepEqual(harness.tasks.readCurrent(), {
-        domain: null,
-        records: [],
-        playerBalance: 0,
-        writeState: 'ready',
-    });
-});
 
 async function publishAndAssign(harness, prefix, form = publishedForm()) {
-    const published = await harness.tasks.publish({
-        actionId: `${prefix}-publish`,
-        form,
-    }, allowCommit);
-    const task = published.record;
+    const published = await harness.tasks.publish({ actionId: `${prefix}-publish`, form }, allowCommit);
     const replaced = await harness.tasks.replaceCandidates({
         actionId: `${prefix}-candidates`,
-        taskId: task.taskId,
-        expectedTaskRevision: task.taskRevision,
-        expectedEventId: task.eventId,
+        taskId: published.record.taskId,
+        expectedTaskRevision: published.record.taskRevision,
+        expectedEventId: published.record.eventId,
         candidates: [candidate()],
-        observedAssistantCount: harness.chat.assistantCount,
+        observedAssistantCount: 3,
     }, allowCommit);
-    const candidateId = replaced.record.candidates[0].candidateId;
-    return harness.tasks.assignCandidate({
+    return await harness.tasks.assignCandidate({
         actionId: `${prefix}-assign`,
-        taskId: task.taskId,
+        taskId: replaced.record.taskId,
         expectedTaskRevision: replaced.record.taskRevision,
         expectedEventId: replaced.record.eventId,
-        candidateId,
+        candidateId: replaced.record.candidates[0].candidateId,
     }, allowCommit);
 }
 
@@ -135,176 +161,240 @@ function maintenanceCommand(kind, actionId, record, summary) {
     };
 }
 
-test('received tasks atomically fund escrow and settle or refund through their frozen world party', async t => {
-    for (const terminal of ['complete', 'fail']) {
-        await t.test(terminal, async () => {
-            const harness = createHarness();
-            await openEconomy(harness);
-            const board = await harness.tasks.replaceBoard({
-                expectedBoardId: null,
-                listings: [listing()],
-                generatedAt: 10,
-            }, allowCommit);
-            const accepted = await harness.tasks.acceptListing({
-                actionId: `received-${terminal}-accept`,
-                boardId: board.view.domain.board.boardId,
-                listingId: board.view.domain.board.listings[0].listingId,
-            }, allowCommit);
-            const record = accepted.record;
-            const balances = projectBalances(harness.economy.readCurrent());
-            assert.equal(balances[`escrow:task:${record.taskId}`], 150);
-            assert.equal(balances[`counterparty:task:board:${record.taskId}`], -150);
-            assert.equal(harness.state.saveCount, 2);
+test('Tasks module owns a strict partition and declares only its five runtime capabilities', async () => {
+    assert.equal(TASKS_PARTITION.parse({ schemaVersion: 1, revision: 0, board: null, events: [] }).ok, true);
+    assert.equal(TASKS_PARTITION.parse({ schemaVersion: 1, revision: 0, board: null, events: [], extra: true }).ok, false);
 
-            const ended = await harness.tasks.commitMaintenance({
-                commands: [maintenanceCommand(terminal, `received-${terminal}`, record, '封蜡信已有明确结果')],
-                observedAssistantCount: 4,
-            }, allowCommit);
-            const finalBalances = projectBalances(harness.economy.readCurrent());
-            assert.equal(finalBalances[`escrow:task:${record.taskId}`], 0);
-            assert.equal(ended.record.status, terminal === 'complete' ? 'completed' : 'failed');
-            assert.equal(finalBalances.player ?? 0, terminal === 'complete' ? 250 : 100);
-            assert.doesNotThrow(() => validateTaskEconomyConsistency(harness.store.readCurrent()));
-        });
+    const module = createTasksModule({
+        getPlayerDisplayName: () => '主人',
+        getObservedAssistantCount: () => 3,
+        install: async () => ({}),
+    });
+    assert.deepEqual(module.capabilities.map(capability => capability.id), [
+        ECONOMY_READ_CAPABILITY.id,
+        ECONOMY_TRANSACTION_CAPABILITY.id,
+        AGENT_CAPABILITY.id,
+        MAINTENANCE_CAPABILITY.id,
+        MAP_CONTEXT_CAPABILITY.id,
+    ]);
+    const removed = [];
+    await module.clearData({ removePartition: async key => { removed.push(key); } });
+    assert.deepEqual(removed, ['tasks']);
+});
+
+test('Tasks module injects the current player name and Assistant count into its service', async () => {
+    const harness = await createHarness();
+    let installed = null;
+    let opaqueId = 0;
+    let stopCount = 0;
+    const runtime = { stopBackground: () => {stopCount += 1;} };
+    const module = createTasksModule({
+        getPlayerDisplayName: () => '模块主人',
+        getObservedAssistantCount: () => 17,
+        service: {
+            now: () => 2_000,
+            ids: createTaskIdFactory({ randomUuid: () => `module-${++opaqueId}`, now: () => 2_000 }),
+        },
+        async install(context) {
+            installed = context;
+            return runtime;
+        },
+    });
+    const capabilityInstances = new Map([
+        [ECONOMY_READ_CAPABILITY.id, harness.economy],
+        [AGENT_CAPABILITY.id, {}],
+        [MAINTENANCE_CAPABILITY.id, {}],
+    ]);
+
+    const result = await module.install({
+        ownerId: 'tasks',
+        partition: harness.store,
+        files: harness.coordinator,
+        execution: {},
+        useCapability: token => capabilityInstances.get(token.id),
+    });
+    const published = await installed.tasks.publish({
+        actionId: 'module-publish',
+        form: publishedForm(),
+    }, allowCommit);
+
+    assert.equal(published.record.issuer.displayName, '模块主人');
+    assert.equal(published.record.lastObservedAssistantCount, 17);
+    await module.dispose(result);
+    assert.equal(stopCount, 1);
+});
+
+test('publishing changes Tasks and Economy in one replace and replay is idempotent', async () => {
+    const harness = await createHarness();
+    const input = { actionId: 'publish-once', form: publishedForm() };
+    const first = await harness.tasks.publish(input, allowCommit);
+
+    assert.equal(harness.state.writes.length, 1);
+    assert.equal(harness.state.writes[0].candidate.partitions.unrelated.value, 7);
+    assert.equal(first.view.playerBalance, 20);
+    const transactions = ledgerOf(harness).transactions;
+    assert.equal(transactions.length, 2);
+    assert.equal(transactions[1].sourceDomain, 'tasks');
+    assert.equal(transactions[1].fromAccountId, 'player');
+    assert.equal(transactions[1].toAccountId, `escrow:task:${first.record.taskId}`);
+
+    const replay = await harness.tasks.publish(input, allowCommit);
+    assert.equal(replay.changed, false);
+    assert.equal(replay.record.taskId, first.record.taskId);
+    assert.equal(harness.state.writes.length, 1);
+    assert.equal(ledgerOf(harness).transactions.length, 2);
+});
+
+test('subscribers never observe one half of an atomic Tasks and Economy commit', async () => {
+    const harness = await createHarness();
+    const observed = [];
+    const unsubscribe = harness.tasks.subscribe(() => observed.push(harness.tasks.readCurrent()));
+
+    await harness.tasks.publish({ actionId: 'observed-publish', form: publishedForm() }, allowCommit);
+    await Promise.resolve();
+    unsubscribe();
+
+    assert.ok(observed.length > 0);
+    for (const view of observed) {
+        const committed = view.records.length === 1;
+        assert.equal(view.playerBalance, committed ? 20 : 100);
     }
 });
 
-test('published tasks atomically refund cancellation and pay only the assigned candidate on completion', async t => {
-    await t.test('cancel', async () => {
-        const harness = createHarness();
-        await openEconomy(harness);
-        const published = await harness.tasks.publish({ actionId: 'cancel-publish', form: publishedForm() }, allowCommit);
-        assert.equal(published.view.playerBalance, 20);
-        const cancelled = await harness.tasks.cancel({
+test('received and published tasks retain settlement, refund, recruitment and batch maintenance flows', async t => {
+    await t.test('received completion pays the player from the frozen board counterparty', async () => {
+        const harness = await createHarness();
+        const board = await harness.tasks.replaceBoard({
+            expectedBoardId: null,
+            listings: [listing()],
+            generatedAt: 10,
+        }, allowCommit);
+        const accepted = await harness.tasks.acceptListing({
+            actionId: 'received-accept',
+            boardId: board.view.domain.board.boardId,
+            listingId: board.view.domain.board.listings[0].listingId,
+        }, allowCommit);
+        const balances = projectBalances(ledgerOf(harness));
+        assert.equal(balances[`escrow:task:${accepted.record.taskId}`], 150);
+        assert.equal(balances[`counterparty:task:board:${accepted.record.taskId}`], -150);
+
+        const completed = await harness.tasks.commitMaintenance({
+            commands: [maintenanceCommand('complete', 'received-complete', accepted.record, '封蜡信已经送达')],
+            observedAssistantCount: 4,
+        }, allowCommit);
+        assert.equal(completed.record.status, 'completed');
+        assert.equal(projectBalances(ledgerOf(harness)).player, 250);
+    });
+
+    await t.test('published cancellation refunds and assigned completion pays only the candidate', async () => {
+        const cancelledHarness = await createHarness();
+        const published = await cancelledHarness.tasks.publish({
+            actionId: 'cancel-publish', form: publishedForm(),
+        }, allowCommit);
+        const cancelled = await cancelledHarness.tasks.cancel({
             actionId: 'cancel-task',
             taskId: published.record.taskId,
             expectedTaskRevision: published.record.taskRevision,
             expectedEventId: published.record.eventId,
         }, allowCommit);
-        assert.equal(cancelled.view.playerBalance, 100);
         assert.equal(cancelled.record.status, 'cancelled');
-    });
+        assert.equal(cancelled.view.playerBalance, 100);
 
-    for (const terminal of ['complete', 'fail']) {
-        await t.test(terminal, async () => {
-            const harness = createHarness();
-            await openEconomy(harness);
-            const assigned = await publishAndAssign(harness, terminal);
-            const candidateId = assigned.record.assignee.partyId;
-            const ended = await harness.tasks.commitMaintenance({
-                commands: [maintenanceCommand(terminal, `${terminal}-task`, assigned.record, '药箱任务已有明确结果')],
-                observedAssistantCount: 5,
-            }, allowCommit);
-            const balances = projectBalances(harness.economy.readCurrent());
-            assert.equal(balances[`escrow:task:${assigned.record.taskId}`], 0);
-            assert.equal(balances.player, terminal === 'fail' ? 100 : 20);
-            assert.equal(balances[`counterparty:task:${candidateId}`] ?? 0, terminal === 'complete' ? 80 : 0);
-            assert.equal(ended.record.status, terminal === 'complete' ? 'completed' : 'failed');
-        });
-    }
+        const completedHarness = await createHarness();
+        const assigned = await publishAndAssign(completedHarness, 'assigned');
+        const candidateId = assigned.record.assignee.partyId;
+        const completed = await completedHarness.tasks.commitMaintenance({
+            commands: [maintenanceCommand('complete', 'assigned-complete', assigned.record, '药箱已经送达')],
+            observedAssistantCount: 5,
+        }, allowCommit);
+        const balances = projectBalances(ledgerOf(completedHarness));
+        assert.equal(completed.record.status, 'completed');
+        assert.equal(balances[`escrow:task:${assigned.record.taskId}`], 0);
+        assert.equal(balances[`counterparty:task:${candidateId}`], 80);
+        assert.equal(balances.player, 20);
+    });
 });
 
-test('action replay is idempotent and a rejected commit guard installs neither task nor money', async () => {
-    const harness = createHarness();
-    await openEconomy(harness);
-    const input = { actionId: 'publish-once', form: publishedForm() };
-    const first = await harness.tasks.publish(input, allowCommit);
-    const saves = harness.state.saveCount;
-    const transactions = harness.economy.readCurrent().transactions.length;
-    const replay = await harness.tasks.publish(input, allowCommit);
-    assert.equal(replay.changed, false);
-    assert.equal(replay.record.taskId, first.record.taskId);
-    assert.equal(harness.state.saveCount, saves);
-    assert.equal(harness.economy.readCurrent().transactions.length, transactions);
-
-    const before = harness.store.readCurrent();
+test('commit guards and failed replaces publish neither prepared Tasks nor Economy state', async () => {
+    const guarded = await createHarness();
     let guardCalls = 0;
-    await assert.rejects(harness.tasks.publish({
+    await assert.rejects(guarded.tasks.publish({
         actionId: 'guarded',
-        form: { ...publishedForm(), reward: 20 },
-    }, () => {
-        guardCalls += 1;
-        return guardCalls === 1;
-    }), /tasks_commit_guard_failed/);
+        form: publishedForm(20),
+    }, () => ++guardCalls === 1), /tasks_commit_guard_failed/);
     assert.equal(guardCalls, 2);
-    assert.deepEqual(harness.store.readCurrent(), before);
-    assert.equal(harness.state.saveCount, saves);
-});
+    assert.equal(guarded.state.writes.length, 0);
+    assert.equal(guarded.tasks.readCurrent().domain, null);
+    assert.equal(guarded.economy.getPlayerBalance(), 100);
 
-test('save failure rolls back both domains and root validation rejects missing, forged and orphan legs', async () => {
-    const harness = createHarness();
-    await openEconomy(harness);
-    const before = harness.store.readCurrent();
-    harness.state.saveImpl = async () => {throw new Error('disk failed');};
-    await assert.rejects(
-        harness.tasks.publish({ actionId: 'save-failure', form: publishedForm() }, allowCommit),
-        /disk failed/,
-    );
-    assert.deepEqual(harness.store.readCurrent(), before);
-
-    harness.state.saveImpl = async transaction => harness.state.persist(transaction);
-    const published = await harness.tasks.publish({ actionId: 'forgery-source', form: publishedForm() }, allowCommit);
-    const root = published.view.domain ? harness.store.readCurrent() : null;
-    const missing = structuredClone(root);
-    missing.domains.economy.transactions.pop();
-    assert.throws(() => validateTaskEconomyConsistency(missing), error => error.code === 'task_invalid_domain');
-    const forged = structuredClone(root);
-    forged.domains.economy.transactions.at(-1).toAccountId = 'escrow:task:forged';
-    assert.throws(() => validateTaskEconomyConsistency(forged), error => error.code === 'task_invalid_domain');
-    const orphan = structuredClone(root);
-    const source = orphan.domains.economy.transactions.at(-1);
-    orphan.domains.economy.transactions.push({
-        ...source,
-        id: 'tx-orphan',
-        sequence: source.sequence + 1,
-        idempotencyKey: 'tasks:event:orphan:funding',
-        actionId: 'orphan-action',
-        fromAccountId: 'counterparty:task:orphan',
-        toAccountId: 'escrow:task:orphan',
-        sourceId: 'orphan-task',
+    const failed = await createHarness();
+    const before = structuredClone(failed.state.persisted);
+    failed.state.replaceImpl = async () => ({
+        status: 'failed',
+        error: { code: 'disk_failed', message: 'disk failed', retryable: true },
     });
-    assert.throws(() => validateTaskEconomyConsistency(orphan), error => error.code === 'task_invalid_domain');
+    await assert.rejects(
+        failed.tasks.publish({ actionId: 'save-failed', form: publishedForm() }, allowCommit),
+        error => error.code === 'disk_failed',
+    );
+    assert.deepEqual(failed.state.persisted, before);
+    assert.equal(failed.tasks.readCurrent().domain, null);
+    assert.equal(failed.economy.getPlayerBalance(), 100);
 });
 
-test('maintenance commits multiple task events as one root revision and rejects a stale batch atomically', async () => {
-    const harness = createHarness();
-    await openEconomy(harness);
-    const lowRewardForm = { ...publishedForm(), reward: 20 };
-    const first = await publishAndAssign(harness, 'batch-first', lowRewardForm);
-    const second = await publishAndAssign(harness, 'batch-second', lowRewardForm);
-    const beforeRevision = harness.tasks.readCurrent().domain.revision;
-    const beforeSaves = harness.state.saveCount;
+test('unconfirmed writes stay hidden and file-control retry reuses one candidate without duplicate funding', async () => {
+    const harness = await createHarness();
+    let firstAttempt = true;
+    harness.state.replaceImpl = async input => {
+        if (firstAttempt) {
+            firstAttempt = false;
+            return { status: 'unconfirmed', observed: structuredClone(harness.state.persisted) };
+        }
+        harness.state.persisted = structuredClone(input.candidate);
+        return { status: 'confirmed' };
+    };
 
-    await harness.tasks.commitMaintenance({
-        commands: [
-            maintenanceCommand('complete', 'batch-complete', first.record, '药箱已交付南门诊所'),
-            maintenanceCommand('fail', 'batch-fail', second.record, '药箱已焚毁且无法替代'),
-        ],
-        observedAssistantCount: 7,
-    }, allowCommit);
+    await assert.rejects(
+        harness.tasks.publish({ actionId: 'retry-publish', form: publishedForm() }, allowCommit),
+        error => error.uncertain === true,
+    );
+    assert.equal(harness.tasks.readCurrent().domain, null);
+    assert.equal(harness.economy.getPlayerBalance(), 100);
+    assert.equal(harness.tasks.getWriteState(), 'unconfirmed');
 
-    const committed = harness.tasks.readCurrent();
-    assert.equal(committed.domain.revision, beforeRevision + 1);
-    assert.equal(committed.records.find(record => record.taskId === first.record.taskId).status, 'completed');
-    assert.equal(committed.records.find(record => record.taskId === second.record.taskId).status, 'failed');
-    assert.equal(harness.state.saveCount, beforeSaves + 1);
+    const recovery = await harness.tasks.confirmPending();
+    assert.equal(recovery.status, 'confirmed');
+    assert.equal(harness.state.writes.length, 2);
+    assert.deepEqual(harness.state.writes[1].candidate, harness.state.writes[0].candidate);
+    assert.equal(harness.tasks.readCurrent().records.length, 1);
+    assert.equal(harness.economy.getPlayerBalance(), 20);
+    assert.equal(ledgerOf(harness).transactions.filter(transaction => transaction.sourceDomain === 'tasks').length, 1);
+});
 
-    const third = await publishAndAssign(harness, 'stale-first', lowRewardForm);
-    const fourth = await publishAndAssign(harness, 'stale-second', lowRewardForm);
-    const rootBeforeStale = harness.store.readCurrent();
-    const savesBeforeStale = harness.state.saveCount;
-    await assert.rejects(harness.tasks.commitMaintenance({
-        commands: [
-            maintenanceCommand('complete', 'stale-complete', third.record, '药箱已送达'),
-            {
-                ...maintenanceCommand('fail', 'stale-fail', fourth.record, '药箱已遗失'),
-                expectedTaskRevision: fourth.record.taskRevision - 1,
-            },
-        ],
-        observedAssistantCount: 8,
-    }, allowCommit), error => error.code === 'task_revision_conflict');
-    assert.deepEqual(harness.store.readCurrent(), rootBeforeStale);
-    assert.equal(harness.state.saveCount, savesBeforeStale);
+test('a corrupt Tasks partition is isolated from Economy reads', async () => {
+    const harness = await createHarness();
+    harness.state.persisted.partitions.tasks = {
+        schemaVersion: 1,
+        revision: 0,
+        board: null,
+        events: [],
+        forged: true,
+    };
+
+    await assert.rejects(harness.tasks.refreshCurrent(), /task_invalid_domain|non-canonical|partition/i);
+    await harness.economy.refresh();
+    assert.equal(harness.economy.getPlayerBalance(), 100);
+    assert.equal(harness.economy.getTransactionCount(), 1);
+});
+
+test('refresh rejects a structurally valid Tasks partition whose owned Economy legs are missing', async () => {
+    const harness = await createHarness();
+    await harness.tasks.publish({ actionId: 'missing-leg', form: publishedForm() }, allowCommit);
+    harness.state.persisted.partitions.economy.transactions.pop();
+
+    await assert.rejects(harness.tasks.refreshCurrent(), error => error.code === 'task_invalid_domain');
+    await harness.economy.refresh();
+    assert.equal(harness.economy.getPlayerBalance(), 100);
 });
 
 test('fallback task IDs are monotonic and retry occupied collisions', () => {

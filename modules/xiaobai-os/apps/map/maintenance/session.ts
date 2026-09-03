@@ -1,14 +1,10 @@
-import {
-    XiaobaiOsCommittedMutationError,
-    XiaobaiOsUnconfirmedMutationError,
-} from '../../../host/chat-data-store.js';
-import type { AcceptedTurnSource } from '../../../host/maintenance/accepted-turn-source.js';
+import type { AcceptedTurnSource } from '../../../capabilities/maintenance/accepted-turn-source.js';
 import type {
     MaintenanceMode,
     MaintenanceCommitGuard,
     MaintenanceParticipantResult,
     MaintenanceSession,
-} from '../../../host/maintenance/registry.js';
+} from '../../../capabilities/maintenance/registry.js';
 import { jsonValuesEqual } from '../../../host/json-values-equal.js';
 import type { MapService, MapServiceView } from '../application/service.js';
 import { createEmptyMapDomain } from '../../../domains/map/state.js';
@@ -48,8 +44,8 @@ export function createMapMaintenanceSession(
     let committed = false;
 
     const assertActive = (): void => {
-        if (invalidated) {throw new Error('map_maintenance_session_invalid');}
-        if (committed) {throw new Error('map_maintenance_session_committed');}
+        if (invalidated) { throw new Error('map_maintenance_session_invalid'); }
+        if (committed) { throw new Error('map_maintenance_session_committed'); }
     };
     const hasChanges = (): boolean => (
         !jsonValuesEqual(mapContent(staged), mapContent(initialStaged))
@@ -62,7 +58,7 @@ export function createMapMaintenanceSession(
     ): MapToolResult => {
         const callFailureKey = (context: string): string => `${scope}:${context}:call:*`;
         const failureKey = (item: Pick<MapToolItemReport, 'collection' | 'id'>): string => {
-            if (!item.collection || !item.id) {return callFailureKey(contextId);}
+            if (!item.collection || !item.id) { return callFailureKey(contextId); }
             const collection = scope === 'scene' && (item.collection === 'elements' || item.collection === 'remove')
                 ? 'element'
                 : item.collection;
@@ -71,10 +67,10 @@ export function createMapMaintenanceSession(
         staged = compiled.domain;
         if (compiled.result.ok) {
             unresolvedFailures.delete(callFailureKey(contextId));
-            if (contextId !== '*') {unresolvedFailures.delete(callFailureKey('*'));}
+            if (contextId !== '*') { unresolvedFailures.delete(callFailureKey('*')); }
         }
         for (const item of compiled.result.applied) {
-            if (item.id) {unresolvedFailures.delete(failureKey(item));}
+            if (item.id) { unresolvedFailures.delete(failureKey(item)); }
         }
         for (const item of compiled.result.skipped) {
             unresolvedFailures.set(failureKey(item), item.reason || 'map_intent_failed');
@@ -93,11 +89,11 @@ export function createMapMaintenanceSession(
                 return readAtlas(staged, args);
             }
             if (name === MAP_MAINTENANCE_TOOL_NAMES.SCENE_READ) {
-                if (!isRecord(args)) {throw new TypeError('MapSceneRead expects an object.');}
+                if (!isRecord(args)) { throw new TypeError('MapSceneRead expects an object.'); }
                 const unknown = Object.keys(args).filter(key => key !== 'scene');
-                if (unknown.length) {throw new TypeError(`MapSceneRead has unsupported fields: ${unknown.join(', ')}.`);}
+                if (unknown.length) { throw new TypeError(`MapSceneRead has unsupported fields: ${unknown.join(', ')}.`); }
                 const key = intentId(args.scene);
-                if (!key) {throw new TypeError('MapSceneRead.scene is required.');}
+                if (!key) { throw new TypeError('MapSceneRead.scene is required.'); }
                 const keyForScene = sceneKey(staged, key);
                 return mapToolResult({ data: { revision: staged.revision, scene: structuredClone(staged.scenes[keyForScene] || null) } });
             }
@@ -122,10 +118,10 @@ export function createMapMaintenanceSession(
         },
         async commit(beforeCommit: MaintenanceCommitGuard): Promise<MapServiceView | undefined> {
             assertActive();
-            if (!hasChanges()) {return map.readCurrent();}
+            if (!hasChanges()) { return map.readCurrent(); }
             const guard = () => {
                 assertActive();
-                if (!beforeCommit()) {throw new Error('map_maintenance_commit_guard_rejected');}
+                if (!beforeCommit()) { throw new Error('map_maintenance_commit_guard_rejected'); }
             };
             guard();
             try {
@@ -133,13 +129,15 @@ export function createMapMaintenanceSession(
                 committed = true;
                 return result;
             } catch (error) {
-                if (!(error instanceof XiaobaiOsCommittedMutationError)
-                    && !(error instanceof XiaobaiOsUnconfirmedMutationError)) {throw error;}
+                const record = error !== null && typeof error === 'object'
+                    ? error as { code?: unknown; uncertain?: unknown }
+                    : null;
+                if (record?.uncertain !== true && record?.code !== 'chat_changed') { throw error; }
                 committed = true;
-                if (error instanceof XiaobaiOsUnconfirmedMutationError) {throw error;}
+                if (record.uncertain === true) { throw error; }
                 return undefined;
             }
         },
-        invalidate() {invalidated = true;},
+        invalidate() { invalidated = true; },
     });
 }

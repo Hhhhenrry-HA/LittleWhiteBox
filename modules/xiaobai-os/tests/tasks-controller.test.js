@@ -25,6 +25,8 @@ function createHarness() {
         maintenanceListener: null,
         maintenanceStatus: { state: 'idle', mode: null, message: '', lastRunAt: null },
         boardRequest: null,
+        refreshRequest: null,
+        taskError: null,
     };
     const emptyView = () => ({
         domain: null,
@@ -34,14 +36,27 @@ function createHarness() {
     });
     const tasks = {
         readCurrent: emptyView,
+        refreshCurrent: async () => {
+            await host.refreshRequest?.promise;
+            return emptyView();
+        },
         getWriteState: () => host.writeState,
         createActionId: () => 'action-1',
         confirmPending: async () => ({ status: 'confirmed' }),
         adoptServerState: async () => {host.writeState = 'ready'; return { status: 'adopted' };},
+        publish: async () => {
+            if (host.taskError) {throw host.taskError;}
+            return { changed: false, view: emptyView() };
+        },
+        subscribe(listener) {
+            host.dataListener = listener;
+            return () => {host.dataListener = null;};
+        },
     };
     const economy = {
-        hasCurrent: () => host.economyReady,
-        ensureCurrent: async () => {host.economyReady = true; return emptyView();},
+        isOpen: () => host.economyReady,
+        refresh: async () => undefined,
+        ensureOpen: async () => {host.economyReady = true; return 'opened';},
     };
     const generation = {
         refreshBoard() {
@@ -89,10 +104,6 @@ function createHarness() {
             host.generationListener = listener;
             return () => {host.generationListener = null;};
         },
-        subscribeData(listener) {
-            host.dataListener = listener;
-            return () => {host.dataListener = null;};
-        },
         report: error => host.reports.push(error),
     });
     controller.startBackground();
@@ -110,7 +121,7 @@ function activation(host) {
 
 test('Tasks activation is local-only and settings, maintenance, and save recovery return public state', async () => {
     const { controller, host } = createHarness();
-    const state = controller.activate(activation(host));
+    const state = await controller.activate(activation(host));
     host.calls.length = 0;
 
     assert.equal(state.status, 'ready');
@@ -130,7 +141,7 @@ test('Tasks activation is local-only and settings, maintenance, and save recover
 
 test('route changes cancel only the generation owned by the page', async () => {
     const { controller, host } = createHarness();
-    controller.activate(activation(host));
+    await controller.activate(activation(host));
     host.calls.length = 0;
     const payload = { chatIdentity: host.identity.key };
 
@@ -141,9 +152,50 @@ test('route changes cancel only the generation owned by the page', async () => {
     assert.deepEqual(host.calls, [['cancel-board', 'route-left']]);
 });
 
+test('reactivation invalidates the previous frame before scoped refresh completes', async () => {
+    const { controller, host } = createHarness();
+    await controller.activate(activation(host));
+    const refresh = deferred();
+    host.refreshRequest = refresh;
+
+    const pending = controller.activate(activation(host));
+    await assert.rejects(
+        controller.handleMessage({
+            type: 'tasks/settings/update',
+            payload: { chatIdentity: host.identity.key, autoMaintenance: true },
+        }),
+        /tasks_app_inactive/,
+    );
+    refresh.resolve();
+    await pending;
+});
+
+test('canonical Kernel write failures retain their specific public Tasks errors', async () => {
+    const { controller, host } = createHarness();
+    await controller.activate(activation(host));
+    const payload = { chatIdentity: host.identity.key, form: {
+        title: '护送药箱',
+        objective: '送达南门诊所',
+        location: '南门诊所',
+        risk: '道路封锁',
+        reward: 80,
+    } };
+
+    host.taskError = Object.assign(new Error('frozen'), { code: 'storage_unconfirmed' });
+    await assert.rejects(
+        controller.handleMessage({ type: 'tasks/publish', payload }),
+        /tasks_save_unconfirmed/,
+    );
+    host.taskError = Object.assign(new Error('changed'), { code: 'chat_changed' });
+    await assert.rejects(
+        controller.handleMessage({ type: 'tasks/publish', payload }),
+        /tasks_chat_changed/,
+    );
+});
+
 test('late generation results are rejected after chat change without publishing stale state or expected-error logs', async () => {
     const { controller, host } = createHarness();
-    controller.activate(activation(host));
+    await controller.activate(activation(host));
     host.posts.length = 0;
     host.calls.length = 0;
     const request = deferred();
@@ -164,13 +216,15 @@ test('late generation results are rejected after chat change without publishing 
     ]);
 });
 
-test('subscriptions publish only for the active chat and expose Tasks maintenance state', () => {
+test('subscriptions publish only for the active chat and expose Tasks maintenance state', async () => {
     const { controller, host } = createHarness();
-    controller.activate(activation(host));
+    await controller.activate(activation(host));
     host.posts.length = 0;
 
-    host.dataListener({ identityKey: 'other', writeState: 'ready' });
+    host.identity = { key: 'character:1:chat-b' };
+    host.dataListener();
     assert.equal(host.posts.length, 0);
+    host.identity = { key: 'character:1:chat-a' };
     host.maintenanceStatus = { state: 'running', mode: 'manual', message: '', lastRunAt: null };
     host.maintenanceListener('tasks', host.maintenanceStatus);
     assert.equal(host.posts.at(-1).payload.state.maintenance.state, 'running');
@@ -181,7 +235,7 @@ test('subscriptions publish only for the active chat and expose Tasks maintenanc
 
 test('main generation start aborts in-flight Tasks generation before publishing the new state', async () => {
     const { controller, host } = createHarness();
-    controller.activate(activation(host));
+    await controller.activate(activation(host));
     host.calls.length = 0;
     const request = deferred();
     host.boardRequest = request;
@@ -200,7 +254,7 @@ test('main generation start aborts in-flight Tasks generation before publishing 
 
 test('manual maintenance cannot bypass unopened economy or the root write gate', async () => {
     const { controller, host } = createHarness();
-    controller.activate(activation(host));
+    await controller.activate(activation(host));
     const payload = { chatIdentity: host.identity.key };
     host.economyReady = false;
 

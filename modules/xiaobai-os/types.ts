@@ -5,15 +5,6 @@ export interface XiaobaiOsSettings<TApps extends object = Record<string, unknown
     apps: TApps;
 }
 
-export interface XiaobaiOsChatData<
-    TApps extends object = Record<string, unknown>,
-    TDomains extends object = Record<string, unknown>,
-> {
-    schemaVersion: 2;
-    apps: TApps;
-    domains: TDomains;
-}
-
 export interface XiaobaiOsChatIdentity {
     key: string;
     kind: 'group' | 'character';
@@ -30,20 +21,22 @@ export interface XiaobaiOsAppDescriptor {
 }
 
 export interface XiaobaiOsAppActivationContext {
+    activationToken: string;
+    isCurrent: () => boolean;
     post: (type: string, payload?: unknown, responseId?: string) => boolean;
 }
 
 export interface XiaobaiOsAppRuntime {
     activate?: (context: XiaobaiOsAppActivationContext) => unknown | Promise<unknown>;
-    deactivate?: (reason: string) => void;
+    deactivate?: (reason: string) => void | Promise<void>;
     handleMessage?: (message: XiaobaiOsHostFrameMessage) => unknown | Promise<unknown>;
-    cancelForeground?: (reason: string) => void;
-    cancelAll?: (reason: string) => void;
-    handleWindowOpened?: () => void;
-    handleWindowClosed?: (reason: string) => void;
-    handleChatChanged?: () => void;
-    startBackground?: () => void;
-    stopBackground?: () => void;
+    cancelForeground?: (reason: string) => void | Promise<void>;
+    cancelAll?: (reason: string) => void | Promise<void>;
+    handleWindowOpened?: () => void | Promise<void>;
+    handleWindowClosed?: (reason: string) => void | Promise<void>;
+    handleChatChanged?: () => void | Promise<void>;
+    startBackground?: () => void | Promise<void>;
+    stopBackground?: () => void | Promise<void>;
 }
 
 export interface XiaobaiOsAppRuntimeRegistration {
@@ -54,13 +47,14 @@ export interface XiaobaiOsAppRuntimeRegistration {
 export interface XiaobaiOsAppRuntimeRouter {
     getDescriptors: () => readonly Readonly<XiaobaiOsAppDescriptor>[];
     activate: (appId: string, context: XiaobaiOsAppActivationContext) => unknown | Promise<unknown>;
-    deactivate: (appId: string, reason: string) => void;
+    deactivate: (appId: string, reason: string) => void | Promise<void>;
     handleMessage: (appId: string, message: XiaobaiOsHostFrameMessage) => unknown | Promise<unknown>;
-    cancelForeground: (reason: string) => void;
-    cancelAll: (reason: string) => void;
-    handleWindowOpened: () => void;
-    handleWindowClosed: (reason: string) => void;
-    handleChatChanged: () => void;
-    startBackground: () => void;
-    stopBackground: () => void;
+    retry?: (appId: string) => void | Promise<void>;
+    cancelForeground: (reason: string) => void | Promise<void>;
+    cancelAll: (reason: string) => void | Promise<void>;
+    handleWindowOpened: () => void | Promise<void>;
+    handleWindowClosed: (reason: string) => void | Promise<void>;
+    handleChatChanged: () => void | Promise<void>;
+    startBackground: () => void | Promise<void>;
+    stopBackground: () => void | Promise<void>;
 }

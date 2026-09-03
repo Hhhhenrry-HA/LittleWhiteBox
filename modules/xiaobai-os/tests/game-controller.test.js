@@ -113,10 +113,14 @@ function createHarness({ economyOpened = true, writeState = 'ready', records = n
             return { status: 'confirmed' };
         },
         getWriteState: () => view.writeState,
+        subscribe(listener) {
+            dataListeners.add(listener);
+            return () => dataListeners.delete(listener);
+        },
     };
     const economy = {
-        hasCurrent: () => opened,
-        async ensureCurrent() {
+        isOpen: () => opened,
+        async ensureOpen() {
             ensureCalls += 1;
             opened = true;
         },
@@ -129,10 +133,6 @@ function createHarness({ economyOpened = true, writeState = 'ready', records = n
         subscribeGeneration(listener) {
             generationListeners.add(listener);
             return () => generationListeners.delete(listener);
-        },
-        subscribeData(listener) {
-            dataListeners.add(listener);
-            return () => dataListeners.delete(listener);
         },
     });
     controller.startBackground();

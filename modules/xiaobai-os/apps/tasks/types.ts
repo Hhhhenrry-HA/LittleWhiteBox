@@ -1,4 +1,4 @@
-import type { XiaobaiOsWriteState } from '../../host/chat-data-store.js';
+import type { XiaobaiOsFileState } from '../../kernel/contracts.js';
 import type { TaskBoard, TaskEvent, TaskPublishedForm, TaskRecord } from '../../domains/tasks/types.js';
 
 export interface TasksSettings {
@@ -22,7 +22,7 @@ export interface TasksPresentation {
     chatIdentity: string;
     status: TasksClientStatus;
     message: string;
-    writeState: XiaobaiOsWriteState;
+    writeState: XiaobaiOsFileState;
     settings: TasksSettings;
     playerBalance: number;
     generationActive: boolean;

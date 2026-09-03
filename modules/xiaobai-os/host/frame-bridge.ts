@@ -5,11 +5,23 @@ export const XIAOBAI_OS_FRAME_SOURCE = 'LittleWhiteBox-XiaobaiOS';
 export interface XiaobaiOsHostFrameMessage {
     type: string;
     requestId?: string;
+    appId?: string;
+    activationToken?: string;
     payload?: unknown;
 }
 
+export interface XiaobaiOsFrameAppContext {
+    appId: string;
+    activationToken: string;
+}
+
 export interface XiaobaiOsHostFrameBridge {
-    post: (type: string, payload?: unknown, requestId?: string) => boolean;
+    post: (
+        type: string,
+        payload?: unknown,
+        requestId?: string,
+        app?: XiaobaiOsFrameAppContext,
+    ) => boolean;
     isReady: () => boolean;
     dispose: () => void;
 }
@@ -19,6 +31,10 @@ export interface XiaobaiOsFrameBridgeOptions {
     onReady?: (bridge: XiaobaiOsHostFrameBridge) => void | Promise<void>;
     onMessage?: (message: XiaobaiOsHostFrameMessage, bridge: XiaobaiOsHostFrameBridge) => void | Promise<void>;
     windowTarget?: Window;
+}
+
+function createMessageId(): string {
+    return `xiaobai-os-host-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
 /**
@@ -39,7 +55,7 @@ export function createXiaobaiOsFrameBridge({
     let disposed = false;
 
     const bridge: XiaobaiOsHostFrameBridge = Object.freeze({
-        post(type: string, payload: unknown = {}, requestId = '') {
+        post(type: string, payload: unknown = {}, requestId = '', app?: XiaobaiOsFrameAppContext) {
             if (disposed || !ready || typeof type !== 'string' || !type) {
                 return false;
             }
@@ -47,7 +63,8 @@ export function createXiaobaiOsFrameBridge({
                 frame,
                 {
                     type,
-                    requestId: String(requestId || ''),
+                    requestId: String(requestId || (app ? createMessageId() : '')),
+                    ...(app ? { appId: app.appId, activationToken: app.activationToken } : {}),
                     payload,
                 },
                 XIAOBAI_OS_FRAME_SOURCE,

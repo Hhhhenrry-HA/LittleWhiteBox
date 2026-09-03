@@ -1,16 +1,17 @@
 import { createDefaultXiaobaiOsSettings } from './host/settings-normalization.js';
-import type { XiaobaiOsLifecycle } from './host/lifecycle.js';
-import { createProductionLifecycle } from './host/production-composition.js';
+import type { XiaobaiOsBootstrap } from './host/bootstrap.js';
+import { createProductionBootstrap } from './host/production-composition.js';
 import { createSettingsRepository } from './host/settings-repository.js';
 import { createSillyTavernSettingsAdapter } from './host/sillytavern-context.js';
 
-let runtime: XiaobaiOsLifecycle | null = null;
+let runtime: XiaobaiOsBootstrap | null = null;
 let initPromise: Promise<boolean> | null = null;
+let cleanupPromise: Promise<void> = Promise.resolve();
 let lifecycleGeneration = 0;
 const settingsRepository = createSettingsRepository(createSillyTavernSettingsAdapter());
 
 export async function initXiaobaiOs(): Promise<boolean> {
-    if (runtime?.isInitialized()) {
+    if (runtime?.lifecycle.isInitialized()) {
         return true;
     }
     if (initPromise) {
@@ -19,21 +20,22 @@ export async function initXiaobaiOs(): Promise<boolean> {
     const generation = ++lifecycleGeneration;
     initPromise = Promise.resolve()
         .then(async () => {
+            await cleanupPromise;
             const current = await settingsRepository.prepare();
             if (!current.enabled || generation !== lifecycleGeneration) {
                 return false;
             }
-            const candidate = createProductionLifecycle(settingsRepository);
+            const candidate = createProductionBootstrap(settingsRepository);
             runtime = candidate;
             try {
-                candidate.init();
+                const initialized = await candidate.init();
                 if (generation !== lifecycleGeneration || runtime !== candidate) {
-                    candidate.cleanup();
+                    await candidate.cleanup();
                     return false;
                 }
-                return true;
+                return initialized;
             } catch (error) {
-                candidate.cleanup();
+                await candidate.cleanup().catch(() => undefined);
                 if (runtime === candidate) {
                     runtime = null;
                 }
@@ -63,13 +65,13 @@ export async function setXiaobaiOsEnabled(enabled: boolean) {
 }
 
 export async function openXiaobaiOs(): Promise<boolean> {
-    if (!runtime?.isInitialized()) {
+    if (!runtime?.lifecycle.isInitialized()) {
         const initialized = await initXiaobaiOs();
         if (!initialized) {
             return false;
         }
     }
-    return runtime?.isInitialized() ? runtime.open() : false;
+    return runtime?.lifecycle.isInitialized() ? runtime.lifecycle.open() : false;
 }
 
 export function cleanupXiaobaiOs(): void {
@@ -77,7 +79,11 @@ export function cleanupXiaobaiOs(): void {
     initPromise = null;
     const current = runtime;
     runtime = null;
-    current?.cleanup();
+    if (current) {
+        cleanupPromise = cleanupPromise.then(() => current.cleanup()).catch((error) => {
+            console.error('[LittleWhiteBox] 小白 OS 清理失败', error);
+        });
+    }
 }
 
 export { createDefaultXiaobaiOsSettings };

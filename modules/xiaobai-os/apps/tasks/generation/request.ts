@@ -1,6 +1,6 @@
 import { normalizeAgentSettings } from '../../../../agent-core/config.js';
 import { isSillyTavernProvider, resolveActiveProviderConfig } from '../../../../agent-core/provider-resolution.js';
-import type { XiaobaiOsAgentGateway } from '../../../host/agent/gateway.js';
+import type { XiaobaiOsAgentGateway } from '../../../capabilities/agent/gateway.js';
 import { jsonValuesEqual } from '../../../host/json-values-equal.js';
 import type { TasksActionResult, TasksService } from '../application/service.js';
 import type { TaskGenerationContextAdapter } from '../host/context-adapter.js';
@@ -41,7 +41,10 @@ export interface TaskGenerationRequests {
 
 interface TaskGenerationRequestDependencies {
     readonly gateway: Pick<XiaobaiOsAgentGateway, 'loadConfig' | 'openSession'>;
-    readonly tasks: TasksService;
+    readonly tasks: Pick<
+        TasksService,
+        'readCurrent' | 'getWriteState' | 'createActionId' | 'replaceBoard' | 'replaceCandidates'
+    >;
     readonly context: TaskGenerationContextAdapter;
     readonly isMainGenerationActive: () => boolean;
     readonly now?: () => number;
@@ -72,7 +75,7 @@ function isStaleRequestError(error: unknown): boolean {
         && (error.message === 'tasks_chat_changed' || error.message === 'tasks_commit_guard_failed');
 }
 
-function recruitingPromptData(record: ReturnType<TasksService['readCurrent']>['records'][number]): RecruitingTaskPromptData {
+function recruitingPromptData(record: ReturnType<TaskGenerationRequestDependencies['tasks']['readCurrent']>['records'][number]): RecruitingTaskPromptData {
     return {
         issuer: { displayName: record.issuer.displayName },
         title: record.title,

@@ -1,11 +1,8 @@
-import type {
-    ConfirmResult,
-    XiaobaiOsChatDataStore,
-    XiaobaiOsWriteState,
-} from '../../../host/chat-data-store.js';
-import type { XiaobaiOsChatData } from '../../../types.js';
-import { postAction, projectBalances } from '../../../domains/economy/ledger.js';
-import type { EconomyLedgerV2 } from '../../../domains/economy/types.js';
+import {
+    ECONOMY_TRANSACTION_CAPABILITY,
+    type EconomyReadCapability,
+    type EconomyTransactionCapability,
+} from '../../../capabilities/economy/index.js';
 import { gameRandomSource } from '../../../domains/game/random.js';
 import {
     appendGameEvent,
@@ -23,26 +20,29 @@ import {
     type GameState,
 } from '../../../domains/game/types.js';
 import { createGameView, type CreateGameViewInput } from '../../../domains/game/view.js';
+import type {
+    PendingCommitRecoveryResult,
+    ScopedChatStore,
+    XiaobaiOsFileControls,
+    XiaobaiOsFileState,
+} from '../../../kernel/contracts.js';
 import {
     assertCas,
     replayExistingAction,
     requireActionId,
     requireGeneratedId,
-    toPostInputs,
     type GameExplicitIntent,
     type PreparedGameAction,
 } from './action-policy.js';
 import { createGameCommands } from './commands.js';
 import {
-    emptyGameRoot,
-    readEconomyLedger,
-    readGameDomain,
+    toEconomyActionLegs,
     validateGameEconomyConsistency,
-} from './root-protocol.js';
+} from './economy-protocol.js';
 
 export interface GameServiceView extends GameClientView {
     balance: number;
-    writeState: XiaobaiOsWriteState;
+    writeState: XiaobaiOsFileState;
 }
 
 export interface GameServiceCommand extends GameCasToken {
@@ -70,8 +70,11 @@ export interface GameStepLadderCommand extends GameCommand {
     choice: GameLadderChoice;
 }
 
+export type GamePendingRecoveryResult = PendingCommitRecoveryResult | { status: 'rejected' };
+
 export interface GameService {
     readCurrent: (input?: Pick<CreateGameViewInput, 'activityOffset' | 'activityLimit'>) => GameServiceView;
+    refreshCurrent: () => Promise<GameServiceView>;
     startDice: (input: GameStartDiceCommand) => Promise<GameServiceView>;
     bidDice: (input: GameBidDiceCommand) => Promise<GameServiceView>;
     challengeDice: (input: GameCommand) => Promise<GameServiceView>;
@@ -81,32 +84,37 @@ export interface GameService {
     startLadder: (input: GameStartLadderCommand) => Promise<GameServiceView>;
     stepLadder: (input: GameStepLadderCommand) => Promise<GameServiceView>;
     cashOutLadder: (input: GameCommand) => Promise<GameServiceView>;
-    confirmPending: () => Promise<ConfirmResult>;
-    getWriteState: () => XiaobaiOsWriteState;
+    confirmPending: () => Promise<GamePendingRecoveryResult>;
+    getWriteState: () => XiaobaiOsFileState;
+    subscribe(listener: () => void): () => void;
+    dispose(): void;
 }
 
-interface GameServiceDependencies {
+export interface GameServiceDependencies {
     now?: () => number;
     createGameId?: (kind: 'dice' | 'push' | 'ladder') => string;
     createEventId?: () => string;
     createActivityId?: () => string;
-    createTransactionId?: () => string;
     random?: GameRandomSource;
     isMainGenerationActive?: () => boolean;
 }
 
-export interface PreparedRoot {
-    root: XiaobaiOsChatData;
-    ledger: EconomyLedgerV2;
+export interface PreparedGameContext {
     game: GameDomainV1;
     state: GameState;
+    balance: number;
 }
 
 export type RunGameAction = (
     input: GameServiceCommand,
     intent: GameExplicitIntent,
-    createAction: (prepared: PreparedRoot, activityId: string) => PreparedGameAction,
+    createAction: (prepared: PreparedGameContext, activityId: string) => PreparedGameAction,
 ) => Promise<GameServiceView>;
+
+interface TransactionProjection {
+    game: GameDomainV1;
+    balance: number;
+}
 
 let fallbackId = 0;
 
@@ -115,54 +123,83 @@ function defaultId(prefix: string): string {
     return `${prefix}-${suffix}`;
 }
 
+function transactionError(result: {
+    status: 'failed' | 'unconfirmed' | 'conflict';
+    error?: { code: string; message: string; retryable: boolean };
+}): Error {
+    const code = result.error?.code
+        ?? (result.status === 'unconfirmed' ? 'storage_unconfirmed' : 'storage_conflict');
+    return Object.assign(new Error(result.error?.message ?? `game_${result.status}`), {
+        code,
+        retryable: result.error?.retryable ?? true,
+        uncertain: result.status === 'unconfirmed' || code === 'storage_unconfirmed',
+    });
+}
+
 export function createGameService(
-    store: XiaobaiOsChatDataStore,
+    store: ScopedChatStore<GameDomainV1>,
+    files: XiaobaiOsFileControls,
+    economyRead: EconomyReadCapability,
     {
         now = Date.now,
         createGameId = kind => defaultId(`game-${kind}`),
         createEventId = () => defaultId('game-event'),
         createActivityId = () => defaultId('game-activity'),
-        createTransactionId,
         random = gameRandomSource,
         isMainGenerationActive = () => false,
     }: GameServiceDependencies = {},
 ): GameService {
-    const economyDependencies = { now, ...(createTransactionId ? { createId: createTransactionId } : {}) };
+    const listeners = new Set<() => void>();
+    const publish = (): void => {
+        for (const listener of listeners) {
+            try { listener(); } catch (error) {
+                console.error('[LittleWhiteBox] Game state listener failed', error);
+            }
+        }
+    };
+    const unsubscribeStore = store.subscribe(publish);
+    const unsubscribeEconomy = economyRead.subscribe(publish);
+    const unsubscribeFiles = files.subscribeFileState(publish);
+    const currentDomain = (): GameDomainV1 | null => store.peekCurrent()?.value ?? null;
 
     function buildView(
-        root: XiaobaiOsChatData | null,
+        domain = currentDomain(),
+        balance = economyRead.getPlayerBalance(),
         paging: Pick<CreateGameViewInput, 'activityOffset' | 'activityLimit'> = {},
     ): GameServiceView {
-        const ledger = readEconomyLedger(root);
         return {
-            ...createGameView({ domain: readGameDomain(root), ...paging }),
-            balance: ledger ? projectBalances(ledger).player || 0 : 0,
-            writeState: store.getWriteState(),
+            ...createGameView({ domain, ...paging }),
+            balance,
+            writeState: files.getFileState(),
         };
     }
 
     function readCurrent(
         input: Pick<CreateGameViewInput, 'activityOffset' | 'activityLimit'> = {},
     ): GameServiceView {
-        const root = store.readCurrent();
-        if (root) {validateGameEconomyConsistency(root);}
-        return buildView(root, input);
+        return buildView(currentDomain(), economyRead.getPlayerBalance(), input);
     }
 
-    function prepareRoot(current: XiaobaiOsChatData | null): PreparedRoot {
-        const root = current ? structuredClone(current) : emptyGameRoot();
-        const ledger = readEconomyLedger(root);
-        if (!ledger) {throw new Error('economy_not_opened');}
-        const game = readGameDomain(root) || createEmptyGameDomain();
+    async function refreshCurrent(): Promise<GameServiceView> {
+        await economyRead.refresh();
+        await store.read();
+        return readCurrent();
+    }
+
+    function prepare(
+        current: GameDomainV1 | null,
+        economy: EconomyTransactionCapability,
+    ): PreparedGameContext {
+        const game = current ?? createEmptyGameDomain();
+        validateGameEconomyConsistency(game, economy);
         return {
-            root,
-            ledger,
             game,
             state: replayGameEvents(game),
+            balance: economy.getPlayerBalance(),
         };
     }
 
-    function unusedGameId(prepared: PreparedRoot, kind: 'dice' | 'push' | 'ladder'): string {
+    function unusedGameId(prepared: PreparedGameContext, kind: 'dice' | 'push' | 'ladder'): string {
         const gameId = requireGeneratedId(createGameId(kind), 'game-id', true);
         if (prepared.game.events.some((event) => event.command.gameId === gameId)) {
             throwGameError('game_invalid', 'game-id-conflict');
@@ -171,26 +208,24 @@ export function createGameService(
     }
 
     const runAction: RunGameAction = async (
-        input: GameServiceCommand,
-        intent: GameExplicitIntent,
-        createAction: (prepared: PreparedRoot, activityId: string) => PreparedGameAction,
+        input,
+        intent,
+        createAction,
     ): Promise<GameServiceView> => {
         let replayed = false;
         const assertGenerationIdle = () => {
             if (isMainGenerationActive()) {throw new Error('game_main_generation_active');}
         };
-        return store.mutateCurrent((current) => {
-            const prepared = prepareRoot(current);
+        const result = await store.transact<TransactionProjection>((transaction) => {
+            const economy = transaction.useCapability(ECONOMY_TRANSACTION_CAPABILITY);
+            const prepared = prepare(transaction.current, economy);
             if (replayExistingAction(prepared.game, input.actionId, intent)) {
                 replayed = true;
-                return { next: prepared.root, result: buildView(prepared.root) };
+                return { game: prepared.game, balance: prepared.balance };
             }
             assertGenerationIdle();
             const actionId = requireActionId(input.actionId);
             assertCas(prepared.game, input);
-            if (prepared.ledger.transactions.some((transaction) => transaction.actionId === actionId)) {
-                throwGameError('game_action_conflict');
-            }
             const eventId = requireGeneratedId(createEventId(), 'event-id');
             if (prepared.game.events.some((event) => event.eventId === eventId)) {
                 throwGameError('game_invalid_context', 'event-id-conflict');
@@ -210,31 +245,47 @@ export function createGameService(
                 result: action.result,
                 createdAt: now(),
             });
-            let ledger = prepared.ledger;
             if (action.economyLegs.length > 0) {
-                ledger = postAction(ledger, toPostInputs(
-                    action.economyLegs,
-                    actionId,
-                    action.command.gameId,
-                ), economyDependencies).ledger;
+                economy.postAction({
+                    legs: toEconomyActionLegs(action.economyLegs, actionId, action.command.gameId),
+                });
             }
-            prepared.root.domains.economy = ledger;
-            prepared.root.domains.game = appended.domain;
-            validateGameEconomyConsistency(prepared.root);
-            return { next: prepared.root, result: buildView(prepared.root) };
+            validateGameEconomyConsistency(appended.domain, economy);
+            transaction.replace(appended.domain);
+            return { game: appended.domain, balance: economy.getPlayerBalance() };
         }, {
-            beforeCommit() {
+            commitGuard() {
                 if (!replayed) {assertGenerationIdle();}
+                return true;
             },
         });
+        if (result.status === 'failed' || result.status === 'unconfirmed' || result.status === 'conflict') {
+            throw transactionError(result);
+        }
+        const projection = result.result;
+        const domain = structuredClone(result.status === 'confirmed'
+            ? result.snapshot.value ?? projection.game
+            : projection.game);
+        return buildView(domain, projection.balance);
     };
 
     const commands = createGameCommands({ random, runAction, unusedGameId });
 
     return Object.freeze({
         readCurrent,
+        refreshCurrent,
         ...commands,
-        confirmPending: store.confirmPending,
-        getWriteState: store.getWriteState,
+        confirmPending: () => files.retryPending(),
+        getWriteState: () => files.getFileState(),
+        subscribe(listener: () => void) {
+            listeners.add(listener);
+            return () => listeners.delete(listener);
+        },
+        dispose() {
+            unsubscribeStore();
+            unsubscribeEconomy();
+            unsubscribeFiles();
+            listeners.clear();
+        },
     });
 }

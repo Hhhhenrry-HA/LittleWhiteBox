@@ -1,4 +1,5 @@
-import type { EconomyRepository } from '../../../domains/economy/repository.js';
+import type { EconomyReadCapability } from '../../../capabilities/economy/index.js';
+import type { XiaobaiOsExecutionScope } from '../../../kernel/execution-scope.js';
 import type {
     GameBidDiceCommand,
     GameCommand,
@@ -10,7 +11,6 @@ import type {
 } from '../application/service.js';
 import type { GameDiceBidFace, GameLadderChoice } from '../../../domains/game/types.js';
 import type { XiaobaiOsHostFrameMessage } from '../../../host/frame-bridge.js';
-import type { XiaobaiOsChatDataChange } from '../../../host/chat-data-store.js';
 import type {
     XiaobaiOsAppActivationContext,
     XiaobaiOsAppRuntime,
@@ -29,11 +29,11 @@ interface GameActivation {
 
 interface GameControllerDependencies {
     game: GameService;
-    economy: EconomyRepository;
+    economy: EconomyReadCapability;
     getChatIdentity: () => XiaobaiOsChatIdentity | { key?: unknown } | string | null;
     isMainGenerationActive: () => boolean;
     subscribeGeneration: (listener: () => void) => () => void;
-    subscribeData: (listener: (change: XiaobaiOsChatDataChange) => void) => () => void;
+    execution?: XiaobaiOsExecutionScope;
 }
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -91,7 +91,7 @@ export function createGameController({
     getChatIdentity,
     isMainGenerationActive,
     subscribeGeneration,
-    subscribeData,
+    execution,
 }: GameControllerDependencies): XiaobaiOsAppRuntime & {
     activate: NonNullable<XiaobaiOsAppRuntime['activate']>;
     handleMessage: NonNullable<XiaobaiOsAppRuntime['handleMessage']>;
@@ -124,7 +124,7 @@ export function createGameController({
         const next = presentGameState({
             chatIdentity,
             serviceView: game.readCurrent({ activityOffset: 0, activityLimit: RECORD_PAGE_SIZE }),
-            economyReady: economy.hasCurrent(),
+            economyReady: economy.isOpen(),
             generationActive: isMainGenerationActive(),
         });
         if (!preparation || preparation.activation !== activation) {return next;}
@@ -143,9 +143,9 @@ export function createGameController({
     }
 
     async function prepare(): Promise<void> {
-        if (economy.hasCurrent()) {return;}
+        if (economy.isOpen()) {return;}
         try {
-            await economy.ensureCurrent();
+            await economy.ensureOpen();
         } catch (error) {
             if (!isUnconfirmedSave(error)) {throw error;}
         }
@@ -154,7 +154,7 @@ export function createGameController({
     function schedulePreparation(current: GameActivation): void {
         const pending = { activation: current, error: '' };
         preparation = pending;
-        globalThis.setTimeout(() => {
+        const prepareCurrent = () => {
             if (preparation !== pending || activation !== current || currentChatIdentity() !== current.chatIdentity) {return;}
             void prepare().then(() => {
                 if (preparation !== pending || activation !== current || currentChatIdentity() !== current.chatIdentity) {return;}
@@ -166,7 +166,9 @@ export function createGameController({
                 preparation = { activation: current, error: '游戏数据暂时无法读取，请稍后重试。' };
                 emitState(current);
             });
-        }, 0);
+        };
+        if (execution) {execution.setTimeout(prepareCurrent, 0);}
+        else {globalThis.setTimeout(prepareCurrent, 0);}
     }
 
     function activate(context: XiaobaiOsAppActivationContext): GameClientState {
@@ -175,7 +177,7 @@ export function createGameController({
         if (!chatIdentity) {throw new Error('请先打开一个聊天');}
         const current = { chatIdentity, post: context.post };
         activation = current;
-        if (!economy.hasCurrent()) {schedulePreparation(current);}
+        if (!economy.isOpen()) {schedulePreparation(current);}
         return buildState(chatIdentity);
     }
 
@@ -289,11 +291,10 @@ export function createGameController({
         throw new Error('未知的游戏操作');
     }
 
-    function handleExternalState(change?: XiaobaiOsChatDataChange): void {
+    function handleExternalState(): void {
         const current = activation;
         if (
             !current
-            || (change && change.identityKey !== current.chatIdentity)
             || currentChatIdentity() !== current.chatIdentity
         ) {return;}
         try {
@@ -312,7 +313,7 @@ export function createGameController({
         handleMessage,
         startBackground() {
             if (!unsubscribeGeneration) {unsubscribeGeneration = subscribeGeneration(() => handleExternalState());}
-            if (!unsubscribeData) {unsubscribeData = subscribeData(handleExternalState);}
+            if (!unsubscribeData) {unsubscribeData = game.subscribe(handleExternalState);}
         },
         stopBackground() {
             unsubscribeGeneration?.();

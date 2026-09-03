@@ -13,4 +13,4 @@ Bank 只拥有金融产品、头寸、结算活动和事件重放。它不拥有
 
 历史头寸和活动始终按发布合同 ID 读取合同库；当前货架只决定还能新开哪些产品。已发布 ID 的锁定期、利息、罚金、收益区间和金额范围不可原地修改；改版必须发布新 ID，旧合同下架后仍保留以解释和结算既有头寸。
 
-资金腿和 Bank 事件的原子组合位于`apps/bank/application/`。删除 Bank 需要删除领域与 APP 注册，并清理`domains.bank`和仍被 Bank escrow 占用的数据。
+资金意图和 Bank 事件的原子组合位于`apps/bank/application/`，由 Bank Scoped transaction 调用 Economy Capability。删除 Bank 需要先处理仍被 Bank escrow 占用的数据，再删除领域、Host/Shell catalog 注册和`bank`分区。

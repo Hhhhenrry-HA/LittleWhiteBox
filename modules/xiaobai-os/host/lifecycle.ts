@@ -5,6 +5,8 @@ import {
     type XiaobaiOsHostFrameMessage,
 } from './frame-bridge.js';
 import type { XiaobaiOsAppDescriptor, XiaobaiOsAppRuntimeRouter } from '../types.js';
+import type { CapturedChatBinding } from '../kernel/contracts.js';
+import type { AppStatus } from '../kernel/execution-scope.js';
 
 const BUTTON_ID = 'xiaobaix-os-button';
 const STYLE_ID = 'xiaobaix-os-host-styles';
@@ -28,8 +30,13 @@ export interface XiaobaiOsLifecycleOptions {
     frameSrc?: string;
     subscribeChatChanged?: (handler: () => void) => () => void;
     subscribeAppDescriptorsChanged?: (handler: () => void) => () => void;
+    subscribeAppStatusChanged?: (handler: (appId: string, status: AppStatus) => void) => () => void;
     getInitSnapshot?: () => XiaobaiOsLifecycleSnapshot | null;
     getAppDescriptors?: () => readonly XiaobaiOsAppDescriptor[];
+    getAppStatuses?: () => Readonly<Record<string, AppStatus>>;
+    captureChatBinding?: () => CapturedChatBinding | null;
+    isChatBindingCurrent?: (captured: CapturedChatBinding) => boolean | Promise<boolean>;
+    createActivationToken?: () => string;
     appRuntime?: Partial<XiaobaiOsAppRuntimeRouter>;
     bridgeFactory?: (options: XiaobaiOsFrameBridgeOptions) => XiaobaiOsHostFrameBridge;
     onError?: (error: unknown) => void;
@@ -38,10 +45,17 @@ export interface XiaobaiOsLifecycleOptions {
 export interface XiaobaiOsLifecycle {
     init: () => boolean;
     open: () => boolean;
-    closeWindow: (reason?: string) => void;
-    cleanup: () => void;
+    closeWindow: (reason?: string) => Promise<void>;
+    cleanup: () => Promise<void>;
     isInitialized: () => boolean;
     isOpen: () => boolean;
+}
+
+interface ActiveApp {
+    appId: string;
+    activationToken: string;
+    binding: CapturedChatBinding;
+    generation: number;
 }
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -106,8 +120,18 @@ export function createXiaobaiOsLifecycle({
     frameSrc,
     subscribeChatChanged = () => () => {},
     subscribeAppDescriptorsChanged = () => () => {},
+    subscribeAppStatusChanged = () => () => {},
     getInitSnapshot = () => ({}),
     getAppDescriptors = () => [],
+    getAppStatuses = () => ({}),
+    captureChatBinding = () => ({
+        identityKey: 'legacy-shell',
+        binding: { kind: 'character', ownerLocator: 'legacy-shell', chatId: 'legacy-shell' },
+        reference: null,
+    }),
+    isChatBindingCurrent = () => true,
+    createActivationToken = () => globalThis.crypto?.randomUUID?.()
+        ?? `${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`,
     appRuntime = {},
     bridgeFactory = createXiaobaiOsFrameBridge,
     onError = (error) => console.error('[LittleWhiteBox] 小白 OS 运行失败', error),
@@ -125,11 +149,53 @@ export function createXiaobaiOsLifecycle({
     let bridge: XiaobaiOsHostFrameBridge | null = null;
     let unsubscribeChatChanged: (() => void) | null = null;
     let unsubscribeAppDescriptorsChanged: (() => void) | null = null;
+    let unsubscribeAppStatusChanged: (() => void) | null = null;
     let themeObserver: MutationObserver | null = null;
-    let activeAppId: string | null = null;
-    let pendingAppId: string | null = null;
+    let activeApp: ActiveApp | null = null;
+    let pendingApp: ActiveApp | null = null;
     let generation = 0;
     let appActivationGeneration = 0;
+    const pendingOperations = new Set<Promise<unknown>>();
+
+    function sameBinding(left: CapturedChatBinding, right: CapturedChatBinding | null): boolean {
+        return !!right
+            && left.identityKey === right.identityKey
+            && left.binding.kind === right.binding.kind
+            && left.binding.ownerLocator === right.binding.ownerLocator
+            && left.binding.chatId === right.binding.chatId
+            && (!left.reference || left.reference.osId === right.reference?.osId);
+    }
+
+    function isLocallyCurrent(app: ActiveApp): boolean {
+        const current = captureChatBinding();
+        if (app.generation !== appActivationGeneration || !sameBinding(app.binding, current)) { return false; }
+        if (!app.binding.reference && current?.reference) { app.binding = current; }
+        return true;
+    }
+
+    function track(operation: void | Promise<void>): Promise<void> {
+        const promise = Promise.resolve(operation).catch(onError);
+        pendingOperations.add(promise);
+        void promise.finally(() => pendingOperations.delete(promise));
+        return promise;
+    }
+
+    function invoke(operation: () => void | Promise<void>): Promise<void> {
+        try {
+            return track(operation());
+        } catch (error) {
+            onError(error);
+            return Promise.resolve();
+        }
+    }
+
+    function appDescriptorsWithStatus(): readonly (XiaobaiOsAppDescriptor & { status: AppStatus })[] {
+        const statuses = getAppStatuses();
+        return getAppDescriptors().map(descriptor => ({
+            ...descriptor,
+            status: statuses[descriptor.id] ?? { state: 'loading', phase: 'install' },
+        }));
+    }
 
     function addStylesheet(): HTMLLinkElement {
         let stylesheet = documentTarget.getElementById(STYLE_ID) as HTMLLinkElement | null;
@@ -144,21 +210,21 @@ export function createXiaobaiOsLifecycle({
         return stylesheet;
     }
 
-    function deactivateActiveApp(reason: string): void {
+    async function deactivateActiveApp(reason: string): Promise<void> {
         appActivationGeneration += 1;
-        pendingAppId = null;
-        if (!activeAppId) {
+        pendingApp = null;
+        if (!activeApp) {
             try {
-                appRuntime.cancelForeground?.(reason);
+                await appRuntime.cancelForeground?.(reason);
             } catch (error) {
                 onError(error);
             }
             return;
         }
-        const appId = activeAppId;
-        activeAppId = null;
+        const { appId } = activeApp;
+        activeApp = null;
         try {
-            appRuntime.deactivate?.(appId, reason);
+            await appRuntime.deactivate?.(appId, reason);
         } catch (error) {
             onError(error);
         }
@@ -168,26 +234,36 @@ export function createXiaobaiOsLifecycle({
         const apps = getAppDescriptors();
         const availableIds = new Set(apps.map(app => app.id));
         if (
-            (activeAppId && !availableIds.has(activeAppId))
-            || (pendingAppId && !availableIds.has(pendingAppId))
+            (activeApp && !availableIds.has(activeApp.appId))
+            || (pendingApp && !availableIds.has(pendingApp.appId))
         ) {
-            deactivateActiveApp('app-disabled');
+            void invoke(() => deactivateActiveApp('app-disabled'));
         }
         if (bridge?.isReady()) {
-            bridge.post('os/apps-changed', { apps });
+            bridge.post('os/apps-changed', { apps: appDescriptorsWithStatus() });
         }
     }
 
-    function closeWindow(reason = 'closed'): void {
+    function handleAppStatusChanged(appId: string, status: AppStatus): void {
+        if (status.state === 'failed' && activeApp?.appId === appId) {
+            void invoke(() => deactivateActiveApp('app-failed'));
+        }
+        if (bridge?.isReady()) { bridge.post('os/app-state', { appId, status }); }
+    }
+
+    async function closeWindow(reason = 'closed'): Promise<void> {
         generation += 1;
-        deactivateActiveApp(reason);
+        const deactivation = deactivateActiveApp(reason);
         bridge?.dispose();
         bridge = null;
         stopThemeObserver();
         overlay?.remove();
         overlay = null;
         iframe = null;
-        appRuntime.handleWindowClosed?.(reason);
+        await Promise.allSettled([
+            deactivation,
+            Promise.resolve().then(() => appRuntime.handleWindowClosed?.(reason)),
+        ]);
     }
 
     function handleThemeChanged(): void {
@@ -225,7 +301,7 @@ export function createXiaobaiOsLifecycle({
             }
             frameBridge.post('os/init', {
                 ...snapshot,
-                apps: getAppDescriptors(),
+                apps: appDescriptorsWithStatus(),
             });
         } catch (error) {
             if (openGeneration === generation && frameBridge === bridge) {
@@ -245,12 +321,51 @@ export function createXiaobaiOsLifecycle({
         }
         const { type, requestId = '', payload = {} } = message;
         if (type === 'os/close') {
-            closeWindow('frame-close');
+            await closeWindow('frame-close');
             return;
         }
         if (type === 'app/deactivate') {
-            deactivateActiveApp('route-left');
+            if (
+                activeApp
+                && (message.appId !== activeApp.appId || message.activationToken !== activeApp.activationToken)
+            ) {
+                frameBridge.post('app/deactivated', { ok: false, error: 'app_inactive' }, requestId);
+                return;
+            }
+            await deactivateActiveApp('route-left');
             frameBridge.post('app/deactivated', { ok: true }, requestId);
+            return;
+        }
+        if (type === 'os/app-ui-failure') {
+            const current = activeApp;
+            if (
+                current
+                && message.appId === current.appId
+                && message.activationToken === current.activationToken
+            ) {
+                onError(Object.assign(new Error(`APP ${current.appId} UI failed`), {
+                    appId: current.appId,
+                    phase: isRecord(payload) ? payload.phase : 'ui-render',
+                }));
+            }
+            return;
+        }
+        if (type === 'app/retry') {
+            const appId = String(isRecord(payload) ? payload.appId || '' : '');
+            if (!getAppDescriptors().some(app => app.id === appId) || !appRuntime.retry) {
+                frameBridge.post('app/retry-result', { ok: false, error: 'app_unavailable' }, requestId);
+                return;
+            }
+            try {
+                await appRuntime.retry(appId);
+                frameBridge.post('app/retry-result', { ok: true, appId }, requestId);
+            } catch (error) {
+                frameBridge.post('app/retry-result', {
+                    ok: false,
+                    error: isRecord(error) && typeof error.code === 'string' ? error.code : 'app_retry_failed',
+                    message: error instanceof Error ? error.message : String(error),
+                }, requestId);
+            }
             return;
         }
         if (type === 'app/activate') {
@@ -260,25 +375,52 @@ export function createXiaobaiOsLifecycle({
                 frameBridge.post('app/activation-result', { ok: false, error: 'app_unavailable' }, requestId);
                 return;
             }
-            deactivateActiveApp('app-switch');
+            const deactivation = deactivateActiveApp('app-switch');
             const activationGeneration = ++appActivationGeneration;
-            pendingAppId = appId;
+            await deactivation;
+            if (activationGeneration !== appActivationGeneration) {
+                frameBridge.post('app/activation-result', { ok: false, error: 'activation_cancelled' }, requestId);
+                return;
+            }
+            const binding = captureChatBinding();
+            if (!binding) {
+                frameBridge.post('app/activation-result', { ok: false, error: 'chat_unavailable' }, requestId);
+                return;
+            }
+            const candidate: ActiveApp = {
+                appId,
+                activationToken: createActivationToken(),
+                binding,
+                generation: activationGeneration,
+            };
+            pendingApp = candidate;
             try {
                 const state = await appRuntime.activate?.(appId, {
+                    activationToken: candidate.activationToken,
+                    isCurrent: () => isLocallyCurrent(candidate)
+                        && (pendingApp === candidate || activeApp === candidate),
                     post: (messageType: string, messagePayload: unknown = {}, responseId = '') =>
-                        frameBridge.post(messageType, messagePayload, responseId),
+                        isLocallyCurrent(candidate) && (pendingApp === candidate || activeApp === candidate)
+                            ? frameBridge.post(messageType, messagePayload, responseId, candidate)
+                            : false,
                 });
+                const currentStatus = getAppStatuses()[appId];
+                if (currentStatus?.state === 'failed') {
+                    throw Object.assign(new Error(currentStatus.failure.message), currentStatus.failure);
+                }
                 if (
                     openGeneration !== generation ||
                     frameBridge !== bridge ||
-                    activationGeneration !== appActivationGeneration
+                    pendingApp !== candidate ||
+                    !isLocallyCurrent(candidate) ||
+                    !await isChatBindingCurrent(candidate.binding)
                 ) {
                     if (
                         openGeneration === generation &&
                         frameBridge === bridge &&
                         appActivationGeneration === activationGeneration + 1
                     ) {
-                        appRuntime.cancelForeground?.('activation-cancelled');
+                        void invoke(() => appRuntime.cancelForeground?.('activation-cancelled'));
                     }
                     frameBridge.post(
                         'app/activation-result',
@@ -287,51 +429,85 @@ export function createXiaobaiOsLifecycle({
                     );
                     return;
                 }
-                pendingAppId = null;
-                activeAppId = appId;
-                frameBridge.post('app/activation-result', { ok: true, appId, state: state ?? null }, requestId);
+                pendingApp = null;
+                activeApp = candidate;
+                frameBridge.post('app/activation-result', {
+                    ok: true,
+                    appId,
+                    activationToken: candidate.activationToken,
+                    state: state ?? null,
+                }, requestId);
             } catch (error) {
-                if (activationGeneration === appActivationGeneration) {pendingAppId = null;}
+                if (pendingApp === candidate) {pendingApp = null;}
+                const cancelled = openGeneration !== generation
+                    || frameBridge !== bridge
+                    || !isLocallyCurrent(candidate);
+                if (!cancelled) { onError(error); }
                 frameBridge.post(
                     'app/activation-result',
                     {
                         ok: false,
-                        error: error instanceof Error ? error.message : String(error),
+                        error: cancelled
+                            ? 'activation_cancelled'
+                            : isRecord(error) && typeof error.code === 'string'
+                            ? error.code
+                            : 'app_activation_failed',
+                        ...(!cancelled ? {
+                            message: error instanceof Error ? error.message : String(error),
+                            phase: isRecord(error) && typeof error.phase === 'string' ? error.phase : 'activate',
+                            retryable: !isRecord(error) || error.retryable !== false,
+                        } : {}),
                     },
                     requestId,
                 );
             }
             return;
         }
-        if (!activeAppId || !type.startsWith(`${activeAppId}/`)) {
+        const current = activeApp;
+        if (
+            !current
+            || message.appId !== current.appId
+            || message.activationToken !== current.activationToken
+            || !type.startsWith(`${current.appId}/`)
+            || !isLocallyCurrent(current)
+            || !await isChatBindingCurrent(current.binding)
+        ) {
+            if (requestId) { frameBridge.post('app/result', { ok: false, error: 'app_inactive' }, requestId); }
             return;
         }
-        const messageAppId = activeAppId;
-        const messageActivationGeneration = appActivationGeneration;
+        const messageAppId = current.appId;
+        const messageActivationGeneration = current.generation;
         const isMessageActivationCurrent = () =>
-            activeAppId === messageAppId && appActivationGeneration === messageActivationGeneration;
+            activeApp === current
+            && appActivationGeneration === messageActivationGeneration
+            && isLocallyCurrent(current);
         try {
             const result = await appRuntime.handleMessage?.(messageAppId, { type, requestId, payload });
             if (requestId && openGeneration === generation && frameBridge === bridge) {
-                if (!isMessageActivationCurrent()) {
-                    frameBridge.post(`${messageAppId}/result`, { ok: false, error: 'app_inactive' }, requestId);
+                if (!isMessageActivationCurrent() || !await isChatBindingCurrent(current.binding)) {
+                    frameBridge.post(`${messageAppId}/result`, { ok: false, error: 'app_inactive' }, requestId, current);
                 } else if (result !== undefined) {
-                    frameBridge.post(`${messageAppId}/result`, { ok: true, result }, requestId);
+                    frameBridge.post(`${messageAppId}/result`, { ok: true, result }, requestId, current);
                 }
             }
         } catch (error) {
+            onError(error);
             if (requestId && openGeneration === generation && frameBridge === bridge) {
                 frameBridge.post(
                     `${messageAppId}/result`,
                     {
                         ok: false,
                         error: isMessageActivationCurrent()
-                            ? error instanceof Error
-                                ? error.message
-                                : String(error)
+                            ? isRecord(error) && typeof error.code === 'string'
+                                ? error.code
+                                : 'app_request_failed'
                             : 'app_inactive',
+                        ...(isMessageActivationCurrent() ? {
+                            message: error instanceof Error ? error.message : String(error),
+                        } : {}),
                     },
                     requestId,
+                    current,
                 );
             }
         }
@@ -364,22 +540,24 @@ export function createXiaobaiOsLifecycle({
             onReady: (frameBridge) => handleFrameReady(frameBridge, openGeneration),
             onMessage: (message, frameBridge) => handleFrameMessage(message, frameBridge, openGeneration),
         });
-        appRuntime.handleWindowOpened?.();
+        void invoke(() => appRuntime.handleWindowOpened?.());
         startThemeObserver();
         return true;
     }
 
     function handleChatChanged(): void {
-        appRuntime.cancelAll?.('chat-changed');
-        closeWindow('chat-changed');
-        appRuntime.handleChatChanged?.();
+        void invoke(async () => {
+            await appRuntime.cancelAll?.('chat-changed');
+            await closeWindow('chat-changed');
+            await appRuntime.handleChatChanged?.();
+        });
     }
 
     function handlePageHide(event: PageTransitionEvent): void {
         if (event.persisted) {
             return;
         }
-        cleanup();
+        void cleanup();
     }
 
     function init(): boolean {
@@ -395,31 +573,35 @@ export function createXiaobaiOsLifecycle({
         launcher.addEventListener('click', open);
         unsubscribeChatChanged = subscribeChatChanged(handleChatChanged);
         unsubscribeAppDescriptorsChanged = subscribeAppDescriptorsChanged(handleAppDescriptorsChanged);
+        unsubscribeAppStatusChanged = subscribeAppStatusChanged(handleAppStatusChanged);
         windowTarget.addEventListener('pagehide', handlePageHide);
-        appRuntime.startBackground?.();
+        void invoke(() => appRuntime.startBackground?.());
         initialized = true;
         return true;
     }
 
-    function cleanup(): void {
+    async function cleanup(): Promise<void> {
         if (!initialized && !launcher && !overlay && !documentTarget.getElementById(STYLE_ID)) {
             return;
         }
         generation += 1;
-        appRuntime.cancelAll?.('cleanup');
-        closeWindow('cleanup');
+        const cancellation = Promise.resolve().then(() => appRuntime.cancelAll?.('cleanup'));
+        const closing = closeWindow('cleanup');
         stopThemeObserver();
-        appRuntime.stopBackground?.();
+        const stopping = Promise.resolve().then(() => appRuntime.stopBackground?.());
         unsubscribeChatChanged?.();
         unsubscribeChatChanged = null;
         unsubscribeAppDescriptorsChanged?.();
         unsubscribeAppDescriptorsChanged = null;
+        unsubscribeAppStatusChanged?.();
+        unsubscribeAppStatusChanged = null;
         windowTarget.removeEventListener('pagehide', handlePageHide);
         launcher?.removeEventListener('click', open);
         launcher?.remove();
         launcher = null;
         documentTarget.getElementById(STYLE_ID)?.remove();
         initialized = false;
+        await Promise.allSettled([cancellation, closing, stopping, ...pendingOperations]);
     }
 
     return Object.freeze({

@@ -1,13 +1,16 @@
+import {
+    ECONOMY_TRANSACTION_CAPABILITY,
+    type EconomyReadCapability,
+    type EconomyTransactionCapability,
+} from '../../../capabilities/economy/index.js';
 import type {
-    ConfirmResult,
-    XiaobaiOsChatDataStore,
-    XiaobaiOsWriteState,
-} from '../../../host/chat-data-store.js';
-import type { XiaobaiOsChatData } from '../../../types.js';
-import { postAction, projectBalances } from '../../../domains/economy/ledger.js';
-import type { EconomyLedgerV2 } from '../../../domains/economy/types.js';
+    PendingCommitRecoveryResult,
+    ScopedChatStore,
+    XiaobaiOsFileControls,
+    XiaobaiOsFileState,
+} from '../../../kernel/contracts.js';
 import { bankRandomSource } from '../../../domains/bank/random.js';
-import { appendBankEvent, createEmptyBankDomain, replayBankEvents } from '../../../domains/bank/timeline.js';
+import { appendBankEvent, replayBankEvents } from '../../../domains/bank/timeline.js';
 import {
     throwBankError,
     type BankAction,
@@ -29,16 +32,13 @@ import {
 } from './action-policy.js';
 import { createBankCommands } from './commands.js';
 import {
-    buildBankTransactions,
-    emptyBankRoot,
-    readBankDomain,
-    readEconomyLedger,
+    buildBankEconomyLegs,
     validateBankEconomyConsistency,
-} from './root-protocol.js';
+} from './economy-protocol.js';
 
 export interface BankServiceView extends BankClientView {
     balance: number;
-    writeState: XiaobaiOsWriteState;
+    writeState: XiaobaiOsFileState;
 }
 
 export type BankReadOptions = Pick<CreateBankViewInput, 'activityOffset' | 'activityLimit'>;
@@ -64,43 +64,50 @@ export interface BankOpenFundCommand extends BankServiceCommand {
 export type BankSettleDueCommand = BankServiceCommand;
 
 export interface BankService {
-    readCurrent: (options?: BankReadOptions) => BankServiceView;
-    openDeposit: (input: BankOpenDepositCommand) => Promise<BankServiceView>;
-    withdrawDeposit: (input: BankWithdrawDepositCommand) => Promise<BankServiceView>;
-    openFund: (input: BankOpenFundCommand) => Promise<BankServiceView>;
-    settleDue: (input: BankSettleDueCommand) => Promise<BankServiceView>;
-    confirmPending: () => Promise<ConfirmResult>;
-    getWriteState: () => XiaobaiOsWriteState;
+    readCurrent(options?: BankReadOptions): BankServiceView;
+    refreshCurrent(options?: BankReadOptions): Promise<BankServiceView>;
+    openDeposit(input: BankOpenDepositCommand): Promise<BankServiceView>;
+    withdrawDeposit(input: BankWithdrawDepositCommand): Promise<BankServiceView>;
+    openFund(input: BankOpenFundCommand): Promise<BankServiceView>;
+    settleDue(input: BankSettleDueCommand): Promise<BankServiceView>;
+    confirmPending(): Promise<PendingCommitRecoveryResult>;
+    getWriteState(): XiaobaiOsFileState;
+    subscribe(listener: () => void): () => void;
+    dispose(): void;
 }
 
-interface BankServiceDependencies {
+export interface BankServiceDependencies {
     now?: () => number;
     createEventId?: () => string;
     createPositionId?: () => string;
     createActivityId?: () => string;
-    createTransactionId?: () => string;
     random?: BankRandomSource;
-    getCurrentAssistantTurn?: (identityKey?: string) => number;
+    getCurrentAssistantTurn?: () => number;
     isMainGenerationActive?: () => boolean;
 }
 
-export interface PreparedBankRoot {
-    root: XiaobaiOsChatData;
-    ledger: EconomyLedgerV2;
+export interface PreparedBankAction {
     domain: BankDomainV1;
     state: BankState;
     assistantTurn: number;
+    playerBalance: number;
 }
 
 export type RunBankAction = (
     kind: BankAction['kind'],
     input: BankCommandInput,
-    create: (prepared: PreparedBankRoot) => {
+    create: (prepared: PreparedBankAction) => {
         eventId: string;
         command: BankAction;
         result: BankEventResult;
     },
 ) => Promise<BankServiceView>;
+
+interface PreparedResult {
+    domain: BankDomainV1;
+    assistantTurn: number;
+    playerBalance: number;
+}
 
 function defaultId(prefix: string): string {
     const suffix = globalThis.crypto?.randomUUID
@@ -109,113 +116,132 @@ function defaultId(prefix: string): string {
     return `${prefix}-${suffix}`;
 }
 
+function transactionError(result: {
+    status: 'failed' | 'unconfirmed' | 'conflict';
+    error?: { code: string; message: string; retryable: boolean };
+}): Error {
+    const code = result.error?.code
+        ?? (result.status === 'unconfirmed' ? 'SAVE_UNCONFIRMED' : 'SAVE_CONFLICT');
+    return Object.assign(new Error(result.error?.message || code), {
+        code,
+        retryable: result.error?.retryable ?? true,
+        uncertain: result.status === 'unconfirmed',
+    });
+}
+
 export function createBankService(
-    store: XiaobaiOsChatDataStore,
+    store: ScopedChatStore<BankDomainV1>,
+    files: XiaobaiOsFileControls,
+    economy: EconomyReadCapability,
     {
         now = Date.now,
         createEventId = () => defaultId('bank-event'),
         createPositionId = () => defaultId('bank-position'),
         createActivityId = () => defaultId('bank-activity'),
-        createTransactionId,
         random = bankRandomSource,
         getCurrentAssistantTurn = () => 0,
         isMainGenerationActive = () => false,
     }: BankServiceDependencies = {},
 ): BankService {
-    const economyDependencies = { now, ...(createTransactionId ? { createId: createTransactionId } : {}) };
+    const listeners = new Set<() => void>();
+    const publish = (): void => {
+        for (const listener of listeners) {
+            try { listener(); } catch (error) {
+                console.error('[LittleWhiteBox] Bank state listener failed', error);
+            }
+        }
+    };
+    const unsubscribeStore = store.subscribe(publish);
+    const unsubscribeEconomy = economy.subscribe(publish);
+    const unsubscribeFiles = files.subscribeFileState(publish);
+    const currentDomain = (): BankDomainV1 | null => store.peekCurrent()?.value ?? null;
 
     function buildView(
-        root: XiaobaiOsChatData | null,
+        domain: BankDomainV1 | null,
         currentTurn: number,
+        playerBalance: number,
         options: BankReadOptions = {},
     ): BankServiceView {
-        const ledger = readEconomyLedger(root);
         return {
-            ...createBankView({ domain: readBankDomain(root), currentTurn, ...options }),
-            balance: ledger ? projectBalances(ledger).player || 0 : 0,
-            writeState: store.getWriteState(),
+            ...createBankView({ domain, currentTurn, ...options }),
+            balance: playerBalance,
+            writeState: files.getFileState(),
         };
     }
 
     function readCurrent(options: BankReadOptions = {}): BankServiceView {
-        const root = store.readCurrent();
-        if (root) {validateBankEconomyConsistency(root);}
-        return buildView(root, getCurrentAssistantTurn(), options);
+        return buildView(currentDomain(), getCurrentAssistantTurn(), economy.getPlayerBalance(), options);
     }
 
-    function prepareRoot(current: XiaobaiOsChatData | null, identityKey: string): PreparedBankRoot {
-        const root = current ? structuredClone(current) : emptyBankRoot();
-        const ledger = readEconomyLedger(root);
-        if (!ledger) {throw new Error('economy_not_opened');}
-        const domain = readBankDomain(root) || createEmptyBankDomain();
-        return {
-            root,
-            ledger,
-            domain,
-            state: replayBankEvents(domain),
-            assistantTurn: getCurrentAssistantTurn(identityKey),
-        };
+    async function refreshCurrent(options: BankReadOptions = {}): Promise<BankServiceView> {
+        await economy.refresh();
+        await store.read();
+        return readCurrent(options);
     }
 
-    function commit(
-        prepared: PreparedBankRoot,
-        input: BankServiceCommand,
-        eventId: string,
-        command: BankAction,
-        result: BankEventResult,
-    ): BankServiceView {
-        const appended = appendBankEvent(prepared.domain, {
-            ...input,
-            eventId,
-            command,
-            result,
-            assistantTurn: prepared.assistantTurn,
-            createdAt: now(),
-        });
-        const transactions = buildBankTransactions(appended.event);
-        if (transactions.length === 0) {throwBankError('bank_no_due_positions');}
-        const economy = postAction(prepared.ledger, transactions, economyDependencies);
-        prepared.root.domains.bank = appended.domain;
-        prepared.root.domains.economy = economy.ledger;
-        validateBankEconomyConsistency(prepared.root);
-        return buildView(prepared.root, prepared.assistantTurn);
-    }
-
-    const runAction: RunBankAction = (
-        kind: BankAction['kind'],
-        input: BankCommandInput,
-        create: (prepared: PreparedBankRoot) => {
-            eventId: string;
-            command: BankAction;
-            result: BankEventResult;
-        },
-    ): Promise<BankServiceView> => {
+    const runAction: RunBankAction = async (kind, input, create) => {
         let replayed = false;
-        const assertGenerationIdle = () => {
-            if (isMainGenerationActive()) {throw new Error('bank_main_generation_active');}
+        const assertGenerationIdle = (): void => {
+            if (isMainGenerationActive()) { throw new Error('bank_main_generation_active'); }
         };
-        return store.mutateCurrent((current, rootContext) => {
-            const prepared = prepareRoot(current, rootContext.identityKey);
-            const existing = prepared.domain.events.find((event) => event.actionId === input.actionId);
+        const result = await store.transact(transaction => {
+            const transactionEconomy: EconomyTransactionCapability = transaction.useCapability(
+                ECONOMY_TRANSACTION_CAPABILITY,
+            );
+            const domain = transaction.currentOrInitial();
+            validateBankEconomyConsistency(domain, transactionEconomy);
+            const assistantTurn = getCurrentAssistantTurn();
+            const existing = domain.events.find(event => event.actionId === input.actionId);
             if (existing) {
-                if (!replayMatches(existing, kind, input)) {throwBankError('bank_action_conflict');}
+                if (!replayMatches(existing, kind, input)) { throwBankError('bank_action_conflict'); }
                 replayed = true;
-                return { next: prepared.root, result: buildView(prepared.root, prepared.assistantTurn) };
+                return {
+                    domain,
+                    assistantTurn,
+                    playerBalance: transactionEconomy.getPlayerBalance(),
+                };
             }
+
             assertGenerationIdle();
             assertActionId(input.actionId);
-            assertCas(prepared.domain, input);
-            if (prepared.ledger.transactions.some((transaction) => transaction.actionId === input.actionId)) {
-                throwBankError('bank_action_conflict');
-            }
+            assertCas(domain, input);
+            const prepared: PreparedBankAction = {
+                domain,
+                state: replayBankEvents(domain),
+                assistantTurn,
+                playerBalance: transactionEconomy.getPlayerBalance(),
+            };
             const action = create(prepared);
-            const view = commit(prepared, input, action.eventId, action.command, action.result);
-            return { next: prepared.root, result: view };
+            const appended = appendBankEvent(domain, {
+                ...input,
+                eventId: action.eventId,
+                command: action.command,
+                result: action.result,
+                assistantTurn,
+                createdAt: now(),
+            });
+            const legs = buildBankEconomyLegs(appended.event);
+            if (legs.length === 0) { throwBankError('bank_no_due_positions'); }
+            transactionEconomy.postAction({ legs });
+            transaction.replace(appended.domain);
+            validateBankEconomyConsistency(appended.domain, transactionEconomy);
+            return {
+                domain: appended.domain,
+                assistantTurn,
+                playerBalance: transactionEconomy.getPlayerBalance(),
+            };
         }, {
-            beforeCommit() {
-                if (!replayed) {assertGenerationIdle();}
+            commitGuard() {
+                if (!replayed) { assertGenerationIdle(); }
+                return true;
             },
         });
+
+        if (result.status === 'failed' || result.status === 'unconfirmed' || result.status === 'conflict') {
+            throw transactionError(result);
+        }
+        const prepared: PreparedResult = result.result;
+        return buildView(prepared.domain, prepared.assistantTurn, prepared.playerBalance);
     };
 
     const commands = createBankCommands({
@@ -228,8 +254,19 @@ export function createBankService(
 
     return Object.freeze({
         readCurrent,
+        refreshCurrent,
         ...commands,
-        confirmPending: store.confirmPending,
-        getWriteState: store.getWriteState,
+        confirmPending: files.retryPending,
+        getWriteState: files.getFileState,
+        subscribe(listener: () => void) {
+            listeners.add(listener);
+            return () => listeners.delete(listener);
+        },
+        dispose() {
+            unsubscribeStore();
+            unsubscribeEconomy();
+            unsubscribeFiles();
+            listeners.clear();
+        },
     });
 }

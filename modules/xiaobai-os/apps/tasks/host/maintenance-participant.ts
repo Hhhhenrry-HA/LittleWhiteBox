@@ -1,5 +1,5 @@
-import type { AcceptedTurnSource } from '../../../host/maintenance/accepted-turn-source.js';
-import type { MaintenanceMode, MaintenanceParticipant } from '../../../host/maintenance/registry.js';
+import type { AcceptedTurnSource } from '../../../capabilities/maintenance/accepted-turn-source.js';
+import type { MaintenanceMode, MaintenanceParticipant } from '../../../capabilities/maintenance/registry.js';
 import type { TasksService } from '../application/service.js';
 import { createTaskMaintenanceSession } from '../maintenance/session.js';
 
@@ -8,7 +8,7 @@ export interface TaskMaintenanceSettings {
 }
 
 interface TaskMaintenanceParticipantDependencies {
-    readonly tasks: TasksService;
+    readonly tasks: Pick<TasksService, 'readCurrent' | 'createActionId' | 'commitMaintenance'>;
     readonly readSettings: () => TaskMaintenanceSettings | null;
 }
 

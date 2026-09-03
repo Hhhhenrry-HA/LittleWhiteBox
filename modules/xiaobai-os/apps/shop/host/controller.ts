@@ -1,4 +1,5 @@
-import type { EconomyRepository } from '../../../domains/economy/repository.js';
+import type { EconomyReadCapability } from '../../../capabilities/economy/index.js';
+import type { XiaobaiOsExecutionScope } from '../../../kernel/execution-scope.js';
 import type {
     ShopActivateCommand,
     ShopDeactivateCommand,
@@ -11,7 +12,6 @@ import type {
     XiaobaiOsChatIdentity,
 } from '../../../types.js';
 import type { XiaobaiOsHostFrameMessage } from '../../../host/frame-bridge.js';
-import type { XiaobaiOsChatDataChange } from '../../../host/chat-data-store.js';
 import type { ShopClientState } from '../types.js';
 import { presentShopState } from './presentation.js';
 
@@ -22,13 +22,13 @@ interface ShopActivation {
     post: XiaobaiOsAppActivationContext['post'];
 }
 
-interface ShopControllerDependencies {
+export interface ShopControllerDependencies {
     shop: ShopService;
-    economy: EconomyRepository;
+    economy: EconomyReadCapability;
     getChatIdentity: () => XiaobaiOsChatIdentity | { key?: unknown } | string | null;
     isMainGenerationActive: () => boolean;
     subscribeGeneration: (listener: () => void) => () => void;
-    subscribeData: (listener: (change: XiaobaiOsChatDataChange) => void) => () => void;
+    execution?: XiaobaiOsExecutionScope;
 }
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -37,10 +37,6 @@ function isRecord(value: unknown): value is UnknownRecord {
 
 function identityKey(identity: ReturnType<ShopControllerDependencies['getChatIdentity']>): string {
     return typeof identity === 'string' ? identity : String(identity?.key || '');
-}
-
-function isUnconfirmedSave(error: unknown): boolean {
-    return isRecord(error) && (error.code === 'SAVE_UNCONFIRMED' || error.uncertain === true);
 }
 
 function requireString(value: unknown, name: string): string {
@@ -67,7 +63,7 @@ export function createShopController({
     getChatIdentity,
     isMainGenerationActive,
     subscribeGeneration,
-    subscribeData,
+    execution,
 }: ShopControllerDependencies): XiaobaiOsAppRuntime & {
     activate: NonNullable<XiaobaiOsAppRuntime['activate']>;
     handleMessage: NonNullable<XiaobaiOsAppRuntime['handleMessage']>;
@@ -76,16 +72,15 @@ export function createShopController({
     let preparation: { activation: ShopActivation; error: string } | null = null;
     let busy = false;
     let unsubscribeGeneration: (() => void) | null = null;
-    let unsubscribeData: (() => void) | null = null;
+    let unsubscribeShop: (() => void) | null = null;
 
-    function currentChatIdentity(): string {
-        return identityKey(getChatIdentity());
-    }
+    const currentChatIdentity = (): string => identityKey(getChatIdentity());
+    const isCurrent = (current: ShopActivation): boolean =>
+        activation === current && currentChatIdentity() === current.chatIdentity;
 
     function assertActivation(payload: UnknownRecord = {}): ShopActivation {
         if (!activation) {throw new Error('商店 APP 未激活');}
-        const current = currentChatIdentity();
-        if (!current || current !== activation.chatIdentity || String(payload.chatIdentity || '') !== current) {
+        if (!isCurrent(activation) || String(payload.chatIdentity || '') !== activation.chatIdentity) {
             throw new Error('聊天已切换，请重新打开商店');
         }
         return activation;
@@ -102,9 +97,7 @@ export function createShopController({
             generationActive: isMainGenerationActive(),
         });
         if (!preparation || preparation.activation !== activation) {return next;}
-        if (preparation.error) {
-            return { ...next, status: 'blocked', message: preparation.error };
-        }
+        if (preparation.error) {return { ...next, status: 'blocked', message: preparation.error };}
         if (next.status === 'unconfirmed' || next.status === 'conflict') {return next;}
         return { ...next, status: 'loading', message: '' };
     }
@@ -116,40 +109,37 @@ export function createShopController({
         return state;
     }
 
-    async function prepare(): Promise<void> {
-        if (economy.hasCurrent()) {return;}
-        try {
-            await economy.ensureCurrent();
-        } catch (error) {
-            if (!isUnconfirmedSave(error)) {throw error;}
-        }
-    }
-
     function schedulePreparation(current: ShopActivation): void {
         const pending = { activation: current, error: '' };
         preparation = pending;
-        globalThis.setTimeout(() => {
-            if (preparation !== pending || activation !== current || currentChatIdentity() !== current.chatIdentity) {return;}
-            void prepare().then(() => {
-                if (preparation !== pending || activation !== current || currentChatIdentity() !== current.chatIdentity) {return;}
+        const prepare = async () => {
+            if (preparation !== pending || !isCurrent(current)) {return;}
+            try {
+                await economy.ensureOpen();
+                if (preparation !== pending || !isCurrent(current)) {return;}
                 preparation = null;
                 emitState(current);
-            }).catch((error) => {
-                if (preparation !== pending || activation !== current || currentChatIdentity() !== current.chatIdentity) {return;}
-                console.error('[LittleWhiteBox] 商店数据准备失败', error);
-                preparation = { activation: current, error: '商店数据暂时无法读取，请稍后重试。' };
+            } catch (error) {
+                if (preparation !== pending || !isCurrent(current)) {return;}
+                preparation = isRecord(error) && error.uncertain === true
+                    ? null
+                    : { activation: current, error: '商店数据暂时无法读取，请稍后重试。' };
                 emitState(current);
-            });
-        }, 0);
+            }
+        };
+        if (execution) {execution.setTimeout(prepare, 0);}
+        else {globalThis.setTimeout(() => {void prepare();}, 0);}
     }
 
-    function activate(context: XiaobaiOsAppActivationContext): ShopClientState {
+    async function activate(context: XiaobaiOsAppActivationContext): Promise<ShopClientState> {
         cancelForeground();
         const chatIdentity = currentChatIdentity();
         if (!chatIdentity) {throw new Error('请先打开一个聊天');}
         const current = { chatIdentity, post: context.post };
         activation = current;
-        if (!economy.hasCurrent()) {schedulePreparation(current);}
+        await shop.refreshCurrent();
+        if (!isCurrent(current)) {throw new Error('聊天已切换，请重新打开商店');}
+        if (!economy.isOpen()) {schedulePreparation(current);}
         return buildState(chatIdentity);
     }
 
@@ -172,9 +162,7 @@ export function createShopController({
             emitState(current);
             return result;
         } catch (error) {
-            if (activation === current && currentChatIdentity() === current.chatIdentity && isUnconfirmedSave(error)) {
-                emitState(current);
-            }
+            if (isCurrent(current) && isRecord(error) && error.uncertain === true) {emitState(current);}
             throw error;
         } finally {
             if (activation === current) {busy = false;}
@@ -186,7 +174,8 @@ export function createShopController({
         const current = assertActivation(payload);
         if (message.type === 'shop/refresh') {
             preparation = null;
-            await prepare();
+            await shop.refreshCurrent();
+            if (shop.getWriteState() === 'ready' && !economy.isOpen()) {await economy.ensureOpen();}
             assertSameActivation(current, payload);
             return emitState(current);
         }
@@ -196,6 +185,13 @@ export function createShopController({
             const confirmation = await shop.confirmPending();
             assertSameActivation(current, payload);
             return { confirmation: confirmation.status, state: emitState(current) };
+        }
+        if (message.type === 'shop/adopt-server-state') {
+            preparation = null;
+            if (busy) {throw new Error('已有商店操作正在处理');}
+            const adoption = await shop.adoptServerState();
+            assertSameActivation(current, payload);
+            return { adoption: adoption.status, state: emitState(current) };
         }
         const base = {
             ...requireCas(payload),
@@ -239,19 +235,16 @@ export function createShopController({
         throw new Error('未知的商店操作');
     }
 
-    function handleExternalState(change?: XiaobaiOsChatDataChange): void {
+    function handleExternalState(): void {
         const current = activation;
-        if (
-            !current
-            || (change && change.identityKey !== current.chatIdentity)
-            || currentChatIdentity() !== current.chatIdentity
-        ) {return;}
-        try {
-            emitState(current);
-        } catch (error) {
+        if (!current || !isCurrent(current)) {return;}
+        try {emitState(current);}
+        catch (error) {
             current.post('shop/error', { message: error instanceof Error ? error.message : String(error) });
         }
     }
+
+    execution?.addCleanup(cancelForeground);
 
     return Object.freeze({
         activate,
@@ -261,14 +254,14 @@ export function createShopController({
         handleChatChanged: cancelForeground,
         handleMessage,
         startBackground() {
-            if (!unsubscribeGeneration) {unsubscribeGeneration = subscribeGeneration(() => handleExternalState());}
-            if (!unsubscribeData) {unsubscribeData = subscribeData(handleExternalState);}
+            unsubscribeGeneration ||= subscribeGeneration(handleExternalState);
+            unsubscribeShop ||= shop.subscribe(handleExternalState);
         },
         stopBackground() {
             unsubscribeGeneration?.();
             unsubscribeGeneration = null;
-            unsubscribeData?.();
-            unsubscribeData = null;
+            unsubscribeShop?.();
+            unsubscribeShop = null;
             cancelForeground();
         },
     });

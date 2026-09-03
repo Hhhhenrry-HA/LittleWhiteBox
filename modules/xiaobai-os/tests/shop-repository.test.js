@@ -1,11 +1,20 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createEconomyRepository } from '../domains/economy/repository.js';
-import { createShopEffectReceipt, projectShopState } from '../domains/shop/timeline.js';
+import {
+    createEconomyCapabilityRegistrations,
+    ECONOMY_READ_CAPABILITY,
+    ECONOMY_TRANSACTION_CAPABILITY,
+} from '../capabilities/economy/index.js';
 import { createShopEffectDeliveryQueue } from '../apps/shop/application/effect-delivery-queue.js';
 import { createShopService } from '../apps/shop/application/service.js';
-import { createChatDataStore } from '../host/chat-data-store.js';
+import { createShopModule } from '../apps/shop/module.js';
+import { SHOP_PARTITION } from '../apps/shop/partition.js';
+import { ensureEconomy, postAction } from '../domains/economy/ledger.js';
+import { createShopEffectReceipt, projectShopState } from '../domains/shop/timeline.js';
+import { createCapabilityRegistry } from '../kernel/capability-registry.js';
+import { XiaobaiOsPartitionRegistry } from '../kernel/partition-registry.js';
+import { createTransactionCoordinator } from '../kernel/transaction-coordinator.js';
 
 function deferred() {
     let resolve;
@@ -13,80 +22,132 @@ function deferred() {
     return { promise, resolve };
 }
 
-function createHarness() {
-    const identities = {
-        a: { key: 'character:1:chat-a', chatId: 'chat-a' },
-        b: { key: 'character:2:chat-b', chatId: 'chat-b' },
-    };
-    const chats = new Map(Object.values(identities).map(identity => [identity.key, {
-        metadata: {},
-        persisted: undefined,
-        messages: [{ role: 'user', name: '主人', text: `开场 ${identity.chatId}` }],
-    }]));
-    const state = {
-        identity: identities.a,
-        identityReads: 0,
-        generationActive: false,
-        saveCount: 0,
-        saves: [],
-        persist(transaction) {
-            chats.get(transaction.identity.key).persisted = structuredClone(transaction.xiaobaiOs);
-        },
-        saveImpl: null,
-    };
-    state.saveImpl = async transaction => { state.persist(transaction); };
-
-    const store = createChatDataStore({
-        getChatIdentity() {
-            state.identityReads += 1;
-            return state.identity;
-        },
-        getChatMetadata: identity => chats.get(identity?.key)?.metadata ?? null,
-        async saveChatMetadata(transaction) {
-            state.saveCount += 1;
-            state.saves.push(structuredClone(transaction));
-            await state.saveImpl(transaction);
-        },
-        readPersistedXiaobaiOs: async identity => structuredClone(chats.get(identity.key)?.persisted),
+function initialLedger(chat, extraFunds) {
+    const opened = ensureEconomy(undefined, {
+        now: () => 100,
+        createId: () => `opening-${chat}`,
     });
-    let clock = 1_000;
-    let transactionId = 0;
-    let eventId = 0;
-    let activationId = 0;
-    const now = () => ++clock;
-    const createTransactionId = () => `tx-${++transactionId}`;
-    const economy = createEconomyRepository(store, {
-        now,
-        createId: createTransactionId,
-    });
-    const shop = createShopService(store, {
-        now,
-        createEventId: () => `shop-event-${++eventId}`,
-        createTransactionId,
-        createActivationId: () => `shop-activation-${++activationId}`,
-        isMainGenerationActive: () => state.generationActive,
-    });
-
-    return {
-        chats,
-        economy,
-        identities,
-        shop,
-        state,
-        store,
-        currentChat() {
-            return chats.get(state.identity.key);
-        },
-        switchChat(chat) {
-            state.identity = identities[chat];
-        },
-    };
+    if (!extraFunds) { return opened; }
+    return postAction(opened, [{
+        idempotencyKey: `test:grant:${chat}`,
+        actionId: `test:grant:${chat}`,
+        fromAccountId: 'system:mint',
+        toAccountId: 'player',
+        amount: extraFunds,
+        kind: 'test_grant',
+        title: '测试资金',
+        sourceDomain: 'test',
+        sourceId: chat,
+    }], {
+        now: () => 101,
+        createId: () => `grant-${chat}`,
+    }).ledger;
 }
 
-async function openEconomy(harness) {
-    await harness.economy.ensureCurrent();
-    harness.state.saveCount = 0;
-    harness.state.saves.length = 0;
+async function createHarness({ extraFunds = 0, initialShop, refreshShop = true } = {}) {
+    const identities = {
+        a: {
+            identityKey: 'character:avatar-a.png:chat-a',
+            binding: { kind: 'character', ownerLocator: 'avatar-a.png', chatId: 'chat-a' },
+            reference: { formatVersion: 1, osId: 'shop-os-a' },
+        },
+        b: {
+            identityKey: 'character:avatar-b.png:chat-b',
+            binding: { kind: 'character', ownerLocator: 'avatar-b.png', chatId: 'chat-b' },
+            reference: { formatVersion: 1, osId: 'shop-os-b' },
+        },
+    };
+    const chats = new Map(Object.entries(identities).map(([key, identity]) => [key, {
+        messages: [{ role: 'user', text: `开场 ${key}` }],
+        persisted: {
+            formatVersion: 1,
+            osId: identity.reference.osId,
+            binding: structuredClone(identity.binding),
+            revision: 0,
+            commitId: `initial-${key}`,
+            partitions: {
+                economy: initialLedger(key, extraFunds),
+                ...(initialShop === undefined ? {} : { shop: structuredClone(initialShop) }),
+            },
+        },
+    }]));
+    const state = {
+        current: 'a',
+        generationActive: false,
+        eventId: 0,
+        activationId: 0,
+        kernelId: 0,
+        replaces: [],
+        replaceImpl: null,
+    };
+    const currentIdentity = () => identities[state.current];
+    const chatByOsId = osId => [...chats.values()].find(chat => chat.persisted?.osId === osId);
+    const persist = candidate => {
+        const chat = chatByOsId(candidate.osId);
+        if (!chat) { throw new Error(`unknown sidecar: ${candidate.osId}`); }
+        chat.persisted = structuredClone(candidate);
+    };
+    const storage = {
+        async read(osId) {
+            return structuredClone(chatByOsId(osId)?.persisted ?? null);
+        },
+        async replace(input) {
+            state.replaces.push(structuredClone(input));
+            if (state.replaceImpl) { return await state.replaceImpl(input); }
+            persist(input.candidate);
+            return { status: 'confirmed' };
+        },
+        async delete() { return 'deleted'; },
+    };
+    const chatReferences = {
+        capture: () => structuredClone(currentIdentity()),
+        isCurrent: captured => captured.identityKey === currentIdentity().identityKey,
+        async install() { return { status: 'confirmed' }; },
+    };
+    const capabilities = createCapabilityRegistry(createEconomyCapabilityRegistrations());
+    const partitions = new XiaobaiOsPartitionRegistry();
+    for (const registration of capabilities.partitions()) { partitions.register(registration); }
+    partitions.register(SHOP_PARTITION);
+    const coordinator = createTransactionCoordinator({
+        storage,
+        partitions,
+        chatReferences,
+        capabilityBinder: capabilities,
+        createId: () => `shop-kernel-${++state.kernelId}`,
+    });
+    await capabilities.install({
+        createStore: (registration, allowedCapabilities) =>
+            coordinator.createScopedStore(registration, { allowedCapabilities }),
+        files: coordinator,
+    });
+    const economy = capabilities.require(ECONOMY_READ_CAPABILITY);
+    const store = coordinator.createScopedStore(SHOP_PARTITION, {
+        allowedCapabilities: [ECONOMY_READ_CAPABILITY, ECONOMY_TRANSACTION_CAPABILITY],
+    });
+    const shop = createShopService(store, coordinator, economy, {
+        getCurrentChatIdentity: () => currentIdentity().identityKey,
+        now: () => 1_000 + state.eventId,
+        createEventId: () => `shop-event-${++state.eventId}`,
+        createActivationId: () => `shop-activation-${++state.activationId}`,
+        isMainGenerationActive: () => state.generationActive,
+    });
+    if (refreshShop) { await shop.refreshCurrent(); }
+
+    return {
+        capabilities,
+        chats,
+        coordinator,
+        economy,
+        identities,
+        persist,
+        shop,
+        state,
+        currentChat: () => chats.get(state.current),
+        async switchChat(chat) {
+            state.current = chat;
+            await shop.refreshCurrent();
+        },
+    };
 }
 
 function purchaseInput(view, actionId, itemId = 'flower') {
@@ -118,151 +179,151 @@ function deactivateInput(view, actionId, itemId, activationId) {
     };
 }
 
-test('purchase commits balance and inventory together in one root save', async () => {
-    const harness = createHarness();
-    await openEconomy(harness);
+test('Shop partition parser is strict', () => {
+    assert.equal(SHOP_PARTITION.parse({ schemaVersion: 2, events: [] }).ok, true);
+    assert.equal(SHOP_PARTITION.parse({ schemaVersion: 2, events: [], leaked: true }).ok, false);
+    assert.equal(SHOP_PARTITION.parse({ schemaVersion: 1, events: [] }).ok, false);
+});
 
+test('Shop module declares both Economy capabilities and removes only its partition', async () => {
+    const module = createShopModule({
+        getChatIdentity: () => null,
+        isMainGenerationActive: () => false,
+        subscribeGeneration: () => () => undefined,
+    });
+    assert.equal(module.partition, SHOP_PARTITION);
+    assert.deepEqual(module.capabilities.map(capability => capability.id), [
+        'economy.read',
+        'economy.transaction',
+    ]);
+    const removed = [];
+    await module.clearData({ async removePartition(key) { removed.push(key); } });
+    assert.deepEqual(removed, ['shop']);
+});
+
+test('a corrupt Shop partition is isolated from Economy reads', async () => {
+    const harness = await createHarness({
+        initialShop: { schemaVersion: 2, events: [], leaked: true },
+        refreshShop: false,
+    });
+
+    await harness.economy.refresh();
+    assert.equal(harness.economy.getPlayerBalance(), 100);
+    await assert.rejects(harness.shop.refreshCurrent(), error => error.code === 'partition_invalid');
+    assert.equal(harness.economy.getPlayerBalance(), 100);
+});
+
+test('purchase commits Shop and caller-bound Economy in one sidecar replace', async () => {
+    const harness = await createHarness();
     const purchased = await harness.shop.purchaseCurrent(
         purchaseInput(harness.shop.readCurrent(), 'buy-flower'),
     );
 
-    assert.equal(harness.state.saveCount, 1);
+    assert.equal(harness.state.replaces.length, 1);
     assert.equal(purchased.balance, 50);
     assert.equal(purchased.projection.inventory.flower.quantity, 1);
-    assert.equal(purchased.domain.events.length, 1);
-    assert.equal(harness.economy.readCurrent().transactions.length, 2);
-    assert.equal(harness.state.saves[0].xiaobaiOs.domains.shop.events.length, 1);
-    assert.equal(harness.state.saves[0].xiaobaiOs.domains.economy.transactions.length, 2);
-    assert.deepEqual(harness.currentChat().persisted, harness.store.readCurrent());
+    const candidate = harness.state.replaces[0].candidate;
+    assert.equal(candidate.partitions.shop.events.length, 1);
+    assert.equal(candidate.partitions.economy.transactions.length, 2);
+    assert.equal(candidate.partitions.economy.transactions[1].sourceDomain, 'shop');
+    assert.equal(candidate.partitions.economy.transactions[1].actionId, 'buy-flower');
+    assert.deepEqual(harness.currentChat().persisted, candidate);
 });
 
-test('insufficient funds and stale CAS leave both domains unchanged and do not save', async () => {
-    const harness = createHarness();
-    await openEconomy(harness);
+test('insufficient funds, stale CAS and replay do not publish extra candidates', async () => {
+    const harness = await createHarness();
     const empty = harness.shop.readCurrent();
-    const beforeInsufficientFunds = harness.store.readCurrent();
 
     await assert.rejects(
         harness.shop.purchaseCurrent(purchaseInput(empty, 'buy-gift', 'gift-box')),
         error => error.code === 'economy_insufficient_funds',
     );
-    assert.deepEqual(harness.store.readCurrent(), beforeInsufficientFunds);
-    assert.equal(harness.state.saveCount, 0);
+    assert.equal(harness.state.replaces.length, 0);
+    assert.equal(harness.shop.readCurrent().domain, null);
 
-    await harness.shop.purchaseCurrent(purchaseInput(empty, 'buy-flower'));
-    const beforeStaleCas = harness.store.readCurrent();
-    await assert.rejects(
-        harness.shop.purchaseCurrent(purchaseInput(empty, 'stale-buy')),
-        error => error.code === 'shop_revision_conflict',
-    );
-    assert.deepEqual(harness.store.readCurrent(), beforeStaleCas);
-    assert.equal(harness.state.saveCount, 1);
-});
-
-test('replaying one actionId does not charge, add inventory or save again', async () => {
-    const harness = createHarness();
-    await openEconomy(harness);
-    const input = purchaseInput(harness.shop.readCurrent(), 'stable-purchase');
-    const first = await harness.shop.purchaseCurrent(input);
-    harness.currentChat().messages.push({ role: 'assistant', name: '角色', text: '后续剧情' });
-
-    const replay = await harness.shop.purchaseCurrent(input);
-
-    assert.equal(harness.state.saveCount, 1);
+    const first = await harness.shop.purchaseCurrent(purchaseInput(empty, 'stable-purchase'));
+    const replay = await harness.shop.purchaseCurrent(purchaseInput(empty, 'stable-purchase'));
+    assert.equal(harness.state.replaces.length, 1);
     assert.equal(replay.balance, 50);
     assert.equal(replay.projection.inventory.flower.quantity, 1);
-    assert.equal(replay.domain.events.length, 1);
     assert.equal(replay.domain.events[0].eventId, first.domain.events[0].eventId);
-    assert.equal(harness.economy.readCurrent().transactions.length, 2);
+
+    await assert.rejects(
+        harness.shop.purchaseCurrent(purchaseInput(empty, 'stale-purchase')),
+        error => error.code === 'shop_revision_conflict',
+    );
+    assert.equal(harness.state.replaces.length, 1);
 });
 
-test('an explicit save failure rolls back balance and inventory together', async () => {
-    const harness = createHarness();
-    await openEconomy(harness);
-    const before = harness.store.readCurrent();
-    harness.state.saveImpl = async () => {
-        throw Object.assign(new Error('save unavailable'), { code: 'SAVE_UNAVAILABLE' });
-    };
+test('a definite replace failure rolls back Shop and Economy publication', async () => {
+    const harness = await createHarness();
+    const before = structuredClone(harness.currentChat().persisted);
+    harness.state.replaceImpl = async () => ({
+        status: 'failed',
+        error: { code: 'SAVE_UNAVAILABLE', message: 'save unavailable', retryable: true },
+    });
 
     await assert.rejects(
         harness.shop.purchaseCurrent(purchaseInput(harness.shop.readCurrent(), 'failed-purchase')),
         error => error.code === 'SAVE_UNAVAILABLE',
     );
 
-    assert.deepEqual(harness.store.readCurrent(), before);
-    assert.equal(harness.shop.readCurrent().balance, 100);
+    assert.equal(harness.state.replaces.length, 1);
+    assert.deepEqual(harness.currentChat().persisted, before);
     assert.equal(harness.shop.readCurrent().domain, null);
-    assert.equal(harness.state.saveCount, 1);
+    assert.equal(harness.shop.readCurrent().balance, 100);
     assert.equal(harness.shop.getWriteState(), 'ready');
 });
 
-test('an unconfirmed purchase keeps one candidate, freezes writes and unlocks after confirmation', async () => {
-    const harness = createHarness();
-    await openEconomy(harness);
-    harness.state.saveImpl = async transaction => {
-        harness.state.persist(transaction);
-        throw Object.assign(new Error('save result unknown'), { code: 'SAVE_UNCONFIRMED', uncertain: true });
+test('unconfirmed purchase stays unpublished and retry reuses the exact Kernel candidate', async () => {
+    const harness = await createHarness();
+    let preparedCandidate;
+    harness.state.replaceImpl = async input => {
+        preparedCandidate = structuredClone(input.candidate);
+        return { status: 'unconfirmed', observed: structuredClone(harness.currentChat().persisted) };
     };
 
     await assert.rejects(
         harness.shop.purchaseCurrent(purchaseInput(harness.shop.readCurrent(), 'pending-purchase')),
-        error => error.code === 'SAVE_UNCONFIRMED',
+        error => error.code === 'SAVE_UNCONFIRMED' && error.uncertain === true,
     );
-    const candidate = harness.shop.readCurrent();
-    assert.equal(candidate.balance, 50);
-    assert.equal(candidate.projection.inventory.flower.quantity, 1);
+    assert.equal(harness.shop.readCurrent().domain, null);
+    assert.equal(harness.shop.readCurrent().balance, 100);
     assert.equal(harness.shop.getWriteState(), 'unconfirmed');
 
     await assert.rejects(
-        harness.shop.activateCurrent(activateInput(candidate, 'blocked-use', 'flower', { targetName: '艾拉' })),
-        error => error.code === 'SAVE_UNCONFIRMED',
+        harness.shop.purchaseCurrent(purchaseInput(harness.shop.readCurrent(), 'blocked-purchase')),
+        error => error.code === 'storage_unconfirmed',
     );
-    assert.equal(harness.state.saveCount, 1);
-    assert.equal(harness.shop.readCurrent().projection.inventory.flower.quantity, 1);
+    assert.equal(harness.state.replaces.length, 1);
 
+    harness.state.replaceImpl = async input => {
+        assert.deepEqual(input.candidate, preparedCandidate);
+        harness.persist(input.candidate);
+        return { status: 'confirmed' };
+    };
     assert.deepEqual(await harness.shop.confirmPending(), { status: 'confirmed' });
-    assert.equal(harness.shop.getWriteState(), 'ready');
-    harness.state.saveImpl = async transaction => { harness.state.persist(transaction); };
-    const activated = await harness.shop.activateCurrent(
-        activateInput(harness.shop.readCurrent(), 'confirmed-use', 'flower', { targetName: '艾拉' }),
-    );
-    assert.equal(activated.projection.inventory.flower.quantity, 0);
-    assert.equal(harness.economy.readCurrent().transactions.length, 2);
+    assert.equal(harness.state.replaces.length, 2);
+    assert.equal(harness.shop.readCurrent().balance, 50);
+    assert.equal(harness.shop.readCurrent().projection.inventory.flower.quantity, 1);
+    assert.equal(harness.shop.readCurrent().domain.events[0].eventId, 'shop-event-1');
 });
 
-test('activate and deactivate are generation-guarded and never append Economy transactions', async () => {
-    const harness = createHarness();
-    await openEconomy(harness);
-    await harness.economy.postCurrent({
-        idempotencyKey: 'test:fund-manual-item',
-        actionId: 'test:fund-manual-item',
-        fromAccountId: 'system:mint',
-        toAccountId: 'player',
-        amount: 1_200,
-        kind: 'test_grant',
-        title: '测试资金',
-        sourceDomain: 'test',
-        sourceId: 'manual-item',
-    });
-    harness.state.saveCount = 0;
-    harness.state.saves.length = 0;
+test('activate and deactivate are generation guarded and never append Economy transactions', async () => {
+    const harness = await createHarness({ extraFunds: 1_200 });
+    harness.state.generationActive = true;
     const purchased = await harness.shop.purchaseCurrent(
         purchaseInput(harness.shop.readCurrent(), 'buy-camera', 'privacy-camera'),
     );
-    const transactionCount = harness.economy.readCurrent().transactions.length;
+    const transactionCount = harness.economy.getTransactionCount();
 
-    harness.state.generationActive = true;
-    await assert.rejects(
-        harness.shop.activateCurrent(activateInput(
-            purchased,
-            'blocked-camera-use',
-            'privacy-camera',
-            { targetName: '艾拉' },
-        )),
-        /shop_main_generation_active/,
-    );
-    assert.equal(harness.state.saveCount, 1);
-    assert.equal(harness.economy.readCurrent().transactions.length, transactionCount);
+    await assert.rejects(harness.shop.activateCurrent(activateInput(
+        purchased,
+        'blocked-camera-use',
+        'privacy-camera',
+        { targetName: '艾拉' },
+    )), /shop_main_generation_active/);
+    assert.equal(harness.state.replaces.length, 1);
 
     harness.state.generationActive = false;
     const activated = await harness.shop.activateCurrent(activateInput(
@@ -271,20 +332,16 @@ test('activate and deactivate are generation-guarded and never append Economy tr
         'privacy-camera',
         { targetName: '艾拉' },
     ));
-    assert.equal(harness.economy.readCurrent().transactions.length, transactionCount);
+    assert.equal(harness.economy.getTransactionCount(), transactionCount);
 
     harness.state.generationActive = true;
-    await assert.rejects(
-        harness.shop.deactivateCurrent(deactivateInput(
-            activated,
-            'blocked-camera-close',
-            'privacy-camera',
-            'shop-activation-1',
-        )),
-        /shop_main_generation_active/,
-    );
-    assert.equal(harness.state.saveCount, 2);
-    assert.equal(harness.economy.readCurrent().transactions.length, transactionCount);
+    await assert.rejects(harness.shop.deactivateCurrent(deactivateInput(
+        activated,
+        'blocked-camera-close',
+        'privacy-camera',
+        'shop-activation-1',
+    )), /shop_main_generation_active/);
+    assert.equal(harness.state.replaces.length, 2);
 
     harness.state.generationActive = false;
     const deactivated = await harness.shop.deactivateCurrent(deactivateInput(
@@ -294,49 +351,36 @@ test('activate and deactivate are generation-guarded and never append Economy tr
         'shop-activation-1',
     ));
     assert.equal(deactivated.projection.activations[0].deactivatedByEventId, 'shop-event-3');
-    assert.equal(harness.economy.readCurrent().transactions.length, transactionCount);
-    assert.equal(harness.state.saveCount, 3);
+    assert.equal(harness.economy.getTransactionCount(), transactionCount);
+    assert.equal(harness.state.replaces.length, 3);
 });
 
-test('a queued purchase stays bound to its original chat when the active chat changes', async () => {
-    const harness = createHarness();
-    await openEconomy(harness);
-    const saveStarted = deferred();
-    const releaseSave = deferred();
-    harness.state.saveImpl = async transaction => {
-        harness.state.persist(transaction);
-        saveStarted.resolve();
-        await releaseSave.promise;
-    };
+test('Shop state and delivery identity remain isolated by chat', async () => {
+    const harness = await createHarness();
+    await harness.shop.purchaseCurrent(purchaseInput(harness.shop.readCurrent(), 'purchase-a'));
+    const chatA = structuredClone(harness.chats.get('a').persisted);
 
-    const first = harness.shop.purchaseCurrent(
-        purchaseInput(harness.shop.readCurrent(), 'first-a-purchase'),
-    );
-    const firstRejection = assert.rejects(first, error => error.code === 'CHAT_CHANGED');
-    await saveStarted.promise;
-    const queued = harness.shop.purchaseCurrent({
-        actionId: 'queued-a-purchase',
-        itemId: 'flower',
-        expectedRevision: 1,
-        expectedEventId: 'shop-event-1',
-    });
-    const queuedRejection = assert.rejects(queued, error => error.code === 'CHAT_CHANGED');
+    await harness.switchChat('b');
+    assert.equal(harness.shop.readCurrent().domain, null);
+    assert.equal(harness.shop.readCurrent().balance, 100);
+    await assert.rejects(harness.shop.commitDeliveryCurrent({
+        chatIdentity: harness.identities.a.identityKey,
+        actionId: 'delivery-from-a',
+        receipt: { schemaVersion: 1, activeActivationIds: [], transitionActivationIds: [] },
+    }), /shop_generation_chat_changed/);
+    assert.equal(harness.state.replaces.length, 1);
 
-    harness.switchChat('b');
-    releaseSave.resolve();
-    await firstRejection;
-    await queuedRejection;
+    await harness.shop.purchaseCurrent(purchaseInput(harness.shop.readCurrent(), 'purchase-b'));
+    assert.equal(harness.shop.readCurrent().projection.inventory.flower.quantity, 1);
+    assert.deepEqual(harness.chats.get('a').persisted, chatA);
 
-    assert.deepEqual(harness.chats.get(harness.identities.b.key).metadata, {});
-    const chatARoot = harness.chats.get(harness.identities.a.key).metadata.extensions.LittleWhiteBox.xiaobaiOs;
-    assert.equal(chatARoot.domains.shop.events.length, 1);
-    assert.equal(chatARoot.domains.economy.transactions.length, 2);
-    assert.equal(harness.state.saveCount, 1);
+    await harness.switchChat('a');
+    assert.equal(harness.shop.readCurrent().projection.inventory.flower.quantity, 1);
+    assert.equal(harness.shop.readCurrent().domain.events[0].actionId, 'purchase-a');
 });
 
-test('a delivery queued behind a slow root save is projected before the next generation can read it', async () => {
-    const harness = createHarness();
-    await openEconomy(harness);
+test('in-memory delivery queue projects behind a slow sidecar write and then commits in order', async () => {
+    const harness = await createHarness({ extraFunds: 100 });
     const purchased = await harness.shop.purchaseCurrent(
         purchaseInput(harness.shop.readCurrent(), 'buy-effect-flower'),
     );
@@ -346,97 +390,86 @@ test('a delivery queued behind a slow root save is projected before the next gen
     const saveStarted = deferred();
     const releaseSave = deferred();
     const deliveryCommitted = deferred();
-    harness.state.saveImpl = async transaction => {
-        harness.state.persist(transaction);
+    harness.state.replaceImpl = async input => {
         saveStarted.resolve();
         await releaseSave.promise;
+        harness.persist(input.candidate);
+        return { status: 'confirmed' };
     };
     const priorWrite = harness.shop.purchaseCurrent(
         purchaseInput(harness.shop.readCurrent(), 'slow-unrelated-purchase'),
     );
     await saveStarted.promise;
     const deliveries = createShopEffectDeliveryQueue({
-        readCurrent() {
-            return {
-                chatIdentity: harness.state.identity.key,
-                domain: harness.shop.readCurrent().domain,
-            };
-        },
+        readCurrent: () => ({
+            chatIdentity: harness.identities[harness.state.current].identityKey,
+            domain: harness.shop.readCurrent().domain,
+        }),
         async persist(delivery) {
             await harness.shop.commitDeliveryCurrent(delivery);
             deliveryCommitted.resolve();
         },
         now: () => 5_000,
     });
-    const receipt = createShopEffectReceipt(deliveries.readCurrent(harness.identities.a.key));
+    const receipt = createShopEffectReceipt(deliveries.readCurrent(harness.identities.a.identityKey));
 
     deliveries.enqueue({
-        chatIdentity: harness.identities.a.key,
+        chatIdentity: harness.identities.a.identityKey,
         actionId: 'reply-during-slow-save',
         receipt,
     });
 
     assert.equal(projectShopState(harness.shop.readCurrent().domain).activations[0].appliedCount, 0);
-    assert.equal(projectShopState(deliveries.readCurrent(harness.identities.a.key)).activations[0].appliedCount, 1);
-    assert.deepEqual(
-        createShopEffectReceipt(deliveries.readCurrent(harness.identities.a.key)).activeActivationIds,
-        [],
-    );
-
+    assert.equal(projectShopState(deliveries.readCurrent(harness.identities.a.identityKey)).activations[0].appliedCount, 1);
     releaseSave.resolve();
     await priorWrite;
     await deliveryCommitted.promise;
     assert.equal(projectShopState(harness.shop.readCurrent().domain).activations[0].appliedCount, 1);
 });
 
-test('editing or deleting host messages never rewinds Shop money, inventory or applied effects', async () => {
-    const harness = createHarness();
-    await openEconomy(harness);
+test('host message edits cannot rewind committed Shop or Economy facts', async () => {
+    const harness = await createHarness();
     const purchased = await harness.shop.purchaseCurrent(
-        purchaseInput(harness.shop.readCurrent(), 'rollback-purchase'),
+        purchaseInput(harness.shop.readCurrent(), 'durable-purchase'),
     );
-    harness.currentChat().messages.push({ role: 'assistant', name: '角色', text: '原回复' });
     await harness.shop.activateCurrent(
-        activateInput(purchased, 'rollback-use', 'flower', { targetName: '艾拉' }),
+        activateInput(purchased, 'durable-use', 'flower', { targetName: '艾拉' }),
     );
-    const active = harness.shop.readCurrent();
-    const receipt = createShopEffectReceipt(active.domain);
-    harness.currentChat().messages[1].shopEffectReceipt = structuredClone(receipt);
+    const receipt = createShopEffectReceipt(harness.shop.readCurrent().domain);
+    harness.currentChat().messages.push({ role: 'assistant', text: '原回复', shopEffectReceipt: receipt });
     await harness.shop.commitDeliveryCurrent({
-        chatIdentity: harness.identities.a.key,
-        actionId: 'reply-one',
+        chatIdentity: harness.identities.a.identityKey,
+        actionId: 'durable-delivery',
         receipt,
     });
-    assert.deepEqual(harness.currentChat().messages[1].shopEffectReceipt, receipt);
-    const committedRoot = harness.store.readCurrent();
-    const committedView = harness.shop.readCurrent();
-    const savesBefore = harness.state.saveCount;
+    const committed = harness.shop.readCurrent();
+    const replaces = harness.state.replaces.length;
 
     harness.currentChat().messages[0].text = '重写开场';
-    harness.currentChat().messages[1].text = '重写回复';
     harness.currentChat().messages.splice(1);
 
-    assert.deepEqual(harness.shop.readCurrent(), committedView);
-    assert.deepEqual(harness.store.readCurrent(), committedRoot);
-    assert.equal(harness.state.saveCount, savesBefore);
-    assert.equal(committedView.projection.inventory.flower.quantity, 0);
-    assert.equal(committedView.projection.activations[0].appliedCount, 1);
-    assert.equal(committedView.balance, 50);
+    assert.deepEqual(harness.shop.readCurrent(), committed);
+    assert.equal(harness.state.replaces.length, replaces);
+    assert.equal(committed.balance, 50);
+    assert.equal(committed.projection.activations[0].appliedCount, 1);
 });
 
-test('a failed delivery save restores the persistent Shop domain', async () => {
-    const harness = createHarness();
-    await openEconomy(harness);
+test('a failed delivery replace keeps the committed Shop partition', async () => {
+    const harness = await createHarness();
     const purchased = await harness.shop.purchaseCurrent(purchaseInput(harness.shop.readCurrent(), 'buy-failed'));
     await harness.shop.activateCurrent(activateInput(purchased, 'use-failed', 'flower', { targetName: '艾拉' }));
-    const before = harness.store.readCurrent();
+    const before = structuredClone(harness.currentChat().persisted);
     const receipt = createShopEffectReceipt(harness.shop.readCurrent().domain);
-    harness.state.saveImpl = async () => {throw new Error('save failed');};
+    harness.state.replaceImpl = async () => ({
+        status: 'failed',
+        error: { code: 'SAVE_UNAVAILABLE', message: 'save failed', retryable: true },
+    });
 
     await assert.rejects(harness.shop.commitDeliveryCurrent({
-        chatIdentity: harness.identities.a.key,
+        chatIdentity: harness.identities.a.identityKey,
         actionId: 'failed-reply',
         receipt,
-    }), /save failed/);
-    assert.deepEqual(harness.store.readCurrent(), before);
+    }), error => error.code === 'SAVE_UNAVAILABLE');
+    assert.deepEqual(harness.currentChat().persisted, before);
+    assert.equal(harness.shop.readCurrent().projection.activations[0].appliedCount, 0);
 });

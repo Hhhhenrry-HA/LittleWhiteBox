@@ -5,16 +5,11 @@ import {
     createMapMaintenanceParticipant,
     MAP_MAINTENANCE_TOOL_NAMES,
 } from '../apps/map/host/maintenance-participant.js';
-import { createMapService } from '../apps/map/application/service.js';
 import {
     MAX_MAP_LOCATIONS,
     MAX_SCENE_ELEMENTS,
 } from '../domains/map/invariants.js';
-import { createChatDataStore } from '../host/chat-data-store.js';
-
-function rootWithMap(map) {
-    return { schemaVersion: 2, apps: {}, domains: { map } };
-}
+import { createMapKernelHarness } from './map-kernel-harness.js';
 
 function acceptedSource() {
     return {
@@ -27,24 +22,16 @@ function acceptedSource() {
 }
 
 function createHarness(initialMap = null) {
-    const initialRoot = initialMap ? rootWithMap(initialMap) : null;
-    const identity = { key: 'character:1:map-chat', chatId: 'map-chat' };
-    const host = { identity, metadata: initialRoot ? { extensions: { LittleWhiteBox: { xiaobaiOs: structuredClone(initialRoot) } } } : {} };
-    let persisted = initialRoot ? structuredClone(initialRoot) : undefined;
-    const writes = [];
-    const store = createChatDataStore({
-        getChatIdentity: () => host.identity,
-        getChatMetadata: current => current?.key === host.identity?.key ? host.metadata : null,
-        async saveChatMetadata(transaction) {
-            writes.push(structuredClone(transaction));
-            persisted = structuredClone(transaction.xiaobaiOs);
-        },
-        readPersistedXiaobaiOs: async () => structuredClone(persisted),
-    });
-    const map = createMapService(store);
+    const kernel = createMapKernelHarness(initialMap);
+    const { map } = kernel;
     let settings = { autoMaintenance: false };
     const participant = createMapMaintenanceParticipant({ map, readSettings: () => ({ ...settings }) });
-    return { map, participant, writes, setSettings: next => {settings = { ...next };} };
+    return {
+        map,
+        participant,
+        writes: kernel.state.writes,
+        setSettings: next => { settings = { ...next }; },
+    };
 }
 
 const indoorFixture = {

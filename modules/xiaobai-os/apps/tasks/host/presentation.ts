@@ -1,4 +1,4 @@
-import type { MaintenanceStatus } from '../../../host/maintenance/runner.js';
+import type { MaintenanceStatus } from '../../../capabilities/maintenance/runner.js';
 import type { TaskEvent, TaskRecord } from '../../../domains/tasks/types.js';
 import type { TasksServiceView } from '../application/service.js';
 import type {

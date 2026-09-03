@@ -1,22 +1,27 @@
+import {
+    ECONOMY_TRANSACTION_CAPABILITY,
+    type EconomyReadCapability,
+    type EconomyTransactionCapability,
+} from '../../../capabilities/economy/index.js';
 import type {
-    AdoptServerResult,
-    ConfirmResult,
-    XiaobaiOsChatDataStore,
-    XiaobaiOsWriteState,
-} from '../../../host/chat-data-store.js';
-import type { XiaobaiOsChatData } from '../../../types.js';
-import { projectBalances } from '../../../domains/economy/ledger.js';
-import type { TaskCandidateDraft, TaskDomainV1, TaskListingDraft, TaskPublishedForm, TaskRecord } from '../../../domains/tasks/types.js';
+    PendingCommitRecoveryResult,
+    ScopedChatStore,
+    XiaobaiOsFileControls,
+    XiaobaiOsFileState,
+} from '../../../kernel/contracts.js';
 import { collectTaskIdentityIds } from '../../../domains/tasks/invariants.js';
 import { projectTaskRecords } from '../../../domains/tasks/projection.js';
+import type {
+    TaskCandidateDraft,
+    TaskDomainV1,
+    TaskListingDraft,
+    TaskPublishedForm,
+    TaskRecord,
+} from '../../../domains/tasks/types.js';
 import { createTaskIdFactory, type TaskIdFactory } from './ids.js';
 import { createTaskLocalActions } from './local-actions.js';
 import { createTaskMaintenanceCommit } from './maintenance-commit.js';
-import {
-    readTaskDomain,
-    readTaskEconomyLedger,
-    validateTaskEconomyConsistency,
-} from './root-protocol.js';
+import { validateTaskEconomyConsistency } from './economy-protocol.js';
 
 export type CommitGuard = () => boolean | Promise<boolean>;
 
@@ -24,7 +29,7 @@ export interface TasksServiceView {
     domain: TaskDomainV1 | null;
     records: TaskRecord[];
     playerBalance: number;
-    writeState: XiaobaiOsWriteState;
+    writeState: XiaobaiOsFileState;
 }
 
 export interface TasksActionResult {
@@ -93,6 +98,7 @@ export interface MaintenanceCommitRequest {
 
 export interface TasksService {
     readCurrent: () => TasksServiceView;
+    refreshCurrent: () => Promise<TasksServiceView>;
     createActionId: () => string;
     acceptListing: (input: AcceptListingRequest, guard: CommitGuard) => Promise<TasksActionResult>;
     publish: (input: PublishRequest, guard: CommitGuard) => Promise<TasksActionResult>;
@@ -101,82 +107,174 @@ export interface TasksService {
     cancel: (input: CancelTaskRequest, guard: CommitGuard) => Promise<TasksActionResult>;
     replaceBoard: (input: ReplaceBoardRequest, guard: CommitGuard) => Promise<TasksActionResult>;
     commitMaintenance: (input: MaintenanceCommitRequest, guard: CommitGuard) => Promise<TasksActionResult>;
-    getWriteState: () => XiaobaiOsWriteState;
-    confirmPending: () => Promise<ConfirmResult>;
-    adoptServerState: () => Promise<AdoptServerResult>;
+    getWriteState: () => XiaobaiOsFileState;
+    confirmPending: () => Promise<PendingCommitRecoveryResult>;
+    adoptServerState: () => Promise<PendingCommitRecoveryResult>;
+    subscribe: (listener: () => void) => () => void;
+    dispose: () => void;
 }
 
-interface TasksServiceDependencies {
+export interface TasksServiceDependencies {
     now?: () => number;
     ids?: TaskIdFactory;
-    createTransactionId?: () => string;
-    getPlayerDisplayName?: (identityKey: string) => string;
-    getObservedAssistantCount?: (identityKey: string) => number;
+    getPlayerDisplayName?: () => string;
+    getObservedAssistantCount?: () => number;
+}
+
+export interface PreparedTaskAction {
+    domain: TaskDomainV1;
+    changed: boolean;
+    record?: TaskRecord;
 }
 
 export interface TaskApplicationContext {
-    store: XiaobaiOsChatDataStore;
     now: () => number;
     ids: TaskIdFactory;
-    economyDependencies: { now: () => number; createId?: () => string };
-    getPlayerDisplayName: (identityKey: string) => string;
-    getObservedAssistantCount: (identityKey: string) => number;
-    buildView: (root: XiaobaiOsChatData) => TasksServiceView;
+    getPlayerDisplayName: () => string;
+    getObservedAssistantCount: () => number;
+    execute(
+        guard: CommitGuard,
+        mutate: (domain: TaskDomainV1, economy: EconomyTransactionCapability) => PreparedTaskAction,
+    ): Promise<TasksActionResult>;
+}
+
+function transactionError(result: {
+    status: 'failed' | 'unconfirmed' | 'conflict';
+    error?: { code: string; message: string; retryable: boolean };
+}): Error {
+    const commitRejected = result.error?.code === 'commit_guard_rejected';
+    return Object.assign(new Error(commitRejected
+        ? 'tasks_commit_guard_failed'
+        : result.error?.message || `tasks_save_${result.status}`), {
+        code: commitRejected ? 'tasks_commit_guard_failed' : result.error?.code ?? `storage_${result.status}`,
+        retryable: result.error?.retryable ?? true,
+        uncertain: result.status === 'unconfirmed',
+    });
+}
+
+async function assertCommitGuard(guard: CommitGuard): Promise<void> {
+    if (typeof guard !== 'function' || await guard() !== true) {
+        throw Object.assign(new Error('tasks_commit_guard_failed'), { code: 'tasks_commit_guard_failed' });
+    }
 }
 
 export function createTasksService(
-    store: XiaobaiOsChatDataStore,
+    store: ScopedChatStore<TaskDomainV1>,
+    files: XiaobaiOsFileControls,
+    economy: EconomyReadCapability,
     {
         now = Date.now,
         ids = createTaskIdFactory({ now }),
-        createTransactionId,
         getPlayerDisplayName = () => '玩家',
         getObservedAssistantCount = () => 0,
     }: TasksServiceDependencies = {},
 ): TasksService {
-    function buildView(root: XiaobaiOsChatData): TasksServiceView {
-        validateTaskEconomyConsistency(root);
-        const domain = readTaskDomain(root);
-        const ledger = readTaskEconomyLedger(root);
+    const listeners = new Set<() => void>();
+    let publishScheduled = false;
+    const schedulePublish = (): void => {
+        if (publishScheduled) {return;}
+        publishScheduled = true;
+        queueMicrotask(() => {
+            publishScheduled = false;
+            for (const listener of listeners) {
+                try { listener(); } catch (error) {
+                    console.error('[LittleWhiteBox] Tasks state listener failed', error);
+                }
+            }
+        });
+    };
+    const unsubscribeStore = store.subscribe(schedulePublish);
+    const unsubscribeEconomy = economy.subscribe(schedulePublish);
+    const unsubscribeFiles = files.subscribeFileState(schedulePublish);
+
+    const currentDomain = (): TaskDomainV1 | null => store.peekCurrent()?.value ?? null;
+
+    function buildView(domain = currentDomain()): TasksServiceView {
         return {
-            domain,
+            domain: domain ? structuredClone(domain) : null,
             records: domain ? projectTaskRecords(domain) : [],
-            playerBalance: ledger ? projectBalances(ledger).player ?? 0 : 0,
-            writeState: store.getWriteState(),
+            playerBalance: economy.getPlayerBalance(),
+            writeState: files.getFileState(),
+        };
+    }
+
+    async function refreshCurrent(): Promise<TasksServiceView> {
+        await economy.refresh();
+        const result = await store.transact(transaction => {
+            const domain = transaction.current;
+            validateTaskEconomyConsistency(
+                domain ?? transaction.currentOrInitial(),
+                transaction.useCapability(ECONOMY_TRANSACTION_CAPABILITY),
+            );
+            return domain;
+        });
+        if (result.status === 'failed' || result.status === 'unconfirmed' || result.status === 'conflict') {
+            throw transactionError(result);
+        }
+        if (result.status === 'confirmed') {throw new Error('tasks_refresh_wrote_state');}
+        return buildView(result.result);
+    }
+
+    async function execute(
+        guard: CommitGuard,
+        mutate: (domain: TaskDomainV1, transactionEconomy: EconomyTransactionCapability) => PreparedTaskAction,
+    ): Promise<TasksActionResult> {
+        await assertCommitGuard(guard);
+        const result = await store.transact(transaction => {
+            const domain = transaction.currentOrInitial();
+            const transactionEconomy = transaction.useCapability(ECONOMY_TRANSACTION_CAPABILITY);
+            validateTaskEconomyConsistency(domain, transactionEconomy);
+            const prepared = mutate(domain, transactionEconomy);
+            validateTaskEconomyConsistency(prepared.domain, transactionEconomy);
+            if (prepared.changed) { transaction.replace(prepared.domain); }
+            return prepared;
+        }, {
+            commitGuard: async () => {
+                await assertCommitGuard(guard);
+                return true;
+            },
+        });
+        if (result.status === 'failed' || result.status === 'unconfirmed' || result.status === 'conflict') {
+            throw transactionError(result);
+        }
+        const prepared = result.result;
+        return {
+            changed: prepared.changed,
+            ...(prepared.record ? { record: structuredClone(prepared.record) } : {}),
+            view: buildView(result.status === 'confirmed' ? result.snapshot.value : prepared.domain),
         };
     }
 
     const context: TaskApplicationContext = {
-        store,
         now,
         ids,
-        economyDependencies: { now, ...(createTransactionId ? { createId: createTransactionId } : {}) },
         getPlayerDisplayName,
         getObservedAssistantCount,
-        buildView,
+        execute,
     };
     const localActions = createTaskLocalActions(context);
 
-    function readCurrent(): TasksServiceView {
-        const root = store.readCurrent();
-        if (!root) {
-            return { domain: null, records: [], playerBalance: 0, writeState: store.getWriteState() };
-        }
-        return buildView(root);
-    }
-
-    function createActionId(): string {
-        const domain = readTaskDomain(store.readCurrent());
-        return ids.create('action', domain ? collectTaskIdentityIds(domain) : new Set());
-    }
-
     return Object.freeze({
-        readCurrent,
-        createActionId,
+        readCurrent: () => buildView(),
+        refreshCurrent,
+        createActionId() {
+            const domain = currentDomain();
+            return ids.create('action', domain ? collectTaskIdentityIds(domain) : new Set());
+        },
         ...localActions,
         commitMaintenance: createTaskMaintenanceCommit(context),
-        getWriteState: store.getWriteState,
-        confirmPending: store.confirmPending,
-        adoptServerState: store.adoptServerState,
+        getWriteState: () => files.getFileState(),
+        confirmPending: () => files.retryPending(),
+        adoptServerState: () => files.adoptServerState(),
+        subscribe(listener: () => void) {
+            listeners.add(listener);
+            return () => listeners.delete(listener);
+        },
+        dispose() {
+            unsubscribeStore();
+            unsubscribeEconomy();
+            unsubscribeFiles();
+            listeners.clear();
+        },
     });
 }

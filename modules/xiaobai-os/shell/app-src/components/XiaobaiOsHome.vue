@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { XiaobaiOsAppDefinition } from '../app-registry.js';
+import type { XiaobaiOsAppDefinition } from '../../app-catalog.js';
 
 defineProps<{
     apps: readonly XiaobaiOsAppDefinition[];

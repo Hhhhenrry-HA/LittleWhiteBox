@@ -1,6 +1,7 @@
 # 普通酒馆小白 OS 第一阶段实施说明
 
-- 状态：历史阶段记录；第一阶段已完成，当前整体状态见[终态设计与开发规划](./target-design-and-roadmap.md)
+- 状态：**已封存，不得继续照此施工**。本文只记录旧 metadata 根阶段的第一版实现，其中 chat metadata repository、完整 OS 根和静态总装指令均已失效；当前底座以 [OS Kernel 终态设计](./os-kernel-target-design.md) 和 [OS Kernel 施工方案](./os-kernel-implementation-plan.md) 为准。待 Kernel 切换完成，本历史文档可删除。
+- 当前整体状态见[终态设计与开发规划](./target-design-and-roadmap.md)
 - 依据：[终态设计与开发规划](./target-design-and-roadmap.md)
 - 第一阶段范围：独立 OS 壳、四次元壁 APP、正式线数据迁移
 - 技术基线：运行时源码使用 TypeScript/Vue，`strict: true`

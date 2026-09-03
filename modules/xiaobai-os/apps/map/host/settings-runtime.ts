@@ -1,4 +1,4 @@
-import type { MaintenanceRunner } from '../../../host/maintenance/runner.js';
+import type { MaintenanceRunner } from '../../../capabilities/maintenance/runner.js';
 import type { XiaobaiOsSettingsRepository } from '../../../host/settings-repository.js';
 import type { XiaobaiOsAppRuntime } from '../../../types.js';
 import type { MapSettings } from '../types.js';

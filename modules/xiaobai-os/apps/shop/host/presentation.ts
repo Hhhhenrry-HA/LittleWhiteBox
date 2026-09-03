@@ -27,6 +27,9 @@ function durationLabel(duration: ReturnType<typeof listShopPublishedContracts>[n
 function resolveStatus(
     view: ShopServiceView,
 ): { status: ShopClientStatus; message: string } {
+    if (view.writeState === 'loading') {
+        return { status: 'loading', message: '' };
+    }
     if (view.writeState === 'conflict') {
         return { status: 'conflict', message: '服务端数据与当前候选不一致，请刷新酒馆后再继续。' };
     }
@@ -35,6 +38,9 @@ function resolveStatus(
     }
     if (view.writeState === 'saving') {
         return { status: 'saving', message: '正在确认商店与账本保存结果…' };
+    }
+    if (view.writeState === 'failed') {
+        return { status: 'blocked', message: '商店数据暂时无法读取，请稍后重试。' };
     }
     return { status: 'ready', message: '' };
 }

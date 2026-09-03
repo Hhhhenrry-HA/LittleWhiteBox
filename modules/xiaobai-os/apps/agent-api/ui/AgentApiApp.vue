@@ -4,7 +4,7 @@ import { normalizeAgentConfig } from '../../../../agent-core/config.js';
 import { createAgentSettingsPanel } from '../../../../agent-core/ui/settings-panel.js';
 import { buildAgentSettingsPanelMarkup } from '../../../../agent-core/ui/settings-markup.js';
 import '../../../../agent-core/ui/settings-surface.css';
-import type { XiaobaiOsAppProps } from '../../../shell/app-src/app-registry.js';
+import type { XiaobaiOsAppProps } from '../../../shell/app-contract.js';
 import type { AgentApiClientState, AgentApiConnectionResult } from '../types.js';
 import './agent-api.css';
 

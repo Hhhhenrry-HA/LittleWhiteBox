@@ -23,7 +23,7 @@ apps/game/
 └─ ui/                大厅、三款游戏、记录与弹窗
 ```
 
-Game 只拥有游戏状态。余额属于 Economy；根队列属于 host；UI 不决定随机或派彩。
+Game 只拥有游戏状态。余额与资金写入属于 Economy Capability；sidecar 队列属于 Kernel；UI 不决定随机或派彩。
 
 ## 3. 持久与临时态
 
@@ -57,11 +57,11 @@ Game 只拥有游戏状态。余额属于 Economy；根队列属于 host；UI �
 - 亏损从 escrow 进入 sink；
 - 结算后 escrow 必须为 0。
 
-Game event 与资金腿在一次根 mutation 中提交。交叉不变量从 event 已冻结的下注与 payout 重建预期资金腿并拒绝孤儿交易或 escrow 偏差，不读取当前游戏参数重算旧结果。
+Game event 与资金腿在一次 Scoped transaction 中形成同一个 sidecar candidate，并以一个 commitId 上传。交叉不变量从 event 已冻结的下注与 payout 重建预期资金腿并拒绝孤儿交易或 escrow 偏差，不读取当前游戏参数重算旧结果。
 
 ## 5. 命令、安全与随机
 
-每个写动作绑定 chat identity、gameId、actionId 和`revision + eventId`。任一业务校验失败前不得读取随机数。已提交 action 重放不生成新 ID、不抽新随机、不重复保存。
+每个写动作绑定 app activation token、当前 osId/binding、gameId、actionId 和`revision + eventId`。任一业务校验失败前不得读取随机数。已提交 action 重放不生成新 ID、不抽新随机、不重复保存。
 
 同一时间最多一个 active game。Controller 串行化前台动作，主生成期间不接受新游戏动作，但允许纯幂等重放。
 
@@ -71,8 +71,8 @@ Game event 与资金腿在一次根 mutation 中提交。交叉不变量从 even
 
 已有 Economy 时 APP 同步打开，不注册聊天内容后台任务。首次缺少 Economy 时显示`loading`并异步开户。
 
-明确保存失败恢复 Game 与 Economy 旧根；未确认保存保留同一候选并冻结动作，确认不重新抽牌。
+明确保存失败不发布 Game 与 Economy 新快照；未确认上传由 Kernel 保留同一候选并冻结当前聊天写入，确认不重新抽牌。
 
-删除 Game 前处理 active game escrow，再删除`apps/game`、`domains/game`、注册和`domains.game`数据。
+删除 Game 前处理 active game escrow，再删除`apps/game`、`domains/game`、Host/Shell catalog 注册和`game`分区。
 
 最低验收：三款纯规则状态机、当前策略只约束新动作、历史冻结事实不被新策略重判、随机边界、私有投影、CAS/幂等、托管/派彩原子性、失败恢复、聊天内容无关、移动端可玩性。

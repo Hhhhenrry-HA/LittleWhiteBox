@@ -1,10 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { XiaobaiOsUnconfirmedMutationError } from '../host/chat-data-store.js';
-import { createMaintenanceRegistry } from '../host/maintenance/registry.js';
-import { createMaintenanceRunner } from '../host/maintenance/runner.js';
-import { aggregateMaintenanceStatus } from '../host/maintenance/outcome.js';
+import { createMaintenanceRegistry } from '../capabilities/maintenance/registry.js';
+import { createMaintenanceRunner } from '../capabilities/maintenance/runner.js';
+import { aggregateMaintenanceStatus } from '../capabilities/maintenance/outcome.js';
 
 const user = mes => ({ is_user: true, is_system: false, mes, name: 'Alice' });
 const assistant = mes => ({ is_user: false, is_system: false, mes, name: 'Narrator', swipe_id: 0 });
@@ -23,6 +22,10 @@ function deferred() {
 }
 
 const flush = () => new Promise(resolve => globalThis.setTimeout(resolve, 0));
+
+function unconfirmedMutationError(message) {
+    return Object.assign(new Error(message), { mutationCommitted: true, uncertain: true });
+}
 
 function validConfig(provider = 'sillytavern-openai-compatible') {
     return {
@@ -686,7 +689,7 @@ test('an unconfirmed save is failed rather than committed and stops later partic
         initiallyStaged: true,
         async commit(_guard, records) {
             records.commits += 1;
-            throw new XiaobaiOsUnconfirmedMutationError('save result unconfirmed');
+            throw unconfirmedMutationError('save result unconfirmed');
         },
     });
     const tasks = createParticipant('tasks', { initiallyStaged: true });
@@ -712,7 +715,7 @@ test('an unconfirmed manual save never enters the confirmed participant list', a
         initiallyStaged: true,
         async commit(_guard, records) {
             records.commits += 1;
-            throw new XiaobaiOsUnconfirmedMutationError('save result unconfirmed');
+            throw unconfirmedMutationError('save result unconfirmed');
         },
     });
     const harness = createHarness({ participants: [map.participant] });

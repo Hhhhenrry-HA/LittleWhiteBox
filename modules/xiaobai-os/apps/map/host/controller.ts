@@ -1,10 +1,9 @@
-import type { XiaobaiOsChatDataChange } from '../../../host/chat-data-store.js';
-import type { XiaobaiOsHostFrameMessage } from '../../../host/frame-bridge.js';
 import type {
     MaintenanceRunOutcome,
     MaintenanceRunner,
     MaintenanceStatus,
-} from '../../../host/maintenance/runner.js';
+} from '../../../capabilities/maintenance/runner.js';
+import type { XiaobaiOsHostFrameMessage } from '../../../host/frame-bridge.js';
 import type { XiaobaiOsSettingsRepository } from '../../../host/settings-repository.js';
 import type {
     XiaobaiOsAppActivationContext,
@@ -29,7 +28,7 @@ interface MapControllerDependencies {
         'runManual' | 'runRebuild' | 'cancelForeground' | 'getStatus' | 'subscribeStatus'
     >;
     getChatIdentity: () => XiaobaiOsChatIdentity | { key?: unknown } | string | null;
-    subscribeData: (listener: (change: XiaobaiOsChatDataChange) => void) => () => void;
+    subscribeData: (listener: () => void) => () => void;
 }
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -44,13 +43,15 @@ function clientStatus(writeState: ReturnType<MapService['getWriteState']>): {
     status: MapClientStatus;
     message: string;
 } {
-    if (writeState === 'saving') {return { status: 'saving', message: '正在确认地图保存结果…' };}
+    if (writeState === 'loading') { return { status: 'loading', message: '正在读取最新地图…' }; }
+    if (writeState === 'saving') { return { status: 'saving', message: '正在确认地图保存结果…' }; }
     if (writeState === 'unconfirmed') {
         return { status: 'unconfirmed', message: '地图保存结果尚未确认，新的地图写入已冻结。' };
     }
     if (writeState === 'conflict') {
         return { status: 'conflict', message: '服务端数据与当前候选不一致。采用服务端数据后才能继续写入。' };
     }
+    if (writeState === 'failed') { return { status: 'error', message: '地图存储暂时不可用。' }; }
     return { status: 'ready', message: '' };
 }
 
@@ -71,12 +72,12 @@ function maintenanceState(status: MaintenanceStatus): {
 }
 
 function outcomeMessage(outcome: MaintenanceRunOutcome, mode: 'manual' | 'rebuild'): string {
-    if (outcome.status === 'updated') {return mode === 'rebuild' ? '地图已建立并保存。' : '地图已更新。';}
+    if (outcome.status === 'updated') { return mode === 'rebuild' ? '地图已建立并保存。' : '地图已更新。'; }
     if (outcome.status === 'unchanged') {
         return mode === 'rebuild' ? '当前聊天未形成可建立的地图。' : '地图无需更新。';
     }
-    if (outcome.status === 'partial') {return '地图已部分保存，本次维护未完整完成。';}
-    if (outcome.status === 'cancelled') {return '本次地图维护已取消。';}
+    if (outcome.status === 'partial') { return '地图已部分保存，本次维护未完整完成。'; }
+    if (outcome.status === 'cancelled') { return '本次地图维护已取消。'; }
     if (outcome.status === 'skipped') {
         return outcome.reason === 'generation-active'
             ? '当前正在生成回复，暂时不能维护地图。'
@@ -105,7 +106,7 @@ export function createMapController({
     }
 
     function assertActivation(payload: UnknownRecord = {}): MapActivation {
-        if (!activation) {throw new Error('地图 APP 未激活');}
+        if (!activation) { throw new Error('地图 APP 未激活'); }
         const current = currentChatIdentity();
         if (!current || current !== activation.chatIdentity || String(payload.chatIdentity || '') !== current) {
             throw new Error('聊天已切换，请重新打开地图');
@@ -114,7 +115,7 @@ export function createMapController({
     }
 
     function assertSameActivation(expected: MapActivation, payload: UnknownRecord = {}): void {
-        if (assertActivation(payload) !== expected) {throw new Error('地图页面已切换，请重试');}
+        if (assertActivation(payload) !== expected) { throw new Error('地图页面已切换，请重试'); }
     }
 
     function buildState(chatIdentity: string): MapClientState {
@@ -132,7 +133,7 @@ export function createMapController({
     }
 
     function emitState(current = activation): MapClientState {
-        if (!current) {throw new Error('地图 APP 未激活');}
+        if (!current) { throw new Error('地图 APP 未激活'); }
         const state = buildState(current.chatIdentity);
         current.post('map/state', { state });
         return state;
@@ -140,7 +141,7 @@ export function createMapController({
 
     function emitCurrentState(): void {
         const current = activation;
-        if (!current || currentChatIdentity() !== current.chatIdentity) {return;}
+        if (!current || currentChatIdentity() !== current.chatIdentity) { return; }
         try {
             emitState(current);
         } catch {
@@ -148,11 +149,15 @@ export function createMapController({
         }
     }
 
-    function activate(context: XiaobaiOsAppActivationContext): MapClientState {
+    async function activate(context: XiaobaiOsAppActivationContext): Promise<MapClientState> {
         cancelForeground('app-reactivated');
         const chatIdentity = currentChatIdentity();
-        if (!chatIdentity) {throw new Error('请先打开一个聊天');}
+        if (!chatIdentity) { throw new Error('请先打开一个聊天'); }
         activation = { chatIdentity, post: context.post };
+        await map.refreshCurrent();
+        if (currentChatIdentity() !== chatIdentity || activation?.chatIdentity !== chatIdentity) {
+            throw new Error('聊天已切换，请重新打开地图');
+        }
         return buildState(chatIdentity);
     }
 
@@ -178,6 +183,8 @@ export function createMapController({
         const payload = isRecord(message.payload) ? message.payload : {};
         const current = assertActivation(payload);
         if (message.type === 'map/refresh') {
+            await map.refreshCurrent();
+            assertSameActivation(current, payload);
             return emitState(current);
         }
         if (message.type === 'map/confirm-save') {
@@ -191,7 +198,7 @@ export function createMapController({
             return { adoption: adoption.status, state: emitState(current) };
         }
         if (message.type === 'map/set-auto-maintenance') {
-            if (typeof payload.enabled !== 'boolean') {throw new TypeError('地图自动维护开关无效');}
+            if (typeof payload.enabled !== 'boolean') { throw new TypeError('地图自动维护开关无效'); }
             await settings.setMapAutoMaintenance(payload.enabled);
             assertSameActivation(current, payload);
             return emitState(current);
@@ -205,12 +212,12 @@ export function createMapController({
         throw new Error('未知的地图操作');
     }
 
-    function handleDataChange(change: XiaobaiOsChatDataChange): void {
-        if (change.identityKey === activation?.chatIdentity) {emitCurrentState();}
+    function handleDataChange(): void {
+        emitCurrentState();
     }
 
     function handleMaintenanceStatus(participantId: string): void {
-        if (participantId === 'map') {emitCurrentState();}
+        if (participantId === 'map') { emitCurrentState(); }
     }
 
     return Object.freeze({

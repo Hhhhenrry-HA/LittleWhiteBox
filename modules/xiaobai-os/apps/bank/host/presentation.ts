@@ -37,7 +37,12 @@ function status(
 ): { status: BankClientStatus; statusLabel: string; message: string } {
     let next: BankClientStatus = 'ready';
     let message = '';
-    if (view.writeState === 'conflict') {
+    if (view.writeState === 'loading') {
+        next = 'loading';
+    } else if (view.writeState === 'failed') {
+        next = 'blocked';
+        message = '银行数据暂时无法读取，请稍后重试。';
+    } else if (view.writeState === 'conflict') {
         next = 'conflict';
         message = '服务端数据与当前金库候选不一致，请刷新酒馆后再继续。';
     } else if (view.writeState === 'unconfirmed') {

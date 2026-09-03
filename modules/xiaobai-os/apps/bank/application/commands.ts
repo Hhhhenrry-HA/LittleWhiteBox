@@ -26,7 +26,7 @@ import type {
     BankServiceView,
     BankSettleDueCommand,
     BankWithdrawDepositCommand,
-    PreparedBankRoot,
+    PreparedBankAction,
     RunBankAction,
 } from './service.js';
 
@@ -45,7 +45,7 @@ export function createBankCommands({
     random,
     runAction,
 }: BankCommandDependencies) {
-    function generatedIds(prepared: PreparedBankRoot, closedCount: number, includePosition: boolean): {
+    function generatedIds(prepared: PreparedBankAction, closedCount: number, includePosition: boolean): {
         eventId: string;
         positionId: string | null;
         activityIds: string[];
@@ -84,7 +84,7 @@ export function createBankCommands({
             const product = getBankDepositProduct(input.productId);
             const amount = assertBankProductAmount(product, input.amount);
             const due = duePositions(prepared.state, prepared.assistantTurn);
-            assertPlayerCanFund(prepared.ledger, due, amount);
+            assertPlayerCanFund(prepared.playerBalance, due, amount);
             const ids = generatedIds(prepared, due.length, true);
             const position: BankDepositPosition = {
                 id: ids.positionId as string,
@@ -140,7 +140,7 @@ export function createBankCommands({
             const product = getBankFundProduct(input.productId);
             const amount = assertBankProductAmount(product, input.amount);
             const due = duePositions(prepared.state, prepared.assistantTurn);
-            assertPlayerCanFund(prepared.ledger, due, amount);
+            assertPlayerCanFund(prepared.playerBalance, due, amount);
             const ids = generatedIds(prepared, due.length, true);
             const contract = drawBankFundFrozenContract(product, amount, random);
             const position: BankFundPosition = {

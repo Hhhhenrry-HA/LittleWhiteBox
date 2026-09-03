@@ -14,13 +14,13 @@ Map 是普通小白 OS 的独立空间记录领域，采用小白酒馆已经验
 | 项目 | 结论 |
 | --- | --- |
 | 功能所有者 | `domains/map`拥有地图格式、语义、校验和纯投影；`apps/map`拥有维护 Prompt、工具、Controller 和 UI |
-| 唯一事实来源 | 当前聊天`domains.map`中的规范化 Atlas 与 Scene 集合 |
+| 唯一事实来源 | 当前聊天 sidecar 的`map`分区中的规范化 Atlas 与 Scene 集合 |
 | 持久态 | 已确认地点、路线、人物位置、场景几何和 domain revision |
 | 临时态 | 当前 UI 选页、缩放/拖拽、loading/error、Agent 请求、Session staging、修参失败集合 |
-| 外部依赖 | 根 chat data store、Agent gateway、maintenance participant、SillyTavern 当前接受轮、本地图标字体 |
-| 注册入口 | host domain validator、Map runtime、maintenance participant、main prompt runtime、shell APP |
-| 删除路径 | 删除`apps/map`、`domains/map`及其 settings/host/shell/maintenance/prompt 注册，清理`domains.map`；共享字体保留给其他消费者 |
-| 兼容对象 | 当前普通 OS chat root 和 SillyTavern/WebView；不读取或迁移 Tavern 地图记录 |
+| 外部依赖 | ScopedChatStore、Agent/Maintenance Capability、SillyTavern 当前接受轮、本地图标字体 |
+| 注册入口 | Map Host/Shell catalog、module、`map`分区 parser、maintenance participant、main prompt runtime |
+| 删除路径 | 删除`apps/map`、`domains/map`及两处 catalog/settings/maintenance/prompt 注册，清理`map`分区；共享字体保留给其他消费者 |
+| 兼容对象 | SillyTavern/WebView 与 Provider 工具协议；不读取测试线旧根或 Tavern 地图记录 |
 | 最少测试 | Atlas/Scene 不变量、intent 编译、接受轮维护、迟到结果、Prompt 安全、关键 UI 浏览器路径 |
 
 ## 3. 产品形态
@@ -129,7 +129,7 @@ interface MapElement {
 - parent、link 端点、actor 位置、location→scene 引用必须存在；父级不能成环。
 - Scene 中的 actor element 必须与 Atlas 中同 actorKey 的 location→scene 对应；不能在两个 Scene 重复出现。
 - 每次合法修改使 domain revision 连续加一。UI 缩放和当前查看的非玩家地点不进入领域数据。
-- 持久根必须限制文本、坐标、集合数量和总序列化体积；`domains.map`的硬上限为 512 KiB，单 Scene 最多 128 个 element，超限领域编辑整体拒绝而不是静默截断旧地图。
+- Map 分区必须限制文本、坐标、集合数量和总序列化体积；`map`分区的硬上限为 512 KiB，单 Scene 最多 128 个 element，超限领域编辑整体拒绝而不是静默截断旧地图。
 - 不保存领域编辑历史、截图、模型原文、Prompt、请求日志或渲染缓存；当前产品没有第二个消费者需要这些持久实体。
 
 ## 5. 地图事实与聊天语义
@@ -143,7 +143,7 @@ Map 记录用户已经接受过的空间事实：地点被提到或访问、两�
 
 Map 是“接受后提交的 OS 事实”，不是随消息数组实时重算的缓存。之后编辑、删除或切换旧消息不会自动回滚地图，也不会调用 API。聊天被大幅改写后，用户可明确执行「从当前聊天重建地图」；重建生成完整候选 Map，校验成功后一次替换，失败保留旧地图。
 
-创建 SillyTavern 分支时接受宿主复制的`chat_metadata`快照，两个分支之后各自维护。Map 不扫描共同消息前缀猜测应恢复到哪个版本。
+创建 SillyTavern 分支时由 Kernel 复制父 sidecar 的已确认 partitions 并生成新 osId，两个分支之后各自维护。Map 不扫描共同消息前缀猜测应恢复到哪个版本。
 
 ## 6. Agent 工具与维护规则
 
@@ -169,7 +169,8 @@ Actor 缺少 actorKey 时使用稳定 element id；非 Actor 的 actorKey 被忽
 → 引用、重复、容量和空间语义校验
 → 内存 staged Map
 → 接受来源与 revision 再确认
-→ 根 store 以当前 revision 原子保存 Map
+→ Scoped Store 以当前 revision 将 Map 写入一个 sidecar candidate
+→ Kernel 以一个 commitId 上传并确认
 ```
 
 维护 Prompt 沿用成熟规则：
@@ -197,7 +198,7 @@ Map 无法在本地可靠判断一轮 RP 是否包含新地点或移动，因此
 
 「维护一次」只处理聊天尾部最新的完整 User + 当前所选 Assistant 内容；这次明确点击不要求自动维护已开启。没有完整轮或正在生成时只显示本地提示，不调用 API。「从当前聊天建立/重建地图」才允许扫描更长历史并以完整候选 Map 一次替换旧 Map，两者不能共用含糊按钮。
 
-根保存进入 commit point 前，运行中切聊、关闭自动维护、Map revision 改变、接受消息被编辑/删除/换 swipe 都会使自动 job 的迟到 staging 作废。根候选已经安装并发出宿主保存请求后无法物理回滚；此时保留实际提交结果并停止后续 participant/job，不能向用户伪报“未保存”。API/解析失败不改变旧 Map。
+sidecar replace 发出前，运行中切聊、关闭自动维护、Map revision 改变、接受消息被编辑/删除/换 swipe 都会使自动 job 的迟到 staging 作废。replace 发出后无法物理回滚；此时等待真实结果，confirmed 才发布 Map snapshot，并停止后续 participant/job，不能向用户伪报“已取消”。API/解析失败不改变旧 Map。
 
 ## 8. 主 RP 空间摘要
 
@@ -229,10 +230,10 @@ Map 外壳使用 OS 黑色主题，地图画布默认暗色/蓝图风，不搬�
 
 - malformed tool call 只拒绝对应 staged edit；若没有合法变化则不保存。
 - 工具解析、参数和可恢复执行错误会作为结构化结果回喂模型；同签名连续失败三次会收到刹车提示，第四次终止，单次 Session 最多 12 个 Provider 回合。
-- Provider 后续失败或达到轮次上限时，已有合法 staging 以 partial 提交；没有合法变化则 failed。切聊、关闭自动维护、来源变化或取消会使自动 job 中尚未进入根保存 commit point 的 staging 整体失效。
-- Map root 保存明确失败时保留旧 Map；保存结果不确定时沿用根 store 的候选/确认机制，不重复调用模型。
-- 关闭窗口只销毁 UI 临时态，不停止已获准的自动维护；显式维护/重建在离开 Map、再次发起同类请求或 OS cleanup 时请求 abort。关闭自动维护只使自动 job 失效，切聊和 OS cleanup 使两类请求都失效；若宿主保存已经发出，则等待该次保存落定并如实报告已提交结果，不声称能够撤回。
-- 删除 Map 功能时直接清理`domains.map`，不迁入 Tavern、不保留旧类型或读取壳。
+- Provider 后续失败或达到轮次上限时，已有合法 staging 以 partial 提交；没有合法变化则 failed。切聊、关闭自动维护、来源变化或取消会使自动 job 中尚未发出 sidecar replace 的 staging 整体失效。
+- sidecar 保存明确失败时保留旧 Map；保存结果不确定时由 Kernel 保留同一 candidate 并按 commitId 确认，不重复调用模型。
+- 关闭窗口只销毁 UI 临时态，不停止已获准的自动维护；显式维护/重建在离开 Map、再次发起同类请求或 OS cleanup 时请求 abort。关闭自动维护只使自动 job 失效，切聊和 OS cleanup 使两类请求都失效；若 sidecar replace 已经发出，则等待该次保存落定并如实报告真实结果，不声称能够撤回。
+- 删除 Map 功能时直接清理`map`分区，不迁入 Tavern、不保留旧类型或读取壳。
 - 共享 Material Symbols 字体是扩展级通用资产，不随 Map 删除。
 
 ## 11. 最少必要验证

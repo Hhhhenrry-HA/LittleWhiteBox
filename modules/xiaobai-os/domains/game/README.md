@@ -14,4 +14,4 @@ Game 是与主聊天内容完全独立的纯规则领域，拥有秘骰对决、
 
 Game 事件不记录消息楼层、Assistant 回合、剧情哈希或锚点。聊天编辑、swipe、删除和分支事件不会改变赌局。
 
-下注托管和派彩由`apps/game/application/`与 Economy 在一次根 mutation 中提交。删除 Game 需要删除领域与 APP 注册，并先处理未结赌局的 escrow 数据策略。
+下注托管和派彩由`apps/game/application/`在 Game Scoped transaction 中调用 Economy Capability，以一次 sidecar commit 提交。删除 Game 需要先处理未结赌局的 escrow 数据策略，再删除领域、Host/Shell catalog 注册和`game`分区。

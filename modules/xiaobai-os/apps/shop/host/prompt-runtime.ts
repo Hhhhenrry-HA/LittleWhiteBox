@@ -10,12 +10,12 @@ import {
 import type { XiaobaiOsAppRuntime } from '../../../types.js';
 import type { ShopConversationSnapshot, ShopMessageReceiptBinding } from './message-receipts.js';
 
-interface ShopGenerationEvent {
+export interface ShopGenerationEvent {
     type: string;
     dryRun?: boolean;
 }
 
-interface ShopPromptEventHandlers {
+export interface ShopPromptEventHandlers {
     generationStarted: (event: ShopGenerationEvent) => void;
     intercept: (event: ShopGenerationEvent) => Promise<void> | void;
     requestBuilt: () => void;

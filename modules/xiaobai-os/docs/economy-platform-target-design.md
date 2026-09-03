@@ -10,15 +10,15 @@ Economy 为普通小白 OS 提供一套小而可靠的资金事实：开户、�
 
 | 项目 | 结论 |
 | --- | --- |
-| 功能所有者 | `domains/economy`拥有资金规则；`repository.ts`接入根 store |
+| 功能所有者 | `domains/economy`拥有资金规则；`capabilities/economy`拥有 Economy 分区与受限读写能力 |
 | 唯一事实来源 | `EconomyLedgerV2.transactions` |
 | 持久态 | 不可变交易 |
-| 临时态 | 根写队列、保存中/未确认状态、余额和分页投影 |
-| 外部依赖 | `XiaobaiOsChatDataStore`、时间与 ID 生成器 |
-| 注册入口 | production composition 的 domain validator 与 Economy repository |
-| 删除路径 | 下线资金消费者，删除目录/注册，清理`domains.economy` |
-| 兼容对象 | 用户明确保留的已发布 Economy V1 anchor 账本；仅在 chat-data 升级边界一次性转换 |
-| 最少测试 | 账本不变量、幂等/冲正、根保存失败、跨领域原子资金 |
+| 临时态 | Kernel 文件写队列、未确认候选、余额和分页投影 |
+| 外部依赖 | Kernel Scoped transaction、时间与 ID 生成器 |
+| 注册入口 | Capability catalog 中的 Economy Capability 与`economy`分区注册 |
+| 删除路径 | 先处理资金消费者，再删除 Capability/domain 注册并清理`economy`分区 |
+| 兼容对象 | 当前正式线没有 Economy 数据；测试线旧 metadata 根不迁移 |
+| 最少测试 | 账本不变量、幂等/冲正、sidecar 保存失败、跨分区原子资金 |
 
 ## 3. 持久格式
 
@@ -62,46 +62,47 @@ interface EconomyTransaction {
 
 100 小白币不是“当前开户活动”或可调整常量。直接修改它会使所有既有账本在加载时失效；若未来需要改变新账户的创世规则，必须先定义明确的新账本版本/升级边界，不能让当前 validator 用新金额重判历史。
 
-已发布的 Economy V1 每条流水带剧情`anchor`。V2 删除该错误耦合；统一 chat-data 入口严格验证真实 V1 格式、移除 anchor 并保存为 V2。转换失败保留原值且允许重试，成功后运行时和各 APP 不再读取 V1。
+旧测试线 Economy V1 不属于兼容对象。生产切换后只解析 sidecar 中当前`economy`分区格式，不保留 anchor、旧根读取器或日常清洗器。
 
 ## 5. 跨领域原子提交
 
-Bank、Game、Shop 不是先写业务再调用钱包。各 application service 在一个根 mutation 中：
+Bank、Game、Shop、Tasks 不是先写业务再调用钱包。各 application service 在自己的 Scoped transaction 中调用 Economy Transaction Capability：
 
 ```text
-读取当前根
+Kernel 强读当前 sidecar
+→ 只解析业务分区与 Economy 分区
 → 校验业务 CAS/actionId
 → 生成领域事件
-→ 生成 Economy 资金腿
-→ 安装到同一个候选根
-→ 校验领域 + Economy + 交叉不变量
-→ 保存一次
+→ Economy Capability 生成资金腿
+→ 安装到同一个 sidecar candidate
+→ 校验业务 + Economy + 交叉不变量
+→ 以一个 commitId 上传一次
 ```
 
-任何校验或明确保存失败都恢复整个旧根，不允许出现“扣了钱但没商品”“赌局结束但没派彩”。保存结果不确定时保留同一个候选根并冻结写入，确认不会重新抽随机或生成新 ID。
+任何校验或明确保存失败都不发布业务与 Economy 新快照，不允许出现“扣了钱但没商品”“赌局结束但没派彩”。保存结果不确定时，Kernel 保留同一个已序列化 candidate 并冻结当前聊天全部新写入；重试不得重新执行 command、抽随机或生成 ID。
 
 ## 6. 聊天与分支
 
-Economy 的 key 是当前 chat identity，数据随该聊天的`chat_metadata`保存。切聊后排队或迟到动作必须失败。
+Economy 位于当前聊天 sidecar 的`economy`分区。Kernel 用稳定 osId 绑定聊天，切聊后排队或迟到动作必须在上传前因 activation/binding guard 失败。
 
-Economy 不读取消息正文。编辑、swipe、删除不会自动产生 reversal，也不会删除流水。创建分支时接受 SillyTavern 复制来的元数据快照，之后两个聊天分别写入。
+Economy 不读取消息正文。编辑、swipe、删除不会自动产生 reversal，也不会删除流水。创建分支时由 Kernel 复制父 sidecar 的已确认 partitions 并生成新 osId；之后两个 sidecar 分别写入。
 
 如果未来某业务需要“随剧情撤销”，应由该业务状态机定义明确的补偿动作，再以普通 Economy action 记账；不能让 Economy 猜测剧情含义或裁流水历史。
 
-## 7. Repository 与保存状态
+## 7. Capability 与保存状态
 
-`domains/economy/repository.ts`只通过根 store 暴露：
+Economy Capability 对消费者只暴露两类窄接口：
 
-- `hasCurrent/readCurrent/ensureCurrent`；
-- `postCurrent/postActionCurrent/reverseCurrent`；
-- `getPlayerBalance/listCurrentTransactions`；
-- `getWriteState/confirmPending`。
+- Wallet 使用只读口读取玩家余额与分页流水；
+- Game、Bank、Shop、Tasks 使用 caller-bound 事务口读取余额、提交资金 action，并且只能读取自己来源的核账流水；
+- 消费者不能取得可写 Ledger、任意账户转账口或伪造`sourceDomain`；
+- 文件级`ready/saving/unconfirmed/conflict`由 Kernel 提供，不由 Economy 复制。
 
-根 store 负责聊天 identity、单写队列、候选安装、保存、读回确认与冲突状态，并向当前运行内的 APP 发布`saving / ready / unconfirmed / conflict`变化。Economy 不复制这套机制，订阅也不持久化。
+Kernel 负责 osId/binding、单页写队列、强读、candidate、上传、commitId 读回确认与冲突状态。Economy 的订阅和投影均为临时态，不进入分区。
 
 ## 8. UI 边界
 
-Wallet 是只读投影，不拥有调账入口。已有账本时打开钱包不访问聊天 API；首次开户显示`loading`。`unconfirmed`表示上一次元数据保存结果未知，不表示正在核对剧情。
+Wallet 是只读投影，不拥有调账入口。Kernel 已加载当前 sidecar 时，打开 Wallet 不另存聊天或扫描消息；首次开户走一次明确的 Economy transaction 并显示`loading`。`unconfirmed`表示上一次 sidecar 上传结果未知，不表示正在核对剧情。
 
 ## 9. 验收
 
@@ -109,7 +110,7 @@ Wallet 是只读投影，不拥有调账入口。已有账本时打开钱包不�
 - `opening-grant:v1`的身份与 100 小白币金额保持冻结，产品调整不重判既有账本；
 - 幂等重试不重复保存或扣款；
 - 多资金腿一次提交，失败无半条 action；
-- Bank/Game/Shop 的事件与资金交叉不变量能拒绝伪造根；
+- Bank/Game/Shop/Tasks 的业务事件与资金交叉不变量能拒绝伪造分区组合；
 - 聊天文本变化不改变账本；
-- 已有 Economy 的 APP 激活不触发持久读取；
+- APP 不能越权读取或写入 Economy 分区；
 - typecheck、测试、lint、build 全部通过。

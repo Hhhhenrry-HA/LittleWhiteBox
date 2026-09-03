@@ -4,13 +4,23 @@ import { parseHTML } from 'linkedom';
 
 import { createXiaobaiOsLifecycle } from '../host/lifecycle.js';
 
-function createHarness({ appRuntime = {} } = {}) {
+async function waitFor(predicate, message = 'condition was not reached') {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+        if (predicate()) return;
+        await new Promise(resolve => setTimeout(resolve, 0));
+    }
+    assert.fail(message);
+}
+
+function createHarness({ appRuntime = {}, captureChatBinding, isChatBindingCurrent, onError } = {}) {
     const { document, window } = parseHTML(`<!doctype html><html><head></head><body>
         <div id="send-controls"><button id="message_preview_btn"></button><button id="send_but"></button></div>
     </body></html>`);
     let chatChanged = null;
     let appDescriptorsChanged = null;
+    let appStatusChanged = null;
     let appDescriptors = [{ id: 'fourth-wall', name: '四次元壁' }];
+    const appStatuses = {};
     let subscriptions = 0;
     let unsubscriptions = 0;
     let bridgeDisposals = 0;
@@ -19,8 +29,8 @@ function createHarness({ appRuntime = {} } = {}) {
     const bridgeFactory = (options) => {
         bridgeOptions = options;
         const instance = {
-            post(type, payload, requestId) {
-                posts.push({ type, payload, requestId });
+            post(type, payload, requestId, app) {
+                posts.push({ type, payload, requestId, ...app });
                 return true;
             },
             isReady: () => true,
@@ -48,8 +58,16 @@ function createHarness({ appRuntime = {} } = {}) {
             appDescriptorsChanged = handler;
             return () => {appDescriptorsChanged = null;};
         },
+        subscribeAppStatusChanged(handler) {
+            appStatusChanged = handler;
+            return () => {appStatusChanged = null;};
+        },
         getInitSnapshot: () => ({ theme: 'dark', chat: null }),
         getAppDescriptors: () => appDescriptors,
+        getAppStatuses: () => appStatuses,
+        captureChatBinding,
+        isChatBindingCurrent,
+        onError,
         appRuntime: {
             cancelAll: reason => runtimeCalls.push(['cancelAll', reason]),
             cancelForeground: reason => runtimeCalls.push(['cancelForeground', reason]),
@@ -70,6 +88,10 @@ function createHarness({ appRuntime = {} } = {}) {
         runtimeCalls,
         subscriptions: () => subscriptions,
         setAppDescriptors(next) {appDescriptors = next;},
+        setAppStatus(appId, status) {
+            appStatuses[appId] = status;
+            appStatusChanged?.(appId, status);
+        },
         unsubscriptions: () => unsubscriptions,
         window,
     };
@@ -116,7 +138,11 @@ test('trusted frame ready receives a fresh snapshot and unknown apps stay inacti
 
     await options.onReady(options.bridge);
     assert.equal(harness.posts[0].type, 'os/init');
-    assert.deepEqual(harness.posts[0].payload.apps, [{ id: 'fourth-wall', name: '四次元壁' }]);
+    assert.deepEqual(harness.posts[0].payload.apps, [{
+        id: 'fourth-wall',
+        name: '四次元壁',
+        status: { state: 'loading', phase: 'install' },
+    }]);
 });
 
 test('leaving an app route invalidates an activation that is still pending', async () => {
@@ -135,7 +161,7 @@ test('leaving an app route invalidates an activation that is still pending', asy
         payload: { appId: 'fourth-wall' },
     }, options.bridge);
 
-    await Promise.resolve();
+    await waitFor(() => typeof finishActivation === 'function', 'APP activation did not start');
     await options.onMessage({ type: 'app/deactivate', requestId: 'deactivate-1' }, options.bridge);
     finishActivation({ stale: true });
     await pending;
@@ -163,13 +189,19 @@ test('an async app request cannot settle as success after the same app is reopen
         requestId: 'activate-1',
         payload: { appId: 'fourth-wall' },
     }, options.bridge);
+    const firstActivation = harness.posts.find(item => item.requestId === 'activate-1');
+    const firstSession = {
+        appId: 'fourth-wall',
+        activationToken: firstActivation.payload.activationToken,
+    };
     const pending = options.onMessage({
         type: 'fourth-wall/refresh',
         requestId: 'stale-request',
+        ...firstSession,
         payload: {},
     }, options.bridge);
-    await Promise.resolve();
-    await options.onMessage({ type: 'app/deactivate' }, options.bridge);
+    await waitFor(() => typeof finishRequest === 'function', 'APP request did not start');
+    await options.onMessage({ type: 'app/deactivate', ...firstSession }, options.bridge);
     await options.onMessage({
         type: 'app/activate',
         requestId: 'activate-2',
@@ -182,6 +214,129 @@ test('an async app request cannot settle as success after the same app is reopen
     const response = harness.posts.find(item => item.requestId === 'stale-request');
     assert.equal(response.type, 'fourth-wall/result');
     assert.deepEqual(response.payload, { ok: false, error: 'app_inactive' });
+    assert.equal(response.activationToken, firstSession.activationToken);
+});
+
+test('an in-flight APP request is rejected when its captured sidecar binding changes', async () => {
+    let finishRequest;
+    let currentBinding = {
+        identityKey: 'character:avatar.png:chat-a',
+        binding: { kind: 'character', ownerLocator: 'avatar.png', chatId: 'chat-a' },
+        reference: { formatVersion: 1, osId: 'os-a' },
+    };
+    const harness = createHarness({
+        captureChatBinding: () => currentBinding,
+        isChatBindingCurrent: captured => captured.reference?.osId === currentBinding.reference?.osId,
+        appRuntime: {
+            activate: async () => ({}),
+            handleMessage: () => new Promise(resolve => { finishRequest = resolve; }),
+        },
+    });
+    harness.lifecycle.init();
+    harness.lifecycle.open();
+    const options = harness.bridgeOptions();
+    await options.onMessage({
+        type: 'app/activate',
+        requestId: 'activate-binding',
+        payload: { appId: 'fourth-wall' },
+    }, options.bridge);
+    const activation = harness.posts.find(item => item.requestId === 'activate-binding');
+    const session = { appId: 'fourth-wall', activationToken: activation.payload.activationToken };
+    const pending = options.onMessage({
+        type: 'fourth-wall/refresh',
+        requestId: 'binding-request',
+        ...session,
+    }, options.bridge);
+    await waitFor(() => typeof finishRequest === 'function', 'APP request did not start');
+    currentBinding = {
+        ...currentBinding,
+        reference: { formatVersion: 1, osId: 'os-b' },
+    };
+    finishRequest({ stale: true });
+    await pending;
+
+    const response = harness.posts.find(item => item.requestId === 'binding-request');
+    assert.deepEqual(response.payload, { ok: false, error: 'app_inactive' });
+    assert.equal(response.activationToken, session.activationToken);
+});
+
+test('activation failures expose a stable public failure and keep the cause in host logging', async () => {
+    const errors = [];
+    const harness = createHarness({
+        onError: error => errors.push(error),
+        appRuntime: {
+            activate: async () => {
+                throw Object.assign(new Error('private activation details'), {
+                    code: 'storage_missing',
+                    retryable: true,
+                });
+            },
+        },
+    });
+    harness.lifecycle.init();
+    harness.lifecycle.open();
+    const options = harness.bridgeOptions();
+    await options.onMessage({
+        type: 'app/activate',
+        requestId: 'activate-failed',
+        payload: { appId: 'fourth-wall' },
+    }, options.bridge);
+
+    assert.deepEqual(harness.posts.find(item => item.requestId === 'activate-failed').payload, {
+        ok: false,
+        error: 'storage_missing',
+        message: 'private activation details',
+        phase: 'activate',
+        retryable: true,
+    });
+    assert.equal(errors.length, 1);
+});
+
+test('a synchronous failed status cannot mask its pending activation error', async () => {
+    let failActivation;
+    let harness;
+    harness = createHarness({
+        onError: () => undefined,
+        appRuntime: {
+            activate: () => new Promise((_resolve, reject) => {
+                failActivation = () => {
+                    const error = Object.assign(new Error('private activation details'), {
+                        code: 'storage_missing',
+                        retryable: true,
+                    });
+                    harness.setAppStatus('fourth-wall', {
+                        state: 'failed',
+                        failure: {
+                            code: 'storage_missing',
+                            message: error.message,
+                            phase: 'activate',
+                            retryable: true,
+                        },
+                    });
+                    reject(error);
+                };
+            }),
+        },
+    });
+    harness.lifecycle.init();
+    harness.lifecycle.open();
+    const options = harness.bridgeOptions();
+    const pending = options.onMessage({
+        type: 'app/activate',
+        requestId: 'activate-status-failed',
+        payload: { appId: 'fourth-wall' },
+    }, options.bridge);
+    await waitFor(() => typeof failActivation === 'function', 'APP activation did not start');
+    failActivation();
+    await pending;
+
+    assert.deepEqual(harness.posts.find(item => item.requestId === 'activate-status-failed').payload, {
+        ok: false,
+        error: 'storage_missing',
+        message: 'private activation details',
+        phase: 'activate',
+        retryable: true,
+    });
 });
 
 test('descriptor changes update an open shell and deactivate an app that was removed', async () => {
@@ -202,7 +357,13 @@ test('descriptor changes update an open shell and deactivate an app that was rem
     assert.deepEqual(harness.runtimeCalls.at(-1), ['deactivate', 'fourth-wall', 'app-disabled']);
     assert.deepEqual(harness.posts.at(-1), {
         type: 'os/apps-changed',
-        payload: { apps: [{ id: 'agent-api', name: 'Agent API' }] },
+        payload: {
+            apps: [{
+                id: 'agent-api',
+                name: 'Agent API',
+                status: { state: 'loading', phase: 'install' },
+            }],
+        },
         requestId: undefined,
     });
 });
@@ -222,7 +383,7 @@ test('removing an app while activation is pending prevents a late success', asyn
         requestId: 'activate-pending',
         payload: { appId: 'fourth-wall' },
     }, options.bridge);
-    await Promise.resolve();
+    await waitFor(() => typeof finishActivation === 'function', 'APP activation did not start');
 
     harness.setAppDescriptors([]);
     harness.appDescriptorsChanged()();
@@ -234,12 +395,14 @@ test('removing an app while activation is pending prevents a late success', asyn
     assert.equal(harness.runtimeCalls.some(call => call[0] === 'cancelForeground' && call[1] === 'app-disabled'), true);
 });
 
-test('chat changes close the foreground window without unloading the launcher', () => {
+test('chat changes close the foreground window without unloading the launcher', async () => {
     const harness = createHarness();
     harness.lifecycle.init();
     harness.lifecycle.open();
 
     harness.chatChanged()();
+
+    await waitFor(() => harness.document.getElementById('xiaobaix-os-overlay') === null, 'window did not close');
 
     assert.equal(harness.document.getElementById('xiaobaix-os-overlay'), null);
     assert.ok(harness.document.getElementById('xiaobaix-os-button'));

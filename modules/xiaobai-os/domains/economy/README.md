@@ -9,15 +9,14 @@ Economy 是普通小白 OS 的共享资金领域。它只拥有账户规则、�
 ## 文件职责
 
 - `types.ts`：当前持久格式和公开类型。
-- `migration.ts`：冻结真实旧 Economy V1 anchor 格式，并一次性转换为 V2。
 - `ledger.ts`：开户、记账、批量资金腿、冲正、余额与分页投影。
 - `invariants.ts`：格式、序列、账户、金额和 action 连续性校验。
-- `repository.ts`：把纯账本操作接入根 store。
+- `capabilities/economy`：注册`economy`分区，并提供 Wallet 只读口和 caller-bound 事务口。
 
 Economy 不读取普通聊天消息，不保存楼层、哈希或剧情锚点，也不响应编辑、swipe、删除和分支事件。
 
 ## 外部边界
 
-Repository 只依赖`XiaobaiOsChatDataStore`。Bank、Game、Shop 通过各自 application service 在同一次根 mutation 中组合领域事件和资金腿；Economy 不 import 这些业务领域。旧 V1 只在 host chat-data 升级边界被识别和保存，运行时领域与各 APP 只接收 V2。
+Economy Capability 只依赖 Kernel 分区事务。Bank、Game、Shop、Tasks 通过各自 application service 在同一次 Scoped transaction 中组合领域事件和资金腿；Economy 不 import 这些业务领域，调用者也不能取得可写 Ledger 或伪造`sourceDomain`。正式线没有 Economy 数据；测试线旧 V1/metadata 根不迁移、不读取。
 
-删除 Economy 时必须同时下线所有资金消费者，并清理`domains.economy`；不能留下第二份余额继续运行。
+删除 Economy 时必须同时下线所有资金消费者，并清理`economy`分区、Capability 与 domain 注册；不能留下第二份余额继续运行。

@@ -2,7 +2,7 @@ import { initAfterAiGate, notifyAfterAiHint, registerAfterAiHandler } from '../.
 import { createModuleEvents, event_types } from '../../../../../core/event-manager.js';
 import type { XiaobaiOsAppRuntime } from '../../../types.js';
 import type { XiaobaiOsSettingsRepository } from '../../../host/settings-repository.js';
-import type { XiaobaiOsAgentGateway } from '../../../host/agent/gateway.js';
+import type { XiaobaiOsAgentGateway } from '../../../capabilities/agent/gateway.js';
 import {
     captureSillyTavernCommentaryEvent,
     getSillyTavernAfterAiHint,

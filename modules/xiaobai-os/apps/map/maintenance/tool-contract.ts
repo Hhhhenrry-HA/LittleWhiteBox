@@ -1,4 +1,4 @@
-import type { MaintenanceFunctionDeclaration } from '../../../host/maintenance/registry.js';
+import type { MaintenanceFunctionDeclaration } from '../../../capabilities/maintenance/registry.js';
 import {
     MAX_MAP_ACTORS,
     MAX_MAP_BRIEF_LENGTH,

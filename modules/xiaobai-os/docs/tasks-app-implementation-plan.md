@@ -4,7 +4,7 @@
 
 本阶段一次性交付可用的普通 OS Tasks：领域状态机、世界 board、玩家发布/招募、Economy 托管结算、活动任务维护、主 RP 投影、自动维护设置和完整 UI。
 
-施工期间可以按下列顺序提交内部代码；当前步骤 G 已完成，Tasks 已注册为完整 APP。终态语义以[Tasks APP 终态设计](./tasks-app-target-design.md)为准；本方案不重新解释产品规则。
+Tasks 的业务步骤 A–G 已完成；其中旧 metadata 根、production composition 和 root validator 接法已被 Kernel 方案取代，不能继续照旧扩建。底座迁移按 [OS Kernel 施工方案](./os-kernel-implementation-plan.md) D3 执行，完成后本文只保留 Tasks 自有领域、Prompt、工具与 UI 契约。终态语义以[Tasks APP 终态设计](./tasks-app-target-design.md)为准。
 
 ## 2. 最终目录和职责
 
@@ -19,11 +19,12 @@ modules/xiaobai-os/
 │     ├─ recruitment.ts        # replace candidates / assign / cancel
 │     └─ maintenance.ts        # progress / complete / fail
 ├─ apps/tasks/
+│  ├─ module.ts                       # 分区、Capability、Host runtime 注册
 │  ├─ application/
-│  │  ├─ root-protocol.ts      # Tasks/Economy 交叉不变量与资金腿
+│  │  ├─ economy-protocol.ts   # Tasks 资金意图与 caller-bound Economy 交叉检查
 │  │  ├─ ids.ts                # Tasks 私有 opaque ID factory；不依赖 Web Crypto
 │  │  ├─ service.ts            # 对 Controller 的薄 facade
-│  │  ├─ local-actions.ts      # 接取/发布/候选/选人/撤回根 mutation
+│  │  ├─ local-actions.ts      # 接取/发布/候选/选人/撤回分区事务
 │  │  └─ maintenance-commit.ts # staged commands 批量原子提交
 │  ├─ generation/
 │  │  ├─ types.ts              # generation context/result 契约
@@ -46,6 +47,7 @@ modules/xiaobai-os/
 │  │  ├─ presentation.ts
 │  │  └─ controller.ts
 │  ├─ ui/
+│  │  ├─ entry.ts                     # Shell 动态加载入口
 │  │  ├─ TasksApp.vue          # 只负责 frame 协议、路由和页面组合
 │  │  ├─ TasksBoard.vue
 │  │  ├─ TasksActive.vue
@@ -74,15 +76,15 @@ modules/xiaobai-os/
 
 ```text
 domains/tasks                 <- 不 import apps/host/Vue/Economy
-apps/tasks/application        <- domains/tasks + domains/economy + chat-data-store types
-apps/tasks/generation         <- generation types + Agent gateway + application service interface；不直接读写 store
+apps/tasks/application        <- domains/tasks + ScopedChatStore + Economy Capability
+apps/tasks/generation         <- generation types + Agent Capability + application service interface；不直接读写 store
 apps/tasks/maintenance        <- domains/tasks + application service + generic maintenance types
 apps/tasks/host               <- application/generation/maintenance + SillyTavern adapter
 apps/tasks/ui                 <- apps/tasks/types + frame bridge；不 import domain/application/host
-host/production-composition   <- 唯一组装点
+apps/tasks/module + Host/Shell catalogs <- 唯一注册入口
 ```
 
-`domains/tasks`不能知道余额、账户、iframe、Provider 或聊天消息。`root-protocol.ts`是唯一同时理解 Tasks event 与 Economy transaction 的模块；Controller 不手写资金腿。`generation/request.ts`只编排显式无工具请求，不能 import maintenance Session。`maintenance/session.ts`不读取 SillyTavern 或 Agent 配置。
+`domains/tasks`不能知道余额、账户、iframe、Provider 或聊天消息。`economy-protocol.ts`只把 Tasks event 转成资金意图，并通过 caller-bound Economy 视图核对结果；它不能取得完整 Ledger 或 Envelope，Controller 也不手写资金腿。`generation/request.ts`只编排显式无工具请求，不能 import maintenance Session。`maintenance/session.ts`不读取 SillyTavern 或 Agent 配置。
 
 ### 2.2 领域命令接口
 
@@ -164,7 +166,7 @@ factory 创建的 task/board/listing/candidate/event ID 最长 160，actionId �
 
 交易固定`actionId=event.actionId`、`sourceDomain="tasks"`、`sourceId=event.taskId`、`amount=冻结 reward`；title/note 由代码按本地模板生成。其余 Task event 必须零交易。
 
-root validator 既逐 event 重建预期交易，也扫描所有`sourceDomain="tasks"`、`kind`以`task_`开头、Tasks actionId、`escrow:task:`或`counterparty:task:`相关交易，拒绝缺腿、错腿、多腿和孤儿腿；不能只从 Tasks events 单向核对而漏过伪造交易。它同时核对每个 task escrow 的最终余额。production root validator 显式并列调用 Shop、Bank、Game、Tasks 四个 consistency validator。
+Tasks/Economy consistency check 既逐 event 重建预期交易，也通过 caller-bound Economy 视图扫描所有`sourceDomain="tasks"`、`kind`以`task_`开头、Tasks actionId、`escrow:task:`或`counterparty:task:`相关交易，拒绝缺腿、错腿、多腿和孤儿腿；不能只从 Tasks events 单向核对而漏过伪造交易。它同时核对每个 task escrow 的最终余额，但看不到其他业务分区或不属于 Tasks 的交易。
 
 ### 2.5 Application service 接口
 
@@ -194,12 +196,9 @@ assignCandidate(input: AssignCandidateRequest, guard: CommitGuard): Promise<Task
 cancel(input: CancelTaskRequest, guard: CommitGuard): Promise<TasksActionResult>;
 replaceBoard(input: ReplaceBoardRequest, guard: CommitGuard): Promise<TasksActionResult>;
 commitMaintenance(input: MaintenanceCommitRequest, guard: CommitGuard): Promise<TasksActionResult>;
-getWriteState(): XiaobaiOsWriteState;
-confirmPending(): Promise<ConfirmResult>;
-adoptServerState(): Promise<AdoptServerResult>;
 ```
 
-每个业务写方法内部只调用一次`store.mutateCurrent`，在同一 command callback 中读取 Tasks/Economy、执行纯领域命令、构造交易、运行交叉不变量并返回完整 root plan。`guard`在进入方法前和 store 的`beforeCommit`各执行一次；service 不做保存后的补偿写。最后三个保存接口只原样代理根 store，以便 Tasks Controller 使用统一保存 UI；不得维护 Tasks 私有 write state。
+每个业务写方法内部只调用一次 Tasks `ScopedChatStore.transact`，在同一 command callback 中读取 Tasks 分区、执行纯领域命令，并通过 Economy Transaction Capability 构造资金腿和运行交叉检查。`guard`在进入方法前和 sidecar replace 前各执行一次；service 不做保存后的补偿写，也不暴露完整 Envelope。文件级 write state、确认和采用服务端数据由 Kernel/Host 统一提供给 Shell，不进入 Tasks service，Tasks 不维护私有 write state。
 
 施工时可对照下列小白酒馆实现核验可观察行为，但只能复制规则和 Prompt 经验，不能 import 运行时代码或沿用其 DB/楼层类型：
 
@@ -239,19 +238,19 @@ adoptServerState(): Promise<AdoptServerResult>;
 
 ### 改动
 
-1. `root-protocol.ts`只负责从 Task event 的冻结 reward 推导 funding/settlement/refund 流水和验证完整根；账户、金额、方向和 idempotency key 不接收 UI/Agent 输入，也不查询当前报酬区间。
-2. `local-actions.ts`在一次`store.mutateCurrent`中读取 current Tasks + Economy，执行领域命令、资金腿、交叉校验并安装候选根。
+1. `economy-protocol.ts`只负责从 Task event 的冻结 reward 推导 funding/settlement/refund 资金意图，并核对 caller-bound Economy 结果；账户、金额、方向和 idempotency key 不接收 UI/Agent 输入，也不查询当前报酬区间。
+2. `local-actions.ts`在一次 Tasks Scoped transaction 中读取 current Tasks，执行领域命令，并调用 Economy Capability 安装同一 sidecar candidate。
 3. `maintenance-commit.ts`接收 Session 固定的 staged commands，在一个 Tasks mutation 中重做 task CAS，再生成全部 Task events 和相应 Economy 流水。
-4. `service.ts`暴露 read、accept、publish、replaceCandidates、assign、cancel、commitMaintenance、writeState、confirmPending/adoptServerState 的薄接口。
-5. 所有本地动作在第一次非幂等写前和`beforeCommit`再次检查：chat identity 未变、主生成空闲、根写门 ready。
+4. `service.ts`只暴露 read、accept、publish、replaceCandidates、assign、cancel、replaceBoard 和 commitMaintenance 的薄接口。
+5. 所有本地动作在第一次非幂等写前和 sidecar replace 前再次检查：osId/binding 未变、app activation 有效、主生成空闲、Kernel 文件写状态 ready。
 
 ### 验证
 
 - 世界接取/完成/失败和玩家发布/撤回/完成/失败六条资金路径；
-- Task/Economy 任一候选不合法时整个根不安装；
+- Task/Economy 任一候选不合法时整个 sidecar candidate 不上传；
 - 明确保存失败一起恢复；unconfirmed 下重复点击不生成第二笔资金；
 - funding/settlement/refund 与事件 actionId、sourceId、idempotency key 一一对应；
-- Economy 中伪造或缺失 Tasks 资金腿会被根交叉不变量拒绝。
+- Economy 中伪造或缺失 Tasks 资金腿会被 Tasks/Economy 交叉检查拒绝。
 
 ## 5. 步骤 C：显式 board/candidate generation
 
@@ -261,7 +260,7 @@ adoptServerState(): Promise<AdoptServerResult>;
 2. `generation/context.ts`统一做名字/正文规范化与容量裁剪；共享 XML formatter 负责动态资料的 XML/宿主宏转义。`safePromptJson`只用于 XML 内仍需保留 JSON 结构的领域投影：编码`< > &`，并只在 JSON 字符串内部编码花括号，保证宿主宏不展开且整体仍可无损解析。
 3. Board/Candidate Prompt 按终态第 7.2 节分别实现，严格组装静态职责、system`<setting>`、system`<current_state>`、user`<task_data>`和 user 命令五层。不得写一个带 mode 分支的巨型字符串生成器，也不得 import Tavern 运行时代码。
 4. `response-compiler.ts`实现终态第 7.3 节的有界 JSON 提取、一次尾随逗号修复、闭合 reason、每项白名单编译和 partial 结果。Compiler 只返回无 ID board/candidate drafts；Candidates 先以规范字段比较现值，相同则返回既有 IDs/unchanged，不同才返回 drafts。
-5. `generation/request.ts`在本地前置条件满足后才`loadConfig → openSession → run`。一次请求一个 session、一个 Provider 回合、`tools:[]`；不为无工具请求扩展 gateway。保存前通过同一 adapter 重捕获并深比较唯一 context snapshot，再检查 token、主生成、expected boardId 或 task revision/eventId CAS 和根写门；全部通过后调用 application service，由 service 分配本批 ID 并执行唯一根 mutation，generation 不 import ID factory 或 store。
+5. `generation/request.ts`在本地前置条件满足后才`loadConfig → openSession → run`。一次请求一个 session、一个 Provider 回合、`tools:[]`；不为无工具请求扩展 gateway。保存前通过同一 adapter 重捕获并深比较唯一 context snapshot，再检查 activation token、主生成、expected boardId 或 task revision/eventId CAS 和 Kernel 文件写状态；全部通过后调用 application service，由 service 分配本批 ID 并执行唯一 Scoped transaction，generation 不 import ID factory 或 Store。
 6. board 和 candidate 各有独立 AbortController。切聊、OS cleanup、离开所属页面和新同类请求只取消保存前的旧请求。
 
 ### 验证
@@ -295,14 +294,14 @@ Map participant 仍返回 Session，公开行为不变；玩家展示名只来�
 3. Prompt 只包含终态第 8.2 节静态规则；active 投影放 Session dataMessages，接受消息由 runner 统一放另一个 user message。
 4. 三个工具严格使用终态第 8.3 节 schema/description，只调用 command compiler，不触碰 store/Economy；Session 以 taskId 跟踪每任务一个 changed command 和实体失败，以 participant call key 跟踪无 taskId 失败。
 5. `getResult/canCommit/commit/invalidate`遵守现有 Map Session 协议；commit 只调用`maintenance-commit.ts`。
-6. commit 在同一根 mutation 中重新检查全部 staged task 的 revision/eventId；任一相关任务已变化就拒绝整次 Tasks commit，不产生半组任务/资金事件。commit 前通用 guard 失败丢 staging；根保存已经发出后的结果交给 store，如实返回，不自行补偿。
+6. commit 在同一 Tasks Scoped transaction 中重新检查全部 staged task 的 revision/eventId；任一相关任务已变化就拒绝整次 Tasks commit，不产生半组任务/资金事件。sidecar replace 前通用 guard 失败丢 staging；replace 已发出后的结果交给 Kernel，如实返回，不自行补偿。
 
 ### 验证
 
 - 无符合来源边界的 active 或 automatic job 下自动开关关闭时，均在配置读取前结束；新接取/新指派任务不得消费其 active 事件之前的接受轮；
 - 同任务尚未成功 staging 时可换另一个 Task 工具修正失败；已有 changed command 后，相同命令幂等、不同命令拒绝且不能覆盖 staging；不同任务可同时 stage；其他 task 的成功不能误清实体失败；
 - 混合合法/非法工具、修参、重复失败刹车、Provider 后续失败和 12 回合上限；
-- task CAS、接受消息、chat identity、自动 token 任一变化时保存前无写入；
+- task CAS、接受消息、osId/binding、自动 token 任一变化时保存前无写入；
 - Map + Tasks 各有工作时只 open 一个 Agent session，各自 Prompt/工具/staging，提交结果互不冒充；
 - Tasks partial commit 中 Task/Economy 仍保持领域内原子。
 
@@ -314,13 +313,12 @@ Map participant 仍返回 Session，公开行为不变；玩家展示名只来�
 2. 生命周期与现有 Map prompt runtime 相同：generation start/intercept/request built/end/stop/chat change/OS cleanup 全部有明确清理。
 3. Controller 激活时同步读取已有 Tasks/Economy；首次缺 Economy 时立即返回 loading 并后台复用开户流程。
 4. Controller 只接收领域 ID、用户表单、CAS 和 iframe 请求相关 ID；领域 actionId 由 host 创建并在一次动作的保存/重试中固定。发布表单按终态 6.1 的独立上限校验，不能误套 board 的短文本限制。presentation 负责稳定文案，绝不把内部错误传进 iframe。
-5. host/frame 消息按 board、candidate、local mutation、maintenance、save confirmation 分组；每类在途状态彼此独立，不能用一个全局 busy 卡死只读页面。
+5. Host/frame 消息按 board、candidate、local mutation 和 maintenance 分组；每类在途状态彼此独立，不能用一个全局 busy 卡死只读页面。文件确认和采用服务端数据由 Kernel/Shell Bridge 单独处理。
 
 Controller 向 iframe 返回的唯一完整状态为：
 
 ```ts
 interface TasksPresentation {
-    chatIdentity: string;
     status: 'ready' | 'loading' | 'saving' | 'unconfirmed' | 'conflict' | 'blocked';
     message: string;
     writeState: 'ready' | 'saving' | 'unconfirmed' | 'conflict';
@@ -357,19 +355,19 @@ interface TaskDetailPresentation {
 }
 ```
 
-Host 路由固定为：`tasks/activate`、`tasks/detail/read`、`tasks/refresh`、`tasks/board/accept`、`tasks/publish`、`tasks/candidates/refresh`、`tasks/candidates/assign`、`tasks/cancel`、`tasks/maintenance/run`、`tasks/settings/update`、`tasks/history/load-more`、`tasks/save/confirm`、`tasks/save/adopt-server`。除 activate 外，所有请求携带激活返回的`chatIdentity`；任务动作再携带`taskId + expectedTaskRevision + expectedEventId`，其中 expectedEventId 只作为不透明 CAS；board accept 携带`boardId + listingId`；settings/update 只接受`autoMaintenance`。Controller 不接受余额、账户、新 eventId/actionId、issuer/assignee 对象或任务 status。
+Host 路由固定为：`tasks/activate`、`tasks/detail/read`、`tasks/refresh`、`tasks/board/accept`、`tasks/publish`、`tasks/candidates/refresh`、`tasks/candidates/assign`、`tasks/cancel`、`tasks/maintenance/run`、`tasks/settings/update`、`tasks/history/load-more`。除 activate 外，所有请求携带激活返回的 app activation token；任务动作再携带`taskId + expectedTaskRevision + expectedEventId`，其中 expectedEventId 只作为不透明 CAS；board accept 携带`boardId + listingId`；settings/update 只接受`autoMaintenance`。文件确认/采用服务端数据是 Kernel/Shell 路由，不属于 Tasks。Controller 不接受余额、账户、新 eventId/actionId、issuer/assignee 对象或任务 status。
 
-`status`由本地 presentation 唯一派生：首次 Economy 开户为 loading，根写门映射 saving/unconfirmed/conflict，初始化明确失败为 blocked，其余为 ready；`message`只取稳定本地文案。`generationActive=true`时所有写动作和 Agent 请求禁用，只读仍可用。
+`status`由本地 presentation 唯一派生：首次 Economy 开户为 loading，Kernel 文件状态映射 saving/unconfirmed/conflict，初始化明确失败为 blocked，其余为 ready；`message`只取稳定本地文案。`generationActive=true`时所有写动作和 Agent 请求禁用，只读仍可用。
 
 activate 和每个状态写成功都返回新的完整`TasksPresentation`（历史重置为第一页），不让 iframe 自己乐观拼 TaskRecord；`history/load-more`只返回下一页，iframe 仅按 taskId 合并这类只读分页；`detail/read`按 taskId 返回`TaskDetailPresentation`，不暴露 actionId 或账户。失败响应只给稳定本地 code，presentation 映射用户文案。刷新/候选/maintenance 另带各自 outcome，不能把 Provider error 塞进 state。
 
 ### 验证
 
 - 主 Prompt 字段白名单、XML/宏编码和全生命周期清理；
-- 已有 Economy/Tasks 时打开同步 ready，零网络读、零 Agent；
+- Kernel 已加载当前 sidecar 且 Economy/Tasks 有效时打开同步 ready，不增加网络读取且零 Agent；
 - 仅目标写动作被串行化，慢 board 请求不阻止查看历史；
 - unconfirmed/conflict 下只读仍可用，所有写与 Agent 请求被本地阻止；
-- 采用服务端数据只有在完整读回和根校验成功后恢复 ready。
+- 采用服务端数据只有在完整读回和 Envelope 校验成功后恢复 ready。
 
 ## 8. 步骤 F：UI
 
@@ -390,16 +388,16 @@ activate 和每个状态写成功都返回新的完整`TasksPresentation`（历�
 - 打开、切页、关开关的网络面板无 Agent 请求；
 - 保存已经发出后关闭页面，重开能看到真实最终状态，不显示伪取消。
 
-## 9. 步骤 G：设置、注册和一次性公开
+## 9. 步骤 G：设置、注册和 Kernel 换轨
 
-已执行：
+业务设置已经交付，底座施工时保留产品行为并替换注册边界：
 
-1. Tasks 设置 normalizer 提供`apps.tasks:{autoMaintenance:false}`默认值；OS 根设置不因新增 APP 提升版本，也不保留缺字段双读。
-2. settings repository 只增加类型化`setTasksAutoMaintenance`命令；不存在 Tasks enabled 字段或命令。
-3. production composition 一次性静态注册 Tasks domain validator、Task/Economy root validator、service、participant、prompt runtime、settings runtime、controller 和 descriptor。settings runtime 只在关闭自动维护时立即 invalidate 自动 job，不控制 APP 可见性。
-4. maintenance registry 从`[map]`变为`[map,tasks]`，不增加业务分支。
-5. shell app registry 加载 Tasks UI；descriptor 随 OS 固定出现在桌面，扩展设置不增加 Tasks 入口。
-6. manifest/build entry/import graph 纳入新增文件，运行产物不得引用 Tavern Tasks。
+1. Tasks 设置 normalizer 保持`apps.tasks:{autoMaintenance:false}`默认值；用户级 OS settings 不因新增 APP 提升 schema 版本，也不存在 Tasks enabled 字段。
+2. `apps/tasks/module.ts`注册`tasks`分区 parser、Economy/Agent/Maintenance Capability 依赖、Host runtime、dispose 与 clearData。
+3. Host catalog 注册 module；Shell catalog 只注册静态 descriptor 与`ui/entry.ts`动态 loader。两边 ID 必须一致，但不得静态互相 import runtime/UI。
+4. Tasks participant 通过 Maintenance Capability 注册；通用 registry 不增加 Tasks 字段或状态分支。
+5. 删除 production composition 中的 Tasks 手工 wiring、root validator、完整根依赖和 Shell 静态组件 import，不保留转发壳。
+6. settings runtime 只在关闭自动维护时立即 invalidate 自动 job，不控制 APP 可见性；manifest/build entry/import graph 纳入新模块，运行产物不得引用 Tavern Tasks。
 
 ## 10. 测试取舍
 
@@ -422,12 +420,12 @@ activate 和每个状态写成功都返回新的完整`TasksPresentation`（历�
 
 施工完成后必须一次性过完，不得查出几个问题就收工：
 
-- 上游：settings、SillyTavern context、MESSAGE_SENT、主生成、Agent gateway、root write gate；
+- 上游：settings、SillyTavern context、MESSAGE_SENT、主生成、Agent Capability、Kernel 文件写状态；
 - 下游：Tasks UI、主 RP Prompt、Wallet 流水、Map 同 job、保存确认/采用服务端；
-- 数据流：响应文本→compiler→domain、工具→staging→Task/Economy 根 mutation、root→presentation；
+- 数据流：响应文本→compiler→domain、工具→staging→Tasks Scoped transaction + Economy Capability、分区 snapshot→presentation；
 - 并发：双击、慢请求、FIFO、同 task CAS、board/candidate 迟到、切聊、关开关、页面关闭；
 - 错误：配置缺失、Provider 截断、JSON 部分坏、工具修参失败、save failed/unconfirmed/conflict；
-- 删除：非终态 escrow 清理、domains.tasks 清除、Economy 历史保留、无兼容壳；
+- 删除：非终态 escrow 清理、`tasks`分区与两处 catalog/participant 注册清除、Economy 历史按产品策略处理、无兼容壳；
 - 视觉：空态、partial、长文本、暗色原生控件、移动端、首屏无 host timeout 空白。
 
 ## 12. 完成定义

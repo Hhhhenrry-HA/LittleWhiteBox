@@ -10,12 +10,12 @@
 
 | 项目 | 结论 |
 | --- | --- |
-| 功能所有者 | `agent-core`拥有共享配置格式和供应商调用；`apps/agent-api`拥有 OS 设置界面；`host/agent`拥有普通 OS 调用桥；`host/maintenance`拥有接受轮捕获和运行编排 |
+| 功能所有者 | `agent-core`拥有共享配置格式和供应商调用；`apps/agent-api`拥有 OS 设置界面；Agent Capability 拥有普通 OS 调用桥；Maintenance Capability 拥有接受轮捕获和运行编排 |
 | 唯一事实来源 | Agent 配置继续是`AssistantStorage`中的`settings`；OS 总开关与 Map/Tasks 自动维护偏好在`xiaobaiOs`扩展设置；运行队列只在内存 |
 | 持久态 | 共享 Agent 配置、OS 总开关、Map/Tasks 的自动维护偏好 |
 | 临时态 | 配置草稿、连接测试、模型列表、接受轮快照、请求队列、AbortController、running/error/last-run UI 状态 |
-| 外部依赖 | SillyTavern `MESSAGE_SENT`与聊天上下文、`agent-core`、`AssistantStorage`、根 chat data store |
-| 注册入口 | `production-composition.ts`注册系统 APP、Agent gateway、maintenance runner 和领域 participant；shell 注册桌面组件 |
+| 外部依赖 | SillyTavern `MESSAGE_SENT`与聊天上下文、`agent-core`、`AssistantStorage`、各 participant 的 ScopedChatStore |
+| 注册入口 | Capability catalog 注册 Agent/Maintenance；Agent API 与领域 APP 通过 Host/Shell catalog 和 module 注册 |
 | 删除路径 | 删除系统 APP与 host 注册，四次元壁/Map/Tasks 改回各自显式依赖；不得留下 Fourth Wall 转发弹窗 |
 | 兼容对象 | 保留当前共享 Agent 配置格式与上游真实 Fourth Wall 设置迁移；用户点名保留的 OS `enabled`及 APP 偏好在无版本归一化时原值保留，旧根版本标记和旧 Map/Tasks `enabled`不进入现行设置 |
 | 最少测试 | 共享 Agent 配置冲突、OS 偏好持久化、User 后单次触发、swipe/regenerate 不触发、关闭时零请求、切聊/关开关使迟到结果失效、领域提交隔离 |
@@ -26,7 +26,7 @@
 modules/xiaobai-os/
 ├─ agent/
 │  └─ browser-entry.ts              OS Agent 浏览器 bundle 入口
-├─ host/
+├─ capabilities/
 │  ├─ agent/
 │  │  ├─ gateway.ts                 共享配置读取与供应商请求
 │  │  └─ bridge-loader.ts           单例加载 OS Agent bundle
@@ -34,7 +34,7 @@ modules/xiaobai-os/
 │     ├─ accepted-turn-source.ts    读取刚被确认的上一轮
 │     ├─ registry.ts                领域 participant 注册
 │     ├─ fifo-coordinator.ts        当前运行内 FIFO
-│     ├─ root-write-gate.ts         根保存状态栅栏
+│     ├─ commit-guard.ts            来源、开关和 sidecar 提交栅栏
 │     ├─ provider-tool-loop.ts      Provider-aware 多轮工具循环
 │     ├─ outcome.ts                 运行与逐 participant 结果
 │     └─ runner.ts                  薄编排 facade 与取消入口
@@ -45,13 +45,13 @@ modules/xiaobai-os/
    └─ tasks/maintenance/            Tasks Prompt、工具和 staged command
 ```
 
-`host/maintenance`不得出现 Map/Tasks 字段、Prompt 文本或状态分支。新增自动领域只能通过注册一个 participant 接入。
+Maintenance Capability 不得出现 Map/Tasks 字段、Prompt 文本或状态分支。新增自动领域只能通过注册一个 participant 接入。
 
 OS Agent bundle 取代当前由 Fourth Wall 命名和拥有的 Agent bundle。供应商适配、配置规范化和设置表单行为继续复用`agent-core`；四次元壁只向 gateway 提交自己的 prompt 和请求选项。
 
-### 3.1 终态结构与已落地边界
+### 3.1 已落地业务能力与迁移边界
 
-本节目录树是当前结构，不代表`host/maintenance`可以脱离业务 APP 单独扩张。
+Agent/maintenance 的业务行为已经落地，但当前代码仍位于旧 host/composition。Kernel 施工时必须按上方目录迁入 Capability，并删除旧入口，不能在旧目录外包一层转发器形成双路径。
 
 - Agent API APP、Agent gateway 和通用 Agent bundle 已完成，因为四次元壁是它们当下的真实消费者。
 - Map 交付自己的领域、Prompt、工具、Session、UI 和 participant 时，同阶段引入了 accepted-turn source 与业务无关 runner；Map 固定注册桌面入口，自动维护开关只在 APP 内。
@@ -136,7 +136,7 @@ Map 和 Tasks 是与银行相同的固定桌面 APP，不存在各自的产品�
 
 用户可在具体 APP 内通过标明会使用 Agent 的「维护一次」「重建」或「刷新」按钮发起显式请求。
 
-若运行中关闭自动维护，该领域的自动 job token 立即失效并请求 abort；即使供应商仍返回，进入根保存 commit point 前也必须再次检查 token 并丢弃迟到结果。显式「维护一次」使用独立的前台授权 token，不依赖自动维护开关；离开所属页面或 OS cleanup 才使前台请求失效。设置 mutation 的 installed 通知只负责自动 job 的即时执行栅栏，稳定发布不切换 Prompt 或页面生命周期。
+若运行中关闭自动维护，该领域的自动 job token 立即失效并请求 abort；即使供应商仍返回，sidecar replace 发出前也必须再次检查 token 并丢弃迟到结果。显式「维护一次」使用独立的前台授权 token，不依赖自动维护开关；离开所属页面或 OS cleanup 才使前台请求失效。设置 mutation 的 installed 通知只负责自动 job 的即时执行栅栏，稳定发布不切换 Prompt 或页面生命周期。
 
 ## 7. 接受轮触发语义
 
@@ -160,7 +160,7 @@ U2 是“上一轮已经被用户接受”的边界，不是本次维护证据�
 
 捕获快照包含：
 
-- chat identity；
+- Kernel 当前聊天 scope token 与 osId/binding；
 - 触发 User 的消息位置、角色和原始文本；
 - 捕获时已完成的普通 Assistant 回复总数；
 - 接受来源中每条消息的位置、角色、当前`swipe_id`和当前文本；
@@ -221,8 +221,8 @@ interface MaintenanceSession {
 - runner 先为当前 mode 可参与的 participant 创建 Session。全部返回`null`时，在`gateway.loadConfig()`和`openSession()`之前以`skipped/no-work`结束；部分为`null`时只运行其余 Session。
 - runner 的静态 system rules 只由通用规则和各 Session 的`prompt`组成。共享背景以 system data message 发送`<setting>/<current_state>`，每个 Session 的动态领域投影放在自己的 user`dataMessages`，玩家身份与接受消息放在 runner 单独构造的 user`<accepted_turn>`；动态资料不得拼进静态 rules。
 - Agent 工具先写 participant 的内存 staging context，不在模型循环中直接保存聊天数据。
-- 请求完成后，各 participant 分别通过根 store 提交；Map 失败不抹掉一个已经合法提交的 Task，反之亦然。
-- Tasks 的状态与 Economy 资金腿仍必须在它自己的单次根 mutation 中原子提交。
+- 请求完成后，各 participant 分别通过自己的 Scoped Store 提交；Map 失败不抹掉一个已经合法提交的 Task，反之亦然。
+- Tasks 的状态与 Economy 资金腿仍必须在它自己的单次 Scoped transaction 中形成一个 sidecar candidate 并原子提交。
 - Agent 没有通用“写 OS 根”“改余额”或“任意执行 JS”工具。
 
 Provider-aware tool loop 只拥有传输和编排错误，不复制领域失败状态：
@@ -240,7 +240,7 @@ Provider-aware tool loop 只拥有传输和编排错误，不复制领域失败�
 - 新 User 到来时前一 job 可继续；后一个等待前一个完成，避免旧结果覆盖新状态。
 - 关闭 OS 窗口不影响已经获准的自动 job；自动维护属于 host 后台，不由页面寿命拥有。
 - 「维护一次」、重建、board 刷新和候选招募属于前台请求；离开对应 APP/页面、再次发起同类请求或 OS cleanup 时请求 abort，尚未进入保存 commit point 的迟到结果不得提交。
-- 切聊、OS cleanup 或 OS 总开关关闭时，中止 active job 并清空当前运行队列。若某 participant 已安装根候选并发出宿主保存请求，该次保存无法物理撤回；等待它落定、保留真实 committed outcome，再取消其余 participant 和后续 job。
+- 切聊、OS cleanup 或 OS 总开关关闭时，中止 active job 并清空当前运行队列。若某 participant 的 sidecar replace 已经发出，该次保存无法物理撤回；等待它落定、保留真实 committed outcome，再取消其余 participant 和后续 job。
 - API 配置缺失、未启用或读取失败时，本次 job 以本地错误结束，不发供应商请求。
 - 工具解析、参数和可恢复执行错误以结构化结果回喂模型，不销毁 Session；同一工具名、原始参数与结构化结果组成相同失败签名，连续三次时注入刹车，第四次结束，Provider 回合上限为 12。
 - Provider 后续失败或轮次耗尽时，已有合法 staging 的 participant 以 partial 提交；没有合法变化的 participant 为 failed。单个 participant 的领域错误不能跨领域冒充成功。
@@ -248,7 +248,7 @@ Provider-aware tool loop 只拥有传输和编排错误，不复制领域失败�
 - 运行错误和“上次维护”提示只活在当前页面进程。
 - 自动失败后不在重载时偷偷补请求。用户可等待下一次接受轮，或在 APP 内明确点击「维护一次」。
 
-后台队列不是用户长期事实，也没有跨重启恢复要求，因此不进入`chat_metadata`。Map/Tasks 的已提交领域状态可以在后续维护中继续被修正；不保存完整聊天副本、pending prompt 或 Agent 原始输出。
+后台队列不是用户长期事实，也没有跨重启恢复要求，因此不进入 sidecar 或聊天 metadata。Map/Tasks 的已提交领域状态可以在后续维护中继续被修正；不保存完整聊天副本、pending prompt 或 Agent 原始输出。
 
 ## 10. 主聊天 Prompt 与后台维护分离
 
@@ -291,7 +291,7 @@ OS 扩展设置当前包含总开关、Fourth Wall 设置与`map.autoMaintenance
 | 领域工具换名修正同一实体失败后不残留假 partial | Session + runner 集成测试 |
 | Map/Tasks 随 OS 固定出现，自动维护开关不影响 runtime/Prompt | lifecycle + Prompt 集成测试 |
 | 关闭自动维护立即使自动 job 失效且不影响显式请求 | 设置 repository + runner 集成测试 |
-| 切聊、关自动维护、改 swipe 使迟到提交失效 | runner + chat store 集成测试 |
+| 切聊、关自动维护、改 swipe 使迟到提交失效 | runner + Scoped Store 集成测试 |
 | 手动维护只读取最新完整接受轮，并且只运行被点击领域 | accepted source/runner 集成测试 |
 | Map/Tasks 一次请求但领域提交互不冒充 | participant 集成测试 |
 | Fourth Wall 原有生成行为不因设置入口迁移改变 | Fourth Wall Controller 公开行为回归 |

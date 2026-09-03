@@ -1,4 +1,4 @@
-import type { AcceptedTurnPlayer } from '../../../host/maintenance/accepted-turn-source.js';
+import type { AcceptedTurnPlayer } from '../../../capabilities/maintenance/accepted-turn-source.js';
 import type { MapDomainEdit } from '../../../domains/map/edit.js';
 import {
     MAX_MAP_ACTORS,

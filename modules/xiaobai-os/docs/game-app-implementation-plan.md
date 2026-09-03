@@ -8,9 +8,9 @@
 | 唯一事实来源 | Game 事件链；资金以 Economy 流水为准 |
 | 持久态 | command/result、私有骰子/牌堆/步骤、终局活动 |
 | 临时态 | UI 页面、动画、busy、分页、生成 guard |
-| 外部依赖 | Economy、根 store、随机源、shell |
-| 注册入口 | Game descriptor/runtime、validator、Game-Economy 交叉校验 |
-| 删除路径 | 处理 active escrow 后删目录/注册/数据 |
+| 外部依赖 | ScopedChatStore、Economy Transaction Capability、随机源、Shell |
+| 注册入口 | Game Host/Shell catalog、module、`game`分区 parser、Capability 依赖 |
+| 删除路径 | 处理 active escrow 后删目录/两处 catalog 注册并清理`game`分区 |
 | 最少测试 | 三个状态机、随机、私有投影、原子资金、Controller |
 
 ## 2. 施工顺序
@@ -36,15 +36,15 @@
 1. 开局按当前命令策略创建下注 escrow 资金腿，并把实际下注冻结在`game-started`结果中。
 2. 中间动作不记账。
 3. 终局创建 reserve/payout/loss 资金腿，过滤 0 金额。
-4. 在同一候选根中安装 Game 与 Economy。
+4. 在 Game Scoped transaction 中调用 Economy Capability，把 Game 与 Economy 分区安装到同一 sidecar candidate；业务层不得取得完整 Envelope。
 5. 交叉校验从保存事件中的 amountIn/payout 推导资金腿顺序和 active escrow，禁止从当前常量重建历史资金。
 
 ### D. Controller 与 UI
 
-1. 已有 Economy 同步打开，缺失时后台开户。
-2. Controller 绑定聊天 activation、串行化动作、过滤客户端伪造字段。
+1. 当前 sidecar 已加载且已有 Economy 时同步打开，缺失时通过协调器执行明确开户事务。
+2. Controller 绑定 app activation token 与当前 osId/binding、串行化动作、过滤客户端伪造字段。
 3. 大厅、三款游戏、记录和通用动作弹窗分别成组件。
-4. 未确认保存冻结动作并提供确认。
+4. 文件级未确认上传冻结当前聊天全部 sidecar 写动作并提供确认。
 5. 桌面和移动端都必须能完成完整一局。
 
 ## 3. 回归重点

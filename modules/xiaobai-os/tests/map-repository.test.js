@@ -1,13 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createMapService } from '../apps/map/application/service.js';
 import { createEmptyMapDomain } from '../domains/map/state.js';
-import { createChatDataStore } from '../host/chat-data-store.js';
-
-function rootWithMap(map) {
-    return { schemaVersion: 2, apps: {}, domains: { map } };
-}
+import { createMapKernelHarness } from './map-kernel-harness.js';
 
 function mapDomain(revision, keys) {
     return {
@@ -23,34 +18,7 @@ function mapDomain(revision, keys) {
 }
 
 function createHarness(initialRoot = null) {
-    const identity = { key: 'character:1:map-chat', chatId: 'map-chat' };
-    const chat = {
-        metadata: initialRoot === null ? {} : {
-            extensions: { LittleWhiteBox: { xiaobaiOs: structuredClone(initialRoot) } },
-        },
-        persisted: initialRoot === null ? undefined : structuredClone(initialRoot),
-    };
-    const state = {
-        saveCount: 0,
-        saves: [],
-        saveImpl: null,
-        persist(transaction) {
-            chat.persisted = structuredClone(transaction.xiaobaiOs);
-        },
-    };
-    state.saveImpl = async transaction => state.persist(transaction);
-    const store = createChatDataStore({
-        getChatIdentity: () => identity,
-        getChatMetadata: () => chat.metadata,
-        async saveChatMetadata(transaction) {
-            state.saveCount += 1;
-            state.saves.push(structuredClone(transaction));
-            await state.saveImpl(transaction);
-        },
-        readPersistedXiaobaiOs: async () => structuredClone(chat.persisted),
-    });
-
-    return { chat, map: createMapService(store), state, store };
+    return createMapKernelHarness(initialRoot);
 }
 
 test('Map read-only access and no-op edits do not create chat data', async () => {
@@ -61,8 +29,9 @@ test('Map read-only access and no-op edits do not create chat data', async () =>
         map: null,
         writeState: 'ready',
     });
-    assert.deepEqual(harness.chat.metadata, {});
-    assert.equal(harness.state.saveCount, 0);
+    assert.equal(harness.state.capture.reference, null);
+    assert.equal(harness.state.persisted, null);
+    assert.equal(harness.state.writes.length, 0);
 });
 
 test('Map replaces one complete staging snapshot, saves once, advances once and rejects stale revisions', async () => {
@@ -71,8 +40,8 @@ test('Map replaces one complete staging snapshot, saves once, advances once and 
 
     assert.equal(view.map.revision, 1);
     assert.equal(view.map.atlas.locations[0].name, 'hall');
-    assert.equal(harness.state.saveCount, 1);
-    assert.equal(harness.state.saves[0].xiaobaiOs.domains.map.revision, 1);
+    assert.equal(harness.state.writes.length, 1);
+    assert.equal(harness.state.writes[0].candidate.partitions.map.revision, 1);
     view.map.atlas.locations[0].name = 'mutated client clone';
     assert.equal(harness.map.readCurrent().map.atlas.locations[0].name, 'hall');
 
@@ -80,20 +49,20 @@ test('Map replaces one complete staging snapshot, saves once, advances once and 
         harness.map.replaceCurrent(mapDomain(0, ['hall']), { expectedRevision: 0 }),
         error => error.code === 'map_revision_conflict' && error.message === 'map_revision_conflict',
     );
-    assert.equal(harness.state.saveCount, 1);
+    assert.equal(harness.state.writes.length, 1);
 });
 
 test('Map replacement validates a complete candidate and owns its committed revision', async () => {
-    const harness = createHarness(rootWithMap(mapDomain(4, ['hall'])));
+    const harness = createHarness(mapDomain(4, ['hall']));
     const rebuilt = await harness.map.replaceCurrent(mapDomain(99, ['forest']), { expectedRevision: 4 });
 
     assert.equal(rebuilt.map.revision, 5);
     assert.deepEqual(rebuilt.map.atlas.locations.map(location => location.key), ['forest']);
-    assert.equal(harness.state.saveCount, 1);
+    assert.equal(harness.state.writes.length, 1);
 
     const noOp = await harness.map.replaceCurrent(mapDomain(0, ['forest']), { expectedRevision: 5 });
     assert.equal(noOp.map.revision, 5);
-    assert.equal(harness.state.saveCount, 1);
+    assert.equal(harness.state.writes.length, 1);
     await assert.rejects(
         harness.map.replaceCurrent({ revision: 0 }, { expectedRevision: 5 }),
         error => error.code === 'map_invalid_domain',
@@ -101,29 +70,28 @@ test('Map replacement validates a complete candidate and owns its committed revi
 });
 
 test('Map definite save failure restores the previously committed domain', async () => {
-    const harness = createHarness(rootWithMap(mapDomain(2, ['hall'])));
-    const before = harness.store.readCurrent();
-    harness.state.saveImpl = async () => {
-        throw Object.assign(new Error('save unavailable'), { code: 'SAVE_UNAVAILABLE' });
-    };
+    const harness = createHarness(mapDomain(2, ['hall']));
+    const before = structuredClone(harness.state.persisted);
+    harness.state.replaceImpl = async () => ({
+        status: 'failed',
+        error: { code: 'SAVE_UNAVAILABLE', message: 'save unavailable', retryable: true },
+    });
 
     await assert.rejects(
         harness.map.replaceCurrent(mapDomain(0, ['hall', 'yard']), { expectedRevision: 2 }),
         error => error.code === 'SAVE_UNAVAILABLE',
     );
-    assert.deepEqual(harness.store.readCurrent(), before);
+    assert.deepEqual(harness.state.persisted, before);
     assert.equal(harness.map.readCurrent().map.revision, 2);
     assert.equal(harness.map.getWriteState(), 'ready');
 });
 
 test('Map uncertain save freezes one candidate until root confirmation', async () => {
-    const harness = createHarness(rootWithMap(mapDomain(2, ['hall'])));
-    harness.state.saveImpl = async transaction => {
-        harness.state.persist(transaction);
-        throw Object.assign(new Error('save result unknown'), {
-            code: 'SAVE_UNCONFIRMED',
-            uncertain: true,
-        });
+    const harness = createHarness(mapDomain(2, ['hall']));
+    harness.state.replaceImpl = async input => {
+        const previous = structuredClone(harness.state.persisted);
+        harness.state.persisted = structuredClone(input.candidate);
+        return { status: 'unconfirmed', observed: previous };
     };
     const replacement = mapDomain(0, ['hall', 'yard']);
 
@@ -131,13 +99,13 @@ test('Map uncertain save freezes one candidate until root confirmation', async (
         harness.map.replaceCurrent(replacement, { expectedRevision: 2 }),
         error => error.code === 'SAVE_UNCONFIRMED',
     );
-    assert.equal(harness.map.readCurrent().map.revision, 3);
+    assert.equal(harness.map.readCurrent().map.revision, 2);
     assert.equal(harness.map.getWriteState(), 'unconfirmed');
     await assert.rejects(
         harness.map.replaceCurrent(replacement, { expectedRevision: 3 }),
-        error => error.code === 'SAVE_UNCONFIRMED',
+        error => error.code === 'storage_unconfirmed',
     );
-    assert.equal(harness.state.saveCount, 1);
+    assert.equal(harness.state.writes.length, 1);
 
     assert.deepEqual(await harness.map.confirmPending(), { status: 'confirmed' });
     assert.equal(harness.map.getWriteState(), 'ready');
@@ -145,8 +113,8 @@ test('Map uncertain save freezes one candidate until root confirmation', async (
 });
 
 test('Map beforeCommit guard rejects before install and save', async () => {
-    const harness = createHarness(rootWithMap(mapDomain(7, ['hall'])));
-    const before = harness.store.readCurrent();
+    const harness = createHarness(mapDomain(7, ['hall']));
+    const before = structuredClone(harness.state.persisted);
     let guardCalls = 0;
 
     await assert.rejects(harness.map.replaceCurrent(mapDomain(0, ['forest']), {
@@ -158,6 +126,6 @@ test('Map beforeCommit guard rejects before install and save', async () => {
     }), /map_source_changed/);
 
     assert.equal(guardCalls, 1);
-    assert.equal(harness.state.saveCount, 0);
-    assert.deepEqual(harness.store.readCurrent(), before);
+    assert.equal(harness.state.writes.length, 0);
+    assert.deepEqual(harness.state.persisted, before);
 });

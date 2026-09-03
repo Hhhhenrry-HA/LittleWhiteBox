@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, toRaw } from 'vue';
-import type { XiaobaiOsAppProps } from '../../../shell/app-src/app-registry.js';
+import type { XiaobaiOsAppProps } from '../../../shell/app-contract.js';
 import type { ShopActivationView, ShopCatalogItemView, ShopClientState } from '../types.js';
 import ShopActionDialog from './ShopActionDialog.vue';
 import ShopInventory from './ShopInventory.vue';
@@ -31,9 +31,10 @@ const writeDisabledReason = computed(() => {
     if (actionBusy.value) {return '正在处理上一项操作';}
     if (refreshing.value) {return '正在刷新商店状态';}
     if (state.value.status !== 'ready') {return state.value.message || '商店暂时不可写入';}
-    if (state.value.generationActive) {return '主剧情正在生成，请等待回复完成';}
     return '';
 });
+const activationDisabledReason = computed(() => writeDisabledReason.value
+    || (state.value.generationActive ? '主剧情正在生成，请等待回复完成' : ''));
 const refreshDisabled = computed(() => refreshing.value || actionBusy.value || requiresConfirmation.value);
 
 function createActionId(): string {
@@ -97,7 +98,8 @@ async function confirmSave(): Promise<void> {
 }
 
 function openAction(mode: PendingAction['mode'], item: ShopCatalogItemView, activation?: ShopActivationView): void {
-    if (writeDisabledReason.value) {return;}
+    const disabledReason = mode === 'purchase' ? writeDisabledReason.value : activationDisabledReason.value;
+    if (disabledReason) {return;}
     dialogError.value = '';
     pending.value = { mode, item, activation, actionId: createActionId() };
 }
@@ -200,7 +202,7 @@ onBeforeUnmount(() => {
                 v-else
                 :catalog="state.catalog"
                 :activations="state.activations"
-                :write-disabled-reason="writeDisabledReason"
+                :write-disabled-reason="activationDisabledReason"
                 @use="item => openAction('use', item)"
                 @deactivate="activation => {
                     const item = state.catalog.find(candidate => candidate.id === activation.itemId);

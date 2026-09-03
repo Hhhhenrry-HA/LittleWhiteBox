@@ -1,7 +1,3 @@
-import {
-    cloneXiaobaiOsData,
-    XiaobaiOsDataError,
-} from './legacy-migration.js';
 import type { FourthWallGlobalSettings } from '../apps/fourth-wall/types.js';
 import type { MapSettings } from '../apps/map/types.js';
 import type { TasksSettings } from '../apps/tasks/types.js';
@@ -22,6 +18,20 @@ type XiaobaiOsSettings = XiaobaiOsSettingsRoot<{
 }>;
 
 type UnknownRecord = Record<string, unknown>;
+
+class XiaobaiOsSettingsError extends Error {
+    readonly code: string;
+
+    constructor(code: string, message: string) {
+        super(message);
+        this.name = 'XiaobaiOsSettingsError';
+        this.code = code;
+    }
+}
+
+function cloneSettings<T>(value: T): T {
+    return structuredClone(value);
+}
 
 export interface XiaobaiOsSettingsAdapter {
     getExtensionSettings: () => UnknownRecord;
@@ -48,14 +58,14 @@ function isRecord(value: unknown): value is UnknownRecord {
 
 function assertValidSettings(value: unknown): asserts value is XiaobaiOsSettings {
     if (!isXiaobaiOsSettings(value)) {
-        throw new XiaobaiOsDataError('INVALID_CURRENT_DATA', 'Xiaobai OS settings are invalid');
+        throw new XiaobaiOsSettingsError('INVALID_CURRENT_DATA', 'Xiaobai OS settings are invalid');
     }
 }
 
 function requireSettingsRoot(adapter: XiaobaiOsSettingsAdapter): UnknownRecord {
     const root = adapter.getExtensionSettings();
     if (!isRecord(root)) {
-        throw new XiaobaiOsDataError('SETTINGS_UNAVAILABLE', 'LittleWhiteBox settings are unavailable');
+        throw new XiaobaiOsSettingsError('SETTINGS_UNAVAILABLE', 'LittleWhiteBox settings are unavailable');
     }
     return root;
 }
@@ -85,7 +95,7 @@ export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): Xia
     function publish(settings: XiaobaiOsSettings): void {
         for (const listener of listeners) {
             try {
-                listener(cloneXiaobaiOsData(settings));
+                listener(cloneSettings(settings));
             } catch (error) {
                 console.error('[LittleWhiteBox] 小白 OS 设置监听失败', error);
             }
@@ -95,7 +105,7 @@ export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): Xia
     function publishMutationInstalled(settings: XiaobaiOsSettings): void {
         for (const listener of mutationInstalledListeners) {
             try {
-                listener(cloneXiaobaiOsData(settings));
+                listener(cloneSettings(settings));
             } catch (error) {
                 console.error('[LittleWhiteBox] 小白 OS 设置写入监听失败', error);
             }
@@ -106,7 +116,7 @@ export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): Xia
         publishMutationInstalled(installed);
         publish(installed);
         await adapter.saveSettings();
-        return cloneXiaobaiOsData(installed);
+        return cloneSettings(installed);
     }
 
     function read(): XiaobaiOsSettings | null {
@@ -115,7 +125,7 @@ export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): Xia
             return null;
         }
         assertValidSettings(root.xiaobaiOs);
-        return cloneXiaobaiOsData(root.xiaobaiOs);
+        return cloneSettings(root.xiaobaiOs);
     }
 
     async function prepare(): Promise<XiaobaiOsSettings> {
@@ -129,7 +139,7 @@ export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): Xia
                     legacyKeys: LEGACY_FOURTH_WALL_SETTING_KEYS.filter((key) => Object.hasOwn(root, key)),
                 }
                 : migrateUpstreamFourthWallSettings(root);
-            const installed = cloneXiaobaiOsData(migration.value);
+            const installed = cloneSettings(migration.value);
             const changed = !hadSettings
                 || !jsonValuesEqual(previous, installed)
                 || migration.legacyKeys.length > 0;
@@ -138,7 +148,7 @@ export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): Xia
             if (changed) {
                 await adapter.saveSettings();
             }
-            return cloneXiaobaiOsData(installed);
+            return cloneSettings(installed);
         });
     }
 
@@ -149,16 +159,16 @@ export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): Xia
         return enqueueWrite(async () => {
             const root = requireSettingsRoot(adapter);
             if (!Object.hasOwn(root, 'xiaobaiOs')) {
-                throw new XiaobaiOsDataError('SETTINGS_NOT_PREPARED', 'Xiaobai OS settings have not been prepared');
+                throw new XiaobaiOsSettingsError('SETTINGS_NOT_PREPARED', 'Xiaobai OS settings have not been prepared');
             }
             assertValidSettings(root.xiaobaiOs);
-            const previous = cloneXiaobaiOsData(root.xiaobaiOs);
-            const next = action(cloneXiaobaiOsData(previous));
+            const previous = cloneSettings(root.xiaobaiOs);
+            const next = action(cloneSettings(previous));
             if (!isRecord(next)) {
                 throw new TypeError('settings mutation action must return the complete next state');
             }
             assertValidSettings(next);
-            const installed = cloneXiaobaiOsData(next);
+            const installed = cloneSettings(next);
             root.xiaobaiOs = installed;
             return saveInstalled(installed);
         });
@@ -201,7 +211,7 @@ export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): Xia
             throw new TypeError('fourth-wall settings action must be a function');
         }
         return mutate((next) => {
-            const result = action(cloneXiaobaiOsData(next.apps.fourthWall));
+            const result = action(cloneSettings(next.apps.fourthWall));
             if (!isRecord(result)) {
                 throw new TypeError('fourth-wall settings action must return the complete next state');
             }

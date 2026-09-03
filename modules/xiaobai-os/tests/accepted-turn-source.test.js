@@ -6,7 +6,7 @@ import {
     captureManualAcceptedTurn,
     captureRebuildSource,
     matchesAcceptedTurnSource,
-} from '../host/maintenance/accepted-turn-source.js';
+} from '../capabilities/maintenance/accepted-turn-source.js';
 
 const user = (mes, extra = {}) => ({ is_user: true, is_system: false, mes, ...extra });
 const assistant = (mes, swipe_id = null) => ({ is_user: false, is_system: false, mes, swipe_id });

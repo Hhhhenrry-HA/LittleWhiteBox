@@ -1,23 +1,18 @@
-import { postAction } from '../../../domains/economy/ledger.js';
+import type { EconomyTransactionCapability } from '../../../capabilities/economy/index.js';
 import { completeTask, failTask, progressTask } from '../../../domains/tasks/commands/maintenance.js';
-import type { TaskCommandResult } from '../../../domains/tasks/types.js';
+import type { TaskCommandResult, TaskDomainV1 } from '../../../domains/tasks/types.js';
+import { postTaskEconomyEvent } from './economy-protocol.js';
+import { taskEnvironment } from './local-actions.js';
 import type {
     CommitGuard,
     MaintenanceCommitRequest,
     TaskApplicationContext,
     TaskMaintenanceCommand,
-    TasksActionResult,
 } from './service.js';
-import { assertTaskCommitGuard, taskEnvironment } from './local-actions.js';
-import {
-    buildTaskTransactionForRecord,
-    installPreparedTaskRoot,
-    prepareTaskRoot,
-} from './root-protocol.js';
 
 function applyCommand(
     context: TaskApplicationContext,
-    domain: ReturnType<typeof prepareTaskRoot>['domain'],
+    domain: TaskDomainV1,
     command: TaskMaintenanceCommand,
     observedAssistantCount: number,
 ): TaskCommandResult {
@@ -39,22 +34,16 @@ function applyCommand(
 }
 
 export function createTaskMaintenanceCommit(context: TaskApplicationContext) {
-    return async function commitMaintenance(
-        input: MaintenanceCommitRequest,
-        guard: CommitGuard,
-    ): Promise<TasksActionResult> {
-        await assertTaskCommitGuard(guard);
+    return async function commitMaintenance(input: MaintenanceCommitRequest, guard: CommitGuard) {
         if (!Array.isArray(input.commands) || input.commands.length === 0) {
-            return Promise.reject(new TypeError('task maintenance commit requires staged commands'));
+            throw new TypeError('task maintenance commit requires staged commands');
         }
         if (new Set(input.commands.map(command => command.taskId)).size !== input.commands.length) {
-            return Promise.reject(new TypeError('task maintenance commit contains duplicate tasks'));
+            throw new TypeError('task maintenance commit contains duplicate tasks');
         }
-        return context.store.mutateCurrent(current => {
-            const prepared = prepareTaskRoot(current);
-            const initialRevision = prepared.domain.revision;
-            let domain = prepared.domain;
-            let ledger = prepared.ledger;
+        return context.execute(guard, (initialDomain, economy: EconomyTransactionCapability) => {
+            const initialRevision = initialDomain.revision;
+            let domain = initialDomain;
             let changed = false;
             let lastRecord: TaskCommandResult['record'] | undefined;
             for (const staged of input.commands) {
@@ -63,23 +52,15 @@ export function createTaskMaintenanceCommit(context: TaskApplicationContext) {
                 lastRecord = command.record;
                 changed ||= command.changed;
                 if (command.changed && command.event) {
-                    const transaction = buildTaskTransactionForRecord(command.event, command.record);
-                    if (transaction) {
-                        ledger = postAction(ledger, [transaction], context.economyDependencies).ledger;
-                    }
+                    postTaskEconomyEvent(economy, command.event, command.record);
                 }
             }
-            domain = {
-                ...domain,
-                revision: initialRevision + (changed ? 1 : 0),
-            };
-            const root = installPreparedTaskRoot(prepared, domain, ledger);
-            const result: TasksActionResult = {
+            domain = { ...domain, revision: initialRevision + (changed ? 1 : 0) };
+            return {
+                domain,
                 changed,
-                ...(lastRecord ? { record: structuredClone(lastRecord) } : {}),
-                view: context.buildView(root),
+                ...(lastRecord ? { record: lastRecord } : {}),
             };
-            return { next: root, result };
-        }, { beforeCommit: () => assertTaskCommitGuard(guard) });
+        });
     };
 }

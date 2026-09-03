@@ -31,11 +31,12 @@ function createHarness({ economyOpened = true, writeState = 'ready' } = {}) {
     let opened = economyOpened;
     let generationActive = false;
     let generationListener = null;
-    let dataListener = null;
+    let shopListener = null;
     let ensureCalls = 0;
     const commands = [];
     const shop = {
         readCurrent: () => structuredClone(view),
+        async refreshCurrent() {return structuredClone(view);},
         async purchaseCurrent(input) {
             commands.push({ kind: 'purchase', input: structuredClone(input) });
             view = {
@@ -63,11 +64,17 @@ function createHarness({ economyOpened = true, writeState = 'ready' } = {}) {
             view = { ...view, writeState: 'ready' };
             return { status: 'confirmed' };
         },
+        async adoptServerState() {return { status: 'adopted' };},
         getWriteState: () => view.writeState,
+        subscribe(listener) {
+            shopListener = listener;
+            return () => {shopListener = null;};
+        },
+        dispose() {},
     };
     const economy = {
-        hasCurrent: () => opened,
-        async ensureCurrent() {
+        isOpen: () => opened,
+        async ensureOpen() {
             ensureCalls += 1;
             opened = true;
         },
@@ -80,10 +87,6 @@ function createHarness({ economyOpened = true, writeState = 'ready' } = {}) {
         subscribeGeneration(listener) {
             generationListener = listener;
             return () => {generationListener = null;};
-        },
-        subscribeData(listener) {
-            dataListener = listener;
-            return () => {dataListener = null;};
         },
     });
     controller.startBackground();
@@ -98,8 +101,9 @@ function createHarness({ economyOpened = true, writeState = 'ready' } = {}) {
             generationListener?.(active);
         },
         publishData(next, identity = host.identity.key) {
+            if (identity !== host.identity.key) {return;}
             view = structuredClone(next);
-            dataListener?.({ identityKey: identity, writeState: view.writeState });
+            shopListener?.();
         },
     };
 }

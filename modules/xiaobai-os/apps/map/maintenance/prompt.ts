@@ -1,4 +1,4 @@
-import type { MaintenanceMode } from '../../../host/maintenance/registry.js';
+import type { MaintenanceMode } from '../../../capabilities/maintenance/registry.js';
 
 // ============================================================
 // Role

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, toRaw } from 'vue';
-import type { XiaobaiOsAppProps } from '../../../shell/app-src/app-registry.js';
+import type { XiaobaiOsAppProps } from '../../../shell/app-contract.js';
 import type {
     GameActiveGameView,
     GameClientState,

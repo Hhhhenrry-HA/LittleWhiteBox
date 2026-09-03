@@ -1,12 +1,12 @@
-import type { EconomyRepository } from '../../../domains/economy/repository.js';
+import type { EconomyReadCapability } from '../../../capabilities/economy/index.js';
+import type { XiaobaiOsExecutionScope } from '../../../kernel/execution-scope.js';
 import type { EconomyTransaction, EconomyTransactionPage } from '../../../domains/economy/types.js';
+import type { XiaobaiOsHostFrameMessage } from '../../../host/frame-bridge.js';
 import type {
     XiaobaiOsAppActivationContext,
     XiaobaiOsAppRuntime,
     XiaobaiOsChatIdentity,
 } from '../../../types.js';
-import type { XiaobaiOsHostFrameMessage } from '../../../host/frame-bridge.js';
-import type { XiaobaiOsChatDataChange } from '../../../host/chat-data-store.js';
 import type {
     WalletClientState,
     WalletStatus,
@@ -36,10 +36,10 @@ interface WalletActivation {
     post: XiaobaiOsAppActivationContext['post'];
 }
 
-interface WalletControllerDependencies {
-    economy: EconomyRepository;
+export interface WalletControllerDependencies {
+    economy: EconomyReadCapability;
     getChatIdentity: () => XiaobaiOsChatIdentity | { key?: unknown } | string | null;
-    subscribeData: (listener: (change: XiaobaiOsChatDataChange) => void) => () => void;
+    execution?: XiaobaiOsExecutionScope;
 }
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -50,31 +50,19 @@ function identityKey(identity: ReturnType<WalletControllerDependencies['getChatI
     return typeof identity === 'string' ? identity : String(identity?.key || '');
 }
 
-function isUnconfirmedSave(error: unknown): boolean {
-    return isRecord(error) && (error.code === 'SAVE_UNCONFIRMED' || error.uncertain === true);
-}
-
 function transactionDirection(transaction: EconomyTransaction): WalletTransactionDirection {
-    if (transaction.toAccountId === 'player') {return 'income';}
-    if (transaction.fromAccountId === 'player') {return 'expense';}
+    if (transaction.toAccountId === 'player') { return 'income'; }
+    if (transaction.fromAccountId === 'player') { return 'expense'; }
     return 'transfer';
-}
-
-function sourceLabel(transaction: EconomyTransaction): string {
-    return WALLET_SOURCE_LABELS[transaction.sourceDomain] || transaction.sourceDomain;
-}
-
-function transactionTitle(transaction: EconomyTransaction): string {
-    return WALLET_TRANSACTION_TITLES[transaction.title] || transaction.title;
 }
 
 function projectTransaction(transaction: EconomyTransaction): WalletTransactionView {
     return {
         id: transaction.id,
         sequence: transaction.sequence,
-        title: transactionTitle(transaction),
+        title: WALLET_TRANSACTION_TITLES[transaction.title] || transaction.title,
         note: transaction.note,
-        source: sourceLabel(transaction),
+        source: WALLET_SOURCE_LABELS[transaction.sourceDomain] || transaction.sourceDomain,
         sourceDomain: transaction.sourceDomain,
         amount: transaction.amount,
         direction: transactionDirection(transaction),
@@ -91,117 +79,101 @@ function projectPage(page: EconomyTransactionPage): WalletTransactionPageView {
 }
 
 function resolveStatus(
-    writeState: ReturnType<EconomyRepository['getWriteState']>,
-    hasLedger: boolean,
+    writeState: ReturnType<EconomyReadCapability['getFileState']>,
+    opened: boolean,
 ): { status: WalletStatus; message: string } {
-    if (writeState === 'conflict') {
-        return { status: 'conflict', message: '服务端账本与当前候选不一致。请刷新酒馆后再继续。' };
-    }
+    if (writeState === 'loading') { return { status: 'loading', message: '' }; }
+    if (writeState === 'saving') { return { status: 'saving', message: '正在确认账本保存结果…' }; }
     if (writeState === 'unconfirmed') {
         return { status: 'unconfirmed', message: '账本保存结果尚未确认，资金写入已经冻结。' };
     }
-    if (writeState === 'saving') {
-        return { status: 'saving', message: '正在确认账本保存结果…' };
+    if (writeState === 'conflict') {
+        return { status: 'conflict', message: '服务端账本与当前候选不一致。请先处理存储冲突。' };
     }
-    if (!hasLedger) {
-        return { status: 'blocked', message: '钱包尚未完成开户，请重新读取。' };
+    if (writeState === 'failed') {
+        return { status: 'blocked', message: '钱包数据暂时无法读取，请稍后重试。' };
     }
+    if (!opened) { return { status: 'blocked', message: '钱包尚未完成开户，请重新读取。' }; }
     return { status: 'ready', message: '' };
 }
 
 export function createWalletController({
     economy,
     getChatIdentity,
-    subscribeData,
+    execution,
 }: WalletControllerDependencies): XiaobaiOsAppRuntime & {
     activate: NonNullable<XiaobaiOsAppRuntime['activate']>;
     handleMessage: NonNullable<XiaobaiOsAppRuntime['handleMessage']>;
 } {
     let activation: WalletActivation | null = null;
     let preparation: { activation: WalletActivation; error: string } | null = null;
-    let unsubscribeData: (() => void) | null = null;
+    let unsubscribeEconomy: (() => void) | null = null;
 
-    function currentChatIdentity(): string {
-        return identityKey(getChatIdentity());
-    }
+    const currentChatIdentity = (): string => identityKey(getChatIdentity());
+    const isCurrent = (current: WalletActivation): boolean =>
+        activation === current && currentChatIdentity() === current.chatIdentity;
 
     function assertActivation(payload: UnknownRecord = {}): WalletActivation {
-        if (!activation) {throw new Error('钱包 APP 未激活');}
-        const current = currentChatIdentity();
-        if (!current || current !== activation.chatIdentity || String(payload.chatIdentity || '') !== current) {
+        if (!activation) { throw new Error('钱包 APP 未激活'); }
+        if (!isCurrent(activation) || String(payload.chatIdentity || '') !== activation.chatIdentity) {
             throw new Error('聊天已切换，请重新打开钱包');
         }
         return activation;
     }
 
-    function assertSameActivation(expected: WalletActivation, payload: UnknownRecord = {}): void {
-        if (assertActivation(payload) !== expected) {throw new Error('钱包页面已切换，请重试');}
-    }
-
     function buildState(chatIdentity: string): WalletClientState {
-        const ledger = economy.readCurrent();
-        const page = economy.listCurrentTransactions({ limit: WALLET_PAGE_SIZE });
-        const status = resolveStatus(
-            economy.getWriteState(),
-            ledger !== null,
-        );
         const next: WalletClientState = {
             chatIdentity,
             currency: '小白币',
             balance: economy.getPlayerBalance(),
-            transactionCount: ledger?.transactions.length || 0,
-            ...projectPage(page),
-            ...status,
+            transactionCount: economy.getTransactionCount(),
+            ...projectPage(economy.listTransactions({ limit: WALLET_PAGE_SIZE })),
+            ...resolveStatus(economy.getFileState(), economy.isOpen()),
         };
-        if (!preparation || preparation.activation !== activation) {return next;}
-        if (preparation.error) {
-            return { ...next, status: 'blocked', message: preparation.error };
-        }
-        if (next.status === 'unconfirmed' || next.status === 'conflict') {return next;}
+        if (!preparation || preparation.activation !== activation) { return next; }
+        if (preparation.error) { return { ...next, status: 'blocked', message: preparation.error }; }
+        if (next.status === 'unconfirmed' || next.status === 'conflict') { return next; }
         return { ...next, status: 'loading', message: '' };
     }
 
     function emitState(current = activation): WalletClientState {
-        if (!current) {throw new Error('钱包 APP 未激活');}
+        if (!current) { throw new Error('钱包 APP 未激活'); }
         const state = buildState(current.chatIdentity);
         current.post('wallet/state', { state });
         return state;
     }
 
-    async function prepareLedger(): Promise<void> {
-        if (economy.hasCurrent()) {return;}
-        try {
-            await economy.ensureCurrent();
-        } catch (error) {
-            if (!isUnconfirmedSave(error)) {throw error;}
-        }
-    }
-
     function schedulePreparation(current: WalletActivation): void {
         const pending = { activation: current, error: '' };
         preparation = pending;
-        globalThis.setTimeout(() => {
-            if (preparation !== pending || activation !== current || currentChatIdentity() !== current.chatIdentity) {return;}
-            void prepareLedger().then(() => {
-                if (preparation !== pending || activation !== current || currentChatIdentity() !== current.chatIdentity) {return;}
+        const prepare = async () => {
+            if (preparation !== pending || !isCurrent(current)) { return; }
+            try {
+                await economy.ensureOpen();
+                if (preparation !== pending || !isCurrent(current)) { return; }
                 preparation = null;
                 emitState(current);
-            }).catch((error) => {
-                if (preparation !== pending || activation !== current || currentChatIdentity() !== current.chatIdentity) {return;}
-                console.error('[LittleWhiteBox] 钱包数据准备失败', error);
-                preparation = { activation: current, error: '钱包数据暂时无法读取，请稍后重试。' };
+            } catch (error) {
+                if (preparation !== pending || !isCurrent(current)) { return; }
+                preparation = isRecord(error) && error.uncertain === true
+                    ? null
+                    : { activation: current, error: '钱包数据暂时无法读取，请稍后重试。' };
                 emitState(current);
-            });
-        }, 0);
+            }
+        };
+        if (execution) { execution.setTimeout(prepare, 0); }
+        else { globalThis.setTimeout(() => { void prepare(); }, 0); }
     }
 
-    function activate(context: XiaobaiOsAppActivationContext): WalletClientState {
+    async function activate(context: XiaobaiOsAppActivationContext): Promise<WalletClientState> {
         cancelForeground();
         const chatIdentity = currentChatIdentity();
-        if (!chatIdentity) {throw new Error('请先打开一个聊天');}
+        if (!chatIdentity) { throw new Error('请先打开一个聊天'); }
         const current = { chatIdentity, post: context.post };
         activation = current;
-        if (!economy.hasCurrent()) {schedulePreparation(current);}
+        await economy.refresh();
+        if (!isCurrent(current)) { throw new Error('聊天已切换，请重新打开钱包'); }
+        if (!economy.isOpen()) { schedulePreparation(current); }
         return buildState(chatIdentity);
     }
 
@@ -215,8 +187,9 @@ export function createWalletController({
         const current = assertActivation(payload);
         if (message.type === 'wallet/refresh') {
             preparation = null;
-            await prepareLedger();
-            assertSameActivation(current, payload);
+            await economy.refresh();
+            if (economy.getFileState() === 'ready' && !economy.isOpen()) { await economy.ensureOpen(); }
+            if (!isCurrent(current)) { throw new Error('聊天已切换，请重新打开钱包'); }
             return emitState(current);
         }
         if (message.type === 'wallet/load-more') {
@@ -224,30 +197,19 @@ export function createWalletController({
             if (!Number.isSafeInteger(beforeSequence) || beforeSequence < 2) {
                 throw new Error('钱包流水游标无效');
             }
-            return projectPage(economy.listCurrentTransactions({ beforeSequence, limit: WALLET_PAGE_SIZE }));
-        }
-        if (message.type === 'wallet/confirm-save') {
-            preparation = null;
-            const confirmation = await economy.confirmPending();
-            assertSameActivation(current, payload);
-            return { confirmation: confirmation.status, state: emitState(current) };
+            return projectPage(economy.listTransactions({ beforeSequence, limit: WALLET_PAGE_SIZE }));
         }
         throw new Error('未知的钱包操作');
     }
 
-    function handleExternalState(change: XiaobaiOsChatDataChange): void {
+    function handleExternalState(): void {
         const current = activation;
-        if (
-            !current
-            || change.identityKey !== current.chatIdentity
-            || currentChatIdentity() !== current.chatIdentity
-        ) {return;}
-        try {
-            emitState(current);
-        } catch {
-            current.post('wallet/error', { message: '钱包状态暂时无法读取，请重新打开。' });
-        }
+        if (!current || !isCurrent(current)) { return; }
+        try { emitState(current); }
+        catch { current.post('wallet/error', { message: '钱包状态暂时无法读取，请重新打开。' }); }
     }
+
+    execution?.addCleanup(() => cancelForeground());
 
     return Object.freeze({
         activate,
@@ -256,12 +218,10 @@ export function createWalletController({
         cancelAll: cancelForeground,
         handleChatChanged: cancelForeground,
         handleMessage,
-        startBackground() {
-            if (!unsubscribeData) {unsubscribeData = subscribeData(handleExternalState);}
-        },
+        startBackground() { unsubscribeEconomy ||= economy.subscribe(handleExternalState); },
         stopBackground() {
-            unsubscribeData?.();
-            unsubscribeData = null;
+            unsubscribeEconomy?.();
+            unsubscribeEconomy = null;
             cancelForeground();
         },
     });

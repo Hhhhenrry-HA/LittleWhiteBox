@@ -1,4 +1,4 @@
-import type { XiaobaiOsWriteState } from '../../host/chat-data-store.js';
+import type { XiaobaiOsFileState } from '../../kernel/contracts.js';
 import type { MapDomainV1 } from '../../domains/map/types.js';
 
 export interface MapSettings {
@@ -20,7 +20,7 @@ export type MapMaintenanceStatus = 'idle' | 'maintaining' | 'rebuilding' | 'erro
 export interface MapClientState {
     chatIdentity: string;
     map: MapDomainV1 | null;
-    writeState: XiaobaiOsWriteState;
+    writeState: XiaobaiOsFileState;
     status: MapClientStatus;
     message: string;
     autoMaintenance: boolean;

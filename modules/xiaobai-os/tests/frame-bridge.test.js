@@ -60,6 +60,11 @@ test('accepts only the trusted origin, frame window and protocol source', () => 
         assert.equal(iframeTarget.messages.length, 1);
         assert.equal(iframeTarget.messages[0].origin, windowTarget.location.origin);
 
+        assert.equal(bridge.post('map/state', {}, '', { appId: 'map', activationToken: 'token-a' }), true);
+        assert.equal(iframeTarget.messages[1].message.appId, 'map');
+        assert.equal(iframeTarget.messages[1].message.activationToken, 'token-a');
+        assert.notEqual(iframeTarget.messages[1].message.requestId, '');
+
         windowTarget.emit('message', {
             ...ready,
             data: { source: XIAOBAI_OS_FRAME_SOURCE, type: 'app/activate' },

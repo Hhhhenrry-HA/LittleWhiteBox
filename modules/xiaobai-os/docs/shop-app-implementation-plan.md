@@ -8,11 +8,11 @@
 | 唯一事实来源 | Shop V2 事件链 + 不可变发布合同；余额仍以 Economy 流水为准 |
 | 持久态 | purchase/activate/deactivate/deliver 事件、规范化参数、Assistant 消息效果收据 |
 | 临时态 | 当前生成 pending、regenerate 暂存收据、按聊天在途交付队列、extension prompt、页面筛选/弹窗/busy |
-| 外部依赖 | Economy、根 store、SillyTavern generation 事件、generate interceptor、extension prompt、消息 extra |
-| 注册入口 | Shop APP、domain validator、根交叉不变量、Prompt runtime |
-| 删除路径 | 删 APP/domain/注册，清`domains.shop`与消息收据 |
+| 外部依赖 | ScopedChatStore、Economy Transaction Capability、SillyTavern generation 事件、generate interceptor、extension prompt、消息 extra |
+| 注册入口 | Shop Host/Shell catalog、module、`shop`分区 parser、Capability 依赖、Prompt runtime |
+| 删除路径 | 删 APP/domain/两处 catalog 注册，清`shop`分区与消息收据 |
 | 真实兼容对象 | 当前 SillyTavern 事件顺序、流式/非流式消息结构、浏览器 structured clone |
-| 最少必要测试 | 领域投递、原子根保存、Prompt 公开输出、generation 时序、跨聊天/失败路径 |
+| 最少必要测试 | 领域投递、跨分区单次 sidecar 提交、Prompt 公开输出、generation 时序、跨聊天/失败路径 |
 
 测试线旧 Shop 楼层 schema 不兼容；运行时只认 V2，不保留 V1 读取或双写分支。
 
@@ -31,7 +31,7 @@
 ### B. Economy 原子购买
 
 1. purchase 校验当前货架、购买上限、CAS 与余额；下架合同拒绝新购。
-2. 在一个根 mutation 中同时生成 Shop purchase event 与 Economy 扣款交易。
+2. 在 Shop Scoped transaction 中调用 Economy Capability，同时生成 Shop purchase event 与 Economy 扣款交易，并形成一个 sidecar candidate。
 3. 历史核账按发布合同验证 actionId、冻结价格、方向、来源和一一对应关系，不受货架变化影响。
 4. activate/deactivate/deliver 不制造资金流水。
 
@@ -51,10 +51,10 @@
 ### D. Controller 与 UI
 
 1. 已有 Economy 同步打开；只有首次缺失 Economy 时异步开户。
-2. Controller 绑定 activation identity、串行写入，只接收商品 ID、参数、CAS 与 actionId；订阅根 store 以接收后台回复提交的新 revision 和保存状态。
+2. Controller 绑定 app activation token 与当前 osId/binding、串行写入，只接收商品 ID、参数、CAS 与 actionId；订阅 Scoped Store 与 Kernel 文件状态以接收后台回复提交的新 revision 和保存结果。
 3. Presentation 直接展示`appliedCount`推导的“剩余 N 条新回复”，不读取当前楼层。
 4. 货架、库存和动作弹窗保持组件边界；底部导航与设备外壳使用 OS 深色主题。
-5. 未确认保存只显示保存状态和确认入口，不出现“剧情核对”文案。
+5. 文件级未确认上传只显示保存状态和确认入口，不出现“剧情核对”文案。
 
 ## 3. 必须通过的回归
 
@@ -62,7 +62,7 @@
 - 下架合同不可新购，但既有 purchase、库存、activation、Prompt 和 Economy 核账保持有效。
 - 使用只消耗一件库存，不再扣款。
 - 一条 normal 回复最多增加一次`appliedCount`。
-- 前一个根保存很慢时，连续 normal 回复也不能读回同一份有限效果。
+- 前一个 sidecar 上传很慢时，连续 normal 回复也不能读回同一份有限效果。
 - 交付队首失败时，后继不越过它落账，但所有已形成回复仍计入当前运行的有效投影。
 - 单条消息 regenerate 即使在拦截前旧消息已被宿主删除，也能复用旧收据且不增加次数。
 - 群聊整批 regenerate 没有宿主提供的一一对应关系，按删除旧批次后重新生成 normal 回复处理，不返还旧次数也不伪造映射。

@@ -1,18 +1,11 @@
 import { extension_settings, getContext } from '../../../../../../extensions.js';
-import { default_user_avatar, getRequestHeaders, saveSettingsDebounced } from '../../../../../../../script.js';
+import { default_user_avatar, saveSettingsDebounced } from '../../../../../../../script.js';
 import { EXT_ID } from '../../../core/constants.js';
-import type { XiaobaiOsChatIdentity, XiaobaiOsChatIdentityInput } from '../types.js';
-import type {
-    XiaobaiOsChatAdapter,
-    XiaobaiOsChatSaveTransaction,
-} from './chat-data-store.js';
-import { jsonValuesEqual } from './json-values-equal.js';
+import type { XiaobaiOsChatIdentity } from '../types.js';
 import { countAssistantTurns } from './assistant-turn-count.js';
 import type { XiaobaiOsSettingsAdapter } from './settings-repository.js';
 
 type UnknownRecord = Record<string, unknown>;
-const CHAT_READBACK_TIMEOUT_MS = 15_000;
-const HOST_SAVE_TIMEOUT_MS = 15_000;
 const DARK_THEME_CLASSES = new Set(['dark', 'dark-theme', 'theme-dark', 'neo-dark']);
 const LIGHT_THEME_CLASSES = new Set(['light', 'light-theme', 'theme-light', 'neo-light']);
 
@@ -34,19 +27,6 @@ interface SillyTavernContext {
     name1?: unknown;
     name2?: unknown;
     chat?: SillyTavernMessage[];
-    chatMetadata?: unknown;
-    saveMetadata?: () => Promise<void> | void;
-}
-
-interface PersistedChatHeader extends SillyTavernMessage {
-    chat_metadata?: unknown;
-}
-
-interface XiaobaiOsSaveError extends Error {
-    code: 'CHAT_CHANGED' | 'SAVE_UNAVAILABLE' | 'SAVE_UNCONFIRMED';
-    uncertain?: boolean;
-    cause?: unknown;
-    saveError?: unknown;
 }
 
 export interface XiaobaiOsShellSnapshot {
@@ -64,10 +44,6 @@ export interface XiaobaiOsChatSurface {
     messages: unknown[];
     playerName: string;
     assistantName: string;
-}
-
-function isRecord(value: unknown): value is UnknownRecord {
-    return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 function getSillyTavernContext(): SillyTavernContext {
@@ -90,104 +66,6 @@ function captureIdentity(context: SillyTavernContext = getSillyTavernContext()):
         ownerId,
         chatId,
     });
-}
-
-function sameIdentity(left: XiaobaiOsChatIdentityInput | null, right: XiaobaiOsChatIdentityInput | null): boolean {
-    if (typeof left === 'string' || typeof right === 'string') {
-        return left === right;
-    }
-    return !!left && !!right && left.key === right.key;
-}
-
-function createSaveError(
-    code: XiaobaiOsSaveError['code'],
-    message: string,
-    { cause, saveError, uncertain = false }: { cause?: unknown; saveError?: unknown; uncertain?: boolean } = {},
-): XiaobaiOsSaveError {
-    const error = new Error(message) as XiaobaiOsSaveError;
-    error.code = code;
-    if (cause !== undefined) {
-        error.cause = cause;
-    }
-    if (saveError !== undefined) {
-        error.saveError = saveError;
-    }
-    if (uncertain) {
-        error.uncertain = true;
-    }
-    return error;
-}
-
-async function waitForHostSave(save: () => Promise<void> | void): Promise<void> {
-    let timeout: number | undefined;
-    const timedOut = new Promise<never>((_resolve, reject) => {
-        timeout = window.setTimeout(() => reject(new Error('等待 SillyTavern 保存聊天超时')), HOST_SAVE_TIMEOUT_MS);
-    });
-    try {
-        await Promise.race([Promise.resolve().then(save), timedOut]);
-    } finally {
-        if (timeout !== undefined) {
-            window.clearTimeout(timeout);
-        }
-    }
-}
-
-function getPersistedXiaobaiOs(value: unknown): unknown {
-    if (!isRecord(value)) {
-        return undefined;
-    }
-    const extensions = value.extensions;
-    if (!isRecord(extensions)) {
-        return undefined;
-    }
-    const littleWhiteBox = extensions.LittleWhiteBox;
-    return isRecord(littleWhiteBox) ? littleWhiteBox.xiaobaiOs : undefined;
-}
-
-async function readPersistedChat(
-    context: SillyTavernContext,
-    identity: XiaobaiOsChatIdentity,
-): Promise<PersistedChatHeader[]> {
-    let endpoint: string;
-    let body: UnknownRecord;
-    if (identity.kind === 'group') {
-        endpoint = '/api/chats/group/get';
-        body = { id: identity.chatId };
-    } else {
-        const character = context.characters?.[identity.ownerId];
-        const avatar = typeof character?.avatar === 'string' ? character.avatar : '';
-        if (!character || !avatar) {
-            throw createSaveError('SAVE_UNAVAILABLE', '当前角色聊天缺少可读回的持久化标识');
-        }
-        endpoint = '/api/chats/get';
-        body = {
-            ch_name: String(character.name || ''),
-            file_name: identity.chatId,
-            avatar_url: avatar,
-        };
-    }
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), CHAT_READBACK_TIMEOUT_MS);
-    let response: Response;
-    try {
-        response = await fetch(endpoint, {
-            method: 'POST',
-            headers: getRequestHeaders(),
-            body: JSON.stringify(body),
-            cache: 'no-cache',
-            signal: controller.signal,
-        });
-    } finally {
-        window.clearTimeout(timeout);
-    }
-    if (!response.ok) {
-        throw new Error(`聊天数据读回失败（HTTP ${response.status}）`);
-    }
-    const persisted: unknown = await response.json();
-    if (!Array.isArray(persisted) || !isRecord(persisted[0])) {
-        throw new Error('聊天数据读回格式无效');
-    }
-    return persisted as PersistedChatHeader[];
 }
 
 function resolveCharacterAvatar(context: SillyTavernContext): string {
@@ -311,58 +189,6 @@ export function createSillyTavernSettingsAdapter(): XiaobaiOsSettingsAdapter {
     };
 }
 
-export function createSillyTavernChatAdapter(): XiaobaiOsChatAdapter {
-    return {
-        getChatIdentity() {
-            return captureIdentity();
-        },
-        getChatMetadata(identity) {
-            const context = getSillyTavernContext();
-            return sameIdentity(identity, captureIdentity(context)) && isRecord(context.chatMetadata)
-                ? context.chatMetadata
-                : null;
-        },
-        async saveChatMetadata({ identity, metadata, xiaobaiOs }: XiaobaiOsChatSaveTransaction) {
-            const context = getSillyTavernContext();
-            const capturedIdentity = captureIdentity(context);
-            if (!capturedIdentity || !sameIdentity(identity, capturedIdentity) || context.chatMetadata !== metadata) {
-                throw createSaveError('CHAT_CHANGED', '保存前聊天已经切换');
-            }
-            if (typeof context.saveMetadata !== 'function') {
-                throw createSaveError('SAVE_UNAVAILABLE', '当前聊天不提供元数据保存能力');
-            }
-            let saveError: unknown;
-            try {
-                await waitForHostSave(() => context.saveMetadata?.());
-            } catch (error) {
-                saveError = error;
-            }
-            try {
-                const persisted = await readPersistedChat(context, capturedIdentity);
-                const actual = getPersistedXiaobaiOs(persisted[0].chat_metadata);
-                if (!jsonValuesEqual(actual, xiaobaiOs)) {
-                    throw new Error('服务端聊天不包含本次小白 OS 修改');
-                }
-            } catch (cause) {
-                throw createSaveError('SAVE_UNCONFIRMED', '无法确认小白 OS 聊天数据已经保存', {
-                    cause,
-                    saveError,
-                    uncertain: true,
-                });
-            }
-        },
-        async readPersistedXiaobaiOs(identity) {
-            const context = getSillyTavernContext();
-            const capturedIdentity = captureIdentity(context);
-            if (!capturedIdentity || !sameIdentity(identity, capturedIdentity)) {
-                throw createSaveError('CHAT_CHANGED', '读取前聊天已经切换');
-            }
-            const persisted = await readPersistedChat(context, capturedIdentity);
-            return structuredClone(getPersistedXiaobaiOs(persisted[0].chat_metadata));
-        },
-    };
-}
-
 export function getSillyTavernChatSurface(): XiaobaiOsChatSurface | null {
     const context = getSillyTavernContext();
     const identity = captureIdentity(context);
@@ -379,7 +205,7 @@ export function getSillyTavernAssistantTurnCount(expectedIdentityKey?: string): 
     const context = getSillyTavernContext();
     const identity = captureIdentity(context);
     if (!identity || (expectedIdentityKey && identity.key !== expectedIdentityKey)) {
-        throw createSaveError('CHAT_CHANGED', '读取回合数前聊天已经切换');
+        throw Object.assign(new Error('读取回合数前聊天已经切换'), { code: 'CHAT_CHANGED' });
     }
     return countAssistantTurns(context.chat || []);
 }

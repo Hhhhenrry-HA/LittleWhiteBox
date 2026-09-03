@@ -1,5 +1,4 @@
-import { projectBalances } from '../../../domains/economy/ledger.js';
-import { EconomyError, type EconomyLedgerV2, type PostTransactionInput } from '../../../domains/economy/types.js';
+import { EconomyError } from '../../../domains/economy/types.js';
 import {
     throwGameError,
     type GameAction,
@@ -14,9 +13,7 @@ import {
 import {
     gameSettlementLegs,
     type GameEconomyLeg,
-} from './root-protocol.js';
-
-const GAME_SOURCE_DOMAIN = 'game';
+} from './economy-protocol.js';
 const ECONOMY_ACCOUNT_ID_PART_PATTERN = /^[a-zA-Z0-9._:-]+$/;
 
 export interface PreparedGameAction {
@@ -120,8 +117,8 @@ export function requireActiveGame(
     return active;
 }
 
-export function assertPlayerFunds(ledger: EconomyLedgerV2, amount: number): void {
-    if ((projectBalances(ledger).player || 0) < amount) {
+export function assertPlayerFunds(balance: number, amount: number): void {
+    if (balance < amount) {
         throw new EconomyError('economy_insufficient_funds', 'player cannot be overdrawn');
     }
 }
@@ -199,17 +196,4 @@ export function terminalAction(
         },
         economyLegs: gameSettlementLegs(terminal.settlement.gameId, amountIn, terminal.settlement.payout),
     };
-}
-
-export function toPostInputs(
-    legs: readonly GameEconomyLeg[],
-    actionId: string,
-    gameId: string,
-): PostTransactionInput[] {
-    return legs.map((leg) => ({
-        ...leg,
-        actionId,
-        sourceDomain: GAME_SOURCE_DOMAIN,
-        sourceId: gameId,
-    }));
 }

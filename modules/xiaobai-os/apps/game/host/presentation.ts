@@ -29,6 +29,9 @@ function resolveStatus(
     view: GameServiceView,
     economyReady: boolean,
 ): { status: GameClientStatus; message: string } {
+    if (view.writeState === 'loading') {
+        return { status: 'loading', message: '' };
+    }
     if (view.writeState === 'conflict') {
         return { status: 'conflict', message: '服务端数据与当前候选不一致，请刷新酒馆后再继续。' };
     }
@@ -37,6 +40,9 @@ function resolveStatus(
     }
     if (view.writeState === 'saving') {
         return { status: 'saving', message: '正在确认赌局与账本保存结果…' };
+    }
+    if (view.writeState === 'failed') {
+        return { status: 'blocked', message: '游戏数据暂时无法读取，请稍后重试。' };
     }
     if (!economyReady) {
         return { status: 'blocked', message: '钱包尚未完成开户，请重新读取。' };

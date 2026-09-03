@@ -1,8 +1,23 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 
 const xiaobaiOsRoot = path.resolve('modules/xiaobai-os');
+
+function readAppCatalog(relativePath) {
+    const ids = JSON.parse(fs.readFileSync(path.resolve(xiaobaiOsRoot, relativePath), 'utf8'));
+    if (!Array.isArray(ids) || ids.some(id => typeof id !== 'string' || !id) || new Set(ids).size !== ids.length) {
+        throw new Error(`Invalid Xiaobai OS APP catalog: ${relativePath}`);
+    }
+    return ids;
+}
+
+const hostAppIds = readAppCatalog('host/app-catalog.json');
+const shellAppIds = readAppCatalog('shell/app-catalog.json');
+if (hostAppIds.length !== shellAppIds.length || hostAppIds.some((id, index) => id !== shellAppIds[index])) {
+    throw new Error(`Xiaobai OS Host/Shell APP catalogs differ: ${hostAppIds.join(',')} != ${shellAppIds.join(',')}`);
+}
 
 function createEslintDisableBannerPlugin() {
     return {
@@ -63,7 +78,7 @@ export default defineConfig(({ mode }) => {
     const buildAgent = mode === 'xiaobai-os-agent';
     const buildHost = mode === 'xiaobai-os-host';
     const buildShell = !buildAgent && !buildHost;
-    const outputDirectory = path.resolve('modules/xiaobai-os/dist');
+    const outputDirectory = path.resolve(globalThis.process.env.XIAOBAI_OS_OUT_DIR || 'modules/xiaobai-os/dist');
     return {
         plugins: [
             ...(buildAgent ? [createAgentCompatibilityPlugin()] : []),
@@ -97,6 +112,7 @@ export default defineConfig(({ mode }) => {
             rollupOptions: {
                 output: {
                     manualChunks: undefined,
+                    chunkFileNames: 'xiaobai-os-[name]-[hash].js',
                     paths: buildHost
                         ? (id) => {
                             if (!path.isAbsolute(id)) return id;

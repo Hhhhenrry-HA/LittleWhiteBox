@@ -130,6 +130,7 @@ function createHarness({ economyOpened = true, writeState = 'ready', activityCou
 
     const bank = {
         readCurrent,
+        subscribe: () => () => undefined,
         openDeposit: input => mutate('deposit-open', input),
         withdrawDeposit: input => mutate('deposit-withdraw', input),
         openFund: input => mutate('fund-open', input),
@@ -141,8 +142,8 @@ function createHarness({ economyOpened = true, writeState = 'ready', activityCou
         getWriteState: () => view.writeState,
     };
     const economy = {
-        hasCurrent: () => opened,
-        async ensureCurrent() {
+        isOpen: () => opened,
+        async ensureOpen() {
             ensureCalls += 1;
             if (prepareGate) {await prepareGate.promise;}
             opened = true;
@@ -157,7 +158,6 @@ function createHarness({ economyOpened = true, writeState = 'ready', activityCou
             generationListener = listener;
             return () => {generationListener = null;};
         },
-        subscribeData() {return () => {};},
     });
     controller.startBackground();
     return {

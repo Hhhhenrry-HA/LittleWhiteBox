@@ -26,6 +26,11 @@ export interface FourthWallChatState {
     activeSessionId: string;
 }
 
+export interface FourthWallPartitionV1 {
+    schemaVersion: 1;
+    state: FourthWallChatState;
+}
+
 export interface FourthWallPromptTemplates {
     topuser: string;
     confirm: string;

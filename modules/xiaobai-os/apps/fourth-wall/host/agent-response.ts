@@ -1,4 +1,4 @@
-import type { XiaobaiOsAgentGateway } from '../../../host/agent/gateway.js';
+import type { XiaobaiOsAgentGateway } from '../../../capabilities/agent/gateway.js';
 import type { FourthWallBuiltPrompt, FourthWallGenerationResult } from '../types.js';
 import type { FourthWallGenerateOptions, FourthWallGenerateResponse } from './generation-runtime.js';
 

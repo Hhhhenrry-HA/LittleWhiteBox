@@ -3,7 +3,7 @@ import {
     MAX_TASK_RESULT_SUMMARY_LENGTH,
     TASK_MAX_ID_LENGTH,
 } from '../../../domains/tasks/invariants.js';
-import type { MaintenanceFunctionDeclaration } from '../../../host/maintenance/registry.js';
+import type { MaintenanceFunctionDeclaration } from '../../../capabilities/maintenance/registry.js';
 
 export const TASK_MAINTENANCE_TOOL_NAMES = Object.freeze({
     PROGRESS: 'TaskProgress',
