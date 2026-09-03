@@ -10,7 +10,6 @@ function flushTasks() {
 function createHarness(overrides = {}) {
     const calls = { load: 0, save: 0, pull: 0, test: 0 };
     const posts = [];
-    let configListener = null;
     const gateway = {
         async loadConfig() {
             calls.load += 1;
@@ -19,10 +18,6 @@ function createHarness(overrides = {}) {
         async saveConfig(patch) {
             calls.save += 1;
             return { ok: true, config: { ...patch, updatedAt: 11 } };
-        },
-        subscribeConfigChanged(listener) {
-            configListener = listener;
-            return () => {configListener = null;};
         },
         async pullModels() {
             calls.pull += 1;
@@ -40,7 +35,6 @@ function createHarness(overrides = {}) {
         controller,
         gateway,
         posts,
-        emitConfigChanged(detail) {configListener?.(detail);},
         activate() {
             return controller.activate({ post: (type, payload) => posts.push({ type, payload }) });
         },
@@ -69,7 +63,7 @@ test('model pull and connection test run only for their explicit frame actions',
 
     await harness.controller.handleMessage({
         type: 'agent-api/save',
-        payload: { patch: { expectedUpdatedAt: 10 } },
+        payload: { patch: { currentPresetName: '默认' } },
     });
     await harness.controller.handleMessage({
         type: 'agent-api/reload',
@@ -112,19 +106,4 @@ test('leaving Agent API aborts active provider work', async () => {
 
     assert.equal(observedSignal.aborted, true);
     await assert.rejects(pending, /aborted/);
-});
-
-test('other Agent surfaces notify the active APP while its own save event is ignored', () => {
-    const harness = createHarness();
-    harness.controller.startBackground();
-    harness.activate();
-
-    harness.emitConfigChanged({ source: 'draw-agent-settings', updatedAt: 20 });
-    harness.emitConfigChanged({ source: 'xiaobai-os-agent-api', updatedAt: 21 });
-
-    assert.deepEqual(harness.posts, [{
-        type: 'agent-api/config-changed',
-        payload: { updatedAt: 20 },
-    }]);
-    harness.controller.stopBackground();
 });

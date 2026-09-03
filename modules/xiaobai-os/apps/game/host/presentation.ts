@@ -41,6 +41,9 @@ function resolveStatus(
     if (view.writeState === 'saving') {
         return { status: 'saving', message: '正在确认赌局与账本保存结果…' };
     }
+    if (view.writeState === 'failed' && view.pendingCommit) {
+        return { status: 'save-failed', message: '本局结果尚未保存。请重试保存后再继续游戏。' };
+    }
     if (view.writeState === 'failed') {
         return { status: 'blocked', message: '游戏数据暂时无法读取，请稍后重试。' };
     }

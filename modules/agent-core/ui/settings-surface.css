@@ -16,39 +16,6 @@
     display: none;
 }
 
-.xb-agent-settings-surface .xb-assistant-config-alert {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 11px 12px;
-    color: var(--warning);
-    background: color-mix(in srgb, var(--warning) 9%, var(--bg-secondary));
-    border: 1px solid color-mix(in srgb, var(--warning) 42%, var(--border));
-    border-radius: 9px;
-    font-size: 12px;
-    line-height: 1.5;
-}
-
-.xb-agent-settings-surface .xb-assistant-config-alert.is-error {
-    color: var(--danger);
-    background: color-mix(in srgb, var(--danger) 8%, var(--bg-secondary));
-    border-color: color-mix(in srgb, var(--danger) 42%, var(--border));
-}
-
-.xb-agent-settings-surface .xb-assistant-config-alert button {
-    flex: 0 0 auto;
-    min-height: 34px;
-    padding: 0 12px;
-    color: inherit;
-    background: var(--bg-tertiary);
-    border: 1px solid currentColor;
-    border-radius: 8px;
-    font: inherit;
-    font-weight: 650;
-    cursor: pointer;
-}
-
 .xb-agent-settings-surface .xb-assistant-preset-row {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -277,15 +244,6 @@
 }
 
 @media (max-width: 560px) {
-    .xb-agent-settings-surface .xb-assistant-config-alert {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
-    .xb-agent-settings-surface .xb-assistant-config-alert button {
-        width: 100%;
-    }
-
     .xb-agent-settings-surface .xb-assistant-preset-row {
         grid-template-columns: minmax(0, 1fr);
     }

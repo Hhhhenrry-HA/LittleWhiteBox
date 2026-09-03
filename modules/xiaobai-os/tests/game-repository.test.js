@@ -257,14 +257,18 @@ test('action replay returns the latest committed projection without new random, 
     assert.equal(harness.state.randomCalls, counts.random);
 });
 
-test('a failed upload publishes neither prepared Game nor prepared Economy', async () => {
+test('a failed upload keeps one private candidate and retry saves it without rerunning the game', async () => {
     const harness = await createHarness(Array(9).fill(0));
     await openGame(harness);
     const before = structuredClone(harness.state.persisted);
-    harness.state.replaceImpl = async () => ({
+    let candidate;
+    harness.state.replaceImpl = async input => {
+        candidate = structuredClone(input.candidate);
+        return {
         status: 'failed',
         error: { code: 'storage_rejected', message: 'rejected', retryable: false },
-    });
+        };
+    };
 
     await assert.rejects(
         harness.game.startPush(command(harness.game.readCurrent(), 'failed-start')),
@@ -274,8 +278,32 @@ test('a failed upload publishes neither prepared Game nor prepared Economy', asy
     assert.deepEqual(harness.state.persisted, before);
     assert.equal(harness.game.readCurrent().balance, 100);
     assert.equal(harness.game.readCurrent().revision, 0);
-    assert.equal(harness.game.getWriteState(), 'ready');
+    assert.equal(harness.game.getWriteState(), 'failed');
+    assert.equal(harness.game.hasPendingSave(), true);
     assert.equal(harness.state.writes.length, 1);
+
+    const counts = {
+        random: harness.state.randomCalls,
+        game: harness.state.gameIds,
+        event: harness.state.eventIds,
+        activity: harness.state.activityIds,
+    };
+    harness.state.replaceImpl = async input => {
+        assert.deepEqual(input.candidate, candidate);
+        harness.state.persisted = structuredClone(input.candidate);
+        return { status: 'confirmed' };
+    };
+
+    assert.deepEqual(await harness.game.confirmPending(), { status: 'confirmed' });
+    assert.deepEqual({
+        random: harness.state.randomCalls,
+        game: harness.state.gameIds,
+        event: harness.state.eventIds,
+        activity: harness.state.activityIds,
+    }, counts);
+    assert.equal(harness.game.hasPendingSave(), false);
+    assert.equal(harness.game.readCurrent().activeGame.kind, 'push');
+    assert.equal(harness.state.writes.length, 2);
 });
 
 test('an unconfirmed candidate stays private and file-control retry never reruns random or IDs', async () => {

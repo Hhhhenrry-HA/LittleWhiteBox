@@ -11,7 +11,6 @@ function createPanelState(config) {
         config,
         configDraft: null,
         configDirty: false,
-        configExternalChangePending: false,
         configFormSyncPending: true,
         configPage: 'main',
         configSave: { status: 'idle', requestId: '', error: '' },

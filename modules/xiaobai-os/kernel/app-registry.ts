@@ -88,6 +88,15 @@ function appFailure(phase: AppFailurePhase, error: unknown): AppFailure {
     };
 }
 
+function isFatalRuntimeFailure(error: unknown): boolean {
+    if (error instanceof TypeError || error instanceof RangeError || error instanceof ReferenceError || error instanceof SyntaxError) {
+        return true;
+    }
+    if (error === null || typeof error !== 'object') { return false; }
+    const record = error as Record<string, unknown>;
+    return record.code === 'partition_invalid' || record.appFatal === true;
+}
+
 export function createAppModuleRegistry(
     modules: readonly XiaobaiOsAppModule[],
     options: AppModuleRegistryOptions,
@@ -283,7 +292,18 @@ export function createAppModuleRegistry(
     }
 
     async function handleMessage(appId: string, message: XiaobaiOsHostFrameMessage): Promise<unknown> {
-        return await requireInstalled(appId).runtime?.handleMessage?.(message);
+        const app = requireInstalled(appId);
+        const runtime = app.runtime;
+        const generation = app.generation;
+        try {
+            return await runtime?.handleMessage?.(message);
+        } catch (error) {
+            if (isFatalRuntimeFailure(error) && app.runtime === runtime && app.generation === generation) {
+                await releaseApp(app, 'app-runtime-failed');
+                publish(appId, { state: 'failed', failure: appFailure('runtime', error) });
+            }
+            throw error;
+        }
     }
 
     async function invokeInstalled(

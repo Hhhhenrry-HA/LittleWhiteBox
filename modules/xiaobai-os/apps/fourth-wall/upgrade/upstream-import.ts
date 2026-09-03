@@ -179,6 +179,7 @@ function restoreLegacy(metadata: ChatMetadata, chatId: string, snapshot: Unknown
 export interface FourthWallUpstreamImport {
     prepareInitialPartitions(capture: CapturedChatBinding): Promise<Record<string, unknown>>;
     createReferenceInstallEffect(capture: ChatMetadataCapture): ChatReferenceInstallEffect | null;
+    readCurrentPartition(): { identityKey: string; partition: FourthWallPartitionV1 } | null;
 }
 
 export function createFourthWallUpstreamImport(
@@ -187,6 +188,17 @@ export function createFourthWallUpstreamImport(
 ): FourthWallUpstreamImport {
     const prepared = new Map<string, { legacy: UnknownRecord; partition: FourthWallPartitionV1 }>();
     return Object.freeze({
+        readCurrentPartition() {
+            const current = metadata.capture();
+            if (!current) { return null; }
+            const legacy = readUpstreamFourthWall(current.metadata, current.binding.chatId);
+            return legacy
+                ? {
+                    identityKey: current.identityKey,
+                    partition: convertUpstreamFourthWall(legacy, now()),
+                }
+                : null;
+        },
         async prepareInitialPartitions(capture: CapturedChatBinding) {
             const current = metadata.capture();
             if (!current || !sameCapture(current, capture)) {
@@ -195,17 +207,23 @@ export function createFourthWallUpstreamImport(
                     retryable: true,
                 });
             }
-            const legacy = readUpstreamFourthWall(current.metadata, current.binding.chatId);
-            if (!legacy) {
+            try {
+                const legacy = readUpstreamFourthWall(current.metadata, current.binding.chatId);
+                if (!legacy) {
+                    prepared.delete(capture.identityKey);
+                    return {};
+                }
+                const entry = {
+                    legacy: structuredClone(legacy),
+                    partition: convertUpstreamFourthWall(legacy, now()),
+                };
+                prepared.set(capture.identityKey, entry);
+                return { fourthWall: structuredClone(entry.partition) };
+            } catch (error) {
+                if (!(error instanceof UpstreamFourthWallImportError)) { throw error; }
                 prepared.delete(capture.identityKey);
                 return {};
             }
-            const entry = {
-                legacy: structuredClone(legacy),
-                partition: convertUpstreamFourthWall(legacy, now()),
-            };
-            prepared.set(capture.identityKey, entry);
-            return { fourthWall: structuredClone(entry.partition) };
         },
         createReferenceInstallEffect(capture: ChatMetadataCapture) {
             const entry = prepared.get(capture.identityKey);

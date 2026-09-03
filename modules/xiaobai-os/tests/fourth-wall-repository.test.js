@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createFourthWallRepository } from '../apps/fourth-wall/host/repository.js';
+import { createDefaultFourthWallChatState } from '../apps/fourth-wall/domain/defaults.js';
 import { FOURTH_WALL_PARTITION } from '../apps/fourth-wall/partition.js';
 import { XiaobaiOsPartitionRegistry } from '../kernel/partition-registry.js';
 import { createTransactionCoordinator } from '../kernel/transaction-coordinator.js';
@@ -11,7 +12,7 @@ const bindings = {
     b: { kind: 'character', ownerLocator: 'avatar.png', chatId: 'chat-b' },
 };
 
-function createHarness() {
+function createHarness({ upgradeSource } = {}) {
     let id = 0;
     const captures = {
         a: { identityKey: 'character:avatar.png:chat-a', binding: bindings.a, reference: null },
@@ -62,7 +63,7 @@ function createHarness() {
         createId: () => `fw_generated_${++id}`,
     });
     const store = coordinator.createScopedStore(FOURTH_WALL_PARTITION);
-    const repository = createFourthWallRepository(store, { now: () => 1000 });
+    const repository = createFourthWallRepository(store, { now: () => 1000, upgradeSource });
     return { captures, coordinator, repository, state };
 }
 
@@ -75,6 +76,32 @@ test('opening an empty Fourth Wall returns a local default without creating side
     assert.equal(harness.repository.readCurrentChatFourthWall(), null);
     assert.equal(harness.state.writes.length, 0);
     assert.equal(harness.state.installs, 0);
+});
+
+test('the first Fourth Wall open and mutation project upstream history before a sidecar exists', async () => {
+    const upstream = createDefaultFourthWallChatState(900);
+    upstream.sessions[0].name = 'Upstream session';
+    upstream.sessions[0].history.push({ role: 'user', content: 'preserve me', ts: 901 });
+    const upgradeSource = {
+        readCurrentPartition: () => ({
+            identityKey: 'character:avatar.png:chat-a',
+            partition: { schemaVersion: 1, state: structuredClone(upstream) },
+        }),
+    };
+    const openedHarness = createHarness({ upgradeSource });
+
+    const opened = await openedHarness.repository.prepareCurrentChatFourthWall();
+    assert.equal(opened.sessions[0].history[0].content, 'preserve me');
+    assert.equal(openedHarness.state.writes.length, 0);
+
+    const mutationHarness = createHarness({ upgradeSource });
+    const changed = await mutationHarness.repository.mutateCurrentChatFourthWall(current => {
+        current.sessions[0].name = 'Renamed after import';
+        return current;
+    });
+    assert.equal(changed.sessions[0].history[0].content, 'preserve me');
+    assert.equal(changed.sessions[0].name, 'Renamed after import');
+    assert.equal(mutationHarness.state.writes.length, 1);
 });
 
 test('the first Fourth Wall mutation writes only its partition and then installs the chat reference', async () => {

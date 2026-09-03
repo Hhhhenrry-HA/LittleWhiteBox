@@ -14,6 +14,7 @@ import type {
     GameRecordView,
 } from '../types.js';
 import GameActionDialog from './GameActionDialog.vue';
+import GameDiceCommit from './GameDiceCommit.vue';
 import GameDiceGame from './GameDiceGame.vue';
 import GameDiceReveal from './GameDiceReveal.vue';
 import GameLadderGame from './GameLadderGame.vue';
@@ -49,9 +50,9 @@ interface PendingAction {
  * table is kept mounted on a snapshot of its final frame.
  */
 type GameEnding =
-    | { kind: 'dice'; record: GameRecordView; detail: GameDiceRecordDetailView }
-    | { kind: 'push'; record: GameRecordView; game: GamePushGameView }
-    | { kind: 'ladder'; record: GameRecordView; game: GameLadderGameView };
+    | { kind: 'dice'; record: GameRecordView; detail: GameDiceRecordDetailView; balanceAfter: number }
+    | { kind: 'push'; record: GameRecordView; game: GamePushGameView; balanceAfter: number }
+    | { kind: 'ladder'; record: GameRecordView; game: GameLadderGameView; balanceAfter: number };
 
 /**
  * Outcomes whose last move still has to be shown. `cashed-out` is absent on
@@ -73,11 +74,15 @@ const pending = ref<PendingAction | null>(null);
 const failedAction = ref<{ request: GameWriteRequest; actionId: string } | null>(null);
 const latestResultId = ref('');
 const ending = ref<GameEnding | null>(null);
+const inFlight = ref<GameWriteRequest | null>(null);
+const displayedFunds = ref({ balance: state.value.balance, lockedAmount: state.value.lockedAmount });
 let unsubscribe = () => {};
 let requestGeneration = 0;
 let actionSequence = 0;
 
-const requiresConfirmation = computed(() => state.value.status === 'unconfirmed');
+const requiresConfirmation = computed(() => (
+    state.value.status === 'unconfirmed' || state.value.status === 'save-failed'
+));
 const writeDisabledReason = computed(() => {
     if (actionBusy.value) {return '正在处理上一项操作';}
     if (refreshing.value) {return '正在刷新游戏状态';}
@@ -87,6 +92,12 @@ const writeDisabledReason = computed(() => {
 });
 const refreshDisabled = computed(() => refreshing.value || actionBusy.value || requiresConfirmation.value || state.value.status === 'conflict');
 const latestResult = computed(() => state.value.records.find(record => record.id === latestResultId.value) || null);
+const diceCommitBid = computed(() => {
+    if (inFlight.value?.endpoint !== 'game/dice/challenge' || state.value.activeGame?.kind !== 'dice') {return null;}
+    return state.value.activeGame.bids.at(-1) || null;
+});
+const pushDrawing = computed(() => inFlight.value?.endpoint === 'game/push/draw');
+const ladderStepping = computed(() => inFlight.value?.endpoint === 'game/ladder/step');
 
 // While a hand is being played out the table runs on the ending snapshot, so it
 // stays mounted after the server has already cleared the active game.
@@ -122,23 +133,39 @@ function readableError(error: unknown): string {
     return '游戏操作未完成，请稍后重试。';
 }
 
-function captureEnding(previous: GameActiveGameView, record: GameRecordView): GameEnding | null {
+function errorCode(error: unknown): string {
+    return error !== null && typeof error === 'object' && typeof (error as { code?: unknown }).code === 'string'
+        ? String((error as { code: string }).code)
+        : '';
+}
+
+function applyPendingSaveState(status: 'save-failed' | 'unconfirmed' | 'conflict'): void {
+    const message = status === 'save-failed'
+        ? '本局结果尚未保存。请重试保存后再继续游戏。'
+        : status === 'unconfirmed'
+            ? '上一次保存结果尚未确认，赌局与资金写入已冻结。'
+            : '服务端数据与当前候选不一致，请刷新酒馆后再继续。';
+    state.value = { ...state.value, status, message };
+}
+
+function captureEnding(previous: GameActiveGameView, record: GameRecordView, balanceAfter: number): GameEnding | null {
     // A hand that ended on the player's own terms has nothing left to show.
     if (!OUTCOMES_NEEDING_PLAYOUT.has(record.outcome) && record.detail.kind !== 'dice') {return null;}
     if (previous.kind === 'dice' && record.detail.kind === 'dice') {
-        return { kind: 'dice', record, detail: record.detail };
+        return { kind: 'dice', record, detail: record.detail, balanceAfter };
     }
     if (previous.kind === 'push' && record.detail.kind === 'push') {
-        return { kind: 'push', record, game: previous };
+        return { kind: 'push', record, game: previous, balanceAfter };
     }
     if (previous.kind === 'ladder' && record.detail.kind === 'ladder') {
-        return { kind: 'ladder', record, game: previous };
+        return { kind: 'ladder', record, game: previous, balanceAfter };
     }
     return null;
 }
 
 function dismissReveal(): void {
     ending.value = null;
+    displayedFunds.value = { balance: state.value.balance, lockedAmount: state.value.lockedAmount };
 }
 
 function leaveTo(target: GamePage): void {
@@ -148,6 +175,7 @@ function leaveTo(target: GamePage): void {
 
 function applyState(next: GameClientState): void {
     const previousGame = state.value.activeGame;
+    let holdDisplayedFunds = ending.value !== null;
     state.value = structuredClone(next);
     refreshing.value = false;
     loadingMore.value = false;
@@ -155,16 +183,22 @@ function applyState(next: GameClientState): void {
     recordsError.value = '';
     if (previousGame && !next.activeGame) {
         const result = next.records.find(record => record.gameId === previousGame.id);
-        const captured = result ? captureEnding(previousGame, result) : null;
+        const captured = result ? captureEnding(previousGame, result, next.balance) : null;
         if (captured) {
             ending.value = captured;
+            holdDisplayedFunds = true;
             latestResultId.value = '';
             page.value = captured.kind;
         } else {
+            holdDisplayedFunds = false;
             latestResultId.value = result?.id || '';
             page.value = 'lobby';
         }
-    } else if (next.activeGame && page.value !== 'records' && page.value !== 'lobby') {
+    }
+    if (!holdDisplayedFunds) {
+        displayedFunds.value = { balance: next.balance, lockedAmount: next.lockedAmount };
+    }
+    if (next.activeGame && page.value !== 'records' && page.value !== 'lobby') {
         page.value = next.activeGame.kind;
     } else if (!next.activeGame && page.value !== 'records' && !ending.value) {
         page.value = 'lobby';
@@ -199,6 +233,7 @@ async function performAction(request: GameWriteRequest, actionId = createActionI
     if (writeDisabledReason.value) {return false;}
     const generation = requestGeneration;
     actionBusy.value = true;
+    inFlight.value = request;
     actionError.value = '';
     failedAction.value = null;
     try {
@@ -213,17 +248,33 @@ async function performAction(request: GameWriteRequest, actionId = createActionI
         return true;
     } catch (error) {
         if (generation === requestGeneration) {
-            actionError.value = readableError(error);
-            if (state.value.status === 'unconfirmed') {
+            const code = errorCode(error);
+            if (code === 'game_save_pending') {
+                applyPendingSaveState('save-failed');
+                actionError.value = '';
+                pending.value = null;
+                failedAction.value = null;
+            } else if (code === 'storage_unconfirmed') {
+                applyPendingSaveState('unconfirmed');
+                actionError.value = '';
+                pending.value = null;
+                failedAction.value = null;
+            } else if (code === 'storage_conflict') {
+                applyPendingSaveState('conflict');
+                actionError.value = '';
                 pending.value = null;
                 failedAction.value = null;
             } else {
+                actionError.value = readableError(error);
                 failedAction.value = { request, actionId };
             }
         }
         return false;
     } finally {
-        if (generation === requestGeneration) {actionBusy.value = false;}
+        if (generation === requestGeneration) {
+            inFlight.value = null;
+            actionBusy.value = false;
+        }
     }
 }
 
@@ -368,6 +419,7 @@ onBeforeUnmount(() => {
     unsubscribe();
     pending.value = null;
     failedAction.value = null;
+    inFlight.value = null;
 });
 </script>
 
@@ -376,8 +428,8 @@ onBeforeUnmount(() => {
         <header class="game-header">
             <div class="game-brand"><h1>游戏</h1></div>
             <div class="game-funds">
-                <span><small>可用</small><strong>¤ {{ state.balance }}</strong></span>
-                <span><small>托管</small><strong>¤ {{ state.lockedAmount }}</strong></span>
+                <span><small>可用</small><strong>¤ {{ displayedFunds.balance }}</strong></span>
+                <span><small>托管</small><strong>¤ {{ displayedFunds.lockedAmount }}</strong></span>
             </div>
             <button type="button" class="game-refresh" :disabled="refreshDisabled" title="重新读取游戏" @click="refresh">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M18.2 9A7 7 0 0 0 6.1 6.7L4 9m16 6-2.1 2.3A7 7 0 0 1 5.8 15" /></svg>
@@ -401,10 +453,10 @@ onBeforeUnmount(() => {
         <aside v-if="state.message || errorMessage" class="game-notice" :class="`is-${state.status}`" role="status">
             <span aria-hidden="true">!</span>
             <div>
-                <strong>{{ state.status === 'unconfirmed' ? '落账待核实' : state.status === 'conflict' ? '牌局状态冲突' : '游戏状态' }}</strong>
+                <strong>{{ state.status === 'save-failed' ? '本局尚未保存' : state.status === 'unconfirmed' ? '落账待核实' : state.status === 'conflict' ? '牌局状态冲突' : '游戏状态' }}</strong>
                 <p>{{ errorMessage || state.message }}</p>
                 <button v-if="requiresConfirmation" type="button" :disabled="refreshing" @click="confirmSave">
-                    {{ refreshing ? '正在核实…' : '核实保存结果' }}
+                    {{ refreshing ? '正在保存…' : state.status === 'save-failed' ? '重试保存本局' : '核实保存结果' }}
                 </button>
                 <button v-else-if="state.status === 'blocked'" type="button" :disabled="refreshing" @click="refresh">
                     {{ refreshing ? '正在读取…' : '重新读取' }}
@@ -434,6 +486,10 @@ onBeforeUnmount(() => {
                 @start="openStart"
                 @continue="kind => page = kind"
             />
+            <GameDiceCommit
+                v-else-if="page === 'dice' && diceCommitBid"
+                :final-bid="diceCommitBid"
+            />
             <GameDiceGame
                 v-else-if="page === 'dice' && state.activeGame?.kind === 'dice'"
                 :game="state.activeGame"
@@ -446,6 +502,7 @@ onBeforeUnmount(() => {
                 v-else-if="page === 'dice' && ending?.kind === 'dice'"
                 :record="ending.record"
                 :detail="ending.detail"
+                :balance-after="ending.balanceAfter"
                 @done="leaveTo('lobby')"
             />
             <GamePushGame
@@ -453,6 +510,7 @@ onBeforeUnmount(() => {
                 :game="pushTable"
                 :write-disabled-reason="writeDisabledReason"
                 :ending="ending?.kind === 'push' ? ending.record : null"
+                :drawing="pushDrawing"
                 @draw="performAction({ endpoint: 'game/push/draw', gameId: state.activeGame?.id || '' })"
                 @cash-out="openCashOut('push')"
                 @lobby="leaveTo('lobby')"
@@ -463,6 +521,7 @@ onBeforeUnmount(() => {
                 :game="ladderTable"
                 :write-disabled-reason="writeDisabledReason"
                 :ending="ending?.kind === 'ladder' ? ending.record : null"
+                :stepping="ladderStepping"
                 @step="choice => performAction({ endpoint: 'game/ladder/step', gameId: state.activeGame?.id || '', choice })"
                 @cash-out="openCashOut('ladder')"
                 @lobby="leaveTo('lobby')"

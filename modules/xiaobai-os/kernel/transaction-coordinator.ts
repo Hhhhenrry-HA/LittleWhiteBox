@@ -67,6 +67,7 @@ export interface TransactionCoordinator {
     retryPending(): Promise<PendingCommitRecoveryResult>;
     adoptServerState(): Promise<PendingCommitRecoveryResult>;
     getFileState(): XiaobaiOsFileState;
+    hasPendingCommit(): boolean;
     subscribeFileState(listener: (change: XiaobaiOsFileStateChange) => void): () => void;
 }
 
@@ -78,6 +79,7 @@ interface PendingCommit {
     owner: PartitionRegistration<unknown>;
     stage: 'replace' | 'reference';
     observed: XiaobaiOsSidecarV1 | null;
+    retainFailedCandidate: boolean;
 }
 
 class KernelOperationError extends Error {
@@ -195,6 +197,11 @@ export function createTransactionCoordinator(options: TransactionCoordinatorOpti
         return states.get(capture.identityKey) ?? 'ready';
     }
 
+    function pendingFailure(capture: CapturedChatBinding): KernelWriteFailure {
+        return stateErrors.get(capture.identityKey)
+            ?? writeFailure('storage_pending', 'A prepared sidecar candidate is waiting to be retried', true);
+    }
+
     async function strongRead(capture: CapturedChatBinding): Promise<XiaobaiOsSidecarV1 | null> {
         if (!capture.reference) { return null; }
         const envelope = await storage.read(capture.reference.osId);
@@ -272,7 +279,9 @@ export function createTransactionCoordinator(options: TransactionCoordinatorOpti
         return await enqueue(async () => {
             await assertCurrent(requested);
             const frozenState = stateFor(requested);
-            const isFrozen = frozenState === 'unconfirmed' || frozenState === 'conflict';
+            const isFrozen = frozenState === 'unconfirmed'
+                || frozenState === 'conflict'
+                || pending.has(requested.identityKey);
             if (!isFrozen) { setState(requested.identityKey, 'loading'); }
             let envelope: XiaobaiOsSidecarV1 | null;
             try {
@@ -292,8 +301,14 @@ export function createTransactionCoordinator(options: TransactionCoordinatorOpti
     async function cleanupUnreferencedSidecar(capture: CapturedChatBinding, osId: string): Promise<void> {
         try {
             await storage.delete(osId);
-        } catch {
-            await chatReferences.recordOrphan?.(osId, capture.binding);
+        } catch (deleteError) {
+            try {
+                void Promise.resolve(chatReferences.recordOrphan?.(osId, capture.binding)).catch(error => {
+                    console.error('[LittleWhiteBox] 小白 OS 孤儿 sidecar 索引登记失败', error);
+                });
+            } catch (error) {
+                console.error('[LittleWhiteBox] 小白 OS 孤儿 sidecar 索引登记失败', error, deleteError);
+            }
         }
     }
 
@@ -303,6 +318,15 @@ export function createTransactionCoordinator(options: TransactionCoordinatorOpti
         const reference: XiaobaiOsReferenceV1 = { formatVersion: 1, osId: entry.candidate.osId };
         const result = await chatReferences.install(entry.capture, reference);
         if (result.status === 'confirmed') {
+            try {
+                void Promise.resolve(
+                    chatReferences.recordReference?.(entry.candidate.osId, entry.capture.binding),
+                ).catch(error => {
+                    console.error('[LittleWhiteBox] 小白 OS sidecar 索引登记失败', error);
+                });
+            } catch (error) {
+                console.error('[LittleWhiteBox] 小白 OS sidecar 索引登记失败', error);
+            }
             installEnvelope(entry.capture, entry.candidate);
             pending.delete(entry.capture.identityKey);
             setState(entry.capture.identityKey, 'ready');
@@ -315,8 +339,14 @@ export function createTransactionCoordinator(options: TransactionCoordinatorOpti
             return 'unconfirmed';
         }
         await cleanupUnreferencedSidecar(entry.capture, entry.candidate.osId);
-        pending.delete(entry.capture.identityKey);
-        setState(entry.capture.identityKey, 'ready');
+        if (entry.retainFailedCandidate) {
+            entry.stage = 'replace';
+            pending.set(entry.capture.identityKey, entry);
+            setState(entry.capture.identityKey, 'failed', result.error);
+        } else {
+            pending.delete(entry.capture.identityKey);
+            setState(entry.capture.identityKey, 'ready');
+        }
         return 'failed';
     }
 
@@ -377,6 +407,9 @@ export function createTransactionCoordinator(options: TransactionCoordinatorOpti
                 const frozenState = stateFor(requested);
                 if (frozenState === 'unconfirmed' || frozenState === 'conflict') {
                     return { status: 'failed', error: frozenFailure(frozenState) };
+                }
+                if (pending.has(requested.identityKey)) {
+                    return { status: 'failed', error: pendingFailure(requested) };
                 }
                 if (transactionOptions.signal?.aborted) {
                     return {
@@ -514,6 +547,7 @@ export function createTransactionCoordinator(options: TransactionCoordinatorOpti
                     owner: registration as PartitionRegistration<unknown>,
                     stage: 'replace',
                     observed: null,
+                    retainFailedCandidate: transactionOptions.retainFailedCandidate === true,
                 };
                 setState(requested.identityKey, 'saving');
                 let replaceResult: StorageReplaceResult;
@@ -521,11 +555,21 @@ export function createTransactionCoordinator(options: TransactionCoordinatorOpti
                     replaceResult = await storage.replace({ expected: entry.expected, candidate: entry.candidate }, transactionOptions.signal);
                 } catch (error) {
                     const failure = asWriteFailure(error, 'storage_write_failed');
-                    setState(requested.identityKey, 'ready');
+                    if (entry.retainFailedCandidate) {
+                        pending.set(requested.identityKey, entry);
+                        setState(requested.identityKey, 'failed', failure);
+                    } else {
+                        setState(requested.identityKey, 'ready');
+                    }
                     return { status: 'failed', error: failure };
                 }
                 if (replaceResult.status === 'failed') {
-                    setState(requested.identityKey, 'ready');
+                    if (entry.retainFailedCandidate) {
+                        pending.set(requested.identityKey, entry);
+                        setState(requested.identityKey, 'failed', replaceResult.error);
+                    } else {
+                        setState(requested.identityKey, 'ready');
+                    }
                     return { status: 'failed', error: replaceResult.error };
                 }
                 if (replaceResult.status === 'unconfirmed' || replaceResult.status === 'conflict') {
@@ -575,7 +619,9 @@ export function createTransactionCoordinator(options: TransactionCoordinatorOpti
         await enqueue(async () => {
             await assertCurrent(requested);
             const frozenState = stateFor(requested);
-            const isFrozen = frozenState === 'unconfirmed' || frozenState === 'conflict';
+            const isFrozen = frozenState === 'unconfirmed'
+                || frozenState === 'conflict'
+                || pending.has(requested.identityKey);
             if (!isFrozen) { setState(requested.identityKey, 'loading'); }
             try {
                 const envelope = await strongRead(requested);
@@ -634,13 +680,20 @@ export function createTransactionCoordinator(options: TransactionCoordinatorOpti
                 return { status: 'conflict' };
             }
             setState(entry.capture.identityKey, 'saving');
-            const result = await storage.replace({ expected: entry.expected, candidate: entry.candidate });
+            let result: StorageReplaceResult;
+            try {
+                result = await storage.replace({ expected: entry.expected, candidate: entry.candidate });
+            } catch (error) {
+                const failure = asWriteFailure(error, 'storage_write_failed');
+                setState(entry.capture.identityKey, 'failed', failure);
+                return { status: 'failed', error: failure };
+            }
             if (result.status === 'confirmed') {
                 const accepted = await acceptConfirmed(entry);
                 return { status: accepted };
             }
             if (result.status === 'failed') {
-                setState(entry.capture.identityKey, 'unconfirmed', result.error);
+                setState(entry.capture.identityKey, 'failed', result.error);
                 return { status: 'failed', error: result.error };
             }
             savePending(entry, result);
@@ -684,6 +737,11 @@ export function createTransactionCoordinator(options: TransactionCoordinatorOpti
         return capture ? stateFor(capture) : 'ready';
     }
 
+    function hasPendingCommit(): boolean {
+        const capture = chatReferences.capture();
+        return !!capture && pending.has(capture.identityKey);
+    }
+
     function subscribeFileState(listener: (change: XiaobaiOsFileStateChange) => void): () => void {
         if (typeof listener !== 'function') { throw new TypeError('file state listener must be a function'); }
         stateListeners.add(listener);
@@ -697,6 +755,7 @@ export function createTransactionCoordinator(options: TransactionCoordinatorOpti
         retryPending,
         adoptServerState,
         getFileState,
+        hasPendingCommit,
         subscribeFileState,
     });
 }

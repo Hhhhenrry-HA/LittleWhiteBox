@@ -359,6 +359,27 @@
 .game-reveal-side > span { color: var(--game-brass); font-size: 9px; letter-spacing: .1em; }
 .game-reveal-side .game-die { --game-die-size: 42px; }
 
+.game-commit-cloth { cursor: default; grid-template-rows: auto 1fr auto auto; }
+.game-commit-dice { align-content: center; display: grid; gap: 14px 9px; grid-template-columns: repeat(5, 38px); justify-content: center; min-height: 118px; }
+.game-commit-dice i {
+    animation: game-commit-die 760ms cubic-bezier(.36, .08, .44, .96) var(--game-commit-delay) infinite alternate;
+    background: linear-gradient(145deg, #fffdf5, #d9cba9);
+    border: 1px solid rgba(120, 96, 52, .55);
+    border-radius: 8px;
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, .9), 0 6px 7px rgba(2, 12, 10, .42);
+    display: block;
+    height: 38px;
+    position: relative;
+    width: 38px;
+}
+.game-commit-dice i::after { background: radial-gradient(circle, rgba(200, 163, 90, .62), transparent 68%); content: ''; inset: 8px; position: absolute; }
+.game-commit-status { align-items: center; display: flex; gap: 10px; justify-content: center; }
+.game-commit-status p { display: grid; gap: 2px; margin: 0; }
+.game-commit-status strong { color: var(--game-brass-bright); font: 650 12px "Noto Serif SC", serif; }
+.game-commit-status small { color: var(--game-muted); font-size: 8px; }
+.game-commit-pulse { animation: game-commit-pulse 900ms ease-in-out infinite; background: var(--game-brass); border-radius: 50%; box-shadow: 0 0 0 0 rgba(200, 163, 90, .45); height: 7px; width: 7px; }
+.game-commit-note { color: #7f938a; font-size: 8px; margin: 0; text-align: center; }
+
 .game-reveal-tally {
     align-items: baseline;
     animation: game-result-in 320ms ease-out both;
@@ -388,6 +409,7 @@
 .game-reveal-verdict strong { color: var(--game-brass-bright); font: 700 26px/1.1 "Noto Serif SC", serif; }
 .game-reveal-verdict em { color: var(--game-brass-bright); font: normal 700 13px Bahnschrift, sans-serif; }
 .game-reveal-verdict p { color: #b8c0b5; font-size: 9px; line-height: 1.55; margin: 0; }
+.game-reveal-verdict .game-reveal-balance { color: #9eaa9f; font: 700 9px Bahnschrift, sans-serif; letter-spacing: .04em; }
 .game-reveal-verdict.is-loss { border-color: rgba(220, 135, 122, .5); }
 .game-reveal-verdict.is-loss strong,
 .game-reveal-verdict.is-loss em { color: #e58e82; }
@@ -468,6 +490,7 @@
 .game-flip-slot { height: 65px; margin: 0 auto 4px; perspective: 700px; position: relative; width: 43px; z-index: 2; }
 .game-flip-card { height: 100%; position: relative; transform-style: preserve-3d; transition: transform 660ms cubic-bezier(.32, .72, .38, 1); width: 100%; }
 .game-flip-slot.is-flipped .game-flip-card { transform: rotateY(180deg); }
+.game-flip-slot.is-shuffling .game-flip-card { animation: game-card-shuffling 720ms ease-in-out infinite alternate; }
 
 .game-flip-back,
 .game-flip-front {
@@ -497,6 +520,7 @@
 .game-push-metrics span { color: var(--game-muted); font-size: 8px; }
 .game-push-metrics strong { color: var(--game-brass-bright); font: 700 12px Bahnschrift, sans-serif; }
 .game-rule-note { color: var(--game-muted); font-size: 9px; line-height: 1.55; margin: -4px 0 0; text-align: center; }
+.game-pending-verdict { animation: game-ladder-settling 1s ease-in-out infinite; color: var(--game-brass-bright); font-size: 10px; margin: 0; text-align: center; }
 .game-actions { display: grid; gap: 9px; grid-template-columns: 1fr 1fr; }
 .game-actions > :only-child { grid-column: 1 / 3; }
 
@@ -513,6 +537,7 @@
 .game-ladder-floor.is-complete span { background: var(--game-brass); color: #17271f; }
 .game-ladder-floor.is-complete small { color: var(--game-brass-bright); }
 .game-ladder-floor.is-next { box-shadow: inset 0 0 0 1px rgba(200, 163, 90, .25); }
+.game-ladder-floor.is-waiting { animation: game-ladder-judging 620ms ease-in-out infinite; background: rgba(159, 123, 51, .18); }
 .game-ladder-floor.is-judging { animation: game-ladder-judging 620ms ease-in-out infinite; background: rgba(159, 123, 51, .18); }
 .game-ladder-floor.is-judging span { border-color: var(--game-brass-bright); color: var(--game-brass-bright); }
 .game-ladder-floor.is-risen { animation: game-ladder-risen 620ms ease-out; }
@@ -604,6 +629,22 @@
     50% { box-shadow: inset 0 0 0 1px rgba(234, 208, 146, .85), inset 0 0 18px rgba(234, 208, 146, .3); }
 }
 
+@keyframes game-commit-die {
+    0% { transform: translateY(-9px) rotate(-16deg) scale(.96); }
+    48% { transform: translateY(5px) rotate(12deg) scale(1.04); }
+    100% { transform: translateY(-3px) rotate(24deg) scale(.98); }
+}
+
+@keyframes game-commit-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(200, 163, 90, .45); opacity: .65; }
+    50% { box-shadow: 0 0 0 7px rgba(200, 163, 90, 0); opacity: 1; }
+}
+
+@keyframes game-card-shuffling {
+    from { transform: translateY(-7px) rotate(-7deg); }
+    to { transform: translateY(5px) rotate(8deg); }
+}
+
 @keyframes game-ladder-settling {
     0%, 100% { opacity: .5; }
     50% { opacity: 1; }
@@ -666,7 +707,12 @@
     .game-reveal-outcome,
     .game-revealed-coin { animation: none; }
     .game-flip-card { transition: none; }
+    .game-commit-dice i,
+    .game-commit-pulse,
+    .game-flip-slot.is-shuffling .game-flip-card,
+    .game-pending-verdict { animation: none; }
     .game-ladder-floor.is-judging,
+    .game-ladder-floor.is-waiting,
     .game-ladder-floor.is-risen,
     .game-ladder-floor.is-fallen { animation: none; }
     .game-ladder-settling { animation: none; }

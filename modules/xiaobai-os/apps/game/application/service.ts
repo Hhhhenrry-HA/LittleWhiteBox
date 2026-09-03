@@ -43,6 +43,7 @@ import {
 export interface GameServiceView extends GameClientView {
     balance: number;
     writeState: XiaobaiOsFileState;
+    pendingCommit: boolean;
 }
 
 export interface GameServiceCommand extends GameCasToken {
@@ -86,6 +87,7 @@ export interface GameService {
     cashOutLadder: (input: GameCommand) => Promise<GameServiceView>;
     confirmPending: () => Promise<GamePendingRecoveryResult>;
     getWriteState: () => XiaobaiOsFileState;
+    hasPendingSave: () => boolean;
     subscribe(listener: () => void): () => void;
     dispose(): void;
 }
@@ -171,6 +173,7 @@ export function createGameService(
             ...createGameView({ domain, ...paging }),
             balance,
             writeState: files.getFileState(),
+            pendingCommit: files.hasPendingCommit(),
         };
     }
 
@@ -254,6 +257,7 @@ export function createGameService(
             transaction.replace(appended.domain);
             return { game: appended.domain, balance: economy.getPlayerBalance() };
         }, {
+            retainFailedCandidate: true,
             commitGuard() {
                 if (!replayed) {assertGenerationIdle();}
                 return true;
@@ -277,6 +281,7 @@ export function createGameService(
         ...commands,
         confirmPending: () => files.retryPending(),
         getWriteState: () => files.getFileState(),
+        hasPendingSave: () => files.hasPendingCommit(),
         subscribe(listener: () => void) {
             listeners.add(listener);
             return () => listeners.delete(listener);

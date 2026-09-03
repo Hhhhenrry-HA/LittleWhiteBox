@@ -62,6 +62,7 @@ function baseView(writeState = 'ready') {
         activityPage: { offset: 0, limit: 50, total: 1, hasMore: false },
         balance: 150,
         writeState,
+        pendingCommit: false,
         privateState: 'hidden-root-state',
     };
 }
@@ -79,6 +80,7 @@ function createHarness({ economyOpened = true, writeState = 'ready', records = n
     const dataListeners = new Set();
     let generationActive = false;
     let ensureCalls = 0;
+    let refreshCalls = 0;
     const record = method => async (input) => {
         commands.push({ method, input: structuredClone(input) });
         return structuredClone(view);
@@ -99,6 +101,10 @@ function createHarness({ economyOpened = true, writeState = 'ready', records = n
                 },
             });
         },
+        async refreshCurrent() {
+            refreshCalls += 1;
+            return structuredClone(view);
+        },
         startDice: record('startDice'),
         bidDice: record('bidDice'),
         challengeDice: record('challengeDice'),
@@ -113,6 +119,7 @@ function createHarness({ economyOpened = true, writeState = 'ready', records = n
             return { status: 'confirmed' };
         },
         getWriteState: () => view.writeState,
+        hasPendingSave: () => view.pendingCommit === true,
         subscribe(listener) {
             dataListeners.add(listener);
             return () => dataListeners.delete(listener);
@@ -142,6 +149,7 @@ function createHarness({ economyOpened = true, writeState = 'ready', records = n
         controller,
         host,
         get ensureCalls() {return ensureCalls;},
+        get refreshCalls() {return refreshCalls;},
         setGeneration(active) {
             generationActive = active;
             generationListeners.forEach(listener => listener(active));
@@ -306,6 +314,46 @@ test('Game pages records explicitly and publishes save recovery states', async (
     assert.equal(confirmation.confirmation, 'confirmed');
     assert.equal(confirmation.state.status, 'ready');
 
+});
+
+test('Game refresh strongly reloads its current Game and Economy projection', async () => {
+    const harness = createHarness();
+    await activate(harness);
+
+    const result = await harness.controller.handleMessage({
+        type: 'game/refresh',
+        payload: { chatIdentity: harness.host.identity.key },
+    });
+
+    assert.equal(harness.refreshCalls, 1);
+    assert.equal(result.status, 'ready');
+});
+
+test('Game keeps in-flight projections private and identifies a retained save candidate', async () => {
+    const harness = createHarness();
+    await activate(harness);
+    const pending = deferred();
+    harness.game.challengeDice = () => pending.promise;
+    const payload = {
+        chatIdentity: harness.host.identity.key,
+        expectedRevision: 2,
+        expectedEventId: 'event-2',
+        actionId: 'challenge-with-slow-save',
+        gameId: 'dice-1',
+    };
+    const action = harness.controller.handleMessage({ type: 'game/dice/challenge', payload });
+
+    harness.setView({ ...baseView('saving'), revision: 3, eventId: 'event-3', activeGame: undefined });
+    harness.publishData();
+    assert.equal(harness.host.posts.length, 0);
+
+    harness.setView({ ...baseView('failed'), pendingCommit: true });
+    pending.resolve(Promise.reject(Object.assign(new Error('rejected'), { code: 'storage_rejected' })));
+    await assert.rejects(
+        action,
+        error => error.code === 'game_save_pending' && error.retryable === true,
+    );
+    assert.equal(harness.host.posts.length, 0);
 });
 
 test('Game publishes main-generation state without invoking a game command', async () => {

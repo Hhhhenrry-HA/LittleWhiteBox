@@ -27,6 +27,13 @@ function emptyIndex(): XiaobaiOsIndexV1 {
     return { formatVersion: 1, entries: {} };
 }
 
+function sameBinding(left: XiaobaiOsChatBindingV1 | undefined, right: XiaobaiOsChatBindingV1): boolean {
+    return !!left
+        && left.kind === right.kind
+        && left.ownerLocator === right.ownerLocator
+        && left.chatId === right.chatId;
+}
+
 export function parseSidecarIndex(value: unknown): XiaobaiOsIndexV1 {
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
         throw new Error('sidecar_index_invalid');
@@ -48,7 +55,6 @@ export function parseSidecarIndex(value: unknown): XiaobaiOsIndexV1 {
 
 export function createSidecarIndex(storage: JsonUserFilePort, logger: Logger = console): SidecarIndex {
     let queue: Promise<unknown> = Promise.resolve();
-    let cache: XiaobaiOsIndexV1 | null = null;
 
     function enqueue<T>(work: () => Promise<T>): Promise<T> {
         const result = queue.then(work, work);
@@ -57,20 +63,17 @@ export function createSidecarIndex(storage: JsonUserFilePort, logger: Logger = c
     }
 
     async function load(): Promise<XiaobaiOsIndexV1> {
-        if (cache) { return structuredClone(cache); }
         try {
             const raw = await storage.read(XIAOBAI_OS_INDEX_FILENAME);
-            cache = raw === null ? emptyIndex() : parseSidecarIndex(raw);
+            return raw === null ? emptyIndex() : parseSidecarIndex(raw);
         } catch (error) {
             logger.warn('[LittleWhiteBox] 小白 OS sidecar 索引损坏或不可读，将渐进重建', error);
-            cache = emptyIndex();
+            return emptyIndex();
         }
-        return structuredClone(cache);
     }
 
     async function persist(next: XiaobaiOsIndexV1): Promise<void> {
         assertJsonValue(next);
-        cache = structuredClone(next);
         try {
             await storage.replace(XIAOBAI_OS_INDEX_FILENAME, next);
         } catch (error) {
@@ -82,7 +85,9 @@ export function createSidecarIndex(storage: JsonUserFilePort, logger: Logger = c
     function remember(osId: string, binding: XiaobaiOsChatBindingV1): Promise<void> {
         return enqueue(async () => {
             const next = await load();
-            next.entries[osId] = parseXiaobaiOsChatBinding(binding);
+            const canonical = parseXiaobaiOsChatBinding(binding);
+            if (sameBinding(next.entries[osId], canonical)) { return; }
+            next.entries[osId] = canonical;
             await persist(next);
         });
     }

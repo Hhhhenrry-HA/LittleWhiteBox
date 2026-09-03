@@ -62,7 +62,6 @@ export function syncAgentSettingsPanelFeedback(root, options = {}) {
         isBusy = false,
         canDeletePreset = true,
         configLoadError = '',
-        configExternalChangePending = false,
     } = options;
     const normalizedLoadError = String(configLoadError || '').trim();
     const saveButton = getAgentConfigSaveButtonState(configSave);
@@ -92,13 +91,7 @@ export function syncAgentSettingsPanelFeedback(root, options = {}) {
     root.querySelector('#xb-assistant-delete-preset')
         ?.toggleAttribute('disabled', isBusy || !canDeletePreset);
     const toast = root.querySelector('#xb-assistant-toast');
-    if (toast) toast.textContent = String(inlineToastText || '');
-    const loadError = root.querySelector('[data-xb-agent-config-load-error]');
-    loadError?.toggleAttribute('hidden', !normalizedLoadError);
-    const loadErrorMessage = root.querySelector('[data-xb-agent-config-load-error-message]');
-    if (loadErrorMessage) loadErrorMessage.textContent = normalizedLoadError;
-    const conflict = root.querySelector('[data-xb-agent-config-conflict]');
-    conflict?.toggleAttribute('hidden', !!normalizedLoadError || configExternalChangePending !== true);
+    if (toast) toast.textContent = normalizedLoadError || String(inlineToastText || '');
     const fields = root.querySelector('[data-xb-agent-config-fields]');
     fields?.toggleAttribute('disabled', !!normalizedLoadError);
 }
@@ -117,7 +110,6 @@ export function buildAgentSettingsPanelMarkup(options = {}) {
         isBusy = false,
         canDeletePreset = true,
         configLoadError = '',
-        configExternalChangePending = false,
     } = options;
     const normalizedLoadError = String(configLoadError || '').trim();
     const saveButton = getAgentConfigSaveButtonState(configSave);
@@ -225,14 +217,6 @@ export function buildAgentSettingsPanelMarkup(options = {}) {
 
     return `
         <section class="xb-assistant-config">
-            <div class="xb-assistant-config-alert is-error" data-xb-agent-config-load-error ${normalizedLoadError ? '' : 'hidden'}>
-                <span data-xb-agent-config-load-error-message>${escapeHtml(normalizedLoadError)}</span>
-                <button type="button" data-xb-agent-config-retry>重新读取</button>
-            </div>
-            <div class="xb-assistant-config-alert is-conflict" data-xb-agent-config-conflict ${normalizedLoadError || !configExternalChangePending ? 'hidden' : ''}>
-                <span>共享配置已在其他页面更新。当前未保存编辑仍保留；重新载入会放弃这些编辑。</span>
-                <button type="button" data-xb-agent-config-reload>重新载入</button>
-            </div>
             <fieldset class="xb-assistant-config-fields" data-xb-agent-config-fields ${normalizedLoadError ? 'disabled' : ''}>
             ${tabsMarkup}
             <div class="xb-assistant-config-page" data-config-page-panel="main" ${mainActive ? '' : 'hidden'}>
@@ -329,7 +313,7 @@ export function buildAgentSettingsPanelMarkup(options = {}) {
             ${delegatePageMarkup}
             <div class="xb-assistant-runtime" id="xb-assistant-runtime">${escapeHtml(runtimeText)}</div>
             </fieldset>
-            ${showInlineToast ? `<div class="xb-assistant-toast xb-assistant-toast-inline" id="xb-assistant-toast" aria-live="polite">${escapeHtml(inlineToastText)}</div>` : ''}
+            ${showInlineToast ? `<div class="xb-assistant-toast xb-assistant-toast-inline" id="xb-assistant-toast" aria-live="polite">${escapeHtml(normalizedLoadError || inlineToastText)}</div>` : ''}
         </section>
     `;
 }

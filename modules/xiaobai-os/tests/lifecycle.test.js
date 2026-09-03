@@ -145,6 +145,25 @@ test('trusted frame ready receives a fresh snapshot and unknown apps stay inacti
     }]);
 });
 
+test('frame initialization waits for the window-open refresh boundary', async () => {
+    let finishRefresh;
+    const harness = createHarness({
+        appRuntime: {
+            handleWindowOpened: () => new Promise(resolve => { finishRefresh = resolve; }),
+        },
+    });
+    harness.lifecycle.init();
+    harness.lifecycle.open();
+    const options = harness.bridgeOptions();
+    const ready = options.onReady(options.bridge);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.equal(harness.posts.some(post => post.type === 'os/init'), false);
+
+    finishRefresh();
+    await ready;
+    assert.equal(harness.posts.at(-1).type, 'os/init');
+});
+
 test('leaving an app route invalidates an activation that is still pending', async () => {
     let finishActivation;
     const harness = createHarness({

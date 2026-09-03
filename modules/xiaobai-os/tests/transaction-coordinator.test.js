@@ -37,6 +37,7 @@ function harness(initial = envelope({ good: { schemaVersion: 1, value: 1 } })) {
         reads: 0,
         writes: 0,
         installs: 0,
+        references: [],
         commandIds: 0,
         replace: null,
     };
@@ -61,6 +62,9 @@ function harness(initial = envelope({ good: { schemaVersion: 1, value: 1 } })) {
             state.installs++;
             state.capture.reference = reference;
             return { status: 'confirmed' };
+        },
+        async recordReference(osId, recordedBinding) {
+            state.references.push({ osId, binding: structuredClone(recordedBinding) });
         },
     };
     const registry = new XiaobaiOsPartitionRegistry();
@@ -234,6 +238,73 @@ test('a first persistent transaction saves the sidecar before installing its ref
     assert.deepEqual(events, ['sidecar', 'reference']);
     assert.equal(testHarness.state.persisted.revision, 0);
     assert.equal(testHarness.state.capture.reference.osId, testHarness.state.persisted.osId);
+    assert.deepEqual(testHarness.state.references, [{ osId: 'new_os', binding }]);
+});
+
+test('a slow best-effort index cannot delay a confirmed first transaction', async () => {
+    const testHarness = harness(null);
+    testHarness.state.capture.reference = null;
+    testHarness.storage.read = async () => { throw new Error('no read should occur without a reference'); };
+    testHarness.chatReferences.recordReference = () => new Promise(() => undefined);
+    const good = partition('good');
+    testHarness.registry.register(good);
+
+    const transaction = testHarness.coordinator.createScopedStore(good).transact(context => {
+        context.replace({ schemaVersion: 1, value: 5 });
+        return true;
+    });
+    const result = await Promise.race([
+        transaction,
+        new Promise(resolve => setTimeout(() => resolve({ status: 'index-blocked-transaction' }), 100)),
+    ]);
+
+    assert.equal(result.status, 'confirmed');
+});
+
+test('a retained definite failure freezes writes and retries the exact prepared candidate', async () => {
+    const testHarness = harness();
+    const good = partition('good');
+    testHarness.registry.register(good);
+    const store = testHarness.coordinator.createScopedStore(good);
+    let commandRuns = 0;
+    let candidate;
+    testHarness.state.replace = async input => {
+        candidate = structuredClone(input.candidate);
+        return { status: 'failed', error: { code: 'rejected', message: 'rejected', retryable: true } };
+    };
+
+    const failed = await store.transact(transaction => {
+        commandRuns += 1;
+        transaction.replace({ schemaVersion: 1, value: 8 });
+        return 'prepared';
+    }, { retainFailedCandidate: true });
+    assert.equal(failed.status, 'failed');
+    assert.equal(testHarness.coordinator.getFileState(), 'failed');
+    assert.equal(testHarness.coordinator.hasPendingCommit(), true);
+
+    const blocked = await store.transact(transaction => {
+        commandRuns += 1;
+        transaction.replace({ schemaVersion: 1, value: 9 });
+    });
+    assert.equal(blocked.status, 'failed');
+    assert.equal(blocked.error.code, 'rejected');
+    assert.equal(commandRuns, 1);
+
+    testHarness.state.replace = async () => { throw new Error('retry transport failed'); };
+    const retryFailure = await testHarness.coordinator.retryPending();
+    assert.equal(retryFailure.status, 'failed');
+    assert.equal(testHarness.coordinator.getFileState(), 'failed');
+    assert.equal(testHarness.coordinator.hasPendingCommit(), true);
+
+    testHarness.state.replace = async input => {
+        assert.deepEqual(input.candidate, candidate);
+        testHarness.state.persisted = structuredClone(input.candidate);
+        return { status: 'confirmed' };
+    };
+    assert.deepEqual(await testHarness.coordinator.retryPending(), { status: 'confirmed' });
+    assert.equal(commandRuns, 1);
+    assert.equal(testHarness.coordinator.hasPendingCommit(), false);
+    assert.equal(testHarness.state.persisted.partitions.good.value, 8);
 });
 
 test('commit guard rejection performs no upload', async () => {

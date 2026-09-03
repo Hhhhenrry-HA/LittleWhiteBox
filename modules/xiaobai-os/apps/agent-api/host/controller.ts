@@ -5,7 +5,6 @@ import type { XiaobaiOsAppActivationContext, XiaobaiOsAppRuntime } from '../../.
 import type { AgentApiClientState } from '../types.js';
 
 type UnknownRecord = Record<string, unknown>;
-const AGENT_API_SOURCE = 'xiaobai-os-agent-api';
 
 interface AgentApiActivation {
     generation: number;
@@ -33,7 +32,6 @@ export function createAgentApiController(
 } {
     let activation: AgentApiActivation | null = null;
     let activationGeneration = 0;
-    let unsubscribeConfig: (() => void) | null = null;
     const networkOperations = new Set<AbortController>();
 
     function isCurrent(current: AgentApiActivation): boolean {
@@ -133,14 +131,6 @@ export function createAgentApiController(
         throw new Error('未知的 Agent API 操作');
     }
 
-    function handleConfigChanged(detail: UnknownRecord): void {
-        const current = activation;
-        if (!current || String(detail.source || '') === AGENT_API_SOURCE) {return;}
-        current.post('agent-api/config-changed', {
-            updatedAt: Number(detail.updatedAt) || 0,
-        });
-    }
-
     execution?.addCleanup(() => cancelForeground('execution-disposed'));
 
     return Object.freeze({
@@ -149,12 +139,7 @@ export function createAgentApiController(
         cancelForeground,
         cancelAll: cancelForeground,
         handleMessage,
-        startBackground() {
-            unsubscribeConfig ||= gateway.subscribeConfigChanged(handleConfigChanged);
-        },
         stopBackground() {
-            unsubscribeConfig?.();
-            unsubscribeConfig = null;
             cancelForeground('background-stopped');
         },
     });

@@ -69,12 +69,12 @@ function O(a, t, n) {
   });
 }
 var Ee = Object.freeze({
-  "agent-api": O(ye, ["M14 11h36a4 4 0 0 1 4 4v34a4 4 0 0 1-4 4H14a4 4 0 0 1-4-4V15a4 4 0 0 1 4-4z", "M19 24h26M19 34h18M19 44h11M45 44h.1"], () => import("./xiaobai-os-AgentApiApp-DlHFLJU9.js")),
+  "agent-api": O(ye, ["M14 11h36a4 4 0 0 1 4 4v34a4 4 0 0 1-4 4H14a4 4 0 0 1-4-4V15a4 4 0 0 1 4-4z", "M19 24h26M19 34h18M19 44h11M45 44h.1"], () => import("./xiaobai-os-AgentApiApp-BrtBrc5-.js")),
   "fourth-wall": O(Ae, ["M13 15h38v29H32l-12 9 3-9H13z", "M22 25h20M22 33h14"], () => import("./xiaobai-os-FourthWallApp-HSJxcdSt.js")),
   wallet: O(Oe, ["M12 19.5h37a5 5 0 0 1 5 5v24a5 5 0 0 1-5 5H15a5 5 0 0 1-5-5v-30a8 8 0 0 1 8-8h27", "M54 30H42a6 6 0 0 0 0 12h12M43 36h.1"], () => import("./xiaobai-os-WalletApp-iXb6S0sh.js")),
   shop: O(we, ["M14 19h36l-3 35H17z", "M11 19h42M19 19V11h26v8M23 29h18M22 38h20M21 47h22"], () => import("./xiaobai-os-ShopApp-DMALoGOc.js")),
   bank: O(ge, ["M9 24h46L32 9z", "M14 52h36M18 24v28M28 24v28M38 24v28M48 24v28"], () => import("./xiaobai-os-BankApp-vbt7TXuR.js")),
-  game: O(_e, ["M15 12h34a6 6 0 0 1 6 6v28a6 6 0 0 1-6 6H15a6 6 0 0 1-6-6V18a6 6 0 0 1 6-6z", "M21 23h.1M43 23h.1M32 32h.1M21 41h.1M43 41h.1"], () => import("./xiaobai-os-GameApp-Dj31T7P7.js")),
+  game: O(_e, ["M15 12h34a6 6 0 0 1 6 6v28a6 6 0 0 1-6 6H15a6 6 0 0 1-6-6V18a6 6 0 0 1 6-6z", "M21 23h.1M43 23h.1M32 32h.1M21 41h.1M43 41h.1"], () => import("./xiaobai-os-GameApp-NkkX-O41.js")),
   map: O(Se, ["M11 16l13-6 16 6 13-6v38l-13 6-16-6-13 6z", "M24 10v38M40 16v38M18 31l6-3 8 3 8-4 7 3"], () => import("./xiaobai-os-MapApp-B1mmNdSx.js")),
   tasks: O(ke, [
     "M17 12h30a5 5 0 0 1 5 5v35H12V17a5 5 0 0 1 5-5z",

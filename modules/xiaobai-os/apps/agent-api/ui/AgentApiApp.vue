@@ -31,7 +31,6 @@ const panelState = reactive({
     config: null as UnknownRecord | null,
     configDraft: null as UnknownRecord | null,
     configDirty: false,
-    configExternalChangePending: false,
     configFormSyncPending: true,
     configPage: 'main',
     configSave: { status: 'idle', requestId: '', error: '' },
@@ -67,17 +66,15 @@ async function handleSaveConfig(request: SaveRequest): Promise<void> {
     renderPanel();
     try {
         const response = await props.bridge.request('agent-api/save', { patch }, 35_000) as {
-            result: { ok?: boolean; conflict?: boolean; config?: UnknownRecord; error?: string };
+            result: { ok?: boolean; config?: UnknownRecord; error?: string };
         };
         const result = response.result;
         if (result.ok !== true || !result.config) {
-            if (result.conflict) {panelState.configExternalChangePending = true;}
             throw new Error(result.error || '共享 Agent API 配置保存失败');
         }
         panelState.config = normalizeAgentConfig(result.config);
         panelState.configDraft = null;
         panelState.configDirty = false;
-        panelState.configExternalChangePending = false;
         panelState.configFormSyncPending = true;
         panelState.configSave = { status: 'success', requestId: '', error: '' };
         panelState.inlineToastText = '配置已保存';
@@ -90,18 +87,13 @@ async function handleSaveConfig(request: SaveRequest): Promise<void> {
     scheduleSaveFeedbackReset();
 }
 
-async function reloadConfig(preserveNewDraft = false): Promise<void> {
+async function reloadConfig(): Promise<void> {
     const generation = ++reloadGeneration;
     try {
         const response = await props.bridge.request('agent-api/reload', {}, 35_000) as {
             result: AgentApiClientState;
         };
         if (generation !== reloadGeneration) {return;}
-        if (preserveNewDraft && panelState.configDirty) {
-            panelState.configExternalChangePending = true;
-            renderPanel();
-            return;
-        }
         applyClientState(response.result);
     } catch (error) {
         if (generation !== reloadGeneration) {return;}
@@ -121,7 +113,6 @@ const panel = createAgentSettingsPanel({
     state: panelState,
     render: renderPanel,
     saveConfig: handleSaveConfig,
-    reloadConfig,
     pullModels,
     describeError,
 }) as Panel;
@@ -138,8 +129,6 @@ function renderPanel(): void {
         showDelegateSettings: false,
         showTavilySettings: false,
         canDeletePreset: presetCount.value > 1,
-        configLoadError: clientState.value.status === 'error' ? clientState.value.message : '',
-        configExternalChangePending: panelState.configExternalChangePending,
     });
     panel.syncConfigToForm(root);
     panel.bindSettingsPanelEvents(root);
@@ -151,7 +140,6 @@ function applyClientState(next: AgentApiClientState): void {
         panelState.config = normalizeAgentConfig(next.config);
         panelState.configDraft = null;
         panelState.configDirty = false;
-        panelState.configExternalChangePending = false;
         panelState.configFormSyncPending = true;
     }
     void nextTick(renderPanel);
@@ -180,14 +168,6 @@ onMounted(() => {
     unsubscribe = props.bridge.subscribe((message) => {
         if (message.type === 'agent-api/state') {
             applyClientState((message.payload as { state: AgentApiClientState }).state);
-            return;
-        }
-        if (message.type !== 'agent-api/config-changed') {return;}
-        if (panelState.configDirty) {
-            panelState.configExternalChangePending = true;
-            renderPanel();
-        } else {
-            void reloadConfig(true);
         }
     });
     applyClientState(initialState);

@@ -46,7 +46,7 @@ test('execution scope reports background rejection and aborts owned work on disp
     const failures = [];
     const scope = new XiaobaiOsExecutionScope(error => failures.push(error.message));
     void scope.run(async () => { throw new Error('background failed'); });
-    await new Promise(resolve => setImmediate(resolve));
+    await new Promise(resolve => setTimeout(resolve, 0));
     assert.deepEqual(failures, ['background failed']);
     await scope.dispose();
     assert.equal(scope.signal.aborted, true);

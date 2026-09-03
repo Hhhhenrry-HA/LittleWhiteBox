@@ -6,6 +6,7 @@ const props = defineProps<{
     game: GamePushGameView;
     writeDisabledReason: string;
     ending?: GameRecordView | null;
+    drawing?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -94,7 +95,7 @@ watch(() => props.ending, (record) => {
 
 const busted = computed(() => props.ending?.outcome === 'busted');
 const showOutcome = computed(() => Boolean(props.ending) && (!busted.value || flipLanded.value));
-const controlsDisabled = computed(() => Boolean(props.writeDisabledReason) || Boolean(props.ending));
+const controlsDisabled = computed(() => Boolean(props.writeDisabledReason) || Boolean(props.ending) || props.drawing);
 
 function percent(basisPoints: number): string {
     return `${(basisPoints / 100).toFixed(basisPoints % 100 === 0 ? 0 : 2)}%`;
@@ -112,10 +113,14 @@ onUnmounted(clearFlipTimer);
         </header>
 
         <div class="game-push-stage">
-            <div v-if="flipFace" class="game-flip-slot" :class="{ 'is-flipped': flipping }">
+            <div
+                v-if="flipFace || drawing"
+                class="game-flip-slot"
+                :class="{ 'is-flipped': flipping, 'is-shuffling': drawing && !flipFace }"
+            >
                 <div class="game-flip-card">
                     <span class="game-flip-back" aria-hidden="true" />
-                    <span class="game-flip-front" :class="`is-${flipFace}`">
+                    <span v-if="flipFace" class="game-flip-front" :class="`is-${flipFace}`">
                         {{ flipFace === 'bomb' ? '✸' : '¤' }}
                     </span>
                 </div>
@@ -139,7 +144,8 @@ onUnmounted(clearFlipTimer);
 
         <p class="game-rule-note">每枚金币增加 ¤ 50；翻到炸弹立即以零返还结束。</p>
 
-        <div v-if="showOutcome && ending" class="game-reveal-outcome" :class="`is-${ending.outcomeTone}`">
+        <p v-if="drawing" class="game-pending-verdict" role="status">正在翻牌并确认落账…</p>
+        <div v-else-if="showOutcome && ending" class="game-reveal-outcome" :class="`is-${ending.outcomeTone}`">
             <strong>{{ ending.outcomeLabel }}</strong>
             <em>{{ ending.net > 0 ? '+' : '' }}{{ ending.net }} 小白币</em>
             <button type="button" class="game-primary-action" @click="emit('finished')">回到大厅</button>

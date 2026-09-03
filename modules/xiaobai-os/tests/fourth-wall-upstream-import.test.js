@@ -98,7 +98,7 @@ function createHarness(metadata, chatId) {
         prepareInitialPartitions: importer.prepareInitialPartitions,
         createId: () => `generated_${++state.generated}`,
     });
-    return { coordinator, references, state, store: coordinator.createScopedStore(registration) };
+    return { coordinator, importer, references, state, store: coordinator.createScopedStore(registration) };
 }
 
 test('converts the upstream sessions fixture into the frozen Fourth Wall partition', async () => {
@@ -211,4 +211,32 @@ test('retrying an unconfirmed metadata save reuses the same sidecar and converte
     assert.deepEqual(harness.state.writes[0].candidate, candidate);
     assert.equal(harness.state.saveCalls, 2);
     assert.equal(harness.references.capture().reference.osId, candidate.osId);
+});
+
+test('invalid upstream Fourth Wall data stays untouched and cannot block another APP first write', async () => {
+    const chatId = 'character-chat-a';
+    const metadata = {
+        [chatId]: {
+            extensions: {
+                LittleWhiteBox: {
+                    fw: { sessions: [] },
+                },
+            },
+        },
+    };
+    const before = structuredClone(metadata);
+    const harness = createHarness(metadata, chatId);
+
+    const result = await harness.store.transact(transaction => {
+        transaction.replace({ schemaVersion: 1, value: 'other APP still works' });
+    });
+
+    assert.equal(result.status, 'confirmed');
+    assert.deepEqual(Object.keys(harness.state.writes[0].candidate.partitions), ['sample']);
+    assert.deepEqual(metadata[chatId], before[chatId]);
+    assert.ok(metadata.extensions.LittleWhiteBox.xiaobaiOsRef.osId);
+    assert.throws(
+        () => harness.importer.readCurrentPartition(),
+        error => error.code === 'invalid_upstream_fourth_wall',
+    );
 });

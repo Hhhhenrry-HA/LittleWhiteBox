@@ -3,7 +3,6 @@ import { resolveActiveProviderConfig } from '../../../agent-core/provider-resolu
 import {
     loadSharedAgentSettings,
     saveSharedAgentSettings,
-    subscribeSharedAgentSettingsChanged,
 } from '../../../agent-core/settings-repository.js';
 import { AssistantStorage } from '../../../../core/server-storage.js';
 import { loadXiaobaiOsAgentBridge } from './bridge-loader.js';
@@ -32,7 +31,6 @@ export interface XiaobaiOsAgentSession {
 export interface XiaobaiOsAgentGateway {
     loadConfig: () => Promise<UnknownRecord>;
     saveConfig: (patch: UnknownRecord) => Promise<UnknownRecord>;
-    subscribeConfigChanged: (listener: (detail: UnknownRecord) => void) => () => void;
     openSession: (config: unknown) => Promise<XiaobaiOsAgentSession>;
     run: (request: XiaobaiOsAgentRunRequest & { config: unknown }) => Promise<UnknownRecord>;
     pullModels: (providerConfig: UnknownRecord, signal?: AbortSignal) => Promise<string[]>;
@@ -42,18 +40,13 @@ export interface XiaobaiOsAgentGateway {
     ) => Promise<{ provider: string; model: string; latencyMs: number }>;
 }
 
-export function createXiaobaiOsAgentGateway(
-    options: { source?: string } = {},
-): XiaobaiOsAgentGateway {
-    const source = String(options.source || 'xiaobai-os-agent-api');
+export function createXiaobaiOsAgentGateway(): XiaobaiOsAgentGateway {
     const gateway: XiaobaiOsAgentGateway = {
         loadConfig: async () => await loadSharedAgentSettings({ storage: AssistantStorage }),
         saveConfig: async (patch: UnknownRecord) => await saveSharedAgentSettings(patch, {
             storage: AssistantStorage,
             silent: false,
-            source,
         }) as UnknownRecord,
-        subscribeConfigChanged: listener => subscribeSharedAgentSettingsChanged(listener),
         async openSession(configValue) {
             const config = normalizeAgentSettings(configValue || {});
             const providerConfig = resolveActiveProviderConfig(config);

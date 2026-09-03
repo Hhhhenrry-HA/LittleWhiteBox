@@ -25,6 +25,7 @@ export interface ChatMetadataAdapter {
 
 export interface ChatReferenceOptions {
     recordOrphan?: (osId: string, binding: XiaobaiOsChatBindingV1) => void | Promise<void>;
+    recordReference?: (osId: string, binding: XiaobaiOsChatBindingV1) => void | Promise<void>;
     createInstallEffect?: (capture: ChatMetadataCapture) => ChatReferenceInstallEffect | null;
 }
 
@@ -274,7 +275,13 @@ export function createChatReferencePort(
         };
     }
 
-    return Object.freeze({ capture, isCurrent, install, recordOrphan: options.recordOrphan });
+    return Object.freeze({
+        capture,
+        isCurrent,
+        install,
+        recordOrphan: options.recordOrphan,
+        recordReference: options.recordReference,
+    });
 }
 
 export function readChatMetadataHeader(payload: unknown): ChatMetadata | null {

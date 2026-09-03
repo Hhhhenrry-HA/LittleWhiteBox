@@ -197,10 +197,14 @@ export function createGameController({
         try {
             const value = await task();
             assertSameActivation(current, payload);
-            return { value, state: emitState(current) };
+            return { value, state: buildState(current.chatIdentity) };
         } catch (error) {
-            if (activation === current && currentChatIdentity() === current.chatIdentity && isUnconfirmedSave(error)) {
-                emitState(current);
+            if (game.getWriteState() === 'failed' && game.hasPendingSave()) {
+                throw Object.assign(new Error('本局结果尚未保存。请重试保存后再继续游戏。'), {
+                    code: 'game_save_pending',
+                    retryable: true,
+                    cause: error,
+                });
             }
             throw error;
         } finally {
@@ -227,7 +231,10 @@ export function createGameController({
         const current = assertActivation(payload);
         if (message.type === 'game/refresh') {
             preparation = null;
-            const result = await runExclusive(current, payload, prepare);
+            const result = await runExclusive(current, payload, async () => {
+                await game.refreshCurrent();
+                await prepare();
+            });
             return result.state;
         }
         if (message.type === 'game/confirm-save') {
@@ -295,6 +302,7 @@ export function createGameController({
         const current = activation;
         if (
             !current
+            || busy
             || currentChatIdentity() !== current.chatIdentity
         ) {return;}
         try {

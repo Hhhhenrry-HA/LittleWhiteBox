@@ -13,6 +13,7 @@ import { AGENT_CAPABILITY } from '../capabilities/agent/index.js';
 import { createEconomyCapabilityRegistrations } from '../capabilities/economy/index.js';
 import { MAINTENANCE_CAPABILITY } from '../capabilities/maintenance/index.js';
 import { createKernelComposition } from '../host/kernel-composition.js';
+import { createCapabilityRegistry } from '../kernel/capability-registry.js';
 
 function ports() {
     const capture = {
@@ -34,13 +35,27 @@ function ports() {
     };
 }
 
+test('Map prompt context failure is optional and does not escape to a consumer', async () => {
+    const capabilities = createCapabilityRegistry([createMapContextCapabilityRegistration()]);
+    await capabilities.install();
+    const mapContext = capabilities.require(MAP_CONTEXT_CAPABILITY);
+    const originalError = console.error;
+    console.error = () => undefined;
+    try {
+        mapContext.registerProvider(() => { throw new Error('broken Map partition'); });
+        assert.equal(mapContext.readPromptContext(), '');
+    } finally {
+        console.error = originalError;
+        await capabilities.dispose();
+    }
+});
+
 test('the non-production composition installs D1 modules through declared capabilities only', async () => {
     const order = [];
     const posts = [];
     const agent = {
         async loadConfig() { throw new Error('Agent is not configured'); },
         saveConfig: async patch => patch,
-        subscribeConfigChanged: () => () => undefined,
         openSession: async () => assert.fail('opening an APP must not connect to a provider'),
         run: async () => assert.fail('opening an APP must not run a provider'),
         pullModels: async () => assert.fail('opening an APP must not pull models'),

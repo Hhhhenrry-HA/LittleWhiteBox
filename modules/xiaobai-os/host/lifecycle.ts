@@ -153,6 +153,7 @@ export function createXiaobaiOsLifecycle({
     let themeObserver: MutationObserver | null = null;
     let activeApp: ActiveApp | null = null;
     let pendingApp: ActiveApp | null = null;
+    let windowOpenPromise: Promise<void> | null = null;
     let generation = 0;
     let appActivationGeneration = 0;
     const pendingOperations = new Set<Promise<unknown>>();
@@ -256,6 +257,7 @@ export function createXiaobaiOsLifecycle({
         const deactivation = deactivateActiveApp(reason);
         bridge?.dispose();
         bridge = null;
+        windowOpenPromise = null;
         stopThemeObserver();
         overlay?.remove();
         overlay = null;
@@ -294,6 +296,16 @@ export function createXiaobaiOsLifecycle({
     }
 
     async function handleFrameReady(frameBridge: XiaobaiOsHostFrameBridge, openGeneration: number): Promise<void> {
+        try {
+            await windowOpenPromise;
+        } catch (error) {
+            if (openGeneration === generation && frameBridge === bridge) {
+                frameBridge.post('os/error', { message: error instanceof Error ? error.message : String(error) });
+            }
+            // The tracked window-open operation owns error reporting. This waiter
+            // only keeps a failed refresh from publishing a stale init snapshot.
+            return;
+        }
         try {
             const snapshot = await getInitSnapshot();
             if (openGeneration !== generation || frameBridge !== bridge) {
@@ -540,7 +552,10 @@ export function createXiaobaiOsLifecycle({
             onReady: (frameBridge) => handleFrameReady(frameBridge, openGeneration),
             onMessage: (message, frameBridge) => handleFrameMessage(message, frameBridge, openGeneration),
         });
-        void invoke(() => appRuntime.handleWindowOpened?.());
+        windowOpenPromise = Promise.resolve().then(async () => {
+            await appRuntime.handleWindowOpened?.();
+        });
+        void track(windowOpenPromise);
         startThemeObserver();
         return true;
     }

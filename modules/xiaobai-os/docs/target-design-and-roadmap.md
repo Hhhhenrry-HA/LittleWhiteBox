@@ -211,31 +211,18 @@ APP 故障分三层：
 
 Map、Tasks 的真实 SillyTavern/Provider 与移动端验收仍以各自文档为准；自动化全绿不能代替真实宿主验收。
 
-### 当前底座缺口
+### 当前底座状态
 
-现有实现仍是集中 production composition、单 Bundle UI 和聊天 metadata 根。已加入的根业务校验拆除与同步 lifecycle try/catch 只是止血，不是本文终态。
+生产已经一次性切换到 Kernel/sidecar：APP 分区、Capability、聊天引用与生命周期、Shell 懒加载、APP 故障隔离、upstream Fourth Wall 单次导入以及 Game 确认后揭示均已接入。测试线旧 OS metadata 根不读取、不迁移，也不存在双存储运行路径。
 
-在 Kernel/sidecar 完成前：
+底座后续只接受真实宿主验收发现的修正，不再作为新 APP 的临时施工区。信息 APP 等新领域开工前，仍须先确定自己的领域所有者、上下文来源、写入时点、Prompt/工具和删除路径，再通过 module 注册接入。
 
-- 不开始信息 APP；
-- 不在旧 chat-data-store 上增加新领域；
-- 不新增旧根 schema 或兼容迁移；
-- 不把当前 APP runtime registry 宣称为完整故障隔离。
+## 12. 后续开工边界
 
-## 12. 下一开工路线
-
-严格按 [OS Kernel 施工方案](./os-kernel-implementation-plan.md)执行：
-
-1. Kernel/Storage Port；
-2. osId 引用、binding、分支和索引；
-3. Capability Registry、APP module、异步 execution scope；
-4. 所有 APP 在非生产新 composition 中完成分区适配；
-5. Shell UI 懒加载、APP Error Boundary 和重试；
-6. 用 upstream 真实 fixture 完成 Fourth Wall 一次导入边界；
-7. 一次性切换生产并删除旧根路径；
-8. 接入 Game neutral animation / confirmed reveal，完成全量验收。
-
-每批独立 review、验证和提交。允许新 Kernel 在接生产前暂时没有生产消费者，但不得用旧根 adapter 伪装 Scoped Store，也不得运行双存储。
+- 新 APP 只拥有自己的 partition、Host runtime、Prompt/工具与 UI；
+- Economy、Agent、Maintenance 只通过 Capability 使用；
+- 不新增集中业务根、metadata 业务数据或测试线兼容壳；
+- 不以“以后再拆”为由把新业务塞进 production composition 或 Kernel。
 
 ## 13. 每阶段验收
 

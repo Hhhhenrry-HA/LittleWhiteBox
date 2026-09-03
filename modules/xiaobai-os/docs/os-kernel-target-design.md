@@ -476,14 +476,15 @@ Game 点击确认后的时序固定为：
 - 双方骰面；
 - 本局余额变化和最新余额。
 
-保存明确失败或仍 unconfirmed：
+保存明确失败：
 
 - 不把候选冒充成已完成赌局；
 - 页面显示“本局结果尚未保存”及重试；
 - 冻结本局后继动作和新开局；
 - 当前运行内保留同一个已序列化 candidate、actionId、commitId 和随机结果；
 - 重试只提交该 candidate，不重新执行游戏命令；
-- 切聊、关闭 OS 或页面重载可丢弃未确认的纯内存候选；再次进入时强读服务端实际 sidecar。若原请求最终落盘会读到该 commit，若仍是旧 commit 则本局未保存且无法凭空恢复随机候选。
+
+保存结果 unconfirmed 时显示“落账待核实”，按 commitId 强读确认；不能把未知结果称为明确失败。关闭 OS 窗口不会销毁 Host 内的 pending candidate，切回同一聊天仍可继续恢复。只有整个页面运行结束才会丢失纯内存候选。再次加载时只能沿聊天中已确认的引用强读服务端：已有引用的聊天会读到新事实或旧事实；首次 sidecar 若连引用都未确认，则只能在引用实际落盘时找回，否则该无引用文件是待索引清理的孤儿。任何情况都不得凭空重建随机结果。
 
 存储慢只延迟最终揭示，不得阻止动画起步，也不得显示虚假的最终骰面。
 
@@ -496,7 +497,9 @@ Game 点击确认后的时序固定为：
 - 不保留 schemaVersion 2 根类型；
 - 不双写 metadata 与 sidecar。
 
-upstream 已上线的旧 Fourth Wall 是单独的真实兼容对象。对“没有 xiaobaiOsRef 且存在旧 fw”的聊天，Kernel 在任何新 sidecar 写入前把控制权交给 Fourth Wall 导入器；不能先由其他 APP 建立空 sidecar 而漏掉 fw。导入器使用真实 fixture 构造 fourthWall 分区，先确认 sidecar，再在同一次聊天 metadata 保存中安装引用并删除旧 fw；任一步未确认都保留旧数据且不生成第二个 osId。成功后该聊天运行时只读 fourthWall 分区，不再探测旧 fw。
+upstream 已上线的旧 Fourth Wall 是单独的真实兼容对象。对“没有 xiaobaiOsRef 且存在合法旧 fw”的聊天，Kernel 在任何新 sidecar 写入前把控制权交给 Fourth Wall 导入器；不能先由其他 APP 建立空 sidecar 而漏掉 fw。导入器使用真实 fixture 构造 fourthWall 分区，先确认 sidecar，再在同一次聊天 metadata 保存中安装引用并删除旧 fw；任一步未确认都保留旧数据且不生成第二个 osId。成功后该聊天运行时只读 fourthWall 分区，不再探测旧 fw。
+
+若旧 fw 本身无法按冻结 upstream 格式解析，导入器原样保留它且不写入 fourthWall 分区；该错误只在打开 Fourth Wall 时进入其 APP 错误页，不能阻断 Wallet、Game、Map 等其他 APP 建立和使用 sidecar。Kernel 不猜测或清洗损坏的 Fourth Wall 业务数据。
 
 这段兼容代码归 Fourth Wall 所有，只在“无引用 + 有 upstream fw”升级入口运行，不进入 Kernel 的日常读写路径。退出条件是产品明确不再支持从含旧 fw 的 upstream 版本直接升级；达到该发布边界后连同真实 fixture 和导入分支一起删除，不能永久保留。
 

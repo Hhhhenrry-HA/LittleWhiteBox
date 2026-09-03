@@ -140,3 +140,32 @@ test('stop waits for an active resolution and suppresses its late sidecar refres
     await stopping;
     assert.equal(sidecarRefreshes, 0);
 });
+
+test('a failed strong sidecar refresh invalidates the stale local projection', async () => {
+    const events = eventTarget();
+    const windowTarget = eventTarget();
+    const documentTarget = eventTarget();
+    let invalidations = 0;
+    const errors = [];
+    const lifecycle = createChatBindingLifecycle({
+        manager: {
+            async resolveCurrent() { return { status: 'ready', envelope: {}, created: false }; },
+            async retryPendingCurrent() { return { status: 'empty' }; },
+            async handleChatDeleted() { return 'retained'; },
+            async handleCharacterRenamed() {},
+        },
+        refreshSidecar: async () => { throw new Error('server unavailable'); },
+        invalidateSidecar: () => { invalidations += 1; },
+        events,
+        eventNames,
+        windowTarget,
+        documentTarget,
+        onError: error => errors.push(error),
+    });
+
+    lifecycle.start();
+    await lifecycle.refresh();
+    assert.equal(invalidations, 1);
+    assert.match(errors[0].message, /server unavailable/);
+    await lifecycle.stop();
+});

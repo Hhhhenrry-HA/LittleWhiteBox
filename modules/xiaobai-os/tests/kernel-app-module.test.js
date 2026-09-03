@@ -158,6 +158,7 @@ test('background rejection fails only its owning APP module', async () => {
             retryPending: async () => ({ status: 'none' }),
             adoptServerState: async () => ({ status: 'none' }),
             getFileState: () => 'ready',
+            hasPendingCommit: () => false,
             subscribeFileState: () => () => undefined,
         },
     });
@@ -211,6 +212,7 @@ test('dependency, install, and activation failures remain local to their APP mod
             retryPending: async () => ({ status: 'none' }),
             adoptServerState: async () => ({ status: 'none' }),
             getFileState: () => 'ready',
+            hasPendingCommit: () => false,
             subscribeFileState: () => () => undefined,
         },
     });
@@ -268,6 +270,7 @@ test('activation failure releases the runtime before a retry installs its replac
             retryPending: async () => ({ status: 'none' }),
             adoptServerState: async () => ({ status: 'none' }),
             getFileState: () => 'ready',
+            hasPendingCommit: () => false,
             subscribeFileState: () => () => undefined,
         },
     });
@@ -316,6 +319,7 @@ test('registry disposal waits for installation and settles every APP cleanup', a
             retryPending: async () => ({ status: 'none' }),
             adoptServerState: async () => ({ status: 'none' }),
             getFileState: () => 'ready',
+            hasPendingCommit: () => false,
             subscribeFileState: () => () => undefined,
         },
     });
@@ -328,4 +332,60 @@ test('registry disposal waits for installation and settles every APP cleanup', a
     await disposal;
     assert.deepEqual(disposed.sort(), ['healthy', 'slow']);
     await assert.rejects(apps.retry('healthy'), /app_registry_disposed/);
+});
+
+test('runtime failures stay local and only fatal failures take their APP offline', async () => {
+    const capabilities = createCapabilityRegistry([]);
+    await capabilities.install();
+    const disposed = [];
+    const modules = [
+        {
+            descriptor: { id: 'business', name: 'Business', accent: '#111' },
+            capabilities: [],
+            async install() {
+                return { async handleMessage() { throw new Error('ordinary domain rejection'); } };
+            },
+            async dispose() { disposed.push('business'); },
+        },
+        {
+            descriptor: { id: 'fatal', name: 'Fatal', accent: '#222' },
+            capabilities: [],
+            async install() {
+                return {
+                    async handleMessage() {
+                        throw Object.assign(new Error('owned partition is invalid'), { code: 'partition_invalid' });
+                    },
+                };
+            },
+            async dispose() { disposed.push('fatal'); },
+        },
+        {
+            descriptor: { id: 'healthy', name: 'Healthy', accent: '#fff' },
+            capabilities: [],
+            async install() { return {}; },
+        },
+    ];
+    const apps = createAppModuleRegistry(modules, {
+        createStore: () => assert.fail('partition store is not expected'),
+        hasCapability: token => capabilities.has(token),
+        requireCapability: token => capabilities.require(token),
+        files: {
+            retryPending: async () => ({ status: 'none' }),
+            adoptServerState: async () => ({ status: 'none' }),
+            getFileState: () => 'ready',
+            hasPendingCommit: () => false,
+            subscribeFileState: () => () => undefined,
+        },
+    });
+    await apps.installAll();
+
+    await assert.rejects(apps.handleMessage('business', { type: 'business/test' }), /ordinary domain rejection/);
+    assert.deepEqual(apps.status('business'), { state: 'ready' });
+
+    await assert.rejects(apps.handleMessage('fatal', { type: 'fatal/test' }), /owned partition is invalid/);
+    assert.equal(apps.status('fatal').state, 'failed');
+    assert.equal(apps.status('fatal').failure.phase, 'runtime');
+    assert.equal(apps.runtime('fatal'), null);
+    assert.deepEqual(apps.status('healthy'), { state: 'ready' });
+    assert.deepEqual(disposed, ['fatal']);
 });

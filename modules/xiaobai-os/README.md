@@ -71,7 +71,9 @@ Economy 分区流水是余额的唯一事实来源。Bank、Game、Shop、Tasks 
 
 ## 当前底座状态
 
-现有代码仍使用聊天 metadata 根和集中 composition；Kernel/sidecar 是下一施工阶段，尚未完成。不得把当前根 Store 当作终态继续扩建新的信息 APP。
+生产组合已经切换到 Kernel/sidecar。聊天 metadata 只保留`xiaobaiOsRef`；测试线旧 OS 业务根不读取、不迁移。upstream 已上线的 Fourth Wall `fw`是唯一旧业务兼容对象，由 Fourth Wall 自有升级入口在首次 sidecar 提交时导入。
+
+新 APP 必须按上述 module、partition 与 Capability 边界接入；不得重新建立集中业务根或绕过 Kernel 直接写其他 APP 数据。
 
 ## 验证
 

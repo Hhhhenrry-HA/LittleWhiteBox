@@ -7,6 +7,7 @@ import { GAME_DIE_STAGGER_MS, gameDiceRevealTimeline } from './game-motion.js';
 const props = defineProps<{
     record: GameRecordView;
     detail: GameDiceRecordDetailView;
+    balanceAfter: number;
 }>();
 
 const emit = defineEmits<{ done: [] }>();
@@ -124,6 +125,7 @@ onUnmounted(clearTimers);
                     实际 {{ detail.matchingDiceCount }} 枚 {{ bidHolds ? '≥' : '<' }} 叫牌 {{ detail.finalBid.count }} 枚；
                     {{ challengerLabel }}开骰，{{ bidderLabel }}的叫牌{{ bidHolds ? '成立' : '不成立' }}。
                 </p>
+                <small class="game-reveal-balance">当前余额 · ¤ {{ balanceAfter }}</small>
             </div>
         </div>
 

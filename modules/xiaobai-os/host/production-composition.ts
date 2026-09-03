@@ -58,11 +58,13 @@ export function createProductionBootstrap(
 ): XiaobaiOsBootstrap {
     const storage = createSillyTavernFileStorage({ getRequestHeaders });
     const metadata = createSillyTavernChatMetadataAdapter();
+    const index = createSidecarIndex(createSillyTavernUserJsonFilePort({ getRequestHeaders }));
     const upstreamFourthWall = createFourthWallUpstreamImport(metadata);
     const references = createChatReferencePort(metadata, {
         createInstallEffect: upstreamFourthWall.createReferenceInstallEffect,
+        recordOrphan: index.remember,
+        recordReference: index.remember,
     });
-    const index = createSidecarIndex(createSillyTavernUserJsonFilePort({ getRequestHeaders }));
     const bindingManager = createChatBindingManager({ metadata, references, storage, index });
     const bindingEvents = createChatBindingEventAdapter();
     const mainGeneration = createSillyTavernMainGenerationRuntime();
@@ -105,7 +107,7 @@ export function createProductionBootstrap(
 
     const modules = [
         createAgentApiModule(),
-        createProductionFourthWallModule(settings),
+        createProductionFourthWallModule(settings, upstreamFourthWall),
         createWalletModule({ getChatIdentity: getSillyTavernChatIdentity }),
         createProductionShopModule({
             getChatIdentity: getSillyTavernChatIdentity,
@@ -153,8 +155,15 @@ export function createProductionBootstrap(
     });
     let productionInstalled = false;
 
+    const productionApps = Object.freeze({
+        ...composition.apps,
+        async handleWindowOpened() {
+            await bindingLifecycle.refresh();
+            await composition.apps.handleWindowOpened();
+        },
+    });
     const productionComposition = {
-        apps: composition.apps,
+        apps: productionApps,
         async install() {
             if (productionInstalled) { return; }
             mainGeneration.startBackground?.();

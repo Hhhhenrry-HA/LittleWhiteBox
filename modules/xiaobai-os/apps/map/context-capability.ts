@@ -19,7 +19,14 @@ export function createMapContextCapabilityRegistration(): CapabilityRegistration
         ownerId: 'map',
         dependencies: [],
         install: () => Object.freeze({
-            readPromptContext: () => provider?.() ?? '',
+            readPromptContext: () => {
+                try {
+                    return provider?.() ?? '';
+                } catch (error) {
+                    console.error('[LittleWhiteBox] Map 可选上下文读取失败，已忽略', error);
+                    return '';
+                }
+            },
             registerProvider(next: () => string) {
                 if (provider) { throw new Error('map_context_provider_already_registered'); }
                 provider = next;

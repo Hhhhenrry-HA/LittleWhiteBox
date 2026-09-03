@@ -417,7 +417,6 @@ export function createAgentSettingsPanel(deps = {}) {
         showToast,
         createRequestId = (prefix = 'req') => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         saveConfig,
-        reloadConfig,
         pullModels = pullModelsForProvider,
         describeError = defaultDescribeError,
         getRuntimeSummaryText,
@@ -1055,7 +1054,6 @@ export function createAgentSettingsPanel(deps = {}) {
 
     function buildConfigSavePayload(config) {
         return {
-            expectedUpdatedAt: Number(config?.updatedAt) || 0,
             workspaceFileName: config?.workspaceFileName || '',
             jsApiPermission: normalizeJsApiPermission(config?.jsApiPermission),
             tavilyApiKey: String(config?.tavilyApiKey || ''),
@@ -1206,16 +1204,6 @@ export function createAgentSettingsPanel(deps = {}) {
     }
 
     function bindSettingsPanelEvents(root) {
-        root?.querySelector?.('[data-xb-agent-config-retry]')?.addEventListener('click', () => {
-            reloadConfig?.();
-        });
-        root?.querySelector?.('[data-xb-agent-config-reload]')?.addEventListener('click', () => {
-            state.configDraft = null;
-            state.configDirty = false;
-            state.configExternalChangePending = false;
-            requestConfigFormSync();
-            reloadConfig?.();
-        });
         if (!root?.querySelector?.('#xb-assistant-provider')) return;
 
         root.querySelector('#xb-assistant-provider')?.addEventListener('change', (event) => {

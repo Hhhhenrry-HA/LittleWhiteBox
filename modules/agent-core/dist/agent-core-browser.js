@@ -266,7 +266,6 @@ function Xc(e = {}, t, n) {
 function tb(e = {}, t = {}) {
   const { defaultWorkspaceFileName: n = "", normalizeWorkspaceName: o = (p) => String(p || "") } = t, r = ot(e.currentPresetName || e.presetName || "默认"), i = Kc(e, r), s = Wc(i, e.currentPresetName), u = zc(i, e.delegatePresetName, s), c = i[u] || i[s] || _t(), d = bs(e.delegateConfig, c), f = Yc(e, i, s, u), h = Xc(e, r, s);
   return {
-    enabled: !!e.enabled,
     workspaceFileName: o(e.workspaceFileName || n),
     jsApiPermission: Jc(e.jsApiPermission),
     currentPresetName: s,

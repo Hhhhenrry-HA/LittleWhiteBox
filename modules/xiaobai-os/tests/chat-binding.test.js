@@ -25,6 +25,7 @@ function harness({ metadata = {}, mainChatId, headers = new Map(), files = new M
         writes: [],
         deletes: [],
         indexFile: null,
+        indexReplace: null,
         replace: null,
     };
     const metadataAdapter = {
@@ -52,7 +53,10 @@ function harness({ metadata = {}, mainChatId, headers = new Map(), files = new M
     };
     const index = createSidecarIndex({
         async read() { return structuredClone(state.indexFile); },
-        async replace(_name, value) { state.indexFile = structuredClone(value); },
+        async replace(_name, value) {
+            if (state.indexReplace) { return await state.indexReplace(value); }
+            state.indexFile = structuredClone(value);
+        },
     }, { warn() { } });
     const references = createChatReferencePort(metadataAdapter);
     const ids = ['new_os', 'new_commit', 'next_id'];
@@ -82,6 +86,39 @@ test('opening an internal branch copies parent partitions to an independent revi
     assert.deepEqual(result.envelope.partitions, files.get('parent_os').partitions);
     assert.equal(files.get('parent_os').revision, 7);
     assert.deepEqual(testHarness.references.capture().reference, { formatVersion: 1, osId: 'new_os' });
+});
+
+test('sidecar index merges each write with the latest server copy', async () => {
+    const testHarness = harness();
+    await testHarness.index.remember('local_os', currentBinding());
+    testHarness.state.indexFile.entries.remote_os = {
+        kind: 'character',
+        ownerLocator: owner,
+        chatId: 'chat-from-phone',
+    };
+
+    await testHarness.index.remember('second_local_os', currentBinding());
+
+    assert.deepEqual(Object.keys(testHarness.state.indexFile.entries).sort(), [
+        'local_os',
+        'remote_os',
+        'second_local_os',
+    ]);
+});
+
+test('opening a referenced chat does not wait for best-effort index persistence', async () => {
+    const binding = currentBinding();
+    const files = new Map([['os_1', sidecar('os_1', binding)]]);
+    const testHarness = harness({ metadata: refMetadata('os_1'), files });
+    testHarness.state.indexReplace = () => new Promise(() => undefined);
+
+    const result = await Promise.race([
+        testHarness.manager.resolveCurrent(),
+        new Promise(resolve => setTimeout(() => resolve({ status: 'index-blocked-resolution' }), 100)),
+    ]);
+
+    assert.equal(result.status, 'ready');
+    assert.equal(result.envelope.osId, 'os_1');
 });
 
 test('an unknown branch sidecar write keeps one candidate and never creates a second osId', async () => {
@@ -178,5 +215,6 @@ test('a damaged index is reset without preventing reference and sidecar loading'
     const result = await testHarness.manager.resolveCurrent();
     assert.equal(result.status, 'ready');
     assert.equal(result.envelope.osId, 'os_1');
+    await testHarness.index.snapshot();
     assert.equal(testHarness.state.indexFile.formatVersion, 1);
 });

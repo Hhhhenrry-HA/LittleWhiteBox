@@ -18,7 +18,7 @@
 | 注册入口 | Capability catalog 注册 Agent/Maintenance；Agent API 与领域 APP 通过 Host/Shell catalog 和 module 注册 |
 | 删除路径 | 删除系统 APP与 host 注册，四次元壁/Map/Tasks 改回各自显式依赖；不得留下 Fourth Wall 转发弹窗 |
 | 兼容对象 | 保留当前共享 Agent 配置格式与上游真实 Fourth Wall 设置迁移；用户点名保留的 OS `enabled`及 APP 偏好在无版本归一化时原值保留，旧根版本标记和旧 Map/Tasks `enabled`不进入现行设置 |
-| 最少测试 | 共享 Agent 配置冲突、OS 偏好持久化、User 后单次触发、swipe/regenerate 不触发、关闭时零请求、切聊/关开关使迟到结果失效、领域提交隔离 |
+| 最少测试 | 共享 Agent 配置即时同步、OS 偏好持久化、User 后单次触发、swipe/regenerate 不触发、关闭时零请求、切聊/关开关使迟到结果失效、领域提交隔离 |
 
 ## 3. 终态结构
 
@@ -72,7 +72,7 @@ AssistantStorage / LittleWhiteBox_Assistant.json / settings
 
 普通 OS 不在`chat_metadata`或`xiaobaiOs.apps`复制 provider、baseUrl、model、apiKey、temperature 等字段。OS 的 Agent API APP 是这份共享配置的一个正式编辑界面，因此在这里保存会与小白酒馆、Ebook、画图等其他共享 Agent 配置的消费者同步。
 
-`agent-core/settings-repository.js`继续负责规范化、`updatedAt`冲突检测、串行保存和跨页面变更通知。`apps/agent-api`不另建 repository。
+`agent-core/settings-repository.js`继续作为唯一配置读写入口，负责读取、规范化并原子保存同一份用户级配置。各功能在打开或实际执行时读取当前配置；设置页只是单点编辑入口，不建立跨页面同步、冲突检测或手动重新载入协议。`apps/agent-api`不另建 repository。
 
 ### 4.2 桌面 APP
 

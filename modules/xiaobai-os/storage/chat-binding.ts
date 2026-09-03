@@ -77,6 +77,12 @@ export function createChatBindingManager(options: ChatBindingManagerOptions): Ch
     const createId = options.createId ?? randomId;
     const pending = new Map<string, PendingNewSidecar>();
 
+    function rememberBestEffort(osId: string, binding: XiaobaiOsChatBindingV1): void {
+        void index.remember(osId, binding).catch(error => {
+            console.warn('[LittleWhiteBox] 小白 OS sidecar 索引登记失败', error);
+        });
+    }
+
     async function finishReference(
         entry: PendingNewSidecar,
         allowWrite: boolean,
@@ -87,7 +93,7 @@ export function createChatBindingManager(options: ChatBindingManagerOptions): Ch
                 const actual = persisted ? readXiaobaiOsReference(persisted) : null;
                 if (actual?.osId === entry.candidate.osId) {
                     pending.delete(entry.capture.identityKey);
-                    await index.remember(entry.candidate.osId, entry.capture.binding);
+                    rememberBestEffort(entry.candidate.osId, entry.capture.binding);
                     return { status: 'ready', envelope: entry.candidate, created: true };
                 }
             } catch {
@@ -102,7 +108,7 @@ export function createChatBindingManager(options: ChatBindingManagerOptions): Ch
         });
         if (installed.status === 'confirmed') {
             pending.delete(entry.capture.identityKey);
-            await index.remember(entry.candidate.osId, entry.capture.binding);
+            rememberBestEffort(entry.candidate.osId, entry.capture.binding);
             return { status: 'ready', envelope: entry.candidate, created: true };
         }
         if (installed.status === 'unconfirmed') { return { status: 'unconfirmed', osId: entry.candidate.osId }; }
@@ -110,7 +116,7 @@ export function createChatBindingManager(options: ChatBindingManagerOptions): Ch
         try {
             await storage.delete(entry.candidate.osId);
         } catch {
-            await index.remember(entry.candidate.osId, entry.capture.binding);
+            rememberBestEffort(entry.candidate.osId, entry.capture.binding);
         }
         return { status: 'failed', error: installed.error };
     }
@@ -172,7 +178,7 @@ export function createChatBindingManager(options: ChatBindingManagerOptions): Ch
             osId: candidate.osId,
         });
         if (installed.status === 'confirmed') {
-            await index.remember(candidate.osId, capture.binding);
+            rememberBestEffort(candidate.osId, capture.binding);
             return { status: 'ready', envelope: candidate, created: true };
         }
         if (installed.status === 'unconfirmed') {
@@ -182,7 +188,7 @@ export function createChatBindingManager(options: ChatBindingManagerOptions): Ch
         try {
             await storage.delete(candidate.osId);
         } catch {
-            await index.remember(candidate.osId, capture.binding);
+            rememberBestEffort(candidate.osId, capture.binding);
         }
         return { status: 'failed', error: installed.error };
     }
@@ -214,7 +220,7 @@ export function createChatBindingManager(options: ChatBindingManagerOptions): Ch
         };
         const result = await storage.replace({ expected: expectedRevision(source), candidate });
         if (result.status === 'confirmed') {
-            await index.remember(candidate.osId, candidate.binding);
+            rememberBestEffort(candidate.osId, candidate.binding);
             return { status: 'ready', envelope: candidate, created: false };
         }
         if (result.status === 'unconfirmed') { return { status: 'unconfirmed', osId: candidate.osId }; }
@@ -245,7 +251,7 @@ export function createChatBindingManager(options: ChatBindingManagerOptions): Ch
             return { status: 'failed', error: failure('storage_missing', 'Referenced sidecar is missing', true) };
         }
         if (sameBinding(sidecar.binding, capture.binding)) {
-            await index.remember(osId, capture.binding);
+            rememberBestEffort(osId, capture.binding);
             return { status: 'ready', envelope: sidecar, created: false };
         }
 

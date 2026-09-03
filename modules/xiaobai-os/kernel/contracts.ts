@@ -91,6 +91,8 @@ export interface ScopedTransaction<T> {
 export interface TransactionOptions {
     signal?: AbortSignal;
     commitGuard?: () => boolean | Promise<boolean>;
+    /** Keep a definitely rejected candidate in memory so an explicit retry can submit it unchanged. */
+    retainFailedCandidate?: boolean;
 }
 
 export interface KernelWriteFailure {
@@ -144,6 +146,7 @@ export interface ChatReferencePort {
         signal?: AbortSignal,
     ): Promise<ReferenceInstallResult>;
     recordOrphan?(osId: string, binding: XiaobaiOsChatBindingV1): void | Promise<void>;
+    recordReference?(osId: string, binding: XiaobaiOsChatBindingV1): void | Promise<void>;
 }
 
 export interface PendingCommitRecoveryResult {
@@ -155,5 +158,7 @@ export interface XiaobaiOsFileControls {
     retryPending(): Promise<PendingCommitRecoveryResult>;
     adoptServerState(): Promise<PendingCommitRecoveryResult>;
     getFileState(): XiaobaiOsFileState;
+    /** Whether the active chat has an already-prepared candidate awaiting recovery. */
+    hasPendingCommit(): boolean;
     subscribeFileState(listener: (change: XiaobaiOsFileStateChange) => void): () => void;
 }

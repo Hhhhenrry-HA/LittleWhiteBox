@@ -61,7 +61,10 @@ export function createChatBindingLifecycle(options: ChatBindingLifecycleOptions)
                     if (result.status === 'ready' || result.status === 'empty') { await refreshSidecar(); }
                     else { invalidateSidecar(); }
                 }
-            }).catch(onError).finally(() => {
+            }).catch(error => {
+                invalidateSidecar();
+                onError(error);
+            }).finally(() => {
                 refreshPromise = null;
                 if (active && refreshRequested) { void refresh(); }
             });

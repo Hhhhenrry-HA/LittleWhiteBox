@@ -3,7 +3,11 @@ import type { AppInstallContext, XiaobaiOsAppModule } from '../../kernel/app-reg
 import type { ScopedChatStore } from '../../kernel/contracts.js';
 import type { XiaobaiOsAppRuntime } from '../../types.js';
 import { FOURTH_WALL_APP_DESCRIPTOR } from './descriptor.js';
-import { createFourthWallRepository, type FourthWallChatRepository } from './host/repository.js';
+import {
+    createFourthWallRepository,
+    type FourthWallChatRepository,
+    type FourthWallUpgradeSource,
+} from './host/repository.js';
 import { FOURTH_WALL_PARTITION } from './partition.js';
 import type { FourthWallPartitionV1 } from './types.js';
 
@@ -15,6 +19,7 @@ export interface FourthWallModuleInstallContext {
 }
 
 export interface FourthWallModuleDependencies {
+    upgradeSource?: FourthWallUpgradeSource;
     install(context: FourthWallModuleInstallContext): Promise<XiaobaiOsAppRuntime>;
     dispose?(runtime: XiaobaiOsAppRuntime): Promise<void>;
 }
@@ -28,6 +33,7 @@ export function createFourthWallModule(dependencies: FourthWallModuleDependencie
             if (!context.partition) { throw new Error('Fourth Wall partition store is unavailable'); }
             const repository = createFourthWallRepository(
                 context.partition as ScopedChatStore<FourthWallPartitionV1>,
+                { upgradeSource: dependencies.upgradeSource },
             );
             return dependencies.install({
                 ownerId: context.ownerId,

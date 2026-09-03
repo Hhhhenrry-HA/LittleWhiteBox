@@ -3,6 +3,7 @@ export type AppFailurePhase =
     | 'dependency'
     | 'partition'
     | 'activate'
+    | 'runtime'
     | 'background'
     | 'ui-load'
     | 'ui-render';

@@ -6,6 +6,7 @@ const props = defineProps<{
     game: GameLadderGameView;
     writeDisabledReason: string;
     ending?: GameRecordView | null;
+    stepping?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -102,12 +103,15 @@ watch(() => props.ending, (record) => {
 
 const settling = computed(() => judgingFloor.value > 0 && verdict.value === null);
 const showOutcome = computed(() => Boolean(props.ending) && (verdict.value !== null || judgingFloor.value === 0));
-const controlsDisabled = computed(() => Boolean(props.writeDisabledReason) || Boolean(props.ending) || judgingFloor.value > 0);
+const controlsDisabled = computed(() => (
+    Boolean(props.writeDisabledReason) || Boolean(props.ending) || judgingFloor.value > 0 || props.stepping
+));
 
 function floorState(floor: number): Record<string, boolean> {
     return {
         'is-complete': floor <= shownFloors.value,
         'is-next': floor === shownFloors.value + 1 && judgingFloor.value === 0,
+        'is-waiting': props.stepping && floor === shownFloors.value + 1,
         'is-judging': floor === judgingFloor.value && verdict.value === null,
         'is-risen': floor === judgingFloor.value && verdict.value === 'rise',
         'is-fallen': floor === judgingFloor.value && verdict.value === 'fall',
@@ -151,7 +155,9 @@ onUnmounted(clearTimers);
             </div>
         </div>
 
-        <div v-if="showOutcome && ending" class="game-reveal-outcome" :class="`is-${ending.outcomeTone}`">
+        <p v-if="stepping" class="game-ladder-settling" role="status">正在踏上第 {{ shownFloors + 1 }} 层并确认落账…</p>
+
+        <div v-else-if="showOutcome && ending" class="game-reveal-outcome" :class="`is-${ending.outcomeTone}`">
             <strong>{{ ending.outcomeLabel }}</strong>
             <em>{{ ending.net > 0 ? '+' : '' }}{{ ending.net }} 小白币</em>
             <button type="button" class="game-primary-action" @click="emit('finished')">回到大厅</button>
