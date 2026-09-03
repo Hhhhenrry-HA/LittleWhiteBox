@@ -1,0 +1,24 @@
+{
+  "name": "Bob",
+  "avatar": "bob.png",
+  "data": {
+    "extensions": {
+      "xiaobaix-tasks": {
+        "tasks": [
+          {
+            "id": "v306-character-1",
+            "name": "现行角色任务",
+            "commands": "/echo v3.0.6-character",
+            "interval": 0,
+            "floorType": "all",
+            "triggerTiming": "after_ai",
+            "disabled": true,
+            "buttonActivated": true,
+            "createdAt": "2026-08-02T00:00:00.000Z",
+            "x": { "manual": true }
+          }
+        ]
+      }
+    }
+  }
+}

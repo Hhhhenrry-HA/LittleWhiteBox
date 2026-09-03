@@ -1,0 +1,19 @@
+{
+  "type": "global",
+  "exportDate": "2025-06-04T00:00:00.000Z",
+  "tasks": [
+    {
+      "id": "exported-v250",
+      "name": "导入任务",
+      "commands": "/echo v2.5.0-import",
+      "interval": 5,
+      "floorType": "all",
+      "triggerTiming": "only_this_floor",
+      "disabled": false,
+      "buttonActivated": false,
+      "createdAt": "2025-06-04T00:00:00.000Z",
+      "x": { "unknownFieldMustSurvive": true },
+      "customPayload": { "nested": [1, 2, 3] }
+    }
+  ]
+}

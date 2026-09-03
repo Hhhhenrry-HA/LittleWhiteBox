@@ -1,0 +1,25 @@
+{
+  "name": "v3.0.6 preset",
+  "prompt_order": [
+    {
+      "character_id": 100000,
+      "order": [],
+      "xiaobai_ext": {
+        "scheduledTasks": [
+          {
+            "id": "v306-preset-1",
+            "name": "现行预设任务",
+            "commands": "/echo v3.0.6-preset",
+            "interval": 1,
+            "floorType": "llm",
+            "triggerTiming": "chat_changed",
+            "disabled": false,
+            "buttonActivated": false,
+            "createdAt": "2026-08-03T00:00:00.000Z",
+            "x": { "source": "preset" }
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -10,6 +10,7 @@
         "test:draw-agent": "node --test modules/draw/shared/tests/*.test.js",
         "test:plugin-update": "node --test modules/plugin-update/tests/*.test.js",
         "test:server-storage": "node --test core/storage-file.test.js",
+        "test:scheduled-tasks": "node --test modules/scheduled-tasks/tests/*.test.js",
         "test:tts": "node --test modules/tts/tests/*.test.js",
         "build:assistant:manifest": "node scripts/build-assistant-file-manifest.mjs",
         "build:assistant:jsapi-manifest": "node scripts/build-assistant-jsapi-manifest.mjs",

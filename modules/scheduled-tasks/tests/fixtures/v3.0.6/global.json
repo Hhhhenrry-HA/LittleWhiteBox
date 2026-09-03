@@ -1,0 +1,23 @@
+{
+  "settings": {
+    "enabled": true,
+    "globalTasks": [
+      {
+        "id": "v306-global-1",
+        "name": "现行全局任务",
+        "interval": 6,
+        "floorType": "user",
+        "triggerTiming": "before_user",
+        "disabled": false,
+        "buttonActivated": false,
+        "createdAt": "2026-08-01T00:00:00.000Z",
+        "x": { "window": 20 }
+      }
+    ],
+    "processedMessages": [],
+    "character_allowed_tasks": ["bob.png"]
+  },
+  "LittleWhiteBox_Tasks.json": {
+    "v306-global-1": "<<taskjs>>return 'v3.0.6-global';<</taskjs>>"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "settings": {
+    "enabled": true,
+    "globalTasks": [
+      {
+        "id": "v250-global-1",
+        "name": "旧版全局总结",
+        "interval": 4,
+        "floorType": "all",
+        "triggerTiming": "after_ai",
+        "disabled": false,
+        "buttonActivated": true,
+        "createdAt": "2025-06-01T00:00:00.000Z",
+        "x": { "window": 12 }
+      }
+    ],
+    "processedMessages": ["chat-a_2_2025-06-01"],
+    "character_allowed_tasks": ["alice.png"]
+  },
+  "LittleWhiteBox_Tasks.json": {
+    "v250-global-1": "/echo v2.5.0-global"
+  }
+}

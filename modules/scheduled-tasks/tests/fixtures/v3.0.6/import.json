@@ -1,0 +1,19 @@
+{
+  "type": "preset",
+  "exportDate": "2026-08-04T00:00:00.000Z",
+  "tasks": [
+    {
+      "id": "exported-v306",
+      "name": "导入任务",
+      "commands": "<<taskjs>>return 'v3.0.6-import';<</taskjs>>",
+      "interval": 2,
+      "floorType": "all",
+      "triggerTiming": "plugin_init",
+      "disabled": false,
+      "buttonActivated": true,
+      "createdAt": "2026-08-04T00:00:00.000Z",
+      "x": { "unknownFieldMustSurvive": true },
+      "customPayload": { "nested": ["a", "b"] }
+    }
+  ]
+}
