@@ -149,15 +149,11 @@ export function createMapController({
         }
     }
 
-    async function activate(context: XiaobaiOsAppActivationContext): Promise<MapClientState> {
+    function activate(context: XiaobaiOsAppActivationContext): MapClientState {
         cancelForeground('app-reactivated');
         const chatIdentity = currentChatIdentity();
         if (!chatIdentity) { throw new Error('请先打开一个聊天'); }
         activation = { chatIdentity, post: context.post };
-        await map.refreshCurrent();
-        if (currentChatIdentity() !== chatIdentity || activation?.chatIdentity !== chatIdentity) {
-            throw new Error('聊天已切换，请重新打开地图');
-        }
         return buildState(chatIdentity);
     }
 

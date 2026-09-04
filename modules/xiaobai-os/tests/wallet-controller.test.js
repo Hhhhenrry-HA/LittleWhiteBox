@@ -116,6 +116,7 @@ async function createHarness({ openingResult = 'confirmed', ledger = null } = {}
         createId: () => `economy_generated_${++generatedId}`,
     });
     await composition.install();
+    await composition.transactions.refresh();
     const economy = composition.capabilities.require(ECONOMY_READ_CAPABILITY);
     const controller = createWalletController({
         economy,

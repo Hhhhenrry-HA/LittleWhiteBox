@@ -454,6 +454,7 @@ export function createXiaobaiOsLifecycle({
                 const cancelled = openGeneration !== generation
                     || frameBridge !== bridge
                     || !isLocallyCurrent(candidate);
+                const requiresAppRetry = getAppStatuses()[appId]?.state === 'failed';
                 if (!cancelled) { onError(error); }
                 frameBridge.post(
                     'app/activation-result',
@@ -468,6 +469,7 @@ export function createXiaobaiOsLifecycle({
                             message: error instanceof Error ? error.message : String(error),
                             phase: isRecord(error) && typeof error.phase === 'string' ? error.phase : 'activate',
                             retryable: !isRecord(error) || error.retryable !== false,
+                            ...(requiresAppRetry ? { requiresAppRetry: true } : {}),
                         } : {}),
                     },
                     requestId,

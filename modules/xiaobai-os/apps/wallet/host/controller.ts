@@ -165,14 +165,12 @@ export function createWalletController({
         else { globalThis.setTimeout(() => { void prepare(); }, 0); }
     }
 
-    async function activate(context: XiaobaiOsAppActivationContext): Promise<WalletClientState> {
+    function activate(context: XiaobaiOsAppActivationContext): WalletClientState {
         cancelForeground();
         const chatIdentity = currentChatIdentity();
         if (!chatIdentity) { throw new Error('请先打开一个聊天'); }
         const current = { chatIdentity, post: context.post };
         activation = current;
-        await economy.refresh();
-        if (!isCurrent(current)) { throw new Error('聊天已切换，请重新打开钱包'); }
         if (!economy.isOpen()) { schedulePreparation(current); }
         return buildState(chatIdentity);
     }

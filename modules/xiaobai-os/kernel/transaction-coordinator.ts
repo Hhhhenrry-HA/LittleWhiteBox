@@ -63,11 +63,12 @@ export interface TransactionCoordinator {
         options?: ScopedStoreOptions,
     ): ScopedChatStore<T>;
     refresh(): Promise<void>;
+    installResolvedEnvelope(envelope: XiaobaiOsSidecarV1 | null): Promise<void>;
     invalidateCurrent(): void;
     retryPending(): Promise<PendingCommitRecoveryResult>;
     adoptServerState(): Promise<PendingCommitRecoveryResult>;
     getFileState(): XiaobaiOsFileState;
-    hasPendingCommit(): boolean;
+    hasPendingCommit(partitionKey?: string): boolean;
     subscribeFileState(listener: (change: XiaobaiOsFileStateChange) => void): () => void;
 }
 
@@ -123,6 +124,10 @@ function asWriteFailure(error: unknown, fallbackCode: string): KernelWriteFailur
         error instanceof Error ? error.message : 'Xiaobai OS operation failed',
         false,
     );
+}
+
+function isKernelFailure(error: unknown, code: string): boolean {
+    return error instanceof KernelOperationError && error.failure.code === code;
 }
 
 function frozenFailure(state: XiaobaiOsFileState): KernelWriteFailure {
@@ -205,12 +210,21 @@ export function createTransactionCoordinator(options: TransactionCoordinatorOpti
     async function strongRead(capture: CapturedChatBinding): Promise<XiaobaiOsSidecarV1 | null> {
         if (!capture.reference) { return null; }
         const envelope = await storage.read(capture.reference.osId);
+        assertResolvedEnvelope(capture, envelope);
+        return envelope;
+    }
+
+    function assertResolvedEnvelope(
+        capture: CapturedChatBinding,
+        envelope: XiaobaiOsSidecarV1 | null,
+    ): void {
         if (!envelope) {
+            if (!capture.reference) { return; }
             throw new KernelOperationError(
                 writeFailure('storage_missing', 'The chat references a missing Xiaobai OS sidecar', true),
             );
         }
-        if (envelope.osId !== capture.reference.osId) {
+        if (!capture.reference || envelope.osId !== capture.reference.osId) {
             throw new KernelOperationError(
                 writeFailure('storage_identity_mismatch', 'The sidecar identity does not match the chat reference', false),
             );
@@ -224,7 +238,6 @@ export function createTransactionCoordinator(options: TransactionCoordinatorOpti
                 writeFailure('storage_binding_mismatch', 'The sidecar binding does not match the active chat', false),
             );
         }
-        return envelope;
     }
 
     function snapshotFromEnvelope<T>(
@@ -636,6 +649,45 @@ export function createTransactionCoordinator(options: TransactionCoordinatorOpti
         });
     }
 
+    async function installResolvedEnvelope(envelope: XiaobaiOsSidecarV1 | null): Promise<void> {
+        const requested = requireCapture();
+        await enqueue(async () => {
+            try {
+                await assertCurrent(requested);
+            } catch (error) {
+                if (isKernelFailure(error, 'chat_changed')) { return; }
+                throw error;
+            }
+            const frozenState = stateFor(requested);
+            const isFrozen = frozenState === 'unconfirmed'
+                || frozenState === 'conflict'
+                || pending.has(requested.identityKey);
+            if (!isFrozen) { setState(requested.identityKey, 'loading'); }
+            try {
+                assertResolvedEnvelope(requested, envelope);
+                await assertCurrent(requested);
+                if (isFrozen) { return; }
+                const installed = envelopes.get(requested.identityKey);
+                if (
+                    installed
+                    && envelope
+                    && installed.osId === envelope.osId
+                    && installed.revision > envelope.revision
+                ) {
+                    setState(requested.identityKey, 'ready');
+                    return;
+                }
+                installEnvelope(requested, envelope);
+                setState(requested.identityKey, 'ready');
+            } catch (error) {
+                if (isKernelFailure(error, 'chat_changed')) { return; }
+                const failure = asWriteFailure(error, 'storage_read_failed');
+                if (!isFrozen) { setState(requested.identityKey, 'failed', failure); }
+                throw error;
+            }
+        });
+    }
+
     function invalidateCurrent(): void {
         const capture = chatReferences.capture();
         if (!capture) { return; }
@@ -737,9 +789,11 @@ export function createTransactionCoordinator(options: TransactionCoordinatorOpti
         return capture ? stateFor(capture) : 'ready';
     }
 
-    function hasPendingCommit(): boolean {
+    function hasPendingCommit(partitionKey?: string): boolean {
         const capture = chatReferences.capture();
-        return !!capture && pending.has(capture.identityKey);
+        if (!capture) { return false; }
+        const entry = pending.get(capture.identityKey);
+        return !!entry && (!partitionKey || entry.owner.key === partitionKey);
     }
 
     function subscribeFileState(listener: (change: XiaobaiOsFileStateChange) => void): () => void {
@@ -751,6 +805,7 @@ export function createTransactionCoordinator(options: TransactionCoordinatorOpti
     return Object.freeze({
         createScopedStore,
         refresh,
+        installResolvedEnvelope,
         invalidateCurrent,
         retryPending,
         adoptServerState,

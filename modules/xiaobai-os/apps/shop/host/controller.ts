@@ -131,14 +131,12 @@ export function createShopController({
         else {globalThis.setTimeout(() => {void prepare();}, 0);}
     }
 
-    async function activate(context: XiaobaiOsAppActivationContext): Promise<ShopClientState> {
+    function activate(context: XiaobaiOsAppActivationContext): ShopClientState {
         cancelForeground();
         const chatIdentity = currentChatIdentity();
         if (!chatIdentity) {throw new Error('请先打开一个聊天');}
         const current = { chatIdentity, post: context.post };
         activation = current;
-        await shop.refreshCurrent();
-        if (!isCurrent(current)) {throw new Error('聊天已切换，请重新打开商店');}
         if (!economy.isOpen()) {schedulePreparation(current);}
         return buildState(chatIdentity);
     }

@@ -355,6 +355,7 @@ test('a synchronous failed status cannot mask its pending activation error', asy
         message: 'private activation details',
         phase: 'activate',
         retryable: true,
+        requiresAppRetry: true,
     });
 });
 

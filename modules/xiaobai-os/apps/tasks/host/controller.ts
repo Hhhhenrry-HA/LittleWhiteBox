@@ -1,7 +1,6 @@
 import type { EconomyReadCapability } from '../../../capabilities/economy/index.js';
 import type { XiaobaiOsExecutionScope } from '../../../kernel/execution-scope.js';
 import type {
-    XiaobaiOsAppActivationContext,
     XiaobaiOsAppRuntime,
     XiaobaiOsChatIdentity,
 } from '../../../types.js';
@@ -26,25 +25,9 @@ type TaskControllerRuntime = XiaobaiOsAppRuntime & {
     handleMessage: NonNullable<XiaobaiOsAppRuntime['handleMessage']>;
 };
 
-function identityKey(identity: ReturnType<TaskControllerDependencies['getChatIdentity']>): string {
-    return typeof identity === 'string' ? identity : String(identity?.key || '');
-}
-
 export function createTaskController(dependencies: TaskControllerDependencies): TaskControllerRuntime {
     const { tasks, economy, execution, getChatIdentity, ...runtimeDependencies } = dependencies;
-
-    async function prepareCurrent(): Promise<void> {
-        const requestedIdentity = identityKey(getChatIdentity());
-        if (!requestedIdentity) {throw new Error('tasks_chat_unavailable');}
-        await economy.refresh();
-        if (!economy.isOpen()) {await economy.ensureOpen();}
-        await tasks.refreshCurrent();
-        if (identityKey(getChatIdentity()) !== requestedIdentity) {
-            throw Object.assign(new Error('tasks_chat_changed'), { code: 'chat_changed' });
-        }
-    }
-
-    const runtime = createTaskControllerRuntime({
+    return createTaskControllerRuntime({
         ...runtimeDependencies,
         tasks,
         getChatIdentity,
@@ -53,14 +36,5 @@ export function createTaskController(dependencies: TaskControllerDependencies): 
         schedule: execution
             ? task => {execution.setTimeout(task, 0);}
             : undefined,
-    });
-
-    return Object.freeze({
-        ...runtime,
-        async activate(context: XiaobaiOsAppActivationContext) {
-            runtime.deactivate?.('app-reactivated');
-            await prepareCurrent();
-            return runtime.activate(context);
-        },
     });
 }

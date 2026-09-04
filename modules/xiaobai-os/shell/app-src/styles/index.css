@@ -125,6 +125,12 @@ button {
     width: 28px;
 }
 
+.xiaobai-os-app-route {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+}
+
 .xiaobai-os-app-failure-mark {
     align-items: center;
     background: color-mix(in srgb, var(--app-accent, #d95151) 14%, transparent);

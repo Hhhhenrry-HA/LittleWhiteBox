@@ -44,7 +44,7 @@ test('chat, focus and visibility refreshes share one coalescing lifecycle queue'
     };
     const lifecycle = createChatBindingLifecycle({
         manager,
-        refreshSidecar: async () => { sidecarRefreshes++; },
+        installResolvedSidecar: async () => { sidecarRefreshes++; },
         events,
         eventNames,
         windowTarget,
@@ -85,7 +85,7 @@ test('rename and deletion events route only lifecycle maintenance facts', async 
     };
     const lifecycle = createChatBindingLifecycle({
         manager,
-        refreshSidecar: async () => {},
+        installResolvedSidecar: async () => {},
         events,
         eventNames,
         windowTarget,
@@ -123,7 +123,7 @@ test('stop waits for an active resolution and suppresses its late sidecar refres
     };
     const lifecycle = createChatBindingLifecycle({
         manager,
-        refreshSidecar: async () => { sidecarRefreshes++; },
+        installResolvedSidecar: async () => { sidecarRefreshes++; },
         events,
         eventNames,
         windowTarget,
@@ -141,7 +141,44 @@ test('stop waits for an active resolution and suppresses its late sidecar refres
     assert.equal(sidecarRefreshes, 0);
 });
 
-test('a failed strong sidecar refresh invalidates the stale local projection', async () => {
+test('a refresh requested during resolution discards the overtaken result', async () => {
+    const events = eventTarget();
+    const windowTarget = eventTarget();
+    const documentTarget = eventTarget();
+    let releaseFirst;
+    let resolves = 0;
+    const installed = [];
+    const firstResolution = new Promise(resolve => { releaseFirst = resolve; });
+    const lifecycle = createChatBindingLifecycle({
+        manager: {
+            async resolveCurrent() {
+                resolves += 1;
+                if (resolves === 1) { await firstResolution; }
+                return { status: 'ready', envelope: { revision: resolves }, created: false };
+            },
+            async retryPendingCurrent() { return { status: 'empty' }; },
+            async handleChatDeleted() { return 'retained'; },
+            async handleCharacterRenamed() {},
+        },
+        installResolvedSidecar: async envelope => { installed.push(envelope.revision); },
+        events,
+        eventNames,
+        windowTarget,
+        documentTarget,
+    });
+
+    lifecycle.start();
+    while (resolves === 0) { await Promise.resolve(); }
+    events.emit('chat-changed');
+    releaseFirst();
+    await lifecycle.refresh();
+
+    assert.equal(resolves, 2);
+    assert.deepEqual(installed, [2]);
+    await lifecycle.stop();
+});
+
+test('a failed resolved-sidecar install invalidates the stale local projection', async () => {
     const events = eventTarget();
     const windowTarget = eventTarget();
     const documentTarget = eventTarget();
@@ -154,7 +191,7 @@ test('a failed strong sidecar refresh invalidates the stale local projection', a
             async handleChatDeleted() { return 'retained'; },
             async handleCharacterRenamed() {},
         },
-        refreshSidecar: async () => { throw new Error('server unavailable'); },
+        installResolvedSidecar: async () => { throw new Error('server unavailable'); },
         invalidateSidecar: () => { invalidations += 1; },
         events,
         eventNames,

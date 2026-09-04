@@ -329,6 +329,15 @@ test('Game refresh strongly reloads its current Game and Economy projection', as
     assert.equal(result.status, 'ready');
 });
 
+test('Game does not present another partition pending write as an unsaved round', async () => {
+    const harness = createHarness({ writeState: 'failed' });
+
+    const state = await activate(harness);
+
+    assert.equal(state.status, 'blocked');
+    assert.doesNotMatch(state.message, /本局|赌局/);
+});
+
 test('Game keeps in-flight projections private and identifies a retained save candidate', async () => {
     const harness = createHarness();
     await activate(harness);

@@ -158,7 +158,7 @@ export interface XiaobaiOsFileControls {
     retryPending(): Promise<PendingCommitRecoveryResult>;
     adoptServerState(): Promise<PendingCommitRecoveryResult>;
     getFileState(): XiaobaiOsFileState;
-    /** Whether the active chat has an already-prepared candidate awaiting recovery. */
-    hasPendingCommit(): boolean;
+    /** Whether the active chat has a prepared candidate, optionally scoped to its owning partition. */
+    hasPendingCommit(partitionKey?: string): boolean;
     subscribeFileState(listener: (change: XiaobaiOsFileStateChange) => void): () => void;
 }

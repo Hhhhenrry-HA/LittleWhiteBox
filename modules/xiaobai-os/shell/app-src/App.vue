@@ -43,7 +43,12 @@ const activeApp = ref<XiaobaiOsAppDefinition | null>(null);
 const activeComponent = shallowRef<Component | null>(null);
 const activeState = ref<unknown>(null);
 const appLoading = ref(false);
-const appFailure = ref<{ phase: string; message: string; retryable: boolean } | null>(null);
+const appFailure = ref<{
+    phase: string;
+    message: string;
+    retryable: boolean;
+    requiresAppRetry?: boolean;
+} | null>(null);
 const appRenderKey = ref(0);
 const errorMessage = ref('');
 let previousFocus: HTMLElement | null = null;
@@ -105,6 +110,7 @@ function handleHostMessage(message: FrameMessage): void {
                 phase: status.failure?.phase || 'host',
                 message: status.failure?.message || 'Host APP 运行失败',
                 retryable: status.failure?.retryable !== false,
+                requiresAppRetry: true,
             };
             bridge.clearAppSession();
         }
@@ -157,6 +163,7 @@ async function openApp(app: XiaobaiOsAppDefinition): Promise<void> {
                 phase: error instanceof HostRequestError ? error.phase : 'host',
                 message: error instanceof Error ? error.message : String(error),
                 retryable: !(error instanceof HostRequestError) || error.retryable,
+                requiresAppRetry: error instanceof HostRequestError && error.requiresAppRetry,
             };
         }
         if (uiResult.status === 'fulfilled') {
@@ -206,6 +213,10 @@ async function retryApp(): Promise<void> {
         } finally {
             appLoading.value = false;
         }
+        return;
+    }
+    if ((failure.phase === 'activate' || failure.phase === 'host') && !failure.requiresAppRetry) {
+        await openApp(app);
         return;
     }
     appLoading.value = true;

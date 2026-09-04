@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { $ as Y, A as _, C as re, E as U, N as oe, O as W, Q as X, S as G, _ as se, a as Z, c as C, et as $, f as le, g as ue, j as pe, l as m, m as P, o as s, p as F, r as Q, s as z, v as de, w as ce, x as c, y as ve } from "./xiaobai-os-runtime-core.esm-bundler-Dmqi2Zbl.js";
+import { $ as Y, A as _, C as ne, E as U, N as se, O as W, Q as N, S as G, _ as oe, a as Z, c as C, et as $, f as le, g as ue, j as pe, l as m, m as P, o, p as z, r as Q, s as X, v as de, w as ce, x as c, y as ve } from "./xiaobai-os-runtime-core.esm-bundler-Dmqi2Zbl.js";
 import { c as fe, n as me, t as he } from "./xiaobai-os-runtime-dom.esm-bundler-BYy7nd4d.js";
 var be = [
   "agent-api",
@@ -44,28 +44,28 @@ var be = [
   accent: "#a9660f"
 });
 function Me(a) {
-  let t = null, n = null;
+  let t = null, i = null;
   return Object.freeze({
     load() {
-      return t ? Promise.resolve(t) : (n ??= a().then((i) => {
-        if (!i?.default) throw new Error("app_component_missing");
-        return t = i.default, t;
-      }).catch((i) => {
-        throw n = null, i;
-      }), n);
+      return t ? Promise.resolve(t) : (i ??= a().then((r) => {
+        if (!r?.default) throw new Error("app_component_missing");
+        return t = r.default, t;
+      }).catch((r) => {
+        throw i = null, r;
+      }), i);
     },
     reset() {
-      t = null, n = null;
+      t = null, i = null;
     }
   });
 }
-function O(a, t, n) {
-  const i = Me(n);
+function O(a, t, i) {
+  const r = Me(i);
   return Object.freeze({
     ...a,
     iconPaths: Object.freeze([...t]),
-    load: i.load,
-    resetLoader: i.reset
+    load: r.load,
+    resetLoader: r.reset
   });
 }
 var Ee = Object.freeze({
@@ -85,20 +85,20 @@ var Ee = Object.freeze({
   const t = Ee[a];
   if (!t) throw new Error(`missing_shell_app:${a}`);
   return t;
-})), sa = Object.freeze(ee.map((a) => a.id)), Pe = /* @__PURE__ */ P({
+})), oa = Object.freeze(ee.map((a) => a.id)), Pe = /* @__PURE__ */ P({
   __name: "AppBoundary",
   emits: ["failed"],
   setup(a, { emit: t }) {
-    const n = t;
-    return de((i) => (n("failed", i), !1)), (i, r) => re(i.$slots, "default");
+    const i = t;
+    return de((r) => (i("failed", r), !1)), (r, n) => ne(r.$slots, "default");
   }
-}), Ie = Pe, xe = { class: "xiaobai-os-home" }, Re = ["src"], $e = {
+}), Re = Pe, xe = { class: "xiaobai-os-home" }, Ie = ["src"], $e = {
   class: "xiaobai-os-app-grid",
   "aria-label": "应用"
 }, Ce = ["onClick"], He = {
   class: "xiaobai-os-app-icon",
   "aria-hidden": "true"
-}, Te = { viewBox: "0 0 64 64" }, ze = ["d"], Be = { class: "xiaobai-os-app-name" }, Le = /* @__PURE__ */ P({
+}, Te = { viewBox: "0 0 64 64" }, ze = ["d"], Be = { class: "xiaobai-os-app-name" }, qe = /* @__PURE__ */ P({
   __name: "XiaobaiOsHome",
   props: {
     apps: {},
@@ -106,33 +106,33 @@ var Ee = Object.freeze({
   },
   emits: ["openApp"],
   setup(a) {
-    return (t, n) => (c(), m("main", xe, [
+    return (t, i) => (c(), m("main", xe, [
       a.characterAvatar ? (c(), m("img", {
         key: 0,
         class: "xiaobai-os-wallpaper",
         src: a.characterAvatar,
         alt: ""
-      }, null, 8, Re)) : C("", !0),
-      n[0] || (n[0] = s("div", {
+      }, null, 8, Ie)) : C("", !0),
+      i[0] || (i[0] = o("div", {
         class: "xiaobai-os-home-wash",
         "aria-hidden": "true"
       }, null, -1)),
-      s("section", $e, [(c(!0), m(Q, null, G(a.apps, (i) => (c(), m("button", {
-        key: i.id,
+      o("section", $e, [(c(!0), m(Q, null, G(a.apps, (r) => (c(), m("button", {
+        key: r.id,
         type: "button",
         class: "xiaobai-os-app-tile",
-        style: Y({ "--app-accent": i.accent }),
-        onClick: (r) => t.$emit("openApp", i)
-      }, [s("span", He, [(c(), m("svg", Te, [(c(!0), m(Q, null, G(i.iconPaths, (r) => (c(), m("path", {
-        key: r,
-        d: r
-      }, null, 8, ze))), 128))]))]), s("span", Be, $(i.name), 1)], 12, Ce))), 128))])
+        style: Y({ "--app-accent": r.accent }),
+        onClick: (n) => t.$emit("openApp", r)
+      }, [o("span", He, [(c(), m("svg", Te, [(c(!0), m(Q, null, G(r.iconPaths, (n) => (c(), m("path", {
+        key: n,
+        d: n
+      }, null, 8, ze))), 128))]))]), o("span", Be, $(r.name), 1)], 12, Ce))), 128))])
     ]));
   }
-}), je = Le, De = ["disabled"], Fe = {
+}), Le = qe, je = ["disabled"], De = {
   key: 0,
   "aria-hidden": "true"
-}, qe = /* @__PURE__ */ P({
+}, Fe = /* @__PURE__ */ P({
   __name: "XiaobaiOsNavigation",
   props: { isHome: { type: Boolean } },
   emits: [
@@ -141,56 +141,56 @@ var Ee = Object.freeze({
     "close"
   ],
   setup(a) {
-    return (t, n) => (c(), m("nav", {
-      class: X(["xiaobai-os-navigation", { "is-home": a.isHome }]),
+    return (t, i) => (c(), m("nav", {
+      class: N(["xiaobai-os-navigation", { "is-home": a.isHome }]),
       "aria-label": "系统导航"
     }, [
-      s("button", {
+      o("button", {
         type: "button",
         class: "xiaobai-os-nav-button",
         disabled: a.isHome,
         "aria-label": "返回",
-        onClick: n[0] || (n[0] = (i) => t.$emit("back"))
-      }, [...n[3] || (n[3] = [s("svg", {
+        onClick: i[0] || (i[0] = (r) => t.$emit("back"))
+      }, [...i[3] || (i[3] = [o("svg", {
         viewBox: "0 0 24 24",
         "aria-hidden": "true"
-      }, [s("path", { d: "m14.5 6-6 6 6 6" })], -1)])], 8, De),
-      s("button", {
+      }, [o("path", { d: "m14.5 6-6 6 6 6" })], -1)])], 8, je),
+      o("button", {
         type: "button",
         class: "xiaobai-os-nav-button xiaobai-os-home-button",
         "aria-label": "主页",
-        onClick: n[1] || (n[1] = (i) => t.$emit("home"))
-      }, [n[4] || (n[4] = s("svg", {
+        onClick: i[1] || (i[1] = (r) => t.$emit("home"))
+      }, [i[4] || (i[4] = o("svg", {
         viewBox: "0 0 24 24",
         "aria-hidden": "true"
-      }, [s("path", { d: "m4.5 11 7.5-6 7.5 6v8h-5v-5h-5v5h-5z" })], -1)), a.isHome ? (c(), m("i", Fe)) : C("", !0)]),
-      s("button", {
+      }, [o("path", { d: "m4.5 11 7.5-6 7.5 6v8h-5v-5h-5v5h-5z" })], -1)), a.isHome ? (c(), m("i", De)) : C("", !0)]),
+      o("button", {
         type: "button",
         class: "xiaobai-os-nav-button xiaobai-os-close-button",
         "aria-label": "关闭",
-        onClick: n[2] || (n[2] = (i) => t.$emit("close"))
-      }, [...n[5] || (n[5] = [s("span", null, [s("svg", {
+        onClick: i[2] || (i[2] = (r) => t.$emit("close"))
+      }, [...i[5] || (i[5] = [o("span", null, [o("svg", {
         viewBox: "0 0 24 24",
         "aria-hidden": "true"
-      }, [s("path", { d: "m7 9.5 5 5 5-5" })])], -1)])])
+      }, [o("path", { d: "m7 9.5 5 5 5-5" })])], -1)])])
     ], 2));
   }
-}), Xe = qe, Ne = /* @__PURE__ */ P({
+}), Xe = Fe, Ne = /* @__PURE__ */ P({
   __name: "XiaobaiOsSystemBar",
   props: { isHome: { type: Boolean } },
   setup(a) {
-    return (t, n) => (c(), m("header", {
-      class: X(["xiaobai-os-system-bar", { "is-home": a.isHome }]),
+    return (t, i) => (c(), m("header", {
+      class: N(["xiaobai-os-system-bar", { "is-home": a.isHome }]),
       "aria-label": "系统状态"
-    }, [...n[0] || (n[0] = [s("span", { class: "xiaobai-os-system-mark" }, "小白", -1), s("span", {
+    }, [...i[0] || (i[0] = [o("span", { class: "xiaobai-os-system-mark" }, "小白", -1), o("span", {
       class: "xiaobai-os-system-status",
       "aria-hidden": "true"
-    }, [s("span", { class: "xiaobai-os-signal" }, [
-      s("i"),
-      s("i"),
-      s("i"),
-      s("i")
-    ]), s("span", { class: "xiaobai-os-battery" }, [s("i")])], -1)])], 2));
+    }, [o("span", { class: "xiaobai-os-signal" }, [
+      o("i"),
+      o("i"),
+      o("i"),
+      o("i")
+    ]), o("span", { class: "xiaobai-os-battery" }, [o("i")])], -1)])], 2));
   }
 }), Ke = Ne, Ve = { class: "xiaobai-os-device" }, Ue = { class: "xiaobai-os-glass" }, We = {
   key: "failure",
@@ -223,65 +223,66 @@ var Ee = Object.freeze({
     "reload"
   ],
   setup(a) {
-    const t = a, n = Z(() => t.activeApp === null);
-    return (i, r) => (c(), m("div", Ve, [r[9] || (r[9] = s("span", {
+    const t = a, i = Z(() => t.activeApp === null);
+    return (r, n) => (c(), m("div", Ve, [n[9] || (n[9] = o("span", {
       class: "xiaobai-os-side-key",
       "aria-hidden": "true"
-    }, null, -1)), s("div", Ue, [
-      F(Ke, { "is-home": n.value }, null, 8, ["is-home"]),
-      s("div", {
+    }, null, -1)), o("div", Ue, [
+      z(Ke, { "is-home": i.value }, null, 8, ["is-home"]),
+      o("div", {
         class: "xiaobai-os-stage",
         style: Y(a.activeApp ? { "--app-accent": a.activeApp.accent } : null)
-      }, [F(he, {
+      }, [z(he, {
         name: "xiaobai-os-route",
         mode: "out-in"
       }, {
-        default: U(() => [n.value ? (c(), z(je, {
+        default: U(() => [i.value ? (c(), X(Le, {
           key: "home",
           apps: a.apps,
           "character-avatar": a.characterAvatar,
-          onOpenApp: r[0] || (r[0] = (y) => i.$emit("openApp", y))
+          onOpenApp: n[0] || (n[0] = (y) => r.$emit("openApp", y))
         }, null, 8, ["apps", "character-avatar"])) : a.appFailure ? (c(), m("section", We, [
-          r[7] || (r[7] = s("span", {
+          n[7] || (n[7] = o("span", {
             class: "xiaobai-os-app-failure-mark",
             "aria-hidden": "true"
           }, "!", -1)),
-          s("h1", null, $(a.activeApp?.name) + "暂时无法打开", 1),
-          s("p", null, $(a.appFailure.message), 1),
-          s("div", Ge, [a.appFailure.retryable ? (c(), m("button", {
+          o("h1", null, $(a.activeApp?.name) + "暂时无法打开", 1),
+          o("p", null, $(a.appFailure.message), 1),
+          o("div", Ge, [a.appFailure.retryable ? (c(), m("button", {
             key: 0,
             type: "button",
-            onClick: r[1] || (r[1] = (y) => i.$emit("retry"))
-          }, "重试")) : C("", !0), s("button", {
+            onClick: n[1] || (n[1] = (y) => r.$emit("retry"))
+          }, "重试")) : C("", !0), o("button", {
             type: "button",
-            onClick: r[2] || (r[2] = (y) => i.$emit("reload"))
+            onClick: n[2] || (n[2] = (y) => r.$emit("reload"))
           }, "重新载入 OS")])
-        ])) : a.appLoading ? (c(), m("div", Qe, [r[8] || (r[8] = s("span", { "aria-hidden": "true" }, null, -1)), le(" 正在打开" + $(a.activeApp?.name), 1)])) : a.activeApp && a.activeComponent ? (c(), z(Ie, {
-          key: a.appRenderKey,
-          onFailed: r[3] || (r[3] = (y) => i.$emit("renderFailed", y))
-        }, {
-          default: U(() => [(c(), z(ce(a.activeComponent), {
+        ])) : a.appLoading ? (c(), m("div", Qe, [n[8] || (n[8] = o("span", { "aria-hidden": "true" }, null, -1)), le(" 正在打开" + $(a.activeApp?.name), 1)])) : a.activeApp && a.activeComponent ? (c(), m("div", {
+          key: `app:${a.activeApp.id}:${a.appRenderKey}`,
+          class: "xiaobai-os-app-route"
+        }, [z(Re, { onFailed: n[3] || (n[3] = (y) => r.$emit("renderFailed", y)) }, {
+          default: U(() => [(c(), X(ce(a.activeComponent), {
             bridge: a.bridge,
             "initial-state": a.activeState
           }, null, 8, ["bridge", "initial-state"]))]),
           _: 1
-        })) : C("", !0)]),
+        })])) : C("", !0)]),
         _: 1
       })], 4),
-      F(Xe, {
-        "is-home": n.value,
-        onBack: r[4] || (r[4] = (y) => i.$emit("back")),
-        onHome: r[5] || (r[5] = (y) => i.$emit("home")),
-        onClose: r[6] || (r[6] = (y) => i.$emit("close"))
+      z(Xe, {
+        "is-home": i.value,
+        onBack: n[4] || (n[4] = (y) => r.$emit("back")),
+        onHome: n[5] || (n[5] = (y) => r.$emit("home")),
+        onClose: n[6] || (n[6] = (y) => r.$emit("close"))
       }, null, 8, ["is-home"])
     ])]));
   }
-}), Ye = Je, Ze = "LittleWhiteBox-XiaobaiOS", q = class extends Error {
+}), Ye = Je, Ze = "LittleWhiteBox-XiaobaiOS", B = class extends Error {
   code;
   phase;
   retryable;
+  requiresAppRetry;
   constructor(a) {
-    super(a.message || a.error || "host_request_failed"), this.name = "HostRequestError", this.code = a.error || "host_request_failed", this.phase = a.phase || "host", this.retryable = a.retryable !== !1;
+    super(a.message || a.error || "host_request_failed"), this.name = "HostRequestError", this.code = a.error || "host_request_failed", this.phase = a.phase || "host", this.retryable = a.retryable !== !1, this.requiresAppRetry = a.requiresAppRetry === !0;
   }
 };
 function J() {
@@ -289,74 +290,74 @@ function J() {
 }
 function ea() {
   const a = /* @__PURE__ */ new Map(), t = /* @__PURE__ */ new Set();
-  let n = !1, i = null;
-  function r(o, b = {}, u = "") {
-    const l = i && o !== "app/activate" && o !== "app/retry" && o !== "os/frame-ready" && o !== "os/close", x = l && !u ? J() : u;
+  let i = !1, r = null;
+  function n(s, b = {}, u = "") {
+    const l = r && s !== "app/activate" && s !== "app/retry" && s !== "os/frame-ready" && s !== "os/close", x = l && !u ? J() : u;
     parent.postMessage({
       source: Ze,
-      type: o,
+      type: s,
       requestId: x,
-      ...l ? i : {},
+      ...l ? r : {},
       payload: b
     }, window.location.origin);
   }
-  function y(o) {
-    const b = String(o.requestId || "");
+  function y(s) {
+    const b = String(s.requestId || "");
     if (!b) return !1;
     const u = a.get(b);
-    if (!u || u.session && (o.appId !== u.session.appId || o.activationToken !== u.session.activationToken)) return !1;
+    if (!u || u.session && (s.appId !== u.session.appId || s.activationToken !== u.session.activationToken)) return !1;
     a.delete(b), clearTimeout(u.timer);
-    const l = o.payload;
-    return l?.ok === !1 ? u.reject(new q(l)) : u.resolve(l), !0;
+    const l = s.payload;
+    return l?.ok === !1 ? u.reject(new B(l)) : u.resolve(l), !0;
   }
-  function I(o) {
-    o.origin !== window.location.origin || o.source !== parent || o.data?.source !== "LittleWhiteBox-XiaobaiOS" || typeof o.data.type != "string" || y(o.data) || t.forEach((b) => b(o.data));
+  function R(s) {
+    s.origin !== window.location.origin || s.source !== parent || s.data?.source !== "LittleWhiteBox-XiaobaiOS" || typeof s.data.type != "string" || y(s.data) || t.forEach((b) => b(s.data));
   }
   function v() {
-    n || (n = !0, window.addEventListener("message", I), r("os/frame-ready"));
+    i || (i = !0, window.addEventListener("message", R), n("os/frame-ready"));
   }
-  function S(o, b = {}, u = 15e3) {
+  function S(s, b = {}, u = 15e3) {
     const l = J();
-    return new Promise((x, R) => {
-      const B = setTimeout(() => {
-        a.delete(l), R(/* @__PURE__ */ new Error("host_request_timeout"));
+    return new Promise((x, I) => {
+      const q = setTimeout(() => {
+        a.delete(l), I(/* @__PURE__ */ new Error("host_request_timeout"));
       }, u);
       a.set(l, {
         resolve: x,
-        reject: R,
-        timer: B,
-        session: i ? { ...i } : null
-      }), r(o, b, l);
+        reject: I,
+        timer: q,
+        session: r ? { ...r } : null
+      }), n(s, b, l);
     });
   }
-  function w(o) {
-    i = Object.freeze({ ...o });
+  function w(s) {
+    r = Object.freeze({ ...s });
   }
   function h() {
-    const o = i;
-    if (i = null, !!o)
+    const s = r;
+    if (r = null, !!s)
       for (const [b, u] of a)
-        u.session?.activationToken === o.activationToken && (clearTimeout(u.timer), u.reject(/* @__PURE__ */ new Error("app_inactive")), a.delete(b));
+        u.session?.activationToken === s.activationToken && (clearTimeout(u.timer), u.reject(/* @__PURE__ */ new Error("app_inactive")), a.delete(b));
   }
-  function p() {
-    return i ? { ...i } : null;
+  function d() {
+    return r ? { ...r } : null;
   }
-  function H(o) {
-    return t.add(o), () => t.delete(o);
+  function H(s) {
+    return t.add(s), () => t.delete(s);
   }
   function M() {
-    n && window.removeEventListener("message", I), n = !1, t.clear(), a.forEach((o) => {
-      clearTimeout(o.timer), o.reject(/* @__PURE__ */ new Error("frame_bridge_disposed"));
-    }), a.clear(), i = null;
+    i && window.removeEventListener("message", R), i = !1, t.clear(), a.forEach((s) => {
+      clearTimeout(s.timer), s.reject(/* @__PURE__ */ new Error("frame_bridge_disposed"));
+    }), a.clear(), r = null;
   }
   return Object.freeze({
     start: v,
-    post: r,
+    post: n,
     request: S,
     subscribe: H,
     setAppSession: w,
     clearAppSession: h,
-    getAppSession: p,
+    getAppSession: d,
     dispose: M
   });
 }
@@ -368,45 +369,46 @@ var aa = {
   key: 1,
   class: "xiaobai-os-loading",
   role: "status"
-}, ia = /* @__PURE__ */ P({
+}, ra = /* @__PURE__ */ P({
   __name: "App",
   setup(a) {
-    const t = ea(), n = _(null), i = _(!1), r = _("light"), y = _(/* @__PURE__ */ new Set()), I = _(""), v = _(null), S = pe(null), w = _(null), h = _(!1), p = _(null), H = _(0), M = _("");
-    let o = null, b = () => {
+    const t = ea(), i = _(null), r = _(!1), n = _("light"), y = _(/* @__PURE__ */ new Set()), R = _(""), v = _(null), S = pe(null), w = _(null), h = _(!1), d = _(null), H = _(0), M = _("");
+    let s = null, b = () => {
     }, u = 0, l = null;
     const x = Z(() => ee.filter((e) => y.value.has(e.id)));
-    function R(e) {
-      const d = new Set(e.map((k) => String(k.id))), f = v.value && !d.has(v.value.id), g = l && !d.has(l.appId);
-      y.value = d, !(!f && !g) && (u += 1, l = null, v.value = null, S.value = null, w.value = null, h.value = !1, p.value = null, t.clearAppSession());
+    function I(e) {
+      const p = new Set(e.map((k) => String(k.id))), f = v.value && !p.has(v.value.id), A = l && !p.has(l.appId);
+      y.value = p, !(!f && !A) && (u += 1, l = null, v.value = null, S.value = null, w.value = null, h.value = !1, d.value = null, t.clearAppSession());
     }
-    function B(e) {
-      u += 1, l = null, r.value = e.theme === "dark" ? "dark" : "light", R(e.apps || []), I.value = String(e.chat?.characterAvatar || ""), v.value = null, S.value = null, w.value = null, h.value = !1, p.value = null, t.clearAppSession(), i.value = !0;
+    function q(e) {
+      u += 1, l = null, n.value = e.theme === "dark" ? "dark" : "light", I(e.apps || []), R.value = String(e.chat?.characterAvatar || ""), v.value = null, S.value = null, w.value = null, h.value = !1, d.value = null, t.clearAppSession(), r.value = !0;
     }
     function ae(e) {
-      if (e.type === "os/init" && B(e.payload || {}), e.type === "os/theme-changed" && (r.value = e.payload?.theme === "dark" ? "dark" : "light"), e.type === "os/apps-changed") {
-        const g = e.payload;
-        R(g?.apps || []);
+      if (e.type === "os/init" && q(e.payload || {}), e.type === "os/theme-changed" && (n.value = e.payload?.theme === "dark" ? "dark" : "light"), e.type === "os/apps-changed") {
+        const A = e.payload;
+        I(A?.apps || []);
       }
       if (e.type === "os/app-state") {
-        const g = e.payload, k = g?.status;
-        g?.appId === v.value?.id && k?.state === "failed" && (h.value = !1, p.value = {
+        const A = e.payload, k = A?.status;
+        A?.appId === v.value?.id && k?.state === "failed" && (h.value = !1, d.value = {
           phase: k.failure?.phase || "host",
           message: k.failure?.message || "Host APP 运行失败",
-          retryable: k.failure?.retryable !== !1
+          retryable: k.failure?.retryable !== !1,
+          requiresAppRetry: !0
         }, t.clearAppSession());
       }
       e.type === "os/error" && (M.value = String(e.payload?.message || "小白 OS 初始化失败"));
-      const d = e.payload?.state;
-      l && e.appId === l.appId && e.type === `${l.appId}/state` && (l.latestState = d);
+      const p = e.payload?.state;
+      l && e.appId === l.appId && e.type === `${l.appId}/state` && (l.latestState = p);
       const f = t.getAppSession();
-      v.value && f?.appId === v.value.id && e.appId === f.appId && e.activationToken === f.activationToken && e.type === `${v.value.id}/state` && (w.value = d);
+      v.value && f?.appId === v.value.id && e.appId === f.appId && e.activationToken === f.activationToken && e.type === `${v.value.id}/state` && (w.value = p);
     }
-    async function N(e) {
-      const d = ++u, f = { appId: e.id };
-      l = f, v.value = e, S.value = null, w.value = null, h.value = !0, p.value = null, t.clearAppSession(), M.value = "";
-      const g = t.request("app/activate", { appId: e.id }), k = e.load(), [E, T] = await Promise.allSettled([g, k]);
+    async function L(e) {
+      const p = ++u, f = { appId: e.id };
+      l = f, v.value = e, S.value = null, w.value = null, h.value = !0, d.value = null, t.clearAppSession(), M.value = "";
+      const A = t.request("app/activate", { appId: e.id }), k = e.load(), [E, T] = await Promise.allSettled([A, k]);
       try {
-        if (d !== u) return;
+        if (p !== u) return;
         if (E.status === "fulfilled") {
           if (E.value.appId !== e.id || !E.value.activationToken) throw new Error("app_activation_mismatch");
           t.setAppSession({
@@ -414,22 +416,23 @@ var aa = {
             activationToken: E.value.activationToken
           }), w.value = f.latestState ?? E.value.state ?? null;
         } else {
-          const A = E.reason;
-          p.value = {
-            phase: A instanceof q ? A.phase : "host",
-            message: A instanceof Error ? A.message : String(A),
-            retryable: !(A instanceof q) || A.retryable
+          const g = E.reason;
+          d.value = {
+            phase: g instanceof B ? g.phase : "host",
+            message: g instanceof Error ? g.message : String(g),
+            retryable: !(g instanceof B) || g.retryable,
+            requiresAppRetry: g instanceof B && g.requiresAppRetry
           };
         }
-        T.status === "fulfilled" ? S.value = W(T.value) : p.value || (p.value = {
+        T.status === "fulfilled" ? S.value = W(T.value) : d.value || (d.value = {
           phase: "ui-load",
           message: T.reason instanceof Error ? T.reason.message : "APP 界面加载失败",
           retryable: !0
         }), h.value = !1;
-      } catch (A) {
-        h.value = !1, p.value = {
+      } catch (g) {
+        h.value = !1, d.value = {
           phase: "host",
-          message: A instanceof Error ? A.message : String(A),
+          message: g instanceof Error ? g.message : String(g),
           retryable: !0
         }, t.clearAppSession();
       } finally {
@@ -437,18 +440,18 @@ var aa = {
       }
     }
     async function te() {
-      const e = v.value, d = p.value;
-      if (!(!e || !d)) {
-        if (d.phase === "ui-render") {
-          p.value = null, H.value += 1;
+      const e = v.value, p = d.value;
+      if (!(!e || !p)) {
+        if (p.phase === "ui-render") {
+          d.value = null, H.value += 1;
           return;
         }
-        if (d.phase === "ui-load" && t.getAppSession()?.appId === e.id) {
-          h.value = !0, p.value = null, e.resetLoader();
+        if (p.phase === "ui-load" && t.getAppSession()?.appId === e.id) {
+          h.value = !0, d.value = null, e.resetLoader();
           try {
             S.value = W(await e.load());
           } catch (f) {
-            p.value = {
+            d.value = {
               phase: "ui-load",
               message: f instanceof Error ? f.message : "APP 界面加载失败",
               retryable: !0
@@ -458,11 +461,15 @@ var aa = {
           }
           return;
         }
-        h.value = !0, p.value = null;
+        if ((p.phase === "activate" || p.phase === "host") && !p.requiresAppRetry) {
+          await L(e);
+          return;
+        }
+        h.value = !0, d.value = null;
         try {
-          await t.request("app/retry", { appId: e.id }), await N(e);
+          await t.request("app/retry", { appId: e.id }), await L(e);
         } catch (f) {
-          h.value = !1, p.value = {
+          h.value = !1, d.value = {
             phase: "host",
             message: f instanceof Error ? f.message : String(f),
             retryable: !0
@@ -470,75 +477,75 @@ var aa = {
         }
       }
     }
-    function L(e) {
-      const d = v.value;
-      d && (p.value = {
+    function j(e) {
+      const p = v.value;
+      p && (d.value = {
         phase: "ui-render",
         message: e instanceof Error ? e.message : "APP 界面渲染失败",
         retryable: !0
       }, t.post("os/app-ui-failure", {
-        appId: d.id,
+        appId: p.id,
         phase: "ui-render"
       }));
     }
     function K(e) {
-      !v.value || h.value || p.value || (e.preventDefault(), L(e.error ?? new Error(e.message || "APP 界面运行失败")));
+      !v.value || h.value || d.value || (e.preventDefault(), j(e.error ?? new Error(e.message || "APP 界面运行失败")));
     }
     function V(e) {
-      !v.value || h.value || p.value || (e.preventDefault(), L(e.reason));
+      !v.value || h.value || d.value || (e.preventDefault(), j(e.reason));
     }
-    function ie() {
+    function re() {
       window.location.reload();
     }
-    function j() {
-      u += 1, l = null, t.post("app/deactivate", { appId: v.value?.id || "" }), t.clearAppSession(), v.value = null, S.value = null, w.value = null, h.value = !1, p.value = null;
-    }
     function D() {
+      u += 1, l = null, t.post("app/deactivate", { appId: v.value?.id || "" }), t.clearAppSession(), v.value = null, S.value = null, w.value = null, h.value = !1, d.value = null;
+    }
+    function F() {
       u += 1, l = null, t.post("os/close"), t.clearAppSession();
     }
-    function ne(e) {
+    function ie(e) {
       if (e.key === "Escape") {
-        e.preventDefault(), v.value ? j() : D();
+        e.preventDefault(), v.value ? D() : F();
         return;
       }
-      if (e.key !== "Tab" || !n.value) return;
-      const d = Array.from(n.value.querySelectorAll('button:not(:disabled), [href], input:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'));
-      if (d.length === 0) return;
-      const f = d[0], g = d[d.length - 1];
-      e.shiftKey && document.activeElement === f ? (e.preventDefault(), g.focus()) : !e.shiftKey && document.activeElement === g && (e.preventDefault(), f.focus());
+      if (e.key !== "Tab" || !i.value) return;
+      const p = Array.from(i.value.querySelectorAll('button:not(:disabled), [href], input:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'));
+      if (p.length === 0) return;
+      const f = p[0], A = p[p.length - 1];
+      e.shiftKey && document.activeElement === f ? (e.preventDefault(), A.focus()) : !e.shiftKey && document.activeElement === A && (e.preventDefault(), f.focus());
     }
     return ve(async () => {
-      o = document.activeElement instanceof HTMLElement ? document.activeElement : null, b = t.subscribe(ae), t.start(), window.addEventListener("error", K), window.addEventListener("unhandledrejection", V), await ue(), n.value?.focus();
-    }), se(() => {
-      u += 1, l = null, window.removeEventListener("error", K), window.removeEventListener("unhandledrejection", V), b(), t.dispose(), o?.focus();
-    }), (e, d) => (c(), m("main", {
+      s = document.activeElement instanceof HTMLElement ? document.activeElement : null, b = t.subscribe(ae), t.start(), window.addEventListener("error", K), window.addEventListener("unhandledrejection", V), await ue(), i.value?.focus();
+    }), oe(() => {
+      u += 1, l = null, window.removeEventListener("error", K), window.removeEventListener("unhandledrejection", V), b(), t.dispose(), s?.focus();
+    }), (e, p) => (c(), m("main", {
       ref_key: "root",
-      ref: n,
-      class: X(["xiaobai-os-shell", `theme-${r.value}`]),
+      ref: i,
+      class: N(["xiaobai-os-shell", `theme-${n.value}`]),
       role: "dialog",
       "aria-modal": "true",
       "aria-label": "小白 OS",
       tabindex: "-1",
-      onKeydown: ne,
-      onClick: fe(D, ["self"])
-    }, [M.value ? (c(), m("div", aa, $(M.value), 1)) : C("", !0), i.value ? (c(), z(Ye, {
+      onKeydown: ie,
+      onClick: fe(F, ["self"])
+    }, [M.value ? (c(), m("div", aa, $(M.value), 1)) : C("", !0), r.value ? (c(), X(Ye, {
       key: 2,
       apps: x.value,
       "active-app": v.value,
       "active-component": S.value,
       "active-state": w.value,
-      "app-failure": p.value,
+      "app-failure": d.value,
       "app-loading": h.value,
       "app-render-key": H.value,
-      bridge: oe(t),
-      "character-avatar": I.value,
-      onOpenApp: N,
-      onBack: j,
-      onHome: j,
-      onClose: D,
-      onRenderFailed: L,
+      bridge: se(t),
+      "character-avatar": R.value,
+      onOpenApp: L,
+      onBack: D,
+      onHome: D,
+      onClose: F,
+      onRenderFailed: j,
       onRetry: te,
-      onReload: ie
+      onReload: re
     }, null, 8, [
       "apps",
       "active-app",
@@ -551,5 +558,5 @@ var aa = {
       "character-avatar"
     ])) : (c(), m("div", ta, "正在启动小白 OS"))], 34));
   }
-}), na = ia;
-me(na).mount("#app");
+}), ia = ra;
+me(ia).mount("#app");

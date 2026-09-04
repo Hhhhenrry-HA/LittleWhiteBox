@@ -1,4 +1,5 @@
 import type { ChatBindingManager } from './chat-binding.js';
+import type { XiaobaiOsSidecarV1 } from '../kernel/contracts.js';
 
 type EventListener = (...args: unknown[]) => void;
 
@@ -17,7 +18,7 @@ export interface ChatBindingEventNames {
 
 export interface ChatBindingLifecycleOptions {
     manager: ChatBindingManager;
-    refreshSidecar: () => Promise<void>;
+    installResolvedSidecar: (envelope: XiaobaiOsSidecarV1 | null) => Promise<void>;
     invalidateSidecar?: () => void;
     events: ChatBindingEventSource;
     eventNames: ChatBindingEventNames;
@@ -35,7 +36,7 @@ export interface ChatBindingLifecycle {
 export function createChatBindingLifecycle(options: ChatBindingLifecycleOptions): ChatBindingLifecycle {
     const {
         manager,
-        refreshSidecar,
+        installResolvedSidecar,
         invalidateSidecar = () => undefined,
         events,
         eventNames,
@@ -45,20 +46,25 @@ export function createChatBindingLifecycle(options: ChatBindingLifecycleOptions)
     } = options;
     let active = false;
     let generation = 0;
+    let requestGeneration = 0;
     let refreshRequested = false;
     let refreshPromise: Promise<void> | null = null;
 
     function refresh(): Promise<void> {
         if (!active) { return Promise.resolve(); }
         refreshRequested = true;
+        requestGeneration += 1;
         if (!refreshPromise) {
             const refreshGeneration = generation;
             refreshPromise = Promise.resolve().then(async () => {
                 while (active && generation === refreshGeneration && refreshRequested) {
                     refreshRequested = false;
+                    const requestedAt = requestGeneration;
                     const result = await manager.resolveCurrent();
                     if (!active || generation !== refreshGeneration) { return; }
-                    if (result.status === 'ready' || result.status === 'empty') { await refreshSidecar(); }
+                    if (requestedAt !== requestGeneration) { continue; }
+                    if (result.status === 'ready') { await installResolvedSidecar(result.envelope); }
+                    else if (result.status === 'empty') { await installResolvedSidecar(null); }
                     else { invalidateSidecar(); }
                 }
             }).catch(error => {

@@ -272,11 +272,15 @@ export function createAppModuleRegistry(
 
     async function activate(appId: string, context: XiaobaiOsAppActivationContext): Promise<unknown> {
         const app = requireInstalled(appId);
+        const runtime = app.runtime;
+        const generation = app.generation;
         try {
-            return await app.runtime?.activate?.(context);
+            return await runtime?.activate?.(context);
         } catch (error) {
-            await releaseApp(app, 'app-activation-failed');
-            publish(appId, { state: 'failed', failure: appFailure('activate', error) });
+            if (isFatalRuntimeFailure(error) && app.runtime === runtime && app.generation === generation) {
+                await releaseApp(app, 'app-activation-failed');
+                publish(appId, { state: 'failed', failure: appFailure('activate', error) });
+            }
             throw error;
         }
     }

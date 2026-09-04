@@ -49,7 +49,7 @@ export function createFourthWallRepository(
     }
 
     async function prepareCurrentChatFourthWall(): Promise<FourthWallChatState> {
-        const snapshot = await store.read();
+        const snapshot = store.peekCurrent() ?? await store.read();
         return structuredClone(
             snapshot.value?.state
             ?? readUpgradeState(snapshot.identityKey)

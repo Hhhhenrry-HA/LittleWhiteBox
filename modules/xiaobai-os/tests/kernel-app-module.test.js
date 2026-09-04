@@ -171,7 +171,7 @@ test('background rejection fails only its owning APP module', async () => {
     assert.notEqual(apps.runtime('healthy'), null);
 });
 
-test('dependency, install, and activation failures remain local to their APP modules', async () => {
+test('dependency, install, and transient activation failures remain local to their APP modules', async () => {
     const missingCapability = createCapabilityToken('missing.capability');
     const capabilities = createCapabilityRegistry([]);
     await capabilities.install();
@@ -226,8 +226,8 @@ test('dependency, install, and activation failures remain local to their APP mod
         isCurrent: () => true,
         post: () => true,
     }), /activation exploded/);
-    assert.equal(apps.status('activation').failure.phase, 'activate');
-    assert.equal(apps.runtime('activation'), null);
+    assert.deepEqual(apps.status('activation'), { state: 'ready' });
+    assert.notEqual(apps.runtime('activation'), null);
     assert.deepEqual(apps.status('healthy'), { state: 'ready' });
 
     await assert.rejects(
@@ -236,7 +236,6 @@ test('dependency, install, and activation failures remain local to their APP mod
     );
 
     activationShouldFail = false;
-    await apps.retry('activation');
     assert.deepEqual(await apps.activate('activation', {
         activationToken: 'token-b',
         isCurrent: () => true,
@@ -244,7 +243,7 @@ test('dependency, install, and activation failures remain local to their APP mod
     }), { ready: true });
 });
 
-test('activation failure releases the runtime before a retry installs its replacement', async () => {
+test('fatal activation failure releases the runtime before a retry installs its replacement', async () => {
     const capabilities = createCapabilityRegistry([]);
     await capabilities.install();
     let installs = 0;
@@ -256,7 +255,7 @@ test('activation failure releases the runtime before a retry installs its replac
             const installation = ++installs;
             return {
                 async activate() {
-                    if (installation === 1) { throw new Error('activation exploded'); }
+                    if (installation === 1) { throw new TypeError('activation exploded'); }
                     return installation;
                 },
             };

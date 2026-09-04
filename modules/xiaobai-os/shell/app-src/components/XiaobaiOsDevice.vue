@@ -59,13 +59,19 @@ const isHome = computed(() => props.activeApp === null);
                         <span aria-hidden="true" />
                         正在打开{{ activeApp?.name }}
                     </div>
-                    <AppBoundary v-else-if="activeApp && activeComponent" :key="appRenderKey" @failed="$emit('renderFailed', $event)">
-                        <component
-                            :is="activeComponent"
-                            :bridge="bridge"
-                            :initial-state="activeState"
-                        />
-                    </AppBoundary>
+                    <div
+                        v-else-if="activeApp && activeComponent"
+                        :key="`app:${activeApp.id}:${appRenderKey}`"
+                        class="xiaobai-os-app-route"
+                    >
+                        <AppBoundary @failed="$emit('renderFailed', $event)">
+                            <component
+                                :is="activeComponent"
+                                :bridge="bridge"
+                                :initial-state="activeState"
+                            />
+                        </AppBoundary>
+                    </div>
                 </Transition>
             </div>
             <XiaobaiOsNavigation

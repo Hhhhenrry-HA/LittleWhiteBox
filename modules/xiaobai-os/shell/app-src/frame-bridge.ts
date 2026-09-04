@@ -18,13 +18,21 @@ export class HostRequestError extends Error {
     readonly code: string;
     readonly phase: string;
     readonly retryable: boolean;
+    readonly requiresAppRetry: boolean;
 
-    constructor(payload: { error?: string; message?: string; phase?: string; retryable?: boolean }) {
+    constructor(payload: {
+        error?: string;
+        message?: string;
+        phase?: string;
+        retryable?: boolean;
+        requiresAppRetry?: boolean;
+    }) {
         super(payload.message || payload.error || 'host_request_failed');
         this.name = 'HostRequestError';
         this.code = payload.error || 'host_request_failed';
         this.phase = payload.phase || 'host';
         this.retryable = payload.retryable !== false;
+        this.requiresAppRetry = payload.requiresAppRetry === true;
     }
 }
 
@@ -84,6 +92,7 @@ export function createFrameBridge() {
             message?: string;
             phase?: string;
             retryable?: boolean;
+            requiresAppRetry?: boolean;
         } | undefined;
         if (payload?.ok === false) {
             request.reject(new HostRequestError(payload));

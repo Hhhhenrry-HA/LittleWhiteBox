@@ -148,7 +148,7 @@ export function createProductionBootstrap(
     });
     const bindingLifecycle = createChatBindingLifecycle({
         manager: bindingManager,
-        refreshSidecar: composition.transactions.refresh,
+        installResolvedSidecar: composition.transactions.installResolvedEnvelope,
         invalidateSidecar: composition.transactions.invalidateCurrent,
         events: bindingEvents.source,
         eventNames: bindingEvents.names,

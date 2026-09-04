@@ -152,22 +152,25 @@ test('route changes cancel only the generation owned by the page', async () => {
     assert.deepEqual(host.calls, [['cancel-board', 'route-left']]);
 });
 
-test('reactivation invalidates the previous frame before scoped refresh completes', async () => {
+test('activation consumes the OS snapshot without starting another storage refresh', async () => {
     const { controller, host } = createHarness();
+    let refreshCalls = 0;
+    host.refreshRequest = {
+        get promise() {
+            refreshCalls += 1;
+            return Promise.resolve();
+        },
+    };
     await controller.activate(activation(host));
-    const refresh = deferred();
-    host.refreshRequest = refresh;
+    await controller.activate(activation(host));
 
-    const pending = controller.activate(activation(host));
+    assert.equal(refreshCalls, 0);
     await assert.rejects(
         controller.handleMessage({
-            type: 'tasks/settings/update',
-            payload: { chatIdentity: host.identity.key, autoMaintenance: true },
+            type: 'tasks/settings/update', payload: { chatIdentity: 'other-chat', autoMaintenance: true },
         }),
-        /tasks_app_inactive/,
+        /tasks_chat_changed/,
     );
-    refresh.resolve();
-    await pending;
 });
 
 test('canonical Kernel write failures retain their specific public Tasks errors', async () => {

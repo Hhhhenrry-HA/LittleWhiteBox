@@ -103,6 +103,79 @@ test('a malformed unrelated partition is never parsed or normalized by another o
     await assert.rejects(testHarness.coordinator.createScopedStore(bad).read(), /bad is invalid/);
 });
 
+test('a lifecycle-resolved sidecar installs without a duplicate storage read', async () => {
+    const testHarness = harness();
+    const good = partition('good');
+    testHarness.registry.register(good);
+    const store = testHarness.coordinator.createScopedStore(good);
+
+    await testHarness.coordinator.installResolvedEnvelope(structuredClone(testHarness.state.persisted));
+
+    assert.equal(testHarness.state.reads, 0);
+    assert.equal(store.peekCurrent().value.value, 1);
+    assert.equal(testHarness.coordinator.getFileState(), 'ready');
+});
+
+test('an overtaken lifecycle read cannot roll back a newer confirmed projection', async () => {
+    const testHarness = harness();
+    const good = partition('good');
+    testHarness.registry.register(good);
+    const store = testHarness.coordinator.createScopedStore(good);
+    const stale = structuredClone(testHarness.state.persisted);
+    await testHarness.coordinator.installResolvedEnvelope(stale);
+
+    const result = await store.transact(transaction => {
+        transaction.replace({ schemaVersion: 1, value: 2 });
+    });
+    assert.equal(result.status, 'confirmed');
+    await testHarness.coordinator.installResolvedEnvelope(stale);
+
+    assert.equal(store.peekCurrent().value.value, 2);
+    assert.equal(store.peekCurrent().envelopeRevision, 1);
+    assert.equal(testHarness.coordinator.getFileState(), 'ready');
+});
+
+test('a lifecycle refresh cannot replace the confirmed projection while a prepared commit is frozen', async () => {
+    const testHarness = harness();
+    const good = partition('good');
+    testHarness.registry.register(good);
+    const store = testHarness.coordinator.createScopedStore(good);
+    await testHarness.coordinator.installResolvedEnvelope(structuredClone(testHarness.state.persisted));
+    testHarness.state.replace = async () => ({
+        status: 'unconfirmed',
+        observed: structuredClone(testHarness.state.persisted),
+    });
+
+    const result = await store.transact(transaction => {
+        transaction.replace({ schemaVersion: 1, value: 2 });
+    });
+    assert.equal(result.status, 'unconfirmed');
+    await testHarness.coordinator.installResolvedEnvelope(envelope({
+        good: { schemaVersion: 1, value: 99 },
+    }, 1, 'unrelated_commit'));
+
+    assert.equal(store.peekCurrent().value.value, 1);
+    assert.equal(testHarness.coordinator.getFileState(), 'unconfirmed');
+});
+
+test('a lifecycle result that reaches the coordinator after chat switch is discarded quietly', async () => {
+    const testHarness = harness();
+    const good = partition('good');
+    testHarness.registry.register(good);
+    const stale = structuredClone(testHarness.state.persisted);
+
+    const installing = testHarness.coordinator.installResolvedEnvelope(stale);
+    testHarness.state.capture = {
+        identityKey: 'character:avatar.png:chat-b',
+        binding: { ...binding, chatId: 'chat-b' },
+        reference: null,
+    };
+    await installing;
+
+    assert.equal(testHarness.coordinator.getFileState(), 'ready');
+    assert.equal(testHarness.coordinator.createScopedStore(good).peekCurrent(), null);
+});
+
 test('each transaction strongly reads and two queued writes advance from the latest revision', async () => {
     const testHarness = harness();
     const good = partition('good');
@@ -281,6 +354,8 @@ test('a retained definite failure freezes writes and retries the exact prepared 
     assert.equal(failed.status, 'failed');
     assert.equal(testHarness.coordinator.getFileState(), 'failed');
     assert.equal(testHarness.coordinator.hasPendingCommit(), true);
+    assert.equal(testHarness.coordinator.hasPendingCommit('good'), true);
+    assert.equal(testHarness.coordinator.hasPendingCommit('another-partition'), false);
 
     const blocked = await store.transact(transaction => {
         commandRuns += 1;

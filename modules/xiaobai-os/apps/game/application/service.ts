@@ -39,6 +39,7 @@ import {
     toEconomyActionLegs,
     validateGameEconomyConsistency,
 } from './economy-protocol.js';
+import { GAME_PARTITION } from '../partition.js';
 
 export interface GameServiceView extends GameClientView {
     balance: number;
@@ -173,7 +174,7 @@ export function createGameService(
             ...createGameView({ domain, ...paging }),
             balance,
             writeState: files.getFileState(),
-            pendingCommit: files.hasPendingCommit(),
+            pendingCommit: files.hasPendingCommit(GAME_PARTITION.key),
         };
     }
 
@@ -281,7 +282,7 @@ export function createGameService(
         ...commands,
         confirmPending: () => files.retryPending(),
         getWriteState: () => files.getFileState(),
-        hasPendingSave: () => files.hasPendingCommit(),
+        hasPendingSave: () => files.hasPendingCommit(GAME_PARTITION.key),
         subscribe(listener: () => void) {
             listeners.add(listener);
             return () => listeners.delete(listener);
