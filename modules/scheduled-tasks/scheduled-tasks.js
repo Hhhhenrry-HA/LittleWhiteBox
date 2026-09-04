@@ -457,7 +457,6 @@ const __taskDynamicCallbackPrefix = (taskName) => `${normalizeTaskKey(taskName)}
 function cleanupTaskRunOwner(taskKey, entry) {
     if (!entry || entry.cleaned) return false;
     entry.cleaned = true;
-    entry.acceptingCallbacks = false;
 
     for (const callbackId of Array.from(entry.callbackIds || [])) {
         const callbackEntry = state.dynamicCallbacks.get(callbackId);
@@ -471,13 +470,20 @@ function cleanupTaskRunOwner(taskKey, entry) {
     try { entry.abort?.abort?.(); } catch {}
     try { entry.timers?.forEach?.((id) => clearTimeout(id)); } catch {}
     try { entry.intervals?.forEach?.((id) => clearInterval(id)); } catch {}
+    for (const listener of Array.from(entry.listeners || [])) {
+        try { listener.target?.removeEventListener?.(listener.type, listener.wrapped, listener.capture); } catch {}
+        entry.listeners.delete(listener);
+    }
+    entry.timers?.clear?.();
+    entry.intervals?.clear?.();
     if (__taskRunMap.get(taskKey) === entry) __taskRunMap.delete(taskKey);
     return true;
 }
 
 function releaseTaskRunOwnerIfIdle(entry) {
     if (!entry || entry.cleaned || !entry.bodySettled) return false;
-    if (entry.inFlightCallbacks > 0 || entry.callbackIds.size > 0) return false;
+    if (entry.inFlightCallbacks > 0 || entry.callbackIds.size > 0 ||
+        entry.timers.size > 0 || entry.intervals.size > 0 || entry.listeners.size > 0) return false;
     return cleanupTaskRunOwner(entry.taskKey, entry);
 }
 
@@ -611,41 +617,114 @@ async function __runTaskSingleInstance(taskName, jsRunner, signature = null) {
     const abort = new AbortController();
     const timers = new Set();
     const intervals = new Set();
+    const listeners = new Set();
     const entry = {
         taskKey: taskName,
         abort,
         timers,
         intervals,
+        listeners,
         signature,
         completion: null,
         callbackIds: new Set(),
-        acceptingCallbacks: true,
         bodySettled: false,
         inFlightCallbacks: 0,
         cleaned: false,
     };
     __taskRunMap.set(taskName, entry);
 
+    const reportCallbackError = (kind, error) => {
+        console.error(`[任务${kind}回调错误]`, taskName, error);
+    };
+
+    const invokeOwnedCallback = (kind, callback, thisArg, args) => {
+        if (entry.cleaned) return;
+        if (typeof callback !== 'function') {
+            releaseTaskRunOwnerIfIdle(entry);
+            return;
+        }
+        entry.inFlightCallbacks++;
+        let result;
+        try {
+            result = callback.apply(thisArg, args);
+        } catch (error) {
+            reportCallbackError(kind, error);
+            entry.inFlightCallbacks = Math.max(0, entry.inFlightCallbacks - 1);
+            releaseTaskRunOwnerIfIdle(entry);
+            return;
+        }
+        Promise.resolve(result).catch(error => reportCallbackError(kind, error)).finally(() => {
+            entry.inFlightCallbacks = Math.max(0, entry.inFlightCallbacks - 1);
+            releaseTaskRunOwnerIfIdle(entry);
+        });
+    };
+
+    const removeOwnedListener = (listener) => {
+        if (!listener || !listeners.delete(listener)) return false;
+        try { listener.target?.removeEventListener?.(listener.type, listener.wrapped, listener.capture); } catch {}
+        releaseTaskRunOwnerIfIdle(entry);
+        return true;
+    };
+
     const addListener = (target, type, handler, opts = {}) => {
-        if (!target?.addEventListener) return;
+        if (!target?.addEventListener || typeof handler !== 'function' || entry.cleaned) return () => {};
         const normalized = typeof opts === 'boolean' ? { capture: opts } : { ...(opts || {}) };
-        target.addEventListener(type, handler, { ...normalized, signal: abort.signal });
+        const capture = !!normalized.capture;
+        const duplicate = Array.from(listeners).find(listener =>
+            listener.target === target && listener.type === type && listener.handler === handler && listener.capture === capture
+        );
+        if (duplicate) return () => removeOwnedListener(duplicate);
+
+        const listener = { target, type, handler, capture, wrapped: null };
+        listener.wrapped = function (...args) {
+            if (normalized.once) listeners.delete(listener);
+            invokeOwnedCallback('监听器', handler, this, args);
+        };
+        try {
+            target.addEventListener(type, listener.wrapped, { ...normalized, signal: abort.signal });
+            listeners.add(listener);
+        } catch (error) {
+            reportCallbackError('监听器注册', error);
+            return () => {};
+        }
+        return () => removeOwnedListener(listener);
+    };
+    const removeListener = (target, type, handler, opts = {}) => {
+        const capture = !!(opts === true || opts?.capture);
+        for (const listener of listeners) {
+            if (listener.target === target && listener.type === type && listener.capture === capture &&
+                (listener.handler === handler || listener.wrapped === handler)) {
+                removeOwnedListener(listener);
+                return;
+            }
+        }
+        try { target?.removeEventListener?.(type, handler, capture); } catch {}
     };
     const setTimeoutSafe = (fn, t, ...a) => {
+        if (entry.cleaned) return null;
         const id = setTimeout(() => {
             timers.delete(id);
-            try { fn(...a); } catch (e) { console.error(e); }
+            invokeOwnedCallback('定时器', fn, undefined, a);
         }, t);
         timers.add(id);
         return id;
     };
-    const clearTimeoutSafe = (id) => { clearTimeout(id); timers.delete(id); };
+    const clearTimeoutSafe = (id) => {
+        clearTimeout(id);
+        timers.delete(id);
+        releaseTaskRunOwnerIfIdle(entry);
+    };
     const setIntervalSafe = (fn, t, ...a) => {
-        const id = setInterval(fn, t, ...a);
+        if (entry.cleaned) return null;
+        const id = setInterval(() => invokeOwnedCallback('定时器', fn, undefined, a), t);
         intervals.add(id);
         return id;
     };
-    const clearIntervalSafe = (id) => { clearInterval(id); intervals.delete(id); };
+    const clearIntervalSafe = (id) => {
+        clearInterval(id);
+        intervals.delete(id);
+        releaseTaskRunOwnerIfIdle(entry);
+    };
 
     let jsRunnerResult;
     entry.completion = (async () => {
@@ -653,6 +732,7 @@ async function __runTaskSingleInstance(taskName, jsRunner, signature = null) {
         try {
             jsRunnerResult = await jsRunner({
                 addListener,
+                removeListener,
                 setTimeoutSafe,
                 clearTimeoutSafe,
                 setIntervalSafe,
@@ -662,7 +742,6 @@ async function __runTaskSingleInstance(taskName, jsRunner, signature = null) {
             });
             succeeded = true;
         } finally {
-            entry.acceptingCallbacks = false;
             entry.bodySettled = true;
             if (succeeded) releaseTaskRunOwnerIfIdle(entry);
             else cleanupTaskRunOwner(taskName, entry);
@@ -726,15 +805,19 @@ function __hashStringForKey(str) {
 }
 
 async function executeTaskJS(jsCode, taskName = 'AnonymousTask') {
-    const STscript = async (command) => {
-        if (!command) return { error: "命令为空" };
-        if (!command.startsWith('/')) command = '/' + command;
-        return await executeSlashCommand(command);
-    };
-
     const codeSig = __hashStringForKey(String(jsCode || ''));
     const stableKey = (String(taskName || '').trim()) || `js-${codeSig}`;
     const isLightTask = stableKey.startsWith('[x]');
+    const STscript = async (command) => {
+        if (!command) return { error: "命令为空" };
+        if (!command.startsWith('/')) command = '/' + command;
+        const execToken = startExecutionRecord(stableKey, 'command');
+        try {
+            return await executeSlashCommand(command);
+        } finally {
+            setTimeout(() => finishExecutionRecord(execToken), 500);
+        }
+    };
 
     const taskContext = {
         taskName: String(taskName || 'AnonymousTask'),
@@ -763,101 +846,19 @@ async function executeTaskJS(jsCode, taskName = 'AnonymousTask') {
 
     const jsRunner = async (utils) => {
         const {
-            addListener: _addListener,
-            setTimeoutSafe: _setTimeoutSafe,
-            clearTimeoutSafe: _clearTimeoutSafe,
-            setIntervalSafe: _setIntervalSafe,
-            clearIntervalSafe: _clearIntervalSafe,
+            addListener,
+            removeListener,
+            setTimeoutSafe,
+            clearTimeoutSafe,
+            setIntervalSafe,
+            clearIntervalSafe,
             abortSignal,
             owner
         } = utils;
 
-        const timeouts = new Set();
-        const intervals = new Set();
-        const listeners = new Set();
-        const waiters = new Set();
-
-        const notifyActivityChange = () => {
-            for (const cb of Array.from(waiters)) { try { cb(); } catch {} }
-        };
-
-        const setTimeoutSafe = (fn, t, ...args) => {
-            const id = _setTimeoutSafe((...inner) => {
-                try { fn?.(...inner); }
-                finally {
-                    if (timeouts.delete(id)) notifyActivityChange();
-                }
-            }, t, ...args);
-            timeouts.add(id);
-            notifyActivityChange();
-            return id;
-        };
-
-        const clearTimeoutSafe = (id) => {
-            _clearTimeoutSafe(id);
-            if (timeouts.delete(id)) notifyActivityChange();
-        };
-
-        const setIntervalSafe = (fn, t, ...args) => {
-            const id = _setIntervalSafe(fn, t, ...args);
-            intervals.add(id);
-            notifyActivityChange();
-            return id;
-        };
-
-        const clearIntervalSafe = (id) => {
-            _clearIntervalSafe(id);
-            if (intervals.delete(id)) notifyActivityChange();
-        };
-
-        const addListener = (target, type, handler, opts = {}) => {
-            if (!target?.addEventListener || typeof handler !== 'function') return () => {};
-            const capture = !!(opts === true || opts?.capture);
-            let wrapped = handler;
-            let entry = null;
-
-            const isOnce = opts && typeof opts === 'object' && 'once' in opts && opts.once;
-            if (isOnce) {
-                wrapped = function (...args) {
-                    try { return handler.apply(this, args); }
-                    finally { if (entry) listeners.delete(entry); notifyActivityChange(); }
-                };
-            }
-
-            entry = { target, type, listener: wrapped, originalListener: handler, capture };
-            listeners.add(entry);
-            notifyActivityChange();
-
-            const normalized = typeof opts === 'boolean' ? { capture: opts } : { ...(opts || {}) };
-            _addListener(target, type, wrapped, { ...normalized, signal: abortSignal });
-
-            return () => removeListener(target, type, handler, opts);
-        };
-
-        const removeListener = (target, type, handler, opts = {}) => {
-            const capture = !!(opts === true || opts?.capture);
-            for (const entry of listeners) {
-                if (entry.target === target && entry.type === type && entry.capture === capture &&
-                    (entry.listener === handler || entry.originalListener === handler)) {
-                    listeners.delete(entry);
-                    try { target?.removeEventListener?.(type, entry.listener, opts); } catch {}
-                    notifyActivityChange();
-                    return;
-                }
-            }
-            try { target?.removeEventListener?.(type, handler, opts); } catch {}
-        };
-
-        const hardCleanup = () => {
-            try { timeouts.forEach(id => _clearTimeoutSafe(id)); } catch {}
-            try { intervals.forEach(id => _clearIntervalSafe(id)); } catch {}
-            listeners.clear();
-            waiters.clear();
-        };
-
         const addFloorListener = (callback, options = {}) => {
             if (typeof callback !== 'function') throw new Error('callback 必须是函数');
-            if (!owner?.acceptingCallbacks || owner.cleaned || abortSignal?.aborted) return () => {};
+            if (!owner || owner.cleaned || abortSignal?.aborted) return () => {};
             const callbackId = `${stableKey}_fl_${uuidv4()}`;
             const entryAbort = new AbortController();
             owner.callbackIds.add(callbackId);
@@ -891,29 +892,7 @@ async function executeTaskJS(jsCode, taskName = 'AnonymousTask') {
             return await fn(taskContext, taskContext, STscript, addFloorListener, addListener, removeListener, setTimeoutSafe, clearTimeoutSafe, setIntervalSafe, clearIntervalSafe, abortSignal);
         };
 
-        const hasActiveResources = () => (timeouts.size > 0 || intervals.size > 0 || listeners.size > 0);
-
-        const waitForAsyncSettled = () => new Promise((resolve) => {
-            if (abortSignal?.aborted) return resolve();
-            if (!hasActiveResources()) return resolve();
-            let finished = false;
-            const finalize = () => { if (finished) return; finished = true; waiters.delete(checkStatus); try { abortSignal?.removeEventListener?.('abort', finalize); } catch {} resolve(); };
-            const checkStatus = () => { if (finished) return; if (abortSignal?.aborted) return finalize(); if (!hasActiveResources()) finalize(); };
-            waiters.add(checkStatus);
-            try { abortSignal?.addEventListener?.('abort', finalize, { once: true }); } catch {}
-            checkStatus();
-        });
-
-        let result;
-        try {
-            result = await runInScope(jsCode);
-            owner.acceptingCallbacks = false;
-            await waitForAsyncSettled();
-        } finally {
-            owner.acceptingCallbacks = false;
-            hardCleanup();
-        }
-        return result;
+        return await runInScope(jsCode);
     };
 
     if (isLightTask) {
