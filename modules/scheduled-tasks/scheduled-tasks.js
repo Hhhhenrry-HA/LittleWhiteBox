@@ -39,7 +39,6 @@ let state = {
     taskLastExecutionTime: new Map(), cleanupTimer: null, lastTasksHash: '', taskBarVisible: true,
     processedMessagesSet: new Set(),
     taskBarSignature: '',
-    floorCounts: { all: 0, user: 0, llm: 0 },
     dynamicCallbacks: new Map(),
     qrObserver: null,
     isUpdatingTaskBar: false,
@@ -59,7 +58,7 @@ const refreshExecutionState = () => {
 };
 const startExecutionRecord = (taskName, source = 'command') => {
     const token = uuidv4();
-    state.executingRecords.set(token, { taskName: normalizeTaskKey(taskName), source });
+    state.executingRecords.set(token, { taskName: normalizeTaskKey(taskName), source, startedAt: Date.now() });
     refreshExecutionState();
     return token;
 };
@@ -96,6 +95,21 @@ const isAnyTaskExecuting = () => state.executingRecords.size > 0;
 const isGloballyEnabled = () => (window.isXiaobaixEnabled !== undefined ? window.isXiaobaixEnabled : true) && getSettings().enabled;
 const clampInt = (v, min, max, d = 0) => (Number.isFinite(+v) ? Math.max(min, Math.min(max, +v)) : d);
 const nowMs = () => Date.now();
+const logExecutionLockSkip = (location, context = {}) => {
+    const now = nowMs();
+    const activeExecutions = Array.from(state.executingRecords.values(), entry => {
+        const startedAt = Number.isFinite(entry?.startedAt) ? entry.startedAt : null;
+        return {
+            taskName: entry?.taskName || 'UnknownTask',
+            source: entry?.source || 'unknown',
+            startedAt,
+            elapsedMs: startedAt === null ? null : Math.max(0, now - startedAt),
+        };
+    });
+    const detail = { location, ...context, activeExecutions };
+    console.warn('[循环任务] 触发因执行锁被跳过', detail);
+    try { xbLog.warn('scheduledTasks', { event: 'execution_lock_skip', ...detail }); } catch {}
+};
 
 const normalizeTiming = (t) => (String(t || '').toLowerCase() === 'initialization' ? 'character_init' : t);
 const mapTiming = (task) => ({ ...task, triggerTiming: normalizeTiming(task.triggerTiming) });
@@ -924,7 +938,15 @@ function handleTaskMessage(event) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 function getFloorCounts() {
-    return state.floorCounts || { all: 0, user: 0, llm: 0 };
+    const messages = Array.isArray(chat) ? chat : [];
+    let user = 0;
+    let llm = 0;
+    for (const message of messages) {
+        if (message.is_system) continue;
+        if (message.is_user) user++;
+        else llm++;
+    }
+    return { all: messages.length, user, llm };
 }
 
 function pickFloorByType(floorType, counts) {
@@ -940,18 +962,6 @@ function calculateTurnCount() {
     const userMessages = chat.filter(msg => msg.is_user && !msg.is_system).length;
     const aiMessages = chat.filter(msg => !msg.is_user && !msg.is_system).length;
     return Math.min(userMessages, aiMessages);
-}
-
-function recountFloors() {
-    let user = 0, llm = 0, all = 0;
-    if (Array.isArray(chat)) {
-        for (const m of chat) {
-            all++;
-            if (m.is_system) continue;
-            if (m.is_user) user++; else llm++;
-        }
-    }
-    state.floorCounts = { all, user, llm };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -977,7 +987,11 @@ function matchInterval(task, counts, triggerContext) {
 }
 
 async function checkAndExecuteTasks(triggerContext = 'after_ai', overrideChatChanged = null, overrideNewChat = null) {
-    if (!isGloballyEnabled() || isAnyTaskExecuting()) return;
+    if (!isGloballyEnabled()) return;
+    if (isAnyTaskExecuting()) {
+        logExecutionLockSkip('checkAndExecuteTasks', { triggerContext, commandGenerated: state.isCommandGenerated });
+        return;
+    }
 
     const tasks = await allTasksFull();
     const n = nowMs();
@@ -1072,13 +1086,15 @@ async function onMessageReceived(messageId) {
     if (typeof messageId !== 'number' || messageId < 0 || !chat[messageId]) return;
     const message = chat[messageId];
     if (message.is_user || message.is_system || message.mes === '...' ||
-        state.isCommandGenerated || isAnyTaskExecuting() ||
         (message.swipe_id !== undefined && message.swipe_id > 0)) return;
     if (!isGloballyEnabled()) return;
+    if (state.isCommandGenerated || isAnyTaskExecuting()) {
+        logExecutionLockSkip('onMessageReceived', { triggerContext: 'after_ai', messageId, commandGenerated: state.isCommandGenerated });
+        return;
+    }
     const messageKey = `${getContext().chatId}_${messageId}_${message.send_date || nowMs()}`;
     if (isMessageProcessed(messageKey)) return;
     markMessageAsProcessed(messageKey);
-    try { state.floorCounts.all = Math.max(0, (state.floorCounts.all || 0) + 1); state.floorCounts.llm = Math.max(0, (state.floorCounts.llm || 0) + 1); } catch {}
     await checkAndExecuteTasks('after_ai');
     state.chatJustChanged = state.isNewChat = false;
 }
@@ -1094,7 +1110,6 @@ async function onUserMessage() {
     const messageKey = `${getContext().chatId}_user_${chat.length}`;
     if (isMessageProcessed(messageKey)) return;
     markMessageAsProcessed(messageKey);
-    try { state.floorCounts.all = Math.max(0, (state.floorCounts.all || 0) + 1); state.floorCounts.user = Math.max(0, (state.floorCounts.user || 0) + 1); } catch {}
     await checkAndExecuteTasks('before_user');
     state.chatJustChanged = state.isNewChat = false;
 }
@@ -1105,7 +1120,6 @@ function onMessageDeleted() {
     settings.processedMessages = settings.processedMessages.filter(key => !key.startsWith(`${chatId}_`));
     state.processedMessagesSet = new Set(settings.processedMessages);
     clearAllExecutionRecords();
-    recountFloors();
     saveSettingsDebounced();
 }
 
@@ -1130,13 +1144,11 @@ async function onChatChanged(chatId) {
         requestAnimationFrame(() => requestAnimationFrame(() => { try { updateTaskBar(); } catch {} }));
     });
 
-    recountFloors();
     setTimeout(() => { state.chatJustChanged = state.isNewChat = false; }, 2000);
 }
 
 async function onChatCreated() {
     Object.assign(state, { isNewChat: true, chatJustChanged: true });
-    recountFloors();
     await checkAndExecuteTasks('chat_created', false, false);
 }
 
