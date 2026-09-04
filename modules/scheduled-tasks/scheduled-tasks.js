@@ -100,6 +100,26 @@ const nowMs = () => Date.now();
 const normalizeTiming = (t) => (String(t || '').toLowerCase() === 'initialization' ? 'character_init' : t);
 const mapTiming = (task) => ({ ...task, triggerTiming: normalizeTiming(task.triggerTiming) });
 
+async function readGlobalTaskCommands(task) {
+    if (task?.id) {
+        let commands;
+        try {
+            commands = await TasksStorage.getStrict(task.id, null);
+        } catch (error) {
+            throw new Error(`读取全局任务“${task.name || task.id}”失败：${error?.message || error}`);
+        }
+        if (commands === null && Object.prototype.hasOwnProperty.call(task, 'commands') && task.commands != null) {
+            return String(task.commands);
+        }
+        if (commands === null) throw new Error(`全局任务“${task.name || task.id}”的脚本不存在`);
+        return String(commands);
+    }
+    if (task && Object.prototype.hasOwnProperty.call(task, 'commands') && task.commands != null) {
+        return String(task.commands);
+    }
+    throw new Error(`全局任务“${task?.name || '未命名任务'}”缺少 ID 和脚本`);
+}
+
 const allTasksMeta = () => [
     ...getSettings().globalTasks.map(mapTiming),
     ...getCharacterTasks().map(mapTiming),
@@ -110,10 +130,14 @@ const allTasks = allTasksMeta;
 
 async function allTasksFull() {
     const globalMeta = getSettings().globalTasks || [];
-    const globalTasks = await Promise.all(globalMeta.map(async (task) => ({
-        ...task,
-        commands: await TasksStorage.get(task.id)
-    })));
+    const globalTasks = (await Promise.all(globalMeta.map(async (task) => {
+        try {
+            return { ...task, commands: await readGlobalTaskCommands(task) };
+        } catch (error) {
+            console.error(`[循环任务] 已跳过无法读取的全局任务“${task?.name || '未命名任务'}”`, error);
+            return null;
+        }
+    }))).filter(Boolean);
     return [
         ...globalTasks.map(mapTiming),
         ...getCharacterTasks().map(mapTiming),
@@ -189,7 +213,7 @@ function markMessageAsProcessed(key) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 function getCharacterTasks() {
-    if (!this_chid || !characters[this_chid]) return [];
+    if (this_chid == null || !characters[this_chid]) return [];
     const c = characters[this_chid];
     if (!c.data) c.data = {};
     if (!c.data.extensions) c.data.extensions = {};
@@ -200,7 +224,7 @@ function getCharacterTasks() {
 }
 
 async function saveCharacterTasks(tasks) {
-    if (!this_chid || !characters[this_chid]) return;
+    if (this_chid == null || !characters[this_chid]) return;
     await writeExtensionField(Number(this_chid), TASKS_MODULE_NAME, { tasks });
     try {
         if (!characters[this_chid].data) characters[this_chid].data = {};
@@ -1292,14 +1316,21 @@ new MutationObserver(updateTaskBar).observe(document.body, { childList: true, su
 async function showTaskEditor(task = null, isEdit = false, scope = 'global') {
     const initialScope = scope || 'global';
     const sourceList = getTaskListByScope(initialScope);
+    const sourceIndex = sourceList.indexOf(task);
     
-    if (task && scope === 'global' && task.id) {
-        task = { ...task, commands: await TasksStorage.get(task.id) };
+    if (task && scope === 'global') {
+        try {
+            task = { ...task, commands: await readGlobalTaskCommands(task) };
+        } catch (error) {
+            console.error('[循环任务] 打开任务失败', error);
+            toastr?.error?.(`打开任务失败：${error?.message || error}`);
+            return;
+        }
     }
     
     state.currentEditingTask = task;
     state.currentEditingScope = initialScope;
-    state.currentEditingIndex = isEdit ? sourceList.indexOf(task) : -1;
+    state.currentEditingIndex = isEdit ? sourceIndex : -1;
     state.currentEditingId = task?.id || null;
 
     const editorTemplate = $('#task_editor_template').clone().removeAttr('id').show();
@@ -1307,7 +1338,7 @@ async function showTaskEditor(task = null, isEdit = false, scope = 'global') {
     editorTemplate.find('.task_commands_edit').val(task?.commands || '');
     editorTemplate.find('.task_interval_edit').val(task?.interval ?? 3);
     editorTemplate.find('.task_floor_type_edit').val(task?.floorType || 'all');
-    editorTemplate.find('.task_trigger_timing_edit').val(task?.triggerTiming || 'after_ai');
+    editorTemplate.find('.task_trigger_timing_edit').val(task?.triggerTiming === 'character_init' ? 'initialization' : (task?.triggerTiming || 'after_ai'));
     editorTemplate.find('.task_type_edit').val(initialScope);
     editorTemplate.find('.task_enabled_edit').prop('checked', !task?.disabled);
     editorTemplate.find('.task_button_activated_edit').prop('checked', task?.buttonActivated || false);
@@ -1379,6 +1410,7 @@ async function showTaskEditor(task = null, isEdit = false, scope = 'global') {
             }
 
             const base = task ? structuredClone(task) : {};
+            const selectedTriggerTiming = editorTemplate.find('.task_trigger_timing_edit').val() || 'after_ai';
             const newTask = {
                 ...base,
                 id: base.id || `task_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
@@ -1386,7 +1418,9 @@ async function showTaskEditor(task = null, isEdit = false, scope = 'global') {
                 commands: String(editorTemplate.find('.task_commands_edit').val() || '').trim(),
                 interval: parseInt(String(editorTemplate.find('.task_interval_edit').val() || '0'), 10) || 0,
                 floorType: editorTemplate.find('.task_floor_type_edit').val() || 'all',
-                triggerTiming: editorTemplate.find('.task_trigger_timing_edit').val() || 'after_ai',
+                triggerTiming: task?.triggerTiming === 'character_init' && selectedTriggerTiming === 'initialization'
+                    ? 'character_init'
+                    : selectedTriggerTiming,
                 disabled: !editorTemplate.find('.task_enabled_edit').prop('checked'),
                 buttonActivated: editorTemplate.find('.task_button_activated_edit').prop('checked'),
                 createdAt: base.createdAt || new Date().toISOString(),
@@ -1483,7 +1517,7 @@ const getAllTaskNames = () => allTasks().filter(t => !t.disabled).map(t => t.nam
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function checkEmbeddedTasks() {
-    if (!this_chid) return;
+    if (this_chid == null || !characters[this_chid]) return;
     const avatar = characters[this_chid]?.avatar;
     const tasks = characters[this_chid]?.data?.extensions?.[TASKS_MODULE_NAME]?.tasks;
 
@@ -1628,8 +1662,14 @@ async function exportSingleTask(index, scope) {
     if (index < 0 || index >= list.length) return;
     
     let task = list[index];
-    if (scope === 'global' && task.id) {
-        task = { ...task, commands: await TasksStorage.get(task.id) };
+    if (scope === 'global') {
+        try {
+            task = { ...task, commands: await readGlobalTaskCommands(task) };
+        } catch (error) {
+            console.error('[循环任务] 导出任务失败', error);
+            toastr?.error?.(`导出任务失败：${error?.message || error}`);
+            return;
+        }
     }
     
     const fileName = `${scope}_task_${task?.name || 'unnamed'}_${new Date().toISOString().split('T')[0]}.json`;
@@ -1681,7 +1721,7 @@ async function importGlobalTasks(file) {
         if (!tasksToImport.length) throw new Error('没有可导入的任务');
 
         if (fileType === 'character') {
-            if (!this_chid || !characters[this_chid]) {
+            if (this_chid == null || !characters[this_chid]) {
                 toastr?.warning?.('角色任务请先在角色聊天界面导入。');
                 return;
             }
@@ -1840,17 +1880,19 @@ function cleanup() {
         const { mode = 'replace', scope = 'all' } = opts;
         const hit = find(name, scope);
         if (!hit) throw new Error(`找不到任务: ${name}`);
-        
-        let old = hit.task.commands || '';
-        if (hit.scope === 'global' && hit.task.id) {
-            old = await TasksStorage.get(hit.task.id);
-        }
-        
+
         const body = String(commands ?? '');
         let newCommands;
-        if (mode === 'append') newCommands = old ? (old + '\n' + body) : body;
-        else if (mode === 'prepend') newCommands = old ? (body + '\n' + old) : body;
-        else newCommands = body;
+        if (mode === 'append' || mode === 'prepend') {
+            const old = hit.scope === 'global'
+                ? await readGlobalTaskCommands(hit.task)
+                : String(hit.task.commands || '');
+            newCommands = mode === 'append'
+                ? (old ? `${old}\n${body}` : body)
+                : (old ? `${body}\n${old}` : body);
+        } else {
+            newCommands = body;
+        }
 
         hit.task.commands = newCommands;
         await persistTaskListByScope(hit.scope, hit.list);
@@ -1875,23 +1917,22 @@ function cleanup() {
     async function exec(name) {
         const hit = find(name, 'all');
         if (!hit) throw new Error(`找不到任务: ${name}`);
-        let commands = hit.task.commands || '';
-        if (hit.scope === 'global' && hit.task.id) {
-            commands = await TasksStorage.get(hit.task.id);
-        }
+        const commands = hit.scope === 'global'
+            ? await readGlobalTaskCommands(hit.task)
+            : String(hit.task.commands || '');
         return await executeCommands(commands, hit.task.name);
     }
 
     async function dump(scope = 'all') {
+        if (scope === 'character') return structuredClone(getCharacterTasks() || []);
+        if (scope === 'preset') return structuredClone(getPresetTasks() || []);
         const g = await Promise.all((getSettings().globalTasks || []).map(async t => ({
             ...structuredClone(t),
-            commands: await TasksStorage.get(t.id)
+            commands: await readGlobalTaskCommands(t)
         })));
+        if (scope === 'global') return g;
         const c = structuredClone(getCharacterTasks() || []);
         const p = structuredClone(getPresetTasks() || []);
-        if (scope === 'global') return g;
-        if (scope === 'character') return c;
-        if (scope === 'preset') return p;
         return { global: g, character: c, preset: p };
     }
 
@@ -1909,10 +1950,16 @@ function cleanup() {
 window.xbqte = async (name) => {
     try {
         if (!name?.trim()) throw new Error('请提供任务名称');
-        const tasks = await allTasksFull();
-        const task = tasks.find(t => t.name.toLowerCase() === name.toLowerCase());
+        const expected = name.toLowerCase();
+        const globalTask = getSettings().globalTasks.find(task => task.name.toLowerCase() === expected);
+        const task = globalTask
+            || getCharacterTasks().find(item => item.name.toLowerCase() === expected)
+            || getPresetTasks().find(item => item.name.toLowerCase() === expected);
         if (!task) throw new Error(`找不到名为 "${name}" 的任务`);
         if (task.disabled) throw new Error(`任务 "${name}" 已被禁用`);
+        const commands = task === globalTask
+            ? await readGlobalTaskCommands(task)
+            : String(task.commands || '');
         if (isTaskExecutionActive(task.name) || __taskRunMap.has(normalizeTaskKey(task.name))) {
             resetTaskRun(task.name);
         }
@@ -1921,7 +1968,7 @@ window.xbqte = async (name) => {
             throw new Error(`任务 "${name}" 仍在冷却中，剩余 ${cd.remainingCooldown}ms`);
         }
         setTaskCooldown(task.name);
-        const result = await executeCommands(task.commands, task.name);
+        const result = await executeCommands(commands, task.name);
         return result || `已执行任务: ${task.name}`;
     } catch (error) {
         console.error(`执行任务失败: ${error.message}`);
