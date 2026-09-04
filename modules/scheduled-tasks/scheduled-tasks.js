@@ -41,6 +41,7 @@ let state = {
     taskBarSignature: '',
     dynamicCallbacks: new Map(),
     qrObserver: null,
+    initTimers: new Set(),
     isUpdatingTaskBar: false,
     lastPresetName: ''
 };
@@ -1303,12 +1304,15 @@ function updatePresetTaskHint() {
 // 任务栏
 // ═══════════════════════════════════════════════════════════════════════════
 
-const cache = { bar: null, btns: null, sig: '', ts: 0 };
+const cache = { bar: null, btns: null, ownsBar: false, sig: '', ts: 0 };
 
 const getActivatedTasks = () => isGloballyEnabled() ? allTasks().filter(t => t.buttonActivated && !t.disabled) : [];
 
 const getBar = () => {
     if (cache.bar?.isConnected) return cache.bar;
+    cache.bar = null;
+    cache.btns = null;
+    cache.ownsBar = false;
     cache.bar = document.getElementById('qr--bar') || document.getElementById('qr-bar');
     if (!cache.bar && !(window.quickReplyApi?.settings?.isEnabled || extension_settings?.quickReplyV2?.isEnabled)) {
         const parent = document.getElementById('send_form') || document.body;
@@ -1320,18 +1324,29 @@ const getBar = () => {
             }),
             parent.firstChild
         );
+        cache.ownsBar = true;
     }
     cache.btns = cache.bar?.querySelector('.qr--buttons');
     return cache.bar;
 };
 
+function applyTaskBarVisibility() {
+    const bar = cache.bar;
+    if (!bar) return;
+    if (cache.ownsBar) bar.style.display = state.taskBarVisible ? '' : 'none';
+    bar.querySelectorAll('.xiaobaix-task-button').forEach(button => {
+        button.style.display = state.taskBarVisible ? '' : 'none';
+    });
+}
+
 function createTaskBar() {
+    if (!window.__XB_TASKS_INITIALIZED__) return;
     const tasks = getActivatedTasks();
     const sig = state.taskBarVisible ? tasks.map(t => t.name).join() : '';
     if (sig === cache.sig && Date.now() - cache.ts < 100) return;
     const bar = getBar();
     if (!bar) return;
-    bar.style.display = state.taskBarVisible ? '' : 'none';
+    applyTaskBarVisibility();
     if (!state.taskBarVisible) return;
     const btns = cache.btns || bar;
     const exist = new Map([...btns.querySelectorAll('.xiaobaix-task-button')].map(el => [el.dataset.taskName, el]));
@@ -1349,6 +1364,7 @@ function createTaskBar() {
         }
     });
     frag.childNodes.length && btns.appendChild(frag);
+    applyTaskBarVisibility();
     cache.sig = sig;
     cache.ts = Date.now();
 }
@@ -1357,8 +1373,8 @@ const updateTaskBar = debounce(createTaskBar, 100);
 
 function toggleTaskBarVisibility() {
     state.taskBarVisible = !state.taskBarVisible;
-    const bar = getBar();
-    bar && (bar.style.display = state.taskBarVisible ? '' : 'none');
+    getBar();
+    applyTaskBarVisibility();
     createTaskBar();
     const btn = document.getElementById('toggle_task_bar');
     const txt = btn?.querySelector('small');
@@ -1368,14 +1384,12 @@ function toggleTaskBarVisibility() {
     }
 }
 
-document.addEventListener('click', async e => {
+function handleTaskBarClick(e) {
     const btn = e.target.closest('.xiaobaix-task-button');
     if (!btn) return;
     if (!isGloballyEnabled()) return;
     window.xbqte(btn.dataset.taskName).catch(console.error);
-});
-
-new MutationObserver(updateTaskBar).observe(document.body, { childList: true, subtree: true });
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 任务编辑器
@@ -1879,27 +1893,37 @@ function onCharacterDeleted({ character }) {
 }
 
 function cleanup() {
+    delete window.__XB_TASKS_INITIALIZED__;
     if (state.cleanupTimer) {
         clearInterval(state.cleanupTimer);
         state.cleanupTimer = null;
     }
+    state.initTimers.forEach(timer => clearTimeout(timer));
+    state.initTimers.clear();
     resetAllTaskRuns();
     TasksStorage.clearCache();
 
     events.cleanup();
     window.removeEventListener('message', handleTaskMessage);
-    $(window).off('beforeunload', cleanup);
+    document.removeEventListener('click', handleTaskBarClick);
+    $(window).off('.xbTasks');
+
+    $('#scheduled_tasks_enabled, #add_global_task, #add_character_task, #add_preset_task, #toggle_task_bar, #import_global_tasks, #cloud_tasks_button, #import_tasks_file').off('.xbTasks');
+    $('#global_tasks_list, #character_tasks_list, #preset_tasks_list').off('.xbTasks');
 
     try {
-        const $qrButtons = $('#qr--bar .qr--buttons, #qr--bar, #qr-bar');
-        $qrButtons.off('click.xb');
-        $qrButtons.find('.xiaobaix-task-button').remove();
+        document.querySelectorAll('.xiaobaix-task-button').forEach(button => button.remove());
+        if (cache.ownsBar) cache.bar?.remove();
     } catch {}
 
     try { state.qrObserver?.disconnect(); } catch {}
     state.qrObserver = null;
+    cache.bar = null;
+    cache.btns = null;
+    cache.ownsBar = false;
+    cache.sig = '';
+    cache.ts = 0;
     resetPresetTasksCache();
-    delete window.__XB_TASKS_INITIALIZED__;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2088,7 +2112,10 @@ Object.assign(window, {
 // 斜杠命令
 // ═══════════════════════════════════════════════════════════════════════════
 
+let slashCommandsRegistered = false;
+
 function registerSlashCommands() {
+    if (slashCommandsRegistered) return;
     try {
         SlashCommandParser.addCommandObject(SlashCommand.fromProps({
             name: 'xbqte',
@@ -2183,6 +2210,7 @@ function registerSlashCommands() {
             unnamedArgumentList: [SlashCommandArgument.fromProps({ description: '任务名称', typeList: [ARGUMENT_TYPE.STRING], isRequired: true, enumProvider: getAllTaskNames })],
             helpString: `设置任务属性。用法: /xbset status=on/off interval=数字 timing=时机 floorType=类型 任务名`
         }));
+        slashCommandsRegistered = true;
     } catch (error) {
         console.error("注册斜杠命令时出错:", error);
     }
@@ -2207,32 +2235,39 @@ async function initTasks() {
     }
 
     if (window.registerModuleCleanup) {
-        window.registerModuleCleanup('scheduledTasks', cleanup);
+        window.registerModuleCleanup('tasks', cleanup);
     }
 
+    window.removeEventListener('message', handleTaskMessage);
     // eslint-disable-next-line no-restricted-syntax -- legacy task bridge; keep behavior unchanged.
     window.addEventListener('message', handleTaskMessage);
+    document.removeEventListener('click', handleTaskBarClick);
+    document.addEventListener('click', handleTaskBarClick);
 
-    $('#scheduled_tasks_enabled').on('input', e => {
+    state.qrObserver?.disconnect();
+    state.qrObserver = new MutationObserver(updateTaskBar);
+    state.qrObserver.observe(document.body, { childList: true, subtree: true });
+
+    $('#scheduled_tasks_enabled').off('.xbTasks').on('input.xbTasks', e => {
         const enabled = $(e.target).prop('checked');
         getSettings().enabled = enabled;
         saveSettingsDebounced();
         try { createTaskBar(); } catch {}
     });
 
-    $('#add_global_task').on('click', () => showTaskEditor(null, false, 'global'));
-    $('#add_character_task').on('click', () => showTaskEditor(null, false, 'character'));
-    $('#add_preset_task').on('click', () => showTaskEditor(null, false, 'preset'));
-    $('#toggle_task_bar').on('click', toggleTaskBarVisibility);
-    $('#import_global_tasks').on('click', () => $('#import_tasks_file').trigger('click'));
-    $('#cloud_tasks_button').on('click', () => showCloudTasksModal());
-    $('#import_tasks_file').on('change', function (e) {
+    $('#add_global_task').off('.xbTasks').on('click.xbTasks', () => showTaskEditor(null, false, 'global'));
+    $('#add_character_task').off('.xbTasks').on('click.xbTasks', () => showTaskEditor(null, false, 'character'));
+    $('#add_preset_task').off('.xbTasks').on('click.xbTasks', () => showTaskEditor(null, false, 'preset'));
+    $('#toggle_task_bar').off('.xbTasks').on('click.xbTasks', toggleTaskBarVisibility);
+    $('#import_global_tasks').off('.xbTasks').on('click.xbTasks', () => $('#import_tasks_file').trigger('click'));
+    $('#cloud_tasks_button').off('.xbTasks').on('click.xbTasks', () => showCloudTasksModal());
+    $('#import_tasks_file').off('.xbTasks').on('change.xbTasks', function (e) {
         const file = e.target.files[0];
         if (file) { importGlobalTasks(file); $(this).val(''); }
     });
 
-    $('#global_tasks_list')
-        .on('input', '.disable_task', function () {
+    $('#global_tasks_list').off('.xbTasks')
+        .on('input.xbTasks', '.disable_task', function () {
             const id = $(this).closest('.task-item').attr('data-task-id');
             const list = getSettings().globalTasks;
             const idx = list.findIndex(t => t?.id === id);
@@ -2243,27 +2278,27 @@ async function initTasks() {
                 refreshTaskLists();
             }
         })
-        .on('click', '.edit_task', function () {
+        .on('click.xbTasks', '.edit_task', function () {
             const id = $(this).closest('.task-item').attr('data-task-id');
             const list = getSettings().globalTasks;
             const idx = list.findIndex(t => t?.id === id);
             if (idx !== -1) editTask(idx, 'global');
         })
-        .on('click', '.export_task', function () {
+        .on('click.xbTasks', '.export_task', function () {
             const id = $(this).closest('.task-item').attr('data-task-id');
             const list = getSettings().globalTasks;
             const idx = list.findIndex(t => t?.id === id);
             if (idx !== -1) exportSingleTask(idx, 'global');
         })
-        .on('click', '.delete_task', function () {
+        .on('click.xbTasks', '.delete_task', function () {
             const id = $(this).closest('.task-item').attr('data-task-id');
             const list = getSettings().globalTasks;
             const idx = list.findIndex(t => t?.id === id);
             if (idx !== -1) deleteTask(idx, 'global');
         });
 
-    $('#character_tasks_list')
-        .on('input', '.disable_task', function () {
+    $('#character_tasks_list').off('.xbTasks')
+        .on('input.xbTasks', '.disable_task', function () {
             const id = $(this).closest('.task-item').attr('data-task-id');
             const list = getCharacterTasks();
             const idx = list.findIndex(t => t?.id === id);
@@ -2274,27 +2309,27 @@ async function initTasks() {
                 refreshTaskLists();
             }
         })
-        .on('click', '.edit_task', function () {
+        .on('click.xbTasks', '.edit_task', function () {
             const id = $(this).closest('.task-item').attr('data-task-id');
             const list = getCharacterTasks();
             const idx = list.findIndex(t => t?.id === id);
             if (idx !== -1) editTask(idx, 'character');
         })
-        .on('click', '.export_task', function () {
+        .on('click.xbTasks', '.export_task', function () {
             const id = $(this).closest('.task-item').attr('data-task-id');
             const list = getCharacterTasks();
             const idx = list.findIndex(t => t?.id === id);
             if (idx !== -1) exportSingleTask(idx, 'character');
         })
-        .on('click', '.delete_task', function () {
+        .on('click.xbTasks', '.delete_task', function () {
             const id = $(this).closest('.task-item').attr('data-task-id');
             const list = getCharacterTasks();
             const idx = list.findIndex(t => t?.id === id);
             if (idx !== -1) deleteTask(idx, 'character');
         });
 
-    $('#preset_tasks_list')
-        .on('input', '.disable_task', async function () {
+    $('#preset_tasks_list').off('.xbTasks')
+        .on('input.xbTasks', '.disable_task', async function () {
             const id = $(this).closest('.task-item').attr('data-task-id');
             const list = getPresetTasks();
             const idx = list.findIndex(t => t?.id === id);
@@ -2305,19 +2340,19 @@ async function initTasks() {
                 refreshTaskLists();
             }
         })
-        .on('click', '.edit_task', function () {
+        .on('click.xbTasks', '.edit_task', function () {
             const id = $(this).closest('.task-item').attr('data-task-id');
             const list = getPresetTasks();
             const idx = list.findIndex(t => t?.id === id);
             if (idx !== -1) editTask(idx, 'preset');
         })
-        .on('click', '.export_task', function () {
+        .on('click.xbTasks', '.export_task', function () {
             const id = $(this).closest('.task-item').attr('data-task-id');
             const list = getPresetTasks();
             const idx = list.findIndex(t => t?.id === id);
             if (idx !== -1) exportSingleTask(idx, 'preset');
         })
-        .on('click', '.delete_task', function () {
+        .on('click.xbTasks', '.delete_task', function () {
             const id = $(this).closest('.task-item').attr('data-task-id');
             const list = getPresetTasks();
             const idx = list.findIndex(t => t?.id === id);
@@ -2342,13 +2377,20 @@ async function initTasks() {
     events.on(event_types.OAI_PRESET_CHANGED_AFTER, onPresetChanged);
     events.on(event_types.MAIN_API_CHANGED, onMainApiChanged);
 
-    $(window).on('beforeunload', cleanup);
+    $(window).off('beforeunload.xbTasks').on('beforeunload.xbTasks', cleanup);
     registerSlashCommands();
-    setTimeout(() => checkEmbeddedTasks(), 1000);
+    const embeddedTasksTimer = setTimeout(() => {
+        state.initTimers.delete(embeddedTasksTimer);
+        if (window.__XB_TASKS_INITIALIZED__) checkEmbeddedTasks();
+    }, 1000);
+    state.initTimers.add(embeddedTasksTimer);
 
-    setTimeout(() => {
+    const pluginInitTimer = setTimeout(() => {
+        state.initTimers.delete(pluginInitTimer);
+        if (!window.__XB_TASKS_INITIALIZED__) return;
         try { checkAndExecuteTasks('plugin_initialized', false, false); } catch (e) { console.debug(e); }
     }, 0);
+    state.initTimers.add(pluginInitTimer);
 }
 
 export { initTasks };
