@@ -1526,6 +1526,13 @@ async function saveTaskFromEditor(task, scope) {
     if (!task.name || (!isManual && !task.commands)) return;
 
     const isEditingExistingTask = state.currentEditingIndex >= 0 || !!state.currentEditingId;
+    const previousTask = isEditingExistingTask ? state.currentEditingTask : null;
+    const previousName = previousTask?.name;
+    const shouldResetPreviousRun = !!previousName && (
+        normalizeTaskKey(previousName) !== normalizeTaskKey(task.name)
+        || String(previousTask?.commands ?? '') !== String(task.commands ?? '')
+        || (!previousTask?.disabled && task.disabled === true)
+    );
     const previousScope = state.currentEditingScope || 'global';
     const taskTypeChanged = isEditingExistingTask && previousScope !== targetScope;
 
@@ -1551,6 +1558,7 @@ async function saveTaskFromEditor(task, scope) {
     }
 
     await persistTaskListByScope(targetScope, [...list]);
+    if (shouldResetPreviousRun) resetTaskRun(previousName);
 
     resetTaskEditorState();
     state.lastTasksHash = '';
@@ -1987,8 +1995,10 @@ function cleanup() {
             newCommands = body;
         }
 
+        const previousName = hit.task.name;
         hit.task.commands = newCommands;
         await persistTaskListByScope(hit.scope, hit.list);
+        resetTaskRun(previousName);
         refreshTaskLists();
         return { ok: true, scope: hit.scope, name: hit.task.name };
     }
@@ -2001,8 +2011,20 @@ function cleanup() {
     async function setProps(name, props, scope = 'all') {
         const hit = find(name, scope);
         if (!hit) throw new Error(`找不到任务: ${name}`);
-        Object.assign(hit.task, props || {});
+        const patch = props || {};
+        const previousName = hit.task.name;
+        const wasDisabled = !!hit.task.disabled;
+        const shouldResetPreviousRun = (
+            (Object.prototype.hasOwnProperty.call(patch, 'name')
+                && normalizeTaskKey(previousName) !== normalizeTaskKey(patch.name))
+            || Object.prototype.hasOwnProperty.call(patch, 'commands')
+            || (!wasDisabled
+                && Object.prototype.hasOwnProperty.call(patch, 'disabled')
+                && !!patch.disabled)
+        );
+        Object.assign(hit.task, patch);
         await persistTaskListByScope(hit.scope, hit.list);
+        if (shouldResetPreviousRun) resetTaskRun(previousName);
         refreshTaskLists();
         return { ok: true, scope: hit.scope, name: hit.task.name };
     }
@@ -2163,6 +2185,8 @@ function registerSlashCommands() {
                 if (!task) throw new Error(`找不到任务 "${name}"`);
 
                 const changed = [];
+                const previousTaskName = task.name;
+                const wasDisabled = !!task.disabled;
 
                 if (namedArgs.status !== undefined) {
                     const val = String(namedArgs.status).toLowerCase();
@@ -2197,6 +2221,7 @@ function registerSlashCommands() {
 
                 if (isCharacter) await saveCharacterTasks(getCharacterTasks());
                 else saveSettingsDebounced();
+                if (!wasDisabled && task.disabled === true) resetTaskRun(previousTaskName);
                 refreshTaskLists();
 
                 return `已更新任务 "${name}": ${changed.join(', ')}`;
@@ -2272,8 +2297,12 @@ async function initTasks() {
             const list = getSettings().globalTasks;
             const idx = list.findIndex(t => t?.id === id);
             if (idx !== -1) {
-                list[idx].disabled = $(this).prop('checked');
+                const taskName = list[idx].name;
+                const wasDisabled = !!list[idx].disabled;
+                const disabled = $(this).prop('checked');
+                list[idx].disabled = disabled;
                 saveSettingsDebounced();
+                if (!wasDisabled && disabled) resetTaskRun(taskName);
                 state.lastTasksHash = '';
                 refreshTaskLists();
             }
@@ -2298,13 +2327,17 @@ async function initTasks() {
         });
 
     $('#character_tasks_list').off('.xbTasks')
-        .on('input.xbTasks', '.disable_task', function () {
+        .on('input.xbTasks', '.disable_task', async function () {
             const id = $(this).closest('.task-item').attr('data-task-id');
             const list = getCharacterTasks();
             const idx = list.findIndex(t => t?.id === id);
             if (idx !== -1) {
-                list[idx].disabled = $(this).prop('checked');
-                saveCharacterTasks(list);
+                const taskName = list[idx].name;
+                const wasDisabled = !!list[idx].disabled;
+                const disabled = $(this).prop('checked');
+                list[idx].disabled = disabled;
+                await saveCharacterTasks(list);
+                if (!wasDisabled && disabled) resetTaskRun(taskName);
                 state.lastTasksHash = '';
                 refreshTaskLists();
             }
@@ -2334,8 +2367,12 @@ async function initTasks() {
             const list = getPresetTasks();
             const idx = list.findIndex(t => t?.id === id);
             if (idx !== -1) {
-                list[idx].disabled = $(this).prop('checked');
+                const taskName = list[idx].name;
+                const wasDisabled = !!list[idx].disabled;
+                const disabled = $(this).prop('checked');
+                list[idx].disabled = disabled;
                 await savePresetTasks([...list]);
+                if (!wasDisabled && disabled) resetTaskRun(taskName);
                 state.lastTasksHash = '';
                 refreshTaskLists();
             }
