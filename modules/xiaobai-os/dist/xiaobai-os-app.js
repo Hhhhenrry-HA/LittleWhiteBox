@@ -75,12 +75,12 @@ var Ee = Object.freeze({
   shop: O(we, ["M14 19h36l-3 35H17z", "M11 19h42M19 19V11h26v8M23 29h18M22 38h20M21 47h22"], () => import("./xiaobai-os-ShopApp-DMALoGOc.js")),
   bank: O(ge, ["M9 24h46L32 9z", "M14 52h36M18 24v28M28 24v28M38 24v28M48 24v28"], () => import("./xiaobai-os-BankApp-vbt7TXuR.js")),
   game: O(_e, ["M15 12h34a6 6 0 0 1 6 6v28a6 6 0 0 1-6 6H15a6 6 0 0 1-6-6V18a6 6 0 0 1 6-6z", "M21 23h.1M43 23h.1M32 32h.1M21 41h.1M43 41h.1"], () => import("./xiaobai-os-GameApp-NkkX-O41.js")),
-  map: O(Se, ["M11 16l13-6 16 6 13-6v38l-13 6-16-6-13 6z", "M24 10v38M40 16v38M18 31l6-3 8 3 8-4 7 3"], () => import("./xiaobai-os-MapApp-B1mmNdSx.js")),
+  map: O(Se, ["M11 16l13-6 16 6 13-6v38l-13 6-16-6-13 6z", "M24 10v38M40 16v38M18 31l6-3 8 3 8-4 7 3"], () => import("./xiaobai-os-MapApp-CKQ9-ZS5.js")),
   tasks: O(ke, [
     "M17 12h30a5 5 0 0 1 5 5v35H12V17a5 5 0 0 1 5-5z",
     "M21 23h22M21 32h22M21 41h14",
     "M18 9h28v8H18z"
-  ], () => import("./xiaobai-os-TasksApp-D9aHBGuf.js"))
+  ], () => import("./xiaobai-os-TasksApp-DL_pfCzD.js"))
 }), ee = Object.freeze(be.map((a) => {
   const t = Ee[a];
   if (!t) throw new Error(`missing_shell_app:${a}`);

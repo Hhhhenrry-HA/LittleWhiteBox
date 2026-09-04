@@ -19,7 +19,7 @@ export interface MaintenanceQueuedJob {
     readonly source: AcceptedTurnSource;
     readonly participantId: string | null;
     readonly epoch: number;
-    readonly foregroundToken: number;
+    readonly manualToken: number;
     readonly excludedParticipantIds: Set<string>;
     controller: AbortController;
     sessions: MaintenanceSessionRun[];

@@ -125,7 +125,7 @@ Map 和 Tasks 是与银行相同的固定桌面 APP，不存在各自的产品�
 | --- | --- |
 | 自动维护 | APP 仍可打开和读取；不为该领域创建后台工作，不读取 Agent 配置，不调用供应商 |
 
-- 「自动维护」只放在对应 APP 的设置页，不复制到扩展设置，也不放进 Agent API APP。它是用户级偏好，作用于所有普通聊天，因此 UI 必须明确标注「所有普通聊天自动维护」。Tasks 没有 active 任务时可本地返回 null；Map 是否出现新空间事实需由 Agent 判断，所以开启 Map 自动维护就表示每个有效接受轮都参加请求，即使最终无需更新地图。这个成本差异必须写在开关说明中。
+- 「自动维护」只放在对应 APP 的设置页，不复制到扩展设置，也不放进 Agent API APP。它是用户级偏好，作用于所有普通聊天，因此 UI 必须明确标注「所有普通聊天自动维护」。Tasks 没有 active 任务时可本地返回 null；Map 是否出现新空间事实需由 Agent 判断，所以开启 Map 自动维护就表示每个有效接受轮都参加请求，即使最终无需更新地图。开关说明只解释触发时点，不另设 API/token 常识提醒。
 - 自动维护默认关闭。切换它不改变桌面图标、APP runtime 或主聊天只读 Prompt，也不影响用户明确点击的维护/重建/刷新请求。
 
 自动维护开关只保存用户级偏好，不读取 Agent 配置、不发请求，也不创建聊天数据。APP Controller 通过唯一 settings repository 的窄命令保存，shell 不自行解释或保存设置。
@@ -134,9 +134,9 @@ Map 和 Tasks 是与银行相同的固定桌面 APP，不存在各自的产品�
 
 完整 APP 在 production composition 和 shell 中静态注册 descriptor、runtime、主 Prompt runtime 与 participant；OS cleanup 统一清 Prompt、取消请求并停止后台。对应 APP 完成前，其配置字段和注册入口均不存在，不能先交付没有完整页面与领域行为的占位图标。
 
-用户可在具体 APP 内通过标明会使用 Agent 的「维护一次」「重建」或「刷新」按钮发起显式请求。
+用户可在具体 APP 内通过「维护一次」「重建」或「刷新」按钮发起显式请求；无需再用弹窗或附加区块提醒这些 Agent 功能会使用已配置的模型。
 
-若运行中关闭自动维护，该领域的自动 job token 立即失效并请求 abort；即使供应商仍返回，sidecar replace 发出前也必须再次检查 token 并丢弃迟到结果。显式「维护一次」使用独立的前台授权 token，不依赖自动维护开关；离开所属页面或 OS cleanup 才使前台请求失效。设置 mutation 的 installed 通知只负责自动 job 的即时执行栅栏，稳定发布不切换 Prompt 或页面生命周期。
+若运行中关闭自动维护，该领域的自动 job token 立即失效并请求 abort；即使供应商仍返回，sidecar replace 发出前也必须再次检查 token 并丢弃迟到结果。显式「维护一次」和「重建」在点击时捕获来源并进入 Host 队列，不依赖自动维护开关，也不由 APP activation 拥有。返回桌面、切换 APP 或关闭 OS 窗口只解除 UI 订阅，不使任务失效。设置 mutation 的 installed 通知只负责自动 job 的即时执行栅栏，稳定发布不切换 Prompt 或页面生命周期。
 
 ## 7. 接受轮触发语义
 
@@ -185,9 +185,9 @@ participant 的运行 token 属于 job 临时态；领域 revision 在`createSes
 
 「维护一次」不是对整段聊天做隐式扫描。用户在 Map 或 Tasks 内点击后，只为当前 APP 捕获聊天尾部最新一组完整的 User + 当前所选 Assistant 内容；群聊仍包含该 User 后连续出现的全部非系统 Assistant 消息。尾部没有完整 Assistant 内容、正在生成、聊天已经切换时不发请求，并给出本地提示。
 
-这个点击本身表示用户明确接受当前所选回复，所以不要求再发送下一条 User。它复用同一套消息位置、文本、`swipe_id`和领域 revision 提交守卫，并进入当前聊天同一条 FIFO 队列，但只运行被点击 APP 的 participant；`autoMaintenance=false`不阻止这次显式请求。
+这个点击本身表示用户明确接受当前所选回复，所以不要求再发送下一条 User。它复用同一套消息位置、文本、`swipe_id`和领域 revision 提交守卫，并进入当前聊天同一条 Host FIFO 队列，但只运行被点击 APP 的 participant；`autoMaintenance=false`不阻止这次显式请求。入队后 Host 立即发布 running，Controller 立即响应，按钮原位禁用并显示“正在维护”；同一 participant 运行期间不接受第二次点击。
 
-「从当前聊天重建」是另一项高成本操作：它可以读取更长的当前聊天来生成完整候选领域，校验成功后一次替换。按钮必须单独命名并在调用前说明范围，不能让「维护一次」悄悄退化为全聊天重建。
+「从当前聊天重建」可以读取更长的当前聊天来生成完整候选领域，校验成功后一次替换。按钮必须与「维护一次」分开命名并说明处理范围，但点击后直接入队，不弹二次确认或 API 成本提示。
 
 ## 8. 一次请求、领域自有
 
@@ -238,14 +238,14 @@ Provider-aware tool loop 只拥有传输和编排错误，不复制领域失败�
 
 - 当前聊天只有一条 FIFO maintenance 队列，不并行维护两个接受轮。
 - 新 User 到来时前一 job 可继续；后一个等待前一个完成，避免旧结果覆盖新状态。
-- 关闭 OS 窗口不影响已经获准的自动 job；自动维护属于 host 后台，不由页面寿命拥有。
-- 「维护一次」、重建、board 刷新和候选招募属于前台请求；离开对应 APP/页面、再次发起同类请求或 OS cleanup 时请求 abort，尚未进入保存 commit point 的迟到结果不得提交。
+- 关闭 OS 窗口不影响已经获准的自动 job、手动维护或重建；三者都属于 Host 后台，不由页面寿命拥有。重新打开 APP 时从 runner 状态恢复按钮和最近结果，不新增持久任务字段。
+- board 刷新和候选招募仍是所属页面拥有的前台请求，离开对应页面、再次发起同类请求或 OS cleanup 时请求 abort。手动维护/重建只在切聊、来源变化、OS 总开关关闭、Host cleanup 或明确取消时失效；保存 commit point 之后按真实结果落定。
 - 切聊、OS cleanup 或 OS 总开关关闭时，中止 active job 并清空当前运行队列。若某 participant 的 sidecar replace 已经发出，该次保存无法物理撤回；等待它落定、保留真实 committed outcome，再取消其余 participant 和后续 job。
 - API 配置缺失、未启用或读取失败时，本次 job 以本地错误结束，不发供应商请求。
 - 工具解析、参数和可恢复执行错误以结构化结果回喂模型，不销毁 Session；同一工具名、原始参数与结构化结果组成相同失败签名，连续三次时注入刹车，第四次结束，Provider 回合上限为 12。
 - Provider 后续失败或轮次耗尽时，已有合法 staging 的 participant 以 partial 提交；没有合法变化的 participant 为 failed。单个 participant 的领域错误不能跨领域冒充成功。
 - outcome 明确区分`updated/unchanged/partial/failed/cancelled/skipped`并携带逐 participant 结果；UI只翻译稳定状态，内部错误只写日志。
-- 运行错误和“上次维护”提示只活在当前页面进程。
+- 运行状态和最近一次结果按聊天身份与 participant 隔离，只活在当前 Host 进程，由 APP 随时读取；不依赖某个 iframe 页面存活，也不得在切聊后投影到另一聊天。
 - 自动失败后不在重载时偷偷补请求。用户可等待下一次接受轮，或在 APP 内明确点击「维护一次」。
 
 后台队列不是用户长期事实，也没有跨重启恢复要求，因此不进入 sidecar 或聊天 metadata。Map/Tasks 的已提交领域状态可以在后续维护中继续被修正；不保存完整聊天副本、pending prompt 或 Agent 原始输出。
@@ -293,6 +293,7 @@ OS 扩展设置当前包含总开关、Fourth Wall 设置与`map.autoMaintenance
 | 关闭自动维护立即使自动 job 失效且不影响显式请求 | 设置 repository + runner 集成测试 |
 | 切聊、关自动维护、改 swipe 使迟到提交失效 | runner + Scoped Store 集成测试 |
 | 手动维护只读取最新完整接受轮，并且只运行被点击领域 | accepted source/runner 集成测试 |
+| 手动维护入队后立即响应；离开/重开 APP 不取消且按钮仍反映 Host 状态 | runner + Controller 公开行为测试 |
 | Map/Tasks 一次请求但领域提交互不冒充 | participant 集成测试 |
 | Fourth Wall 原有生成行为不因设置入口迁移改变 | Fourth Wall Controller 公开行为回归 |
 

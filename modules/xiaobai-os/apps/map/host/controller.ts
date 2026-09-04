@@ -1,5 +1,4 @@
 import type {
-    MaintenanceRunOutcome,
     MaintenanceRunner,
     MaintenanceStatus,
 } from '../../../capabilities/maintenance/runner.js';
@@ -25,7 +24,7 @@ interface MapControllerDependencies {
     settings: Pick<XiaobaiOsSettingsRepository, 'read' | 'setMapAutoMaintenance' | 'subscribe'>;
     maintenance: Pick<
         MaintenanceRunner,
-        'runManual' | 'runRebuild' | 'cancelForeground' | 'getStatus' | 'subscribeStatus'
+        'startManual' | 'startRebuild' | 'cancelRequested' | 'invalidateAutomatic' | 'getStatus' | 'subscribeStatus'
     >;
     getChatIdentity: () => XiaobaiOsChatIdentity | { key?: unknown } | string | null;
     subscribeData: (listener: () => void) => () => void;
@@ -65,25 +64,26 @@ function maintenanceState(status: MaintenanceStatus): {
             maintenanceMessage: '',
         };
     }
-    return {
-        maintenanceStatus: status.state === 'error' ? 'error' : 'idle',
-        maintenanceMessage: status.state === 'error' ? '地图维护失败，请稍后重试。' : '',
-    };
-}
-
-function outcomeMessage(outcome: MaintenanceRunOutcome, mode: 'manual' | 'rebuild'): string {
-    if (outcome.status === 'updated') { return mode === 'rebuild' ? '地图已建立并保存。' : '地图已更新。'; }
-    if (outcome.status === 'unchanged') {
-        return mode === 'rebuild' ? '当前聊天未形成可建立的地图。' : '地图无需更新。';
-    }
-    if (outcome.status === 'partial') { return '地图已部分保存，本次维护未完整完成。'; }
-    if (outcome.status === 'cancelled') { return '本次地图维护已取消。'; }
-    if (outcome.status === 'skipped') {
-        return outcome.reason === 'generation-active'
+    let maintenanceMessage = '';
+    if (status.message === 'updated') {
+        maintenanceMessage = status.mode === 'rebuild' ? '地图已建立并保存。' : '地图已更新。';
+    } else if (status.message === 'unchanged') {
+        maintenanceMessage = status.mode === 'rebuild' ? '当前聊天未形成可建立的地图。' : '地图无需更新。';
+    } else if (status.message === 'partial') {
+        maintenanceMessage = '地图已部分保存，本次维护未完整完成。';
+    } else if (status.message === 'cancelled') {
+        maintenanceMessage = '本次地图维护已取消。';
+    } else if (status.message === 'skipped') {
+        maintenanceMessage = status.reason === 'generation-active'
             ? '当前正在生成回复，暂时不能维护地图。'
             : '当前聊天没有可维护的完整内容。';
+    } else if (status.state === 'error' || status.message === 'failed') {
+        maintenanceMessage = '地图维护失败，请稍后重试。';
     }
-    return '地图维护失败，请检查 Agent API 设置后重试。';
+    return {
+        maintenanceStatus: status.state === 'error' ? 'error' : 'idle',
+        maintenanceMessage,
+    };
 }
 
 export function createMapController({
@@ -121,7 +121,7 @@ export function createMapController({
     function buildState(chatIdentity: string): MapClientState {
         const view = map.readCurrent();
         const status = clientStatus(view.writeState);
-        const maintenanceStatus = maintenanceState(maintenance.getStatus('map'));
+        const maintenanceStatus = maintenanceState(maintenance.getStatus('map', chatIdentity));
         return {
             chatIdentity,
             map: view.map,
@@ -150,29 +150,28 @@ export function createMapController({
     }
 
     function activate(context: XiaobaiOsAppActivationContext): MapClientState {
-        cancelForeground('app-reactivated');
+        deactivate();
         const chatIdentity = currentChatIdentity();
         if (!chatIdentity) { throw new Error('请先打开一个聊天'); }
         activation = { chatIdentity, post: context.post };
         return buildState(chatIdentity);
     }
 
-    function cancelForeground(reason = 'route-left'): void {
+    function deactivate(): void {
         activation = null;
-        maintenance.cancelForeground('map', reason);
     }
 
-    async function runMaintenance(
-        current: MapActivation,
-        payload: UnknownRecord,
+    function startMaintenance(
         mode: 'manual' | 'rebuild',
-    ): Promise<{ outcome: MaintenanceRunOutcome; state: MapClientState; message: string }> {
-        maintenance.cancelForeground('map', 'replaced');
-        const outcome = mode === 'rebuild'
-            ? await maintenance.runRebuild('map')
-            : await maintenance.runManual('map');
-        assertSameActivation(current, payload);
-        return { outcome, state: emitState(current), message: outcomeMessage(outcome, mode) };
+    ): { started: boolean; status: string; state: MapClientState } {
+        const start = mode === 'rebuild'
+            ? maintenance.startRebuild('map')
+            : maintenance.startManual('map');
+        return {
+            started: start.status === 'started',
+            status: start.status,
+            state: emitState(),
+        };
     }
 
     async function handleMessage(message: XiaobaiOsHostFrameMessage): Promise<unknown> {
@@ -200,10 +199,10 @@ export function createMapController({
             return emitState(current);
         }
         if (message.type === 'map/maintain-once') {
-            return runMaintenance(current, payload, 'manual');
+            return startMaintenance('manual');
         }
         if (message.type === 'map/rebuild') {
-            return runMaintenance(current, payload, 'rebuild');
+            return startMaintenance('rebuild');
         }
         throw new Error('未知的地图操作');
     }
@@ -212,16 +211,20 @@ export function createMapController({
         emitCurrentState();
     }
 
-    function handleMaintenanceStatus(participantId: string): void {
-        if (participantId === 'map') { emitCurrentState(); }
+    function handleMaintenanceStatus(participantId: string, chatIdentity: string): void {
+        if (participantId === 'map' && activation?.chatIdentity === chatIdentity) { emitCurrentState(); }
     }
 
     return Object.freeze({
         activate,
-        deactivate: cancelForeground,
-        cancelForeground,
-        cancelAll: cancelForeground,
-        handleChatChanged: cancelForeground,
+        deactivate,
+        cancelForeground: deactivate,
+        cancelAll: deactivate,
+        handleChatChanged() {
+            deactivate();
+            maintenance.cancelRequested('map', 'chat-changed');
+            maintenance.invalidateAutomatic('map', 'chat-changed');
+        },
         handleMessage,
         startBackground() {
             unsubscribeData ||= subscribeData(handleDataChange);
@@ -235,7 +238,7 @@ export function createMapController({
             unsubscribeData = null;
             unsubscribeSettings = null;
             unsubscribeStatus = null;
-            cancelForeground('stopped');
+            deactivate();
         },
     });
 }

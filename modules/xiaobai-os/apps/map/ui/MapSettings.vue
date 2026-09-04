@@ -48,16 +48,12 @@ defineEmits<{
                         <span />
                     </button>
                 </div>
-                <div class="map-cost-note">
-                    <strong>API 成本说明</strong>
-                    <p>自动维护和下方两个手动操作都会调用已配置的 AI 模型，消耗 token / API 额度。切换此开关本身只保存设置，不会立即调用 AI。</p>
-                </div>
             </section>
 
             <section class="map-settings-card">
                 <div class="map-settings-action-copy">
                     <h3>增量维护</h3>
-                    <p>读取聊天尾部最新完整的 User 与 Assistant 对话，补充地点、路线、人物位置和场景细节。</p>
+                    <p>读取聊天尾部最新完整的 User 与 Assistant 对话，在后台补充地点、路线、人物位置和场景细节。</p>
                 </div>
                 <button
                     type="button"
@@ -73,7 +69,7 @@ defineEmits<{
             <section class="map-settings-card is-danger-zone">
                 <div class="map-settings-action-copy">
                     <h3>{{ hasMap ? '重建地图' : '建立地图' }}</h3>
-                    <p>重新读取当前聊天并生成完整地图。已有地图会在保存成功后被新结果替换。</p>
+                    <p>提交后在后台重新读取当前聊天并生成完整地图。已有地图只会在新地图保存成功后被替换。</p>
                 </div>
                 <button
                     type="button"

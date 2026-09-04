@@ -3,6 +3,7 @@ defineProps<{
     autoMaintenance: boolean;
     settingsBusy: boolean;
     maintenanceBusy: boolean;
+    maintenanceMessage: string;
     disabledReason: string;
 }>();
 
@@ -20,5 +21,6 @@ const emit = defineEmits<{ update: [enabled: boolean]; maintain: [] }>();
             <div><h3>立即更新任务</h3><p>根据当前最新剧情，检查所有进行中的任务并更新状态。</p></div>
             <button type="button" :disabled="maintenanceBusy || Boolean(disabledReason)" :title="disabledReason" @click="emit('maintain')">{{ maintenanceBusy ? '正在更新…' : '立即更新' }}</button>
         </article>
+        <p v-if="maintenanceMessage" class="tasks-maintenance-message" role="status">{{ maintenanceMessage }}</p>
     </section>
 </template>

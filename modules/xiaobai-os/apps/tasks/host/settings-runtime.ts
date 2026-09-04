@@ -5,7 +5,7 @@ import type { TasksSettings } from '../types.js';
 
 interface TaskSettingsRuntimeDependencies {
     settings: Pick<XiaobaiOsSettingsRepository, 'read' | 'subscribe' | 'subscribeMutationInstalled'>;
-    maintenance: Pick<MaintenanceRunner, 'cancelForeground' | 'invalidateAutomatic'>;
+    maintenance: Pick<MaintenanceRunner, 'cancelRequested' | 'invalidateAutomatic'>;
 }
 
 export function createTaskSettingsRuntime({
@@ -23,7 +23,7 @@ export function createTaskSettingsRuntime({
             unsubscribe = settings.subscribe(next => {current = next.apps.tasks;});
             unsubscribeMutationInstalled = settings.subscribeMutationInstalled((next) => {
                 if (!next.enabled) {
-                    maintenance.cancelForeground('tasks', 'os-disabled');
+                    maintenance.cancelRequested('tasks', 'os-disabled');
                     maintenance.invalidateAutomatic('tasks', 'os-disabled');
                 } else if (current?.autoMaintenance && !next.apps.tasks.autoMaintenance) {
                     maintenance.invalidateAutomatic('tasks', 'automatic-disabled');
@@ -36,7 +36,7 @@ export function createTaskSettingsRuntime({
             unsubscribe = null;
             unsubscribeMutationInstalled = null;
             current = null;
-            maintenance.cancelForeground('tasks', 'stopped');
+            maintenance.cancelRequested('tasks', 'stopped');
             maintenance.invalidateAutomatic('tasks', 'stopped');
         },
     });

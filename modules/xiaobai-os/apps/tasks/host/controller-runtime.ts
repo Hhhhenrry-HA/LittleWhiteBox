@@ -1,7 +1,7 @@
 import { normalizeTaskPublishedForm } from '../../../domains/tasks/invariants.js';
 import type { TaskPublishedForm } from '../../../domains/tasks/types.js';
 import type { XiaobaiOsHostFrameMessage } from '../../../host/frame-bridge.js';
-import type { MaintenanceRunOutcome, MaintenanceRunner } from '../../../capabilities/maintenance/runner.js';
+import type { MaintenanceRunner } from '../../../capabilities/maintenance/runner.js';
 import type { EconomyReadCapability } from '../../../capabilities/economy/index.js';
 import type { XiaobaiOsSettingsRepository } from '../../../host/settings-repository.js';
 import type {
@@ -40,7 +40,10 @@ export interface TaskControllerRuntimeDependencies {
     economy: EconomyReadCapability;
     generation: TaskGenerationRequests;
     settings: Pick<XiaobaiOsSettingsRepository, 'read' | 'setTasksAutoMaintenance' | 'subscribe'>;
-    maintenance: Pick<MaintenanceRunner, 'runManual' | 'cancelForeground' | 'getStatus' | 'subscribeStatus'>;
+    maintenance: Pick<
+        MaintenanceRunner,
+        'startManual' | 'cancelRequested' | 'invalidateAutomatic' | 'getStatus' | 'subscribeStatus'
+    >;
     getChatIdentity: () => XiaobaiOsChatIdentity | { key?: unknown } | string | null;
     isMainGenerationActive: () => boolean;
     subscribeGeneration: (listener: (active: boolean) => void) => () => void;
@@ -125,15 +128,6 @@ function candidateOutcome(result: TaskGenerationRequestResult<CandidateCompileRe
     return { status: result.status, changed: result.changed, count, message };
 }
 
-function maintenanceMessage(outcome: MaintenanceRunOutcome): string {
-    if (outcome.status === 'updated') {return '任务已更新';}
-    if (outcome.status === 'unchanged') {return '无需更新';}
-    if (outcome.status === 'partial') {return '部分任务状态已保存';}
-    if (outcome.status === 'cancelled') {return '已取消';}
-    if (outcome.status === 'skipped') {return '当前没有需要更新的任务进展';}
-    return '任务更新失败';
-}
-
 export function createTaskControllerRuntime({
     tasks,
     economy,
@@ -198,7 +192,7 @@ export function createTaskControllerRuntime({
             settings: taskSettings(),
             economyReady: economy.isOpen(),
             generationActive: isMainGenerationActive() || boardGenerating || candidateGenerating,
-            maintenanceStatus: maintenance.getStatus('tasks'),
+            maintenanceStatus: maintenance.getStatus('tasks', chatIdentity),
         });
         if (!preparation || preparation.activation !== activation) {return state;}
         if (preparation.error) {return { ...state, status: 'blocked', message: preparation.error };}
@@ -343,7 +337,6 @@ export function createTaskControllerRuntime({
         preparation = null;
         localWriteBusy = false;
         cancelGeneration(reason);
-        maintenance.cancelForeground('tasks', reason);
     }
 
     async function handleMessage(message: XiaobaiOsHostFrameMessage): Promise<unknown> {
@@ -411,10 +404,12 @@ export function createTaskControllerRuntime({
         }
         if (message.type === 'tasks/maintenance/run') {
             assertWritable(current);
-            maintenance.cancelForeground('tasks', 'replaced');
-            const outcome = await maintenance.runManual('tasks');
-            assertSameActivation(current, payload);
-            return { outcome: outcome.status, message: maintenanceMessage(outcome), state: emitState(current) };
+            const start = maintenance.startManual('tasks');
+            return {
+                started: start.status === 'started',
+                status: start.status,
+                state: emitState(current),
+            };
         }
         if (message.type === 'tasks/save/confirm') {
             const confirmation = await tasks.confirmPending();
@@ -436,7 +431,11 @@ export function createTaskControllerRuntime({
         deactivate: cancelForeground,
         cancelForeground,
         cancelAll: cancelForeground,
-        handleChatChanged: () => cancelForeground('chat-changed'),
+        handleChatChanged() {
+            cancelForeground('chat-changed');
+            maintenance.cancelRequested('tasks', 'chat-changed');
+            maintenance.invalidateAutomatic('tasks', 'chat-changed');
+        },
         handleMessage,
         startBackground() {
             unsubscribeData ||= subscribeData(handleDataChange);
@@ -445,8 +444,8 @@ export function createTaskControllerRuntime({
                 emitCurrentState();
             });
             unsubscribeSettings ||= settings.subscribe(emitCurrentState);
-            unsubscribeMaintenance ||= maintenance.subscribeStatus((participantId) => {
-                if (participantId === 'tasks') {emitCurrentState();}
+            unsubscribeMaintenance ||= maintenance.subscribeStatus((participantId, chatIdentity) => {
+                if (participantId === 'tasks' && activation?.chatIdentity === chatIdentity) {emitCurrentState();}
             });
         },
         stopBackground() {

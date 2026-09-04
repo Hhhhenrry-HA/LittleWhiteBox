@@ -19,8 +19,6 @@ interface RequestOutcome {
 }
 
 const REQUEST_TIMEOUT_MS = 35_000;
-const MAINTENANCE_TIMEOUT_MS = 180_000;
-const REBUILD_TIMEOUT_MS = 240_000;
 const MATERIAL_SYMBOL_FONT_FAMILY = 'Xiaobai Map Symbols';
 let materialSymbolFontPromise: Promise<FontFace> | null = null;
 const props = defineProps<XiaobaiOsAppProps>();
@@ -78,7 +76,6 @@ const state = ref<MapClientState>(cloneInitialState(props.initialState));
 const page = ref<MapPage>('scene');
 const selectedLocationKey = ref(preferredSceneLocation(state.value));
 const settingsOpen = ref(false);
-const rebuildConfirmationOpen = ref(false);
 const activeRequest = ref<MapRequestAction | null>(null);
 const errorMessage = ref('');
 const actionMessage = ref('');
@@ -166,7 +163,6 @@ const statusText = computed(() => {
 });
 const noticeVisible = computed(() => (
     Boolean(errorMessage.value || state.value.message || state.value.maintenanceMessage || actionMessage.value)
-    || busy.value
     || state.value.status !== 'ready'
     || state.value.maintenanceStatus === 'error'
 ));
@@ -243,7 +239,7 @@ function readableError(error: unknown, action: MapRequestAction): string {
     if (action === 'refresh') {return '地图状态未能重新读取，请稍后重试。';}
     if (action === 'confirm') {return '保存结果仍无法确认，请稍后再次核实。';}
     if (action === 'adopt') {return '暂时无法采用服务端数据，冲突仍保持冻结。';}
-    return action === 'rebuild' ? '地图建立/重建未完成，请检查模型配置后重试。' : '地图维护未完成，请检查模型配置后重试。';
+    return action === 'rebuild' ? '地图建立/重建未能开始，请稍后重试。' : '地图维护未能开始，请稍后重试。';
 }
 
 async function requestMap(
@@ -301,13 +297,6 @@ async function adoptServerState(): Promise<void> {
         : '服务端数据仍无法采用，地图继续保持冻结。';
 }
 
-function maintenanceMessageFromResponse(outcome: RequestOutcome): string {
-    const response = isRecord(outcome.response) ? outcome.response.result : null;
-    return isRecord(response) && typeof response.message === 'string'
-        ? response.message
-        : '地图操作已结束。';
-}
-
 async function setAutoMaintenance(enabled: boolean): Promise<void> {
     if (activeRequest.value) {return;}
     const outcome = await requestMap('map/set-auto-maintenance', 'settings', REQUEST_TIMEOUT_MS, { enabled });
@@ -320,21 +309,12 @@ async function setAutoMaintenance(enabled: boolean): Promise<void> {
 
 async function maintainOnce(): Promise<void> {
     if (operationDisabledReason.value || !state.value.map) {return;}
-    const outcome = await requestMap('map/maintain-once', 'maintain', MAINTENANCE_TIMEOUT_MS);
-    if (outcome) {actionMessage.value = maintenanceMessageFromResponse(outcome);}
-}
-
-function openRebuildConfirmation(): void {
-    if (operationDisabledReason.value) {return;}
-    rebuildConfirmationOpen.value = true;
+    await requestMap('map/maintain-once', 'maintain');
 }
 
 async function rebuild(): Promise<void> {
     if (operationDisabledReason.value) {return;}
-    const outcome = await requestMap('map/rebuild', 'rebuild', REBUILD_TIMEOUT_MS);
-    if (!outcome) {return;}
-    rebuildConfirmationOpen.value = false;
-    actionMessage.value = maintenanceMessageFromResponse(outcome);
+    await requestMap('map/rebuild', 'rebuild');
 }
 
 function viewScene(locationKey: string): void {
@@ -379,7 +359,6 @@ onBeforeUnmount(() => {
     mounted = false;
     requestSequence += 1;
     unsubscribe();
-    rebuildConfirmationOpen.value = false;
 });
 </script>
 
@@ -442,8 +421,8 @@ onBeforeUnmount(() => {
                     <span class="map-empty-radar" aria-hidden="true"><i /></span>
                     <small>NO CARTOGRAPHIC DATA</small>
                     <h2>当前聊天还没有地图</h2>
-                    <p>从当前聊天中识别地点、路线与场景。只有确认后才会开始调用 AI。</p>
-                    <button type="button" :disabled="Boolean(operationDisabledReason)" @click="openRebuildConfirmation">从当前聊天建立地图</button>
+                    <p>从当前聊天中识别地点、路线与场景。开始后可离开地图，任务会在后台继续。</p>
+                    <button type="button" :disabled="Boolean(operationDisabledReason)" @click="rebuild">{{ state.maintenanceStatus === 'rebuilding' ? '正在建立地图…' : '从当前聊天建立地图' }}</button>
                 </div>
                 <div v-else-if="!selectedScene" class="map-empty-state">
                     <span class="map-empty-radar" aria-hidden="true"><i /></span>
@@ -485,7 +464,7 @@ onBeforeUnmount(() => {
                     <small>ATLAS IS EMPTY</small>
                     <h2>世界地图尚未建立</h2>
                     <p>建立地图后，这里会显示地点层级、通行路线和人物所在位置。</p>
-                    <button type="button" :disabled="Boolean(operationDisabledReason)" @click="openRebuildConfirmation">从当前聊天建立地图</button>
+                    <button type="button" :disabled="Boolean(operationDisabledReason)" @click="rebuild">{{ state.maintenanceStatus === 'rebuilding' ? '正在建立地图…' : '从当前聊天建立地图' }}</button>
                 </div>
                 <template v-else>
                     <MapAtlas
@@ -530,23 +509,8 @@ onBeforeUnmount(() => {
                 @close="settingsOpen = false"
                 @set-auto-maintenance="setAutoMaintenance"
                 @maintain-once="maintainOnce"
-                @request-rebuild="openRebuildConfirmation"
+                @request-rebuild="rebuild"
             />
         </Transition>
-
-        <div v-if="rebuildConfirmationOpen" class="map-dialog-backdrop" @click.self="!busy && (rebuildConfirmationOpen = false)">
-            <section class="map-dialog" role="alertdialog" aria-modal="true" aria-labelledby="map-rebuild-title">
-                <small>AI CARTOGRAPHY REQUEST</small>
-                <h2 id="map-rebuild-title">{{ state.map ? '从当前聊天重建地图？' : '从当前聊天建立地图？' }}</h2>
-                <p>此操作会调用已配置的 AI 模型并消耗 token / API 额度。{{ state.map ? '现有地图将在新地图成功保存后被替换。' : '模型会读取当前聊天并生成第一版地图。' }}</p>
-                <p v-if="errorMessage" class="map-dialog-error" role="alert">{{ errorMessage }}</p>
-                <div>
-                    <button type="button" :disabled="busy" @click="rebuildConfirmationOpen = false">取消</button>
-                    <button type="button" class="is-confirm" :disabled="busy || Boolean(operationDisabledReason)" :title="operationDisabledReason" @click="rebuild">
-                        {{ activeRequest === 'rebuild' || state.maintenanceStatus === 'rebuilding' ? '正在建立地图…' : '确认并开始' }}
-                    </button>
-                </div>
-            </section>
-        </div>
     </main>
 </template>

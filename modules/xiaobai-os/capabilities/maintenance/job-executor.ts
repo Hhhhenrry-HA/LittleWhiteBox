@@ -37,8 +37,9 @@ export interface MaintenanceJobExecutorHooks {
     invalidate: (run: MaintenanceSessionRun, reason: string) => void;
     automaticToken: (participantId: string) => number;
     updateStatus: (
+        job: MaintenanceQueuedJob,
         participantId: string,
-        patch: { state: 'running' | 'error'; mode: MaintenanceQueuedJob['mode']; message: string },
+        patch: { state: 'running' | 'error'; mode: MaintenanceQueuedJob['mode']; message: string; reason?: string },
     ) => void;
     onWriteUnconfirmed: (job: MaintenanceQueuedJob, reason: string) => void;
     captureBackground: (
@@ -216,7 +217,7 @@ export function createMaintenanceJobExecutor(
 
         for (const participant of participants) {
             if (!guardJob(job)) { return cancelledJobOutcome(job, 'source-invalidated'); }
-            updateStatus(participant.id, { state: 'running', mode: job.mode, message: '' });
+            updateStatus(job, participant.id, { state: 'running', mode: job.mode, message: '', reason: '' });
             try {
                 const session = await participant.createSession(job.source, job.mode);
                 if (session === null) {
@@ -237,7 +238,9 @@ export function createMaintenanceJobExecutor(
                 });
             } catch (error) {
                 report(error);
-                updateStatus(participant.id, { state: 'error', mode: job.mode, message: 'failed' });
+                updateStatus(job, participant.id, {
+                    state: 'error', mode: job.mode, message: 'failed', reason: 'session-creation-failed',
+                });
                 job.earlyResults.push({
                     participantId: participant.id,
                     status: 'failed',

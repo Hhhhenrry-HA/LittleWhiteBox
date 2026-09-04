@@ -62,7 +62,6 @@ const pendingPublish = ref<TaskPublishedForm | null>(null);
 const boardBusy = ref(false);
 const candidateBusyTaskId = ref('');
 const writeBusy = ref(false);
-const maintenanceBusy = ref(false);
 const settingsBusy = ref(false);
 const saveBusy = ref(false);
 const detailBusy = ref(false);
@@ -85,8 +84,18 @@ const writeDisabledReason = computed(() => {
     return '';
 });
 const generationDisabledReason = computed(() => (
-    writeDisabledReason.value || (maintenanceBusy.value ? '正在更新任务' : '')
+    writeDisabledReason.value || (state.value.maintenance.state === 'running' ? '正在更新任务' : '')
 ));
+const maintenanceMessage = computed(() => {
+    const outcome = state.value.maintenance.lastOutcome;
+    if (outcome === 'updated') {return '任务已更新。';}
+    if (outcome === 'unchanged') {return '当前任务无需更新。';}
+    if (outcome === 'partial') {return '部分任务状态已保存。';}
+    if (outcome === 'failed') {return '任务更新失败，请稍后重试。';}
+    if (outcome === 'cancelled') {return '本次任务更新已取消。';}
+    if (outcome === 'no-work') {return '当前没有需要更新的任务进展。';}
+    return '';
+});
 function applyState(next: TasksPresentation): void {
     if (!next || typeof next.chatIdentity !== 'string') {return;}
     state.value = structuredClone(next);
@@ -238,15 +247,12 @@ async function setAutoMaintenance(enabled: boolean): Promise<void> {
 }
 
 async function maintainOnce(): Promise<void> {
-    if (maintenanceBusy.value || generationDisabledReason.value) {return;}
-    maintenanceBusy.value = true;
+    if (state.value.maintenance.state === 'running' || generationDisabledReason.value) {return;}
     const version = stateVersion;
     try {
-        const body = await request('tasks/maintenance/run', {}, GENERATION_TIMEOUT_MS);
+        const body = await request('tasks/maintenance/run');
         applyResponseState(body, version);
-        announce(isRecord(body) && typeof body.message === 'string' ? body.message : '任务已更新');
     } catch (error) {errorMessage.value = readableError(error);}
-    finally {maintenanceBusy.value = false;}
 }
 
 async function openDetail(taskId: string): Promise<void> {
@@ -353,7 +359,7 @@ onBeforeUnmount(() => {
             <TasksActive v-else-if="page === 'active'" :records="state.active" @detail="openDetail" />
             <TasksPublished v-else-if="page === 'published'" :records="state.recruiting" :candidate-busy-task-id="candidateBusyTaskId" :write-busy="writeBusy" :disabled-reason="writeDisabledReason" @recruit="recruit" @assign="assign" @cancel="cancelTask" @detail="openDetail" @publish="go('publish')" />
             <TasksHistory v-else-if="page === 'history'" :history="state.history" :loading="historyBusy" @detail="openDetail" @load-more="loadMoreHistory" />
-            <TasksSettings v-else-if="page === 'settings'" :auto-maintenance="state.settings.autoMaintenance" :settings-busy="settingsBusy" :maintenance-busy="maintenanceBusy || state.maintenance.state === 'running'" :disabled-reason="generationDisabledReason" @update="setAutoMaintenance" @maintain="maintainOnce" />
+            <TasksSettings v-else-if="page === 'settings'" :auto-maintenance="state.settings.autoMaintenance" :settings-busy="settingsBusy" :maintenance-busy="state.maintenance.state === 'running'" :maintenance-message="maintenanceMessage" :disabled-reason="generationDisabledReason" @update="setAutoMaintenance" @maintain="maintainOnce" />
             <TaskPublishForm v-else-if="page === 'publish'" :balance="state.playerBalance" :busy="writeBusy" :disabled-reason="writeDisabledReason" @submit="requestPublish" @cancel="go('published')" />
             <TaskDetail v-else :detail="detail" :loading="detailBusy" @back="go(previousPage)" />
         </div>

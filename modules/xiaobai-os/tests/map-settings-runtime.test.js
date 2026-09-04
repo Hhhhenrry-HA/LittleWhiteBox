@@ -22,7 +22,7 @@ function createHarness(initial = { autoMaintenance: false }) {
     const runtime = createMapSettingsRuntime({
         settings,
         maintenance: {
-            cancelForeground: (id, reason) => calls.push(['cancel-foreground', id, reason]),
+            cancelRequested: (id, reason) => calls.push(['cancel-requested', id, reason]),
             invalidateAutomatic: (id, reason) => calls.push(['invalidate-automatic', id, reason]),
         },
     });
@@ -57,7 +57,7 @@ test('an installed OS disable mutation fences all Map requests', () => {
     harness.install({ autoMaintenance: true }, false);
 
     assert.deepEqual(harness.calls, [
-        ['cancel-foreground', 'map', 'os-disabled'],
+        ['cancel-requested', 'map', 'os-disabled'],
         ['invalidate-automatic', 'map', 'os-disabled'],
     ]);
 });
@@ -69,7 +69,7 @@ test('start is idempotent and stop releases subscriptions and Map work', () => {
     harness.runtime.stopBackground();
 
     assert.deepEqual(harness.calls, [
-        ['cancel-foreground', 'map', 'stopped'],
+        ['cancel-requested', 'map', 'stopped'],
         ['invalidate-automatic', 'map', 'stopped'],
     ]);
 });

@@ -5,7 +5,7 @@ import type { MapSettings } from '../types.js';
 
 interface MapSettingsRuntimeDependencies {
     settings: Pick<XiaobaiOsSettingsRepository, 'read' | 'subscribe' | 'subscribeMutationInstalled'>;
-    maintenance: Pick<MaintenanceRunner, 'cancelForeground' | 'invalidateAutomatic'>;
+    maintenance: Pick<MaintenanceRunner, 'cancelRequested' | 'invalidateAutomatic'>;
 }
 
 export function createMapSettingsRuntime({
@@ -20,7 +20,7 @@ export function createMapSettingsRuntime({
         next: NonNullable<ReturnType<XiaobaiOsSettingsRepository['read']>>,
     ): void {
         if (!next.enabled) {
-            maintenance.cancelForeground('map', 'os-disabled');
+            maintenance.cancelRequested('map', 'os-disabled');
             maintenance.invalidateAutomatic('map', 'os-disabled');
         } else if (current?.autoMaintenance && !next.apps.map.autoMaintenance) {
             maintenance.invalidateAutomatic('map', 'automatic-disabled');
@@ -40,7 +40,7 @@ export function createMapSettingsRuntime({
             unsubscribe = null;
             unsubscribeMutationInstalled = null;
             current = null;
-            maintenance.cancelForeground('map', 'stopped');
+            maintenance.cancelRequested('map', 'stopped');
             maintenance.invalidateAutomatic('map', 'stopped');
         },
     });

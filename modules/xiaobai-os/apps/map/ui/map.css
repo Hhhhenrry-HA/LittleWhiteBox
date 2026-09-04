@@ -116,8 +116,7 @@
 .map-brand small,
 .map-canvas-heading small,
 .map-settings header span,
-.map-empty-state > small,
-.map-dialog > small {
+.map-empty-state > small {
     display: block;
     overflow: hidden;
     color: #5e869f;
@@ -831,15 +830,6 @@
 .map-switch[aria-checked="true"] { border-color: rgba(75, 202, 162, .62); background: rgba(26, 111, 88, .35); }
 .map-switch[aria-checked="true"] span { left: 22px; background: #69dab7; box-shadow: 0 0 8px rgba(105, 218, 183, .6); }
 
-.map-cost-note {
-    margin-top: 13px;
-    padding: 9px 10px;
-    border-left: 2px solid #d49a4b;
-    background: rgba(111, 73, 25, .13);
-}
-
-.map-cost-note strong { color: #dcb271; font-size: 9px; letter-spacing: .08em; }
-.map-cost-note p { color: #9d8c71; }
 .map-settings-action-copy { margin-bottom: 11px; }
 
 .map-action-button {
@@ -859,44 +849,6 @@
 }
 
 .map-maintenance-message { color: #87b8d2; }
-
-.map-dialog-backdrop {
-    position: absolute;
-    z-index: 50;
-    inset: 0;
-    display: grid;
-    padding: 20px;
-    place-items: center;
-    background: rgba(0, 4, 7, .78);
-    backdrop-filter: blur(5px);
-}
-
-.map-dialog {
-    width: min(340px, 100%);
-    padding: 19px;
-    border: 1px solid rgba(94, 188, 236, .34);
-    border-radius: 5px;
-    color: #dcecf5;
-    background: linear-gradient(145deg, #101a21, #080e12 72%);
-    box-shadow: 0 24px 70px rgba(0, 0, 0, .7), inset 0 1px rgba(255, 255, 255, .03);
-}
-
-.map-dialog h2 { margin: 8px 0; font-size: 17px; }
-.map-dialog p { margin: 0; color: #8299a7; font-size: 11px; line-height: 1.6; }
-.map-dialog .map-dialog-error { margin-top: 10px; padding: 7px; color: #ffabb4; background: rgba(151, 38, 52, .16); }
-.map-dialog > div { display: flex; justify-content: flex-end; gap: 8px; margin-top: 17px; }
-
-.map-dialog button {
-    min-height: 33px;
-    padding: 0 13px;
-    border: 1px solid rgba(112, 158, 183, .25);
-    border-radius: 3px;
-    color: #91a8b6;
-    background: #0d171d;
-    font-size: 10px;
-}
-
-.map-dialog button.is-confirm { border-color: rgba(78, 189, 246, .58); color: #dff5ff; background: rgba(30, 117, 164, .28); }
 
 .map-panel-enter-active,
 .map-panel-leave-active { transition: transform .2s ease, opacity .2s ease; }
@@ -939,7 +891,6 @@
     .map-settings > header { min-height: 58px; padding-block: 10px; }
     .map-settings-body { padding: 10px 13px; }
     .map-settings-card { margin-bottom: 8px; padding: 11px; }
-    .map-cost-note { margin-top: 9px; padding-block: 6px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -152,6 +152,7 @@ button, input, textarea, select { font: inherit; }
 .tasks-setting-card h3 { margin: 0 0 7px; font: 700 18px/1.2 Georgia, "Noto Serif SC", serif; }
 .tasks-setting-card p { margin: 0; color: var(--tasks-muted); font-size: 11px; line-height: 1.7; }
 .tasks-setting-card > button { padding: 9px 12px; }
+.tasks-maintenance-message { margin: 2px 0 0; color: var(--tasks-muted); font-size: 11px; }
 .tasks-switch { display: grid; grid-template-columns: 45px auto; align-items: center; gap: 8px; cursor: pointer; }
 .tasks-switch input { position: absolute; opacity: 0; }
 .tasks-switch span { position: relative; width: 45px; height: 23px; border: 1px solid var(--tasks-line); background: #080a0b; }

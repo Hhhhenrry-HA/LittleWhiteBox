@@ -812,7 +812,7 @@ Wallet 只展示 Economy 流水，不提供任务操作入口。
 - 「所有普通聊天自动维护」只出现在 Tasks 内，默认 false；
 - 开关操作只保存`tasks.autoMaintenance`，不读取 Agent 配置、不调用 API、不创建 Tasks chat data。
 
-`autoMaintenance=false`只让 User 发送不产生 Tasks 自动请求，并使尚未进入保存 commit point 的自动 job 失效；Tasks 页面、所有前台功能、「维护一次」和主 RP 只读 Prompt 仍可用。切聊、OS cleanup 或关闭 OS 总开关才停止整个 Tasks runtime。
+`autoMaintenance=false`只让 User 发送不产生 Tasks 自动请求，并使尚未进入保存 commit point 的自动 job 失效；Tasks 页面、显式功能、「维护一次」和主 RP 只读 Prompt 仍可用。切聊、OS cleanup 或关闭 OS 总开关才停止整个 Tasks runtime。
 
 ### 10.2 调用表
 
@@ -828,11 +828,11 @@ Wallet 只展示 Economy 流水，不提供任务操作入口。
 
 Board/candidate 每次显式请求只加载一次配置、创建一个 Agent session、执行一次无工具调用。切聊、离开所属页面、OS cleanup 或再次发起同类请求时 abort；迟到结果必须通过 osId/binding、app activation token、board/task CAS 和 Kernel 文件写状态检查。
 
-Maintenance 使用现有 FIFO、来源校验和 participant token。Tasks 与 Map 都有工作时共用一个 Agent adapter 和 Provider tool loop，但各有 Prompt、工具、领域 Session、staging、结果和 Scoped transaction；一方失败不能撤销或冒充另一方。
+Maintenance 使用现有 Host FIFO、来源校验和 participant token。Tasks 与 Map 都有工作时共用一个 Agent adapter 和 Provider tool loop，但各有 Prompt、工具、领域 Session、staging、结果和 Scoped transaction；一方失败不能撤销或冒充另一方。手动维护点击后立即入队并返回，按钮从按聊天隔离的 Host 状态显示“正在更新”且不可再次点击；返回桌面、切换 APP或关闭 OS 窗口不取消任务，切聊后不得显示旧聊天的运行或完成结果。
 
 ### 10.3 保存 commit point
 
-sidecar replace 发出之前，切聊、OS cleanup、关闭对应自动开关、接受消息变化、task revision/eventId 改变或主动取消都会丢弃尚未提交的自动 staging；前台请求另由离开所属页面取消。
+sidecar replace 发出之前，切聊、OS cleanup、关闭对应自动开关、接受消息变化、task revision/eventId 改变或主动取消都会丢弃尚未提交的自动 staging。手动 maintenance 不由页面拥有，离开页面不取消；board/candidate 等真正的页面请求仍由各自 activation 管理。
 
 sidecar replace 已经发出后无法物理回滚。此时必须等待真实保存结果：confirmed 才发布任务/资金快照，明确失败则不发布，结果未知则进入文件级 unconfirmed。UI 和文档都不能声称“任何时刻都能取消”。
 
@@ -860,13 +860,13 @@ sidecar replace 已经发出后无法物理回滚。此时必须等待真实保�
 
 Tasks 使用 OS 黑色任务终端风格，路由固定为：
 
-- 大厅：当前 board、已接取标记、明确的「刷新任务（使用 Agent）」；
+- 大厅：当前 board、已接取标记和「刷新任务」；
 - 进行中：所有 active 任务；
 - 我发布的：recruiting 任务、候选人、选择和撤回；
 - 历史：completed、failed、cancelled，按 updatedAt 倒序本地分页；
 - 详情：冻结事实、执行方、累计进展、结果和事件时间线；
 - 发布：表单、余额/托管说明和确认弹窗；
-- 设置：自动维护开关、调用成本说明和「维护一次（使用 Agent）」。
+- 设置：自动维护开关、「立即更新」按钮、Host 运行状态和最近结果；不另设 API/token 提醒。
 
 打开 APP 先同步返回已有本地投影；只有首次没有 Economy 时沿用钱包的异步开户 loading，不得让整个页面等待 host timeout。
 

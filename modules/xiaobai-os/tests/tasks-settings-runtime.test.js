@@ -22,7 +22,7 @@ function createHarness(initial = { autoMaintenance: false }) {
     const runtime = createTaskSettingsRuntime({
         settings,
         maintenance: {
-            cancelForeground: (id, reason) => calls.push(['cancel-foreground', id, reason]),
+            cancelRequested: (id, reason) => calls.push(['cancel-requested', id, reason]),
             invalidateAutomatic: (id, reason) => calls.push(['invalidate-automatic', id, reason]),
         },
     });
@@ -57,7 +57,7 @@ test('an installed OS disable mutation fences all Tasks maintenance work', () =>
     harness.install({ autoMaintenance: true }, false);
 
     assert.deepEqual(harness.calls, [
-        ['cancel-foreground', 'tasks', 'os-disabled'],
+        ['cancel-requested', 'tasks', 'os-disabled'],
         ['invalidate-automatic', 'tasks', 'os-disabled'],
     ]);
 });
@@ -69,7 +69,7 @@ test('start is idempotent and stop releases Tasks maintenance work', () => {
     harness.runtime.stopBackground();
 
     assert.deepEqual(harness.calls, [
-        ['cancel-foreground', 'tasks', 'stopped'],
+        ['cancel-requested', 'tasks', 'stopped'],
         ['invalidate-automatic', 'tasks', 'stopped'],
     ]);
 });

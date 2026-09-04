@@ -4,6 +4,7 @@ import test from 'node:test';
 import { createMapController } from '../apps/map/host/controller.js';
 
 function createHarness() {
+    const initialStatus = { state: 'idle', mode: null, message: '', reason: '', lastRunAt: null };
     const host = {
         identity: { key: 'character:1:chat-a' },
         posts: [],
@@ -12,11 +13,10 @@ function createHarness() {
         statusListener: null,
         autoMaintenance: false,
         writeState: 'ready',
-        status: { state: 'idle', mode: null, message: '', lastRunAt: null },
+        status: initialStatus,
+        statuses: new Map([['character:1:chat-a', initialStatus]]),
         calls: [],
         mapData: null,
-        manualOutcome: { status: 'unchanged', mode: 'manual', participantIds: ['map'], committedParticipantIds: [], failedParticipantIds: [], participantResults: [{ participantId: 'map', status: 'unchanged', changed: false }] },
-        rebuildOutcome: { status: 'updated', mode: 'rebuild', participantIds: ['map'], committedParticipantIds: ['map'], failedParticipantIds: [], participantResults: [{ participantId: 'map', status: 'updated', changed: true }] },
     };
     const map = {
         readCurrent: () => ({ map: host.mapData, writeState: host.writeState }),
@@ -38,16 +38,24 @@ function createHarness() {
         },
     };
     const maintenance = {
-        async runManual() {
+        startManual() {
             host.calls.push(['manual']);
-            return host.manualOutcome;
+            host.status = { state: 'running', mode: 'manual', message: '', reason: '', lastRunAt: null };
+            host.statuses.set(host.identity.key, host.status);
+            host.statusListener?.('map', host.identity.key, host.status);
+            return { status: 'started', mode: 'manual', completion: new Promise(() => {}) };
         },
-        async runRebuild() {
+        startRebuild() {
             host.calls.push(['rebuild']);
-            return host.rebuildOutcome;
+            host.status = { state: 'running', mode: 'rebuild', message: '', reason: '', lastRunAt: null };
+            host.statuses.set(host.identity.key, host.status);
+            host.statusListener?.('map', host.identity.key, host.status);
+            return { status: 'started', mode: 'rebuild', completion: new Promise(() => {}) };
         },
-        cancelForeground(_participantId, reason) {host.calls.push(['cancel', reason]);},
-        getStatus: () => host.status,
+        cancelRequested(_participantId, reason) {host.calls.push(['cancel', reason]);},
+        invalidateAutomatic(_participantId, reason) {host.calls.push(['invalidate-automatic', reason]);},
+        getStatus: (_participantId, chatIdentity) => host.statuses.get(chatIdentity)
+            ?? { state: 'idle', mode: null, message: '', reason: '', lastRunAt: null },
         subscribeStatus(listener) {
             host.statusListener = listener;
             return () => {host.statusListener = null;};
@@ -76,7 +84,7 @@ function activation(host) {
     };
 }
 
-test('Map activation is read-only and its maintenance endpoints return stable outcome copy', async () => {
+test('Map activation is read-only and maintenance requests return after Host admission', async () => {
     const { controller, host } = createHarness();
     const state = await controller.activate(activation(host));
 
@@ -92,10 +100,13 @@ test('Map activation is read-only and its maintenance endpoints return stable ou
     })).autoMaintenance, true);
     assert.equal((await controller.handleMessage({ type: 'map/confirm-save', payload })).confirmation, 'confirmed');
     const manual = await controller.handleMessage({ type: 'map/maintain-once', payload });
+    host.status = { state: 'idle', mode: 'manual', message: 'unchanged', reason: '', lastRunAt: 1 };
     const rebuild = await controller.handleMessage({ type: 'map/rebuild', payload });
-    assert.equal(manual.message, '地图无需更新。');
-    assert.equal(rebuild.message, '地图已建立并保存。');
-    assert.deepEqual(host.calls.filter(call => call[0] !== 'cancel'), [['manual'], ['rebuild']]);
+    assert.equal(manual.started, true);
+    assert.equal(manual.state.maintenanceStatus, 'maintaining');
+    assert.equal(rebuild.started, true);
+    assert.equal(rebuild.state.maintenanceStatus, 'rebuilding');
+    assert.deepEqual(host.calls, [['manual'], ['rebuild']]);
 });
 
 test('Map subscriptions publish only while their activation still owns the current chat', async () => {
@@ -105,22 +116,31 @@ test('Map subscriptions publish only while their activation still owns the curre
     host.dataListener();
     assert.equal(host.posts.length, 1);
 
-    host.status = { state: 'running', mode: 'rebuild', message: '', lastRunAt: null };
-    host.statusListener('map', host.status);
+    host.status = { state: 'running', mode: 'rebuild', message: '', reason: '', lastRunAt: null };
+    host.statuses.set('character:1:chat-a', host.status);
+    host.statusListener('map', 'character:1:chat-a', host.status);
     assert.equal(host.posts.at(-1).type, 'map/state');
     assert.equal(host.posts.at(-1).payload.state.maintenanceStatus, 'rebuilding');
 
     host.identity = { key: 'character:1:chat-b' };
     host.dataListener({ identityKey: 'character:1:chat-a', writeState: 'ready' });
     assert.equal(host.posts.length, 2);
+
+    const next = await controller.activate(activation(host));
+    assert.equal(next.maintenanceStatus, 'idle');
+    host.statusListener('map', 'character:1:chat-a', host.status);
+    assert.equal(host.posts.length, 2);
 });
 
-test('leaving Map cancels foreground work and rejects stale page requests', async () => {
+test('leaving Map detaches the page without cancelling Host-owned maintenance', async () => {
     const { controller, host } = createHarness();
     await controller.activate(activation(host));
+    await controller.handleMessage({
+        type: 'map/maintain-once', payload: { chatIdentity: host.identity.key },
+    });
     controller.deactivate('route-left');
 
-    assert.deepEqual(host.calls.at(-1), ['cancel', 'route-left']);
+    assert.deepEqual(host.calls, [['manual']]);
     await assert.rejects(
         controller.handleMessage({
             type: 'map/refresh',
@@ -128,6 +148,12 @@ test('leaving Map cancels foreground work and rejects stale page requests', asyn
         }),
         /地图 APP 未激活/,
     );
+
+    controller.handleChatChanged();
+    assert.deepEqual(host.calls.slice(-2), [
+        ['cancel', 'chat-changed'],
+        ['invalidate-automatic', 'chat-changed'],
+    ]);
 });
 
 test('write-gated maintenance is delegated to the runner and conflict recovery adopts server data', async () => {
@@ -136,24 +162,20 @@ test('write-gated maintenance is delegated to the runner and conflict recovery a
     await controller.activate(activation(host));
     const payload = { chatIdentity: host.identity.key };
 
-    assert.equal((await controller.handleMessage({ type: 'map/maintain-once', payload })).message, '地图无需更新。');
+    assert.equal((await controller.handleMessage({ type: 'map/maintain-once', payload })).started, true);
     host.writeState = 'conflict';
     const adoption = await controller.handleMessage({ type: 'map/adopt-server-state', payload });
     assert.equal(adoption.adoption, 'adopted');
     assert.equal(adoption.state.status, 'ready');
 });
 
-test('failed outcomes never expose internal reasons to the Map page', async () => {
+test('maintenance completion is projected from Host status without exposing internal reasons', async () => {
     const { controller, host } = createHarness();
-    host.manualOutcome = {
-        status: 'failed', mode: 'manual', participantIds: ['map'], committedParticipantIds: [],
-        failedParticipantIds: ['map'], participantResults: [{ participantId: 'map', status: 'failed', changed: false }],
-        reason: 'provider_secret_stack_and_key',
+    host.status = {
+        state: 'error', mode: 'manual', message: 'failed', reason: 'provider_secret_stack_and_key', lastRunAt: null,
     };
-    await controller.activate(activation(host));
-    const result = await controller.handleMessage({
-        type: 'map/maintain-once', payload: { chatIdentity: host.identity.key },
-    });
-    assert.equal(result.message, '地图维护失败，请检查 Agent API 设置后重试。');
-    assert.doesNotMatch(result.message, /provider_secret/);
+    host.statuses.set('character:1:chat-a', host.status);
+    const result = await controller.activate(activation(host));
+    assert.equal(result.maintenanceMessage, '地图维护失败，请稍后重试。');
+    assert.doesNotMatch(result.maintenanceMessage, /provider_secret|Agent API/);
 });

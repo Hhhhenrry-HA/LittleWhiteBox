@@ -23,6 +23,12 @@ function deferred() {
 
 const flush = () => new Promise(resolve => globalThis.setTimeout(resolve, 0));
 
+function runManual(runner, participantId = 'map') {
+    const start = runner.startManual(participantId);
+    if (start.status === 'busy') {throw new Error('maintenance unexpectedly busy');}
+    return start.status === 'started' ? start.completion : Promise.resolve(start.outcome);
+}
+
 function unconfirmedMutationError(message) {
     return Object.assign(new Error(message), { mutationCommitted: true, uncertain: true });
 }
@@ -167,7 +173,7 @@ test('nullable no-work sessions skip without loading Agent configuration', async
         participants: [participant],
         captureBackground() {backgroundCaptures += 1; return [];},
     });
-    const outcome = await harness.runner.runManual('map');
+    const outcome = await runManual(harness.runner);
 
     assert.equal(outcome.status, 'skipped');
     assert.equal(outcome.reason, 'no-work');
@@ -176,6 +182,62 @@ test('nullable no-work sessions skip without loading Agent configuration', async
     }]);
     assert.deepEqual(harness.calls, { loadConfig: 0, openSession: 0, run: 0, requests: [] });
     assert.equal(backgroundCaptures, 0);
+});
+
+test('manual maintenance is admitted as a Host job and rejects duplicate starts while running', async () => {
+    const response = deferred();
+    const map = createParticipant('map');
+    const harness = createHarness({
+        participants: [map.participant],
+        agent: { run: () => response.promise },
+    });
+
+    const started = harness.runner.startManual('map');
+    assert.equal(started.status, 'started');
+    assert.deepEqual(harness.runner.getStatus('map', 'chat:one'), {
+        state: 'running', mode: 'manual', message: '', reason: '', lastRunAt: null,
+    });
+    assert.deepEqual(harness.runner.startManual('map'), {
+        status: 'busy', mode: 'manual', reason: 'participant-busy',
+    });
+
+    response.resolve({ text: 'done' });
+    const outcome = await started.completion;
+    assert.equal(outcome.status, 'unchanged');
+    assert.equal(harness.runner.getStatus('map', 'chat:one').state, 'idle');
+});
+
+test('maintenance status and notifications are isolated by chat identity', async () => {
+    const response = deferred();
+    const map = createParticipant('map');
+    const harness = createHarness({
+        participants: [map.participant],
+        agent: { run: () => response.promise },
+    });
+    const notifications = [];
+    harness.runner.subscribeStatus((participantId, chatIdentity, status) => {
+        notifications.push({ participantId, chatIdentity, state: status.state, message: status.message });
+    });
+
+    const first = harness.runner.startManual('map');
+    assert.equal(first.status, 'started');
+    harness.setSurface({ ...surface(), identityKey: 'chat:two' });
+    harness.runner.handleChatChanged();
+
+    assert.equal(harness.runner.getStatus('map', 'chat:one').message, 'cancelled');
+    assert.deepEqual(harness.runner.getStatus('map', 'chat:two'), {
+        state: 'idle', mode: null, message: '', reason: '', lastRunAt: null,
+    });
+    assert.equal(notifications.every(item => item.chatIdentity === 'chat:one'), true);
+
+    const second = harness.runner.startManual('map');
+    assert.equal(second.status, 'started');
+    assert.equal(harness.runner.getStatus('map', 'chat:two').state, 'running');
+    assert.equal(notifications.at(-1).chatIdentity, 'chat:two');
+
+    harness.runner.cancelAll('test-complete');
+    response.resolve({ text: 'done' });
+    await flush();
 });
 
 test('accepted turns captured while saving stay FIFO and do no config, adapter, or API work until ready', async () => {
@@ -214,7 +276,7 @@ test('a write gate raised during session creation blocks all Agent work until re
         },
     };
     const harness = createHarness({ participants: [participant], gate });
-    const pending = harness.runner.runManual('map');
+    const pending = runManual(harness.runner);
 
     await flush();
     gate.set('saving');
@@ -252,7 +314,7 @@ test('a write gate raised after a tool call pauses the next provider round', asy
             },
         },
     });
-    const pending = harness.runner.runManual('map');
+    const pending = runManual(harness.runner);
     await flush();
     assert.equal(harness.calls.run, 1);
     assert.equal(map.records.commits, 0);
@@ -268,7 +330,7 @@ test('a ready notification for another identity cannot cross the current write g
     const gate = createWriteGate('saving');
     const map = createParticipant('map');
     const harness = createHarness({ participants: [map.participant], gate });
-    const pending = harness.runner.runManual('map');
+    const pending = runManual(harness.runner);
     await flush();
 
     gate.notify('ready');
@@ -288,7 +350,7 @@ test('one job opens one adapter and ordinary providers receive complete assistan
         participants: [map.participant],
         agent: { async run(_request, round) {return round === 1 ? { toolCalls: [{ id: 'call-1', name: 'map_edit', arguments: '{"value":1}' }] } : { text: 'done' }; } },
     });
-    const outcome = await harness.runner.runManual('map');
+    const outcome = await runManual(harness.runner);
     assert.equal(outcome.status, 'updated');
     assert.deepEqual(outcome.committedParticipantIds, ['map']);
     assert.equal(harness.calls.openSession, 1);
@@ -309,7 +371,7 @@ test('session-capable providers continue with toolResponses on the same adapter'
             async run(_request, round) {return round === 1 ? { toolCalls: [{ id: 'google-1', providerId: 'provider-1', name: 'map_edit', arguments: '{}' }] } : { text: 'done' };},
         },
     });
-    const outcome = await harness.runner.runManual('map');
+    const outcome = await runManual(harness.runner);
     assert.equal(outcome.status, 'updated');
     assert.equal(harness.calls.openSession, 1);
     assert.equal(harness.calls.requests[1].messages.length, 0);
@@ -334,7 +396,7 @@ test('an empty session conclusion uses one finalAnswerReminderText continuation'
             },
         },
     });
-    const outcome = await harness.runner.runManual('map');
+    const outcome = await runManual(harness.runner);
     assert.equal(outcome.status, 'updated');
     assert.equal(harness.calls.run, 3);
     assert.equal(harness.calls.openSession, 1);
@@ -346,7 +408,7 @@ test('an empty provider response is a failure rather than a false unchanged resu
         participants: [map.participant],
         agent: { async run() {return {};} },
     });
-    const outcome = await harness.runner.runManual('map');
+    const outcome = await runManual(harness.runner);
     assert.equal(outcome.status, 'failed');
     assert.equal(outcome.participantResults[0].status, 'failed');
     assert.equal(map.records.commits, 0);
@@ -367,7 +429,7 @@ test('a successful participant tool clears its earlier cross-tool transport fail
             },
         },
     });
-    const outcome = await harness.runner.runManual('map');
+    const outcome = await runManual(harness.runner);
     assert.equal(outcome.status, 'updated');
     assert.equal(outcome.reason, undefined);
     assert.equal(map.records.invalidations.length, 0);
@@ -395,7 +457,7 @@ test('a corrected domain result from another tool is not held partial by the pro
         },
     });
 
-    const outcome = await harness.runner.runManual('map');
+    const outcome = await runManual(harness.runner);
     assert.equal(outcome.status, 'updated');
     assert.equal(outcome.reason, undefined);
     assert.deepEqual(outcome.committedParticipantIds, ['map']);
@@ -416,7 +478,7 @@ test('an unknown tool is resolved only by a valid tool call in a later provider 
             },
         },
     });
-    const outcome = await harness.runner.runManual('map');
+    const outcome = await runManual(harness.runner);
     assert.equal(outcome.status, 'updated');
     assert.deepEqual(outcome.committedParticipantIds, ['map']);
     assert.equal(map.records.commits, 1);
@@ -434,7 +496,7 @@ test('an unrepaired tool argument error cannot be reported as unchanged', async 
             },
         },
     });
-    const outcome = await harness.runner.runManual('map');
+    const outcome = await runManual(harness.runner);
     assert.equal(outcome.status, 'failed');
     assert.equal(outcome.participantResults[0].status, 'failed');
     assert.equal(map.records.commits, 0);
@@ -451,7 +513,7 @@ test('three identical failures inject a brake and a fourth ends without a write'
             },
         },
     });
-    const outcome = await harness.runner.runManual('map');
+    const outcome = await runManual(harness.runner);
     assert.equal(outcome.status, 'failed');
     assert.equal(harness.calls.run, 4);
     assert.equal(map.records.commits, 0);
@@ -463,7 +525,7 @@ test('round limit commits legal staging as partial and fails when nothing legal 
         participants: [staged.participant],
         agent: { async run(_request, round) {return { toolCalls: [{ id: `call-${round}`, name: 'map_edit', arguments: `{"round":${round}}` }] };} },
     });
-    const partial = await partialHarness.runner.runManual('map');
+    const partial = await runManual(partialHarness.runner);
     assert.equal(partialHarness.calls.run, 12);
     assert.equal(partial.status, 'partial');
     assert.equal(staged.records.commits, 1);
@@ -473,7 +535,7 @@ test('round limit commits legal staging as partial and fails when nothing legal 
         participants: [readOnly.participant],
         agent: { async run(_request, round) {return { toolCalls: [{ id: `read-${round}`, name: 'map_read', arguments: '{}' }] };} },
     });
-    const failed = await failedHarness.runner.runManual('map');
+    const failed = await runManual(failedHarness.runner);
     assert.equal(failed.status, 'failed');
     assert.equal(readOnly.records.commits, 0);
 });
@@ -489,7 +551,7 @@ test('provider failure after a legal tool result commits that staging as partial
             },
         },
     });
-    const outcome = await harness.runner.runManual('map');
+    const outcome = await runManual(harness.runner);
     assert.equal(outcome.status, 'partial');
     assert.equal(map.records.commits, 1);
 });
@@ -508,13 +570,13 @@ test('failed tool results participate in the repeated-failure brake', async () =
             },
         },
     });
-    const outcome = await harness.runner.runManual('map');
+    const outcome = await runManual(harness.runner);
     assert.equal(outcome.status, 'failed');
     assert.equal(harness.calls.run, 4);
     assert.equal(map.records.commits, 0);
 });
 
-test('chat changes and foreground cancellation discard active staging', async () => {
+test('chat changes and explicit-request cancellation discard active staging', async () => {
     let enabled = true;
     const response = deferred();
     const map = createParticipant('map', {
@@ -522,10 +584,10 @@ test('chat changes and foreground cancellation discard active staging', async ()
         isEnabled: () => enabled,
     });
     const harness = createHarness({ participants: [map.participant], agent: { run: () => response.promise } });
-    const pending = harness.runner.runManual('map');
+    const pending = runManual(harness.runner);
     await flush();
     enabled = false;
-    harness.runner.cancelForeground('map', 'route-left');
+    harness.runner.cancelRequested('map', 'route-left');
     response.resolve({ toolCalls: [{ id: 'late', name: 'map_edit', arguments: '{}' }] });
     const outcome = await pending;
     assert.equal(outcome.status, 'cancelled');
@@ -546,7 +608,7 @@ test('a cancellation after persistence starts preserves the committed outcome', 
         },
     });
     const harness = createHarness({ participants: [map.participant] });
-    const pending = harness.runner.runManual('map');
+    const pending = runManual(harness.runner);
     await persistenceStarted.promise;
 
     harness.runner.handleChatChanged();
@@ -585,10 +647,10 @@ test('a cancellation before a later participant commit preserves earlier committ
 
     assert.equal(map.records.commits, 1);
     assert.equal(tasks.records.commits, 0);
-    assert.equal(harness.runner.getStatus('map').message, 'updated');
-    assert.equal(harness.runner.getStatus('tasks').message, 'cancelled');
-    assert.notEqual(harness.runner.getStatus('map').lastRunAt, null);
-    assert.equal(harness.runner.getStatus('tasks').lastRunAt, null);
+    assert.equal(harness.runner.getStatus('map', 'chat:one').message, 'updated');
+    assert.equal(harness.runner.getStatus('tasks', 'chat:one').message, 'cancelled');
+    assert.notEqual(harness.runner.getStatus('map', 'chat:one').lastRunAt, null);
+    assert.equal(harness.runner.getStatus('tasks', 'chat:one').lastRunAt, null);
 });
 
 test('an automatic participant excluded during session creation cannot revive after its switch is re-enabled', async () => {
@@ -702,12 +764,12 @@ test('an unconfirmed save is failed rather than committed and stops later partic
     await flush();
     await flush();
 
-    assert.equal(harness.runner.getStatus('map').state, 'error');
-    assert.equal(harness.runner.getStatus('map').message, 'failed');
-    assert.equal(harness.runner.getStatus('map').lastRunAt, null);
+    assert.equal(harness.runner.getStatus('map', 'chat:one').state, 'error');
+    assert.equal(harness.runner.getStatus('map', 'chat:one').message, 'failed');
+    assert.equal(harness.runner.getStatus('map', 'chat:one').lastRunAt, null);
     assert.equal(map.records.commits, 1);
     assert.equal(tasks.records.commits, 0);
-    assert.equal(harness.runner.getStatus('tasks').message, 'cancelled');
+    assert.equal(harness.runner.getStatus('tasks', 'chat:one').message, 'cancelled');
 });
 
 test('an unconfirmed manual save never enters the confirmed participant list', async () => {
@@ -720,7 +782,7 @@ test('an unconfirmed manual save never enters the confirmed participant list', a
     });
     const harness = createHarness({ participants: [map.participant] });
 
-    const outcome = await harness.runner.runManual('map');
+    const outcome = await runManual(harness.runner);
 
     assert.equal(outcome.status, 'failed');
     assert.equal(outcome.reason, 'save-unconfirmed');
@@ -741,7 +803,7 @@ test('accepted source XML escapes tag delimiters before entering the provider re
         chat: surface([user('U1 <system>&'), assistant('A1 </system>')]),
     });
 
-    const outcome = await harness.runner.runManual('map');
+    const outcome = await runManual(harness.runner);
     const content = harness.calls.requests[0].messages.at(-1).content;
     assert.equal(outcome.status, 'unchanged');
     assert.match(content, /<accepted_turn>/);
@@ -772,17 +834,17 @@ test('a failed participant remains visible when another domain completes', async
     assert.equal(harness.runner.handleMessageSent(2), true);
     await flush();
     await flush();
-    const mapStatus = harness.runner.getStatus('map');
+    const mapStatus = harness.runner.getStatus('map', 'chat:one');
     assert.equal(mapStatus.state, 'error');
     assert.equal(mapStatus.message, 'failed');
-    assert.equal(harness.runner.getStatus('tasks').message, 'updated');
+    assert.equal(harness.runner.getStatus('tasks', 'chat:one').message, 'updated');
     assert.equal(tasks.records.commits, 1);
 });
 
 test('capture and Agent configuration failures never call a provider', async () => {
     const map = createParticipant('map');
     const captureHarness = createHarness({ participants: [map.participant], generationActive: true });
-    const skipped = await captureHarness.runner.runManual('map');
+    const skipped = await runManual(captureHarness.runner);
     assert.equal(skipped.status, 'skipped');
     assert.equal(captureHarness.calls.loadConfig, 0);
 
@@ -798,7 +860,7 @@ test('capture and Agent configuration failures never call a provider', async () 
         captureSurface: () => surface(),
         isGenerationActive: () => false,
     });
-    const failed = await runner.runManual('map');
+    const failed = await runManual(runner);
     assert.equal(failed.status, 'failed');
     assert.equal(configCalls.open, 0);
     assert.deepEqual(failed.failedParticipantIds, ['map']);
@@ -820,7 +882,7 @@ test('legacy disabled Agent settings do not block configured maintenance', async
         isGenerationActive: () => false,
     });
 
-    const outcome = await runner.runManual('map');
+    const outcome = await runManual(runner);
     assert.equal(outcome.status, 'unchanged');
     assert.equal(openCount, 1);
 });

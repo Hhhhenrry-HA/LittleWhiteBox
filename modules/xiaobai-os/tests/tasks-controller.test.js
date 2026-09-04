@@ -10,6 +10,7 @@ function deferred() {
 }
 
 function createHarness() {
+    const initialMaintenanceStatus = { state: 'idle', mode: null, message: '', reason: '', lastRunAt: null };
     const host = {
         identity: { key: 'character:1:chat-a' },
         posts: [],
@@ -23,7 +24,8 @@ function createHarness() {
         generationListener: null,
         settingsListener: null,
         maintenanceListener: null,
-        maintenanceStatus: { state: 'idle', mode: null, message: '', lastRunAt: null },
+        maintenanceStatus: initialMaintenanceStatus,
+        maintenanceStatuses: new Map([['character:1:chat-a', initialMaintenanceStatus]]),
         boardRequest: null,
         refreshRequest: null,
         taskError: null,
@@ -81,12 +83,19 @@ function createHarness() {
         },
     };
     const maintenance = {
-        async runManual() {
+        startManual() {
             host.calls.push(['manual']);
-            return { status: 'unchanged', mode: 'manual', participantIds: ['tasks'], participantResults: [] };
+            host.maintenanceStatus = {
+                state: 'running', mode: 'manual', message: '', reason: '', lastRunAt: null,
+            };
+            host.maintenanceStatuses.set(host.identity.key, host.maintenanceStatus);
+            host.maintenanceListener?.('tasks', host.identity.key, host.maintenanceStatus);
+            return { status: 'started', mode: 'manual', completion: new Promise(() => {}) };
         },
-        cancelForeground: (_id, reason) => host.calls.push(['cancel-maintenance', reason]),
-        getStatus: () => host.maintenanceStatus,
+        cancelRequested: (_id, reason) => host.calls.push(['cancel-maintenance', reason]),
+        invalidateAutomatic: (_id, reason) => host.calls.push(['invalidate-automatic', reason]),
+        getStatus: (_participantId, chatIdentity) => host.maintenanceStatuses.get(chatIdentity)
+            ?? { state: 'idle', mode: null, message: '', reason: '', lastRunAt: null },
         subscribeStatus(listener) {
             host.maintenanceListener = listener;
             return () => {host.maintenanceListener = null;};
@@ -119,7 +128,7 @@ function activation(host) {
     };
 }
 
-test('Tasks activation is local-only and settings, maintenance, and save recovery return public state', async () => {
+test('Tasks activation is local-only and maintenance returns after Host admission', async () => {
     const { controller, host } = createHarness();
     const state = await controller.activate(activation(host));
     host.calls.length = 0;
@@ -132,8 +141,8 @@ test('Tasks activation is local-only and settings, maintenance, and save recover
         type: 'tasks/settings/update', payload: { ...payload, autoMaintenance: true },
     })).settings.autoMaintenance, true);
     const maintenance = await controller.handleMessage({ type: 'tasks/maintenance/run', payload });
-    assert.equal(maintenance.outcome, 'unchanged');
-    assert.equal(maintenance.message, '无需更新');
+    assert.equal(maintenance.started, true);
+    assert.equal(maintenance.state.maintenance.state, 'running');
     assert.equal((await controller.handleMessage({ type: 'tasks/save/confirm', payload })).confirmation, 'confirmed');
     host.writeState = 'conflict';
     assert.equal((await controller.handleMessage({ type: 'tasks/save/adopt-server', payload })).adoption, 'adopted');
@@ -150,6 +159,18 @@ test('route changes cancel only the generation owned by the page', async () => {
     host.calls.length = 0;
     await controller.handleMessage({ type: 'tasks/activate', payload: { ...payload, page: 'published' } });
     assert.deepEqual(host.calls, [['cancel-board', 'route-left']]);
+});
+
+test('leaving Tasks does not cancel Host-owned maintenance', async () => {
+    const { controller, host } = createHarness();
+    await controller.activate(activation(host));
+    host.calls.length = 0;
+    await controller.handleMessage({
+        type: 'tasks/maintenance/run', payload: { chatIdentity: host.identity.key },
+    });
+
+    controller.deactivate('route-left');
+    assert.equal(host.calls.some(call => call[0] === 'cancel-maintenance'), false);
 });
 
 test('activation consumes the OS snapshot without starting another storage refresh', async () => {
@@ -213,9 +234,10 @@ test('late generation results are rejected after chat change without publishing 
     await assert.rejects(pending, /tasks_app_inactive/);
     assert.deepEqual(host.reports, []);
     assert.equal(host.posts.some(post => post.payload?.state?.chatIdentity === 'character:1:chat-b'), false);
-    assert.deepEqual(host.calls.slice(-2), [
+    assert.deepEqual(host.calls.slice(-3), [
         ['cancel-generation', 'chat-changed'],
         ['cancel-maintenance', 'chat-changed'],
+        ['invalidate-automatic', 'chat-changed'],
     ]);
 });
 
@@ -228,11 +250,17 @@ test('subscriptions publish only for the active chat and expose Tasks maintenanc
     host.dataListener();
     assert.equal(host.posts.length, 0);
     host.identity = { key: 'character:1:chat-a' };
-    host.maintenanceStatus = { state: 'running', mode: 'manual', message: '', lastRunAt: null };
-    host.maintenanceListener('tasks', host.maintenanceStatus);
+    host.maintenanceStatus = { state: 'running', mode: 'manual', message: '', reason: '', lastRunAt: null };
+    host.maintenanceStatuses.set('character:1:chat-a', host.maintenanceStatus);
+    host.maintenanceListener('tasks', 'character:1:chat-a', host.maintenanceStatus);
     assert.equal(host.posts.at(-1).payload.state.maintenance.state, 'running');
     host.identity = { key: 'character:1:chat-b' };
     host.generationListener();
+    assert.equal(host.posts.length, 1);
+
+    const next = await controller.activate(activation(host));
+    assert.equal(next.maintenance.state, 'idle');
+    host.maintenanceListener('tasks', 'character:1:chat-a', host.maintenanceStatus);
     assert.equal(host.posts.length, 1);
 });
 
