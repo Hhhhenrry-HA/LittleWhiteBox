@@ -440,11 +440,45 @@ async function removeTaskByScope(scope, taskId, fallbackIndex = -1) {
 const __taskRunMap = new Map();
 const __taskDynamicCallbackPrefix = (taskName) => `${normalizeTaskKey(taskName)}_fl_`;
 
-function abortTaskRunEntry(entry) {
-    if (!entry) return;
+function cleanupTaskRunOwner(taskKey, entry) {
+    if (!entry || entry.cleaned) return false;
+    entry.cleaned = true;
+    entry.acceptingCallbacks = false;
+
+    for (const callbackId of Array.from(entry.callbackIds || [])) {
+        const callbackEntry = state.dynamicCallbacks.get(callbackId);
+        if (callbackEntry?.owner === entry) {
+            try { callbackEntry.abortController?.abort?.(); } catch {}
+            state.dynamicCallbacks.delete(callbackId);
+        }
+        entry.callbackIds.delete(callbackId);
+    }
+
     try { entry.abort?.abort?.(); } catch {}
     try { entry.timers?.forEach?.((id) => clearTimeout(id)); } catch {}
     try { entry.intervals?.forEach?.((id) => clearInterval(id)); } catch {}
+    if (__taskRunMap.get(taskKey) === entry) __taskRunMap.delete(taskKey);
+    return true;
+}
+
+function releaseTaskRunOwnerIfIdle(entry) {
+    if (!entry || entry.cleaned || !entry.bodySettled) return false;
+    if (entry.inFlightCallbacks > 0 || entry.callbackIds.size > 0) return false;
+    return cleanupTaskRunOwner(entry.taskKey, entry);
+}
+
+function removeFloorCallback(owner, callbackId) {
+    const callbackEntry = state.dynamicCallbacks.get(callbackId);
+    if (callbackEntry?.owner === owner) {
+        try { callbackEntry.abortController?.abort?.(); } catch {}
+        state.dynamicCallbacks.delete(callbackId);
+    }
+    owner?.callbackIds?.delete?.(callbackId);
+    releaseTaskRunOwnerIfIdle(owner);
+}
+
+function abortTaskRunEntry(entry) {
+    return cleanupTaskRunOwner(entry?.taskKey, entry);
 }
 
 function resetTaskRun(taskName) {
@@ -455,7 +489,6 @@ function resetTaskRun(taskName) {
     const runEntry = __taskRunMap.get(taskKey);
     if (runEntry) {
         abortTaskRunEntry(runEntry);
-        __taskRunMap.delete(taskKey);
         clearedRuns = 1;
     }
 
@@ -474,8 +507,7 @@ function resetTaskRun(taskName) {
 }
 
 function resetAllTaskRuns() {
-    for (const entry of __taskRunMap.values()) abortTaskRunEntry(entry);
-    __taskRunMap.clear();
+    for (const entry of Array.from(__taskRunMap.values())) abortTaskRunEntry(entry);
 
     for (const [id, entry] of state.dynamicCallbacks.entries()) {
         try { entry?.abortController?.abort?.(); } catch {}
@@ -558,15 +590,26 @@ CacheRegistry.register('scheduledTasks', {
 async function __runTaskSingleInstance(taskName, jsRunner, signature = null) {
     const existing = __taskRunMap.get(taskName);
     if (existing) {
-        try { existing.abort?.abort?.(); } catch {}
+        abortTaskRunEntry(existing);
         try { await Promise.resolve(existing.completion).catch(() => {}); } catch {}
-        __taskRunMap.delete(taskName);
     }
 
     const abort = new AbortController();
     const timers = new Set();
     const intervals = new Set();
-    const entry = { abort, timers, intervals, signature, completion: null };
+    const entry = {
+        taskKey: taskName,
+        abort,
+        timers,
+        intervals,
+        signature,
+        completion: null,
+        callbackIds: new Set(),
+        acceptingCallbacks: true,
+        bodySettled: false,
+        inFlightCallbacks: 0,
+        cleaned: false,
+    };
     __taskRunMap.set(taskName, entry);
 
     const addListener = (target, type, handler, opts = {}) => {
@@ -592,16 +635,24 @@ async function __runTaskSingleInstance(taskName, jsRunner, signature = null) {
 
     let jsRunnerResult;
     entry.completion = (async () => {
+        let succeeded = false;
         try {
-            jsRunnerResult = await jsRunner({ addListener, setTimeoutSafe, clearTimeoutSafe, setIntervalSafe, clearIntervalSafe, abortSignal: abort.signal });
+            jsRunnerResult = await jsRunner({
+                addListener,
+                setTimeoutSafe,
+                clearTimeoutSafe,
+                setIntervalSafe,
+                clearIntervalSafe,
+                abortSignal: abort.signal,
+                owner: entry,
+            });
+            succeeded = true;
         } finally {
-            try { abort.abort(); } catch {}
-            try {
-                timers.forEach((id) => clearTimeout(id));
-                intervals.forEach((id) => clearInterval(id));
-            } catch {}
+            entry.acceptingCallbacks = false;
+            entry.bodySettled = true;
+            if (succeeded) releaseTaskRunOwnerIfIdle(entry);
+            else cleanupTaskRunOwner(taskName, entry);
             try { window?.dispatchEvent?.(new CustomEvent('xiaobaix-task-cleaned', { detail: { taskName, signature } })); } catch {}
-            __taskRunMap.delete(taskName);
         }
         return jsRunnerResult;
     })();
@@ -682,11 +733,10 @@ async function executeTaskJS(jsCode, taskName = 'AnonymousTask') {
 
     const old = __taskRunMap.get(stableKey);
     if (old) {
-        try { old.abort?.abort?.(); } catch {}
+        abortTaskRunEntry(old);
         if (!isLightTask) {
             try { await Promise.resolve(old.completion).catch(() => {}); } catch {}
         }
-        __taskRunMap.delete(stableKey);
     }
 
     const callbackPrefix = `${stableKey}_fl_`;
@@ -704,7 +754,8 @@ async function executeTaskJS(jsCode, taskName = 'AnonymousTask') {
             clearTimeoutSafe: _clearTimeoutSafe,
             setIntervalSafe: _setIntervalSafe,
             clearIntervalSafe: _clearIntervalSafe,
-            abortSignal
+            abortSignal,
+            owner
         } = utils;
 
         const timeouts = new Set();
@@ -792,9 +843,17 @@ async function executeTaskJS(jsCode, taskName = 'AnonymousTask') {
 
         const addFloorListener = (callback, options = {}) => {
             if (typeof callback !== 'function') throw new Error('callback 必须是函数');
+            if (!owner?.acceptingCallbacks || owner.cleaned || abortSignal?.aborted) return () => {};
             const callbackId = `${stableKey}_fl_${uuidv4()}`;
             const entryAbort = new AbortController();
-            try { abortSignal.addEventListener('abort', () => { try { entryAbort.abort(); } catch {} state.dynamicCallbacks.delete(callbackId); }); } catch {}
+            owner.callbackIds.add(callbackId);
+            try {
+                abortSignal.addEventListener('abort', () => {
+                    try { entryAbort.abort(); } catch {}
+                    state.dynamicCallbacks.delete(callbackId);
+                    owner.callbackIds.delete(callbackId);
+                }, { once: true });
+            } catch {}
             state.dynamicCallbacks.set(callbackId, {
                 callback,
                 options: {
@@ -802,9 +861,10 @@ async function executeTaskJS(jsCode, taskName = 'AnonymousTask') {
                     timing: options.timing || 'after_ai',
                     floorType: options.floorType || 'all'
                 },
-                abortController: entryAbort
+                abortController: entryAbort,
+                owner
             });
-            return () => { try { entryAbort.abort(); } catch {} state.dynamicCallbacks.delete(callbackId); };
+            return () => removeFloorCallback(owner, callbackId);
         };
 
         const runInScope = async (code) => {
@@ -833,8 +893,10 @@ async function executeTaskJS(jsCode, taskName = 'AnonymousTask') {
         let result;
         try {
             result = await runInScope(jsCode);
+            owner.acceptingCallbacks = false;
             await waitForAsyncSettled();
         } finally {
+            owner.acceptingCallbacks = false;
             hardCleanup();
         }
         return result;
@@ -924,9 +986,11 @@ async function checkAndExecuteTasks(triggerContext = 'after_ai', overrideChatCha
     const dynamicTaskList = [];
     if (state.dynamicCallbacks?.size > 0) {
         for (const [callbackId, entry] of state.dynamicCallbacks.entries()) {
-            const { callback, options, abortController } = entry || {};
-            if (!callback) { state.dynamicCallbacks.delete(callbackId); continue; }
-            if (abortController?.signal?.aborted) { state.dynamicCallbacks.delete(callbackId); continue; }
+            const { callback, options, abortController, owner } = entry || {};
+            if (!callback || abortController?.signal?.aborted) {
+                removeFloorCallback(owner, callbackId);
+                continue;
+            }
             const interval = Number.isFinite(parseInt(options?.interval)) ? parseInt(options.interval) : 0;
             dynamicTaskList.push({
                 name: callbackId,
@@ -935,7 +999,8 @@ async function checkAndExecuteTasks(triggerContext = 'after_ai', overrideChatCha
                 floorType: options?.floorType || 'all',
                 triggerTiming: options?.timing || 'after_ai',
                 __dynamic: true,
-                __callback: callback
+                __callback: callback,
+                __callbackEntry: entry
             });
         }
     }
@@ -966,6 +1031,11 @@ async function checkAndExecuteTasks(triggerContext = 'after_ai', overrideChatCha
         for (const task of tasksToExecute) {
             state.taskLastExecutionTime.set(task.name, n);
             if (task.__dynamic) {
+                const callbackEntry = state.dynamicCallbacks.get(task.name);
+                if (callbackEntry !== task.__callbackEntry || callbackEntry.abortController?.signal?.aborted) continue;
+                const owner = callbackEntry.owner;
+                if (owner?.cleaned) continue;
+                if (owner) owner.inFlightCallbacks++;
                 try {
                     const currentFloor = pickFloorByType(task.floorType || 'all', counts);
                     await Promise.resolve().then(() => task.__callback({
@@ -975,7 +1045,14 @@ async function checkAndExecuteTasks(triggerContext = 'after_ai', overrideChatCha
                         interval: task.interval,
                         floorType: task.floorType || 'all'
                     }));
-                } catch (e) { console.error('[动态回调错误]', task.name, e); }
+                } catch (e) {
+                    console.error('[动态回调错误]', task.name, e);
+                } finally {
+                    if (owner) {
+                        owner.inFlightCallbacks = Math.max(0, owner.inFlightCallbacks - 1);
+                        releaseTaskRunOwnerIfIdle(owner);
+                    }
+                }
             } else {
                 await executeCommands(task.commands, task.name);
             }
@@ -1499,6 +1576,7 @@ async function deleteTask(index, scope) {
         document.getElementById(styleId)?.remove();
         if (result) {
             await removeTaskByScope(scope, task.id, index);
+            resetTaskRun(task.name);
             if (state.currentEditingId === task.id || (state.currentEditingScope === scope && state.currentEditingIndex === index)) {
                 resetTaskEditorState();
             }
