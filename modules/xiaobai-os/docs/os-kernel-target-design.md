@@ -436,11 +436,11 @@ SillyTavern 内建分支的新 metadata 通常只带 main_chat，不能依赖 CH
 
 1. 用当前 owner locator 和 main_chat 读取父聊天 header；
 2. 读取父 xiaobaiOsRef 和已确认 sidecar；
-3. 复制 partitions，生成新 osId、binding、revision 0 和新 commitId；
+3. 复制 partitions，调用组合层提供的同步 `prepareClonedPartitions` 窄回调，再生成新 osId、binding、revision 0 和新 commitId；回调在第一次子文件写入前执行，不重新处理已冻结的重试 candidate；
 4. 先保存子 sidecar，再安装子聊天引用；
 5. 任一步失败不修改父 sidecar，也不让父子共享 osId。
 
-领域 revision、事件和余额原样复制；Envelope revision 重新开始。此后两个 sidecar 独立推进，不按消息前缀回滚。
+默认领域 revision、事件和余额原样复制；Envelope revision 重新开始。经济时点不按消息前缀猜测回滚。只有具有真实历史证据和业务需要的功能解释自己的复制规则：当前 Messages 根据子聊天私人信息标记裁剪私聊前缀，见其终态设计；Kernel 不识别消息标记，不解析业务分区。此后两个 sidecar 独立推进。
 
 ### 11.3 重命名、复制和导入
 

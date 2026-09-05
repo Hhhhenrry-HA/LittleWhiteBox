@@ -35,6 +35,10 @@
 
 不明物与宠物尚未进入设计，不注册占位入口。
 
+信息 APP 已接入桌面与独立 `messages` 分区：已知人物/手动补充、私人通讯、线程摘要、文字/图片/语音、共用真实「私人信息」楼层及保存恢复。图片输入为画面描述，语音输入为原文，共享画图/TTS 负责呈现，不含上传识图或录音转写。边界和验收见[终态设计](./docs/information-app-target-design.md)与[施工方案](./docs/information-app-implementation-plan.md)。本次不删除小白板或迁移旧短信。
+
+世界 APP 尚处于设计讨论，见[世界 APP 设计草案](./docs/world-app-target-design.md)。当前只讨论 APP 自身的轻背景与世界近况；OS 内联动、ENA 适配及小白板退场另行讨论，尚未实现或注册入口。
+
 ## 数据与写入
 
 当前聊天的 OS 业务数据终态保存在：
@@ -55,10 +59,11 @@ Economy 分区流水是余额的唯一事实来源。Bank、Game、Shop、Tasks 
 - commitId 超时读回确认；
 - 分区数据与写入状态的运行时通知。
 
-编辑、swipe 或删除消息不会删除已提交的经济、银行、游戏或商店事实。SillyTavern 分支建立独立 osId 并复制创建时的已确认 partitions；此后两条世界线独立推进，OS 不按消息前缀猜测经济时点。
+编辑、swipe 或删除消息不会删除已提交的经济、银行、游戏或商店事实。SillyTavern 分支建立独立 osId，默认复制已确认 partitions；Messages 自行按子聊天可核实的私人信息标记裁剪历史，防止未来私聊及摘要进入子线。此后两条世界线独立推进，OS 不按消息前缀猜测经济时点。
 
 ## APP 打开行为
 
+- 未进入单聊或群聊时，点击 OS 只提示“请先进入聊天，再打开小白 OS。”，不创建窗口。已有聊天但尚无 sidecar 可以正常打开。
 - Shell 静态保留所有已交付 APP 图标；Host、分区或 UI 失败时进入该 APP 的错误页并可重试。
 - UI 组件点击后动态加载；一个 APP chunk 或 runtime 失败不关闭 OS。
 - 打开、切聊、重新聚焦强读当前 sidecar；每次写事务前再次强读。

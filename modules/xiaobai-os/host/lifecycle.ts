@@ -35,6 +35,7 @@ export interface XiaobaiOsLifecycleOptions {
     getAppDescriptors?: () => readonly XiaobaiOsAppDescriptor[];
     getAppStatuses?: () => Readonly<Record<string, AppStatus>>;
     captureChatBinding?: () => CapturedChatBinding | null;
+    onChatRequired?: () => void;
     isChatBindingCurrent?: (captured: CapturedChatBinding) => boolean | Promise<boolean>;
     createActivationToken?: () => string;
     appRuntime?: Partial<XiaobaiOsAppRuntimeRouter>;
@@ -124,11 +125,8 @@ export function createXiaobaiOsLifecycle({
     getInitSnapshot = () => ({}),
     getAppDescriptors = () => [],
     getAppStatuses = () => ({}),
-    captureChatBinding = () => ({
-        identityKey: 'legacy-shell',
-        binding: { kind: 'character', ownerLocator: 'legacy-shell', chatId: 'legacy-shell' },
-        reference: null,
-    }),
+    captureChatBinding = () => null,
+    onChatRequired = () => undefined,
     isChatBindingCurrent = () => true,
     createActivationToken = () => globalThis.crypto?.randomUUID?.()
         ?? `${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`,
@@ -529,6 +527,10 @@ export function createXiaobaiOsLifecycle({
 
     function open(): boolean {
         if (!initialized) {
+            return false;
+        }
+        if (!captureChatBinding()) {
+            onChatRequired();
             return false;
         }
         if (overlay?.isConnected) {

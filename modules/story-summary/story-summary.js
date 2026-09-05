@@ -70,8 +70,11 @@ import {
     extractRelationshipsFromFacts,
 } from "./data/store.js";
 import { normalizeCharacterAliases } from "./data/character-aliases.js";
+import { stampEditedCharacters } from "./data/character-edits.js";
 import { isRelationFact, parseRelationTarget } from "./data/fact-predicates.js";
 import { formatStorySummaryL2Events } from "./prompt-events.js";
+import { projectStoryCharacters } from "./prompt-characters.js";
+import { getSummarySourceEnd } from './generate/source-boundary.js';
 
 // prompt text builder
 import {
@@ -2739,6 +2742,21 @@ export function getStorySummaryL2EventText({
     });
 }
 
+/** Optional read-only character continuity; never exposes the underlying store. */
+export function getStorySummaryCharacters(options = {}) {
+    if (!isStorySummaryConsumableForCurrentChat()) return [];
+    return projectStoryCharacters(getSummaryStore(), {
+        ...options,
+        currentMessageIndex: getContext().chat.length - 1,
+    });
+}
+
+/** Committed source coverage remains a fact even while summarization is disabled. */
+export function getStorySummaryCommittedThrough() {
+    const through = chat_metadata?.extensions?.[EXT_ID]?.storySummary?.lastSummarizedMesId;
+    return Number.isSafeInteger(through) && through >= 0 ? through : -1;
+}
+
 function getNextFactIdValue(facts) {
     let max = 0;
     for (const fact of facts || []) {
@@ -3039,10 +3057,11 @@ async function maybeAutoRunSummary(reason) {
 
     const store = getSummaryStore();
     const lastSummarized = store?.lastSummarizedMesId ?? -1;
-    const pending = chat.length - lastSummarized - 1;
+    const target = getSummarySourceEnd(chat, chat.length - 1);
+    const pending = target - lastSummarized;
     if (pending < (trig.interval || 1)) return;
 
-    await autoRunSummaryWithRetry(chat.length - 1, { api: cfgAll.api, gen: cfgAll.gen, trigger: trig });
+    await autoRunSummaryWithRetry(target, { api: cfgAll.api, gen: cfgAll.gen, trigger: trig });
 }
 
 async function autoRunSummaryWithRetry(targetMesId, configForRun) {
@@ -3574,7 +3593,9 @@ async function handleFrameMessage(event) {
             const oldFacts = data.section === "facts" ? [...(store.json.facts || [])] : null;
 
             if (VALID_SECTIONS.includes(data.section)) {
-                store.json[data.section] = data.data;
+                store.json[data.section] = data.section === "characters"
+                    ? stampEditedCharacters(store.json.characters, data.data, getCurrentFloorHint())
+                    : data.data;
             }
             if (data.section === "facts") {
                 store.json.facts = mergeEditedFactsWithTimestamps(oldFacts, data.data, getCurrentFloorHint());

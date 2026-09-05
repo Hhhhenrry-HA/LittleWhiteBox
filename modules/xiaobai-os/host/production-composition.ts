@@ -9,6 +9,9 @@ import {
     MAP_CONTEXT_CAPABILITY,
 } from '../apps/map/context-capability.js';
 import { createProductionMapModule } from '../apps/map/production-module.js';
+import { createProductionMessagesModule } from '../apps/messages/production-module.js';
+import { createMessagesBranchCopy } from '../apps/messages/host/branch-copy.js';
+import type { ChatMessage } from '../apps/messages/application/projection.js';
 import { createProductionShopModule } from '../apps/shop/production-module.js';
 import { createProductionTasksModule } from '../apps/tasks/production-module.js';
 import { createWalletModule } from '../apps/wallet/module.js';
@@ -65,7 +68,13 @@ export function createProductionBootstrap(
         recordOrphan: index.remember,
         recordReference: index.remember,
     });
-    const bindingManager = createChatBindingManager({ metadata, references, storage, index });
+    const bindingManager = createChatBindingManager({ metadata, references, storage, index,
+        prepareClonedPartitions: createMessagesBranchCopy(() => {
+            const capture = metadata.capture();
+            const surface = getSillyTavernChatSurface();
+            return capture && surface ? { identityKey: capture.identityKey, messages: surface.messages as ChatMessage[] } : null;
+        }),
+    });
     const bindingEvents = createChatBindingEventAdapter();
     const mainGeneration = createSillyTavernMainGenerationRuntime();
     const promptContext = createPromptContextAdapter();
@@ -108,6 +117,7 @@ export function createProductionBootstrap(
     const modules = [
         createAgentApiModule(),
         createProductionFourthWallModule(settings, upstreamFourthWall),
+        createProductionMessagesModule(mainGeneration),
         createWalletModule({ getChatIdentity: getSillyTavernChatIdentity }),
         createProductionShopModule({
             getChatIdentity: getSillyTavernChatIdentity,
@@ -199,5 +209,6 @@ export function createProductionBootstrap(
         getInitSnapshot: getSillyTavernShellSnapshot,
         captureChatBinding: references.capture,
         isChatBindingCurrent: references.isCurrent,
+        onChatRequired: () => (window.toastr as unknown as { info?(message: string): void } | undefined)?.info?.('请先进入聊天，再打开小白 OS。'),
     });
 }

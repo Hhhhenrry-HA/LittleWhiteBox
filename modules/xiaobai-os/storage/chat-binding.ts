@@ -28,6 +28,7 @@ export interface ChatBindingManagerOptions {
     storage: XiaobaiOsStoragePort;
     index: SidecarIndex;
     createId?: () => string;
+    prepareClonedPartitions?: (capture: ChatMetadataCapture, source: XiaobaiOsChatBindingV1, partitions: Record<string, unknown>) => void;
 }
 
 export interface ChatBindingManager {
@@ -197,13 +198,15 @@ export function createChatBindingManager(options: ChatBindingManagerOptions): Ch
         capture: ChatMetadataCapture,
         source: XiaobaiOsSidecarV1,
     ): Promise<ChatBindingResolution> {
+        const partitions = cloneJsonValue(source.partitions);
+        options.prepareClonedPartitions?.(capture, source.binding, partitions);
         const candidate: XiaobaiOsSidecarV1 = {
             formatVersion: 1,
             osId: createId(),
             binding: { ...capture.binding },
             revision: 0,
             commitId: createId(),
-            partitions: cloneJsonValue(source.partitions),
+            partitions,
         };
         return await completeNewSidecar(capture, candidate);
     }

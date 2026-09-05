@@ -5,6 +5,7 @@ import { BANK_APP_DESCRIPTOR } from '../apps/bank/descriptor.js';
 import { FOURTH_WALL_APP_DESCRIPTOR } from '../apps/fourth-wall/descriptor.js';
 import { GAME_APP_DESCRIPTOR } from '../apps/game/descriptor.js';
 import { MAP_APP_DESCRIPTOR } from '../apps/map/descriptor.js';
+import { MESSAGES_APP_DESCRIPTOR } from '../apps/messages/descriptor.js';
 import { SHOP_APP_DESCRIPTOR } from '../apps/shop/descriptor.js';
 import { TASKS_APP_DESCRIPTOR } from '../apps/tasks/descriptor.js';
 import { WALLET_APP_DESCRIPTOR } from '../apps/wallet/descriptor.js';
@@ -15,6 +16,7 @@ const shopIcon = new URL('../apps/shop/ui/icon.svg', import.meta.url).href;
 const bankIcon = new URL('../apps/bank/ui/icon.svg', import.meta.url).href;
 const gameIcon = new URL('../apps/game/ui/icon.svg', import.meta.url).href;
 const mapIcon = new URL('../apps/map/ui/icon.svg', import.meta.url).href;
+const messagesIcon = new URL('../apps/messages/ui/icon.svg', import.meta.url).href;
 const tasksIcon = new URL('../apps/tasks/ui/icon.svg', import.meta.url).href;
 
 interface ComponentModule {
@@ -78,6 +80,7 @@ const appsById: Readonly<Record<string, XiaobaiOsAppDefinition>> = Object.freeze
     bank: defineApp(BANK_APP_DESCRIPTOR, bankIcon, () => import('../apps/bank/ui/BankApp.vue')),
     game: defineApp(GAME_APP_DESCRIPTOR, gameIcon, () => import('../apps/game/ui/GameApp.vue')),
     map: defineApp(MAP_APP_DESCRIPTOR, mapIcon, () => import('../apps/map/ui/MapApp.vue')),
+    messages: defineApp(MESSAGES_APP_DESCRIPTOR, messagesIcon, () => import('../apps/messages/ui/MessagesApp.vue')),
     tasks: defineApp(TASKS_APP_DESCRIPTOR, tasksIcon, () => import('../apps/tasks/ui/TasksApp.vue')),
 });
 

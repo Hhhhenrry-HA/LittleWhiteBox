@@ -64,6 +64,7 @@ Shell 静态保留所有已交付 APP 的图标和 descriptor。APP Host、依�
 | 商品库存与效果 | Shop | Shop 分区事件链 |
 | 世界图册与场景地图 | Map | Map 分区规范 Atlas/Scene |
 | 正式任务 | Tasks | Tasks 分区事件链；资金仍以 Economy 为准 |
+| 私人联系人和通讯历史 | Messages / 信息 APP | messages 分区；普通聊天只保存发生时点的楼层投影 |
 | 四次元壁会话 | Fourth Wall | fourthWall 分区 sessions |
 
 Kernel 不拥有“全局剧情状态”。Economy、Wallet、Bank、Game、Shop 不订阅剧情变化、不哈希消息、不进行剧情核对，也不因编辑、swipe 或删除消息而回滚。
@@ -128,7 +129,7 @@ upstream 已上线的旧 fw 数据是唯一需要保留的聊天业务兼容对�
 
 ### 地图
 
-Map 只维护已确认空间事实，提供世界 Atlas 和地点 Scene。打开、查看、缩放均为本地操作。主 RP 只获得角色扮演友好的 current_map Atlas 连续性资料，不暴露 Scene 实现字段。
+Map 提供可探索的世界 Atlas 和地点 Scene：优先实现作者设计，合理补齐世界地理与当前场所的普通布局；人物位置与已发生事件必须有剧情证据。世界地图／当前场景可直接切换，打开、查看、缩放均为本地操作。主 RP 只获得角色扮演友好的 current_map Atlas 连续性资料，不暴露 Scene 实现字段。
 
 完整契约见 [Map APP 终态设计](./map-app-target-design.md)。
 
@@ -137,6 +138,12 @@ Map 只维护已确认空间事实，提供世界 Atlas 和地点 Scene。打开
 Tasks 大厅刷新和候选人招募由用户明确触发；接取、发布、选人、撤回及 active 任务维护由确定性状态机收口。任务 Prompt 只投影最近更新的 active/recruiting，不注入终态历史。
 
 任务分区与 Economy 分区由 Tasks Scoped transaction + Economy Capability 原子提交，Agent 不能直接改钱。完整契约见 [Tasks APP 终态设计](./tasks-app-target-design.md)。
+
+### 信息
+
+信息 APP 在独立 `messages`分区保存联系人、线程和完整通讯事实，通过共享 Agent 取得角色回复。同一连续时点跨联系人共用一个不可 swipe 的「私人信息」Assistant 楼层；普通剧情继续后封存旧投影，下一次通讯在新时点另建楼层。新增楼层沿用 `/sendas` 原生回合语义，同楼追加不增加回合。文字、图片和语音本期全部支持，成功生成必须有可见回应，不建立静默分支。它不使用 D1 隐藏注入，也不依赖世界书条目名定位人物。
+
+完整边界见 [信息 APP 终态设计](./information-app-target-design.md)，实际接口、预算与验收见 [信息 APP 施工方案](./information-app-implementation-plan.md)。2026-09-05 已通过 module/partition 接入桌面和真实私人信息楼层。图片输入为描述，语音输入为原文，共享画图/TTS 负责呈现；不含附件上传、录音转写。信息建设服务于小白板后续拆分下线的方向，当前不删除旧功能或擅自迁移旧数据。
 
 ### 银行
 
@@ -215,7 +222,7 @@ Map、Tasks 的真实 SillyTavern/Provider 与移动端验收仍以各自文档�
 
 生产已经一次性切换到 Kernel/sidecar：APP 分区、Capability、聊天引用与生命周期、Shell 懒加载、APP 故障隔离、upstream Fourth Wall 单次导入以及 Game 确认后揭示均已接入。测试线旧 OS metadata 根不读取、不迁移，也不存在双存储运行路径。
 
-底座后续只接受真实宿主验收发现的修正，不再作为新 APP 的临时施工区。信息 APP 等新领域开工前，仍须先确定自己的领域所有者、上下文来源、写入时点、Prompt/工具和删除路径，再通过 module 注册接入。
+底座后续只接受真实宿主验收发现的修正，不再作为新 APP 的临时施工区。信息 APP 已按独立施工方案通过 module 注册接入，业务没有塞进 Kernel 或现有 APP；后续小白板拆分需另定旧数据策略。
 
 ## 12. 后续开工边界
 

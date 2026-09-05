@@ -231,6 +231,7 @@ for (const closeFromDesktop of [false, true]) {
             windowTarget: window,
             stylesheetHref: '/host.css',
             frameSrc: '/shell.html',
+            captureChatBinding: () => ({ identityKey: host.identity.key, binding: { kind: 'character', ownerLocator: 'fixture.png', chatId: 'fixture' }, reference: null }),
             bridgeFactory(options) {
                 const bridge = {
                     post(type, payload) {posts.push({ type, payload }); return true;},

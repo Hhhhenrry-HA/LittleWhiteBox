@@ -59,7 +59,7 @@
 1. 只在 xiaobaiOsRef 写 formatVersion + osId。
 2. 新 sidecar 与引用使用明确的两阶段流程；失败和未知结果按目标文档处理。
 3. CHAT_CHANGED 总是刷新 binding 和 sidecar；focus/visibility 恢复只入同一读取队列，连续事件可合并读。
-4. 分支识别读取 main_chat 和父聊天 header，不使用“消息数大于一”。
+4. 分支识别读取 main_chat 和父聊天 header，不使用“消息数大于一”。复制 partitions 后、首次子 sidecar 写入前调用组合层同步准备回调；当前仅 Messages 自有策略裁剪通讯历史，不改变其他分区的默认完整复制。
 5. CHAT_RENAMED/CHARACTER_RENAMED 保留 osId。
 6. 复制冲突优先证明旧 binding 是否仍存在；不能证明时返回 identity_conflict。
 7. 删除只处理唯一索引映射；索引 parse/保存失败只记录日志，不阻断 APP 数据读取。
@@ -76,7 +76,7 @@
 ### 最低测试
 
 - 首次建立、引用保存明确失败、引用保存结果未知；
-- 分支复制分区但重置 Envelope revision/osId；
+- 分支复制分区但重置 Envelope revision/osId；业务准备回调在第一次子文件写入前完成，历史 Messages 不带入分支点后私聊；
 - 重命名不换 osId；
 - 同一引用出现在仍存在的第二聊天时克隆；
 - 删除同名歧义不删；

@@ -1,0 +1,6 @@
+.xb-private-messages { max-height: 600px; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 12px; padding: 16px 8px; }
+.xb-private-messages article { max-width: 88%; border-radius: 16px; padding: 10px 14px; background: color-mix(in srgb, currentColor 7%, transparent); white-space: pre-wrap; overflow-wrap: anywhere; }
+.xb-private-messages small { display: block; opacity: .65; margin-bottom: 5px; font-size: .75em; }
+.xb-private-messages .xb-private-outgoing { align-self: flex-end; background: color-mix(in srgb, #65ac91 20%, transparent); border-bottom-right-radius: 4px; }
+.xb-private-messages .xb-private-incoming { align-self: flex-start; border-bottom-left-radius: 4px; }
+.xb-private-messages > p { opacity: .7; font-size: .8em; }

@@ -45,6 +45,10 @@ export interface PromptContextCaptureOptions {
     readonly throughMessageIndex?: number;
     /** Recent context contains only messages before this index. */
     readonly recentBeforeIndex?: number;
+    /** Caller-owned exclusion from recent prose and world-info scan (indices stay native). */
+    readonly excludeMessageIndices?: readonly number[];
+    /** Current feature conversation, newest first; scanned but not injected as story prose. */
+    readonly worldInfoScanMessages?: readonly string[];
 }
 
 export interface PromptContextAdapter {

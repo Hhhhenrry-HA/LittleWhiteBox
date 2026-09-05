@@ -25,10 +25,14 @@
 .map-top > * { pointer-events: auto; }
 .map-search-bar { display: flex; align-items: center; gap: 12px; padding: 7px 7px 7px 18px; background: var(--map-surface); border: 1px solid var(--map-line); border-radius: 22px; box-shadow: 0 5px 20px #273c2312; }
 .map-search-bar > .map-icon { color: var(--map-accent); }
-.map-search-bar > button:first-of-type { flex: 1; min-width: 0; padding: 3px 0; border: 0; background: transparent; text-align: left; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.map-search-entry { flex: 1; min-width: 0; padding: 3px 0; border: 0; background: transparent; text-align: left; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
 .map-search-bar small { display: block; font-size: 10px; font-weight: 400; color: var(--map-muted); margin-top: 2px; }
 .map-search-bar .map-round-button { background: var(--map-tint); width: 36px; height: 36px; }
 .map-search-bar .map-round-button .map-icon { stroke-width: 3; }
+.map-view-switch { display: flex; width: fit-content; gap: 3px; padding: 3px; margin-top: 10px; border: 1px solid var(--map-line); border-radius: 13px; background: var(--map-surface); }
+.map-view-switch button { display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 36px; padding: 7px 13px; border: 0; border-radius: 9px; background: transparent; color: var(--map-muted); font-size: 12px; }
+.map-view-switch button[aria-pressed="true"] { background: var(--map-tint); color: var(--map-accent); font-weight: 650; }
+.map-view-switch .map-icon { width: 16px; height: 16px; }
 .map-region-trail { display: flex; align-items: center; gap: 3px; overflow-x: auto; scrollbar-width: none; padding: 10px 0 5px; }
 .map-region-trail > .map-icon { width: 12px; height: 12px; opacity: .6; }
 .map-region-trail button { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; min-height: 34px; padding: 6px 12px; font-size: 11px; background: var(--map-surface); border: 1px solid var(--map-line); border-radius: 12px; max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -44,6 +48,8 @@
 .map-notice .map-notice-close { position: absolute; top: 7px; right: 5px; width: 32px; border: 0; display: grid; place-items: center; }
 .map-notice-close .map-icon { width: 15px; height: 15px; }
 .map-canvas { position: relative; flex: 1; min-height: 0; margin-top: calc(var(--os-status-height) + 104px); }
+.map-app.has-view-switch .map-canvas { margin-top: calc(var(--os-status-height) + 155px); }
+.map-app.has-view-switch.is-scene-view .map-canvas { margin-top: calc(var(--os-status-height) + 116px); }
 .map-viewport { position: relative; width: 100%; height: 100%; min-height: 0; }
 .map-viewport-svg { display: block; width: 100%; height: 100%; touch-action: none; user-select: none; cursor: grab; }
 .map-viewport-svg:active { cursor: grabbing; }
@@ -79,8 +85,10 @@
 .map-place-status { fill: var(--map-muted); stroke: var(--map-ground); stroke-width: 5; paint-order: stroke fill; font-size: 19px; text-anchor: middle; }
 .map-place.is-current .map-place-status { fill: var(--map-current); font-weight: 650; }
 .map-floating-tools { position: absolute; z-index: 6; right: 15px; top: calc(var(--os-status-height) + 129px); display: grid; gap: 9px; }
+.map-app.has-view-switch:not(.is-scene-view) .map-floating-tools { top: calc(var(--os-status-height) + 180px); }
 .map-floating-tools .map-round-button { width: 39px; height: 39px; border: 1px solid var(--map-line); box-shadow: 0 3px 10px #273c2310; }
 .map-key { position: absolute; z-index: 11; right: 63px; top: calc(var(--os-status-height) + 128px); width: 225px; max-width: calc(100% - 82px); padding: 15px; background: var(--map-surface); border: 1px solid var(--map-line); border-radius: 17px; box-shadow: var(--os-shadow-card); font-size: 11px; }
+.map-app.has-view-switch:not(.is-scene-view) .map-key { top: calc(var(--os-status-height) + 179px); }
 .map-key strong { font-size: 13px; }.map-key p { margin: 9px 0; line-height: 1.8; }.map-key small { font-size: 10px; color: var(--map-muted); }
 .map-key i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 3px; }
 .map-key-current { background: var(--map-current); }.map-key-place { background: var(--map-accent); margin-left: 7px; }

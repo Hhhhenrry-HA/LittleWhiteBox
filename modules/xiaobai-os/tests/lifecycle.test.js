@@ -12,7 +12,9 @@ async function waitFor(predicate, message = 'condition was not reached') {
     assert.fail(message);
 }
 
-function createHarness({ appRuntime = {}, captureChatBinding, isChatBindingCurrent, onError } = {}) {
+function createHarness({ appRuntime = {}, captureChatBinding = () => ({
+    identityKey: 'character:fixture.png:chat', binding: { kind: 'character', ownerLocator: 'fixture.png', chatId: 'chat' }, reference: null,
+}), isChatBindingCurrent, onError, onChatRequired } = {}) {
     const { document, window } = parseHTML(`<!doctype html><html><head></head><body>
         <div id="send-controls"><button id="message_preview_btn"></button><button id="send_but"></button></div>
     </body></html>`);
@@ -66,6 +68,7 @@ function createHarness({ appRuntime = {}, captureChatBinding, isChatBindingCurre
         getAppDescriptors: () => appDescriptors,
         getAppStatuses: () => appStatuses,
         captureChatBinding,
+        onChatRequired,
         isChatBindingCurrent,
         onError,
         appRuntime: {
@@ -96,6 +99,25 @@ function createHarness({ appRuntime = {}, captureChatBinding, isChatBindingCurre
         window,
     };
 }
+
+test('launcher refuses to open without a chat, then accepts a character or group with no existing OS file', async () => {
+    let binding = null; let prompts = 0; let opened = 0;
+    const harness = createHarness({ captureChatBinding: () => binding, onChatRequired: () => {prompts++;},
+        appRuntime: { handleWindowOpened: () => {opened++;} } });
+    harness.lifecycle.init();
+    harness.document.getElementById('xiaobaix-os-button').click();
+    assert.equal(prompts, 1); assert.equal(harness.lifecycle.isOpen(), false);
+    assert.equal(harness.document.querySelector('iframe'), null); assert.equal(opened, 0);
+    for (const kind of ['character', 'group']) {
+        binding = { identityKey: kind + ':owner:chat', binding: { kind, ownerLocator: 'owner', chatId: 'chat' }, reference: null };
+        assert.equal(harness.lifecycle.open(), true);
+        await waitFor(() => opened > 0);
+        assert.ok(harness.document.querySelector('iframe'));
+        await harness.lifecycle.closeWindow();
+    }
+    assert.equal(prompts, 1);
+    await harness.lifecycle.cleanup();
+});
 
 test('init is idempotent and mounts one launcher before preview and send', () => {
     const harness = createHarness();

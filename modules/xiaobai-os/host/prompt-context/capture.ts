@@ -121,7 +121,8 @@ export function createHostPromptContextAdapter({
         if (!Number.isSafeInteger(recentBefore) || recentBefore < 0 || recentBefore > through + 1) {
             throw new Error('prompt_context_recent_boundary_invalid');
         }
-        const messages = ordinaryMessages(context, through);
+        const excluded = new Set(options.excludeMessageIndices ?? []);
+        const messages = ordinaryMessages(context, through).filter(message => !excluded.has(message.index));
         const recentMessages = messages.filter(message => message.index < recentBefore);
         const baseInput: PromptContextInput = {
             player: {
@@ -136,10 +137,10 @@ export function createHostPromptContextAdapter({
             storyEvents: '',
         };
         const includeNames = context.worldInfoIncludeNames === true;
-        const scanChat = messages.map((message) => {
+        const scanChat = [...options.worldInfoScanMessages ?? [], ...messages.map((message) => {
             const text = String(message.text || '');
             return includeNames ? `${message.speakerName}: ${text}` : text;
-        }).reverse();
+        }).reverse()];
         const globalScanData = promptScanData(context, report);
         const hostMaxContext = Number(context.maxContext);
         const worldInfoContext = Number.isFinite(hostMaxContext) && hostMaxContext > 0
