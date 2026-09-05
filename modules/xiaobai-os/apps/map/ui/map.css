@@ -135,10 +135,9 @@
 .map-search-empty { text-align: center; padding: 50px 8px; }.map-search-empty .map-icon { width: 35px; height: 35px; margin: auto; color: var(--map-muted); }.map-search-empty h3 { font-size: 16px; }.map-search-empty p { font-size: 12px; color: var(--map-muted); }
 .map-material-symbol { font-family: "Xiaobai Map Symbols"; font-weight: 400; font-style: normal; text-anchor: middle; dominant-baseline: central; font-feature-settings: "liga"; }
 .map-symbol-fallback { text-anchor: middle; dominant-baseline: central; fill: var(--map-ink); font-size: 9px; }
-.map-material-pattern path, .map-material-pattern circle { stroke: #ffffff24; stroke-width: .8; fill: none; }
 .map-scene-label { fill: var(--map-ink); stroke: var(--map-canvas-bg); stroke-width: 3; paint-order: stroke fill; font-size: 11px; text-anchor: middle; pointer-events: none; }.map-scene-label.is-primary { font-size: 13px; font-weight: 650; }
 .map-scene-icon circle { fill: var(--map-surface); stroke-width: 1.5; }.map-scene-icon .map-material-symbol { font-size: 17px; fill: var(--map-accent); }
-.map-scene-element.is-wall > :is(rect, path) { stroke: var(--map-ink); }.map-scene-element.is-actor circle { fill: var(--map-current); stroke: var(--map-surface); }.map-scene-element.is-actor .map-material-symbol { fill: var(--map-surface); }
+.map-scene-element.is-actor .map-scene-icon > circle:not(.scene-player-halo) { fill: var(--map-current); stroke: var(--map-surface); }.map-scene-element.is-actor .map-material-symbol { fill: var(--map-surface); }
 @keyframes map-spin { to { transform: rotate(360deg); } }
 @keyframes map-sheet-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 360px) {

@@ -60,6 +60,8 @@ export type MapMaterial =
     | 'blood'
     | 'water'
     | 'grass'
+    | 'forest'
+    | 'glass'
     | 'dirt'
     | 'snow'
     | 'metal'
@@ -93,6 +95,8 @@ export type MapIconToken =
     | 'bed'
     | 'counter'
     | 'shelf'
+    | 'sofa'
+    | 'bridge'
     | 'tree'
     | 'rock'
     | 'building'
@@ -136,6 +140,8 @@ export interface MapElement {
     material?: MapMaterial;
     certainty?: 'confirmed' | 'inferred' | 'unknown';
     closed?: boolean;
+    /** Clockwise degrees around a rectangle/circle centre; absent means axis-aligned. */
+    rotation?: number;
 }
 
 export interface MapScene {

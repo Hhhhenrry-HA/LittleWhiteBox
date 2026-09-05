@@ -202,7 +202,7 @@ function validateElement(value: unknown, path: string): MapElement {
     requireKeys(
         record,
         ['id', 'category', 'shape', 'geometry'],
-        ['kind', 'icon', 'label', 'actorKey', 'material', 'certainty', 'closed'],
+        ['kind', 'icon', 'label', 'actorKey', 'material', 'certainty', 'closed', 'rotation'],
         path,
     );
     const category = requireEnum(record.category, ELEMENT_CATEGORIES, `${path}.category`);
@@ -244,6 +244,13 @@ function validateElement(value: unknown, path: string): MapElement {
     if (Object.hasOwn(record, 'closed')) {
         if (typeof record.closed !== 'boolean') {fail('map_invalid_domain', `${path}.closed`, 'must be boolean');}
         element.closed = record.closed;
+    }
+    if (Object.hasOwn(record, 'rotation')) {
+        if ((shape !== 'rect' && shape !== 'circle') || typeof record.rotation !== 'number'
+            || !Number.isFinite(record.rotation) || record.rotation < 0 || record.rotation >= 360) {
+            fail('map_invalid_domain', `${path}.rotation`, 'requires rect/circle and a finite angle in [0, 360)');
+        }
+        element.rotation = record.rotation;
     }
     return element;
 }

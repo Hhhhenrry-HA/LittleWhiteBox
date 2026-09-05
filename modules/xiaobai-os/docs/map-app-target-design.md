@@ -147,16 +147,26 @@ Map 是“接受后提交的 OS 事实”，不是随消息数组实时重算的
 
 ## 6. Agent 工具与维护规则
 
+每轮 Map Session 将初始 staging 的 Atlas 投影注入 `<map_atlas_state>`；rebuild 从空 Atlas 开始。`mode: document` 包含全部已记录的地点、路线和人物位置；超过 20,000 码点预算时改为 `mode: summary`，仅含数量与已知玩家位置，模型按需分页读取。摘要未列出的集合不等于空集合，`<current_map>` 也只是有界的玩家侧概览，不能当完整清单。地点投影中的 `hasScene` 只表示场景是否存在，不表示布局完整。
+
+需要修改当前已有场景或评估其普通布局是否稀疏时，允许 `MapSceneRead`；完整性评估不以新剧情空间事件为前提。同一轮复用已经读取的布局，不因新一轮到来就例行复查。不新增完整性标记或持久状态；是否写入仍遵循设定补全与事件证据边界。
+
 Map participant 自己提供四个高层工具：
 
 - `MapAtlasRead`：默认只返回地点/路线/Actor 数量和玩家位置；`locations/links/actors`按`offset/limit`分页并支持各自过滤，`document`仅供确需完整 Atlas 时显式读取；
 - `MapAtlasEdit`：声明式提交`locations/links/actors/remove`，并写入 staging context；地点 key 是稳定身份，parent 可引用同次调用创建的父级，`parent:null`把已有地点移回 Atlas 根级，路线默认双向且可省略派生 id；
-- `MapSceneRead`：按明确地点 key、地点名或内部 Scene key 读取一个 Scene；
+- `MapSceneRead`：按明确地点 key、地点名或内部 Scene key 读取一个 Scene，返回 `data.scene:{scene,title,viewBox,mood?,elements}`；`scene` 使用唯一所属地点 key，元素使用与写入相同的 `cat/geo`（矩形 `center/size`，曲线 `curve`），不暴露内部存储字段与 Scene 生命周期状态。地点 scale/到访状态仍从 Atlas 读取；缺少场景返回 null；
 - `MapSceneEdit`：接收`scene/playerHere/viewBox/mood/elements`绘图意图，自动建立 Location→Scene 关联并写入 staging context。
 
 模型看不到内部领域命令或任何原子 op。Location 的`sceneKey`由`MapSceneEdit`内部建立，既不会从 Atlas read 投影返回，也不能由 Agent 写入；普通 OS 不保存地点别名。`MapAtlasEdit`的声明由 Atlas compiler 展开为领域编辑，删除地点会同时删除其后代、关联路线、Actor 位置和 Scene，只能用于明确纠正、消失或毁坏，不能把“离开地点”当删除。玩家需要详细场景坐标时使用`MapSceneEdit.playerHere + player element`；Atlas actors 的世界位置写入不会凭空生成 Scene 图标。
 
 `MapSceneEdit`逐 element 编译；合法 sibling 进入 staging，坏项进入`skipped`，不会拖死整批。对外 schema 只公布规范 category 和顶层`icon`；`rect`只认`center+size`，path/curve 至少两点。基于实际模型输出的 terrain 类别别名、`geo.icon`、无关空数组和零值污染只在 compiler 入口吸收，不作为第二套公开写法。工具 schema 与运行时入口同时使用领域容量上限；超限 collection 整次拒绝，不先遍历再依赖最终领域校验，修正后的下一次调用会清理该次调用级失败。
+
+场景读回只在 `maintenance/scene-reader.ts` 做临时工具投影；Map 分区仍是唯一事实来源，不迁移、不新增持久状态，也不保留旧工具输出分支。修正错误只重发相关字段：旋转失败通常只需 `id/rotation`，不要求重发几何。
+
+模型契约同时覆盖 Prompt 和工具字段描述：曲线点是实际经过的位置，不是贝塞尔控制柄；面积点按周界依次排列；零度时椅子/沙发靠背与床枕位于上方，椅子/沙发朝南，桥面通行方向南北；森林面积不带 `tree` 图形标识，单树才带。`closed` 工具描述列出类别默认闭合规则；`viewBox` 是进入场景/全图时的范围，普通更新不自动跟随人物。合理布局补全与剧情事件证据分开，补全不能冒充已发生事件。
+
+Prompt 使用 `maintenance/scene-examples.ts` 中的三组「背景→空间组织→首绘→下一轮最小更新」样例（酒馆/溪谷/科幻舱室），通过正式工具与存储测试验证样例可执行；不以样例替代真实模型质量验收。Google 原生参数使用受支持的 Schema 子集：尺寸的严格正数约束留在运行时，可空枚举使用标准 anyOf，经 SDK 转成 nullable 与纯字符串 enum；没有额外供应商分支或依赖。
 
 Actor 缺少 actorKey 时使用稳定 element id；非 Actor 的 actorKey 被忽略并返回 warning；玩家永远规范化为`actorKey:"player"`，展示名来自本轮捕获并在接受轮入口规范化到 120 字符领域上限的 SillyTavern 用户身份。同一 Actor 移动时同步 Atlas，并删除旧 Scene 图标。工具统一返回`ok/status/changed/applied/skipped/warnings/hint`，applied/skipped 项携带所属 collection，修参只清除同一 collection 下相同 id 的失败：全坏为 failed、混合结果为 partial、幂等结果为 unchanged。
 
@@ -228,9 +238,15 @@ UI 位于 `apps/map/ui`：
 
 更新/重新绘制沿用既有后台队列。显示运行、失败、未确认保存、冲突与恢复状态；恢复动作说明影响当前聊天整个 OS 已保存数据，不声称只恢复地图。
 
-2026-09-05 本轮仅落地普通场景布局补齐语义与世界／当前场景双入口。场景绘制方案升级另行设计，不把添加图标当作完成升级；本轮不调整图内视觉权重，也不添加缺少内容支撑的物件详情。前端设计沿用现有局部主题，仅为入口和对应空态布局。
+场景采用统一的二维空间绘制，不为酒馆、自然或科幻题材分叉：连续地面承载局部纹理，墙体只画边界，常见物件按实际占地组织俯视细节。图形标识选择物件结构，材质独立决定表面；不按名称猜家具，不生成杯子、书籍等额外实体。只有位置的图标仍是示意标记。陌生物件保留输入轮廓、材质与名称，不添加缺少数据支撑的详情面板。
 
-验证：OS 全量 480 项测试、类型/构建、OS lint、imports 和 diff 检查通过。隔离浏览器使用固定地图数据验证 390px 浅色、320px 深色、1280px 桌面；直接切换保留世界视口，当前场景跟随玩家，浏览旧场景不移动人物，切聊清除浏览态，缺场景/未知位置显示空态，保存未确认时更新禁用，切换不产生地图请求。未使用外部模型验证新增 Prompt 的实际绘制质量；场景仍未注入主 RP，沿用当前 Atlas 投影边界。
+模型仍使用四个地图工具和同一 elements 集合，只提供空间事实；不输出 CSS、SVG、颜色或纹理控制点。新增 forest/glass 材质和 sofa/bridge 图形标识。可选 rotation 只用于矩形/圆形，绕中心顺时针旋转，范围 [0,360)；省略保留、null 清除，错误角度或不支持的最终形状逐元素拒绝。现有无该字段的数据直接有效，无清空、迁移或自动请求。
+
+绘制职责留在地图 UI：`MapScene` 编排图层，`scene-geometry` 投影几何及有界林地装饰，`scene-materials` / `SceneMaterials` 定义材质，`SceneObject` 绘制占地内的归一化细节。小于12屏幕像素的物件简化。墙厚仅为视觉描边，不能证明是否可通行；closed:false 的路径/曲线不会闭合，未指定则沿用类别默认值。不吸附、不补门、不自动绕障，去掉默认工程网格但保留显式网格元素。
+
+林地只对 terrain + forest 面积派生裁剪树冠，稳定种子、复用符号、全场景上限256；它们不是逐棵树的位置事实。明确的树物件不再叠加区域装饰。树冠和纹理不持久化。标签独立于物件旋转，局部主题和 OS 字体继续有效，普通数据更新保留视口。
+
+具体验证与待验收项目见 [场景地图施工记录](scene-map-implementation-plan.md)。室内酒馆、自然溪谷、科幻舱室的手写输入均经正式工具、领域、保存及读取链路进入同一生产渲染器；不能以此声称真实模型已达到同样质量。场景仍不注入主 RP，沿用当前 Atlas 投影边界。
 
 ## 10. 失败、删除与数据策略
 

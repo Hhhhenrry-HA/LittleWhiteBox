@@ -11,10 +11,12 @@ import { createEmptyMapDomain } from '../../../domains/map/state.js';
 import type { MapDomainEdit } from '../../../domains/map/edit.js';
 import type { MapDomainV1 } from '../../../domains/map/types.js';
 import { compileAtlasIntent } from './atlas-intent-compiler.js';
+import { buildMapAtlasDataMessage } from './atlas-data-message.js';
 import { readAtlas } from './atlas-reader.js';
 import { buildMapMaintenancePrompt } from './prompt.js';
 import { mapToolResult, type MapToolItemReport, type MapToolResult } from './result.js';
 import { compileSceneIntent } from './scene-intent-compiler.js';
+import { sceneForTool } from './scene-reader.js';
 import { MAP_MAINTENANCE_TOOLS, MAP_MAINTENANCE_TOOL_NAMES } from './tool-contract.js';
 import { intentId, isRecord } from './intent-common.js';
 
@@ -81,7 +83,7 @@ export function createMapMaintenanceSession(
     return Object.freeze({
         participantId: 'map',
         prompt: buildMapMaintenancePrompt(mode),
-        dataMessages: Object.freeze([]),
+        dataMessages: Object.freeze([{ role: 'user' as const, content: buildMapAtlasDataMessage(initialStaged) }]),
         tools: MAP_MAINTENANCE_TOOLS,
         executeTool(name: string, args: unknown) {
             assertActive();
@@ -95,7 +97,11 @@ export function createMapMaintenanceSession(
                 const key = intentId(args.scene);
                 if (!key) { throw new TypeError('MapSceneRead.scene is required.'); }
                 const keyForScene = sceneKey(staged, key);
-                return mapToolResult({ data: { revision: staged.revision, scene: structuredClone(staged.scenes[keyForScene] || null) } });
+                const scene = staged.scenes[keyForScene];
+                // Domain validation guarantees one owner. Use its key on readback
+                // so a scene key cannot be mistaken for another location's key.
+                const owner = staged.atlas.locations.find(location => location.sceneKey === keyForScene);
+                return mapToolResult({ data: { revision: staged.revision, scene: scene && owner ? sceneForTool(scene, owner) : null } });
             }
             if (name === MAP_MAINTENANCE_TOOL_NAMES.ATLAS_EDIT) {
                 return acceptCompile('atlas', 'world', compileAtlasIntent(staged, args, source.player));

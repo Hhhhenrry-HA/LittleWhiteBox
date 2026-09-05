@@ -22,7 +22,7 @@ export const MAP_ELEMENT_KINDS: readonly MapElementKind[] = Object.freeze([
 
 export const MAP_MATERIALS: readonly MapMaterial[] = Object.freeze([
     'unknown', 'wood', 'stone', 'tile', 'carpet', 'bed-sheet', 'fabric', 'tatami', 'sand',
-    'marble', 'blood', 'water', 'grass', 'dirt', 'snow', 'metal', 'rune', 'warm-light',
+    'marble', 'blood', 'water', 'grass', 'forest', 'glass', 'dirt', 'snow', 'metal', 'rune', 'warm-light',
     'cold-light', 'shadow',
 ]);
 
@@ -31,7 +31,7 @@ export const MAP_CERTAINTIES = Object.freeze(['confirmed', 'inferred', 'unknown'
 export const MAP_ICON_TOKENS: readonly MapIconToken[] = Object.freeze([
     'door-open', 'stairs', 'elevator', 'portal', 'passage', 'entrance', 'exit', 'north', 'south',
     'east', 'west', 'up', 'down', 'trap', 'chest', 'marker', 'player', 'actor', 'chair', 'table',
-    'bed', 'counter', 'shelf', 'tree', 'rock', 'building', 'fire', 'light', 'water',
+    'bed', 'counter', 'shelf', 'sofa', 'bridge', 'tree', 'rock', 'building', 'fire', 'light', 'water',
 ]);
 
 export const MAP_TERRAIN_CATEGORY_ALIASES = Object.freeze(new Set([

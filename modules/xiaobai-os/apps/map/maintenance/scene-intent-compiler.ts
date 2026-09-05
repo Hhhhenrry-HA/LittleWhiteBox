@@ -39,7 +39,7 @@ const LOCATION_SCALES: readonly MapLocationScale[] = ['city', 'district', 'build
 const LOCATION_STATUSES: readonly MapLocationStatus[] = ['mentioned', 'visited'];
 const SCENE_MOODS: readonly MapSceneMood[] = ['neutral', 'warm', 'cold', 'dark', 'mystic', 'danger', 'calm'];
 const ROOT_FIELDS = new Set(['scene', 'title', 'scale', 'status', 'playerHere', 'viewBox', 'mood', 'elements', 'remove']);
-const ELEMENT_FIELDS = new Set(['id', 'cat', 'kind', 'shape', 'geo', 'label', 'actorKey', 'icon', 'material', 'certainty', 'closed']);
+const ELEMENT_FIELDS = new Set(['id', 'cat', 'kind', 'shape', 'geo', 'label', 'actorKey', 'icon', 'material', 'certainty', 'closed', 'rotation']);
 // geo.icon was accepted by the original intent compiler and remains a deliberate tolerant input.
 const GEO_FIELDS = new Set(['center', 'at', 'size', 'radius', 'points', 'curve', 'icon']);
 
@@ -241,6 +241,15 @@ function compileElement(
         else {warnings.push(`Ignored invalid closed value for ${id}.`);}
     }
     if (shape !== 'path' && shape !== 'curve') {delete element.closed;}
+    if (Object.hasOwn(raw, 'rotation')) {
+        if (raw.rotation === null) {delete element.rotation;}
+        else if (typeof raw.rotation !== 'number' || !Number.isFinite(raw.rotation) || raw.rotation < 0 || raw.rotation >= 360) {
+            throw new Error(`rotation_requires_finite_angle_in_0_to_360_exclusive:${id}`);
+        } else {element.rotation = raw.rotation;}
+    }
+    if (element.rotation !== undefined && shape !== 'rect' && shape !== 'circle') {
+        throw new Error(`rotation_requires_rect_or_circle_clear_rotation_with_null:${id}`);
+    }
 
     if (cat === 'actor') {
         const priorActorKey = existing?.category === 'actor' ? existing.actorKey : undefined;
@@ -475,7 +484,7 @@ export function compileSceneIntent(
             edits.push(...elementEdits);
             applied.push({ collection: 'elements', index, id: compiled.id, changed: next.changed });
         } catch (error) {
-            skipped.push({ collection: 'elements', index, id, reason: errorText(error), hint: 'Retry only this id with one shape and matching geo.' });
+            skipped.push({ collection: 'elements', index, id, reason: errorText(error), hint: 'Retry only this id with corrected fields. Omit unchanged fields; send complete geo only when changing geometry. A rotation-only correction needs only id and rotation ([0,360), or null to clear).' });
         }
     });
 

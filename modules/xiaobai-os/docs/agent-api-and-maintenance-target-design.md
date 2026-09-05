@@ -262,7 +262,7 @@ Map/Tasks 是否向主 RP 投影当前状态，由各 APP 自己的 prompt runti
 
 这样“自动维护关闭”只代表不花费后台 Agent 调用，不会意外禁用静态任务/地图连续性提示。
 
-维护 Agent 的共享宿主背景由`host/prompt-context`捕获，核心层只认识有界背景消息，不导入 Map、Tasks 或 Story Summary 领域类型。消息顺序固定为：system`<setting>`、system`<current_state>`、各 participant 自有 user data、最后 user`<accepted_turn>`。setting、世界书、L2 事件、Map 摘要和旧消息只能解释背景，只有`<accepted_turn>`能产生本次写入意图。自动维护的背景只取接受轮之前最近 4 条消息；触发维护的下一条 User 不进入请求；Map rebuild 不注入旧 Map 摘要。participant 全部返回 no-work 后不得捕获背景、读取 Agent 配置或创建 adapter。
+维护 Agent 的共享宿主背景由`host/prompt-context`捕获，核心层只认识有界背景消息，不导入 Map、Tasks 或 Story Summary 领域类型。消息顺序固定为：system`<setting>`、system`<current_state>`、各 participant 自有 user data、最后 user`<accepted_turn>`。`<accepted_turn>`提供本次接受轮的剧情证据；剧情变化认定与设定补全权限分别由各领域声明，共享包装不再一刀切禁止基于设定的写入。Map 可依据设定建立地理和普通可见布局，但这不构成人物行动、已到访或事件发生的证据，也不授权其他领域推断任务进展或奖励。自动维护的背景只取接受轮之前最近 4 条消息；触发维护的下一条 User 不进入请求；Map rebuild 不注入旧 Map 摘要。participant 全部返回 no-work 后不得捕获背景、读取 Agent 配置或创建 adapter。
 
 ## 11. 数据、迁移与删除
 

@@ -15,12 +15,12 @@ const LINK_KINDS: readonly MapLinkKind[] = ['door', 'stairs', 'elevator', 'path'
 const ALLOWED_ARGUMENTS = new Set([
     'mode', 'query', 'parent', 'status', 'from', 'to', 'kind', 'actorKey', 'limit', 'offset',
 ]);
-const DEFAULT_ATLAS_READ_LIMIT = 30;
-
+export const DEFAULT_ATLAS_READ_LIMIT = 30;
 export const MAX_ATLAS_READ_LIMIT = 300;
 export const MAX_ATLAS_QUERY_LENGTH = 120;
 
-type AgentMapLocation = Omit<MapLocation, 'sceneKey'>;
+/** Scene links are compiler-owned: the model learns whether a scene exists, never its key. */
+type AgentMapLocation = Omit<MapLocation, 'sceneKey'> & { hasScene: boolean };
 
 function projectLocation(location: MapLocation): AgentMapLocation {
     return {
@@ -28,6 +28,7 @@ function projectLocation(location: MapLocation): AgentMapLocation {
         name: location.name,
         scale: location.scale,
         status: location.status,
+        hasScene: !!location.sceneKey,
         ...(location.parent ? { parent: location.parent } : {}),
         ...(location.brief ? { brief: location.brief } : {}),
         ...(location.position ? { position: [...location.position] as [number, number] } : {}),

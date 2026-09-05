@@ -5,6 +5,7 @@ import {
     createMapMaintenanceParticipant,
     MAP_MAINTENANCE_TOOL_NAMES,
 } from '../apps/map/host/maintenance-participant.js';
+import { MAX_ATLAS_DATA_MESSAGE_CHARS } from '../apps/map/maintenance/atlas-data-message.js';
 import {
     MAX_MAP_LOCATIONS,
     MAX_SCENE_ELEMENTS,
@@ -70,12 +71,47 @@ test('participant always supports explicit maintenance and gates only automatic 
     assert.equal(participant.isEnabled('manual'), true);
 });
 
-test('Map keeps captured player data out of its static system prompt', async () => {
-    const { participant } = createHarness();
-    const session = await participant.createSession(acceptedSource(), 'manual');
-    assert.deepEqual(session.dataMessages, []);
-    assert.doesNotMatch(session.prompt, /Alice/);
-    assert.match(session.prompt, /display name is supplied with the accepted source data/);
+test('Map injects the current atlas as data and keeps captured player data out of its static system prompt', async () => {
+    const harness = createHarness();
+    const empty = await harness.participant.createSession(acceptedSource(), 'manual');
+    assert.equal(empty.dataMessages.length, 1);
+    assert.equal(empty.dataMessages[0].role, 'user');
+    assert.match(empty.dataMessages[0].content, /^<map_atlas_state>\n[\s\S]*\n<\/map_atlas_state>$/u);
+    assert.match(empty.dataMessages[0].content, /"locations":\s*\[\]/u);
+    assert.doesNotMatch(empty.prompt, /Alice/);
+
+    await empty.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT, indoorFixture);
+    await empty.commit(() => true);
+
+    const populated = await harness.participant.createSession(acceptedSource(), 'manual');
+    const injected = populated.dataMessages[0].content;
+    assert.match(injected, /"key":\s*"Inn Room"/u);
+    assert.match(injected, /"hasScene":\s*true/u);
+    assert.match(injected, /"displayName":\s*"Alice"/u);
+    assert.doesNotMatch(injected, /sceneKey/);
+    assert.doesNotMatch(populated.prompt, /Alice/);
+
+    const rebuild = await harness.participant.createSession(acceptedSource(), 'rebuild');
+    assert.match(rebuild.dataMessages[0].content, /"locations":\s*\[\]/u);
+});
+
+test('Map falls back to an atlas summary when the full document exceeds the injection budget', async () => {
+    const harness = createHarness();
+    const seed = await harness.participant.createSession(acceptedSource(), 'manual');
+    const brief = 'LONG_BRIEF_MARKER '.repeat(24);
+    const result = await seed.executeTool(MAP_MAINTENANCE_TOOL_NAMES.ATLAS_EDIT, {
+        locations: Array.from({ length: 60 }, (_, index) => ({ key: `place-${index}`, name: `Place ${index}`, brief })),
+        actors: [{ actorKey: 'player', locationKey: 'place-0' }],
+    });
+    assert.equal(result.status, 'updated');
+    await seed.commit(() => true);
+
+    const session = await harness.participant.createSession(acceptedSource(), 'manual');
+    const injected = session.dataMessages[0].content;
+    assert.equal(Array.from(injected).length <= MAX_ATLAS_DATA_MESSAGE_CHARS, true);
+    assert.match(injected, /"counts":\s*\{"locations":\s*60/u);
+    assert.match(injected, /MapAtlasRead/);
+    assert.doesNotMatch(injected, /LONG_BRIEF_MARKER/);
 });
 
 test('indoor and outdoor first-map fixtures create observable scenes and use the captured player identity', async () => {
@@ -267,6 +303,7 @@ test('tool collection limits are declared and oversized calls fail before stagin
     assert.equal(elementProperties.cat.enum.includes('ground'), false);
     assert.equal(Object.hasOwn(elementProperties.geo.properties, 'icon'), false);
     assert.equal(Object.hasOwn(elementProperties, 'icon'), true);
+    assert.equal(Object.hasOwn(elementProperties.rotation, 'exclusiveMaximum'), false);
     assert.deepEqual(elementProperties.id.type, 'string');
     assert.deepEqual(sceneTool.function.parameters.required, ['scene']);
     assert.equal(sceneTool.function.parameters.properties.remove.maxItems, MAX_SCENE_ELEMENTS);
@@ -359,14 +396,19 @@ test('Atlas reads default to a compact summary and page explicit collections', a
     assert.equal(document.data.atlas.locations.length, 35);
 });
 
-test('Atlas reads do not expose the internal Scene linkage', async () => {
+test('Atlas reads expose whether a location has a scene but never the internal Scene linkage', async () => {
     const harness = createHarness();
     const session = await harness.participant.createSession(acceptedSource(), 'manual');
     await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT, indoorFixture);
+    await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.ATLAS_EDIT, { locations: [{ key: 'yard', name: 'Yard' }] });
     const locations = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.ATLAS_READ, { mode: 'locations' });
     const document = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.ATLAS_READ, { mode: 'document' });
-    assert.equal(Object.hasOwn(locations.data.locations[0], 'sceneKey'), false);
-    assert.equal(Object.hasOwn(document.data.atlas.locations[0], 'sceneKey'), false);
+    const byKey = Object.fromEntries(locations.data.locations.map(location => [location.key, location]));
+    assert.equal(byKey['Inn Room'].hasScene, true);
+    assert.equal(byKey.yard.hasScene, false);
+    for (const location of [...locations.data.locations, ...document.data.atlas.locations]) {
+        assert.equal(Object.hasOwn(location, 'sceneKey'), false);
+    }
 });
 
 test('Atlas edit rejects fields owned by the internal Scene linkage', async () => {
@@ -484,10 +526,10 @@ test('Scene element patches preserve omitted fields, clear optional fields with 
     let table = read.data.scene.elements.find(element => element.id === 'worktable');
     assert.deepEqual(table, {
         id: 'worktable',
-        category: 'furniture',
+        cat: 'furniture',
         kind: 'marker',
         shape: 'rect',
-        geometry: { x: 130, y: 105, width: 60, height: 30 },
+        geo: { center: [160, 120], size: [60, 30] },
         label: 'Workbench',
         icon: 'table',
         material: 'wood',
@@ -558,9 +600,9 @@ test('actor movement uses the merged canonical element and preserves an existing
     assert.deepEqual(atlas.data.actors, [{ actorKey: 'keeper', displayName: 'Mara', locationKey: 'Cellar' }]);
     cellar = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_READ, { scene: 'Cellar' });
     const keeper = cellar.data.scene.elements.find(element => element.id === 'keeper-cellar');
-    assert.equal(keeper.category, 'actor');
+    assert.equal(keeper.cat, 'actor');
     assert.equal(keeper.actorKey, 'keeper');
-    assert.deepEqual(keeper.geometry, { x: 90, y: 110 });
+    assert.deepEqual(keeper.geo, { at: [90, 110] });
 
     const movedByAtlas = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.ATLAS_EDIT, {
         actors: [{ actorKey: 'keeper', locationKey: 'Inn' }],
@@ -594,12 +636,12 @@ test('existing element category and actor identity cannot be rewritten by a patc
     const scene = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_READ, { scene: 'Inn Room' });
     const player = scene.data.scene.elements.find(element => element.id === 'player-room');
     const terrain = scene.data.scene.elements.find(element => element.id === 'room-terrain');
-    assert.equal(player.category, 'actor');
+    assert.equal(player.cat, 'actor');
     assert.equal(player.actorKey, 'player');
     assert.equal(player.kind, 'player');
     assert.equal(player.label, 'Alice');
-    assert.deepEqual(player.geometry, { x: 240, y: 190 });
-    assert.equal(terrain.category, 'terrain');
+    assert.deepEqual(player.geo, { at: [240, 190] });
+    assert.equal(terrain.cat, 'terrain');
     assert.equal(scene.data.scene.elements.find(element => element.id === 'keeper-room').actorKey, 'keeper');
 
     const actors = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.ATLAS_READ, { mode: 'actors' });

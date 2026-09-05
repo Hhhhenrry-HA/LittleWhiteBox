@@ -5,9 +5,10 @@ import type {
     MapIconToken,
     MapLinkKind,
     MapLocationScale,
-    MapMaterial,
     MapSceneMood,
 } from '../../../domains/map/types.js';
+import { isAreaElement, sceneElementBounds } from './scene-geometry.js';
+import { materialPaint } from './scene-materials.js';
 
 export interface MapElementRecipe {
     stroke: string;
@@ -32,13 +33,13 @@ export interface MapMoodRecipe {
 }
 
 const CATEGORY_RECIPES: Readonly<Record<MapElementCategory, MapElementRecipe>> = Object.freeze({
-    wall: { stroke: '#b7d8f7', fill: 'rgba(120, 168, 209, .12)', width: 3 },
-    road: { stroke: '#e0aa63', fill: 'rgba(199, 139, 65, .18)', width: 5 },
-    water: { stroke: '#46c7ef', fill: 'rgba(36, 154, 207, .30)', width: 2.4 },
-    terrain: { stroke: '#8ebd86', fill: 'rgba(89, 139, 90, .25)', width: 2.2 },
-    furniture: { stroke: '#d5a86d', fill: 'rgba(160, 105, 51, .28)', width: 2.1 },
-    decoration: { stroke: '#c7a6e8', fill: 'rgba(141, 98, 184, .22)', width: 2 },
-    door: { stroke: '#ffbe69', fill: 'rgba(229, 144, 53, .20)', width: 3.2 },
+    wall: { stroke: 'var(--scene-edge)', fill: 'none', width: 6 },
+    road: { stroke: 'var(--scene-road)', fill: 'var(--scene-road)', width: 8 },
+    water: { stroke: 'var(--scene-water-edge)', fill: 'var(--scene-water)', width: 3 },
+    terrain: { stroke: 'var(--scene-soft-edge)', fill: 'var(--scene-ground)', width: .8 },
+    furniture: { stroke: 'var(--scene-edge)', fill: 'var(--scene-object)', width: 1 },
+    decoration: { stroke: 'var(--scene-soft-edge)', fill: 'var(--scene-object)', width: 1 },
+    door: { stroke: 'var(--map-accent)', fill: 'var(--scene-object)', width: 2 },
     danger: { stroke: '#ff6d7a', fill: 'rgba(218, 52, 72, .24)', width: 2.6, dash: '7 4' },
     marker: { stroke: '#66d9ff', fill: 'rgba(48, 166, 222, .22)', width: 2.2 },
     actor: { stroke: '#f4f8ff', fill: '#167fc3', width: 2.2 },
@@ -133,6 +134,8 @@ const ICON_TOKENS: Readonly<Record<MapIconToken, string>> = Object.freeze({
     bed: 'bed',
     counter: 'countertops',
     shelf: 'shelves',
+    sofa: 'weekend',
+    bridge: 'road',
     tree: 'park',
     rock: 'landscape',
     building: 'apartment',
@@ -177,29 +180,6 @@ const CATEGORY_Z: Readonly<Record<MapElementCategory, number>> = Object.freeze({
     label: 90,
 });
 
-export const MAP_MATERIAL_COLORS: Readonly<Record<MapMaterial, string>> = Object.freeze({
-    unknown: '#52616d',
-    wood: '#7c5938',
-    stone: '#687988',
-    tile: '#637783',
-    carpet: '#76576f',
-    'bed-sheet': '#8a7b91',
-    fabric: '#85679c',
-    tatami: '#7f7a4f',
-    sand: '#9d8050',
-    marble: '#88939d',
-    blood: '#792f38',
-    water: '#176f9b',
-    grass: '#47784e',
-    dirt: '#75583d',
-    snow: '#b9d5df',
-    metal: '#788c9e',
-    rune: '#744ab5',
-    'warm-light': '#bd7a32',
-    'cold-light': '#3f83a4',
-    shadow: '#17202a',
-});
-
 export const MAP_MOOD_RECIPES: Readonly<Record<MapSceneMood, MapMoodRecipe>> = Object.freeze({
     neutral: { background: '#071019', glow: 'rgba(59, 157, 219, .13)', accent: '#55baff' },
     warm: { background: '#130e0b', glow: 'rgba(235, 142, 65, .14)', accent: '#f2ad68' },
@@ -231,86 +211,22 @@ export const MAP_LINK_LABELS: Readonly<Record<MapLinkKind, string>> = Object.fre
     passage: '通道',
 });
 
-const AREA_PATH_CATEGORIES = new Set<MapElementCategory>([
-    'water', 'terrain', 'furniture', 'decoration', 'danger', 'magic', 'secret', 'light',
-]);
-
 function stableText(left: string, right: string): number {
     return left < right ? -1 : left > right ? 1 : 0;
-}
-
-function numberText(value: number): string {
-    return Number(value.toFixed(3)).toString();
-}
-
-function pointsOf(element: MapElement): Array<[number, number]> {
-    const geometry = element.geometry as { points?: Array<[number, number]> };
-    return Array.isArray(geometry.points) ? geometry.points : [];
-}
-
-export function isAreaElement(element: MapElement): boolean {
-    if (element.shape === 'rect' || element.shape === 'circle') {return true;}
-    return pointsOf(element).length >= 3 && (element.closed === true || AREA_PATH_CATEGORIES.has(element.category));
-}
-
-export function sceneElementPath(element: MapElement): string {
-    const points = pointsOf(element);
-    if (points.length < 2) {return '';}
-    const close = isAreaElement(element) ? ' Z' : '';
-    if (element.shape === 'path') {
-        return `M ${points.map(([x, y]) => `${numberText(x)} ${numberText(y)}`).join(' L ')}${close}`;
-    }
-    const commands = [`M ${numberText(points[0][0])} ${numberText(points[0][1])}`];
-    for (let index = 0; index < points.length - 1; index += 1) {
-        const previous = points[index - 1] || points[index];
-        const current = points[index];
-        const next = points[index + 1];
-        const following = points[index + 2] || next;
-        const firstX = current[0] + (next[0] - previous[0]) / 6;
-        const firstY = current[1] + (next[1] - previous[1]) / 6;
-        const secondX = next[0] - (following[0] - current[0]) / 6;
-        const secondY = next[1] - (following[1] - current[1]) / 6;
-        commands.push(`C ${numberText(firstX)} ${numberText(firstY)}, ${numberText(secondX)} ${numberText(secondY)}, ${numberText(next[0])} ${numberText(next[1])}`);
-    }
-    return commands.join(' ') + close;
-}
-
-export function sceneElementLabelPoint(element: MapElement): [number, number] {
-    const geometry = element.geometry as {
-        x?: number;
-        y?: number;
-        width?: number;
-        height?: number;
-        radius?: number;
-        points?: Array<[number, number]>;
-    };
-    if (typeof geometry.x === 'number' && typeof geometry.y === 'number') {
-        if (element.shape === 'rect') {
-            return [geometry.x + (geometry.width || 0) / 2, geometry.y + (geometry.height || 0) / 2];
-        }
-        if (element.shape === 'circle') {
-            return [geometry.x, geometry.y - (geometry.radius || 0) - 8];
-        }
-        return [geometry.x, geometry.y + (element.shape === 'icon' ? 18 : 0)];
-    }
-    const points = geometry.points || [];
-    if (!points.length) {return [0, 0];}
-    const [x, y] = points.reduce<[number, number]>((sum, point) => [sum[0] + point[0], sum[1] + point[1]], [0, 0]);
-    return [x / points.length, y / points.length];
 }
 
 export function elementPresentation(element: MapElement, patternPrefix: string): MapElementPresentation {
     const recipe = CATEGORY_RECIPES[element.category];
     const area = isAreaElement(element);
-    const materialFill = area && element.material
-        ? `url(#${patternPrefix}-material-${element.material})`
+    const materialFill = area && (element.material || element.category === 'water')
+        ? materialPaint(element.material || 'water', patternPrefix)
         : '';
     const certaintyDash = element.certainty === 'inferred'
         ? '8 6'
         : element.certainty === 'unknown' ? '3 7' : recipe.dash;
     return {
         ...recipe,
-        fill: area ? materialFill || recipe.fill || MAP_MATERIAL_COLORS[element.material as MapMaterial] : 'none',
+        fill: area ? materialFill || recipe.fill : 'none',
         opacity: element.certainty === 'unknown' ? 0.48 : element.certainty === 'inferred' ? 0.72 : 1,
         dash: certaintyDash,
         icon: element.icon ? ICON_TOKENS[element.icon] : element.kind ? KIND_ICONS[element.kind] : CATEGORY_ICONS[element.category],
@@ -320,7 +236,12 @@ export function elementPresentation(element: MapElement, patternPrefix: string):
 }
 
 export function sortedSceneElements(elements: readonly MapElement[]): MapElement[] {
+    const area = (element: MapElement): number => {
+        if (!isAreaElement(element)) {return 0;}
+        const b = sceneElementBounds(element);
+        return b.width * b.height;
+    };
     return [...elements].sort((left, right) => (
-        CATEGORY_Z[left.category] - CATEGORY_Z[right.category] || stableText(left.id, right.id)
+        CATEGORY_Z[left.category] - CATEGORY_Z[right.category] || area(right) - area(left) || stableText(left.id, right.id)
     ));
 }

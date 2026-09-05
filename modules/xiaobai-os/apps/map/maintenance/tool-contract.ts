@@ -20,7 +20,7 @@ import {
     MAP_ICON_TOKENS,
     MAP_MATERIALS,
 } from '../../../domains/map/semantics.js';
-import { MAX_ATLAS_QUERY_LENGTH, MAX_ATLAS_READ_LIMIT } from './atlas-reader.js';
+import { DEFAULT_ATLAS_READ_LIMIT, MAX_ATLAS_QUERY_LENGTH, MAX_ATLAS_READ_LIMIT } from './atlas-reader.js';
 
 export const MAP_MAINTENANCE_TOOL_NAMES = Object.freeze({
     ATLAS_READ: 'MapAtlasRead',
@@ -33,6 +33,8 @@ const locationScale = ['world', 'region', 'city', 'district', 'building', 'floor
 const locationStatus = ['mentioned', 'visited'];
 const linkKind = ['door', 'stairs', 'elevator', 'path', 'road', 'portal', 'passage'];
 const mood = ['neutral', 'warm', 'cold', 'dark', 'mystic', 'danger', 'calm'];
+
+const EDIT_RESULT_SHAPE = 'Returns {ok, status, changed, applied[], skipped[], warnings[]}. status is updated, unchanged (nothing needed to change; this is success, not a failure to retry), partial or failed. Each skipped item carries collection, index, id, reason and a hint; fix only those and keep the applied ones. warnings list values that were ignored or normalized.';
 
 const coordinatePair = {
     type: 'array',
@@ -48,14 +50,21 @@ const pointList = {
     items: coordinatePair,
 } as const;
 
+// Standard nullable enum; the Google SDK converts this to nullable + string enum.
+// Keep the description on the non-null branch because that is the branch it retains.
+function nullableEnum(values: readonly string[], description: string) {
+    return { anyOf: [{ type: 'string', enum: [...values], description }, { type: 'null' }] };
+}
+
 export const MAP_MAINTENANCE_TOOLS: readonly MaintenanceFunctionDeclaration[] = Object.freeze([
     {
         type: 'function',
         function: {
             name: MAP_MAINTENANCE_TOOL_NAMES.ATLAS_READ,
             description: [
-                'Read the ordinary OS world atlas: locations, links and actor positions.',
-                'Default summary returns counts and the player position only. Use a paged collection mode for normal inspection; request document only when the complete Atlas is genuinely required.',
+                'Read the world atlas: locations, links and actor positions. The atlas is normally injected at the start of the run; use this when it was too large to inline or to confirm a key.',
+                `Default summary returns counts and the player position. Collection modes are paged (default ${DEFAULT_ATLAS_READ_LIMIT}, at most ${MAX_ATLAS_READ_LIMIT} per page); document returns everything at once.`,
+                'Locations carry hasScene, which tells you whether MapSceneRead has a layout to return for that key.',
             ].join('\n'),
             parameters: {
                 type: 'object',
@@ -68,7 +77,7 @@ export const MAP_MAINTENANCE_TOOLS: readonly MaintenanceFunctionDeclaration[] = 
                     to: { type: 'string', maxLength: MAX_MAP_ID_LENGTH, description: 'Optional other-endpoint filter for links.' },
                     kind: { type: 'string', enum: linkKind, description: 'Optional link kind filter.' },
                     actorKey: { type: 'string', maxLength: MAX_MAP_ID_LENGTH, description: 'Optional exact actor key filter.' },
-                    limit: { type: 'integer', minimum: 1, maximum: MAX_ATLAS_READ_LIMIT, description: 'Page size; default 30.' },
+                    limit: { type: 'integer', minimum: 1, maximum: MAX_ATLAS_READ_LIMIT, description: `Page size; default ${DEFAULT_ATLAS_READ_LIMIT}.` },
                     offset: { type: 'integer', minimum: 0, description: 'Zero-based page offset.' },
                 },
                 additionalProperties: false,
@@ -80,10 +89,10 @@ export const MAP_MAINTENANCE_TOOLS: readonly MaintenanceFunctionDeclaration[] = 
         function: {
             name: MAP_MAINTENANCE_TOOL_NAMES.ATLAS_EDIT,
             description: [
-                'Build and maintain an explorable world from the supplied setting, adding coherent geography where it is unspecified. Actor movement and visited status still require story evidence. Do not send internal domain commands.',
-                'Location keys are stable identities. Scene links are owned by MapSceneEdit and are not tool input.',
+                'Upsert locations, links and world-level actor positions, or remove them. Location keys are stable identities. Scene links are created by MapSceneEdit and are not accepted here.',
                 'Omit a link id for the stable endpoint/kind-derived id. Bidirectional defaults true.',
                 'Removal is for explicit correction or destruction, never merely because an actor left a place.',
+                EDIT_RESULT_SHAPE,
             ].join('\n'),
             parameters: {
                 type: 'object',
@@ -91,7 +100,7 @@ export const MAP_MAINTENANCE_TOOLS: readonly MaintenanceFunctionDeclaration[] = 
                     locations: {
                         type: 'array',
                         maxItems: MAX_MAP_LOCATIONS,
-                        description: 'Upsert setting-authored or coherently created places, including unvisited destinations. Parents may appear anywhere in the same call.',
+                        description: `Upsert setting-authored or coherently created places, including unvisited destinations. Parents may appear anywhere in the same call. The atlas holds at most ${MAX_MAP_LOCATIONS} locations.`,
                         items: {
                             type: 'object',
                             properties: {
@@ -106,7 +115,7 @@ export const MAP_MAINTENANCE_TOOLS: readonly MaintenanceFunctionDeclaration[] = 
                                 },
                                 brief: { type: 'string', maxLength: MAX_MAP_BRIEF_LENGTH, description: 'Short in-world description: what distinguishes this place and why someone might visit. Do not invent events that already happened.' },
                                 position: { ...coordinatePair, type: ['array', 'null'], description: 'Use null to clear. Stable [x,y] map position inside the parent region (root places share the world plane). North is smaller y. Use roughly 0..1000 with 160+ separation; follow authored directions, otherwise establish plausible geography. Preserve existing positions.' },
-                                terrain: { type: ['string', 'null'], enum: ['urban', 'plain', 'forest', 'water', 'mountain', 'desert', 'snow', null], description: 'Use null to clear. Landscape of this place, used on the world map. Match the setting.' },
+                                terrain: nullableEnum(['urban', 'plain', 'forest', 'water', 'mountain', 'desert', 'snow'], 'Use null to clear. Landscape of this place, used on the world map. Match the setting.'),
                             },
                             required: ['key', 'name'], additionalProperties: false,
                         },
@@ -114,7 +123,7 @@ export const MAP_MAINTENANCE_TOOLS: readonly MaintenanceFunctionDeclaration[] = 
                     links: {
                         type: 'array',
                         maxItems: MAX_MAP_LINKS,
-                        description: 'Upsert world routes between existing or same-call locations. Respect authored connections and add plausible connections for newly created destinations.',
+                        description: `Upsert world routes between existing or same-call locations. Respect authored connections and add plausible connections for newly created destinations. The atlas holds at most ${MAX_MAP_LINKS} links.`,
                         items: {
                             type: 'object',
                             properties: {
@@ -131,7 +140,7 @@ export const MAP_MAINTENANCE_TOOLS: readonly MaintenanceFunctionDeclaration[] = 
                     actors: {
                         type: 'array',
                         maxItems: MAX_MAP_ACTORS,
-                        description: 'Set world-level actor locations. Use MapSceneEdit for visible player coordinates inside a scene.',
+                        description: `Set world-level actor locations. Use MapSceneEdit for visible player coordinates inside a scene. The atlas holds at most ${MAX_MAP_ACTORS} actors.`,
                         items: {
                             type: 'object',
                             properties: {
@@ -162,8 +171,9 @@ export const MAP_MAINTENANCE_TOOLS: readonly MaintenanceFunctionDeclaration[] = 
         function: {
             name: MAP_MAINTENANCE_TOOL_NAMES.SCENE_READ,
             description: [
-                'Read one detailed scene when you need its current layout or element ids. Existing elements can be patched without resending unchanged fields.',
-                'The key is the same value passed as MapSceneEdit.scene: a scene key, or the location key that owns it.',
+                'Read one scene layout to assess its completeness or get its current elements and their ids before patching it.',
+                'The key is the same value passed as MapSceneEdit.scene: the location key that owns the scene.',
+                'Returns data.scene as editable {scene,title,viewBox,mood?,elements} in exactly the vocabulary MapSceneEdit accepts, including rect center+size. A location without a scene returns null. Location scale and visit status belong to the atlas, not this layout.',
             ].join('\n'),
             parameters: {
                 type: 'object',
@@ -179,11 +189,11 @@ export const MAP_MAINTENANCE_TOOLS: readonly MaintenanceFunctionDeclaration[] = 
         function: {
             name: MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT,
             description: [
-                'Create or edit one scene from high-level drawing intent. The runtime creates and links its atlas location, so never pass sceneKey to MapAtlasEdit.',
-                'Existing elements are patched by id: omitted fields are preserved and null clears optional fields. Category and actor identity are stable. A supplied geo is a complete geometry replacement, never a deep merge.',
-                'New elements need cat and complete valid geo. Elements you do not send are untouched. Use remove for explicit element deletion.',
+                'Create or patch one scene layout. It creates and links the owning atlas location itself.',
+                'Existing elements are patched by id: omitted fields are preserved and null clears optional fields. Category and actor identity are stable. A supplied geo replaces the whole geometry. To move a rect keep its size and change its center; to rotate or change material send no geo.',
+                `New elements need cat and complete valid geo. Elements you do not send are untouched. Use remove for explicit element deletion. A scene holds at most ${MAX_SCENE_ELEMENTS} elements.`,
                 'Give one shape and the geo it needs: rect={center,size}; circle={at,radius}; path={points}; curve={curve}; icon={at}; label={at}+label.',
-                'Bad elements are skipped independently. Keep the applied ids and retry only the skipped ids.',
+                EDIT_RESULT_SHAPE,
             ].join('\n'),
             parameters: {
                 type: 'object',
@@ -206,9 +216,9 @@ export const MAP_MAINTENANCE_TOOLS: readonly MaintenanceFunctionDeclaration[] = 
                         items: { type: 'number', minimum: -MAX_MAP_COORDINATE, maximum: MAX_MAP_COORDINATE },
                         minItems: 4,
                         maxItems: 4,
-                        description: 'Camera as [x, y, width, height]: top-left corner then size. Width and height must be positive. Defaults to [0, 0, 400, 300].',
+                        description: 'Full-map extent [x,y,width,height], with positive size. New scenes default to [0,0,400,300]; omission preserves an existing extent. Include the whole layout and label margins. Used on scene entry or Fit; updates do not pan/zoom the current user viewport. Do not change it just to move an actor.',
                     },
-                    mood: { type: ['string', 'null'], enum: [...mood, null], description: 'Optional scene atmosphere used for rendering. Use null to clear it.' },
+                    mood: nullableEnum(mood, 'Optional scene atmosphere used for rendering. Use null to clear it.'),
                     elements: {
                         type: 'array',
                         maxItems: MAX_SCENE_ELEMENTS,
@@ -218,7 +228,7 @@ export const MAP_MAINTENANCE_TOOLS: readonly MaintenanceFunctionDeclaration[] = 
                             properties: {
                                 id: { type: 'string', maxLength: MAX_MAP_ID_LENGTH, description: 'Stable element identity inside this scene.' },
                                 cat: { type: 'string', enum: [...MAP_ELEMENT_CATEGORIES], description: 'What the element is. Required for a new id. An existing id keeps its stored category; use another id for a different entity.' },
-                                kind: { type: ['string', 'null'], enum: [...MAP_ELEMENT_KINDS, null], description: 'Optional closed-system meaning, such as a door or the player. Use null to clear it.' },
+                                kind: nullableEnum(MAP_ELEMENT_KINDS, 'Optional semantic role, such as a door or the player. Use null to clear it.'),
                                 shape: { type: 'string', enum: [...MAP_ELEMENT_SHAPES], description: 'Optional. Inferred from geo when omitted; a shape that does not match its geo is corrected to the inferred one.' },
                                 geo: {
                                     type: 'object',
@@ -228,27 +238,24 @@ export const MAP_MAINTENANCE_TOOLS: readonly MaintenanceFunctionDeclaration[] = 
                                         at: { ...coordinatePair, description: 'Single anchor point [x, y] for circle, icon and label.' },
                                         size: {
                                             type: 'array',
-                                            items: { type: 'number', exclusiveMinimum: 0, maximum: MAX_MAP_DIMENSION },
+                                            items: { type: 'number', minimum: 0, maximum: MAX_MAP_DIMENSION },
                                             minItems: 2,
                                             maxItems: 2,
                                             description: 'Rect size [width, height]; both must be positive.',
                                         },
-                                        radius: { type: 'number', exclusiveMinimum: 0, maximum: MAX_MAP_DIMENSION, description: 'Circle radius.' },
-                                        points: { ...pointList, description: 'Polyline vertices for shape "path".' },
-                                        curve: { ...pointList, description: 'Control points for shape "curve".' },
+                                        radius: { type: 'number', minimum: 0, maximum: MAX_MAP_DIMENSION, description: 'Circle radius; must be strictly positive.' },
+                                        points: { ...pointList, description: `Ordered vertices joined by straight segments, 2 to ${MAX_MAP_POINTS}. For routes: start, genuine turns, end. For areas: walk around the perimeter in order, not across it.` },
+                                        curve: { ...pointList, description: `Ordered positions the smooth line actually passes through, 2 to ${MAX_MAP_POINTS}, NOT Bezier control handles. The renderer computes smoothing. For closed areas, trace the perimeter in order; for routes, supply endpoints and meaningful bends only.` },
                                     },
                                     additionalProperties: false,
                                 },
                                 label: { type: ['string', 'null'], maxLength: MAX_MAP_LABEL_LENGTH, description: 'Optional short visible text. Required for shape "label". Use null to clear it.' },
                                 actorKey: { type: ['string', 'null'], maxLength: MAX_MAP_ID_LENGTH, description: 'Stable actor identity for a new cat "actor" element. The player is always "player". An existing actor keeps its stored actorKey.' },
-                                icon: {
-                                    type: ['string', 'null'],
-                                    enum: [...MAP_ICON_TOKENS, null],
-                                    description: 'Optional canonical icon token. Use null to clear it. This is an element field, never a key inside geo.',
-                                },
-                                material: { type: ['string', 'null'], enum: [...MAP_MATERIALS, null], description: 'Optional semantic evidence of what the surface is, not styling. Use null to clear it.' },
-                                certainty: { type: ['string', 'null'], enum: [...MAP_CERTAINTIES, null], description: 'Optional. Omit for ordinary confirmed facts; use null to clear it; never use it as opacity styling.' },
-                                closed: { type: ['boolean', 'null'], description: 'Optional. Closes a path or curve back to its first point. Use null to clear it.' },
+                                icon: nullableEnum(MAP_ICON_TOKENS, 'Object or marker token. On a rect/circle, table/chair/bed/counter/shelf/sofa/bridge/tree/rock draws that physical footprint; on shape icon it is only a point marker. A tree footprint is ONE tree; a forest is terrain with material forest and no tree icon. Use null to clear.'),
+                                material: nullableEnum(MAP_MATERIALS, 'What the surface is made of, independent of object type: e.g. icon table + material metal. Floors, ground, decks and platforms are cat terrain with a surface material; fabric and bed-sheet describe soft objects, not a floor. Textures are automatic. Use null to clear.'),
+                                certainty: nullableEnum(MAP_CERTAINTIES, 'Use inferred for ordinary structures you plausibly add beyond explicit setting/story facts. Omit for established facts; approximate coordinates alone are not inferred. Use null to clear.'),
+                                closed: { type: ['boolean', 'null'], description: 'Paths/curves only: true joins last to first (needs 3+ points); false stays open. Omit preserves the stored value; null removes the override. Without an override, 3+ points close for water/terrain/furniture/decoration/danger/magic/secret/light; other categories stay open. Two points are always a line. Walls never fill.' },
+                                rotation: { type: ['number', 'null'], minimum: 0, description: 'Rect/circle only: clockwise degrees [0,360) around the footprint centre. At 0, chair/sofa backs and bed pillows are at the top (north); seats face down (south); bridge travel runs top-to-bottom. Thus a chair facing north is 180, east 270, west 90. Omit preserves; null clears. Clear explicitly when changing to a non-rect/circle shape. Rotation-only edits need no geo.' },
                             },
                             required: ['id'], additionalProperties: false,
                         },

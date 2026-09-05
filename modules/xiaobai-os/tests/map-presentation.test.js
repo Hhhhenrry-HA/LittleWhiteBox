@@ -3,8 +3,8 @@ import test from 'node:test';
 
 import {
     elementPresentation,
-    sceneElementPath,
 } from '../apps/map/ui/map-presentation.js';
+import { sceneElementPath } from '../apps/map/ui/scene-geometry.js';
 
 import { layoutWorldMap, locationInRegion, connectedPlaces } from '../apps/map/ui/world-map.js';
 
