@@ -176,6 +176,6 @@ test('maintenance completion is projected from Host status without exposing inte
     };
     host.statuses.set('character:1:chat-a', host.status);
     const result = await controller.activate(activation(host));
-    assert.equal(result.maintenanceMessage, '地图维护失败，请稍后重试。');
+    assert.equal(result.maintenanceMessage, '地图更新失败，请稍后重试。');
     assert.doesNotMatch(result.maintenanceMessage, /provider_secret|Agent API/);
 });

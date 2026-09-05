@@ -9,20 +9,16 @@ import type {
     GameRecordView,
 } from '../types.js';
 
-const GAME_LABELS = Object.freeze({
-    dice: '秘骰对决',
-    push: '翻倍或收手',
-    ladder: '鎏金阶梯',
-});
+import { gameInfo } from '../catalog.js';
 
 const OUTCOME_LABELS: Readonly<Record<string, string>> = Object.freeze({
-    'player-win': '玩家胜出',
-    'dealer-win': '庄家胜出',
-    'cashed-out': '稳妥收手',
-    busted: '触雷离场',
-    cleared: '全程通关',
-    failed: '挑战失利',
-    capped: '抵达封顶',
+    'player-win': '你赢了',
+    'dealer-win': '对方赢了',
+    'cashed-out': '收手离桌',
+    busted: '翻到了炸弹',
+    cleared: '全部拿下',
+    failed: '这一步没过',
+    capped: '满载而归',
 });
 
 function resolveStatus(
@@ -33,13 +29,13 @@ function resolveStatus(
         return { status: 'loading', message: '' };
     }
     if (view.writeState === 'conflict') {
-        return { status: 'conflict', message: '服务端数据与当前候选不一致，请刷新酒馆后再继续。' };
+        return { status: 'conflict', message: '保存的版本不一致，请重新打开酒馆后继续。' };
     }
     if (view.writeState === 'unconfirmed') {
-        return { status: 'unconfirmed', message: '上一次保存结果尚未确认，赌局与资金写入已冻结。' };
+        return { status: 'unconfirmed', message: '上一局是否保存成功还没确认，核实后才能继续玩。' };
     }
     if (view.writeState === 'saving') {
-        return { status: 'saving', message: '正在确认赌局与账本保存结果…' };
+        return { status: 'saving', message: '正在保存这一局，请稍候…' };
     }
     if (view.writeState === 'failed' && view.pendingCommit) {
         return { status: 'save-failed', message: '本局结果尚未保存。请重试保存后再继续游戏。' };
@@ -138,7 +134,7 @@ function presentRecord(record: GamePublicActivityRecord): GameRecordView {
         id: record.id,
         gameId: record.sourceId,
         game,
-        gameLabel: GAME_LABELS[game],
+        gameLabel: gameInfo(game).name,
         outcome: record.detail.outcome,
         outcomeLabel: OUTCOME_LABELS[record.detail.outcome] || record.detail.outcome,
         outcomeTone: record.net > 0 ? 'win' : record.net < 0 ? 'loss' : 'neutral',

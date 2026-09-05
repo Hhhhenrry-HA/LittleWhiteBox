@@ -1,164 +1,42 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import type { MapAtlas, MapLink, MapLocation } from '../../../domains/map/types.js';
+import { computed, useId } from 'vue';
+import type { MapAtlas } from '../../../domains/map/types.js';
 import MapViewport from './MapViewport.vue';
-import {
-    actorsAtLocation,
-    layoutMapAtlas,
-    MAP_LINK_LABELS,
-    MAP_SCALE_ICONS,
-    MAP_SCALE_LABELS,
-    type AtlasLayoutNode,
-} from './map-presentation.js';
+import MapIcon from './MapIcon.vue';
+import { layoutWorldMap, locationInRegion } from './world-map.js';
 
-const props = defineProps<{
-    atlas: MapAtlas;
-    revision: number;
-    currentLocationKey: string;
-    selectedLocationKey: string;
-    symbolsReady: boolean;
-}>();
-
-const emit = defineEmits<{
-    viewScene: [locationKey: string];
-}>();
-
-const layout = computed(() => layoutMapAtlas(props.atlas));
-const locationByKey = computed(() => new Map(props.atlas.locations.map(location => [location.key, location])));
-const linkById = computed(() => new Map(props.atlas.links.map(link => [link.id, link])));
-
-function locationOf(node: AtlasLayoutNode): MapLocation {
-    return locationByKey.value.get(node.key)!;
-}
-
-function linkOf(id: string): MapLink {
-    return linkById.value.get(id)!;
-}
-
-function actorList(locationKey: string) {
-    return actorsAtLocation(props.atlas.actors, locationKey);
-}
-
-function viewScene(location: MapLocation): void {
-    if (location.sceneKey) {emit('viewScene', location.key);}
-}
-
-function onNodeKeydown(event: KeyboardEvent, location: MapLocation): void {
-    if (!location.sceneKey || (event.key !== 'Enter' && event.key !== ' ')) {return;}
-    event.preventDefault();
-    viewScene(location);
+const props = defineProps<{ atlas: MapAtlas; region: string; currentLocationKey: string; selectedLocationKey: string; focusKey: string; focusSequence: number }>();
+defineEmits<{ select: [key: string] }>();
+const layout = computed(() => layoutWorldMap(props.atlas, props.region));
+const current = computed(() => locationInRegion(props.atlas, props.currentLocationKey, props.region));
+const focus = computed(() => layout.value.nodes.find(node => node.location.key === props.focusKey));
+const arrow = 'map-arrow-' + useId();
+function icon(terrain: string | undefined, scale: string): string {
+    return terrain === 'water' ? 'water' : terrain === 'forest' ? 'tree' : terrain === 'mountain' ? 'mountain' : ['world', 'region'].includes(scale) ? 'globe' : scale === 'outdoor' ? 'compass' : 'building';
 }
 </script>
-
 <template>
-    <MapViewport
-        class="map-atlas-viewport"
-        :view-box="layout.viewBox"
-        :reset-key="String(revision)"
-        label="世界地点关系图"
-    >
-        <defs>
-            <pattern id="map-atlas-grid" width="28" height="28" patternUnits="userSpaceOnUse">
-                <path d="M28 0H0V28" fill="none" stroke="rgba(92, 176, 228, .08)" stroke-width="1" />
-            </pattern>
-            <marker id="map-atlas-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-                <path d="M1 1l8 4-8 4z" fill="#58bce9" />
-            </marker>
-            <filter id="map-atlas-current-glow" x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="3" result="blur" />
-                <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-            </filter>
-        </defs>
-        <rect
-            :x="layout.viewBox[0]"
-            :y="layout.viewBox[1]"
-            :width="layout.viewBox[2]"
-            :height="layout.viewBox[3]"
-            class="map-atlas-background"
-        />
-        <rect
-            :x="layout.viewBox[0]"
-            :y="layout.viewBox[1]"
-            :width="layout.viewBox[2]"
-            :height="layout.viewBox[3]"
-            fill="url(#map-atlas-grid)"
-        />
-
-        <g class="map-atlas-hierarchy" aria-hidden="true">
-            <path v-for="edge in layout.hierarchy" :key="edge.id" :d="edge.path" vector-effect="non-scaling-stroke" />
-        </g>
-        <g class="map-atlas-routes">
-            <g v-for="route in layout.routes" :key="route.id">
-                <path
-                    :d="route.path"
-                    :marker-start="linkOf(route.id).bidirectional ? 'url(#map-atlas-arrow)' : undefined"
-                    marker-end="url(#map-atlas-arrow)"
-                    vector-effect="non-scaling-stroke"
-                />
-                <text :x="route.labelX" :y="route.labelY">
-                    {{ linkOf(route.id).label || MAP_LINK_LABELS[linkOf(route.id).kind] }}
-                </text>
+    <MapViewport v-slot="{ unitScale }" :view-box="layout.viewBox" :reset-key="region" label="世界地图" :focus-point="focus ? [focus.x, focus.y] : undefined" :focus-sequence="focusSequence">
+        <defs><marker :id="arrow" viewBox="0 0 10 10" refX="16" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M1 1l8 4-8 4z" fill="var(--map-road-ink)" /></marker></defs>
+        <g class="map-landscapes" aria-hidden="true">
+            <g v-for="node in layout.nodes" :key="node.location.key" :transform="`translate(${node.x} ${node.y})`" :class="`is-${node.location.terrain || 'urban'}`">
+                <path d="M-108-20Q-100-100-32-94T87-56Q127-13 99 48T21 99Q-57 113-90 65T-108-20Z" />
+                <path class="map-contour" d="M-133-22Q-124-126-39-116T110-70Q156-17 124 60T26 123Q-71 139-112 81T-133-22Z" />
             </g>
         </g>
-
-        <g
-            v-for="node in layout.nodes"
-            :key="node.key"
-            class="map-atlas-node"
-            :class="{
-                'is-current': node.key === currentLocationKey,
-                'is-selected': node.key === selectedLocationKey,
-                'is-visited': locationOf(node).status === 'visited',
-                'is-clickable': Boolean(locationOf(node).sceneKey),
-            }"
-            :role="locationOf(node).sceneKey ? 'button' : undefined"
-            :tabindex="locationOf(node).sceneKey ? 0 : undefined"
-            :aria-label="locationOf(node).sceneKey ? `查看 ${locationOf(node).name} 场景` : locationOf(node).name"
-            @click.stop="viewScene(locationOf(node))"
-            @keydown="onNodeKeydown($event, locationOf(node))"
-        >
-            <rect :x="node.x" :y="node.y" :width="node.width" :height="node.height" rx="9" />
-            <path
-                class="map-atlas-node-cut"
-                :d="`M ${node.x + node.width - 24} ${node.y} L ${node.x + node.width} ${node.y + 24}`"
-            />
-            <circle :cx="node.x + 24" :cy="node.y + 24" r="13" class="map-atlas-node-icon-ring" />
-            <text v-if="symbolsReady" :x="node.x + 24" :y="node.y + 24" class="map-material-symbol">
-                {{ MAP_SCALE_ICONS[locationOf(node).scale] }}
-            </text>
-            <text v-else :x="node.x + 24" :y="node.y + 24" class="map-symbol-fallback">
-                {{ MAP_SCALE_LABELS[locationOf(node).scale].slice(0, 1) }}
-            </text>
-            <text :x="node.x + 45" :y="node.y + 23" class="map-atlas-node-name">{{ locationOf(node).name }}</text>
-            <text :x="node.x + 45" :y="node.y + 42" class="map-atlas-node-meta">
-                {{ MAP_SCALE_LABELS[locationOf(node).scale] }} · {{ locationOf(node).status === 'visited' ? '已到访' : '仅提及' }}
-            </text>
-            <g v-if="actorList(node.key).length" class="map-atlas-actors">
-                <g
-                    v-for="(actor, actorIndex) in actorList(node.key).slice(0, 4)"
-                    :key="actor.actorKey"
-                    :transform="`translate(${node.x + 19 + actorIndex * 18} ${node.y + node.height - 2})`"
-                    :class="{ 'is-player': actor.actorKey === 'player' }"
-                >
-                    <circle r="7" />
-                    <text v-if="symbolsReady" class="map-material-symbol">{{ actor.actorKey === 'player' ? 'person_pin_circle' : 'person' }}</text>
-                    <text v-else class="map-symbol-fallback">{{ actor.actorKey === 'player' ? 'P' : 'N' }}</text>
-                    <title>{{ actor.displayName }}</title>
-                </g>
-                <text
-                    v-if="actorList(node.key).length > 4"
-                    :x="node.x + 88"
-                    :y="node.y + node.height + 2"
-                    class="map-atlas-actor-overflow"
-                >
-                    +{{ actorList(node.key).length - 4 }}
-                </text>
+        <g class="map-world-roads" aria-hidden="true">
+            <g v-for="route in layout.routes" :key="route.link.id" :class="{ 'is-path': route.link.kind === 'path', 'is-portal': route.link.kind === 'portal' }">
+                <path class="map-road-casing" :d="route.path" /><path class="map-road-line" :d="route.path" :marker-end="!route.link.bidirectional ? `url(#${arrow})` : undefined" />
+                <text v-if="route.link.label" :x="route.x" :y="route.y - 14">{{ route.link.label }}</text>
             </g>
-            <g v-if="node.key === currentLocationKey" class="map-atlas-current-pin" :transform="`translate(${node.x + node.width - 13} ${node.y + 13})`">
-                <circle r="7" />
-                <path d="M-3 0l2 2 4-5" />
-            </g>
-            <title>{{ locationOf(node).brief || locationOf(node).name }}</title>
+        </g>
+        <g v-for="node in layout.nodes" :key="node.location.key" class="map-place" :class="{ 'is-selected': node.location.key === selectedLocationKey, 'is-current': node.location.key === current, 'is-unvisited': node.location.status !== 'visited' }" :transform="`translate(${node.x} ${node.y}) scale(${unitScale * .5})`" role="button" tabindex="0" :aria-label="`查看${node.location.name}`" @click.stop="$emit('select', node.location.key)" @keydown.enter.stop="$emit('select', node.location.key)" @keydown.space.stop.prevent="$emit('select', node.location.key)">
+            <circle class="map-pin-halo" r="39" /><path class="map-pin-body" d="M0 33C-6 25-26 8-26-6a26 26 0 0 1 52 0C26 8 6 25 0 33Z" />
+            <g transform="translate(-14 -20)"><MapIcon :name="icon(node.location.terrain, node.location.scale)" width="28" height="28" /></g>
+            <text y="64" class="map-place-name">{{ node.location.name.length > 14 ? node.location.name.slice(0, 13) + '…' : node.location.name }}</text>
+            <text v-if="node.location.key === current" y="89" class="map-place-status">你在这里</text>
+            <text v-else-if="node.location.status !== 'visited'" y="89" class="map-place-status">未到访</text>
+            <title>{{ node.location.name }}{{ node.location.brief ? ' · ' + node.location.brief : '' }}</title>
         </g>
     </MapViewport>
 </template>

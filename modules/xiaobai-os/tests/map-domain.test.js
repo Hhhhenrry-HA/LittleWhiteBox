@@ -217,13 +217,13 @@ test('prompt projection is flat, escaped, bounded, and excludes actors and Scene
     });
     const prompt = buildMapPromptBlock(domain);
 
-    assert.match(prompt, /^<current_map>\n以下是已确认的空间连续性资料。/u);
+    assert.match(prompt, /^<current_map>\n以下是当前世界地图，包含尚未到访的地点；/u);
     assert.match(prompt, /当前位置：Hall &lt;unsafe&gt; &#123;&#123;macro&#125;&#125;/u);
     assert.match(prompt, /所属区域：inn/u);
     assert.match(prompt, /地点概况：The public hall\./u);
     assert.match(prompt, /可直接到达：\n- street（经由门）/u);
-    assert.match(prompt, /已确认地点：.*Hall.*属于inn/u);
-    assert.match(prompt, /已确认路线：.*经由门相连/u);
+    assert.match(prompt, /世界地点：.*Hall.*属于inn/u);
+    assert.match(prompt, /世界路线：.*经由门相连/u);
     assert.doesNotMatch(prompt, /Keeper|<current_location|<parent_location|<adjacent|<actor|<scene|<element|geometry|shape=/iu);
     assert.doesNotMatch(prompt, /Secret rumor|<unsafe>|\{\{macro\}\}/);
     assert.ok(Array.from(prompt).length <= MAX_MAP_PROMPT_CHARS);
@@ -234,7 +234,8 @@ test('prompt projection is flat, escaped, bounded, and excludes actors and Scene
     noPlayer.scenes['hall-scene'].elements = noPlayer.scenes['hall-scene'].elements.filter(element => (
         element.actorKey !== 'player'
     ));
-    assert.equal(buildMapPromptBlock(noPlayer), '');
+    assert.match(buildMapPromptBlock(noPlayer), /当前位置：尚未确定/u);
+    assert.match(buildMapPromptBlock(noPlayer), /世界地点：.*inn/u);
     assert.equal(buildMapPromptBlock({ malformed: true }), '');
 });
 
@@ -296,13 +297,13 @@ test('prompt projection exposes compact global topology while direct movement re
     };
 
     const prompt = buildMapPromptBlock(domain);
-    const direct = prompt.match(/可直接到达：\n([\s\S]*?)\n已确认地点：/u)?.[1] ?? '';
+    const direct = prompt.match(/可直接到达：\n([\s\S]*?)\n世界地点：/u)?.[1] ?? '';
     assert.match(prompt, /当前位置：蓝袖居住区\n所属区域：灯塔站\n地点概况：配有床铺、小台、卫浴，并连通内院。/u);
     assert.match(direct, /内院（经由走廊）/u);
     assert.match(direct, /塔顶（经由楼梯，仅可前往）/u);
     assert.doesNotMatch(direct, /维修井/u);
-    assert.match(prompt, /已确认地点：.*旧市场（属于港区）/u);
-    assert.match(prompt, /已确认路线：.*维修井可经由电梯前往蓝袖居住区.*港区与旧市场经由道路相连/u);
+    assert.match(prompt, /世界地点：.*旧市场（属于港区）/u);
+    assert.match(prompt, /世界路线：.*维修井可经由电梯前往蓝袖居住区.*港区与旧市场经由道路相连/u);
     assert.doesNotMatch(prompt, /白帝|keeper|actorKey|locationKey|sceneKey|revision/u);
     assert.equal(Array.from(prompt).length <= MAX_MAP_PROMPT_CHARS, true);
 });

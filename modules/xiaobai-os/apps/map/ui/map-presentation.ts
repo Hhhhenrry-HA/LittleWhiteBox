@@ -1,13 +1,9 @@
 import type {
-    MapActorPosition,
-    MapAtlas,
     MapElement,
     MapElementCategory,
     MapElementKind,
     MapIconToken,
-    MapLink,
     MapLinkKind,
-    MapLocation,
     MapLocationScale,
     MapMaterial,
     MapSceneMood,
@@ -33,37 +29,6 @@ export interface MapMoodRecipe {
     background: string;
     glow: string;
     accent: string;
-}
-
-export interface AtlasLayoutNode {
-    key: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    depth: number;
-}
-
-export interface AtlasLayoutEdge {
-    id: string;
-    from: string;
-    to: string;
-    path: string;
-    labelX: number;
-    labelY: number;
-    bounds: [number, number, number, number];
-}
-
-export interface AtlasHierarchyEdge {
-    id: string;
-    path: string;
-}
-
-export interface AtlasLayout {
-    nodes: AtlasLayoutNode[];
-    hierarchy: AtlasHierarchyEdge[];
-    routes: AtlasLayoutEdge[];
-    viewBox: [number, number, number, number];
 }
 
 const CATEGORY_RECIPES: Readonly<Record<MapElementCategory, MapElementRecipe>> = Object.freeze({
@@ -245,16 +210,9 @@ export const MAP_MOOD_RECIPES: Readonly<Record<MapSceneMood, MapMoodRecipe>> = O
     calm: { background: '#071411', glow: 'rgba(61, 189, 158, .13)', accent: '#69d8b8' },
 });
 
-export const MAP_SCALE_ICONS: Readonly<Record<MapLocationScale, string>> = Object.freeze({
-    city: 'location_city',
-    district: 'apartment',
-    building: 'home_work',
-    floor: 'stairs',
-    room: 'meeting_room',
-    outdoor: 'park',
-});
-
 export const MAP_SCALE_LABELS: Readonly<Record<MapLocationScale, string>> = Object.freeze({
+    world: '世界',
+    region: '区域',
     city: '城市',
     district: '区域',
     building: '建筑',
@@ -365,180 +323,4 @@ export function sortedSceneElements(elements: readonly MapElement[]): MapElement
     return [...elements].sort((left, right) => (
         CATEGORY_Z[left.category] - CATEGORY_Z[right.category] || stableText(left.id, right.id)
     ));
-}
-
-const NODE_WIDTH = 156;
-const NODE_HEIGHT = 66;
-const HORIZONTAL_GAP = 34;
-const VERTICAL_GAP = 92;
-const ROOT_GAP = 70;
-
-function sortedLocations(locations: readonly MapLocation[]): MapLocation[] {
-    return [...locations].sort((left, right) => (
-        stableText(left.parent || '', right.parent || '')
-        || stableText(left.name, right.name)
-        || stableText(left.key, right.key)
-    ));
-}
-
-function cycleLocationKeys(locationByKey: ReadonlyMap<string, MapLocation>): Set<string> {
-    const cycles = new Set<string>();
-    locationByKey.forEach((location) => {
-        const path: string[] = [];
-        const indexes = new Map<string, number>();
-        let current: MapLocation | undefined = location;
-        while (current?.parent) {
-            const index = indexes.get(current.key);
-            if (index !== undefined) {
-                path.slice(index).forEach(key => cycles.add(key));
-                break;
-            }
-            indexes.set(current.key, path.length);
-            path.push(current.key);
-            current = locationByKey.get(current.parent);
-        }
-    });
-    return cycles;
-}
-
-function edgeBounds(points: Array<[number, number]>): [number, number, number, number] {
-    return [
-        Math.min(...points.map(point => point[0])),
-        Math.min(...points.map(point => point[1])),
-        Math.max(...points.map(point => point[0])),
-        Math.max(...points.map(point => point[1])),
-    ];
-}
-
-function routeEdge(link: MapLink, from: AtlasLayoutNode, to: AtlasLayoutNode, lane: number): AtlasLayoutEdge {
-    const fromCenter: [number, number] = [from.x + from.width / 2, from.y + from.height / 2];
-    const toCenter: [number, number] = [to.x + to.width / 2, to.y + to.height / 2];
-    const dx = toCenter[0] - fromCenter[0];
-    const dy = toCenter[1] - fromCenter[1];
-    const horizontal = Math.abs(dx) >= Math.abs(dy);
-    const start: [number, number] = horizontal
-        ? [dx >= 0 ? from.x + from.width : from.x, fromCenter[1]]
-        : [fromCenter[0], dy >= 0 ? from.y + from.height : from.y];
-    const end: [number, number] = horizontal
-        ? [dx >= 0 ? to.x : to.x + to.width, toCenter[1]]
-        : [toCenter[0], dy >= 0 ? to.y : to.y + to.height];
-    const labelX = (start[0] + end[0]) / 2;
-    const labelY = (start[1] + end[1]) / 2 + lane;
-    const controls: [[number, number], [number, number]] = horizontal
-        ? [[labelX, start[1] + lane], [labelX, end[1] + lane]]
-        : [[start[0] + lane, labelY], [end[0] + lane, labelY]];
-    return {
-        id: link.id,
-        from: link.from,
-        to: link.to,
-        path: `M ${numberText(start[0])} ${numberText(start[1])} C ${numberText(controls[0][0])} ${numberText(controls[0][1])}, ${numberText(controls[1][0])} ${numberText(controls[1][1])}, ${numberText(end[0])} ${numberText(end[1])}`,
-        labelX,
-        labelY: labelY - 7,
-        bounds: edgeBounds([start, end, controls[0], controls[1], [labelX, labelY - 7]]),
-    };
-}
-
-export function layoutMapAtlas(atlas: MapAtlas): AtlasLayout {
-    const locations = sortedLocations(atlas.locations);
-    const locationByKey = new Map(locations.map(location => [location.key, location]));
-    const cycleKeys = cycleLocationKeys(locationByKey);
-    const children = new Map<string, MapLocation[]>();
-    const roots: MapLocation[] = [];
-    locations.forEach((location) => {
-        const parent = location.parent || '';
-        if (parent && locationByKey.has(parent) && !cycleKeys.has(parent) && !cycleKeys.has(location.key)) {
-            const bucket = children.get(parent) || [];
-            bucket.push(location);
-            children.set(parent, bucket);
-        } else {
-            roots.push(location);
-        }
-    });
-    children.forEach((bucket, key) => children.set(key, sortedLocations(bucket)));
-
-    const widths = new Map<string, number>();
-    const subtreeWidth = (location: MapLocation): number => {
-        const cached = widths.get(location.key);
-        if (cached !== undefined) {return cached;}
-        const descendants = children.get(location.key) || [];
-        const width = descendants.length
-            ? Math.max(NODE_WIDTH, descendants.reduce((sum, child, index) => (
-                sum + subtreeWidth(child) + (index ? HORIZONTAL_GAP : 0)
-            ), 0))
-            : NODE_WIDTH;
-        widths.set(location.key, width);
-        return width;
-    };
-    const nodes: AtlasLayoutNode[] = [];
-    const place = (location: MapLocation, left: number, depth: number): void => {
-        const width = subtreeWidth(location);
-        nodes.push({
-            key: location.key,
-            x: left + (width - NODE_WIDTH) / 2,
-            y: depth * (NODE_HEIGHT + VERTICAL_GAP),
-            width: NODE_WIDTH,
-            height: NODE_HEIGHT,
-            depth,
-        });
-        let childLeft = left;
-        (children.get(location.key) || []).forEach((child) => {
-            place(child, childLeft, depth + 1);
-            childLeft += subtreeWidth(child) + HORIZONTAL_GAP;
-        });
-    };
-    let left = 0;
-    sortedLocations(roots).forEach((root) => {
-        place(root, left, 0);
-        left += subtreeWidth(root) + ROOT_GAP;
-    });
-
-    const nodeByKey = new Map(nodes.map(node => [node.key, node]));
-    const hierarchy = locations.flatMap<AtlasHierarchyEdge>((location) => {
-        const child = nodeByKey.get(location.key);
-        const parent = location.parent ? nodeByKey.get(location.parent) : undefined;
-        if (!child || !parent) {return [];}
-        const startX = parent.x + parent.width / 2;
-        const startY = parent.y + parent.height;
-        const endX = child.x + child.width / 2;
-        const endY = child.y;
-        const midY = (startY + endY) / 2;
-        return [{
-            id: `${parent.key}:${child.key}`,
-            path: `M ${numberText(startX)} ${numberText(startY)} C ${numberText(startX)} ${numberText(midY)}, ${numberText(endX)} ${numberText(midY)}, ${numberText(endX)} ${numberText(endY)}`,
-        }];
-    });
-    const pairLanes = new Map<string, number>();
-    const routes = [...atlas.links]
-        .sort((leftLink, rightLink) => stableText(leftLink.id, rightLink.id))
-        .flatMap<AtlasLayoutEdge>((link) => {
-            const from = nodeByKey.get(link.from);
-            const to = nodeByKey.get(link.to);
-            if (!from || !to) {return [];}
-            const pair = [link.from, link.to].sort(stableText).join(':');
-            const index = pairLanes.get(pair) || 0;
-            pairLanes.set(pair, index + 1);
-            const lane = index === 0 ? 0 : (index % 2 ? 1 : -1) * Math.ceil(index / 2) * 24;
-            return [routeEdge(link, from, to, lane)];
-        });
-
-    if (!nodes.length) {
-        return { nodes, hierarchy, routes, viewBox: [0, 0, 640, 420] };
-    }
-    const routeBounds = routes.flatMap(route => [route.bounds]);
-    const minX = Math.min(...nodes.map(node => node.x), ...routeBounds.map(bounds => bounds[0])) - 60;
-    const minY = Math.min(...nodes.map(node => node.y), ...routeBounds.map(bounds => bounds[1])) - 60;
-    const maxX = Math.max(...nodes.map(node => node.x + node.width), ...routeBounds.map(bounds => bounds[2])) + 60;
-    const maxY = Math.max(...nodes.map(node => node.y + node.height), ...routeBounds.map(bounds => bounds[3])) + 60;
-    return {
-        nodes,
-        hierarchy,
-        routes,
-        viewBox: [minX, minY, Math.max(420, maxX - minX), Math.max(300, maxY - minY)],
-    };
-}
-
-export function actorsAtLocation(actors: readonly MapActorPosition[], locationKey: string): MapActorPosition[] {
-    return actors
-        .filter(actor => actor.locationKey === locationKey)
-        .sort((left, right) => stableText(left.displayName, right.displayName) || stableText(left.actorKey, right.actorKey));
 }

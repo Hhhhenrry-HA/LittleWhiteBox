@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { B as i, I as f1, L, N as p1, O as b1, P as _, R as X, S as n1, T as C, _ as c, a as o1, b as T1, c as s1, d as t, f as A, g as T, h as H, j as B, l as S, m as s, o as J, p as b, u as $, v as I, w as a, y as y1, z as k1 } from "./xiaobai-os-runtime-dom.esm-bundler-DQLnRQQ3.js";
+import { A as B, C as a, D as f1, F as p1, I as L, L as X, M as b1, N as _, R as T1, _ as I, a as J, c as C, d as V, f as b, g as c, h as T, i as n1, l as $, m as H, p as s, s as s1, u as t, v as y1, w as S, x as o1, y as k1, z as i } from "./xiaobai-os-runtime-dom.esm-bundler-D8PGSboO.js";
 import { t as g1 } from "./xiaobai-os-frame-bridge-8-bd80In.js";
 var Z1 = {
   class: "shop-icon",
@@ -68,13 +68,13 @@ var Z1 = {
     }), q = $(() => o[p.name] || o.auto_awesome);
     return (r, d) => (a(), s("svg", M1, [t("path", { d: q.value }, null, 8, x1)]));
   }
-}), _1 = L1, S1 = ["id"], C1 = ["id"], I1 = ["id"], H1 = ["fill"], D1 = {
+}), _1 = L1, C1 = ["id"], S1 = ["id"], I1 = ["id"], H1 = ["fill"], D1 = {
   key: 0,
   transform: "rotate(-9 80 80)"
 }, Q1 = {
   key: 1,
   transform: "rotate(-8 80 80)"
-}, R1 = ["fill"], V1 = ["fill"], A1 = {
+}, R1 = ["fill"], A1 = ["fill"], V1 = {
   key: 2,
   transform: "rotate(8 80 80)"
 }, N1 = ["fill"], B1 = {
@@ -98,10 +98,10 @@ var Z1 = {
 }, j1 = {
   key: 5,
   transform: "rotate(-9 80 80)"
-}, O1 = {
+}, G1 = {
   key: 6,
   transform: "rotate(-7 80 80)"
-}, G1 = { key: 7 }, K1 = {
+}, K1 = { key: 7 }, O1 = {
   key: 8,
   transform: "rotate(10 80 80)"
 }, F1 = ["fill"], J1 = { key: 9 }, W1 = {
@@ -121,7 +121,7 @@ var Z1 = {
   __name: "ShopItemArt",
   props: { name: {} },
   setup(e) {
-    const p = e, o = b1(), q = {
+    const p = e, o = f1(), q = {
       local_florist: [
         "#c96c73",
         "#f8c5b9",
@@ -263,7 +263,7 @@ var Z1 = {
       viewBox: "0 0 160 160",
       "aria-hidden": "true",
       focusable: "false",
-      style: k1({
+      style: T1({
         "--item-color": r.value[0],
         "--item-light": r.value[1],
         "--item-dark": r.value[2]
@@ -286,7 +286,7 @@ var Z1 = {
             offset: "1",
             "stop-color": "var(--item-dark)"
           }, null, -1)
-        ])], 8, S1),
+        ])], 8, C1),
         t("linearGradient", {
           id: `${L(o)}-metal`,
           x1: "0",
@@ -303,7 +303,7 @@ var Z1 = {
             offset: "1",
             "stop-color": "#917347"
           }, null, -1)
-        ])], 8, C1),
+        ])], 8, S1),
         t("linearGradient", {
           id: `${L(o)}-glass`,
           x1: "0",
@@ -371,7 +371,7 @@ var Z1 = {
           fill: `url(#${L(o)}-metal)`,
           stroke: "#b79661",
           "stroke-width": "2"
-        }, null, 8, V1),
+        }, null, 8, A1),
         l[7] || (l[7] = t("path", {
           d: "m51 81 14 17 8-16",
           fill: "#f5e1bd"
@@ -382,7 +382,7 @@ var Z1 = {
           r: "2",
           fill: "#b87e56"
         }, null, -1))
-      ])) : d.value ? (a(), s("g", A1, [
+      ])) : d.value ? (a(), s("g", V1, [
         l[9] || (l[9] = t("rect", {
           x: "63",
           y: "27",
@@ -475,7 +475,7 @@ var Z1 = {
           r: "2",
           fill: "#fff5db"
         }, null, -1))
-      ])) : e.name === "photo_camera" ? (a(), s("g", O1, [...l[22] || (l[22] = [H('<path d="M44 62V49h27l10 13" fill="#b6b49d"></path><rect x="26" y="58" width="108" height="70" rx="13" stroke="#4a6262" stroke-width="2"></rect><path d="M28 76h104v30H28Z" fill="#3c5451"></path><circle cx="82" cy="93" r="28" fill="#c3b999"></circle><circle cx="82" cy="93" r="21" fill="#385254"></circle><circle cx="82" cy="93" r="14" fill="#789b9a"></circle><path d="M76 82q13-2 15 9" fill="none" stroke="#d8e6d6" stroke-width="4"></path><rect x="111" y="67" width="13" height="7" rx="2" fill="#e8d9ac"></rect>', 8)])])) : e.name === "visibility_off" ? (a(), s("g", G1, [...l[23] || (l[23] = [H('<path d="M80 27c-22 0-33 25-34 44l-20 55c34 14 74 14 108 0l-20-55c-1-19-12-44-34-44Z" stroke="var(--item-dark)" stroke-width="2"></path><path d="M80 39c-16 0-24 18-24 30q24 18 48 0c0-12-8-30-24-30Z" fill="var(--item-dark)"></path><path d="M76 86 65 127m18-38 14 39" stroke="var(--item-light)" opacity=".45" fill="none" stroke-width="2"></path><circle cx="80" cy="83" r="5" fill="#e7d09a"></circle><path d="m34 73 6-8m82-18 5-7" stroke="#b7a77e" stroke-width="2"></path>', 5)])])) : e.name === "timer_off" ? (a(), s("g", K1, [
+      ])) : e.name === "photo_camera" ? (a(), s("g", G1, [...l[22] || (l[22] = [H('<path d="M44 62V49h27l10 13" fill="#b6b49d"></path><rect x="26" y="58" width="108" height="70" rx="13" stroke="#4a6262" stroke-width="2"></rect><path d="M28 76h104v30H28Z" fill="#3c5451"></path><circle cx="82" cy="93" r="28" fill="#c3b999"></circle><circle cx="82" cy="93" r="21" fill="#385254"></circle><circle cx="82" cy="93" r="14" fill="#789b9a"></circle><path d="M76 82q13-2 15 9" fill="none" stroke="#d8e6d6" stroke-width="4"></path><rect x="111" y="67" width="13" height="7" rx="2" fill="#e8d9ac"></rect>', 8)])])) : e.name === "visibility_off" ? (a(), s("g", K1, [...l[23] || (l[23] = [H('<path d="M80 27c-22 0-33 25-34 44l-20 55c34 14 74 14 108 0l-20-55c-1-19-12-44-34-44Z" stroke="var(--item-dark)" stroke-width="2"></path><path d="M80 39c-16 0-24 18-24 30q24 18 48 0c0-12-8-30-24-30Z" fill="var(--item-dark)"></path><path d="M76 86 65 127m18-38 14 39" stroke="var(--item-light)" opacity=".45" fill="none" stroke-width="2"></path><circle cx="80" cy="83" r="5" fill="#e7d09a"></circle><path d="m34 73 6-8m82-18 5-7" stroke="#b7a77e" stroke-width="2"></path>', 5)])])) : e.name === "timer_off" ? (a(), s("g", O1, [
         l[24] || (l[24] = t("circle", {
           cx: "80",
           cy: "29",
@@ -689,7 +689,7 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
   key: 4,
   class: "shop-inline-error",
   role: "alert"
-}, Lt = { class: "shop-dialog-actions" }, _t = ["disabled"], St = ["disabled"], Ct = /* @__PURE__ */ I({
+}, Lt = { class: "shop-dialog-actions" }, _t = ["disabled"], Ct = ["disabled"], St = /* @__PURE__ */ I({
   __name: "ShopActionDialog",
   props: {
     mode: {},
@@ -702,8 +702,8 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
   },
   emits: ["cancel", "confirm"],
   setup(e, { emit: p }) {
-    const o = e, q = p, r = _(null), d = p1({}), u = $(() => o.mode === "purchase" ? "把这份奇妙带回去" : o.mode === "use" ? "让奇物进入故事" : "关闭这份效果？"), h = $(() => o.mode !== "use" || o.item.inputs.every((y) => String(d[y.key] || "").trim().length > 0)), l = $(() => !o.busy && !o.disabledReason && h.value);
-    n1(() => r.value?.showModal());
+    const o = e, q = p, r = _(null), d = b1({}), u = $(() => o.mode === "purchase" ? "把这份奇妙带回去" : o.mode === "use" ? "让奇物进入故事" : "关闭这份效果？"), h = $(() => o.mode !== "use" || o.item.inputs.every((y) => String(d[y.key] || "").trim().length > 0)), l = $(() => !o.busy && !o.disabledReason && h.value);
+    o1(() => r.value?.showModal());
     function f() {
       l.value && q("confirm", { ...d });
     }
@@ -736,7 +736,7 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
         e.balance >= e.item.price ? (a(), s("div", Tt, [Z[4] || (Z[4] = t("dt", null, "支付后余额", -1)), t("dd", null, "¤ " + i((e.balance - e.item.price).toLocaleString("zh-CN")), 1)])) : b("", !0)
       ])) : b("", !0),
       e.mode === "use" ? (a(), s("p", yt, i(e.item.description), 1)) : b("", !0),
-      (a(!0), s(S, null, C(e.mode === "use" ? e.item.inputs : [], (g) => (a(), s("label", {
+      (a(!0), s(C, null, S(e.mode === "use" ? e.item.inputs : [], (g) => (a(), s("label", {
         key: g.key,
         class: "shop-dialog-field"
       }, [t("span", null, [T(i(g.label), 1), t("small", null, "最多 " + i(g.maxLength) + " 字", 1)]), B(t("input", {
@@ -747,8 +747,8 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
         placeholder: g.placeholder,
         autocomplete: "off",
         required: ""
-      }, null, 8, kt), [[o1, d[g.key]]])]))), 128)),
-      e.mode === "deactivate" && e.activation?.parameters.length ? (a(), s("dl", gt, [(a(!0), s(S, null, C(e.activation.parameters, (g) => (a(), s("div", { key: g.label }, [t("dt", null, i(g.label), 1), t("dd", null, i(g.value), 1)]))), 128))])) : b("", !0),
+      }, null, 8, kt), [[n1, d[g.key]]])]))), 128)),
+      e.mode === "deactivate" && e.activation?.parameters.length ? (a(), s("dl", gt, [(a(!0), s(C, null, S(e.activation.parameters, (g) => (a(), s("div", { key: g.label }, [t("dt", null, i(g.label), 1), t("dd", null, i(g.value), 1)]))), 128))])) : b("", !0),
       t("div", { class: X(["shop-dialog-note", { "is-warning": e.mode !== "purchase" && (e.mode === "deactivate" || e.item.duration === "permanent") }]) }, [c(k, { name: e.mode === "purchase" ? "bag" : e.mode === "deactivate" || e.item.duration === "permanent" ? "lock" : "spark" }, null, 8, ["name"]), e.mode === "purchase" ? (a(), s("p", Zt, "购买不会立即影响聊天。想好后，再从背包中使用。")) : e.mode === "deactivate" ? (a(), s("p", $t, "关闭后，后续新回复不再使用这份效果。已经发生的剧情保留，不返还道具或小白币。")) : (a(), s("p", wt, i(L(r1)(e.item)) + " 使用后不会返还库存。", 1))], 2),
       e.disabledReason && !e.busy ? (a(), s("p", Mt, i(e.disabledReason), 1)) : b("", !0),
       e.error ? (a(), s("p", xt, i(e.error), 1)) : b("", !0),
@@ -762,20 +762,20 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
         type: "submit",
         class: "shop-primary-button",
         disabled: !l.value
-      }, i(e.busy ? "正在保存…" : e.mode === "purchase" ? "确认支付" : e.mode === "deactivate" ? "确认关闭" : "确认使用"), 9, St)])
+      }, i(e.busy ? "正在保存…" : e.mode === "purchase" ? "确认支付" : e.mode === "deactivate" ? "确认关闭" : "确认使用"), 9, Ct)])
     ], 32)], 40, vt));
   }
-}), It = Ct, Ht = {
+}), It = St, Ht = {
   class: "shop-page",
   "aria-labelledby": "shop-inventory-title"
 }, Dt = { class: "shop-page-heading" }, Qt = { id: "shop-inventory-title" }, Rt = {
   key: 0,
   class: "shop-hint",
   role: "status"
-}, Vt = {
+}, At = {
   key: 1,
   class: "shop-held-list"
-}, At = ["aria-label", "onClick"], Nt = ["data-category"], Bt = [
+}, Vt = ["aria-label", "onClick"], Nt = ["data-category"], Bt = [
   "disabled",
   "aria-label",
   "onClick"
@@ -805,7 +805,7 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
         u[3] || (u[3] = t("p", null, "买下的奇物留在这里。使用一件，才开始影响故事。", -1))
       ]),
       e.writeDisabledReason ? (a(), s("p", Rt, i(e.writeDisabledReason), 1)) : b("", !0),
-      o.value.length ? (a(), s("div", Vt, [(a(!0), s(S, null, C(o.value, (h) => (a(), s("article", {
+      o.value.length ? (a(), s("div", At, [(a(!0), s(C, null, S(o.value, (h) => (a(), s("article", {
         key: h.id,
         class: "shop-held-card"
       }, [t("button", {
@@ -824,7 +824,7 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
           t("span", null, i(h.durationLabel), 1)
         ]),
         t("b", null, "×" + i(h.quantity), 1)
-      ], 8, At), t("footer", null, [t("span", null, i(h.duration === "permanent" ? "永久效果 · 使用前请确认" : h.duration === "manual" ? "启用后可手动关闭" : "未使用，不会消耗次数"), 1), t("button", {
+      ], 8, Vt), t("footer", null, [t("span", null, i(h.duration === "permanent" ? "永久效果 · 使用前请确认" : h.duration === "manual" ? "启用后可手动关闭" : "未使用，不会消耗次数"), 1), t("button", {
         type: "button",
         class: "shop-text-button",
         disabled: !!e.writeDisabledReason,
@@ -846,7 +846,7 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
           t("small", null, i(q.value.length) + " 种", 1),
           c(k, { name: "next" })
         ]),
-        (a(!0), s(S, null, C(q.value, (h) => (a(), s("div", { key: h.id }, [t("button", {
+        (a(!0), s(C, null, S(q.value, (h) => (a(), s("div", { key: h.id }, [t("button", {
           type: "button",
           onClick: (l) => d.$emit("open", h)
         }, i(h.name), 9, Ut), t("span", null, "曾购入 " + i(h.purchasedCount) + " 件 · 库存 0", 1)]))), 128)),
@@ -854,10 +854,10 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
       ])) : b("", !0)
     ]));
   }
-}), jt = Pt, Ot = {
+}), jt = Pt, Gt = {
   class: "shop-shelf shop-page",
   "aria-labelledby": "shop-shelf-title"
-}, Gt = { class: "shop-storefront" }, Kt = {
+}, Kt = { class: "shop-storefront" }, Ot = {
   class: "shop-storefront-art",
   "aria-hidden": "true"
 }, Ft = { class: "shop-search" }, Jt = {
@@ -900,8 +900,8 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
     function h() {
       q.value = "", o.value = "all";
     }
-    return (l, f) => (a(), s("section", Ot, [
-      t("div", Gt, [
+    return (l, f) => (a(), s("section", Gt, [
+      t("div", Kt, [
         f[2] || (f[2] = t("div", { class: "shop-storefront-copy" }, [
           t("span", { class: "shop-eyebrow" }, "小白奇物店"),
           t("h2", { id: "shop-shelf-title" }, [
@@ -911,7 +911,7 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
           ]),
           t("p", null, "小小一件，藏着不寻常。")
         ], -1)),
-        t("div", Kt, [c(D, { name: "card_giftcard" }), c(D, { name: "local_florist" })]),
+        t("div", Ot, [c(D, { name: "card_giftcard" }), c(D, { name: "local_florist" })]),
         f[3] || (f[3] = t("span", {
           class: "shop-storefront-seal",
           "aria-hidden": "true"
@@ -929,7 +929,7 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
           placeholder: "寻找一件奇物",
           "aria-label": "搜索商品",
           autocomplete: "off"
-        }, null, 512), [[o1, q.value]]),
+        }, null, 512), [[n1, q.value]]),
         q.value ? (a(), s("button", {
           key: 0,
           type: "button",
@@ -937,14 +937,14 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
           onClick: f[1] || (f[1] = (m) => q.value = "")
         }, [c(k, { name: "close" })])) : b("", !0)
       ]),
-      t("nav", Jt, [(a(!0), s(S, null, C(d.value, (m) => (a(), s("button", {
+      t("nav", Jt, [(a(!0), s(C, null, S(d.value, (m) => (a(), s("button", {
         key: m.id,
         type: "button",
         "aria-pressed": o.value === m.id,
         onClick: (y) => o.value = m.id
       }, i(m.label), 9, Wt))), 128))]),
       t("header", Xt, [t("h3", null, i(q.value.trim() ? "找到这些奇物" : o.value === "all" ? "全部奇物" : d.value.find((m) => m.id === o.value)?.label), 1), t("small", null, i(u.value.length) + " 件", 1)]),
-      u.value.length ? (a(), s("div", Yt, [(a(!0), s(S, null, C(u.value, (m) => (a(), s("button", {
+      u.value.length ? (a(), s("div", Yt, [(a(!0), s(C, null, S(u.value, (m) => (a(), s("button", {
         key: m.id,
         type: "button",
         class: "shop-product-card",
@@ -1015,7 +1015,7 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
         d[3] || (d[3] = t("p", null, "这些奇物的效果已启用，将按各自规则影响后续回复。", -1))
       ]),
       e.writeDisabledReason ? (a(), s("p", ce, i(e.writeDisabledReason), 1)) : b("", !0),
-      o.value.length ? (a(), s("div", me, [(a(!0), s(S, null, C(o.value, (u) => (a(), s("article", {
+      o.value.length ? (a(), s("div", me, [(a(!0), s(C, null, S(o.value, (u) => (a(), s("article", {
         key: u.activationId,
         class: "shop-effect-card"
       }, [
@@ -1024,7 +1024,7 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
           t("h3", null, i(u.name), 1),
           t("strong", null, i(u.stateLabel), 1)
         ])]),
-        u.parameters.length ? (a(), s("dl", fe, [(a(!0), s(S, null, C(u.parameters, (h) => (a(), s("div", { key: h.label }, [t("dt", null, i(h.label), 1), t("dd", null, i(h.value), 1)]))), 128))])) : b("", !0),
+        u.parameters.length ? (a(), s("dl", fe, [(a(!0), s(C, null, S(u.parameters, (h) => (a(), s("div", { key: h.label }, [t("dt", null, i(h.label), 1), t("dd", null, i(h.value), 1)]))), 128))])) : b("", !0),
         t("footer", null, [t("span", null, i(u.durationLabel), 1), u.canDeactivate ? (a(), s("button", {
           key: 0,
           type: "button",
@@ -1032,7 +1032,7 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
           disabled: !!e.writeDisabledReason,
           "aria-label": `关闭${u.name}效果`,
           onClick: (h) => r.$emit("deactivate", u)
-        }, "关闭效果", 8, pe)) : (a(), A(k, {
+        }, "关闭效果", 8, pe)) : (a(), V(k, {
           key: 1,
           name: "lock"
         }))])
@@ -1050,9 +1050,9 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
         d[7] || (d[7] = T("已结束的效果 ", -1)),
         t("small", null, i(q.value.length) + " 个", 1),
         c(k, { name: "next" })
-      ]), (a(!0), s(S, null, C(q.value, (u) => (a(), s("article", { key: u.activationId }, [
+      ]), (a(!0), s(C, null, S(q.value, (u) => (a(), s("article", { key: u.activationId }, [
         t("header", null, [t("h3", null, i(u.name), 1), t("span", null, i(u.stateLabel), 1)]),
-        (a(!0), s(S, null, C(u.parameters, (h) => (a(), s("p", { key: h.label }, [t("span", null, i(h.label), 1), T(i(h.value), 1)]))), 128)),
+        (a(!0), s(C, null, S(u.parameters, (h) => (a(), s("p", { key: h.label }, [t("span", null, i(h.label), 1), T(i(h.value), 1)]))), 128)),
         t("small", null, i(u.durationLabel), 1)
       ]))), 128))])) : b("", !0),
       d[8] || (d[8] = t("p", { class: "shop-footnote" }, [
@@ -1065,13 +1065,13 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
 }), ke = ye, ge = {
   class: "shop-detail",
   "aria-labelledby": "shop-detail-title"
-}, Ze = ["data-category"], $e = { class: "shop-detail-category" }, we = { class: "shop-detail-copy" }, Me = { id: "shop-detail-title" }, xe = { class: "shop-detail-price" }, Le = { class: "shop-detail-description" }, _e = { class: "shop-item-terms" }, Se = { key: 0 }, Ce = { class: "shop-use-guide" }, Ie = { key: 0 }, He = {
+}, Ze = ["data-category"], $e = { class: "shop-detail-category" }, we = { class: "shop-detail-copy" }, Me = { id: "shop-detail-title" }, xe = { class: "shop-detail-price" }, Le = { class: "shop-detail-description" }, _e = { class: "shop-item-terms" }, Ce = { key: 0 }, Se = { class: "shop-use-guide" }, Ie = { key: 0 }, He = {
   key: 0,
   class: "shop-hint is-warning"
 }, De = {
   key: 1,
   class: "shop-detail-owned"
-}, Qe = ["disabled"], Re = { key: 0 }, Ve = { class: "shop-detail-checkout" }, Ae = {
+}, Qe = ["disabled"], Re = { key: 0 }, Ae = { class: "shop-detail-checkout" }, Ve = {
   key: 0,
   class: "shop-checkout-reason",
   role: "status"
@@ -1114,9 +1114,9 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
         t("dl", _e, [
           t("div", null, [t("dt", null, [c(k, { name: "clock" }), r[5] || (r[5] = T("作用期限", -1))]), t("dd", null, i(e.item.durationLabel), 1)]),
           t("div", null, [t("dt", null, [c(k, { name: "bag" }), r[6] || (r[6] = T("背包持有", -1))]), t("dd", null, i(e.item.quantity) + " 件", 1)]),
-          e.item.purchaseLimit !== null ? (a(), s("div", Se, [t("dt", null, [c(k, { name: "lock" }), r[7] || (r[7] = T("购买限制", -1))]), t("dd", null, "最多 " + i(e.item.purchaseLimit) + " 件 · 已购 " + i(e.item.purchasedCount) + " 件", 1)])) : b("", !0)
+          e.item.purchaseLimit !== null ? (a(), s("div", Ce, [t("dt", null, [c(k, { name: "lock" }), r[7] || (r[7] = T("购买限制", -1))]), t("dd", null, "最多 " + i(e.item.purchaseLimit) + " 件 · 已购 " + i(e.item.purchasedCount) + " 件", 1)])) : b("", !0)
         ]),
-        t("section", Ce, [
+        t("section", Se, [
           r[8] || (r[8] = t("h3", null, "使用前，知道这些", -1)),
           t("p", null, i(L(r1)(e.item)), 1),
           e.item.inputs.length ? (a(), s("p", Ie, "使用时需要填写：" + i(e.item.inputs.map((d) => d.label).join("、")) + "。", 1)) : b("", !0),
@@ -1134,8 +1134,8 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
           e.activationDisabledReason ? (a(), s("p", Re, i(e.activationDisabledReason), 1)) : b("", !0)
         ])) : b("", !0)
       ]),
-      t("footer", Ve, [
-        o.value ? (a(), s("p", Ae, i(o.value), 1)) : b("", !0),
+      t("footer", Ae, [
+        o.value ? (a(), s("p", Ve, i(o.value), 1)) : b("", !0),
         t("div", null, [t("span", null, [r[12] || (r[12] = t("small", null, "钱包可用", -1)), t("strong", null, "¤ " + i(e.balance.toLocaleString("zh-CN")), 1)]), t("button", {
           type: "button",
           class: "shop-primary-button",
@@ -1146,10 +1146,10 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
       ])
     ]));
   }
-}), ze = Be, Ee = { class: "shop-app" }, Ue = { class: "shop-header" }, Pe = { class: "shop-brand" }, je = { class: "shop-balance" }, Oe = ["disabled"], Ge = {
+}), ze = Be, Ee = { class: "shop-app" }, Ue = { class: "shop-header" }, Pe = { class: "shop-brand" }, je = { class: "shop-balance" }, Ge = ["disabled"], Ke = {
   key: 0,
   class: "shop-notice-area"
-}, Ke = ["disabled"], Fe = ["disabled"], Je = {
+}, Oe = ["disabled"], Fe = ["disabled"], Je = {
   key: 1,
   class: "shop-success",
   role: "status"
@@ -1167,16 +1167,16 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
     initialState: {}
   },
   setup(e) {
-    const p = e, o = _(structuredClone(f1(p.initialState))), q = _("shelf"), r = _(null), d = _(null), u = $(() => o.value.catalog.find((v) => v.id === d.value)), h = $(() => o.value.catalog.reduce((v, n) => v + n.quantity, 0)), l = $(() => o.value.activations.filter((v) => v.state === "active").length), f = _("");
+    const p = e, o = _(structuredClone(p1(p.initialState))), q = _("shelf"), r = _(null), d = _(null), u = $(() => o.value.catalog.find((v) => v.id === d.value)), h = $(() => o.value.catalog.reduce((v, n) => v + n.quantity, 0)), l = $(() => o.value.activations.filter((v) => v.state === "active").length), f = _("");
     let m = 0;
     const y = _(null), Z = _(!1), g = _(!1), M = _(""), N = _(""), Q = $(() => o.value.catalog.find((v) => v.id === y.value?.itemId)), Y = $(() => o.value.activations.find((v) => v.activationId === y.value?.activationId));
     let t1 = () => {
     }, x = 0;
-    const j = $(() => o.value.status === "unconfirmed"), z = $(() => g.value ? "正在处理上一项操作" : Z.value ? "正在刷新商店状态" : o.value.status !== "ready" ? o.value.message || "商店暂时不可写入" : ""), R = $(() => z.value || (o.value.generationActive ? "主剧情正在生成，请等待回复完成" : "")), O = $(() => Z.value || g.value || j.value), e1 = $(() => !y.value || !Q.value ? "这件奇物暂时不可操作" : j.value ? "保存尚未确认，请返回商店核实保存结果" : y.value.mode === "purchase" ? z.value || i1(Q.value, o.value.balance) : R.value ? R.value : y.value.mode === "use" && Q.value.quantity < 1 ? "背包中已没有这件奇物，请返回查看最新状态" : y.value.mode === "deactivate" && !Y.value?.canDeactivate ? "这份效果已不可关闭，请返回查看最新状态" : "");
+    const j = $(() => o.value.status === "unconfirmed"), z = $(() => g.value ? "正在处理上一项操作" : Z.value ? "正在刷新商店状态" : o.value.status !== "ready" ? o.value.message || "商店暂时不可写入" : ""), R = $(() => z.value || (o.value.generationActive ? "主剧情正在生成，请等待回复完成" : "")), G = $(() => Z.value || g.value || j.value), e1 = $(() => !y.value || !Q.value ? "这件奇物暂时不可操作" : j.value ? "保存尚未确认，请返回商店核实保存结果" : y.value.mode === "purchase" ? z.value || i1(Q.value, o.value.balance) : R.value ? R.value : y.value.mode === "use" && Q.value.quantity < 1 ? "背包中已没有这件奇物，请返回查看最新状态" : y.value.mode === "deactivate" && !Y.value?.canDeactivate ? "这份效果已不可关闭，请返回查看最新状态" : "");
     function u1() {
       return typeof globalThis.crypto?.randomUUID == "function" ? `shop-ui:${globalThis.crypto.randomUUID()}` : `shop-ui:${Date.now()}:${Math.random().toString(36).slice(2, 10)}`;
     }
-    function G() {
+    function K() {
       return { chatIdentity: o.value.chatIdentity };
     }
     function E(v) {
@@ -1187,11 +1187,11 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
       return n.includes("cannot be overdrawn") || n.includes("economy_insufficient_funds") ? "小白币余额不足，未完成购买。" : n.includes("shop_purchase_limit_reached") ? "这件奇物已达购买上限。" : n.includes("shop_quantity_insufficient") ? "背包里已没有这件奇物，请返回查看。" : n.includes("shop_activation_duplicate") ? "这份效果已经启用，本次没有消耗道具。" : n.includes("shop_parameters_invalid") ? "请检查填写内容与字数后重试。" : n.includes("shop_action_conflict") ? "该次使用已被记录，不能更换参数重试。请返回查看生效状态。" : n.includes("shop_activation_not_active") || n.includes("shop_activation_missing") ? "这份效果状态已变化，请返回查看。" : n.includes("聊天已切换") || n.includes("app_inactive") ? "聊天或应用已切换，请重新打开商店。" : n.includes("shop_main_generation_active") ? "主剧情正在生成，请等待回复完成。" : n.includes("shop_revision_conflict") || n.includes("shop_event_id_conflict") ? "商店状态已变化，请关闭确认框后重试。" : n === "host_request_timeout" ? "等待保存结果超时，请使用同一确认框重试。" : "商店操作未完成，请稍后重试。";
     }
     async function l1() {
-      if (O.value) return;
+      if (G.value) return;
       const v = ++x;
       Z.value = !0, M.value = "";
       try {
-        const n = await p.bridge.request("shop/refresh", G(), W);
+        const n = await p.bridge.request("shop/refresh", K(), W);
         v === x && E(n.result);
       } catch (n) {
         v === x && (M.value = U(n));
@@ -1204,7 +1204,7 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
       const v = ++x;
       Z.value = !0, M.value = "";
       try {
-        const n = await p.bridge.request("shop/confirm-save", G(), W);
+        const n = await p.bridge.request("shop/confirm-save", K(), W);
         v === x && E(n.result.state);
       } catch (n) {
         v === x && (M.value = U(n));
@@ -1220,7 +1220,7 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
         actionId: u1()
       });
     }
-    function V(v) {
+    function A(v) {
       d.value = null, q.value = v, r.value?.scrollTo(0, 0);
     }
     function a1(v) {
@@ -1240,10 +1240,10 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
       const n = y.value, w = Q.value;
       if (!n || !w || e1.value) return;
       g.value = !0, N.value = "";
-      const K = x, m1 = n.mode === "purchase" ? "shop/purchase" : n.mode === "use" ? "shop/activate" : "shop/deactivate";
+      const O = x, m1 = n.mode === "purchase" ? "shop/purchase" : n.mode === "use" ? "shop/activate" : "shop/deactivate";
       try {
         const F = await p.bridge.request(m1, {
-          ...G(),
+          ...K(),
           expectedRevision: o.value.revision,
           expectedEventId: o.value.eventId,
           actionId: n.actionId,
@@ -1251,19 +1251,19 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
           ...n.mode === "use" ? { parameters: v } : {},
           ...n.activationId ? { activationId: n.activationId } : {}
         }, W);
-        if (K !== x || y.value !== n) return;
-        E(F.result), y.value = null, f.value = n.mode === "purchase" ? `${w.name}已放入背包 · 已支付 ${w.price.toLocaleString("zh-CN")} 小白币` : n.mode === "use" ? `${w.name}已启用 · 已使用 1 件库存` : `${w.name}的效果已关闭`, V(n.mode === "purchase" ? "inventory" : "effects");
+        if (O !== x || y.value !== n) return;
+        E(F.result), y.value = null, f.value = n.mode === "purchase" ? `${w.name}已放入背包 · 已支付 ${w.price.toLocaleString("zh-CN")} 小白币` : n.mode === "use" ? `${w.name}已启用 · 已使用 1 件库存` : `${w.name}的效果已关闭`, A(n.mode === "purchase" ? "inventory" : "effects");
       } catch (F) {
-        K === x && y.value === n && (N.value = U(F));
+        O === x && y.value === n && (N.value = U(F));
       } finally {
-        K === x && (g.value = !1);
+        O === x && (g.value = !1);
       }
     }
-    return n1(() => {
+    return o1(() => {
       t1 = p.bridge.subscribe((v) => {
         v.type === "shop/state" && (g.value || (x += 1), E(v.payload.state)), v.type === "shop/error" && (M.value = U(v.payload?.message || ""));
       });
-    }), T1(() => {
+    }), k1(() => {
       x += 1, t1(), y.value = null;
     }), (v, n) => (a(), s("main", Ee, [
       t("header", Ue, [
@@ -1273,15 +1273,15 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
         t("button", {
           type: "button",
           class: "shop-icon-button",
-          disabled: O.value,
+          disabled: G.value,
           "aria-label": "刷新商店",
           onClick: l1
         }, [c(k, {
           name: "refresh",
           class: X({ "is-spinning": Z.value })
-        }, null, 8, ["class"])], 8, Oe)
+        }, null, 8, ["class"])], 8, Ge)
       ]),
-      o.value.message || M.value || f.value ? (a(), s("div", Ge, [o.value.message || M.value ? (a(), s("aside", {
+      o.value.message || M.value || f.value ? (a(), s("div", Ke, [o.value.message || M.value ? (a(), s("aside", {
         key: 0,
         class: X(["shop-notice", { "is-error": M.value || o.value.status === "blocked" || o.value.status === "conflict" }]),
         role: "status"
@@ -1293,10 +1293,10 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
           type: "button",
           disabled: Z.value || g.value,
           onClick: d1
-        }, i(Z.value ? "正在核实…" : "核实保存结果"), 9, Ke)) : o.value.status === "blocked" || M.value ? (a(), s("button", {
+        }, i(Z.value ? "正在核实…" : "核实保存结果"), 9, Oe)) : o.value.status === "blocked" || M.value ? (a(), s("button", {
           key: 1,
           type: "button",
-          disabled: O.value,
+          disabled: G.value,
           onClick: l1
         }, i(Z.value ? "正在读取…" : "重新读取商店"), 9, Fe)) : b("", !0)
       ], 2)) : b("", !0), f.value ? (a(), s("div", Je, [
@@ -1317,24 +1317,24 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
         t("span", null, [c(k, { name: "shop" })]),
         n[11] || (n[11] = t("h3", null, "正在打开奇物店…", -1)),
         n[12] || (n[12] = t("p", null, "货架、背包和账本准备好后，会显示在这里。", -1))
-      ])) : (a(), s(S, { key: 1 }, [q.value === "shelf" ? B((a(), A(de, {
+      ])) : (a(), s(C, { key: 1 }, [q.value === "shelf" ? B((a(), V(de, {
         key: 0,
         catalog: o.value.catalog,
         onOpen: a1
-      }, null, 8, ["catalog"])), [[J, !u.value]]) : q.value === "inventory" ? B((a(), A(jt, {
+      }, null, 8, ["catalog"])), [[J, !u.value]]) : q.value === "inventory" ? B((a(), V(jt, {
         key: 1,
         catalog: o.value.catalog,
         "write-disabled-reason": R.value,
         onOpen: a1,
         onUse: n[1] || (n[1] = (w) => P("use", w)),
-        onBrowse: n[2] || (n[2] = (w) => V("shelf"))
-      }, null, 8, ["catalog", "write-disabled-reason"])), [[J, !u.value]]) : B((a(), A(ke, {
+        onBrowse: n[2] || (n[2] = (w) => A("shelf"))
+      }, null, 8, ["catalog", "write-disabled-reason"])), [[J, !u.value]]) : B((a(), V(ke, {
         key: 2,
         activations: o.value.activations,
         "write-disabled-reason": R.value,
         onDeactivate: q1,
-        onInventory: n[3] || (n[3] = (w) => V("inventory"))
-      }, null, 8, ["activations", "write-disabled-reason"])), [[J, !u.value]]), u.value ? (a(), A(ze, {
+        onInventory: n[3] || (n[3] = (w) => A("inventory"))
+      }, null, 8, ["activations", "write-disabled-reason"])), [[J, !u.value]]), u.value ? (a(), V(ze, {
         key: 3,
         item: u.value,
         balance: o.value.balance,
@@ -1354,22 +1354,22 @@ var vt = ["aria-label"], qt = { class: "shop-dialog-heading" }, ht = { class: "s
           type: "button",
           "aria-current": q.value === "shelf" ? "page" : void 0,
           "aria-label": "逛店",
-          onClick: n[6] || (n[6] = (w) => V("shelf"))
+          onClick: n[6] || (n[6] = (w) => A("shelf"))
         }, [t("span", null, [c(k, { name: "shop" })]), n[13] || (n[13] = T("逛店", -1))], 8, Ye),
         t("button", {
           type: "button",
           "aria-current": q.value === "inventory" ? "page" : void 0,
           "aria-label": "背包",
-          onClick: n[7] || (n[7] = (w) => V("inventory"))
+          onClick: n[7] || (n[7] = (w) => A("inventory"))
         }, [t("span", null, [c(k, { name: "bag" }), h.value ? (a(), s("i", e0, i(h.value), 1)) : b("", !0)]), n[14] || (n[14] = T("背包", -1))], 8, t0),
         t("button", {
           type: "button",
           "aria-current": q.value === "effects" ? "page" : void 0,
           "aria-label": "生效中",
-          onClick: n[8] || (n[8] = (w) => V("effects"))
+          onClick: n[8] || (n[8] = (w) => A("effects"))
         }, [t("span", null, [c(k, { name: "spark" }), l.value ? (a(), s("i", a0, i(l.value), 1)) : b("", !0)]), n[15] || (n[15] = T("生效中", -1))], 8, l0)
       ]),
-      y.value && Q.value ? (a(), A(It, {
+      y.value && Q.value ? (a(), V(It, {
         key: 1,
         mode: y.value.mode,
         item: Q.value,

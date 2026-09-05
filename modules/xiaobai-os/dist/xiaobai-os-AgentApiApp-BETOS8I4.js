@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { B as we, I as lt, N as Dt, P as xe, R as Bt, S as jt, b as Ft, d as w, j as Kt, m as qe, o as zt, p as Ht, u as Ie, v as Gt, w as _e, y as Jt } from "./xiaobai-os-runtime-dom.esm-bundler-DQLnRQQ3.js";
+import { A as Dt, C as we, F as lt, L as Bt, M as jt, N as Se, _ as Ft, a as Kt, f as zt, l as qe, p as Ie, u as w, v as Ht, x as Gt, y as Jt, z as _e } from "./xiaobai-os-runtime-dom.esm-bundler-D8PGSboO.js";
 var Vt = "https://api.tavily.com";
 function Wt(t = "") {
   return String(t || "").trim();
@@ -52,7 +52,7 @@ var bt = "openai-compatible", $e = "默认", vt = "default", Qt = "deny", G = 32
 }, {
   value: "allow",
   label: "允许"
-}]), Le = {
+}]), Ue = {
   "openai-responses": {
     baseUrl: "https://api.openai.com/v1",
     model: "gpt-4.1-mini",
@@ -113,7 +113,7 @@ var bt = "openai-compatible", $e = "默认", vt = "default", Qt = "deny", G = 32
   }
 };
 function yt() {
-  return JSON.parse(JSON.stringify(Le));
+  return JSON.parse(JSON.stringify(Ue));
 }
 function _() {
   return {
@@ -122,7 +122,7 @@ function _() {
     permissionMode: vt
   };
 }
-function St(t = _()) {
+function xt(t = _()) {
   const n = t && typeof t == "object" ? t : _();
   return {
     provider: De(n.provider),
@@ -148,8 +148,8 @@ function P(t) {
 }
 function I(t = {}) {
   const n = yt();
-  return Object.keys(Le).forEach((s) => {
-    const i = t && typeof t[s] == "object" ? t[s] : {}, o = Le[s];
+  return Object.keys(Ue).forEach((s) => {
+    const i = t && typeof t[s] == "object" ? t[s] : {}, o = Ue[s];
     n[s] = {
       baseUrl: String(i.baseUrl ?? o.baseUrl ?? ""),
       model: String(i.model ?? o.model ?? ""),
@@ -192,8 +192,8 @@ function sn(t, n, s) {
   const i = P(n || s);
   return t[i] ? i : t[s] ? s : Object.keys(t)[0];
 }
-function xt(t = {}, n = _()) {
-  const s = St(n), i = t && typeof t == "object" ? t : {};
+function St(t = {}, n = _()) {
+  const s = xt(n), i = t && typeof t == "object" ? t : {};
   return {
     provider: De(i.provider || s.provider),
     modelConfigs: I(i.modelConfigs || s.modelConfigs)
@@ -205,7 +205,7 @@ function rn(t = {}, n = {}, s = $e, i = s) {
   const o = t?.delegateConfig;
   if (!o || typeof o != "object" || Array.isArray(o) || !(typeof o.provider == "string" && o.provider.trim() || o.modelConfigs && typeof o.modelConfigs == "object" && Object.keys(o.modelConfigs).length)) return !1;
   if (t?.delegateConfigured === !0) return !0;
-  const d = n[s] || _(), u = St(d), g = xt(o, d);
+  const d = n[s] || _(), u = xt(d), g = St(o, d);
   return JSON.stringify(g) !== JSON.stringify(u);
 }
 function on(t = {}, n, s, i, o) {
@@ -251,7 +251,7 @@ function dn(t = {}, n, s) {
   };
 }
 function ke(t = {}) {
-  const n = P(t.currentPresetName || t.presetDraftName || "默认"), s = nn(t, n), i = an(s, t.currentPresetName), o = sn(s, t.delegatePresetName, i), d = s[i] || _(), u = s[o] || d, g = xt(t.delegateConfig, u), m = rn(t, s, i, o), v = dn(t, n, i);
+  const n = P(t.currentPresetName || t.presetDraftName || "默认"), s = nn(t, n), i = an(s, t.currentPresetName), o = sn(s, t.delegatePresetName, i), d = s[i] || _(), u = s[o] || d, g = St(t.delegateConfig, u), m = rn(t, s, i, o), v = dn(t, n, i);
   return {
     workspaceFileName: String(t.workspaceFileName || ""),
     updatedAt: Number(t.updatedAt) || 0,
@@ -286,8 +286,8 @@ async function un(t, n) {
     for (o += i.decode(v, { stream: !0 }); ; ) {
       const p = o.match(d);
       if (!p || typeof p.index != "number") break;
-      const L = o.slice(0, p.index);
-      o = o.slice(p.index + p[0].length), u(L);
+      const U = o.slice(0, p.index);
+      o = o.slice(p.index + p[0].length), u(U);
     }
   }
   const g = o.trim();
@@ -343,10 +343,10 @@ async function je(t = {}, n = !1, s = fe) {
 async function yn(t = {}, n = !1) {
   return await je(t, n);
 }
-function Sn(t = "") {
+function xn(t = "") {
   return /^\s*(?:<!DOCTYPE\s+html\b|<html\b)/i.test(String(t || ""));
 }
-function xn(t = "") {
+function Sn(t = "") {
   return /invalid csrf token/i.test(String(t || ""));
 }
 function hn() {
@@ -393,9 +393,9 @@ function An(t = "") {
   return "";
 }
 function de(t = "", n = "", s = null) {
-  if (xn(t)) return hn();
+  if (Sn(t)) return hn();
   const i = Pn(s);
-  if (Sn(t) || /\btext\/html\b/i.test(i.contentType)) {
+  if (xn(t) || /\btext\/html\b/i.test(i.contentType)) {
     const o = Mn(i), d = Tn(t);
     return [
       "酒馆后端返回了非 JSON 的 HTML 页面",
@@ -565,7 +565,7 @@ var ze = At({
   "low",
   "high",
   "max"
-], "max", { temperatureOmitModes: be }), Un = K("deepseek-thinking", [
+], "max", { temperatureOmitModes: be }), Ln = K("deepseek-thinking", [
   "inherit",
   "on",
   "off"
@@ -573,7 +573,7 @@ var ze = At({
   "low",
   "high",
   "max"
-], "high", { temperatureOmitModes: be }), Ln = K("openai-compatible-gemini-latest", [
+], "high", { temperatureOmitModes: be }), Un = K("openai-compatible-gemini-latest", [
   "inherit",
   "on",
   "off"
@@ -633,11 +633,11 @@ var ze = At({
 function zn(t = "") {
   switch (pn(t)) {
     case "deepseek":
-      return Un;
+      return Ln;
     case "kimi":
       return Rn;
     case "gemini":
-      return Ln;
+      return Un;
     case "claude":
       return $n;
     case "openai":
@@ -771,11 +771,11 @@ var ct = 900 * 1e3, pt = Object.freeze([{
     label: "Google AI"
   }
 ]);
-function U(t, n = 1) {
+function L(t, n = 1) {
   const s = typeof t == "string" && !t.trim() ? n : t, i = Number(s);
-  return Number.isFinite(i) ? Math.max(0, Math.min(2, i)) : U(n, 1);
+  return Number.isFinite(i) ? Math.max(0, Math.min(2, i)) : L(n, 1);
 }
-function Ue(t = {}) {
+function Le(t = {}) {
   return t.sendTemperature !== !1;
 }
 function gt(t = "", n = {}) {
@@ -1061,7 +1061,7 @@ function da(t = {}) {
     const a = String(e || "").trim() || "openai-compatible";
     return r === "delegate" ? `delegate:${a}` : a;
   }
-  function L(e, r = "main") {
+  function U(e, r = "main") {
     return n.pullStateByProvider?.[p(e, r)] || {
       status: "idle",
       message: ""
@@ -1088,21 +1088,21 @@ function da(t = {}) {
     return a[l] ? l : r && a[r] ? r : Object.keys(a)[0] || "默认";
   }
   function X(e, r) {
-    const a = q(e, $e), l = r && typeof r == "object" ? r : _(), c = l.provider || "openai-compatible", x = I(l.modelConfigs || {}), S = x[c] || {}, M = Te(c, S);
+    const a = q(e, $e), l = r && typeof r == "object" ? r : _(), c = l.provider || "openai-compatible", S = I(l.modelConfigs || {}), x = S[c] || {}, M = Te(c, x);
     return {
       delegatePresetName: a,
       delegateProvider: c,
-      delegateModelConfigs: x,
-      delegateBaseUrl: String(S.baseUrl || ""),
-      delegateModel: String(S.model || ""),
-      delegateApiKey: String(S.apiKey || ""),
-      delegateTemperature: U(S.temperature, 1),
-      delegateMaxTokens: N(S.maxTokens),
-      delegateSendTemperature: Ue(S),
+      delegateModelConfigs: S,
+      delegateBaseUrl: String(x.baseUrl || ""),
+      delegateModel: String(x.model || ""),
+      delegateApiKey: String(x.apiKey || ""),
+      delegateTemperature: L(x.temperature, 1),
+      delegateMaxTokens: N(x.maxTokens),
+      delegateSendTemperature: Le(x),
       delegateReasoningMode: M.reasoningMode,
       delegateReasoningEffort: M.reasoningEffort,
       delegateReasoningBudgetTokens: M.reasoningBudgetTokens,
-      delegateToolMode: S.toolMode || "native"
+      delegateToolMode: x.toolMode || "native"
     };
   }
   function ee(e = "openai-compatible", r = {}) {
@@ -1111,9 +1111,9 @@ function da(t = {}) {
       baseUrl: String(a.baseUrl || ""),
       model: String(a.model || ""),
       apiKey: String(a.apiKey || ""),
-      temperature: U(a.temperature, 1),
+      temperature: L(a.temperature, 1),
       maxTokens: N(a.maxTokens),
-      sendTemperature: Ue(a),
+      sendTemperature: Le(a),
       ...l,
       toolMode: a.toolMode || "native"
     };
@@ -1124,9 +1124,9 @@ function da(t = {}) {
       delegateBaseUrl: String(a.baseUrl || ""),
       delegateModel: String(a.model || ""),
       delegateApiKey: String(a.apiKey || ""),
-      delegateTemperature: U(a.temperature, 1),
+      delegateTemperature: L(a.temperature, 1),
       delegateMaxTokens: N(a.maxTokens),
-      delegateSendTemperature: Ue(a),
+      delegateSendTemperature: Le(a),
       delegateReasoningMode: l.reasoningMode,
       delegateReasoningEffort: l.reasoningEffort,
       delegateReasoningBudgetTokens: l.reasoningBudgetTokens,
@@ -1134,12 +1134,12 @@ function da(t = {}) {
     };
   }
   function $(e, r, a = n.config) {
-    const l = P(e || "默认"), c = r && typeof r == "object" ? r : _(), x = c.provider || "openai-compatible", S = I(c.modelConfigs || {}), M = ee(x, S), A = q(a?.delegatePresetName, l), T = X(A, a?.delegateConfig && typeof a.delegateConfig == "object" ? a.delegateConfig : (a?.presets || {})[A] || c);
+    const l = P(e || "默认"), c = r && typeof r == "object" ? r : _(), S = c.provider || "openai-compatible", x = I(c.modelConfigs || {}), M = ee(S, x), A = q(a?.delegatePresetName, l), T = X(A, a?.delegateConfig && typeof a.delegateConfig == "object" ? a.delegateConfig : (a?.presets || {})[A] || c);
     return {
       currentPresetName: l,
       presetDraftName: l,
-      provider: x,
-      modelConfigs: S,
+      provider: S,
+      modelConfigs: x,
       ...M,
       tavilyApiKey: String(a?.tavilyApiKey || ""),
       tavilyBaseUrl: F(a?.tavilyBaseUrl || "https://api.tavily.com"),
@@ -1154,7 +1154,7 @@ function da(t = {}) {
     return n.configDraft = $(e, (n.config?.presets || {})[e] || _()), n.configDraft;
   }
   function J(e, r = {}) {
-    const a = y(), l = r.provider || e.querySelector("#xb-assistant-provider")?.value || a.provider || "openai-compatible", c = r.delegateProvider || e.querySelector("#xb-assistant-delegate-provider")?.value || a.delegateProvider || "openai-compatible", x = e.querySelector("#xb-assistant-base-url")?.value.trim() || "", S = e.querySelector("#xb-assistant-model")?.value.trim() || "", M = e.querySelector("#xb-assistant-delegate-base-url")?.value.trim() ?? a.delegateBaseUrl ?? "", A = e.querySelector("#xb-assistant-delegate-model")?.value.trim() ?? a.delegateModel ?? "", T = mt({
+    const a = y(), l = r.provider || e.querySelector("#xb-assistant-provider")?.value || a.provider || "openai-compatible", c = r.delegateProvider || e.querySelector("#xb-assistant-delegate-provider")?.value || a.delegateProvider || "openai-compatible", S = e.querySelector("#xb-assistant-base-url")?.value.trim() || "", x = e.querySelector("#xb-assistant-model")?.value.trim() || "", M = e.querySelector("#xb-assistant-delegate-base-url")?.value.trim() ?? a.delegateBaseUrl ?? "", A = e.querySelector("#xb-assistant-delegate-model")?.value.trim() ?? a.delegateModel ?? "", T = mt({
       mode: e.querySelector("#xb-assistant-reasoning-mode")?.value || a.reasoningMode,
       effort: e.querySelector("#xb-assistant-reasoning-effort")?.value || a.reasoningEffort,
       budgetTokens: e.querySelector("#xb-assistant-reasoning-budget")?.value ?? a.reasoningBudgetTokens
@@ -1163,10 +1163,10 @@ function da(t = {}) {
       effort: e.querySelector("#xb-assistant-delegate-reasoning-effort")?.value || a.delegateReasoningEffort,
       budgetTokens: e.querySelector("#xb-assistant-delegate-reasoning-budget")?.value ?? a.delegateReasoningBudgetTokens
     }), k = {
-      baseUrl: x,
-      model: S,
+      baseUrl: S,
+      model: x,
       apiKey: e.querySelector("#xb-assistant-api-key")?.value.trim() || "",
-      temperature: U(e.querySelector("#xb-assistant-temperature")?.value, a.temperature ?? 1),
+      temperature: L(e.querySelector("#xb-assistant-temperature")?.value, a.temperature ?? 1),
       maxTokens: N(e.querySelector("#xb-assistant-max-tokens")?.value, a.maxTokens),
       sendTemperature: e.querySelector("#xb-assistant-send-temperature")?.checked ?? !!(a.sendTemperature ?? !0),
       reasoning: T,
@@ -1175,7 +1175,7 @@ function da(t = {}) {
       baseUrl: M,
       model: A,
       apiKey: e.querySelector("#xb-assistant-delegate-api-key")?.value.trim() ?? a.delegateApiKey ?? "",
-      temperature: U(e.querySelector("#xb-assistant-delegate-temperature")?.value, a.delegateTemperature ?? 1),
+      temperature: L(e.querySelector("#xb-assistant-delegate-temperature")?.value, a.delegateTemperature ?? 1),
       maxTokens: N(e.querySelector("#xb-assistant-delegate-max-tokens")?.value, a.delegateMaxTokens),
       sendTemperature: e.querySelector("#xb-assistant-delegate-send-temperature")?.checked ?? !!(a.delegateSendTemperature ?? !0),
       reasoning: V,
@@ -1236,7 +1236,7 @@ function da(t = {}) {
       baseUrl: String(e.baseUrl || ""),
       model: String(e.model || ""),
       apiKey: String(e.apiKey || ""),
-      temperature: U(e.temperature, 1),
+      temperature: L(e.temperature, 1),
       maxTokens: N(e.maxTokens),
       sendTemperature: !!(e.sendTemperature ?? !0),
       reasoning: le({
@@ -1252,7 +1252,7 @@ function da(t = {}) {
       baseUrl: String(e.delegateBaseUrl || ""),
       model: String(e.delegateModel || ""),
       apiKey: String(e.delegateApiKey || ""),
-      temperature: U(e.delegateTemperature, 1),
+      temperature: L(e.delegateTemperature, 1),
       maxTokens: N(e.delegateMaxTokens),
       sendTemperature: !!(e.delegateSendTemperature ?? !0),
       reasoning: le({
@@ -1284,7 +1284,7 @@ function da(t = {}) {
       apiKey: e.apiKey || "",
       tavilyApiKey: e.tavilyApiKey || "",
       tavilyBaseUrl: F(e.tavilyBaseUrl || "https://api.tavily.com"),
-      temperature: e.sendTemperature === !1 ? void 0 : U(e.temperature, 1),
+      temperature: e.sendTemperature === !1 ? void 0 : L(e.temperature, 1),
       sendTemperature: !!(e.sendTemperature ?? !0),
       maxTokens: N(e.maxTokens),
       timeoutMs: ct,
@@ -1309,7 +1309,7 @@ function da(t = {}) {
       apiKey: e.delegateApiKey || "",
       tavilyApiKey: e.tavilyApiKey || "",
       tavilyBaseUrl: F(e.tavilyBaseUrl || "https://api.tavily.com"),
-      temperature: e.delegateSendTemperature === !1 ? void 0 : U(e.delegateTemperature, 1),
+      temperature: e.delegateSendTemperature === !1 ? void 0 : L(e.delegateTemperature, 1),
       sendTemperature: !!(e.delegateSendTemperature ?? !0),
       maxTokens: N(e.delegateMaxTokens),
       timeoutMs: ct,
@@ -1328,14 +1328,14 @@ function da(t = {}) {
   }
   function Ot(e = {}) {
     const r = [];
-    Object.entries(e.presets || {}).forEach(([x, S]) => {
-      const M = S?.provider || "openai-compatible", A = S?.modelConfigs?.[M] || {}, T = he({
+    Object.entries(e.presets || {}).forEach(([S, x]) => {
+      const M = x?.provider || "openai-compatible", A = x?.modelConfigs?.[M] || {}, T = he({
         provider: M,
         baseUrl: A.baseUrl,
         model: A.model,
         maxTokens: N(A.maxTokens)
       }, A.reasoning);
-      T.valid === !1 && r.push(`预设“${x}”：${T.error}`);
+      T.valid === !1 && r.push(`预设“${S}”：${T.error}`);
     });
     const a = e.delegateConfig?.provider || "openai-compatible", l = e.delegateConfig?.modelConfigs?.[a] || {}, c = he({
       provider: a,
@@ -1356,7 +1356,7 @@ function da(t = {}) {
     };
   }
   function qt(e = y(), r = e.provider || "openai-compatible", a = "main") {
-    const l = L(r, a);
+    const l = U(r, a);
     return typeof m == "function" ? m({
       state: n,
       draft: e,
@@ -1368,8 +1368,8 @@ function da(t = {}) {
   function Je(e, r, a) {
     const l = e?.querySelector?.(r);
     if (!l) return;
-    const c = String(a?.status || "idle"), x = String(a?.message || "").trim();
-    l.textContent = x, l.hidden = !x, l.classList.toggle("is-loading", c === "loading"), l.classList.toggle("is-success", c === "success"), l.classList.toggle("is-error", c === "error");
+    const c = String(a?.status || "idle"), S = String(a?.message || "").trim();
+    l.textContent = S, l.hidden = !S, l.classList.toggle("is-loading", c === "loading"), l.classList.toggle("is-success", c === "success"), l.classList.toggle("is-error", c === "error");
   }
   function Ve(e) {
     if (!e) return;
@@ -1383,16 +1383,16 @@ function da(t = {}) {
     }), e.querySelector("#xb-assistant-delete-preset")?.toggleAttribute("hidden", r === "delegate");
   }
   function B(e, r = "main") {
-    const a = y(), l = r === "delegate", c = l ? "#xb-assistant-delegate-reasoning" : "#xb-assistant-reasoning", x = l ? a.delegateProvider : a.provider, S = l ? a.delegateBaseUrl : a.baseUrl, M = l ? a.delegateModel : a.model, A = {
+    const a = y(), l = r === "delegate", c = l ? "#xb-assistant-delegate-reasoning" : "#xb-assistant-reasoning", S = l ? a.delegateProvider : a.provider, x = l ? a.delegateBaseUrl : a.baseUrl, M = l ? a.delegateModel : a.model, A = {
       mode: l ? a.delegateReasoningMode : a.reasoningMode,
       effort: l ? a.delegateReasoningEffort : a.reasoningEffort,
       budgetTokens: l ? a.delegateReasoningBudgetTokens : a.reasoningBudgetTokens
     }, T = Ge({
-      provider: x,
-      baseUrl: S,
+      provider: S,
+      baseUrl: x,
       model: M
-    }), V = Te(x, {
-      baseUrl: S,
+    }), V = Te(S, {
+      baseUrl: x,
       model: M,
       reasoning: A
     }), k = V.reasoningMode, C = V.reasoningEffort, Z = V.reasoningBudgetTokens, H = e.querySelector(`${c}-mode`), ne = e.querySelector(`${c}-capability`), ae = e.querySelector(`${c}-effort-wrap`), se = e.querySelector(`${c}-effort`), re = e.querySelector(`${c}-budget-wrap`), Q = e.querySelector(`${c}-budget`);
@@ -1411,21 +1411,21 @@ function da(t = {}) {
   function We(e) {
     if (!n.config) return;
     Ve(e);
-    const r = y(), a = r.provider || "openai-compatible", l = O(a), c = r.delegateProvider || "openai-compatible", x = O(c, "delegate"), S = e.querySelector("#xb-assistant-provider"), M = e.querySelector("#xb-assistant-base-url"), A = e.querySelector("#xb-assistant-model"), T = e.querySelector("#xb-assistant-api-key"), V = e.querySelector("#xb-assistant-temperature"), k = e.querySelector("#xb-assistant-send-temperature"), C = e.querySelector("#xb-assistant-tool-mode-wrap"), Z = e.querySelector("#xb-assistant-tool-mode"), H = e.querySelector("#xb-assistant-permission-mode"), ne = e.querySelector("#xb-assistant-jsapi-permission"), ae = e.querySelector("#xb-assistant-model-pulled"), se = e.querySelector("#xb-assistant-max-tokens"), re = e.querySelector("#xb-assistant-preset-select"), Q = e.querySelector("#xb-assistant-preset-name"), Ce = e.querySelector("#xb-assistant-delegate-preset-select"), Ze = e.querySelector("#xb-assistant-delegate-provider"), Qe = e.querySelector("#xb-assistant-delegate-base-url"), et = e.querySelector("#xb-assistant-delegate-model"), tt = e.querySelector("#xb-assistant-delegate-api-key"), nt = e.querySelector("#xb-assistant-tavily-api-key"), Ne = e.querySelector("#xb-assistant-delegate-model-pulled"), at = e.querySelector("#xb-assistant-delegate-max-tokens"), st = e.querySelector("#xb-assistant-delegate-tool-mode-wrap"), Oe = e.querySelector("#xb-assistant-delegate-tool-mode");
+    const r = y(), a = r.provider || "openai-compatible", l = O(a), c = r.delegateProvider || "openai-compatible", S = O(c, "delegate"), x = e.querySelector("#xb-assistant-provider"), M = e.querySelector("#xb-assistant-base-url"), A = e.querySelector("#xb-assistant-model"), T = e.querySelector("#xb-assistant-api-key"), V = e.querySelector("#xb-assistant-temperature"), k = e.querySelector("#xb-assistant-send-temperature"), C = e.querySelector("#xb-assistant-tool-mode-wrap"), Z = e.querySelector("#xb-assistant-tool-mode"), H = e.querySelector("#xb-assistant-permission-mode"), ne = e.querySelector("#xb-assistant-jsapi-permission"), ae = e.querySelector("#xb-assistant-model-pulled"), se = e.querySelector("#xb-assistant-max-tokens"), re = e.querySelector("#xb-assistant-preset-select"), Q = e.querySelector("#xb-assistant-preset-name"), Ce = e.querySelector("#xb-assistant-delegate-preset-select"), Ze = e.querySelector("#xb-assistant-delegate-provider"), Qe = e.querySelector("#xb-assistant-delegate-base-url"), et = e.querySelector("#xb-assistant-delegate-model"), tt = e.querySelector("#xb-assistant-delegate-api-key"), nt = e.querySelector("#xb-assistant-tavily-api-key"), Ne = e.querySelector("#xb-assistant-delegate-model-pulled"), at = e.querySelector("#xb-assistant-delegate-max-tokens"), st = e.querySelector("#xb-assistant-delegate-tool-mode-wrap"), Oe = e.querySelector("#xb-assistant-delegate-tool-mode");
     if (!re || !Q) return;
     const rt = (n.config.presetNames || []).map((W) => ({
       value: W,
       label: W
     }));
-    j(re, rt), re.value = r.currentPresetName || n.config.currentPresetName || "默认", Ce && (j(Ce, rt), Ce.value = q(r.delegatePresetName, r.currentPresetName)), Q.value = r.presetDraftName || r.currentPresetName || "默认", S && (S.value = a), M && (M.value = r.baseUrl || ""), A && (A.value = r.model || ""), T && (T.value = r.apiKey || ""), se && (se.value = String(N(r.maxTokens))), V && (V.value = String(U(r.temperature, 1))), k && (k.checked = !!(r.sendTemperature ?? !0)), nt && (nt.value = r.tavilyApiKey || ""), C && (C.style.display = ie(a) ? "" : "none"), Z && (j(Z, pt), Z.value = r.toolMode || "native"), H && (j(H, en), H.value = oe(r.permissionMode)), ne && (j(ne, tn), ne.value = Y(r.jsApiPermission)), B(e), ae && (j(ae, l.map((W) => ({
+    j(re, rt), re.value = r.currentPresetName || n.config.currentPresetName || "默认", Ce && (j(Ce, rt), Ce.value = q(r.delegatePresetName, r.currentPresetName)), Q.value = r.presetDraftName || r.currentPresetName || "默认", x && (x.value = a), M && (M.value = r.baseUrl || ""), A && (A.value = r.model || ""), T && (T.value = r.apiKey || ""), se && (se.value = String(N(r.maxTokens))), V && (V.value = String(L(r.temperature, 1))), k && (k.checked = !!(r.sendTemperature ?? !0)), nt && (nt.value = r.tavilyApiKey || ""), C && (C.style.display = ie(a) ? "" : "none"), Z && (j(Z, pt), Z.value = r.toolMode || "native"), H && (j(H, en), H.value = oe(r.permissionMode)), ne && (j(ne, tn), ne.value = Y(r.jsApiPermission)), B(e), ae && (j(ae, l.map((W) => ({
       value: W,
       label: W
     })), "手动填写"), ae.value = l.includes(r.model) ? r.model : ""), Ze && (Ze.value = c), Qe && (Qe.value = r.delegateBaseUrl || ""), et && (et.value = r.delegateModel || ""), tt && (tt.value = r.delegateApiKey || "");
     const it = e.querySelector("#xb-assistant-delegate-temperature"), ot = e.querySelector("#xb-assistant-delegate-send-temperature");
-    at && (at.value = String(N(r.delegateMaxTokens))), it && (it.value = String(U(r.delegateTemperature, 1))), ot && (ot.checked = !!(r.delegateSendTemperature ?? !0)), st && (st.style.display = ie(c) ? "" : "none"), Oe && (j(Oe, pt), Oe.value = r.delegateToolMode || "native"), B(e, "delegate"), Ne && (j(Ne, x.map((W) => ({
+    at && (at.value = String(N(r.delegateMaxTokens))), it && (it.value = String(L(r.delegateTemperature, 1))), ot && (ot.checked = !!(r.delegateSendTemperature ?? !0)), st && (st.style.display = ie(c) ? "" : "none"), Oe && (j(Oe, pt), Oe.value = r.delegateToolMode || "native"), B(e, "delegate"), Ne && (j(Ne, S.map((W) => ({
       value: W,
       label: W
-    })), "手动填写"), Ne.value = x.includes(r.delegateModel) ? r.delegateModel : ""), Je(e, "#xb-assistant-model-pull-status", L(a)), Je(e, "#xb-assistant-delegate-model-pull-status", L(c, "delegate")), z(e);
+    })), "手动填写"), Ne.value = S.includes(r.delegateModel) ? r.delegateModel : ""), Je(e, "#xb-assistant-model-pull-status", U(a)), Je(e, "#xb-assistant-delegate-model-pull-status", U(c, "delegate")), z(e);
   }
   function It(e) {
     if (typeof d != "function") return;
@@ -1465,15 +1465,15 @@ function da(t = {}) {
       payload: _t(a)
     }), !0;
   }
-  function Se(e, r = {}) {
-    const a = f(e), l = P(r.presetName || a.presetDraftName), c = P(a.currentPresetName || n.config?.currentPresetName || "默认"), x = (n.config?.presets || {})[c] || _(), S = I(a.modelConfigs || x.modelConfigs || {}), M = {
-      ...x,
+  function xe(e, r = {}) {
+    const a = f(e), l = P(r.presetName || a.presetDraftName), c = P(a.currentPresetName || n.config?.currentPresetName || "默认"), S = (n.config?.presets || {})[c] || _(), x = I(a.modelConfigs || S.modelConfigs || {}), M = {
+      ...S,
       provider: a.provider,
       permissionMode: oe(a.permissionMode),
       modelConfigs: {
-        ...S,
+        ...x,
         [a.provider]: {
-          ...S[a.provider] || {},
+          ...x[a.provider] || {},
           ...b(a)
         }
       }
@@ -1504,12 +1504,12 @@ function da(t = {}) {
       return;
     }
     const a = e.querySelector("#xb-assistant-preset-name");
-    a && (a.value = r, Se(e, {
+    a && (a.value = r, xe(e, {
       presetName: r,
       requestPrefix: "create-preset"
     }));
   }
-  function Ut(e) {
+  function Lt(e) {
     const r = f(e), a = P(r.currentPresetName || n.config?.currentPresetName || "默认"), l = Xe("输入预设名称：", r.presetDraftName || a);
     if (!l) {
       i?.("预设名称不能为空");
@@ -1517,13 +1517,13 @@ function da(t = {}) {
     }
     if (l === a) return;
     const c = e.querySelector("#xb-assistant-preset-name");
-    c && (c.value = l, Se(e, {
+    c && (c.value = l, xe(e, {
       presetName: l,
       renameCurrentPreset: !0,
       requestPrefix: "rename-preset"
     }));
   }
-  function Lt(e) {
+  function Ut(e) {
     if (Object.keys(n.config?.presets || {}).length <= 1) {
       i?.("至少要保留一套预设");
       return;
@@ -1680,16 +1680,16 @@ function da(t = {}) {
     }), e.querySelector("#xb-assistant-new-preset")?.addEventListener("click", () => {
       Rt(e);
     }), e.querySelector("#xb-assistant-rename-preset")?.addEventListener("click", () => {
-      Ut(e);
+      Lt(e);
     }), e.querySelector("#xb-assistant-save")?.addEventListener("click", () => {
-      Se(e);
+      xe(e);
     }), e.querySelector("#xb-assistant-delegate-save")?.addEventListener("click", () => {
-      Se(e, {
+      xe(e, {
         requestPrefix: "save-delegate-config",
         configureDelegate: !0
       });
     }), e.querySelector("#xb-assistant-delete-preset")?.addEventListener("click", () => {
-      Lt(e);
+      Ut(e);
     }));
   }
   return {
@@ -1736,7 +1736,7 @@ function ca(t = {}) {
   };
 }
 function pa(t = {}) {
-  const { configSave: n = {}, runtimeText: s = "", inlineToastText: i = "", showInlineToast: o = !0, showAssistantPermissions: d = !0, showDelegateSettings: u = !0, showTavilySettings: g = !0, activePage: m = "main", delegatePresetHint: v = "DelegateRun 分身会使用这里的独立 API 配置；可以和主助手使用不同 Provider、Base URL、模型和 Tool 调用格式。", isBusy: p = !1, canDeletePreset: L = !0, configLoadError: D = "" } = t, R = String(D || "").trim(), O = ca(n), q = ua(n), X = p || R || String(n?.status || "") === "saving" ? "disabled" : "", ee = p || !L ? "disabled" : "", te = m === "delegate" ? "delegate" : "main", $ = te === "main", y = te === "delegate", J = d ? `
+  const { configSave: n = {}, runtimeText: s = "", inlineToastText: i = "", showInlineToast: o = !0, showAssistantPermissions: d = !0, showDelegateSettings: u = !0, showTavilySettings: g = !0, activePage: m = "main", delegatePresetHint: v = "DelegateRun 分身会使用这里的独立 API 配置；可以和主助手使用不同 Provider、Base URL、模型和 Tool 调用格式。", isBusy: p = !1, canDeletePreset: U = !0, configLoadError: D = "" } = t, R = String(D || "").trim(), O = ca(n), q = ua(n), X = p || R || String(n?.status || "") === "saving" ? "disabled" : "", ee = p || !U ? "disabled" : "", te = m === "delegate" ? "delegate" : "main", $ = te === "main", y = te === "delegate", J = d ? `
             <label>
                 <span>斜杠命令权限</span>
                 <select id="xb-assistant-permission-mode"></select>
@@ -1942,17 +1942,17 @@ var ga = { class: "agent-api-app" }, ma = { class: "agent-api-scroll" }, fa = { 
 }, ya = {
   class: "agent-api-panel xb-agent-settings-surface",
   "aria-label": "Agent API 配置"
-}, Sa = { "aria-live": "polite" }, xa = ["disabled"], ft = 13e4, ha = /* @__PURE__ */ Gt({
+}, xa = { "aria-live": "polite" }, Sa = ["disabled"], ft = 13e4, ha = /* @__PURE__ */ Ft({
   __name: "AgentApiApp",
   props: {
     bridge: {},
     initialState: {}
   },
   setup(t) {
-    const n = t, s = structuredClone(lt(n.initialState)), i = xe(s), o = xe(null), d = xe("idle"), u = xe("连接尚未测试");
+    const n = t, s = structuredClone(lt(n.initialState)), i = Se(s), o = Se(null), d = Se("idle"), u = Se("连接尚未测试");
     let g = () => {
     }, m = null, v = 0;
-    const p = Dt({
+    const p = jt({
       config: null,
       configDraft: null,
       configDirty: !1,
@@ -1966,7 +1966,7 @@ var ga = { class: "agent-api-app" }, ma = { class: "agent-api-scroll" }, fa = { 
       modelOptionsByProvider: {},
       pullStateByProvider: {},
       inlineToastText: ""
-    }), L = Ie(() => i.value.status === "ready" && p.config !== null), D = Ie(() => Object.keys(p.config?.presets || {}).length), R = Ie(() => d.value === "testing");
+    }), U = qe(() => i.value.status === "ready" && p.config !== null), D = qe(() => Object.keys(p.config?.presets || {}).length), R = qe(() => d.value === "testing");
     function O(b) {
       const h = b instanceof Error ? b.message : String(b || "unknown_error");
       return h === "host_request_timeout" ? "请求等待超时，请检查网络后重试。" : h === "app_inactive" ? "页面已经关闭。" : h;
@@ -2042,11 +2042,11 @@ var ga = { class: "agent-api-app" }, ma = { class: "agent-api-scroll" }, fa = { 
       }), $.syncConfigToForm(b), $.bindSettingsPanelEvents(b));
     }
     function J(b) {
-      i.value = structuredClone(b), b.status === "ready" && b.config && (p.config = ke(b.config), p.configDraft = null, p.configDirty = !1, p.configFormSyncPending = !0), Jt(y);
+      i.value = structuredClone(b), b.status === "ready" && b.config && (p.config = ke(b.config), p.configDraft = null, p.configDirty = !1, p.configFormSyncPending = !0), Ht(y);
     }
     async function f() {
       const b = o.value;
-      if (!b || !L.value || R.value) return;
+      if (!b || !U.value || R.value) return;
       const h = $.getActiveProviderConfigFromForm(b);
       d.value = "testing", u.value = "正在测试当前表单中的连接…";
       try {
@@ -2056,26 +2056,26 @@ var ga = { class: "agent-api-app" }, ma = { class: "agent-api-scroll" }, fa = { 
         d.value = "error", u.value = O(E);
       }
     }
-    return jt(() => {
+    return Gt(() => {
       g = n.bridge.subscribe((b) => {
         b.type === "agent-api/state" && J(b.payload.state);
       }), J(s);
-    }), Ft(() => {
+    }), Jt(() => {
       v += 1, g(), m && clearTimeout(m);
-    }), (b, h) => (_e(), qe("main", ga, [w("div", ma, [w("div", fa, [
+    }), (b, h) => (we(), Ie("main", ga, [w("div", ma, [w("div", fa, [
       h[2] || (h[2] = w("header", { class: "agent-api-header" }, [w("h1", null, "Agent API 配置"), w("p", null, "共享 Agent 主预设")], -1)),
-      i.value.status === "loading" ? (_e(), qe("section", ba, " 正在读取配置 ")) : i.value.status === "error" ? (_e(), qe("section", va, [w("div", null, [h[1] || (h[1] = w("strong", null, "配置暂时无法读取", -1)), w("span", null, we(i.value.message), 1)]), w("button", {
+      i.value.status === "loading" ? (we(), Ie("section", ba, " 正在读取配置 ")) : i.value.status === "error" ? (we(), Ie("section", va, [w("div", null, [h[1] || (h[1] = w("strong", null, "配置暂时无法读取", -1)), w("span", null, _e(i.value.message), 1)]), w("button", {
         type: "button",
         onClick: h[0] || (h[0] = (E) => ee())
-      }, "重新读取")])) : Ht("", !0),
-      Kt(w("section", ya, [w("div", {
+      }, "重新读取")])) : zt("", !0),
+      Dt(w("section", ya, [w("div", {
         ref_key: "panelRoot",
         ref: o
-      }, null, 512), w("div", { class: Bt(["agent-api-connection", `is-${d.value}`]) }, [w("p", Sa, we(u.value), 1), w("button", {
+      }, null, 512), w("div", { class: Bt(["agent-api-connection", `is-${d.value}`]) }, [w("p", xa, _e(u.value), 1), w("button", {
         type: "button",
-        disabled: !L.value || R.value,
+        disabled: !U.value || R.value,
         onClick: f
-      }, we(R.value ? "测试中…" : "测试当前连接"), 9, xa)], 2)], 512), [[zt, L.value]])
+      }, _e(R.value ? "测试中…" : "测试当前连接"), 9, Sa)], 2)], 512), [[Kt, U.value]])
     ])])]));
   }
 }), ka = ha;

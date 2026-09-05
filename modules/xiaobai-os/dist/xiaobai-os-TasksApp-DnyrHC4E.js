@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { A as Ze, B as u, E as He, I as ce, L as q, N as Fe, P as h, R as G, S as ye, T as E, _ as c, a as K, b as Ke, c as me, d as e, f as A, g as b, j as z, l as C, m as d, p as f, u as R, v as B, w as n } from "./xiaobai-os-runtime-dom.esm-bundler-DQLnRQQ3.js";
+import { A as K, C as n, F as ce, I as q, L as G, M as Ze, N as h, T as He, _ as B, c as C, d as A, f, g as c, h as b, i as z, k as Fe, l as R, p as d, s as ye, u as e, w as E, x as me, y as Ke, z as u } from "./xiaobai-os-runtime-dom.esm-bundler-D8PGSboO.js";
 var ze = {
   class: "tasks-icon",
   viewBox: "0 0 24 24",
@@ -118,7 +118,7 @@ var Xe = { class: "tasks-page tasks-detail-page" }, Ye = {
 }, Bt = { class: "tasks-hint" }, Mt = {
   key: 0,
   class: "tasks-hint"
-}, St = ["disabled"], At = /* @__PURE__ */ B({
+}, xt = ["disabled"], At = /* @__PURE__ */ B({
   __name: "TaskPublishForm",
   props: {
     balance: {},
@@ -127,7 +127,7 @@ var Xe = { class: "tasks-page tasks-detail-page" }, Ye = {
   },
   emits: ["submit"],
   setup(t, { emit: o }) {
-    const s = o, a = Fe({
+    const s = o, a = Ze({
       title: "",
       objective: "",
       requirements: "",
@@ -151,46 +151,46 @@ var Xe = { class: "tasks-page tasks-detail-page" }, Ye = {
       e("p", null, "发布后再招募、选择执行者。")
     ], -1)), e("form", {
       class: "tasks-publish-form",
-      onSubmit: me(m, ["prevent"])
+      onSubmit: ye(m, ["prevent"])
     }, [
       e("fieldset", { disabled: t.busy }, [
         r[15] || (r[15] = e("legend", { class: "tasks-sr-only" }, "委托内容", -1)),
         e("div", gt, [
-          e("label", null, [r[6] || (r[6] = e("span", null, [b("给委托起个名字 "), e("b", null, "*")], -1)), z(e("input", {
+          e("label", null, [r[6] || (r[6] = e("span", null, [b("给委托起个名字 "), e("b", null, "*")], -1)), K(e("input", {
             "onUpdate:modelValue": r[0] || (r[0] = (v) => a.title = v),
             required: "",
             maxlength: "120",
             autocomplete: "off",
             placeholder: "例如：找回遗落在钟楼的手札"
-          }, null, 512), [[K, a.title]])]),
-          e("label", null, [r[7] || (r[7] = e("span", null, [b("怎样才算完成 "), e("b", null, "*")], -1)), z(e("textarea", {
+          }, null, 512), [[z, a.title]])]),
+          e("label", null, [r[7] || (r[7] = e("span", null, [b("怎样才算完成 "), e("b", null, "*")], -1)), K(e("textarea", {
             "onUpdate:modelValue": r[1] || (r[1] = (v) => a.objective = v),
             required: "",
             maxlength: "8000",
             rows: "4",
             placeholder: "写一个可以明确判定完成的目标"
-          }, null, 512), [[K, a.objective]])]),
-          e("label", null, [r[8] || (r[8] = e("span", null, [b("去哪里行动 "), e("b", null, "*")], -1)), z(e("input", {
+          }, null, 512), [[z, a.objective]])]),
+          e("label", null, [r[8] || (r[8] = e("span", null, [b("去哪里行动 "), e("b", null, "*")], -1)), K(e("input", {
             "onUpdate:modelValue": r[2] || (r[2] = (v) => a.location = v),
             required: "",
             maxlength: "600",
             autocomplete: "off",
             placeholder: "目标行动实际发生的地点"
-          }, null, 512), [[K, a.location]])])
+          }, null, 512), [[z, a.location]])])
         ]),
-        e("details", $t, [r[11] || (r[11] = e("summary", null, [b("补充约束与风险 "), e("span", null, "选填")], -1)), e("div", pt, [e("label", null, [r[9] || (r[9] = e("span", null, "执行约束", -1)), z(e("textarea", {
+        e("details", $t, [r[11] || (r[11] = e("summary", null, [b("补充约束与风险 "), e("span", null, "选填")], -1)), e("div", pt, [e("label", null, [r[9] || (r[9] = e("span", null, "执行约束", -1)), K(e("textarea", {
           "onUpdate:modelValue": r[3] || (r[3] = (v) => a.requirements = v),
           maxlength: "8000",
           rows: "3",
           placeholder: "对行动方式的要求，不增加第二个目标"
-        }, null, 512), [[K, a.requirements]])]), e("label", null, [r[10] || (r[10] = e("span", null, "已知风险", -1)), z(e("textarea", {
+        }, null, 512), [[z, a.requirements]])]), e("label", null, [r[10] || (r[10] = e("span", null, "已知风险", -1)), K(e("textarea", {
           "onUpdate:modelValue": r[4] || (r[4] = (v) => a.risk = v),
           maxlength: "2000",
           rows: "3",
           placeholder: "有哪些需要执行者提前知道的风险？"
-        }, null, 512), [[K, a.risk]])])])]),
+        }, null, 512), [[z, a.risk]])])])]),
         e("div", ht, [
-          e("label", null, [r[13] || (r[13] = e("span", null, [b("为这份委托设定报酬 "), e("b", null, "*")], -1)), e("span", wt, [r[12] || (r[12] = e("i", null, "¤", -1)), z(e("input", {
+          e("label", null, [r[13] || (r[13] = e("span", null, [b("为这份委托设定报酬 "), e("b", null, "*")], -1)), e("span", wt, [r[12] || (r[12] = e("i", null, "¤", -1)), K(e("input", {
             "onUpdate:modelValue": r[5] || (r[5] = (v) => a.reward = v),
             "aria-label": "托管报酬",
             type: "number",
@@ -199,7 +199,7 @@ var Xe = { class: "tasks-page tasks-detail-page" }, Ye = {
             max: t.balance,
             step: "1"
           }, null, 8, Ct), [[
-            K,
+            z,
             a.reward,
             void 0,
             { number: !0 }
@@ -225,10 +225,10 @@ var Xe = { class: "tasks-page tasks-detail-page" }, Ye = {
         type: "submit",
         class: "tasks-primary-button tasks-full-button",
         disabled: t.busy || !!t.disabledReason || Number(a.reward) > t.balance
-      }, [b(u(t.busy ? "正在发布…" : "预览并发布"), 1), c(y, { name: "next" })], 8, St)
+      }, [b(u(t.busy ? "正在发布…" : "预览并发布"), 1), c(y, { name: "next" })], 8, xt)
     ], 32)]));
   }
-}), xt = At, Dt = { class: "tasks-record-top" }, qt = ["data-status"], Lt = { class: "tasks-reward" }, Pt = { class: "tasks-record-title" }, Nt = { class: "tasks-record-summary" }, Vt = { class: "tasks-record-foot" }, Et = /* @__PURE__ */ B({
+}), St = At, Dt = { class: "tasks-record-top" }, qt = ["data-status"], Lt = { class: "tasks-reward" }, Pt = { class: "tasks-record-title" }, Nt = { class: "tasks-record-summary" }, Vt = { class: "tasks-record-foot" }, Et = /* @__PURE__ */ B({
   __name: "TaskRecordCard",
   props: { task: {} },
   emits: ["open"],
@@ -430,10 +430,10 @@ var Xe = { class: "tasks-page tasks-detail-page" }, Ye = {
       }, u(t.loading ? "正在加载…" : "加载更多记录"), 9, Cs)) : f("", !0)
     ]));
   }
-}), Ts = Is, Rs = { class: "tasks-page" }, Bs = { class: "tasks-publish-invite" }, Ms = { class: "tasks-invite-mark" }, Ss = ["disabled"], As = {
+}), Ts = Is, Rs = { class: "tasks-page" }, Bs = { class: "tasks-publish-invite" }, Ms = { class: "tasks-invite-mark" }, xs = ["disabled"], As = {
   key: 0,
   class: "tasks-hint"
-}, xs = { class: "tasks-section-heading" }, Ds = {
+}, Ss = { class: "tasks-section-heading" }, Ds = {
   key: 1,
   class: "tasks-inline-empty"
 }, qs = {
@@ -462,10 +462,10 @@ var Xe = { class: "tasks-page tasks-detail-page" }, Ye = {
           class: "tasks-primary-button",
           disabled: !!t.disabledReason,
           onClick: s[0] || (s[0] = (a) => o.$emit("publish"))
-        }, [c(y, { name: "plus" }), s[2] || (s[2] = b("发布一份委托", -1))], 8, Ss)
+        }, [c(y, { name: "plus" }), s[2] || (s[2] = b("发布一份委托", -1))], 8, xs)
       ]),
       t.disabledReason ? (n(), d("p", As, u(t.disabledReason), 1)) : f("", !0),
-      e("header", xs, [e("h3", null, [s[6] || (s[6] = b("我的委托 ", -1)), e("small", null, u(t.records.length), 1)]), e("button", {
+      e("header", Ss, [e("h3", null, [s[6] || (s[6] = b("我的委托 ", -1)), e("small", null, u(t.records.length), 1)]), e("button", {
         type: "button",
         class: "tasks-text-button",
         onClick: s[1] || (s[1] = (a) => o.$emit("history"))
@@ -624,10 +624,10 @@ var Xs = { class: "tasks-page" }, Ys = { class: "tasks-contract-sheet" }, _s = {
   key: 0,
   class: "tasks-hint",
   role: "status"
-}, Sa = {
+}, xa = {
   key: 1,
   class: "tasks-hint"
-}, Aa = { class: "tasks-withdraw" }, xa = ["disabled"], Da = {
+}, Aa = { class: "tasks-withdraw" }, Sa = ["disabled"], Da = {
   key: 1,
   class: "tasks-empty"
 }, qa = {
@@ -668,7 +668,7 @@ var Xs = { class: "tasks-page" }, Ys = { class: "tasks-contract-sheet" }, _s = {
         class: G({ "is-spinning": t.recruiting })
       }, null, 8, ["class"]), b(u(t.recruiting ? "招募中…" : t.task.candidates.length ? "重新招募" : "开始招募"), 1)], 8, Ba)]),
       t.recruiting ? (n(), d("p", Ma, "正在寻找愿意接下委托的人。你可以离开页面，招募会在后台继续。")) : f("", !0),
-      t.disabledReason || t.generationDisabledReason ? (n(), d("p", Sa, u(t.disabledReason || t.generationDisabledReason), 1)) : f("", !0),
+      t.disabledReason || t.generationDisabledReason ? (n(), d("p", xa, u(t.disabledReason || t.generationDisabledReason), 1)) : f("", !0),
       c(wa, {
         task: t.task,
         busy: t.busy || t.recruiting,
@@ -684,7 +684,7 @@ var Xs = { class: "tasks-page" }, Ys = { class: "tasks-contract-sheet" }, _s = {
         class: "tasks-text-button is-danger",
         disabled: t.busy || !!t.disabledReason,
         onClick: s[3] || (s[3] = (a) => o.$emit("cancel", t.task))
-      }, "撤回委托并退回报酬", 8, xa)])
+      }, "撤回委托并退回报酬", 8, Sa)])
     ], 64)) : (n(), d("div", Da, [
       c(y, { name: "check" }),
       e("h3", null, u(t.task.status === "active" ? "执行者已接下委托" : "这份委托已结束"), 1),
@@ -714,7 +714,7 @@ var Xs = { class: "tasks-page" }, Ys = { class: "tasks-contract-sheet" }, _s = {
   emits: ["close", "confirm"],
   setup(t, { emit: o }) {
     const s = o, a = h(null);
-    ye(() => a.value?.showModal());
+    me(() => a.value?.showModal());
     function m($) {
       if ($.stopPropagation(), $.key !== "Tab") return;
       const r = Array.from(a.value?.querySelectorAll("button:not(:disabled)") ?? []), v = r[0], j = r.at(-1);
@@ -729,7 +729,7 @@ var Xs = { class: "tasks-page" }, Ys = { class: "tasks-contract-sheet" }, _s = {
       ref: a,
       class: "tasks-dialog",
       "aria-label": t.title,
-      onCancel: r[2] || (r[2] = me((v) => !t.busy && s("close"), ["prevent"])),
+      onCancel: r[2] || (r[2] = ye((v) => !t.busy && s("close"), ["prevent"])),
       onKeydown: m
     }, [
       e("span", Va, [c(y, { name: "ticket" })]),
@@ -834,7 +834,7 @@ var Xs = { class: "tasks-page" }, Ys = { class: "tasks-contract-sheet" }, _s = {
     })[v.value]);
     let H = 0;
     const re = R(() => r.value.generation.state === "running" && r.value.generation.kind === "board"), ue = R(() => r.value.generation.state === "running" && r.value.generation.kind === "candidates" ? r.value.generation.taskId ?? "" : ""), M = h(!1), W = h(!1), P = h(!1), se = h(!1), X = h(!1), p = h(""), Y = h("");
-    let I = 0, S = !1, de = () => {
+    let I = 0, x = !1, de = () => {
     };
     const oe = R(() => r.value.status === "unconfirmed"), L = R(() => M.value ? "正在处理上一项任务操作" : r.value.status === "loading" ? "任务数据正在准备" : r.value.status === "saving" ? "任务与资金正在保存" : r.value.status === "unconfirmed" ? "请先核实上一次保存结果" : r.value.status === "conflict" ? "请先采用服务端数据" : r.value.status === "blocked" ? r.value.message || "任务暂时不可用" : r.value.generationActive ? "正在生成内容，请稍后" : ""), F = R(() => L.value || (r.value.maintenance.state === "running" ? "正在更新任务" : "")), he = R(() => {
       const l = r.value.maintenance.lastOutcome;
@@ -858,7 +858,7 @@ var Xs = { class: "tasks-page" }, Ys = { class: "tasks-contract-sheet" }, _s = {
       const i = m(l.state) ? l.state : l;
       return typeof i.chatIdentity == "string" ? i : null;
     }
-    function x(l) {
+    function S(l) {
       const i = l instanceof Error ? l.message : String(l);
       return i === "tasks_insufficient_funds" ? "小白币余额不足，任务没有发布。" : i === "tasks_state_changed" || i === "tasks_listing_already_accepted" ? "任务状态已经变化，请按最新状态重试。" : i === "tasks_terminal" ? "该任务已经结束，不能再次操作。" : i === "tasks_publish_invalid" || i === "tasks_request_invalid" ? "任务内容不完整或超出允许范围。" : i === "tasks_write_blocked" || i === "tasks_generation_active" ? "当前有生成或保存正在进行，请稍后重试。" : i === "tasks_chat_changed" ? "聊天已经切换，请重新打开任务。" : i === "host_request_timeout" ? "操作响应超时，结果可能稍后返回，请勿立即重复。" : "任务操作未完成，请稍后重试。";
     }
@@ -882,10 +882,10 @@ var Xs = { class: "tasks-page" }, Ys = { class: "tasks-contract-sheet" }, _s = {
       const l = I;
       try {
         const i = await D("tasks/refresh");
-        if (!S) return;
+        if (!x) return;
         N(i, l);
       } catch (i) {
-        S && (p.value = x(i));
+        x && (p.value = S(i));
       }
     }
     async function Ie(l, i) {
@@ -896,9 +896,9 @@ var Xs = { class: "tasks-page" }, Ys = { class: "tasks-contract-sheet" }, _s = {
         N(await D("tasks/board/accept", {
           boardId: l,
           listingId: i
-        }), k), O("任务已接取，报酬已进入托管。"), S && v.value === "listing" && w("active");
+        }), k), O("任务已接取，报酬已进入托管。"), x && v.value === "listing" && w("active");
       } catch (T) {
-        p.value = x(T);
+        p.value = S(T);
       } finally {
         M.value = !1;
       }
@@ -913,10 +913,10 @@ var Xs = { class: "tasks-page" }, Ys = { class: "tasks-contract-sheet" }, _s = {
           expectedTaskRevision: l.taskRevision,
           expectedEventId: l.eventId
         });
-        if (!S) return;
+        if (!x) return;
         N(k, i);
       } catch (k) {
-        S && (p.value = x(k));
+        x && (p.value = S(k));
       }
     }
     async function Re(l, i) {
@@ -929,9 +929,9 @@ var Xs = { class: "tasks-page" }, Ys = { class: "tasks-contract-sheet" }, _s = {
           expectedTaskRevision: l.taskRevision,
           expectedEventId: l.eventId,
           candidateId: i
-        }), k), g.value = null, O("执行者已确认，任务进入进行中。"), S && w("published");
+        }), k), g.value = null, O("执行者已确认，任务进入进行中。"), x && w("published");
       } catch (T) {
-        p.value = x(T);
+        p.value = S(T);
       } finally {
         M.value = !1;
       }
@@ -945,9 +945,9 @@ var Xs = { class: "tasks-page" }, Ys = { class: "tasks-contract-sheet" }, _s = {
           taskId: l.taskId,
           expectedTaskRevision: l.taskRevision,
           expectedEventId: l.eventId
-        }), i), g.value = null, O("任务已撤回，托管报酬已退回钱包。"), S && w("published");
+        }), i), g.value = null, O("任务已撤回，托管报酬已退回钱包。"), x && w("published");
       } catch (k) {
-        p.value = x(k);
+        p.value = S(k);
       } finally {
         M.value = !1;
       }
@@ -958,7 +958,7 @@ var Xs = { class: "tasks-page" }, Ys = { class: "tasks-contract-sheet" }, _s = {
         form: structuredClone(l)
       });
     }
-    async function Se() {
+    async function xe() {
       const l = g.value?.kind === "publish" ? g.value.form : null;
       if (!l || L.value) return;
       M.value = !0;
@@ -966,7 +966,7 @@ var Xs = { class: "tasks-page" }, Ys = { class: "tasks-contract-sheet" }, _s = {
       try {
         N(await D("tasks/publish", { form: ce(l) }), i), g.value = null, w("published"), O("任务已发布，报酬已锁入托管。");
       } catch (k) {
-        p.value = x(k);
+        p.value = S(k);
       } finally {
         M.value = !1;
       }
@@ -978,18 +978,18 @@ var Xs = { class: "tasks-page" }, Ys = { class: "tasks-contract-sheet" }, _s = {
       try {
         N(await D("tasks/settings/update", { autoMaintenance: l }), i), O(l ? "已开启任务进展自动更新。" : "已关闭任务进展自动更新。");
       } catch (k) {
-        p.value = x(k);
+        p.value = S(k);
       } finally {
         W.value = !1;
       }
     }
-    async function xe() {
+    async function Se() {
       if (r.value.maintenance.state === "running" || F.value) return;
       const l = I;
       try {
         N(await D("tasks/maintenance/run"), l);
       } catch (i) {
-        p.value = x(i);
+        p.value = S(i);
       }
     }
     async function Q(l, i = !1) {
@@ -997,12 +997,12 @@ var Xs = { class: "tasks-page" }, Ys = { class: "tasks-contract-sheet" }, _s = {
       const k = ++H;
       try {
         const T = await D("tasks/detail/read", { taskId: l });
-        if (!S || k !== H) return;
+        if (!x || k !== H) return;
         m(T) && m(T.task) && Array.isArray(T.timeline) && (J.value = structuredClone(T));
       } catch (T) {
-        S && k === H && (p.value = x(T));
+        x && k === H && (p.value = S(T));
       } finally {
-        S && k === H && (se.value = !1);
+        x && k === H && (se.value = !1);
       }
     }
     async function De() {
@@ -1015,12 +1015,12 @@ var Xs = { class: "tasks-page" }, Ys = { class: "tasks-contract-sheet" }, _s = {
       };
       try {
         const k = await D("tasks/history/load-more", { cursor: l });
-        if (S && m(k) && Array.isArray(k.items)) {
+        if (x && m(k) && Array.isArray(k.items)) {
           const T = k, be = Ws(r.value.history, T, i, I);
           be && (r.value.history = be);
         }
       } catch (k) {
-        p.value = x(k);
+        p.value = S(k);
       } finally {
         X.value = !1;
       }
@@ -1032,7 +1032,7 @@ var Xs = { class: "tasks-page" }, Ys = { class: "tasks-contract-sheet" }, _s = {
       try {
         N(await D("tasks/save/confirm"), l), O("保存结果已重新核实。");
       } catch (i) {
-        p.value = x(i);
+        p.value = S(i);
       } finally {
         P.value = !1;
       }
@@ -1044,7 +1044,7 @@ var Xs = { class: "tasks-page" }, Ys = { class: "tasks-contract-sheet" }, _s = {
       try {
         N(await D("tasks/save/adopt-server"), l), O("已采用服务端数据。");
       } catch (i) {
-        p.value = x(i);
+        p.value = S(i);
       } finally {
         P.value = !1;
       }
@@ -1082,13 +1082,13 @@ var Xs = { class: "tasks-page" }, Ys = { class: "tasks-contract-sheet" }, _s = {
     }
     function Oe() {
       const l = g.value;
-      l && (l.kind === "publish" ? Se() : l.kind === "cancel" ? Be(l.task) : Re(l.task, l.candidateId));
+      l && (l.kind === "publish" ? xe() : l.kind === "cancel" ? Be(l.task) : Re(l.task, l.candidateId));
     }
     function Ue(l) {
       l.key === "Escape" && !Z.value && (l.stopPropagation(), l.preventDefault(), ke());
     }
-    return ye(() => {
-      S = !0, de = o.bridge.subscribe((l) => {
+    return me(() => {
+      x = !0, de = o.bridge.subscribe((l) => {
         if (l.type === "tasks/state") {
           const i = l.payload?.state;
           i && (I += 1, ve(i));
@@ -1096,7 +1096,7 @@ var Xs = { class: "tasks-page" }, Ys = { class: "tasks-contract-sheet" }, _s = {
         l.type === "tasks/error" && (p.value = "任务状态暂时无法读取，请重新打开。");
       }), o.bridge.post("tasks/activate", { chatIdentity: r.value.chatIdentity });
     }), Ke(() => {
-      S = !1, H += 1, de(), g.value = null;
+      x = !1, H += 1, de(), g.value = null;
     }), (l, i) => (n(), d("main", {
       class: "tasks-app",
       onKeydown: Ue
@@ -1201,14 +1201,14 @@ var Xs = { class: "tasks-page" }, Ys = { class: "tasks-contract-sheet" }, _s = {
         "maintenance-message": he.value,
         "disabled-reason": F.value,
         onUpdate: Ae,
-        onMaintain: xe
+        onMaintain: Se
       }, null, 8, [
         "auto-maintenance",
         "settings-busy",
         "maintenance-busy",
         "maintenance-message",
         "disabled-reason"
-      ])) : v.value === "publish" ? (n(), A(xt, {
+      ])) : v.value === "publish" ? (n(), A(St, {
         key: 5,
         balance: r.value.playerBalance,
         busy: M.value,
@@ -1282,7 +1282,7 @@ var Xs = { class: "tasks-page" }, Ys = { class: "tasks-contract-sheet" }, _s = {
         }),
         onConfirm: Oe
       }, {
-        default: Ze(() => [g.value.kind === "publish" ? (n(), d(C, { key: 0 }, [
+        default: Fe(() => [g.value.kind === "publish" ? (n(), d(C, { key: 0 }, [
           e("p", ul, u(g.value.form.title), 1),
           e("strong", dl, "¤ " + u(q(V)(g.value.form.reward)), 1),
           i[17] || (i[17] = e("p", null, "报酬将从钱包托管。发布后可招募执行者；选人之前，你可以撤回并全额退回报酬。", -1))

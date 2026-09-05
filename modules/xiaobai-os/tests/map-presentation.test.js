@@ -3,9 +3,10 @@ import test from 'node:test';
 
 import {
     elementPresentation,
-    layoutMapAtlas,
     sceneElementPath,
 } from '../apps/map/ui/map-presentation.js';
+
+import { layoutWorldMap, locationInRegion, connectedPlaces } from '../apps/map/ui/world-map.js';
 
 function atlas(locations, links) {
     return {
@@ -15,27 +16,32 @@ function atlas(locations, links) {
     };
 }
 
-test('Atlas layout is deterministic across source collection order and preserves hierarchy depth', () => {
+test('world layout preserves authored geography and gives unpositioned destinations a read-only layout', () => {
     const locations = [
-        { key: 'room-b', name: 'Beta', scale: 'room', status: 'visited', parent: 'house', sceneKey: 'beta' },
-        { key: 'town', name: 'Town', scale: 'city', status: 'visited' },
-        { key: 'house', name: 'House', scale: 'building', status: 'visited', parent: 'town' },
-        { key: 'room-a', name: 'Alpha', scale: 'room', status: 'mentioned', parent: 'house', sceneKey: 'alpha' },
+        { key: 'town', name: 'Town', scale: 'city', status: 'mentioned' },
+        { key: 'home', name: 'Home', scale: 'building', status: 'visited', parent: 'town', position: [200, 650] },
+        { key: 'forest', name: 'Forest', scale: 'outdoor', status: 'mentioned', parent: 'town', position: [500, 100] },
+        { key: 'lake', name: 'Lake', scale: 'outdoor', status: 'mentioned', parent: 'town' },
+        { key: 'room', name: 'Room', scale: 'room', status: 'visited', parent: 'home' },
     ];
-    const links = [
-        { id: 'hallway', from: 'room-b', to: 'room-a', kind: 'passage', bidirectional: true },
-        { id: 'front-door', from: 'house', to: 'room-a', kind: 'door', bidirectional: true },
-    ];
-
-    const ordered = layoutMapAtlas(atlas(locations, links));
-    const reversed = layoutMapAtlas(atlas([...locations].reverse(), [...links].reverse()));
-
-    assert.deepEqual(reversed, ordered);
-    assert.equal(ordered.nodes.find(node => node.key === 'town').depth, 0);
-    assert.equal(ordered.nodes.find(node => node.key === 'house').depth, 1);
-    assert.equal(ordered.nodes.find(node => node.key === 'room-a').depth, 2);
-    assert.equal(ordered.hierarchy.length, 3);
-    assert.deepEqual(ordered.routes.map(route => route.id), ['front-door', 'hallway']);
+    const links = [{ id: 'trail', from: 'room', to: 'forest', kind: 'path', bidirectional: false }];
+    const world = atlas(locations, links);
+    const original = structuredClone(world);
+    const layout = layoutWorldMap(world, 'town');
+    assert.deepEqual(layoutWorldMap(atlas([...locations].reverse(), links), 'town'), layout);
+    assert.deepEqual(world, original);
+    assert.deepEqual(layout.nodes.map(node => node.location.key), ['forest', 'home', 'lake']);
+    assert.equal(layout.nodes.find(node => node.location.key === 'forest').y, 100);
+    assert.equal(layout.nodes.find(node => node.location.key === 'home').x, 200);
+    for (const node of layout.nodes.filter(item => !item.placed)) {
+        assert.ok(layout.nodes.every(other => other === node || Math.hypot(other.x - node.x, other.y - node.y) >= 160));
+    }
+    assert.equal(locationInRegion(world, 'room', 'town'), 'home');
+    assert.equal(layout.routes[0].from.location.key, 'home');
+    assert.equal(layout.routes[0].to.location.key, 'forest');
+    assert.equal(layout.routes[0].link.bidirectional, false);
+    assert.equal(connectedPlaces(world, 'forest')[0].outgoing, false);
+    assert.equal(connectedPlaces(world, 'room')[0].outgoing, true);
 });
 
 test('Scene paths close area semantics while routes remain open and curves stay smooth', () => {

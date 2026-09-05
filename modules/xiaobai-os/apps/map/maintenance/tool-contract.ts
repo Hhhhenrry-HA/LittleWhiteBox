@@ -29,7 +29,7 @@ export const MAP_MAINTENANCE_TOOL_NAMES = Object.freeze({
     SCENE_EDIT: 'MapSceneEdit',
 });
 
-const locationScale = ['city', 'district', 'building', 'floor', 'room', 'outdoor'];
+const locationScale = ['world', 'region', 'city', 'district', 'building', 'floor', 'room', 'outdoor'];
 const locationStatus = ['mentioned', 'visited'];
 const linkKind = ['door', 'stairs', 'elevator', 'path', 'road', 'portal', 'passage'];
 const mood = ['neutral', 'warm', 'cold', 'dark', 'mystic', 'danger', 'calm'];
@@ -80,7 +80,7 @@ export const MAP_MAINTENANCE_TOOLS: readonly MaintenanceFunctionDeclaration[] = 
         function: {
             name: MAP_MAINTENANCE_TOOL_NAMES.ATLAS_EDIT,
             description: [
-                'Declaratively maintain confirmed world locations, routes and actor positions. Do not send internal domain commands.',
+                'Build and maintain an explorable world from the supplied setting, adding coherent geography where it is unspecified. Actor movement and visited status still require story evidence. Do not send internal domain commands.',
                 'Location keys are stable identities. Scene links are owned by MapSceneEdit and are not tool input.',
                 'Omit a link id for the stable endpoint/kind-derived id. Bidirectional defaults true.',
                 'Removal is for explicit correction or destruction, never merely because an actor left a place.',
@@ -91,12 +91,12 @@ export const MAP_MAINTENANCE_TOOLS: readonly MaintenanceFunctionDeclaration[] = 
                     locations: {
                         type: 'array',
                         maxItems: MAX_MAP_LOCATIONS,
-                        description: 'Upsert confirmed places. Parents may appear anywhere in the same call.',
+                        description: 'Upsert setting-authored or coherently created places, including unvisited destinations. Parents may appear anywhere in the same call.',
                         items: {
                             type: 'object',
                             properties: {
                                 key: { type: 'string', maxLength: MAX_MAP_ID_LENGTH, description: 'Stable identity; keep it unchanged when the display name changes.' },
-                                name: { type: 'string', maxLength: MAX_MAP_NAME_LENGTH, description: 'Current confirmed display name.' },
+                                name: { type: 'string', maxLength: MAX_MAP_NAME_LENGTH, description: 'Stable in-world place name; respect author-provided names.' },
                                 scale: { type: 'string', enum: locationScale, description: 'Place hierarchy scale; default room for a new location.' },
                                 status: { type: 'string', enum: locationStatus, description: 'Confirmed discovery state. New places default to mentioned; the player\'s actual location is always visited.' },
                                 parent: {
@@ -104,7 +104,9 @@ export const MAP_MAINTENANCE_TOOLS: readonly MaintenanceFunctionDeclaration[] = 
                                     maxLength: MAX_MAP_ID_LENGTH,
                                     description: 'Existing or same-call parent location key. Use null to move the location to the Atlas root.',
                                 },
-                                brief: { type: 'string', maxLength: MAX_MAP_BRIEF_LENGTH, description: 'Optional short confirmed description used to identify the place.' },
+                                brief: { type: 'string', maxLength: MAX_MAP_BRIEF_LENGTH, description: 'Short in-world description: what distinguishes this place and why someone might visit. Do not invent events that already happened.' },
+                                position: { ...coordinatePair, type: ['array', 'null'], description: 'Use null to clear. Stable [x,y] map position inside the parent region (root places share the world plane). North is smaller y. Use roughly 0..1000 with 160+ separation; follow authored directions, otherwise establish plausible geography. Preserve existing positions.' },
+                                terrain: { type: ['string', 'null'], enum: ['urban', 'plain', 'forest', 'water', 'mountain', 'desert', 'snow', null], description: 'Use null to clear. Landscape of this place, used on the world map. Match the setting.' },
                             },
                             required: ['key', 'name'], additionalProperties: false,
                         },
@@ -112,7 +114,7 @@ export const MAP_MAINTENANCE_TOOLS: readonly MaintenanceFunctionDeclaration[] = 
                     links: {
                         type: 'array',
                         maxItems: MAX_MAP_LINKS,
-                        description: 'Upsert confirmed routes between existing or same-call location keys.',
+                        description: 'Upsert world routes between existing or same-call locations. Respect authored connections and add plausible connections for newly created destinations.',
                         items: {
                             type: 'object',
                             properties: {
@@ -196,7 +198,7 @@ export const MAP_MAINTENANCE_TOOLS: readonly MaintenanceFunctionDeclaration[] = 
                         maxLength: MAX_MAP_NAME_LENGTH,
                         description: 'Display name of the place. Defaults to the existing name, or to the scene key for a new place.',
                     },
-                    scale: { type: 'string', enum: locationScale, description: 'Place hierarchy scale; default room.' },
+                    scale: { type: 'string', enum: ['city', 'district', 'building', 'floor', 'room', 'outdoor'], description: 'Concrete scene scale; default room. Use the world atlas for worlds and regions.' },
                     status: { type: 'string', enum: locationStatus, description: 'Confirmed discovery state. Preserves an existing value; a new place defaults to mentioned unless the player is placed here, which makes it visited.' },
                     playerHere: { type: 'boolean', description: 'True when the player is inside this scene now. This makes the place visited. Also send a player element so the visible position updates.' },
                     viewBox: {

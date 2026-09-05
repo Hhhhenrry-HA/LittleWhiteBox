@@ -30,6 +30,8 @@ function projectLocation(location: MapLocation): AgentMapLocation {
         status: location.status,
         ...(location.parent ? { parent: location.parent } : {}),
         ...(location.brief ? { brief: location.brief } : {}),
+        ...(location.position ? { position: [...location.position] as [number, number] } : {}),
+        ...(location.terrain ? { terrain: location.terrain } : {}),
     };
 }
 

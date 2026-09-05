@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { A as Z, B as r, E as I, I as J, L as $, P as w, R as C, S as z, T as A, _ as g, b as X, c as E, d as e, f as B, g as S, l as T, m as s, p as h, s as Y, u as _, v as b, w as n } from "./xiaobai-os-runtime-dom.esm-bundler-DQLnRQQ3.js";
+import { C as n, F as P, I as $, L as C, N as y, T as D, _ as b, c as T, d as B, f as p, g, h as x, k as z, l as _, o as X, p as s, s as I, u as e, w as A, x as F, y as Y, z as r } from "./xiaobai-os-runtime-dom.esm-bundler-D8PGSboO.js";
 var ee = {
   class: "wallet-icon",
   viewBox: "0 0 24 24",
@@ -31,7 +31,7 @@ var ee = {
     };
     return (a, c) => (n(), s("svg", ee, [e("path", { d: i[t.name] || i.receipt }, null, 8, te)]));
   }
-}), y = ae, le = { class: "wallet-ui-header" }, ne = { class: "wallet-brand" }, se = ["disabled"], re = /* @__PURE__ */ b({
+}), w = ae, le = { class: "wallet-ui-header" }, ne = { class: "wallet-brand" }, se = ["disabled"], re = /* @__PURE__ */ b({
   __name: "WalletAppHeader",
   props: {
     refreshing: { type: Boolean },
@@ -40,7 +40,7 @@ var ee = {
   emits: ["refresh"],
   setup(t) {
     return (i, a) => (n(), s("header", le, [
-      e("span", ne, [g(y, { name: "wallet" })]),
+      e("span", ne, [g(w, { name: "wallet" })]),
       a[1] || (a[1] = e("h1", { class: "wallet-ui-title" }, "钱包", -1)),
       a[2] || (a[2] = e("span", { class: "wallet-header-context" }, "当前聊天", -1)),
       e("button", {
@@ -49,7 +49,7 @@ var ee = {
         disabled: t.disabled,
         "aria-label": "刷新钱包",
         onClick: a[0] || (a[0] = (c) => i.$emit("refresh"))
-      }, [g(y, {
+      }, [g(w, {
         name: "refresh",
         class: C({ "is-spinning": t.refreshing })
       }, null, 8, ["class"])], 8, se)
@@ -81,18 +81,18 @@ var ee = {
       class: "wallet-pocket-cards",
       "aria-hidden": "true"
     }, [e("span"), e("span")], -1)), e("div", ue, [
-      e("header", null, [v[0] || (v[0] = e("span", { id: "wallet-balance-title" }, "可用余额", -1)), e("span", de, [e("i", { class: C(`is-${t.status}`) }, null, 2), S(r(a.value), 1)])]),
+      e("header", null, [v[0] || (v[0] = e("span", { id: "wallet-balance-title" }, "可用余额", -1)), e("span", de, [e("i", { class: C(`is-${t.status}`) }, null, 2), x(r(a.value), 1)])]),
       e("div", {
         class: "wallet-balance-value",
         "aria-label": t.status === "loading" ? "余额正在读取" : `${t.balance.toLocaleString("zh-CN")} ${t.currency}`
       }, [v[1] || (v[1] = e("small", null, "¤", -1)), e("strong", null, r(t.status === "loading" ? "—" : t.balance.toLocaleString("zh-CN")), 1)], 8, ce),
-      e("footer", null, [e("span", null, r(t.currency) + " · 日常收支", 1), e("span", ve, [g(y, { name: "wallet" })])])
+      e("footer", null, [e("span", null, r(t.currency) + " · 日常收支", 1), e("span", ve, [g(w, { name: "wallet" })])])
     ])]));
   }
-}), fe = me, pe = {
+}), fe = me, he = {
   class: "wallet-ui-notice-icon",
   "aria-hidden": "true"
-}, he = { class: "wallet-ui-notice-copy" }, ge = { key: 0 }, we = /* @__PURE__ */ b({
+}, pe = { class: "wallet-ui-notice-copy" }, ge = { key: 0 }, ye = /* @__PURE__ */ b({
   __name: "WalletNotice",
   props: {
     title: {},
@@ -103,13 +103,13 @@ var ee = {
     return (i, a) => (n(), s("aside", {
       class: C(["wallet-ui-notice", `is-${t.tone}`]),
       role: "status"
-    }, [e("span", pe, [I(i.$slots, "icon", {}, () => [a[0] || (a[0] = S("!", -1))])]), e("div", he, [
+    }, [e("span", he, [D(i.$slots, "icon", {}, () => [a[0] || (a[0] = x("!", -1))])]), e("div", pe, [
       e("strong", null, r(t.title), 1),
-      t.message ? (n(), s("p", ge, r(t.message), 1)) : h("", !0),
-      I(i.$slots, "default")
+      t.message ? (n(), s("p", ge, r(t.message), 1)) : p("", !0),
+      D(i.$slots, "default")
     ])], 2));
   }
-}), ye = we, be = { class: "wallet-ui-empty" }, _e = {
+}), we = ye, be = { class: "wallet-ui-empty" }, _e = {
   key: 0,
   class: "wallet-ui-empty-icon",
   "aria-hidden": "true"
@@ -121,13 +121,13 @@ var ee = {
   },
   setup(t) {
     return (i, a) => (n(), s("div", be, [
-      i.$slots.icon ? (n(), s("span", _e, [I(i.$slots, "icon")])) : h("", !0),
+      i.$slots.icon ? (n(), s("span", _e, [D(i.$slots, "icon")])) : p("", !0),
       e("strong", null, r(t.title), 1),
-      t.message ? (n(), s("p", $e, r(t.message), 1)) : h("", !0)
+      t.message ? (n(), s("p", $e, r(t.message), 1)) : p("", !0)
     ]));
   }
 }), Me = ke;
-function F(t) {
+function Z(t) {
   return `${t.direction === "income" ? "+" : t.direction === "expense" ? "−" : ""}${t.amount.toLocaleString("zh-CN")}`;
 }
 var R = {
@@ -162,12 +162,12 @@ var Ce = {
       class: C(["wallet-row", `is-${t.transaction.direction}`]),
       onClick: c[0] || (c[0] = (v) => a.$emit("open", t.transaction))
     }, [
-      e("span", Ce, [g(y, { name: $(O)(t.transaction) }, null, 8, ["name"])]),
+      e("span", Ce, [g(w, { name: $(O)(t.transaction) }, null, 8, ["name"])]),
       e("span", We, [e("strong", null, r(t.transaction.title), 1), e("small", null, r(t.transaction.source) + " · " + r($(i).format(t.transaction.createdAt)), 1)]),
-      e("span", Te, [e("strong", null, r($(F)(t.transaction)), 1), e("small", null, r($(R)[t.transaction.direction]), 1)])
+      e("span", Te, [e("strong", null, r($(Z)(t.transaction)), 1), e("small", null, r($(R)[t.transaction.direction]), 1)])
     ], 2)]));
   }
-}), Se = Be, xe = {
+}), xe = Be, Se = {
   class: "wallet-filters",
   "aria-label": "账单类型"
 }, Ne = ["aria-pressed", "onClick"], Le = {
@@ -177,11 +177,11 @@ var Ce = {
   key: 1,
   class: "wallet-ui-empty",
   role: "status"
-}, Ae = { class: "wallet-ui-list" }, Ee = { class: "wallet-ledger-foot" }, Ie = {
+}, Ie = { class: "wallet-ui-list" }, Ae = { class: "wallet-ledger-foot" }, De = {
   key: 0,
   class: "wallet-load-error",
   role: "alert"
-}, De = ["disabled"], He = {
+}, Ee = ["disabled"], He = {
   key: 2,
   class: "wallet-ledger-end"
 }, qe = /* @__PURE__ */ b({
@@ -195,7 +195,7 @@ var Ce = {
   },
   emits: ["loadMore", "open"],
   setup(t) {
-    const i = t, a = w("all"), c = [
+    const i = t, a = y("all"), c = [
       {
         id: "all",
         label: "全部"
@@ -217,56 +217,56 @@ var Ce = {
       month: "long",
       day: "numeric"
     }), l = _(() => {
-      const p = [];
+      const h = [];
       for (const m of i.transactions) {
         if (a.value !== "all" && m.direction !== a.value) continue;
-        const f = v.format(m.createdAt), u = p.at(-1);
-        u?.date === f ? u.transactions.push(m) : p.push({
+        const f = v.format(m.createdAt), u = h.at(-1);
+        u?.date === f ? u.transactions.push(m) : h.push({
           date: f,
           transactions: [m]
         });
       }
-      return p;
+      return h;
     });
-    return (p, m) => (n(), s("div", null, [
-      e("div", xe, [(n(), s(T, null, A(c, (f) => e("button", {
+    return (h, m) => (n(), s("div", null, [
+      e("div", Se, [(n(), s(T, null, A(c, (f) => e("button", {
         key: f.id,
         type: "button",
         "aria-pressed": a.value === f.id,
         onClick: (u) => a.value = f.id
       }, r(f.label), 9, Ne)), 64))]),
-      a.value === "transfer" ? (n(), s("p", Le, "系统账户间的划转，不计入你的个人收支。")) : h("", !0),
-      t.loading ? (n(), s("div", Ve, [g(y, {
+      a.value === "transfer" ? (n(), s("p", Le, "系统账户间的划转，不计入你的个人收支。")) : p("", !0),
+      t.loading ? (n(), s("div", Ve, [g(w, {
         name: "refresh",
         class: "is-spinning"
       }), m[2] || (m[2] = e("strong", null, "正在准备你的钱包…", -1))])) : (n(), s(T, { key: 2 }, [
-        l.value.length ? h("", !0) : (n(), B(Me, {
+        l.value.length ? p("", !0) : (n(), B(Me, {
           key: 0,
           title: t.hasMore ? "已加载的账目中暂无匹配项" : "这里还没有账目",
           message: "每一笔已确认的资金流动，都会记在这里。"
         }, {
-          icon: Z(() => [g(y, { name: "receipt" })]),
+          icon: z(() => [g(w, { name: "receipt" })]),
           _: 1
         }, 8, ["title"])),
         (n(!0), s(T, null, A(l.value, (f) => (n(), s("section", {
           key: f.transactions[0].id,
           class: "wallet-day-group"
-        }, [e("h3", null, r(f.date), 1), e("ol", Ae, [(n(!0), s(T, null, A(f.transactions, (u) => (n(), B(Se, {
+        }, [e("h3", null, r(f.date), 1), e("ol", Ie, [(n(!0), s(T, null, A(f.transactions, (u) => (n(), B(xe, {
           key: u.id,
           transaction: u,
-          onOpen: m[0] || (m[0] = (M) => p.$emit("open", M))
+          onOpen: m[0] || (m[0] = (M) => h.$emit("open", M))
         }, null, 8, ["transaction"]))), 128))])]))), 128)),
-        e("div", Ee, [t.error ? (n(), s("p", Ie, r(t.error), 1)) : h("", !0), t.hasMore ? (n(), s("button", {
+        e("div", Ae, [t.error ? (n(), s("p", De, r(t.error), 1)) : p("", !0), t.hasMore ? (n(), s("button", {
           key: 1,
           type: "button",
           class: "wallet-ui-text-button",
           disabled: t.loadingMore,
-          onClick: m[1] || (m[1] = (f) => p.$emit("loadMore"))
-        }, [S(r(t.loadingMore ? "正在读取…" : "查看更早的账单"), 1), g(y, { name: "next" })], 8, De)) : t.transactions.length ? (n(), s("span", He, "每一笔，都有来处")) : h("", !0)])
+          onClick: m[1] || (m[1] = (f) => h.$emit("loadMore"))
+        }, [x(r(t.loadingMore ? "正在读取…" : "查看更早的账单"), 1), g(w, { name: "next" })], 8, Ee)) : t.transactions.length ? (n(), s("span", He, "每一笔，都有来处")) : p("", !0)])
       ], 64))
     ]));
   }
-}), Ze = qe, ze = { class: "wallet-row-mark" }, Fe = {
+}), ze = qe, Fe = { class: "wallet-row-mark" }, Ze = {
   key: 0,
   class: "wallet-receipt-note"
 }, Re = {
@@ -277,8 +277,8 @@ var Ce = {
   props: { transaction: {} },
   emits: ["close"],
   setup(t) {
-    const i = w(null), a = w(null);
-    z(() => i.value?.showModal());
+    const i = y(null), a = y(null);
+    F(() => i.value?.showModal());
     const c = new Intl.DateTimeFormat("zh-CN", {
       dateStyle: "medium",
       timeStyle: "short",
@@ -289,9 +289,9 @@ var Ce = {
       ref: i,
       class: "wallet-receipt",
       "aria-label": "账单详情",
-      onCancel: l[1] || (l[1] = E((p) => v.$emit("close"), ["prevent"])),
-      onKeydown: [l[2] || (l[2] = E(() => {
-      }, ["stop"])), l[3] || (l[3] = Y(E((p) => a.value?.focus(), ["prevent"]), ["tab"]))]
+      onCancel: l[1] || (l[1] = I((h) => v.$emit("close"), ["prevent"])),
+      onKeydown: [l[2] || (l[2] = I(() => {
+      }, ["stop"])), l[3] || (l[3] = X(I((h) => a.value?.focus(), ["prevent"]), ["tab"]))]
     }, [
       e("header", null, [l[4] || (l[4] = e("span", null, "账单详情", -1)), e("button", {
         ref_key: "closeButton",
@@ -300,39 +300,39 @@ var Ce = {
         class: "wallet-icon-button",
         "aria-label": "关闭账单详情",
         autofocus: "",
-        onClick: l[0] || (l[0] = (p) => v.$emit("close"))
-      }, [g(y, { name: "close" })], 512)]),
+        onClick: l[0] || (l[0] = (h) => v.$emit("close"))
+      }, [g(w, { name: "close" })], 512)]),
       e("div", { class: C(["wallet-receipt-hero", `is-${t.transaction.direction}`]) }, [
-        e("span", ze, [g(y, { name: $(O)(t.transaction) }, null, 8, ["name"])]),
+        e("span", Fe, [g(w, { name: $(O)(t.transaction) }, null, 8, ["name"])]),
         e("h2", null, r(t.transaction.title), 1),
-        e("strong", null, [S(r($(F)(t.transaction)), 1), l[5] || (l[5] = e("small", null, "小白币", -1))]),
+        e("strong", null, [x(r($(Z)(t.transaction)), 1), l[5] || (l[5] = e("small", null, "小白币", -1))]),
         e("span", null, r($(R)[t.transaction.direction]), 1)
       ], 2),
       e("dl", null, [
         e("div", null, [l[6] || (l[6] = e("dt", null, "来自", -1)), e("dd", null, r(t.transaction.source), 1)]),
         e("div", null, [l[7] || (l[7] = e("dt", null, "发生时间", -1)), e("dd", null, r($(c).format(t.transaction.createdAt)), 1)]),
         e("div", null, [l[8] || (l[8] = e("dt", null, "账目序号", -1)), e("dd", null, "#" + r(t.transaction.sequence), 1)]),
-        t.transaction.note ? (n(), s("div", Fe, [l[9] || (l[9] = e("dt", null, "备注", -1)), e("dd", null, r(t.transaction.note), 1)])) : h("", !0)
+        t.transaction.note ? (n(), s("div", Ze, [l[9] || (l[9] = e("dt", null, "备注", -1)), e("dd", null, r(t.transaction.note), 1)])) : p("", !0)
       ]),
-      t.transaction.direction === "transfer" ? (n(), s("p", Re, "这笔资金在系统账户之间流转，不是你的收入或支出。")) : h("", !0),
+      t.transaction.direction === "transfer" ? (n(), s("p", Re, "这笔资金在系统账户之间流转，不是你的收入或支出。")) : p("", !0),
       l[10] || (l[10] = e("footer", null, "小白 OS · 当前聊天账本", -1))
     ], 544));
   }
-}), Ue = Oe, Ke = { class: "wallet-ui-app wallet-app" }, je = { class: "wallet-ui-scroll" }, Ge = ["disabled"], Pe = ["disabled"], Qe = {
+}), Ue = Oe, Ke = { class: "wallet-ui-app wallet-app" }, je = { class: "wallet-ui-scroll" }, Ge = ["disabled"], Qe = ["disabled"], Je = {
   class: "wallet-ledger",
   "aria-labelledby": "wallet-ledger-title"
-}, Je = { class: "wallet-ui-section-title" }, q = 35e3, Xe = /* @__PURE__ */ b({
+}, Pe = { class: "wallet-ui-section-title" }, q = 35e3, Xe = /* @__PURE__ */ b({
   __name: "WalletApp",
   props: {
     bridge: {},
     initialState: {}
   },
   setup(t) {
-    const i = t, a = w(structuredClone(J(i.initialState))), c = w(!1), v = w(!1), l = w(""), p = w(""), m = w(null);
+    const i = t, a = y(structuredClone(P(i.initialState))), c = y(!1), v = y(!1), l = y(""), h = y(""), m = y(null);
     let f = () => {
     }, u = 0;
-    const M = _(() => a.value.status === "unconfirmed"), W = _(() => c.value || a.value.status === "loading" || a.value.status === "saving"), D = _(() => W.value || M.value || a.value.status === "conflict"), U = _(() => !!(a.value.message || l.value)), K = _(() => l.value || a.value.status === "conflict" || a.value.status === "blocked" ? "danger" : M.value ? "warning" : "info"), j = _(() => a.value.status === "conflict" ? "账本发生冲突" : a.value.status === "blocked" ? "钱包暂时无法读取" : "账本状态");
-    function x(o) {
+    const M = _(() => a.value.status === "unconfirmed"), W = _(() => c.value || a.value.status === "loading" || a.value.status === "saving"), E = _(() => W.value || M.value || a.value.status === "conflict"), U = _(() => !!(a.value.message || l.value)), K = _(() => l.value || a.value.status === "conflict" || a.value.status === "blocked" ? "danger" : M.value ? "warning" : "info"), j = _(() => a.value.status === "conflict" ? "账本发生冲突" : a.value.status === "blocked" ? "钱包暂时无法读取" : "账本状态");
+    function S(o) {
       const d = o instanceof Error ? o.message : String(o);
       return d.includes("聊天已切换") ? "聊天已切换，请重新打开钱包。" : d === "host_request_timeout" ? "读取等待超时，请稍后重新读取。" : "钱包数据暂时无法读取，请稍后重试。";
     }
@@ -340,7 +340,7 @@ var Ce = {
       return { chatIdentity: a.value.chatIdentity };
     }
     function L(o) {
-      a.value = structuredClone(o), c.value = !1, v.value = !1, l.value = "", p.value = "";
+      a.value = structuredClone(o), c.value = !1, v.value = !1, l.value = "", h.value = "";
     }
     async function H() {
       if (W.value || M.value || a.value.status === "conflict") return;
@@ -350,7 +350,7 @@ var Ce = {
         const d = await i.bridge.request("wallet/refresh", N(), q);
         o === u && L(d.result);
       } catch (d) {
-        o === u && (l.value = x(d));
+        o === u && (l.value = S(d));
       } finally {
         o === u && (c.value = !1);
       }
@@ -363,40 +363,40 @@ var Ce = {
         const d = await i.bridge.request("wallet/confirm-save", N(), q);
         o === u && L(d.result.state);
       } catch (d) {
-        o === u && (l.value = x(d));
+        o === u && (l.value = S(d));
       } finally {
         o === u && (c.value = !1);
       }
     }
-    async function P() {
+    async function Q() {
       const o = a.value.nextCursor;
       if (!o || v.value || W.value) return;
       const d = u;
-      v.value = !0, p.value = "";
+      v.value = !0, h.value = "";
       try {
         const k = await i.bridge.request("wallet/load-more", {
           ...N(),
           beforeSequence: o
         });
         if (d !== u) return;
-        const Q = new Set(a.value.transactions.map((V) => V.id));
-        a.value.transactions.push(...k.result.transactions.filter((V) => !Q.has(V.id))), a.value.nextCursor = k.result.nextCursor, a.value.hasMore = k.result.hasMore;
+        const J = new Set(a.value.transactions.map((V) => V.id));
+        a.value.transactions.push(...k.result.transactions.filter((V) => !J.has(V.id))), a.value.nextCursor = k.result.nextCursor, a.value.hasMore = k.result.hasMore;
       } catch {
-        d === u && (p.value = "更多流水暂时无法读取，请稍后重试。");
+        d === u && (h.value = "更多流水暂时无法读取，请稍后重试。");
       } finally {
         d === u && (v.value = !1);
       }
     }
-    return z(() => {
+    return F(() => {
       f = i.bridge.subscribe((o) => {
-        o.type === "wallet/state" && (u += 1, L(o.payload.state)), o.type === "wallet/error" && (l.value = x(o.payload?.message || ""));
+        o.type === "wallet/state" && (u += 1, L(o.payload.state)), o.type === "wallet/error" && (l.value = S(o.payload?.message || ""));
       });
-    }), X(() => {
+    }), Y(() => {
       u += 1, f();
     }), (o, d) => (n(), s("main", Ke, [
       g(ie, {
         refreshing: c.value,
-        disabled: D.value,
+        disabled: E.value,
         onRefresh: H
       }, null, 8, ["refreshing", "disabled"]),
       e("div", je, [
@@ -409,14 +409,14 @@ var Ce = {
           "currency",
           "status"
         ]),
-        U.value ? (n(), B(ye, {
+        U.value ? (n(), B(we, {
           key: 0,
           class: "wallet-notice",
           tone: K.value,
           title: j.value,
           message: l.value || a.value.message
         }, {
-          default: Z(() => [M.value ? (n(), s("button", {
+          default: z(() => [M.value ? (n(), s("button", {
             key: 0,
             type: "button",
             class: "wallet-ui-text-button",
@@ -426,22 +426,22 @@ var Ce = {
             key: 1,
             type: "button",
             class: "wallet-ui-text-button",
-            disabled: D.value,
+            disabled: E.value,
             onClick: H
-          }, r(c.value ? "正在读取…" : "重新读取"), 9, Pe)) : h("", !0)]),
+          }, r(c.value ? "正在读取…" : "重新读取"), 9, Qe)) : p("", !0)]),
           _: 1
         }, 8, [
           "tone",
           "title",
           "message"
-        ])) : h("", !0),
-        e("section", Qe, [e("div", Je, [d[2] || (d[2] = e("h2", { id: "wallet-ledger-title" }, "收支账单", -1)), e("small", null, "共 " + r(a.value.transactionCount) + " 笔", 1)]), g(Ze, {
+        ])) : p("", !0),
+        e("section", Je, [e("div", Pe, [d[2] || (d[2] = e("h2", { id: "wallet-ledger-title" }, "收支账单", -1)), e("small", null, "共 " + r(a.value.transactionCount) + " 笔", 1)]), g(ze, {
           transactions: a.value.transactions,
           "has-more": a.value.hasMore,
           "loading-more": v.value,
           loading: a.value.status === "loading",
-          error: p.value,
-          onLoadMore: P,
+          error: h.value,
+          onLoadMore: Q,
           onOpen: d[0] || (d[0] = (k) => m.value = k)
         }, null, 8, [
           "transactions",
@@ -455,7 +455,7 @@ var Ce = {
         key: 0,
         transaction: m.value,
         onClose: d[1] || (d[1] = (k) => m.value = null)
-      }, null, 8, ["transaction"])) : h("", !0)
+      }, null, 8, ["transaction"])) : p("", !0)
     ]));
   }
 }), et = Xe;

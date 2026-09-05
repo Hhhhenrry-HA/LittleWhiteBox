@@ -1,4 +1,5 @@
-export type MapLocationScale = 'city' | 'district' | 'building' | 'floor' | 'room' | 'outdoor';
+export type MapLocationScale = 'world' | 'region' | 'city' | 'district' | 'building' | 'floor' | 'room' | 'outdoor';
+export type MapTerrain = 'urban' | 'plain' | 'forest' | 'water' | 'mountain' | 'desert' | 'snow';
 export type MapLocationStatus = 'mentioned' | 'visited';
 export type MapLinkKind = 'door' | 'stairs' | 'elevator' | 'path' | 'road' | 'portal' | 'passage';
 export type MapSceneStatus = 'uninitialized' | 'active';
@@ -154,6 +155,9 @@ export interface MapLocation {
     parent?: string;
     sceneKey?: string;
     brief?: string;
+    /** Stable map position within the parent region; north is smaller y. Not GPS or distance. */
+    position?: [number, number];
+    terrain?: MapTerrain;
 }
 
 export interface MapLink {

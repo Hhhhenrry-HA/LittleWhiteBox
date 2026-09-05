@@ -71,7 +71,7 @@ function routeOverview(link: MapLink, locationByKey: ReadonlyMap<string, MapLoca
         : `${fromName}可经由${via}前往${toName}`;
 }
 
-/** Builds a bounded, roleplay-friendly Atlas projection. Invalid or unlocated maps project to nothing. */
+/** One bounded world projection for RP and other consumers, including places not yet visited. */
 export function buildMapPromptBlock(value: unknown): string {
     let domain: MapDomainV1;
     try {
@@ -80,16 +80,15 @@ export function buildMapPromptBlock(value: unknown): string {
         return '';
     }
     const player = domain.atlas.actors.find(actor => actor.actorKey === 'player');
-    if (!player) {return '';}
+    if (!domain.atlas.locations.length) {return '';}
     const locationByKey = new Map(domain.atlas.locations.map(location => [location.key, location]));
-    const current = locationByKey.get(player.locationKey);
-    if (!current) {return '';}
+    const current = player ? locationByKey.get(player.locationKey) : undefined;
 
     const closing = '</current_map>';
     const lines = [
         '<current_map>',
-        '以下是已确认的空间连续性资料。',
-        `当前位置：${escapeMapPromptText(current.name, 80)}`,
+        '以下是当前世界地图，包含尚未到访的地点；地点存在不代表人物已到访。后续剧情沿用这些地点与连接。',
+        `当前位置：${current ? escapeMapPromptText(current.name, 80) : '尚未确定'}`,
     ];
     const fits = (candidateLines: readonly string[]): boolean => (
         codePointLength([...candidateLines, closing].join('\n')) <= MAX_MAP_PROMPT_CHARS
@@ -100,13 +99,13 @@ export function buildMapPromptBlock(value: unknown): string {
         return true;
     };
 
-    const parent = current.parent ? locationByKey.get(current.parent) : undefined;
+    const parent = current?.parent ? locationByKey.get(current.parent) : undefined;
     if (parent) {appendLine(`所属区域：${escapeMapPromptText(parent.name, 80)}`);}
-    if (current.brief) {appendLine(`地点概况：${escapeMapPromptText(current.brief, 160)}`);}
+    if (current?.brief) {appendLine(`地点概况：${escapeMapPromptText(current.brief, 120)}`);}
 
     const direct = new Map<string, { location: MapLocation; link: MapLink }>();
     for (const link of domain.atlas.links) {
-        const destination = directDestination(link, current.key, locationByKey);
+        const destination = current ? directDestination(link, current.key, locationByKey) : null;
         if (destination && !direct.has(destination.key)) {direct.set(destination.key, { location: destination, link });}
     }
     const directEntries = Array.from(direct.values()).map(entry => directLine(entry.location, entry.link));
@@ -115,7 +114,7 @@ export function buildMapPromptBlock(value: unknown): string {
         if (fits([...lines, '可直接到达：', ...selectedDirect, entry])) {selectedDirect.push(entry);}
     }
     if (selectedDirect.length) {lines.push('可直接到达：', ...selectedDirect);}
-    else if (!directEntries.length) {appendLine('可直接到达：暂无已确认路线。');}
+    else if (current && !directEntries.length) {appendLine('可直接到达：暂无已记录路线。');}
 
     const appendCompactSection = (prefix: string, entries: readonly string[]): void => {
         const selected: string[] = [];
@@ -126,11 +125,11 @@ export function buildMapPromptBlock(value: unknown): string {
         if (selected.length) {lines.push(`${prefix}${selected.join('；')}。`);}
     };
     appendCompactSection(
-        '已确认地点：',
+        '世界地点：',
         domain.atlas.locations.map(location => locationOverview(location, locationByKey)),
     );
     appendCompactSection(
-        '已确认路线：',
+        '世界路线：',
         domain.atlas.links.map(link => routeOverview(link, locationByKey)),
     );
 

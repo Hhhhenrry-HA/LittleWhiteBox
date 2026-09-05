@@ -1,6 +1,6 @@
 /* eslint-disable */
-import { A as V, B as _, D as t2, E as r2, F as i2, L as o2, M as X, P as y, R as H, S as l2, T as s2, _ as I, b as n2, c as c2, d as i, f as M, g as d2, l as p2, m as u, n as u2, p as R, t as f2, u as K, v as O, w as d, x as h2, y as v2, z as N } from "./xiaobai-os-runtime-dom.esm-bundler-DQLnRQQ3.js";
-import { n as m2, t as $ } from "./xiaobai-os-frame-bridge-8-bd80In.js";
+import { C as d, E as t2, I as r2, L as M, N as y, P as i2, R as N, T as o2, _ as O, b as l2, c as s2, d as H, f as R, g as G, h as n2, j as V, k as X, l as K, n as c2, p as u, s as d2, t as p2, u as i, v as u2, w as f2, x as h2, y as v2, z as _ } from "./xiaobai-os-runtime-dom.esm-bundler-D8PGSboO.js";
+import { n as m2, t as D } from "./xiaobai-os-frame-bridge-8-bd80In.js";
 var g2 = [
   "agent-api",
   "fourth-wall",
@@ -42,8 +42,8 @@ var g2 = [
   id: "wallet",
   name: "钱包",
   accent: "#a9660f"
-}), _2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23334968'/%3e%3cstop%20offset='1'%20stop-color='%23111c32'/%3e%3c/linearGradient%3e%3clinearGradient%20id='paper'%20x1='30'%20y1='16'%20x2='60'%20y2='72'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23fffdf4'/%3e%3cstop%20offset='1'%20stop-color='%23f2e8d6'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3cpath%20d='M30%2015h31l10%2010v41a7%207%200%200%201-7%207H27a7%207%200%200%201-7-7V25a10%2010%200%200%201%2010-10Z'%20fill='%2313213b'%20opacity='.4'%20transform='translate(0%203)'/%3e%3crect%20x='22'%20y='18'%20width='44'%20height='51'%20rx='10'%20fill='url(%23paper)'%20filter='url(%23shadow)'/%3e%3cpath%20d='M33%2030v28m22-28v28M28%2036h32M28%2051h32'%20stroke='%23b6c9de'%20stroke-width='2'/%3e%3crect%20x='32'%20y='31'%20width='24'%20height='25'%20rx='7'%20fill='%23426ee8'/%3e%3cpath%20d='m42%2037-6%206%206%206m5-12%206%206-6%206'%20stroke='white'%20stroke-width='2.3'%20fill='none'%20stroke-linecap='round'%20stroke-linejoin='round'/%3e%3ccircle%20cx='64'%20cy='66'%20r='11'%20fill='%238be3c2'%20stroke='%231c3048'%20stroke-width='3'/%3e%3cpath%20d='m60%2066%203%203%205-6'%20stroke='%23164d49'%20stroke-width='2'%20fill='none'%20stroke-linecap='round'/%3e%3c/svg%3e", "" + import.meta.url).href, R2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23ab9ced'/%3e%3cstop%20offset='1'%20stop-color='%236552b5'/%3e%3c/linearGradient%3e%3clinearGradient%20id='paper'%20x1='30'%20y1='16'%20x2='60'%20y2='72'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23fffdf4'/%3e%3cstop%20offset='1'%20stop-color='%23f2e8d6'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3crect%20x='23'%20y='16'%20width='43'%20height='54'%20rx='15'%20fill='%23513f99'%20opacity='.45'%20transform='rotate(12%2044%2044)'/%3e%3cpath%20d='M26%2023h34a10%2010%200%200%201%2010%2010v16a10%2010%200%200%201-10%2010H46L34%2070l1-11h-9a10%2010%200%200%201-10-10V33a10%2010%200%200%201%2010-10Z'%20fill='url(%23paper)'%20filter='url(%23shadow)'/%3e%3cpath%20d='M34%2034v15m-4-15h8m-8%2015h8m6-15%205%2015%206-15'%20stroke='%238069c2'%20stroke-width='3'%20fill='none'%20stroke-linecap='round'%20stroke-linejoin='round'/%3e%3cpath%20d='m68%2017%202%206%206%202-6%202-2%206-2-6-6-2%206-2Z'%20fill='%23fbe4a9'/%3e%3c/svg%3e", "" + import.meta.url).href, P2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%234dad91'/%3e%3cstop%20offset='1'%20stop-color='%23176b62'/%3e%3c/linearGradient%3e%3clinearGradient%20id='leather'%20x1='20'%20y1='30'%20x2='65'%20y2='67'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23388d73'/%3e%3cstop%20offset='1'%20stop-color='%23216657'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3cg%20transform='rotate(-10%2044%2035)'%3e%3crect%20x='21'%20y='16'%20width='46'%20height='37'%20rx='6'%20fill='%23dfb46e'/%3e%3crect%20x='25'%20y='23'%20width='40'%20height='32'%20rx='5'%20fill='%23f9e8bc'/%3e%3cpath%20d='M29%2030h27'%20stroke='%23d2b578'%20stroke-width='4'/%3e%3c/g%3e%3crect%20x='16'%20y='33'%20width='56'%20height='37'%20rx='10'%20fill='%23104c48'%20filter='url(%23shadow)'/%3e%3crect%20x='16'%20y='31'%20width='56'%20height='36'%20rx='10'%20fill='url(%23leather)'/%3e%3crect%20x='20'%20y='35'%20width='48'%20height='28'%20rx='7'%20fill='none'%20stroke='%23b3e3cc'%20stroke-opacity='.48'%20stroke-dasharray='2%202'/%3e%3cpath%20d='M59%2043h15v16H59a8%208%200%200%201%200-16Z'%20fill='%23206d60'%20stroke='%2386bba1'%20stroke-width='1'/%3e%3ccircle%20cx='60'%20cy='51'%20r='3'%20fill='%23eed59c'/%3e%3c/svg%3e", "" + import.meta.url).href, G2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23f1b8a1'/%3e%3cstop%20offset='1'%20stop-color='%23d37469'/%3e%3c/linearGradient%3e%3clinearGradient%20id='paper'%20x1='30'%20y1='16'%20x2='60'%20y2='72'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23fffdf4'/%3e%3cstop%20offset='1'%20stop-color='%23f2e8d6'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3cpath%20d='M23%2033h43l5%2034a5%205%200%200%201-5%205H22a5%205%200%200%201-5-5Z'%20fill='%2386483e'%20opacity='.3'/%3e%3cpath%20d='M24%2030h40l5%2034a5%205%200%200%201-5%206H24a5%205%200%200%201-5-6Z'%20fill='url(%23paper)'%20filter='url(%23shadow)'/%3e%3cpath%20d='M34%2033v-8a10%2010%200%200%201%2020%200v8'%20fill='none'%20stroke='%2398594c'%20stroke-width='4'%20stroke-linecap='round'/%3e%3cpath%20d='m44%2041%203.5%208%208.5%203.5-8.5%203.5-3.5%208-3.5-8-8.5-3.5%208.5-3.5Z'%20fill='%23c67560'/%3e%3cpath%20d='m69%2017%202%205%205%202-5%202-2%205-2-5-5-2%205-2Z'%20fill='%23fff1d3'/%3e%3c/svg%3e", "" + import.meta.url).href, I2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%233d807d'/%3e%3cstop%20offset='1'%20stop-color='%23143c45'/%3e%3c/linearGradient%3e%3clinearGradient%20id='metal'%20x1='17'%20y1='14'%20x2='68'%20y2='74'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23d9e6df'/%3e%3cstop%20offset='.5'%20stop-color='%239cb7b5'/%3e%3cstop%20offset='1'%20stop-color='%23789a9e'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3crect%20x='17'%20y='16'%20width='56'%20height='60'%20rx='13'%20fill='%23122e35'%20opacity='.4'/%3e%3crect%20x='17'%20y='14'%20width='54'%20height='60'%20rx='12'%20fill='url(%23metal)'%20filter='url(%23shadow)'/%3e%3crect%20x='23'%20y='20'%20width='42'%20height='47'%20rx='8'%20fill='%23284c55'%20stroke='%23abc6c7'%20stroke-width='2'/%3e%3ccircle%20cx='44'%20cy='44'%20r='16'%20fill='url(%23metal)'/%3e%3ccircle%20cx='44'%20cy='44'%20r='11'%20fill='%2340636a'/%3e%3cpath%20d='M44%2035v18m-9-9h18m-15-6%2012%2012m0-12L38%2050'%20stroke='%23cfe1da'%20stroke-width='2.6'%20stroke-linecap='round'/%3e%3ccircle%20cx='44'%20cy='44'%20r='4.5'%20fill='%23e8c98b'/%3e%3cpath%20d='M22%2029v8m0%2014v8'%20stroke='%23f5f2dc'%20stroke-width='4'%20stroke-linecap='round'/%3e%3c/svg%3e", "" + import.meta.url).href, U2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23e7847d'/%3e%3cstop%20offset='1'%20stop-color='%23af344c'/%3e%3c/linearGradient%3e%3clinearGradient%20id='paper'%20x1='30'%20y1='16'%20x2='60'%20y2='72'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23fffdf4'/%3e%3cstop%20offset='1'%20stop-color='%23f2e8d6'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3cg%20transform='rotate(17%2058%2034)'%3e%3crect%20x='37'%20y='14'%20width='35'%20height='37'%20rx='9'%20fill='%23792741'%20opacity='.4'%20transform='translate(0%203)'/%3e%3crect%20x='37'%20y='14'%20width='35'%20height='35'%20rx='9'%20fill='%23f6c9b5'/%3e%3cg%20fill='%23b24b5b'%3e%3ccircle%20cx='47'%20cy='24'%20r='3'/%3e%3ccircle%20cx='62'%20cy='39'%20r='3'/%3e%3c/g%3e%3c/g%3e%3cg%20transform='rotate(-15%2036%2052)'%20filter='url(%23shadow)'%3e%3crect%20x='15'%20y='31'%20width='43'%20height='43'%20rx='11'%20fill='url(%23paper)'/%3e%3cg%20fill='%23ae3d53'%3e%3ccircle%20cx='27'%20cy='43'%20r='3.6'/%3e%3ccircle%20cx='46'%20cy='43'%20r='3.6'/%3e%3ccircle%20cx='36.5'%20cy='52.5'%20r='3.6'/%3e%3ccircle%20cx='27'%20cy='62'%20r='3.6'/%3e%3ccircle%20cx='46'%20cy='62'%20r='3.6'/%3e%3c/g%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href, B2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%239dccad'/%3e%3cstop%20offset='1'%20stop-color='%234d997d'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3cpath%20d='m14%2026%2020-6%2020%206%2020-7v48l-20%207-20-6-20%206Z'%20fill='%2324694d'%20opacity='.25'%20transform='translate(0%203)'/%3e%3cpath%20d='m14%2024%2020-6%2020%206%2020-7v48l-20%207-20-6-20%206Z'%20fill='%23f5edd4'%20filter='url(%23shadow)'/%3e%3cpath%20d='m34%2018%2020%206v48l-20-6Z'%20fill='%23d9e4bb'/%3e%3cpath%20d='m14%2054%2020-7%2020%206%2020-20'%20stroke='%2392bdce'%20stroke-width='7'%20fill='none'/%3e%3cpath%20d='m20%2032%2017%205%208%2024%2025-5'%20stroke='%23fffef0'%20stroke-width='4'%20fill='none'/%3e%3cpath%20d='M59%2017a12%2012%200%200%200-12%2012c0%2010%2012%2020%2012%2020s12-10%2012-20a12%2012%200%200%200-12-12Z'%20fill='%23e4774f'%20filter='url(%23shadow)'/%3e%3ccircle%20cx='59'%20cy='29'%20r='4.5'%20fill='%23fff5df'/%3e%3c/svg%3e", "" + import.meta.url).href, E2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23f6ac72'/%3e%3cstop%20offset='1'%20stop-color='%23df673d'/%3e%3c/linearGradient%3e%3clinearGradient%20id='paper'%20x1='30'%20y1='16'%20x2='60'%20y2='72'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23fffdf4'/%3e%3cstop%20offset='1'%20stop-color='%23f2e8d6'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3crect%20x='20'%20y='17'%20width='47'%20height='58'%20rx='8'%20fill='%23a84c2d'%20opacity='.3'%20transform='rotate(9%2044%2044)'/%3e%3crect%20x='18'%20y='15'%20width='48'%20height='59'%20rx='8'%20fill='%23f5d7ac'%20transform='rotate(-9%2044%2044)'/%3e%3cpath%20d='M30%2013h23l12%2012v42a7%207%200%200%201-7%207H30a7%207%200%200%201-7-7V20a7%207%200%200%201%207-7Z'%20fill='url(%23paper)'%20filter='url(%23shadow)'/%3e%3cpath%20d='M53%2013v9a3%203%200%200%200%203%203h9'%20fill='%23ead4b8'/%3e%3cpath%20d='M33%2034h21M33%2042h16M33%2050h12'%20stroke='%23d4b49b'%20stroke-width='3'%20stroke-linecap='round'/%3e%3ccircle%20cx='59'%20cy='61'%20r='13'%20fill='%23d96940'%20stroke='%23f9d7a9'%20stroke-width='2'/%3e%3cpath%20d='m53%2061%204%204%208-9'%20stroke='%23fff4db'%20stroke-width='3'%20fill='none'%20stroke-linecap='round'%20stroke-linejoin='round'/%3e%3c/svg%3e", "" + import.meta.url).href;
-function D2(t) {
+}), _2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23334968'/%3e%3cstop%20offset='1'%20stop-color='%23111c32'/%3e%3c/linearGradient%3e%3clinearGradient%20id='paper'%20x1='30'%20y1='16'%20x2='60'%20y2='72'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23fffdf4'/%3e%3cstop%20offset='1'%20stop-color='%23f2e8d6'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3cpath%20d='M30%2015h31l10%2010v41a7%207%200%200%201-7%207H27a7%207%200%200%201-7-7V25a10%2010%200%200%201%2010-10Z'%20fill='%2313213b'%20opacity='.4'%20transform='translate(0%203)'/%3e%3crect%20x='22'%20y='18'%20width='44'%20height='51'%20rx='10'%20fill='url(%23paper)'%20filter='url(%23shadow)'/%3e%3cpath%20d='M33%2030v28m22-28v28M28%2036h32M28%2051h32'%20stroke='%23b6c9de'%20stroke-width='2'/%3e%3crect%20x='32'%20y='31'%20width='24'%20height='25'%20rx='7'%20fill='%23426ee8'/%3e%3cpath%20d='m42%2037-6%206%206%206m5-12%206%206-6%206'%20stroke='white'%20stroke-width='2.3'%20fill='none'%20stroke-linecap='round'%20stroke-linejoin='round'/%3e%3ccircle%20cx='64'%20cy='66'%20r='11'%20fill='%238be3c2'%20stroke='%231c3048'%20stroke-width='3'/%3e%3cpath%20d='m60%2066%203%203%205-6'%20stroke='%23164d49'%20stroke-width='2'%20fill='none'%20stroke-linecap='round'/%3e%3c/svg%3e", "" + import.meta.url).href, R2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23ab9ced'/%3e%3cstop%20offset='1'%20stop-color='%236552b5'/%3e%3c/linearGradient%3e%3clinearGradient%20id='paper'%20x1='30'%20y1='16'%20x2='60'%20y2='72'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23fffdf4'/%3e%3cstop%20offset='1'%20stop-color='%23f2e8d6'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3crect%20x='23'%20y='16'%20width='43'%20height='54'%20rx='15'%20fill='%23513f99'%20opacity='.45'%20transform='rotate(12%2044%2044)'/%3e%3cpath%20d='M26%2023h34a10%2010%200%200%201%2010%2010v16a10%2010%200%200%201-10%2010H46L34%2070l1-11h-9a10%2010%200%200%201-10-10V33a10%2010%200%200%201%2010-10Z'%20fill='url(%23paper)'%20filter='url(%23shadow)'/%3e%3cpath%20d='M34%2034v15m-4-15h8m-8%2015h8m6-15%205%2015%206-15'%20stroke='%238069c2'%20stroke-width='3'%20fill='none'%20stroke-linecap='round'%20stroke-linejoin='round'/%3e%3cpath%20d='m68%2017%202%206%206%202-6%202-2%206-2-6-6-2%206-2Z'%20fill='%23fbe4a9'/%3e%3c/svg%3e", "" + import.meta.url).href, P2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%234dad91'/%3e%3cstop%20offset='1'%20stop-color='%23176b62'/%3e%3c/linearGradient%3e%3clinearGradient%20id='leather'%20x1='20'%20y1='30'%20x2='65'%20y2='67'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23388d73'/%3e%3cstop%20offset='1'%20stop-color='%23216657'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3cg%20transform='rotate(-10%2044%2035)'%3e%3crect%20x='21'%20y='16'%20width='46'%20height='37'%20rx='6'%20fill='%23dfb46e'/%3e%3crect%20x='25'%20y='23'%20width='40'%20height='32'%20rx='5'%20fill='%23f9e8bc'/%3e%3cpath%20d='M29%2030h27'%20stroke='%23d2b578'%20stroke-width='4'/%3e%3c/g%3e%3crect%20x='16'%20y='33'%20width='56'%20height='37'%20rx='10'%20fill='%23104c48'%20filter='url(%23shadow)'/%3e%3crect%20x='16'%20y='31'%20width='56'%20height='36'%20rx='10'%20fill='url(%23leather)'/%3e%3crect%20x='20'%20y='35'%20width='48'%20height='28'%20rx='7'%20fill='none'%20stroke='%23b3e3cc'%20stroke-opacity='.48'%20stroke-dasharray='2%202'/%3e%3cpath%20d='M59%2043h15v16H59a8%208%200%200%201%200-16Z'%20fill='%23206d60'%20stroke='%2386bba1'%20stroke-width='1'/%3e%3ccircle%20cx='60'%20cy='51'%20r='3'%20fill='%23eed59c'/%3e%3c/svg%3e", "" + import.meta.url).href, I2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23f1b8a1'/%3e%3cstop%20offset='1'%20stop-color='%23d37469'/%3e%3c/linearGradient%3e%3clinearGradient%20id='paper'%20x1='30'%20y1='16'%20x2='60'%20y2='72'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23fffdf4'/%3e%3cstop%20offset='1'%20stop-color='%23f2e8d6'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3cpath%20d='M23%2033h43l5%2034a5%205%200%200%201-5%205H22a5%205%200%200%201-5-5Z'%20fill='%2386483e'%20opacity='.3'/%3e%3cpath%20d='M24%2030h40l5%2034a5%205%200%200%201-5%206H24a5%205%200%200%201-5-6Z'%20fill='url(%23paper)'%20filter='url(%23shadow)'/%3e%3cpath%20d='M34%2033v-8a10%2010%200%200%201%2020%200v8'%20fill='none'%20stroke='%2398594c'%20stroke-width='4'%20stroke-linecap='round'/%3e%3cpath%20d='m44%2041%203.5%208%208.5%203.5-8.5%203.5-3.5%208-3.5-8-8.5-3.5%208.5-3.5Z'%20fill='%23c67560'/%3e%3cpath%20d='m69%2017%202%205%205%202-5%202-2%205-2-5-5-2%205-2Z'%20fill='%23fff1d3'/%3e%3c/svg%3e", "" + import.meta.url).href, G2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%233d807d'/%3e%3cstop%20offset='1'%20stop-color='%23143c45'/%3e%3c/linearGradient%3e%3clinearGradient%20id='metal'%20x1='17'%20y1='14'%20x2='68'%20y2='74'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23d9e6df'/%3e%3cstop%20offset='.5'%20stop-color='%239cb7b5'/%3e%3cstop%20offset='1'%20stop-color='%23789a9e'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3crect%20x='17'%20y='16'%20width='56'%20height='60'%20rx='13'%20fill='%23122e35'%20opacity='.4'/%3e%3crect%20x='17'%20y='14'%20width='54'%20height='60'%20rx='12'%20fill='url(%23metal)'%20filter='url(%23shadow)'/%3e%3crect%20x='23'%20y='20'%20width='42'%20height='47'%20rx='8'%20fill='%23284c55'%20stroke='%23abc6c7'%20stroke-width='2'/%3e%3ccircle%20cx='44'%20cy='44'%20r='16'%20fill='url(%23metal)'/%3e%3ccircle%20cx='44'%20cy='44'%20r='11'%20fill='%2340636a'/%3e%3cpath%20d='M44%2035v18m-9-9h18m-15-6%2012%2012m0-12L38%2050'%20stroke='%23cfe1da'%20stroke-width='2.6'%20stroke-linecap='round'/%3e%3ccircle%20cx='44'%20cy='44'%20r='4.5'%20fill='%23e8c98b'/%3e%3cpath%20d='M22%2029v8m0%2014v8'%20stroke='%23f5f2dc'%20stroke-width='4'%20stroke-linecap='round'/%3e%3c/svg%3e", "" + import.meta.url).href, U2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23e7847d'/%3e%3cstop%20offset='1'%20stop-color='%23af344c'/%3e%3c/linearGradient%3e%3clinearGradient%20id='paper'%20x1='30'%20y1='16'%20x2='60'%20y2='72'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23fffdf4'/%3e%3cstop%20offset='1'%20stop-color='%23f2e8d6'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3cg%20transform='rotate(17%2058%2034)'%3e%3crect%20x='37'%20y='14'%20width='35'%20height='37'%20rx='9'%20fill='%23792741'%20opacity='.4'%20transform='translate(0%203)'/%3e%3crect%20x='37'%20y='14'%20width='35'%20height='35'%20rx='9'%20fill='%23f6c9b5'/%3e%3cg%20fill='%23b24b5b'%3e%3ccircle%20cx='47'%20cy='24'%20r='3'/%3e%3ccircle%20cx='62'%20cy='39'%20r='3'/%3e%3c/g%3e%3c/g%3e%3cg%20transform='rotate(-15%2036%2052)'%20filter='url(%23shadow)'%3e%3crect%20x='15'%20y='31'%20width='43'%20height='43'%20rx='11'%20fill='url(%23paper)'/%3e%3cg%20fill='%23ae3d53'%3e%3ccircle%20cx='27'%20cy='43'%20r='3.6'/%3e%3ccircle%20cx='46'%20cy='43'%20r='3.6'/%3e%3ccircle%20cx='36.5'%20cy='52.5'%20r='3.6'/%3e%3ccircle%20cx='27'%20cy='62'%20r='3.6'/%3e%3ccircle%20cx='46'%20cy='62'%20r='3.6'/%3e%3c/g%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href, B2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%239dccad'/%3e%3cstop%20offset='1'%20stop-color='%234d997d'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3cpath%20d='m14%2026%2020-6%2020%206%2020-7v48l-20%207-20-6-20%206Z'%20fill='%2324694d'%20opacity='.25'%20transform='translate(0%203)'/%3e%3cpath%20d='m14%2024%2020-6%2020%206%2020-7v48l-20%207-20-6-20%206Z'%20fill='%23f5edd4'%20filter='url(%23shadow)'/%3e%3cpath%20d='m34%2018%2020%206v48l-20-6Z'%20fill='%23d9e4bb'/%3e%3cpath%20d='m14%2054%2020-7%2020%206%2020-20'%20stroke='%2392bdce'%20stroke-width='7'%20fill='none'/%3e%3cpath%20d='m20%2032%2017%205%208%2024%2025-5'%20stroke='%23fffef0'%20stroke-width='4'%20fill='none'/%3e%3cpath%20d='M59%2017a12%2012%200%200%200-12%2012c0%2010%2012%2020%2012%2020s12-10%2012-20a12%2012%200%200%200-12-12Z'%20fill='%23e4774f'%20filter='url(%23shadow)'/%3e%3ccircle%20cx='59'%20cy='29'%20r='4.5'%20fill='%23fff5df'/%3e%3c/svg%3e", "" + import.meta.url).href, E2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23f6ac72'/%3e%3cstop%20offset='1'%20stop-color='%23df673d'/%3e%3c/linearGradient%3e%3clinearGradient%20id='paper'%20x1='30'%20y1='16'%20x2='60'%20y2='72'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23fffdf4'/%3e%3cstop%20offset='1'%20stop-color='%23f2e8d6'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3crect%20x='20'%20y='17'%20width='47'%20height='58'%20rx='8'%20fill='%23a84c2d'%20opacity='.3'%20transform='rotate(9%2044%2044)'/%3e%3crect%20x='18'%20y='15'%20width='48'%20height='59'%20rx='8'%20fill='%23f5d7ac'%20transform='rotate(-9%2044%2044)'/%3e%3cpath%20d='M30%2013h23l12%2012v42a7%207%200%200%201-7%207H30a7%207%200%200%201-7-7V20a7%207%200%200%201%207-7Z'%20fill='url(%23paper)'%20filter='url(%23shadow)'/%3e%3cpath%20d='M53%2013v9a3%203%200%200%200%203%203h9'%20fill='%23ead4b8'/%3e%3cpath%20d='M33%2034h21M33%2042h16M33%2050h12'%20stroke='%23d4b49b'%20stroke-width='3'%20stroke-linecap='round'/%3e%3ccircle%20cx='59'%20cy='61'%20r='13'%20fill='%23d96940'%20stroke='%23f9d7a9'%20stroke-width='2'/%3e%3cpath%20d='m53%2061%204%204%208-9'%20stroke='%23fff4db'%20stroke-width='3'%20fill='none'%20stroke-linecap='round'%20stroke-linejoin='round'/%3e%3c/svg%3e", "" + import.meta.url).href;
+function $2(t) {
   let a = null, r = null;
   return Object.freeze({
     load() {
@@ -60,7 +60,7 @@ function D2(t) {
   });
 }
 function b(t, a, r) {
-  const o = D2(r);
+  const o = $2(r);
   return Object.freeze({
     ...t,
     icon: a,
@@ -68,27 +68,27 @@ function b(t, a, r) {
     resetLoader: o.reset
   });
 }
-var $2 = Object.freeze({
-  "agent-api": b(y2, _2, () => import("./xiaobai-os-AgentApiApp-CGQI7WIU.js")),
-  "fourth-wall": b(b2, R2, () => import("./xiaobai-os-FourthWallApp-C3BJOS0D.js")),
-  wallet: b(O2, P2, () => import("./xiaobai-os-WalletApp-rKlWEigA.js")),
-  shop: b(A2, G2, () => import("./xiaobai-os-ShopApp-czLKiiyV.js")),
-  bank: b(w2, I2, () => import("./xiaobai-os-BankApp-CfpINhXR.js")),
-  game: b(x2, U2, () => import("./xiaobai-os-GameApp-B0zuDfSc.js")),
-  map: b(k2, B2, () => import("./xiaobai-os-MapApp-6LNwTjrU.js")),
-  tasks: b(S2, E2, () => import("./xiaobai-os-TasksApp-DvyW8uAP.js"))
+var D2 = Object.freeze({
+  "agent-api": b(y2, _2, () => import("./xiaobai-os-AgentApiApp-BETOS8I4.js")),
+  "fourth-wall": b(b2, R2, () => import("./xiaobai-os-FourthWallApp-W2gc8U4f.js")),
+  wallet: b(O2, P2, () => import("./xiaobai-os-WalletApp-DgmveJZY.js")),
+  shop: b(A2, I2, () => import("./xiaobai-os-ShopApp-CKs_efve.js")),
+  bank: b(w2, G2, () => import("./xiaobai-os-BankApp-Dg6CTLed.js")),
+  game: b(x2, U2, () => import("./xiaobai-os-GameApp-NkH5RdAX.js")),
+  map: b(k2, B2, () => import("./xiaobai-os-MapApp-Bk1mzDgv.js")),
+  tasks: b(S2, E2, () => import("./xiaobai-os-TasksApp-DnyrHC4E.js"))
 }), q = Object.freeze(g2.map((t) => {
-  const a = $2[t];
+  const a = D2[t];
   if (!a) throw new Error(`missing_shell_app:${t}`);
   return a;
-})), ue = Object.freeze(q.map((t) => t.id)), M2 = /* @__PURE__ */ O({
+})), ue = Object.freeze(q.map((t) => t.id)), H2 = /* @__PURE__ */ O({
   __name: "AppBoundary",
   emits: ["failed"],
   setup(t, { emit: a }) {
     const r = a;
-    return h2((o) => (r("failed", o), !1)), (o, l) => r2(o.$slots, "default");
+    return l2((o) => (r("failed", o), !1)), (o, l) => o2(o.$slots, "default");
   }
-}), H2 = M2, C2 = { class: "xiaobai-os-home" }, L2 = ["src"], T2 = {
+}), M2 = H2, C2 = { class: "xiaobai-os-home" }, L2 = ["src"], T2 = {
   class: "xiaobai-os-app-grid",
   "aria-label": "应用"
 }, Z2 = ["onClick"], j2 = {
@@ -113,7 +113,7 @@ var $2 = Object.freeze({
         class: "xiaobai-os-home-wash",
         "aria-hidden": "true"
       }, null, -1)),
-      i("section", T2, [(d(!0), u(p2, null, s2(t.apps, (o) => (d(), u("button", {
+      i("section", T2, [(d(!0), u(s2, null, f2(t.apps, (o) => (d(), u("button", {
         key: o.id,
         type: "button",
         class: "xiaobai-os-app-tile",
@@ -128,7 +128,7 @@ var $2 = Object.freeze({
       }, null, 8, z2)]), i("span", F2, _(o.name), 1)], 12, Z2))), 128))])
     ]));
   }
-}), X2 = V2, K2 = ["disabled"], N2 = {
+}), X2 = V2, N2 = ["disabled"], K2 = {
   key: 0,
   "aria-hidden": "true"
 }, q2 = /* @__PURE__ */ O({
@@ -141,7 +141,7 @@ var $2 = Object.freeze({
   ],
   setup(t) {
     return (a, r) => (d(), u("nav", {
-      class: H(["xiaobai-os-navigation", { "is-home": t.isHome }]),
+      class: M(["xiaobai-os-navigation", { "is-home": t.isHome }]),
       "aria-label": "系统导航"
     }, [
       i("button", {
@@ -153,7 +153,7 @@ var $2 = Object.freeze({
       }, [...r[3] || (r[3] = [i("svg", {
         viewBox: "0 0 24 24",
         "aria-hidden": "true"
-      }, [i("path", { d: "m14.5 6-6 6 6 6" })], -1)])], 8, K2),
+      }, [i("path", { d: "m14.5 6-6 6 6 6" })], -1)])], 8, N2),
       i("button", {
         type: "button",
         class: "xiaobai-os-nav-button xiaobai-os-home-button",
@@ -162,7 +162,7 @@ var $2 = Object.freeze({
       }, [r[4] || (r[4] = i("svg", {
         viewBox: "0 0 24 24",
         "aria-hidden": "true"
-      }, [i("path", { d: "m4.5 11 7.5-6 7.5 6v8h-5v-5h-5v5h-5z" })], -1)), t.isHome ? (d(), u("i", N2)) : R("", !0)]),
+      }, [i("path", { d: "m4.5 11 7.5-6 7.5 6v8h-5v-5h-5v5h-5z" })], -1)), t.isHome ? (d(), u("i", K2)) : R("", !0)]),
       i("button", {
         type: "button",
         class: "xiaobai-os-nav-button xiaobai-os-close-button",
@@ -179,7 +179,7 @@ var $2 = Object.freeze({
   props: { isHome: { type: Boolean } },
   setup(t) {
     return (a, r) => (d(), u("header", {
-      class: H(["xiaobai-os-system-bar", { "is-home": t.isHome }]),
+      class: M(["xiaobai-os-system-bar", { "is-home": t.isHome }]),
       "aria-label": "系统状态"
     }, [...r[0] || (r[0] = [i("span", { class: "xiaobai-os-system-mark" }, "小白", -1), i("span", {
       class: "xiaobai-os-system-status",
@@ -227,15 +227,15 @@ var $2 = Object.freeze({
       class: "xiaobai-os-side-key",
       "aria-hidden": "true"
     }, null, -1)), i("div", ee, [
-      I(Q2, { "is-home": r.value }, null, 8, ["is-home"]),
+      G(Q2, { "is-home": r.value }, null, 8, ["is-home"]),
       i("div", {
         class: "xiaobai-os-stage",
         style: N(t.activeApp ? { "--app-accent": t.activeApp.accent } : null)
-      }, [I(f2, {
+      }, [G(p2, {
         name: "xiaobai-os-route",
         mode: "out-in"
       }, {
-        default: V(() => [r.value ? (d(), M(X2, {
+        default: X(() => [r.value ? (d(), H(X2, {
           key: "home",
           apps: t.apps,
           "character-avatar": t.characterAvatar,
@@ -255,11 +255,11 @@ var $2 = Object.freeze({
             type: "button",
             onClick: l[2] || (l[2] = (m) => o.$emit("reload"))
           }, "重新载入 OS")])
-        ])) : t.appLoading ? (d(), u("div", re, [l[8] || (l[8] = i("span", { "aria-hidden": "true" }, null, -1)), d2(" 正在打开" + _(t.activeApp?.name), 1)])) : t.activeApp && t.activeComponent ? (d(), u("div", {
+        ])) : t.appLoading ? (d(), u("div", re, [l[8] || (l[8] = i("span", { "aria-hidden": "true" }, null, -1)), n2(" 正在打开" + _(t.activeApp?.name), 1)])) : t.activeApp && t.activeComponent ? (d(), u("div", {
           key: `app:${t.activeApp.id}:${t.appRenderKey}`,
           class: "xiaobai-os-app-route"
-        }, [I(H2, { onFailed: l[3] || (l[3] = (m) => o.$emit("renderFailed", m)) }, {
-          default: V(() => [(d(), M(t2(t.activeComponent), {
+        }, [G(M2, { onFailed: l[3] || (l[3] = (m) => o.$emit("renderFailed", m)) }, {
+          default: X(() => [(d(), H(t2(t.activeComponent), {
             bridge: t.bridge,
             "initial-state": t.activeState
           }, null, 8, ["bridge", "initial-state"]))]),
@@ -267,7 +267,7 @@ var $2 = Object.freeze({
         })])) : R("", !0)]),
         _: 1
       })], 4),
-      I(W2, {
+      G(W2, {
         "is-home": r.value,
         onBack: l[4] || (l[4] = (m) => o.$emit("back")),
         onHome: l[5] || (l[5] = (m) => o.$emit("home")),
@@ -320,7 +320,7 @@ var $2 = Object.freeze({
     async function U(e) {
       const s = ++A, c = { appId: e.id };
       h = c, p.value = e, x.value = null, k.value = null, f.value = !0, n.value = null, a.clearAppSession(), P.value = "";
-      const g = a.request("app/activate", { appId: e.id }), w = e.load(), [S, G] = await Promise.allSettled([g, w]);
+      const g = a.request("app/activate", { appId: e.id }), w = e.load(), [S, I] = await Promise.allSettled([g, w]);
       try {
         if (s !== A) return;
         if (S.status === "fulfilled") {
@@ -332,15 +332,15 @@ var $2 = Object.freeze({
         } else {
           const v = S.reason;
           n.value = {
-            phase: v instanceof $ ? v.phase : "host",
+            phase: v instanceof D ? v.phase : "host",
             message: v instanceof Error ? v.message : String(v),
-            retryable: !(v instanceof $) || v.retryable,
-            requiresAppRetry: v instanceof $ && v.requiresAppRetry
+            retryable: !(v instanceof D) || v.retryable,
+            requiresAppRetry: v instanceof D && v.requiresAppRetry
           };
         }
-        G.status === "fulfilled" ? x.value = X(G.value) : n.value || (n.value = {
+        I.status === "fulfilled" ? x.value = V(I.value) : n.value || (n.value = {
           phase: "ui-load",
-          message: G.reason instanceof Error ? G.reason.message : "APP 界面加载失败",
+          message: I.reason instanceof Error ? I.reason.message : "APP 界面加载失败",
           retryable: !0
         }), f.value = !1;
       } catch (v) {
@@ -363,7 +363,7 @@ var $2 = Object.freeze({
         if (s.phase === "ui-load" && a.getAppSession()?.appId === e.id) {
           f.value = !0, n.value = null, e.resetLoader();
           try {
-            x.value = X(await e.load());
+            x.value = V(await e.load());
           } catch (c) {
             n.value = {
               phase: "ui-load",
@@ -414,12 +414,12 @@ var $2 = Object.freeze({
     function E() {
       A += 1, h = null, a.post("app/deactivate", { appId: p.value?.id || "" }), a.clearAppSession(), p.value = null, x.value = null, k.value = null, f.value = !1, n.value = null;
     }
-    function D() {
+    function $() {
       A += 1, h = null, a.post("os/close"), a.clearAppSession();
     }
     function a2(e) {
       if (e.key === "Escape") {
-        e.preventDefault(), p.value ? E() : D();
+        e.preventDefault(), p.value ? E() : $();
         return;
       }
       if (e.key !== "Tab" || !r.value) return;
@@ -428,21 +428,21 @@ var $2 = Object.freeze({
       const c = s[0], g = s[s.length - 1];
       e.shiftKey && document.activeElement === c ? (e.preventDefault(), g.focus()) : !e.shiftKey && document.activeElement === g && (e.preventDefault(), c.focus());
     }
-    return l2(async () => {
-      T = document.activeElement instanceof HTMLElement ? document.activeElement : null, Z = a.subscribe(Q), a.start(), window.addEventListener("error", z), window.addEventListener("unhandledrejection", F), await v2(), r.value?.focus();
-    }), n2(() => {
+    return h2(async () => {
+      T = document.activeElement instanceof HTMLElement ? document.activeElement : null, Z = a.subscribe(Q), a.start(), window.addEventListener("error", z), window.addEventListener("unhandledrejection", F), await u2(), r.value?.focus();
+    }), v2(() => {
       A += 1, h = null, window.removeEventListener("error", z), window.removeEventListener("unhandledrejection", F), Z(), a.dispose(), T?.focus();
     }), (e, s) => (d(), u("main", {
       ref_key: "root",
       ref: r,
-      class: H(["xiaobai-os-shell", `theme-${l.value}`]),
+      class: M(["xiaobai-os-shell", `theme-${l.value}`]),
       role: "dialog",
       "aria-modal": "true",
       "aria-label": "小白 OS",
       tabindex: "-1",
       onKeydown: a2,
-      onClick: c2(D, ["self"])
-    }, [P.value ? (d(), u("div", le, _(P.value), 1)) : R("", !0), o.value ? (d(), M(oe, {
+      onClick: d2($, ["self"])
+    }, [P.value ? (d(), u("div", le, _(P.value), 1)) : R("", !0), o.value ? (d(), H(oe, {
       key: 2,
       apps: W.value,
       "active-app": p.value,
@@ -451,12 +451,12 @@ var $2 = Object.freeze({
       "app-failure": n.value,
       "app-loading": f.value,
       "app-render-key": L.value,
-      bridge: o2(a),
+      bridge: r2(a),
       "character-avatar": C.value,
       onOpenApp: U,
       onBack: E,
       onHome: E,
-      onClose: D,
+      onClose: $,
       onRenderFailed: B,
       onRetry: Y,
       onReload: e2
@@ -473,4 +473,4 @@ var $2 = Object.freeze({
     ])) : (d(), u("div", se, "正在启动小白 OS"))], 34));
   }
 }), ce = ne;
-u2(ce).mount("#app");
+c2(ce).mount("#app");

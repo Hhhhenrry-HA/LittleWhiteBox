@@ -1,14 +1,18 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from 'vue';
-import type { GameDieFace } from '../types.js';
-import { GAME_DIE_PIPS } from './die-pips.js';
-import { GAME_DIE_ROLL_MS } from './game-motion.js';
+import type { GameDieFace } from '../../../types.js';
+import { GAME_DIE_PIPS } from '../../die-pips.js';
+import { GAME_DIE_ROLL_MS } from '../../game-motion.js';
 
-const props = withDefaults(defineProps<{
-    value: GameDieFace;
-    delay?: number;
-    highlight?: boolean;
-}>(), { delay: 0, highlight: false });
+const props = withDefaults(
+    defineProps<{
+        value: GameDieFace;
+        delay?: number;
+        highlight?: boolean;
+        animate?: boolean;
+    }>(),
+    { delay: 0, highlight: false, animate: true },
+);
 
 /** Which pip face is glued to each side of the cube. Opposite sides sum to 7. */
 const FACES: ReadonlyArray<{ side: string; face: GameDieFace }> = [
@@ -38,9 +42,11 @@ function cubeTransform(x: number, y: number): string {
 }
 
 function prefersReducedMotion(): boolean {
-    return typeof window !== 'undefined'
-        && typeof window.matchMedia === 'function'
-        && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    return (
+        typeof window !== 'undefined' &&
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    );
 }
 
 const cube = ref<HTMLElement | null>(null);
@@ -50,19 +56,23 @@ let hopAnimation: Animation | null = null;
 
 function settle(): void {
     const [x, y] = FACE_UP[props.value];
-    if (cube.value) {cube.value.style.transform = cubeTransform(x, y);}
+    if (cube.value) {
+        cube.value.style.transform = cubeTransform(x, y);
+    }
 }
 
 function roll(): void {
     const cubeElement = cube.value;
-    if (!cubeElement) {return;}
+    if (!cubeElement) {
+        return;
+    }
 
     rollAnimation?.cancel();
     hopAnimation?.cancel();
     rollAnimation = null;
     hopAnimation = null;
 
-    if (prefersReducedMotion() || typeof cubeElement.animate !== 'function') {
+    if (!props.animate || prefersReducedMotion() || typeof cubeElement.animate !== 'function') {
         settle();
         return;
     }
@@ -76,20 +86,31 @@ function roll(): void {
     const spinX = 360 * (2 + Math.floor(Math.random() * 2)) + 146;
     const spinY = 360 * (1 + Math.floor(Math.random() * 2)) + 101;
 
-    rollAnimation = cubeElement.animate([
-        { transform: cubeTransform(x - spinX, y - spinY), easing: 'cubic-bezier(.11,.58,.32,1)' },
-        { transform: cubeTransform(x + 13, y + 9), offset: 0.84, easing: 'cubic-bezier(.36,0,.4,1)' },
-        { transform: cubeTransform(x, y) },
-    ], { duration: GAME_DIE_ROLL_MS, delay: props.delay, fill: 'both' });
+    rollAnimation = cubeElement.animate(
+        [
+            { transform: cubeTransform(x - spinX, y - spinY), easing: 'cubic-bezier(.11,.58,.32,1)' },
+            { transform: cubeTransform(x + 13, y + 9), offset: 0.84, easing: 'cubic-bezier(.36,0,.4,1)' },
+            { transform: cubeTransform(x, y) },
+        ],
+        { duration: GAME_DIE_ROLL_MS, delay: props.delay, fill: 'both' },
+    );
 
-    hopAnimation = shell.value?.animate([
-        { transform: 'translateY(-16px) scale(1.06)', easing: 'cubic-bezier(.4,0,.7,1)' },
-        { transform: 'translateY(0) scale(1)', offset: 0.5, easing: 'cubic-bezier(.2,0,.2,1)' },
-        { transform: 'translateY(-6px) scale(1.02)', offset: 0.68, easing: 'cubic-bezier(.4,0,.7,1)' },
-        { transform: 'translateY(0) scale(1)', offset: 0.82, easing: 'cubic-bezier(.2,0,.4,1)' },
-        { transform: 'translateY(-1.5px) scale(1)', offset: 0.9 },
-        { transform: 'translateY(0) scale(1)' },
-    ], { duration: GAME_DIE_ROLL_MS, delay: props.delay, fill: 'both' }) ?? null;
+    hopAnimation =
+        shell.value?.animate(
+            [
+                { transform: 'translateY(-16px) scale(1.06)', easing: 'cubic-bezier(.4,0,.7,1)' },
+                { transform: 'translateY(0) scale(1)', offset: 0.5, easing: 'cubic-bezier(.2,0,.2,1)' },
+                {
+                    transform: 'translateY(-6px) scale(1.02)',
+                    offset: 0.68,
+                    easing: 'cubic-bezier(.4,0,.7,1)',
+                },
+                { transform: 'translateY(0) scale(1)', offset: 0.82, easing: 'cubic-bezier(.2,0,.4,1)' },
+                { transform: 'translateY(-1.5px) scale(1)', offset: 0.9 },
+                { transform: 'translateY(0) scale(1)' },
+            ],
+            { duration: GAME_DIE_ROLL_MS, delay: props.delay, fill: 'both' },
+        ) ?? null;
 }
 
 onMounted(roll);

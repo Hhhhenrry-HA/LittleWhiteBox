@@ -20,11 +20,11 @@ import type {
 import { mapToolResult, type MapToolItemReport, type MapToolResult } from './result.js';
 import { applyIntentEdits, enumToken, errorText, intentId, intentText, isRecord } from './intent-common.js';
 
-const LOCATION_SCALES: readonly MapLocationScale[] = ['city', 'district', 'building', 'floor', 'room', 'outdoor'];
+const LOCATION_SCALES: readonly MapLocationScale[] = ['world', 'region', 'city', 'district', 'building', 'floor', 'room', 'outdoor'];
 const LOCATION_STATUSES: readonly MapLocationStatus[] = ['mentioned', 'visited'];
 const LINK_KINDS: readonly MapLinkKind[] = ['door', 'stairs', 'elevator', 'path', 'road', 'portal', 'passage'];
 const ROOT_FIELDS = new Set(['locations', 'links', 'actors', 'remove']);
-const LOCATION_FIELDS = new Set(['key', 'name', 'scale', 'status', 'parent', 'brief']);
+const LOCATION_FIELDS = new Set(['key', 'name', 'scale', 'status', 'parent', 'brief', 'position', 'terrain']);
 const LINK_FIELDS = new Set(['id', 'from', 'to', 'kind', 'label', 'bidirectional']);
 const ACTOR_FIELDS = new Set(['actorKey', 'displayName', 'locationKey']);
 const REMOVAL_FIELDS = new Set(['locationKeys', 'linkIds', 'actorKeys']);
@@ -244,6 +244,11 @@ export function compileAtlasIntent(
             if (parent) {location.parent = parent;} else if (raw.parent === null || raw.parent === '') {delete location.parent;}
             const brief = intentText(raw.brief, '', MAX_MAP_BRIEF_LENGTH);
             if (brief) {location.brief = brief;}
+            // Domain validation rejects malformed geography; never silently replace it with a guessed position.
+            if (raw.position === null) {delete location.position;}
+            else if (raw.position !== undefined) {location.position = raw.position as MapLocation['position'];}
+            if (raw.terrain === null) {delete location.terrain;}
+            else if (raw.terrain !== undefined) {location.terrain = raw.terrain as MapLocation['terrain'];}
             if (applyItem('locations', index, key, [{ op: 'upsert-location', location }], 'Create the parent first or correct this location.')) {
                 pending.splice(cursor, 1);
                 cursor -= 1;

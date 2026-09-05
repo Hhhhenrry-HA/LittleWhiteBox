@@ -16,6 +16,7 @@ import type {
     MapScene,
     MapSceneMood,
     MapSceneStatus,
+    MapTerrain,
     PointGeometry,
     PointsGeometry,
     RectGeometry,
@@ -47,8 +48,9 @@ const MAX_SCENES = 256;
 const FORBIDDEN_RECORD_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
 const LOCATION_SCALES = new Set<MapLocationScale>([
-    'city', 'district', 'building', 'floor', 'room', 'outdoor',
+    'world', 'region', 'city', 'district', 'building', 'floor', 'room', 'outdoor',
 ]);
+const LOCATION_TERRAINS = new Set<MapTerrain>(['urban', 'plain', 'forest', 'water', 'mountain', 'desert', 'snow']);
 const LOCATION_STATUSES = new Set<MapLocationStatus>(['mentioned', 'visited']);
 const LINK_KINDS = new Set<MapLinkKind>(['door', 'stairs', 'elevator', 'path', 'road', 'portal', 'passage']);
 const SCENE_STATUSES = new Set<MapSceneStatus>(['uninitialized', 'active']);
@@ -287,7 +289,7 @@ function validateScene(value: unknown, path: string): MapScene {
 
 function validateLocation(value: unknown, path: string): MapLocation {
     const record = requireRecord(value, path);
-    requireKeys(record, ['key', 'name', 'scale', 'status'], ['parent', 'sceneKey', 'brief'], path);
+    requireKeys(record, ['key', 'name', 'scale', 'status'], ['parent', 'sceneKey', 'brief', 'position', 'terrain'], path);
     const location: MapLocation = {
         key: requireId(record.key, `${path}.key`),
         name: requireString(record.name, `${path}.name`, MAX_MAP_NAME_LENGTH),
@@ -298,6 +300,15 @@ function validateLocation(value: unknown, path: string): MapLocation {
     if (Object.hasOwn(record, 'sceneKey')) {location.sceneKey = requireId(record.sceneKey, `${path}.sceneKey`);}
     if (Object.hasOwn(record, 'brief')) {
         location.brief = requireString(record.brief, `${path}.brief`, MAX_MAP_BRIEF_LENGTH);
+    }
+    if (Object.hasOwn(record, 'position')) {
+        if (!Array.isArray(record.position) || record.position.length !== 2) {
+            fail('map_invalid_domain', `${path}.position`, 'must be an [x, y] pair');
+        }
+        location.position = [requireCoordinate(record.position[0], `${path}.position.0`), requireCoordinate(record.position[1], `${path}.position.1`)];
+    }
+    if (Object.hasOwn(record, 'terrain')) {
+        location.terrain = requireEnum(record.terrain, LOCATION_TERRAINS, `${path}.terrain`);
     }
     return location;
 }

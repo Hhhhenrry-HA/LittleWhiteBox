@@ -45,12 +45,12 @@ function clientStatus(writeState: ReturnType<MapService['getWriteState']>): {
     if (writeState === 'loading') { return { status: 'loading', message: '正在读取最新地图…' }; }
     if (writeState === 'saving') { return { status: 'saving', message: '正在确认地图保存结果…' }; }
     if (writeState === 'unconfirmed') {
-        return { status: 'unconfirmed', message: '地图保存结果尚未确认，新的地图写入已冻结。' };
+        return { status: 'unconfirmed', message: '地图保存结果尚未确认，请先核实，再继续更新。' };
     }
     if (writeState === 'conflict') {
-        return { status: 'conflict', message: '服务端数据与当前候选不一致。采用服务端数据后才能继续写入。' };
+        return { status: 'conflict', message: '保存的版本不一致，请先处理保存问题，再继续更新。' };
     }
-    if (writeState === 'failed') { return { status: 'error', message: '地图存储暂时不可用。' }; }
+    if (writeState === 'failed') { return { status: 'error', message: '暂时无法读取保存的地图。' }; }
     return { status: 'ready', message: '' };
 }
 
@@ -68,17 +68,17 @@ function maintenanceState(status: MaintenanceStatus): {
     if (status.message === 'updated') {
         maintenanceMessage = status.mode === 'rebuild' ? '地图已建立并保存。' : '地图已更新。';
     } else if (status.message === 'unchanged') {
-        maintenanceMessage = status.mode === 'rebuild' ? '当前聊天未形成可建立的地图。' : '地图无需更新。';
+        maintenanceMessage = status.mode === 'rebuild' ? '这次没有绘制出地图，可以补充世界设定后重试。' : '地图无需更新。';
     } else if (status.message === 'partial') {
-        maintenanceMessage = '地图已部分保存，本次维护未完整完成。';
+        maintenanceMessage = '部分地图已保存，但本次更新未能全部完成。';
     } else if (status.message === 'cancelled') {
-        maintenanceMessage = '本次地图维护已取消。';
+        maintenanceMessage = '本次地图更新已取消。';
     } else if (status.message === 'skipped') {
         maintenanceMessage = status.reason === 'generation-active'
-            ? '当前正在生成回复，暂时不能维护地图。'
-            : '当前聊天没有可维护的完整内容。';
+            ? '当前正在生成回复，暂时不能更新地图。'
+            : '请等当前回复完成后，再更新地图。';
     } else if (status.state === 'error' || status.message === 'failed') {
-        maintenanceMessage = '地图维护失败，请稍后重试。';
+        maintenanceMessage = '地图更新失败，请稍后重试。';
     }
     return {
         maintenanceStatus: status.state === 'error' ? 'error' : 'idle',

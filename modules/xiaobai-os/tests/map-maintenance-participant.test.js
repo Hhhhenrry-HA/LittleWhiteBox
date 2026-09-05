@@ -9,6 +9,7 @@ import {
     MAX_MAP_LOCATIONS,
     MAX_SCENE_ELEMENTS,
 } from '../domains/map/invariants.js';
+import { buildMapPromptBlock } from '../domains/map/projection.js';
 import { createMapKernelHarness } from './map-kernel-harness.js';
 
 function acceptedSource() {
@@ -706,4 +707,58 @@ test('session invalidation and commit guards prevent stale writes', async () => 
     await guarded.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT, indoorFixture);
     await assert.rejects(guarded.commit(() => false), /commit_guard_rejected/);
     assert.equal(harness.writes.length, 0);
+});
+
+test('world destinations persist before a visit or scene and later edits preserve their geography', async () => {
+    const harness = createHarness();
+    const session = await harness.participant.createSession(acceptedSource(), 'rebuild');
+    const result = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.ATLAS_EDIT, {
+        locations: [
+            { key: 'coast', name: '潮汐海岸', scale: 'region', terrain: 'water' },
+            { key: 'home', name: '家', parent: 'coast', scale: 'building', position: [200, 650] },
+            { key: 'lighthouse', name: '潮声灯塔', parent: 'coast', scale: 'building', position: [750, 100], terrain: 'water', brief: '可以俯瞰整片海湾的古老灯塔。' },
+        ],
+        links: [{ from: 'home', to: 'lighthouse', kind: 'road' }],
+        actors: [{ actorKey: 'player', locationKey: 'home' }],
+    });
+    assert.equal(result.status, 'updated');
+    await session.commit(() => true);
+    let map = harness.map.readCurrent().map;
+    const destination = map.atlas.locations.find(place => place.key === 'lighthouse');
+    assert.deepEqual(destination.position, [750, 100]);
+    assert.equal(destination.status, 'mentioned');
+    assert.equal(destination.terrain, 'water');
+    assert.equal(map.atlas.locations.find(place => place.key === 'home').status, 'visited');
+    assert.equal(map.atlas.actors[0].locationKey, 'home');
+    assert.deepEqual(map.scenes, {});
+    const prompt = buildMapPromptBlock(map);
+    assert.match(prompt, /当前位置：家/u);
+    assert.match(prompt, /潮声灯塔/u);
+    assert.doesNotMatch(prompt, /750|position|terrain|sceneKey/);
+
+    const update = await harness.participant.createSession(acceptedSource(), 'manual');
+    await update.executeTool(MAP_MAINTENANCE_TOOL_NAMES.ATLAS_EDIT, {
+        locations: [{ key: 'lighthouse', name: '潮声灯塔', brief: '海湾北侧的观景地。' }],
+    });
+    const read = await update.executeTool(MAP_MAINTENANCE_TOOL_NAMES.ATLAS_READ, { mode: 'locations', query: '潮声灯塔' });
+    assert.deepEqual(read.data.locations[0].position, [750, 100]);
+    assert.equal(read.data.locations[0].terrain, 'water');
+    assert.equal(read.data.locations[0].status, 'mentioned');
+    await update.commit(() => true);
+    map = harness.map.readCurrent().map;
+    assert.equal(map.atlas.actors[0].locationKey, 'home');
+
+    for (const patch of [{ position: [0] }, { position: [Infinity, 0] }, { position: [0, 1e9] }, { terrain: 'made-up' }]) {
+        const invalid = await harness.participant.createSession(acceptedSource(), 'manual');
+        const rejected = await invalid.executeTool(MAP_MAINTENANCE_TOOL_NAMES.ATLAS_EDIT, { locations: [{ key: 'lighthouse', name: '潮声灯塔', ...patch }] });
+        assert.equal(rejected.status, 'failed');
+        assert.equal(await invalid.canCommit(), false);
+        assert.deepEqual(harness.map.readCurrent().map, map);
+    }
+    const clear = await harness.participant.createSession(acceptedSource(), 'manual');
+    await clear.executeTool(MAP_MAINTENANCE_TOOL_NAMES.ATLAS_EDIT, { locations: [{ key: 'lighthouse', name: '潮声灯塔', position: null, terrain: null }] });
+    await clear.commit(() => true);
+    const cleared = harness.map.readCurrent().map.atlas.locations.find(place => place.key === 'lighthouse');
+    assert.equal(Object.hasOwn(cleared, 'position'), false);
+    assert.equal(Object.hasOwn(cleared, 'terrain'), false);
 });

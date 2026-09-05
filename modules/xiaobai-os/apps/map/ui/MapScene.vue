@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted, ref, useId } from 'vue';
+import { loadMapSymbols } from './map-symbols.js';
 import type {
     CircleGeometry,
     MapElement,
@@ -19,19 +20,17 @@ import {
 } from './map-presentation.js';
 import { MAP_MATERIALS } from '../../../domains/map/semantics.js';
 
-let nextSceneId = 0;
-
 const props = defineProps<{
     scene: MapScene;
-    symbolsReady: boolean;
 }>();
 
-const patternPrefix = `xiaobai-map-scene-${nextSceneId += 1}`;
+const symbolsReady = ref(false);
+onMounted(() => {void loadMapSymbols().then(() => {symbolsReady.value = true;}).catch(() => {symbolsReady.value = false;});});
+const patternPrefix = `xiaobai-map-scene-${useId()}`;
 const materials: readonly MapMaterial[] = MAP_MATERIALS;
 const elements = computed(() => sortedSceneElements(props.scene.elements));
 const mood = computed(() => MAP_MOOD_RECIPES[props.scene.mood || 'neutral']);
 const canvasStyle = computed(() => ({
-    '--map-canvas-bg': mood.value.background,
     '--map-canvas-glow': mood.value.glow,
     '--map-canvas-accent': mood.value.accent,
 }));
@@ -74,7 +73,7 @@ function pointOf(element: MapElement): PointGeometry {
                 patternUnits="userSpaceOnUse"
                 :class="`map-material-pattern is-${material}`"
             >
-                <rect width="24" height="24" :fill="MAP_MATERIAL_COLORS[material]" />
+                <rect width="24" height="24" :fill="`color-mix(in srgb, ${MAP_MATERIAL_COLORS[material]}, var(--map-surface) 48%)`" />
                 <path v-if="material === 'wood'" d="M0 6H24M0 18H24M7 0V6M17 6V18M10 18V24" />
                 <path v-else-if="material === 'stone'" d="M0 8L7 3l8 3 9-4M2 19l8-5 10 4 4-3" />
                 <path v-else-if="material === 'tile' || material === 'marble'" d="M0 8H24M0 16H24M8 0v24m8-24v24" />

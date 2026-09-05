@@ -1,89 +1,20 @@
 <script setup lang="ts">
-import type { MapMaintenanceStatus } from '../types.js';
-
-defineProps<{
-    autoMaintenance: boolean;
-    busy: boolean;
-    autoToggleBusy: boolean;
-    disabledReason: string;
-    hasMap: boolean;
-    maintenanceStatus: MapMaintenanceStatus;
-    maintenanceMessage: string;
-}>();
-
-defineEmits<{
-    close: [];
-    setAutoMaintenance: [enabled: boolean];
-    maintainOnce: [];
-    requestRebuild: [];
-}>();
+import { onMounted, ref } from 'vue';
+import MapIcon from './MapIcon.vue';
+defineProps<{ autoMaintenance: boolean; busy: boolean; refreshDisabled: boolean; autoToggleBusy: boolean; disabledReason: string; hasMap: boolean; status: string }>();
+defineEmits<{ close: []; setAuto: [enabled: boolean]; update: []; rebuild: []; refresh: [] }>();
+const dialog = ref<HTMLDialogElement | null>(null);
+onMounted(() => dialog.value?.showModal());
 </script>
-
 <template>
-    <aside class="map-settings" aria-labelledby="map-settings-title">
-        <header>
-            <div>
-                <span>MAP SYSTEM / CONFIG</span>
-                <h2 id="map-settings-title">地图设置</h2>
-            </div>
-            <button type="button" class="map-icon-button" aria-label="关闭地图设置" @click="$emit('close')">×</button>
-        </header>
-
-        <div class="map-settings-body">
-            <section class="map-settings-card">
-                <div class="map-setting-row">
-                    <div>
-                        <h3>所有普通聊天自动维护</h3>
-                        <p>每次发送新的 User 消息后，让地图维护刚被接受的上一轮空间事实。</p>
-                    </div>
-                    <button
-                        type="button"
-                        class="map-switch"
-                        role="switch"
-                        :aria-checked="autoMaintenance"
-                        :aria-label="autoMaintenance ? '关闭所有普通聊天自动维护' : '开启所有普通聊天自动维护'"
-                        :disabled="autoToggleBusy"
-                        @click="$emit('setAutoMaintenance', !autoMaintenance)"
-                    >
-                        <span />
-                    </button>
-                </div>
-            </section>
-
-            <section class="map-settings-card">
-                <div class="map-settings-action-copy">
-                    <h3>增量维护</h3>
-                    <p>读取聊天尾部最新完整的 User 与 Assistant 对话，在后台补充地点、路线、人物位置和场景细节。</p>
-                </div>
-                <button
-                    type="button"
-                    class="map-action-button"
-                    :disabled="busy || Boolean(disabledReason) || !hasMap"
-                    :title="!hasMap ? '请先从当前聊天建立地图' : disabledReason"
-                    @click="$emit('maintainOnce')"
-                >
-                    {{ maintenanceStatus === 'maintaining' ? '正在维护…' : '维护一次' }}
-                </button>
-            </section>
-
-            <section class="map-settings-card is-danger-zone">
-                <div class="map-settings-action-copy">
-                    <h3>{{ hasMap ? '重建地图' : '建立地图' }}</h3>
-                    <p>提交后在后台重新读取当前聊天并生成完整地图。已有地图只会在新地图保存成功后被替换。</p>
-                </div>
-                <button
-                    type="button"
-                    class="map-action-button is-strong"
-                    :disabled="busy || Boolean(disabledReason)"
-                    :title="disabledReason"
-                    @click="$emit('requestRebuild')"
-                >
-                    {{ maintenanceStatus === 'rebuilding' ? '正在重建…' : '从当前聊天建立/重建地图' }}
-                </button>
-            </section>
-
-            <p v-if="disabledReason" class="map-disabled-reason" role="status">{{ disabledReason }}</p>
-            <p v-if="maintenanceMessage" class="map-maintenance-message" role="status">{{ maintenanceMessage }}</p>
+    <dialog ref="dialog" class="map-dialog map-settings" aria-labelledby="map-settings-title" @cancel.prevent="$emit('close')" @keydown.stop>
+        <header class="map-dialog-header"><div><small>让地图跟上你的故事</small><h2 id="map-settings-title">地图设置</h2></div><button type="button" class="map-round-button" aria-label="关闭地图设置" @click="$emit('close')"><MapIcon name="close" /></button></header>
+        <div class="map-settings-content">
+            <section class="map-auto-setting"><div><h3>随对话自动更新</h3><p>你发送下一条消息时，根据上一轮对话更新地图。适用于所有普通聊天。</p></div><button type="button" class="map-switch" role="switch" :aria-checked="autoMaintenance" aria-label="随对话自动更新" :disabled="autoToggleBusy" @click="$emit('setAuto', !autoMaintenance)"><span /></button></section>
+            <section class="map-settings-section"><MapIcon name="refresh" /><h3>补充最近的变化</h3><p>根据最近一轮对话更新位置和地点，并补全当前区域尚缺少的探索去处。</p><button type="button" class="map-primary-button" :disabled="busy || Boolean(disabledReason) || !hasMap" @click="$emit('update')">{{ busy ? status || '请稍候…' : '更新地图' }}</button><small v-if="!hasMap">请先建立世界地图</small></section>
+            <section class="map-settings-section"><MapIcon name="globe" /><h3>{{ hasMap ? '重新绘制世界' : '建立世界地图' }}</h3><p>依据角色与世界设定建立地图；设定未写明的地方，会合理补全。结合当前聊天保留已发生的故事。</p><p v-if="hasMap">新地图保存成功后替换原图；失败时保留原图。</p><button type="button" class="map-secondary-button" :disabled="busy || Boolean(disabledReason)" @click="$emit('rebuild')">{{ busy ? status || '请稍候…' : hasMap ? '重新绘制' : '绘制世界地图' }}</button></section>
+            <p v-if="disabledReason" class="map-setting-note" role="status">{{ disabledReason }}</p>
+            <button type="button" class="map-sync-button" :disabled="busy || refreshDisabled" @click="$emit('refresh')"><MapIcon name="refresh" />同步已保存的地图</button><p class="map-setting-note">同步只读取保存结果，不会重新生成地图。绘制或更新开始后，可以离开此页面。</p>
         </div>
-    </aside>
+    </dialog>
 </template>

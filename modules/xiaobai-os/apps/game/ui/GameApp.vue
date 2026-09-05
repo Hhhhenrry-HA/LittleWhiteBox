@@ -1,532 +1,171 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, toRaw } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch, type Component } from 'vue';
 import type { XiaobaiOsAppProps } from '../../../shell/app-contract.js';
-import type {
-    GameActiveGameView,
-    GameClientState,
-    GameDiceBidView,
-    GameDiceRecordDetailView,
-    GameKind,
-    GameLadderChoice,
-    GameLadderGameView,
-    GamePushGameView,
-    GameRecordPageView,
-    GameRecordView,
-} from '../types.js';
-import GameActionDialog from './GameActionDialog.vue';
-import GameDiceCommit from './GameDiceCommit.vue';
-import GameDiceGame from './GameDiceGame.vue';
-import GameDiceReveal from './GameDiceReveal.vue';
-import GameLadderGame from './GameLadderGame.vue';
+import type { GameClientState, GameKind } from '../types.js';
+import type { GameAction } from './room-contract.js';
+import { createGameClient } from './game-client.js';
+import { gameRoom } from './room-catalog.js';
 import GameLobby from './GameLobby.vue';
-import GamePushGame from './GamePushGame.vue';
 import GameRecords from './GameRecords.vue';
 import './game.css';
 
-type GamePage = 'lobby' | 'dice' | 'push' | 'ladder' | 'records';
-type GameWriteRequest =
-    | { endpoint: 'game/dice/start'; bet: number }
-    | { endpoint: 'game/dice/bid'; gameId: string; bid: GameDiceBidView }
-    | { endpoint: 'game/dice/challenge'; gameId: string }
-    | { endpoint: 'game/push/start' }
-    | { endpoint: 'game/push/draw'; gameId: string }
-    | { endpoint: 'game/push/cash-out'; gameId: string }
-    | { endpoint: 'game/ladder/start'; bet: number }
-    | { endpoint: 'game/ladder/step'; gameId: string; choice: GameLadderChoice }
-    | { endpoint: 'game/ladder/cash-out'; gameId: string };
-
-interface PendingAction {
-    request: GameWriteRequest;
-    actionId: string;
-    heading: string;
-    summary: string;
-    confirmLabel: string;
-    danger?: boolean;
-}
-
-/**
- * A finished hand the table still has to play out. The server has already
- * settled it, but the last card, die or step has not been shown yet, so the
- * table is kept mounted on a snapshot of its final frame.
- */
-type GameEnding =
-    | { kind: 'dice'; record: GameRecordView; detail: GameDiceRecordDetailView; balanceAfter: number }
-    | { kind: 'push'; record: GameRecordView; game: GamePushGameView; balanceAfter: number }
-    | { kind: 'ladder'; record: GameRecordView; game: GameLadderGameView; balanceAfter: number };
-
-/**
- * Outcomes whose last move still has to be shown. `cashed-out` is absent on
- * purpose: the player chose to stop, so nothing is left to find out.
- */
-const OUTCOMES_NEEDING_PLAYOUT: ReadonlySet<string> = new Set(['busted', 'failed', 'cleared', 'capped']);
-
-const REQUEST_TIMEOUT_MS = 35_000;
 const props = defineProps<XiaobaiOsAppProps>();
-const state = ref(structuredClone(toRaw(props.initialState as GameClientState)));
-const page = ref<GamePage>(state.value.activeGame?.kind || 'lobby');
-const refreshing = ref(false);
-const actionBusy = ref(false);
-const loadingMore = ref(false);
-const errorMessage = ref('');
-const actionError = ref('');
-const recordsError = ref('');
-const pending = ref<PendingAction | null>(null);
-const failedAction = ref<{ request: GameWriteRequest; actionId: string } | null>(null);
-const latestResultId = ref('');
-const ending = ref<GameEnding | null>(null);
-const inFlight = ref<GameWriteRequest | null>(null);
-const displayedFunds = ref({ balance: state.value.balance, lockedAmount: state.value.lockedAmount });
-let unsubscribe = () => {};
-let requestGeneration = 0;
-let actionSequence = 0;
-
-const requiresConfirmation = computed(() => (
-    state.value.status === 'unconfirmed' || state.value.status === 'save-failed'
-));
-const writeDisabledReason = computed(() => {
-    if (actionBusy.value) {return '正在处理上一项操作';}
-    if (refreshing.value) {return '正在刷新游戏状态';}
-    if (state.value.status !== 'ready') {return state.value.message || '游戏暂时不可写入';}
-    if (state.value.generationActive) {return '主剧情正在生成，请等待回复完成';}
-    return '';
-});
-const refreshDisabled = computed(() => refreshing.value || actionBusy.value || requiresConfirmation.value || state.value.status === 'conflict');
-const latestResult = computed(() => state.value.records.find(record => record.id === latestResultId.value) || null);
-const diceCommitBid = computed(() => {
-    if (inFlight.value?.endpoint !== 'game/dice/challenge' || state.value.activeGame?.kind !== 'dice') {return null;}
-    return state.value.activeGame.bids.at(-1) || null;
-});
-const pushDrawing = computed(() => inFlight.value?.endpoint === 'game/push/draw');
-const ladderStepping = computed(() => inFlight.value?.endpoint === 'game/ladder/step');
-
-// While a hand is being played out the table runs on the ending snapshot, so it
-// stays mounted after the server has already cleared the active game.
-const pushTable = computed<GamePushGameView | null>(() => {
-    if (ending.value?.kind === 'push') {return ending.value.game;}
-    return state.value.activeGame?.kind === 'push' ? state.value.activeGame : null;
-});
-const ladderTable = computed<GameLadderGameView | null>(() => {
-    if (ending.value?.kind === 'ladder') {return ending.value.game;}
-    return state.value.activeGame?.kind === 'ladder' ? state.value.activeGame : null;
-});
-
-function createActionId(): string {
-    if (typeof globalThis.crypto?.randomUUID === 'function') {return `game-ui:${globalThis.crypto.randomUUID()}`;}
-    actionSequence += 1;
-    return `game-ui:${Date.now()}:${actionSequence}`;
-}
-
-function binding(): { chatIdentity: string } {
-    return { chatIdentity: state.value.chatIdentity };
-}
-
-function readableError(error: unknown): string {
-    const message = error instanceof Error ? error.message : String(error);
-    if (message.includes('cannot be overdrawn') || message.includes('economy_insufficient_funds')) {return '小白币余额不足，未能入局。';}
-    if (message.includes('game_revision_conflict') || message.includes('game_event_id_conflict')) {return '牌局已经变化，请重新读取后再操作。';}
-    if (message.includes('game_dice_bid_not_higher')) {return '叫数必须高于桌面当前叫数。';}
-    if (message.includes('game_action_invalid')) {return '当前牌局不接受这项操作。';}
-    if (message.includes('game_main_generation_active')) {return '主剧情正在生成，请等待回复完成。';}
-    if (message.includes('game_push_cashout_invalid') || message.includes('game_ladder_cashout_invalid')) {return '当前还不能收手。';}
-    if (message.includes('聊天已切换')) {return '聊天已切换，请重新打开游戏。';}
-    if (message === 'host_request_timeout') {return '等待落账结果超时；可用同一操作标识安全重试。';}
-    return '游戏操作未完成，请稍后重试。';
-}
-
-function errorCode(error: unknown): string {
-    return error !== null && typeof error === 'object' && typeof (error as { code?: unknown }).code === 'string'
-        ? String((error as { code: string }).code)
-        : '';
-}
-
-function applyPendingSaveState(status: 'save-failed' | 'unconfirmed' | 'conflict'): void {
-    const message = status === 'save-failed'
-        ? '本局结果尚未保存。请重试保存后再继续游戏。'
-        : status === 'unconfirmed'
-            ? '上一次保存结果尚未确认，赌局与资金写入已冻结。'
-            : '服务端数据与当前候选不一致，请刷新酒馆后再继续。';
-    state.value = { ...state.value, status, message };
-}
-
-function captureEnding(previous: GameActiveGameView, record: GameRecordView, balanceAfter: number): GameEnding | null {
-    // A hand that ended on the player's own terms has nothing left to show.
-    if (!OUTCOMES_NEEDING_PLAYOUT.has(record.outcome) && record.detail.kind !== 'dice') {return null;}
-    if (previous.kind === 'dice' && record.detail.kind === 'dice') {
-        return { kind: 'dice', record, detail: record.detail, balanceAfter };
+const client = createGameClient(props.bridge, props.initialState as GameClientState);
+const {
+    state,
+    settlement,
+    funds,
+    inFlight,
+    reading,
+    loadingMore,
+    busy,
+    error,
+    recordsError,
+    failed,
+    disabledReason,
+    needsSave,
+    refreshDisabled,
+} = client;
+const scroll = ref<HTMLElement | null>(null);
+const page = ref<'lobby' | 'room' | 'records'>(state.value.activeGame ? 'room' : 'lobby');
+const selected = ref<GameKind | null>(state.value.activeGame?.kind || null);
+const roomComponent = shallowRef<Component | null>(null);
+const roomError = ref('');
+const roomLoading = ref(false);
+let loadGeneration = 0;
+const room = computed(() => (selected.value ? gameRoom(selected.value) : null));
+async function loadRoom(): Promise<void> {
+    const definition = room.value;
+    const generation = ++loadGeneration;
+    roomComponent.value = null;
+    roomError.value = '';
+    if (!definition) {
+        return;
     }
-    if (previous.kind === 'push' && record.detail.kind === 'push') {
-        return { kind: 'push', record, game: previous, balanceAfter };
-    }
-    if (previous.kind === 'ladder' && record.detail.kind === 'ladder') {
-        return { kind: 'ladder', record, game: previous, balanceAfter };
-    }
-    return null;
-}
-
-function dismissReveal(): void {
-    ending.value = null;
-    displayedFunds.value = { balance: state.value.balance, lockedAmount: state.value.lockedAmount };
-}
-
-function leaveTo(target: GamePage): void {
-    dismissReveal();
-    page.value = target;
-}
-
-function applyState(next: GameClientState): void {
-    const previousGame = state.value.activeGame;
-    let holdDisplayedFunds = ending.value !== null;
-    state.value = structuredClone(next);
-    refreshing.value = false;
-    loadingMore.value = false;
-    errorMessage.value = '';
-    recordsError.value = '';
-    if (previousGame && !next.activeGame) {
-        const result = next.records.find(record => record.gameId === previousGame.id);
-        const captured = result ? captureEnding(previousGame, result, next.balance) : null;
-        if (captured) {
-            ending.value = captured;
-            holdDisplayedFunds = true;
-            latestResultId.value = '';
-            page.value = captured.kind;
-        } else {
-            holdDisplayedFunds = false;
-            latestResultId.value = result?.id || '';
-            page.value = 'lobby';
-        }
-    }
-    if (!holdDisplayedFunds) {
-        displayedFunds.value = { balance: next.balance, lockedAmount: next.lockedAmount };
-    }
-    if (next.activeGame && page.value !== 'records' && page.value !== 'lobby') {
-        page.value = next.activeGame.kind;
-    } else if (!next.activeGame && page.value !== 'records' && !ending.value) {
-        page.value = 'lobby';
-    }
-}
-
-function requestPayload(request: GameWriteRequest, actionId: string): Record<string, unknown> {
-    const base = {
-        ...binding(),
-        expectedRevision: state.value.revision,
-        expectedEventId: state.value.eventId,
-        actionId,
-    };
-    if (request.endpoint === 'game/dice/start' || request.endpoint === 'game/ladder/start') {
-        return { ...base, bet: request.bet };
-    }
-    if (request.endpoint === 'game/push/start') {return base;}
-    if (request.endpoint === 'game/dice/bid') {
-        return {
-            ...base,
-            gameId: request.gameId,
-            bid: { count: request.bid.count, face: request.bid.face },
-        };
-    }
-    if (request.endpoint === 'game/ladder/step') {
-        return { ...base, gameId: request.gameId, choice: request.choice };
-    }
-    return { ...base, gameId: request.gameId };
-}
-
-async function performAction(request: GameWriteRequest, actionId = createActionId()): Promise<boolean> {
-    if (writeDisabledReason.value) {return false;}
-    const generation = requestGeneration;
-    actionBusy.value = true;
-    inFlight.value = request;
-    actionError.value = '';
-    failedAction.value = null;
+    roomLoading.value = true;
     try {
-        const response = await props.bridge.request(
-            request.endpoint,
-            requestPayload(request, actionId),
-            REQUEST_TIMEOUT_MS,
-        ) as { result: GameClientState };
-        if (generation !== requestGeneration) {return false;}
-        applyState(response.result);
-        if (response.result.activeGame) {page.value = response.result.activeGame.kind;}
-        return true;
-    } catch (error) {
-        if (generation === requestGeneration) {
-            const code = errorCode(error);
-            if (code === 'game_save_pending') {
-                applyPendingSaveState('save-failed');
-                actionError.value = '';
-                pending.value = null;
-                failedAction.value = null;
-            } else if (code === 'storage_unconfirmed') {
-                applyPendingSaveState('unconfirmed');
-                actionError.value = '';
-                pending.value = null;
-                failedAction.value = null;
-            } else if (code === 'storage_conflict') {
-                applyPendingSaveState('conflict');
-                actionError.value = '';
-                pending.value = null;
-                failedAction.value = null;
-            } else {
-                actionError.value = readableError(error);
-                failedAction.value = { request, actionId };
-            }
+        const module = await definition.load();
+        if (generation === loadGeneration) {
+            roomComponent.value = module.default;
         }
-        return false;
+    } catch {
+        if (generation === loadGeneration) {
+            roomError.value = '这个游戏暂时没能打开，再试一次吧。';
+        }
     } finally {
-        if (generation === requestGeneration) {
-            inFlight.value = null;
-            actionBusy.value = false;
+        if (generation === loadGeneration) {
+            roomLoading.value = false;
         }
     }
 }
-
-function openStart(kind: GameKind, bet: number): void {
-    if (writeDisabledReason.value || state.value.activeGame) {return;}
-    const copy = kind === 'dice'
-        ? { heading: '确认入席秘骰对决', summary: `托管 ¤ ${bet}，胜出返还下注的 1.8 倍。`, confirmLabel: '确认入席' }
-        : kind === 'push'
-            ? { heading: '确认揭开第一张牌', summary: '托管 ¤ 50。金币可以累积，炸弹会立即结束本局。', confirmLabel: '确认揭牌' }
-            : { heading: '确认踏上鎏金阶梯', summary: `托管 ¤ ${bet}，首层成功后才可收手。`, confirmLabel: '确认登阶' };
-    const request: GameWriteRequest = kind === 'dice'
-        ? { endpoint: 'game/dice/start', bet }
-        : kind === 'push'
-            ? { endpoint: 'game/push/start' }
-            : { endpoint: 'game/ladder/start', bet };
-    pending.value = { request, actionId: createActionId(), ...copy };
-    actionError.value = '';
-}
-
-function openChallenge(): void {
-    const game = state.value.activeGame;
-    if (game?.kind !== 'dice' || !game.legalActions.includes('challenge')) {return;}
-    pending.value = {
-        request: { endpoint: 'game/dice/challenge', gameId: game.id },
-        actionId: createActionId(),
-        heading: '现在开骰？',
-        summary: '双方骰盅将同时揭开，按桌面最终叫牌直接判定输赢。',
-        confirmLabel: '确认开骰',
-        danger: true,
-    };
-    actionError.value = '';
-}
-
-function openCashOut(kind: 'push' | 'ladder'): void {
-    const game = state.value.activeGame;
-    if (!game || game.kind !== kind || !game.legalActions.includes('cash-out')) {return;}
-    const amount = game.cashoutAmount;
-    pending.value = {
-        request: kind === 'push'
-            ? { endpoint: 'game/push/cash-out', gameId: game.id }
-            : { endpoint: 'game/ladder/cash-out', gameId: game.id },
-        actionId: createActionId(),
-        heading: '现在收手？',
-        summary: `本局将结束，并返还 ¤ ${amount}。`,
-        confirmLabel: '收手入账',
-    };
-    actionError.value = '';
-}
-
-function confirmPendingAction(): void {
-    const action = pending.value;
-    if (!action) {return;}
-    // The dialog only confirms intent. Persistence continues without covering
-    // the table, and the transient candidate state starts the playout.
-    pending.value = null;
-    void performAction(action.request, action.actionId);
-}
-
-function closeDialog(): void {
-    pending.value = null;
-    actionError.value = '';
-}
-
-async function refresh(): Promise<void> {
-    if (refreshDisabled.value) {return;}
-    const generation = ++requestGeneration;
-    refreshing.value = true;
-    errorMessage.value = '';
-    try {
-        const response = await props.bridge.request('game/refresh', binding(), REQUEST_TIMEOUT_MS) as {
-            result: GameClientState;
-        };
-        if (generation === requestGeneration) {applyState(response.result);}
-    } catch (error) {
-        if (generation === requestGeneration) {errorMessage.value = readableError(error);}
-    } finally {
-        if (generation === requestGeneration) {refreshing.value = false;}
-    }
-}
-
-async function confirmSave(): Promise<void> {
-    if (refreshing.value || actionBusy.value) {return;}
-    const generation = ++requestGeneration;
-    refreshing.value = true;
-    errorMessage.value = '';
-    try {
-        const response = await props.bridge.request('game/confirm-save', binding(), REQUEST_TIMEOUT_MS) as {
-            result: { state: GameClientState };
-        };
-        if (generation === requestGeneration) {applyState(response.result.state);}
-    } catch (error) {
-        if (generation === requestGeneration) {errorMessage.value = readableError(error);}
-    } finally {
-        if (generation === requestGeneration) {refreshing.value = false;}
-    }
-}
-
-async function loadMore(): Promise<void> {
-    if (!state.value.hasMore || loadingMore.value || actionBusy.value) {return;}
-    const generation = requestGeneration;
-    loadingMore.value = true;
-    recordsError.value = '';
-    try {
-        const response = await props.bridge.request('game/records/load-more', {
-            ...binding(),
-            offset: state.value.records.length,
-        }, REQUEST_TIMEOUT_MS) as { result: GameRecordPageView };
-        if (generation !== requestGeneration) {return;}
-        const known = new Set(state.value.records.map(record => record.id));
-        state.value.records.push(...response.result.records.filter(record => !known.has(record.id)));
-        state.value.total = response.result.total;
-        state.value.hasMore = response.result.hasMore;
-    } catch (error) {
-        if (generation === requestGeneration) {recordsError.value = readableError(error);}
-    } finally {
-        if (generation === requestGeneration) {loadingMore.value = false;}
-    }
-}
-
-function retryFailedAction(): void {
-    const failed = failedAction.value;
-    if (failed) {void performAction(failed.request, failed.actionId);}
-}
-
-onMounted(() => {
-    unsubscribe = props.bridge.subscribe((message) => {
-        if (message.type === 'game/state') {
-            const next = (message.payload as { state: GameClientState }).state;
-            if (!actionBusy.value) {requestGeneration += 1;}
-            actionError.value = '';
-            failedAction.value = null;
-            applyState(next);
-        }
-        if (message.type === 'game/error') {
-            errorMessage.value = '游戏状态暂时无法读取，请重新打开。';
-        }
+watch([page, selected, () => Boolean(state.value.activeGame), () => Boolean(settlement.value)], () => {
+    void nextTick(() => {
+        scroll.value?.scrollTo({ top: 0 });
     });
 });
-
+watch(selected, loadRoom, { immediate: true });
+watch(settlement, (value) => {
+    if (value) {
+        selected.value = value.record.game;
+        page.value = 'room';
+    }
+});
+watch(
+    () => state.value.chatIdentity,
+    () => {
+        selected.value = state.value.activeGame?.kind || null;
+        page.value = selected.value ? 'room' : 'lobby';
+    },
+);
+function open(kind: GameKind): void {
+    selected.value = kind;
+    page.value = 'room';
+}
+function leave(target: 'lobby' | 'records'): void {
+    client.dismissSettlement();
+    page.value = target;
+}
+function resume(): void {
+    if (state.value.activeGame) {
+        open(state.value.activeGame.kind);
+    }
+}
+function again(): void {
+    client.dismissSettlement();
+}
+async function act(action: GameAction): Promise<void> {
+    await client.act(action);
+}
 onBeforeUnmount(() => {
-    requestGeneration += 1;
-    unsubscribe();
-    pending.value = null;
-    failedAction.value = null;
-    inFlight.value = null;
+    loadGeneration += 1;
+    client.dispose();
 });
 </script>
-
 <template>
     <main class="game-app">
         <header class="game-header">
-            <div class="game-brand"><h1>游戏</h1></div>
-            <div class="game-funds">
-                <span><small>可用</small><strong>¤ {{ displayedFunds.balance }}</strong></span>
-                <span><small>托管</small><strong>¤ {{ displayedFunds.lockedAmount }}</strong></span>
-            </div>
-            <button type="button" class="game-refresh" :disabled="refreshDisabled" title="重新读取游戏" @click="refresh">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M18.2 9A7 7 0 0 0 6.1 6.7L4 9m16 6-2.1 2.3A7 7 0 0 1 5.8 15" /></svg>
-                <span class="game-sr-only">重新读取游戏</span>
+            <button
+                v-if="page === 'room'"
+                type="button"
+                class="game-back"
+                aria-label="返回游戏大厅"
+                @click="leave('lobby')"
+            >
+                ‹
             </button>
+            <h1>{{ page === 'room' ? room?.name : '游戏' }}</h1>
+            <div class="game-funds">
+                <small>可用小白币</small><strong>¤ {{ funds.balance.toLocaleString('zh-CN') }}</strong>
+            </div>
         </header>
-
         <nav class="game-nav" aria-label="游戏页面">
-            <button type="button" :class="{ 'is-active': page === 'lobby' }" @click="leaveTo('lobby')">大厅</button>
+            <button
+                type="button"
+                :aria-current="page === 'lobby' ? 'page' : undefined"
+                @click="leave('lobby')"
+            >
+                游艺室
+            </button>
             <button
                 v-if="state.activeGame"
                 type="button"
-                :class="{ 'is-active': page === state.activeGame.kind }"
-                @click="page = state.activeGame?.kind || 'lobby'"
+                :aria-current="page === 'room' && selected === state.activeGame.kind ? 'page' : undefined"
+                @click="resume"
             >
-                当前牌桌<i />
+                继续这一局 <i />
             </button>
-            <button type="button" :class="{ 'is-active': page === 'records' }" @click="leaveTo('records')">记录</button>
+            <button
+                type="button"
+                :aria-current="page === 'records' ? 'page' : undefined"
+                @click="leave('records')"
+            >
+                玩过的局
+            </button>
         </nav>
-
-        <aside v-if="state.message || errorMessage" class="game-notice" :class="`is-${state.status}`" role="status">
-            <span aria-hidden="true">!</span>
-            <div>
-                <strong>{{ state.status === 'save-failed' ? '本局尚未保存' : state.status === 'unconfirmed' ? '落账待核实' : state.status === 'conflict' ? '牌局状态冲突' : '游戏状态' }}</strong>
-                <p>{{ errorMessage || state.message }}</p>
-                <button v-if="requiresConfirmation" type="button" :disabled="refreshing" @click="confirmSave">
-                    {{ refreshing ? '正在保存…' : state.status === 'save-failed' ? '重试保存本局' : '核实保存结果' }}
-                </button>
-                <button v-else-if="state.status === 'blocked'" type="button" :disabled="refreshing" @click="refresh">
-                    {{ refreshing ? '正在读取…' : '重新读取' }}
-                </button>
-            </div>
+        <aside v-if="state.message || error || state.generationActive" class="game-notice" role="status">
+            <p>{{ error || state.message || '故事正在回复，等回复结束就能继续玩。' }}</p>
+            <button v-if="needsSave" type="button" :disabled="busy" @click="client.confirmSave">
+                {{ reading ? '正在确认…' : state.status === 'save-failed' ? '重试保存' : '核实保存结果' }}
+            </button>
+            <button
+                v-else-if="failed"
+                type="button"
+                :disabled="busy || state.generationActive"
+                @click="client.retry"
+            >
+                重试这次操作
+            </button>
+            <button
+                v-if="!needsSave && state.status !== 'conflict'"
+                type="button"
+                :disabled="refreshDisabled"
+                @click="client.refresh"
+            >
+                重新读取
+            </button>
         </aside>
-
-        <aside v-if="actionError && !pending" class="game-action-error" role="status">
-            <span>{{ actionError }}</span>
-            <button v-if="failedAction && state.status === 'ready'" type="button" :disabled="actionBusy" @click="retryFailedAction">重试同一操作</button>
-        </aside>
-
-        <div class="game-scroll">
-            <div v-if="latestResult && page === 'lobby'" class="game-result-banner" :class="`is-${latestResult.outcomeTone}`" role="status">
-                <span>{{ latestResult.gameLabel }}</span>
-                <strong>{{ latestResult.outcomeLabel }}</strong>
-                <em>{{ latestResult.net > 0 ? '+' : '' }}{{ latestResult.net }} 小白币</em>
-                <button type="button" @click="latestResultId = ''">关闭</button>
-            </div>
-
-            <GameLobby
-                v-if="page === 'lobby'"
-                :active-game="state.activeGame"
-                :balance="state.balance"
-                :locked-amount="state.lockedAmount"
-                :write-disabled-reason="writeDisabledReason"
-                @start="openStart"
-                @continue="kind => page = kind"
-            />
-            <GameDiceCommit
-                v-else-if="page === 'dice' && diceCommitBid"
-                :final-bid="diceCommitBid"
-            />
-            <GameDiceGame
-                v-else-if="page === 'dice' && state.activeGame?.kind === 'dice'"
-                :game="state.activeGame"
-                :write-disabled-reason="writeDisabledReason"
-                @bid="bid => performAction({ endpoint: 'game/dice/bid', gameId: state.activeGame?.id || '', bid })"
-                @challenge="openChallenge"
-                @lobby="leaveTo('lobby')"
-            />
-            <GameDiceReveal
-                v-else-if="page === 'dice' && ending?.kind === 'dice'"
-                :record="ending.record"
-                :detail="ending.detail"
-                :balance-after="ending.balanceAfter"
-                @done="leaveTo('lobby')"
-            />
-            <GamePushGame
-                v-else-if="page === 'push' && pushTable"
-                :game="pushTable"
-                :write-disabled-reason="writeDisabledReason"
-                :ending="ending?.kind === 'push' ? ending.record : null"
-                :drawing="pushDrawing"
-                @draw="performAction({ endpoint: 'game/push/draw', gameId: state.activeGame?.id || '' })"
-                @cash-out="openCashOut('push')"
-                @lobby="leaveTo('lobby')"
-                @finished="leaveTo('lobby')"
-            />
-            <GameLadderGame
-                v-else-if="page === 'ladder' && ladderTable"
-                :game="ladderTable"
-                :write-disabled-reason="writeDisabledReason"
-                :ending="ending?.kind === 'ladder' ? ending.record : null"
-                :stepping="ladderStepping"
-                @step="choice => performAction({ endpoint: 'game/ladder/step', gameId: state.activeGame?.id || '', choice })"
-                @cash-out="openCashOut('ladder')"
-                @lobby="leaveTo('lobby')"
-                @finished="leaveTo('lobby')"
-            />
+        <div ref="scroll" class="game-scroll">
+            <GameLobby v-if="page === 'lobby'" :active-game="state.activeGame" @open="open" />
             <GameRecords
                 v-else-if="page === 'records'"
                 :records="state.records"
@@ -534,18 +173,28 @@ onBeforeUnmount(() => {
                 :has-more="state.hasMore"
                 :loading-more="loadingMore"
                 :error="recordsError"
-                @load-more="loadMore"
+                @load-more="client.loadMore"
             />
+            <template v-else>
+                <div v-if="roomLoading" class="game-empty" role="status"><p>正在摆好桌面…</p></div>
+                <div v-else-if="roomError" class="game-empty" role="status">
+                    <p>{{ roomError }}</p>
+                    <button type="button" @click="loadRoom">重新打开</button>
+                </div>
+                <component
+                    :is="roomComponent"
+                    v-else-if="roomComponent"
+                    :state="state"
+                    :disabled-reason="disabledReason"
+                    :in-flight="inFlight"
+                    :settlement="settlement?.record.game === selected ? settlement : null"
+                    @revealed="client.revealComplete"
+                    @action="act"
+                    @again="again"
+                    @lobby="leave('lobby')"
+                    @resume="resume"
+                />
+            </template>
         </div>
-
-        <GameActionDialog
-            v-if="pending"
-            :heading="pending.heading"
-            :summary="pending.summary"
-            :confirm-label="pending.confirmLabel"
-            :danger="pending.danger"
-            @cancel="closeDialog"
-            @confirm="confirmPendingAction"
-        />
     </main>
 </template>
