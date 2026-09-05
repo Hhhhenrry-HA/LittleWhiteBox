@@ -6,12 +6,11 @@ import {
     resetDrawRunPlannerFailureLogsForTests,
 } from '../draw-run-debug.js';
 
-test('new Planner validation failures enter DEBUG Log once with the model output and schema error', () => {
+test('new Planner validation failures enter the browser console once with the LLM result and schema error', () => {
     resetDrawRunPlannerFailureLogsForTests();
     const entries = [];
     const logger = {
-        isEnabled: () => true,
-        warn(moduleId, message) { entries.push({ moduleId, message }); },
+        warn(prefix, details) { entries.push({ prefix, details }); },
     };
     const run = {
         id: 'run-debug-1',
@@ -33,19 +32,19 @@ test('new Planner validation failures enter DEBUG Log once with the model output
     assert.equal(logDrawRunPlannerFailures(run, logger), 1);
     assert.equal(logDrawRunPlannerFailures(run, logger), 0);
     assert.equal(entries.length, 1);
-    assert.equal(entries[0].moduleId, 'drawScenePlanner');
-    assert.match(entries[0].message, /错误位置: images\[0\]\.characters/);
-    assert.match(entries[0].message, /违反规则: must be an array/);
-    assert.match(entries[0].message, /submit_scene_plan/);
+    assert.match(entries[0].prefix, /Tool 返回未通过校验/);
+    assert.equal(entries[0].details.errorPath, 'images[0].characters');
+    assert.equal(entries[0].details.errorRule, 'must be an array');
+    assert.equal(entries[0].details.llmResult.toolCalls[0].name, 'submit_scene_plan');
+    assert.equal(entries[0].details.llmResult.toolCalls[0].arguments, 'bad');
 });
 
-test('Planner failures remain available when DEBUG Log is enabled after the first poll', () => {
+test('browser console logging does not require the DEBUG monitor to be enabled', () => {
     resetDrawRunPlannerFailureLogsForTests();
     const entries = [];
-    let enabled = false;
     const logger = {
-        isEnabled: () => enabled,
-        warn(_moduleId, message) { entries.push(message); },
+        isEnabled: () => false,
+        warn(_prefix, details) { entries.push(details); },
     };
     const run = {
         id: 'run-debug-2',
@@ -54,8 +53,7 @@ test('Planner failures remain available when DEBUG Log is enabled after the firs
         },
     };
 
-    assert.equal(logDrawRunPlannerFailures(run, logger), 0);
-    enabled = true;
     assert.equal(logDrawRunPlannerFailures(run, logger), 1);
-    assert.match(entries[0], /错误码: TOOL_CALL_MISSING/);
+    assert.equal(entries[0].errorCode, 'TOOL_CALL_MISSING');
+    assert.equal(entries[0].llmResult.text, 'plain answer');
 });

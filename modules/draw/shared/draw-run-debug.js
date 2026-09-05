@@ -1,6 +1,5 @@
-import { xbLog } from '../../../core/debug-core.js';
-
 const MAX_TRACKED_RUNS = 100;
+const CONSOLE_PREFIX = '[Draw Run][Scene Planner] Tool 返回未通过校验';
 const loggedFailureSignatures = new Map();
 
 function failureSignature(failure = {}) {
@@ -24,34 +23,34 @@ function seenFailuresForRun(runId) {
     return signatures;
 }
 
-function formatDebugValue(value) {
-    if (value === undefined) return '(未提供)';
+function parseModelOutput(value) {
+    const text = String(value || '');
+    if (!text) return null;
     try {
-        return JSON.stringify(value, null, 2);
+        return JSON.parse(text);
     } catch {
-        return String(value);
+        return text;
     }
 }
 
-function formatPlannerFailure(runId, failure) {
-    return [
-        '[scene_planner_tool_validation_failed]',
-        `Run: ${runId}`,
-        `第 ${Number(failure.attempt) || 0} 次返回`,
-        `错误码: ${String(failure.errorCode || '')}`,
-        `错误: ${String(failure.errorMessage || '')}`,
-        `错误位置: ${String(failure.errorPath || '(无)')}`,
-        `违反规则: ${String(failure.errorRule || '(无)')}`,
-        `收到值: ${formatDebugValue(failure.received)}`,
-        `期望值: ${formatDebugValue(failure.expected)}`,
-        `模型返回${failure.modelOutputTruncated === true ? '（已截断至 16 KiB）' : ''}:`,
-        String(failure.modelOutput || ''),
-    ].join('\n');
+function buildPlannerFailureDetails(runId, failure) {
+    return {
+        event: 'scene_planner_tool_validation_failed',
+        runId,
+        attempt: Number(failure.attempt) || 0,
+        errorCode: String(failure.errorCode || ''),
+        errorMessage: String(failure.errorMessage || ''),
+        errorPath: String(failure.errorPath || ''),
+        errorRule: String(failure.errorRule || ''),
+        received: failure.received,
+        expected: failure.expected,
+        llmResult: parseModelOutput(failure.modelOutput),
+        llmResultTruncated: failure.modelOutputTruncated === true,
+    };
 }
 
-export function logDrawRunPlannerFailures(run, logger = xbLog) {
+export function logDrawRunPlannerFailures(run, logger = console) {
     if (!run?.id || !Array.isArray(run?.progress?.validationFailures)) return 0;
-    if (typeof logger?.isEnabled === 'function' && !logger.isEnabled()) return 0;
     const runId = String(run.id);
     const seen = seenFailuresForRun(runId);
     let logged = 0;
@@ -60,11 +59,11 @@ export function logDrawRunPlannerFailures(run, logger = xbLog) {
         const signature = failureSignature(failure);
         if (seen.has(signature)) continue;
         try {
-            logger.warn('drawScenePlanner', formatPlannerFailure(runId, failure));
+            logger.warn(CONSOLE_PREFIX, buildPlannerFailureDetails(runId, failure));
             seen.add(signature);
             logged += 1;
         } catch {
-            // Debug logging must never affect Draw Run recovery.
+            // Browser logging must never affect Draw Run recovery.
         }
     }
     return logged;
