@@ -261,7 +261,7 @@ commitMaintenance(input: MaintenanceCommitRequest, guard: CommitGuard): Promise<
 3. Board/Candidate Prompt 按终态第 7.2 节分别实现，严格组装静态职责、system`<setting>`、system`<current_state>`、user`<task_data>`和 user 命令五层。不得写一个带 mode 分支的巨型字符串生成器，也不得 import Tavern 运行时代码。
 4. `response-compiler.ts`实现终态第 7.3 节的有界 JSON 提取、一次尾随逗号修复、闭合 reason、每项白名单编译和 partial 结果。Compiler 只返回无 ID board/candidate drafts；Candidates 先以规范字段比较现值，相同则返回既有 IDs/unchanged，不同才返回 drafts。
 5. `generation/request.ts`在本地前置条件满足后才`loadConfig → openSession → run`。一次请求一个 session、一个 Provider 回合、`tools:[]`；不为无工具请求扩展 gateway。保存前通过同一 adapter 重捕获并深比较唯一 context snapshot，再检查 activation token、主生成、expected boardId 或 task revision/eventId CAS 和 Kernel 文件写状态；全部通过后调用 application service，由 service 分配本批 ID 并执行唯一 Scoped transaction，generation 不 import ID factory 或 Store。
-6. board 和 candidate 各有独立 AbortController。切聊、OS cleanup、离开所属页面和新同类请求只取消保存前的旧请求。
+6. board 和 candidate 的 AbortController 由任务模块持有；后台运行态只在当前运行内保存，同一时刻只接收一项显式生成，Host 接收即返回。离开页面、退出 APP、关闭 OS 窗口不取消，重开从 Host 恢复状态；切聊、主聊天开始生成、模块停用或 OS cleanup 取消尚未保存的请求。
 
 ### 验证
 

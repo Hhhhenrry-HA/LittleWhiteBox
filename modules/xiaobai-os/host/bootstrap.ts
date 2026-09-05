@@ -33,7 +33,7 @@ function createModuleRouter(apps: AppModuleRegistry): XiaobaiOsAppRuntimeRouter 
         deactivate: apps.deactivate,
         handleMessage: apps.handleMessage,
         retry: apps.retry,
-        cancelForeground: (reason: string) => apps.cancelAll(reason),
+        cancelForeground: apps.cancelForeground,
         cancelAll: apps.cancelAll,
         handleWindowOpened: apps.handleWindowOpened,
         handleWindowClosed: apps.handleWindowClosed,

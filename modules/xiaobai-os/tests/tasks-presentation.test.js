@@ -56,6 +56,7 @@ test('state projection marks accepted board entries and sorts visible task group
         settings: { autoMaintenance: false },
         economyReady: true,
         generationActive: false,
+        generation: { state: 'idle', kind: null, taskId: null, message: '' },
         maintenanceStatus: { state: 'idle', mode: 'manual', message: 'skipped', lastRunAt: null },
     });
 

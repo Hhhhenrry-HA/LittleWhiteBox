@@ -5,6 +5,7 @@ import type {
     TaskDetailPresentation,
     TaskHistoryPage,
     TasksClientStatus,
+    TasksGenerationState,
     TasksMaintenanceOutcome,
     TasksPresentation,
     TasksSettings,
@@ -82,6 +83,7 @@ export function presentTasksState({
     settings,
     economyReady,
     generationActive,
+    generation,
     maintenanceStatus,
 }: {
     chatIdentity: string;
@@ -89,6 +91,7 @@ export function presentTasksState({
     settings: TasksSettings;
     economyReady: boolean;
     generationActive: boolean;
+    generation: TasksGenerationState;
     maintenanceStatus: MaintenanceStatus;
 }): TasksPresentation {
     const records = serviceView.records.map(record => structuredClone(record));
@@ -103,6 +106,7 @@ export function presentTasksState({
         settings: structuredClone(settings),
         playerBalance: serviceView.playerBalance,
         generationActive,
+        generation: { ...generation },
         board: board ? {
             boardId: board.boardId,
             generatedAt: board.generatedAt,

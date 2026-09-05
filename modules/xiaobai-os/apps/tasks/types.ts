@@ -8,6 +8,13 @@ export interface TasksSettings {
 export type TasksClientStatus = 'ready' | 'loading' | 'saving' | 'unconfirmed' | 'conflict' | 'blocked';
 export type TasksMaintenanceOutcome = 'none' | 'updated' | 'unchanged' | 'partial' | 'failed' | 'cancelled' | 'no-work';
 
+export interface TasksGenerationState {
+    state: 'idle' | 'running';
+    kind: 'board' | 'candidates' | null;
+    taskId: string | null;
+    message: string;
+}
+
 export interface TaskBoardPresentation extends Omit<TaskBoard, 'listings'> {
     listings: Array<TaskBoard['listings'][number] & { accepted: boolean }>;
 }
@@ -26,6 +33,7 @@ export interface TasksPresentation {
     settings: TasksSettings;
     playerBalance: number;
     generationActive: boolean;
+    generation: TasksGenerationState;
     board: TaskBoardPresentation | null;
     active: TaskRecord[];
     recruiting: TaskRecord[];

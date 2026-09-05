@@ -56,6 +56,7 @@ export interface AppModuleRegistry {
     activate(appId: string, context: XiaobaiOsAppActivationContext): Promise<unknown>;
     deactivate(appId: string, reason: string): Promise<void>;
     handleMessage(appId: string, message: XiaobaiOsHostFrameMessage): Promise<unknown>;
+    cancelForeground(reason: string): Promise<void>;
     cancelAll(reason: string): Promise<void>;
     handleWindowOpened(): Promise<void>;
     handleWindowClosed(reason: string): Promise<void>;
@@ -370,6 +371,7 @@ export function createAppModuleRegistry(
         activate,
         deactivate,
         handleMessage,
+        cancelForeground: (reason: string) => invokeInstalled('cancelForeground', null, runtime => runtime.cancelForeground?.(reason)),
         cancelAll: (reason: string) => invokeInstalled('cancelAll', null, runtime => runtime.cancelAll?.(reason)),
         handleWindowOpened: () => invokeInstalled(
             'handleWindowOpened',

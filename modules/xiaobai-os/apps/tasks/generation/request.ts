@@ -34,8 +34,6 @@ export interface TaskGenerationRequests {
         expectedTaskRevision: number;
         expectedEventId: string;
     }) => Promise<TaskGenerationRequestResult<CandidateCompileResult>>;
-    cancelBoard: (reason?: string) => void;
-    cancelCandidates: (reason?: string) => void;
     cancelAll: (reason?: string) => void;
 }
 
@@ -319,8 +317,6 @@ export function createTaskGenerationRequests({
     return Object.freeze({
         refreshBoard,
         refreshCandidates,
-        cancelBoard: (reason?: string) => cancel('board', reason),
-        cancelCandidates: (reason?: string) => cancel('candidates', reason),
         cancelAll(reason?: string) {
             cancel('board', reason);
             cancel('candidates', reason);

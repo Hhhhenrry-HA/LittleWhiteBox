@@ -1,12 +1,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { setImmediate } from 'node:timers';
+import { parseHTML } from 'linkedom';
 
 import { createTaskController } from '../apps/tasks/host/controller.js';
+import { createXiaobaiOsBootstrap } from '../host/bootstrap.js';
+import { createAppModuleRegistry } from '../kernel/app-registry.js';
 
 function deferred() {
     let resolve;
-    const promise = new Promise(resolvePromise => {resolve = resolvePromise;});
-    return { promise, resolve };
+    let reject;
+    const promise = new Promise((resolvePromise, rejectPromise) => {resolve = resolvePromise; reject = rejectPromise;});
+    return { promise, resolve, reject };
 }
 
 function createHarness() {
@@ -27,6 +32,7 @@ function createHarness() {
         maintenanceStatus: initialMaintenanceStatus,
         maintenanceStatuses: new Map([['character:1:chat-a', initialMaintenanceStatus]]),
         boardRequest: null,
+        candidateRequest: null,
         refreshRequest: null,
         taskError: null,
     };
@@ -65,9 +71,10 @@ function createHarness() {
             host.calls.push(['refresh-board']);
             return host.boardRequest?.promise ?? Promise.resolve({ kind: 'board', status: 'updated', changed: true, compile: { data: { listings: [] } } });
         },
-        refreshCandidates: async () => ({ kind: 'candidates', status: 'unchanged', changed: false }),
-        cancelBoard: reason => host.calls.push(['cancel-board', reason]),
-        cancelCandidates: reason => host.calls.push(['cancel-candidates', reason]),
+        refreshCandidates(input) {
+            host.calls.push(['refresh-candidates', input]);
+            return host.candidateRequest?.promise ?? Promise.resolve({ kind: 'candidates', status: 'unchanged', changed: false });
+        },
         cancelAll: reason => host.calls.push(['cancel-generation', reason]),
     };
     const settings = {
@@ -148,17 +155,158 @@ test('Tasks activation is local-only and maintenance returns after Host admissio
     assert.equal((await controller.handleMessage({ type: 'tasks/save/adopt-server', payload })).adoption, 'adopted');
 });
 
-test('route changes cancel only the generation owned by the page', async () => {
+for (const kind of ['board', 'candidates']) {
+    test(`${kind} generation is admitted immediately and survives leaving and reopening Tasks`, async () => {
+        const { controller, host } = createHarness();
+        await controller.activate(activation(host));
+        host.calls.length = 0;
+        const request = deferred();
+        host[kind === 'board' ? 'boardRequest' : 'candidateRequest'] = request;
+        const payload = { chatIdentity: host.identity.key, taskId: 'task-1', expectedTaskRevision: 1, expectedEventId: 'event-1' };
+        const message = { type: kind === 'board' ? 'tasks/refresh' : 'tasks/candidates/refresh', payload };
+
+        const started = await controller.handleMessage(message);
+        assert.equal(started.started, true);
+        assert.equal(started.state.generation.state, 'running');
+        assert.equal(started.state.generation.kind, kind);
+        assert.equal(started.state.generation.taskId, kind === 'board' ? null : 'task-1');
+        assert.equal((await controller.handleMessage({ type: 'tasks/activate', payload })).generation.state, 'running');
+        controller.deactivate('route-left');
+        controller.cancelForeground('frame-close');
+        assert.equal((await controller.activate(activation(host))).generation.state, 'running');
+        await assert.rejects(controller.handleMessage(message), /tasks_generation_active/);
+        assert.equal(host.calls.length, 1);
+
+        host.posts.length = 0;
+        request.resolve({ kind, status: 'updated', changed: true, compile: { data: { listings: [{}], candidates: [{}] } } });
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(host.posts.at(-1).payload.state.generation.state, 'idle');
+        assert.equal(host.posts.at(-1).payload.state.generationActive, false);
+        assert.match(host.posts.at(-1).payload.state.generation.message, kind === 'board' ? /已刷新 1/ : /找到 1/);
+        assert.deepEqual(host.reports, []);
+    });
+}
+
+test('completion and failures while Tasks is closed are visible on the next activation', async () => {
     const { controller, host } = createHarness();
     await controller.activate(activation(host));
-    host.calls.length = 0;
     const payload = { chatIdentity: host.identity.key };
+    for (const fails of [false, true]) {
+        const request = deferred();
+        host.boardRequest = request;
+        await controller.handleMessage({ type: 'tasks/refresh', payload });
+        controller.deactivate('frame-close');
+        host.posts.length = 0;
+        if (fails) {request.reject(new Error('provider failure'));}
+        else {request.resolve({ kind: 'board', status: 'unchanged', changed: false });}
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(host.posts.length, 0);
+        const reopened = await controller.activate(activation(host));
+        assert.equal(reopened.generation.state, 'idle');
+        assert.match(reopened.generation.message, fails ? /刷新失败/ : /没有新任务/);
+    }
+    assert.equal(host.reports.length, 1);
+});
 
-    await controller.handleMessage({ type: 'tasks/activate', payload: { ...payload, page: 'active' } });
-    assert.deepEqual(host.calls, [['cancel-board', 'route-left'], ['cancel-candidates', 'route-left']]);
-    host.calls.length = 0;
-    await controller.handleMessage({ type: 'tasks/activate', payload: { ...payload, page: 'published' } });
-    assert.deepEqual(host.calls, [['cancel-board', 'route-left']]);
+for (const closeFromDesktop of [false, true]) {
+    test(`closing the OS from ${closeFromDesktop ? 'its desktop' : 'Tasks'} keeps generation alive until plugin cleanup`, async (context) => {
+        const { controller, host } = createHarness();
+        const apps = createAppModuleRegistry([{
+            descriptor: { id: 'tasks', name: '任务', accent: '#fff' },
+            capabilities: [],
+            install: async () => controller,
+            dispose: runtime => runtime.stopBackground(),
+        }], {
+            createStore: () => assert.fail('this lifecycle test does not use storage'),
+            hasCapability: () => false,
+            requireCapability: () => assert.fail('this lifecycle test does not use capabilities'),
+            files: {},
+        });
+        const { document, window } = parseHTML('<html><head></head><body><div><button id="send_but"></button></div></body></html>');
+        let bridgeOptions;
+        const posts = [];
+        const bootstrap = createXiaobaiOsBootstrap({
+            composition: { apps, install: apps.installAll, dispose: apps.dispose },
+            documentTarget: document,
+            windowTarget: window,
+            stylesheetHref: '/host.css',
+            frameSrc: '/shell.html',
+            bridgeFactory(options) {
+                const bridge = {
+                    post(type, payload) {posts.push({ type, payload }); return true;},
+                    isReady: () => true,
+                    dispose() {},
+                };
+                bridgeOptions = { ...options, bridge };
+                return bridge;
+            },
+            onError: error => host.reports.push(error),
+        });
+        context.after(() => bootstrap.cleanup());
+        await bootstrap.init();
+
+        async function openTasks() {
+            bootstrap.lifecycle.open();
+            await bridgeOptions.onMessage({
+                type: 'app/activate', payload: { appId: 'tasks' }, requestId: 'activate',
+            }, bridgeOptions.bridge);
+            const result = posts.findLast(post => post.type === 'app/activation-result').payload;
+            assert.equal(result.ok, true);
+            return result;
+        }
+
+        const activated = await openTasks();
+        host.calls.length = 0;
+        const request = deferred();
+        host.boardRequest = request;
+        await controller.handleMessage({ type: 'tasks/refresh', payload: { chatIdentity: host.identity.key } });
+        if (closeFromDesktop) {
+            await bridgeOptions.onMessage({
+                type: 'app/deactivate', appId: 'tasks', activationToken: activated.activationToken,
+            }, bridgeOptions.bridge);
+        }
+        await bootstrap.lifecycle.closeWindow('frame-close');
+        assert.equal(bootstrap.lifecycle.isOpen(), false);
+        assert.deepEqual(host.calls, [['refresh-board']]);
+        assert.equal((await openTasks()).state.generation.state, 'running');
+        request.resolve({ kind: 'board', status: 'updated', changed: true, compile: { data: { listings: [{}] } } });
+        await new Promise(resolve => setImmediate(resolve));
+        assert.match(posts.findLast(post => post.type === 'tasks/state').payload.state.generation.message, /已刷新 1/);
+
+        const pendingCleanup = deferred();
+        host.boardRequest = pendingCleanup;
+        await controller.handleMessage({ type: 'tasks/refresh', payload: { chatIdentity: host.identity.key } });
+        await bootstrap.cleanup();
+        assert.equal(host.calls.some(call => call[0] === 'cancel-generation' && call[1] === 'cleanup'), true);
+        const postCount = posts.length;
+        pendingCleanup.resolve({ kind: 'board', status: 'updated', changed: true });
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(posts.length, postCount);
+        assert.deepEqual(host.reports, []);
+    });
+}
+
+test('a cancelled generation cannot overwrite the status of a newer run', async () => {
+    const { controller, host } = createHarness();
+    await controller.activate(activation(host));
+    const message = { type: 'tasks/refresh', payload: { chatIdentity: host.identity.key } };
+    const oldRequest = deferred();
+    host.boardRequest = oldRequest;
+    await controller.handleMessage(message);
+    host.mainGenerationActive = true;
+    host.generationListener(true);
+    host.mainGenerationActive = false;
+    host.generationListener(false);
+    const nextRequest = deferred();
+    host.boardRequest = nextRequest;
+    await controller.handleMessage(message);
+    oldRequest.reject(new Error('late cancelled provider failure'));
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal((await controller.handleMessage({ type: 'tasks/activate', payload: message.payload })).generation.state, 'running');
+    nextRequest.resolve({ kind: 'board', status: 'unchanged', changed: false });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(host.posts.at(-1).payload.state.generation.state, 'idle');
+    assert.deepEqual(host.reports, []);
 });
 
 test('leaving Tasks does not cancel Host-owned maintenance', async () => {
@@ -224,14 +372,18 @@ test('late generation results are rejected after chat change without publishing 
     host.calls.length = 0;
     const request = deferred();
     host.boardRequest = request;
-    const pending = controller.handleMessage({
+    const started = await controller.handleMessage({
         type: 'tasks/refresh', payload: { chatIdentity: host.identity.key },
     });
     host.identity = { key: 'character:1:chat-b' };
     controller.handleChatChanged();
     request.resolve({ kind: 'board', status: 'cancelled', changed: false });
 
-    await assert.rejects(pending, /tasks_app_inactive/);
+    assert.equal(started.started, true);
+    const reopened = await controller.activate(activation(host));
+    assert.equal(reopened.generation.state, 'idle');
+    assert.equal(reopened.generation.message, '');
+    await new Promise(resolve => setImmediate(resolve));
     assert.deepEqual(host.reports, []);
     assert.equal(host.posts.some(post => post.payload?.state?.chatIdentity === 'character:1:chat-b'), false);
     assert.deepEqual(host.calls.slice(-3), [
@@ -270,16 +422,16 @@ test('main generation start aborts in-flight Tasks generation before publishing 
     host.calls.length = 0;
     const request = deferred();
     host.boardRequest = request;
-    const pending = controller.handleMessage({
+    await controller.handleMessage({
         type: 'tasks/refresh', payload: { chatIdentity: host.identity.key },
     });
 
     host.mainGenerationActive = true;
     host.generationListener(true);
     request.resolve({ kind: 'board', status: 'cancelled', changed: false });
-    const result = await pending;
-
-    assert.equal(result.outcome.status, 'cancelled');
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(host.posts.at(-1).payload.state.generation.state, 'idle');
+    assert.equal(host.posts.at(-1).payload.state.generationActive, true);
     assert.deepEqual(host.calls.slice(-1), [['cancel-generation', 'main-generation-started']]);
 });
 

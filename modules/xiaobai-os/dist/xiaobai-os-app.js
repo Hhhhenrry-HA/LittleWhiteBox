@@ -80,7 +80,7 @@ var Ee = Object.freeze({
     "M17 12h30a5 5 0 0 1 5 5v35H12V17a5 5 0 0 1 5-5z",
     "M21 23h22M21 32h22M21 41h14",
     "M18 9h28v8H18z"
-  ], () => import("./xiaobai-os-TasksApp-DL_pfCzD.js"))
+  ], () => import("./xiaobai-os-TasksApp-gRCUwxwY.js"))
 }), ee = Object.freeze(be.map((a) => {
   const t = Ee[a];
   if (!t) throw new Error(`missing_shell_app:${a}`);

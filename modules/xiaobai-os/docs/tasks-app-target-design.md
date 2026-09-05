@@ -826,13 +826,13 @@ Wallet 只展示 Economy 流水，不提供任务操作入口。
 | 维护一次 | 是 | 用户明确点击；最新完整接受轮；至少一项 active 的基线早于该来源 |
 | 从聊天重建 Tasks | 不存在 | 不提供入口 |
 
-Board/candidate 每次显式请求只加载一次配置、创建一个 Agent session、执行一次无工具调用。切聊、离开所属页面、OS cleanup 或再次发起同类请求时 abort；迟到结果必须通过 osId/binding、app activation token、board/task CAS 和 Kernel 文件写状态检查。
+Board/candidate 每次显式请求只加载一次配置、创建一个 Agent session、执行一次无工具调用。任务模块持有后台请求与运行状态，Host 接收后立即返回；离开页面、退出 APP 或关闭 OS 窗口不取消，重开从 Host 投影恢复进度与结果。切聊、主聊天开始生成、模块停用或 OS cleanup 时 abort；迟到结果必须通过 osId/binding、上下文快照、board/task CAS 和 Kernel 文件写状态检查，不依赖 app activation token。运行状态只在当前插件运行内保存，不持久化。
 
 Maintenance 使用现有 Host FIFO、来源校验和 participant token。Tasks 与 Map 都有工作时共用一个 Agent adapter 和 Provider tool loop，但各有 Prompt、工具、领域 Session、staging、结果和 Scoped transaction；一方失败不能撤销或冒充另一方。手动维护点击后立即入队并返回，按钮从按聊天隔离的 Host 状态显示“正在更新”且不可再次点击；返回桌面、切换 APP或关闭 OS 窗口不取消任务，切聊后不得显示旧聊天的运行或完成结果。
 
 ### 10.3 保存 commit point
 
-sidecar replace 发出之前，切聊、OS cleanup、关闭对应自动开关、接受消息变化、task revision/eventId 改变或主动取消都会丢弃尚未提交的自动 staging。手动 maintenance 不由页面拥有，离开页面不取消；board/candidate 等真正的页面请求仍由各自 activation 管理。
+sidecar replace 发出之前，切聊、OS cleanup、关闭对应自动开关、接受消息变化、task revision/eventId 改变或主动取消都会丢弃尚未提交的自动 staging。手动 maintenance 和 board/candidate 显式生成均不由页面拥有，离开页面不取消；页面只持有展示订阅和本地表单。
 
 sidecar replace 已经发出后无法物理回滚。此时必须等待真实保存结果：confirmed 才发布任务/资金快照，明确失败则不发布，结果未知则进入文件级 unconfirmed。UI 和文档都不能声称“任何时刻都能取消”。
 

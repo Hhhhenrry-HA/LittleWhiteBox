@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, toRaw } from 'vue';
 import type { XiaobaiOsAppProps } from '../../../shell/app-contract.js';
 import type {
     TaskDetailPresentation,
@@ -20,7 +20,6 @@ import './tasks.css';
 
 type TasksPage = 'board' | 'active' | 'published' | 'history' | 'settings' | 'publish' | 'detail';
 const REQUEST_TIMEOUT_MS = 35_000;
-const GENERATION_TIMEOUT_MS = 180_000;
 const props = defineProps<XiaobaiOsAppProps>();
 
 function fallbackState(): TasksPresentation {
@@ -32,6 +31,7 @@ function fallbackState(): TasksPresentation {
         settings: { autoMaintenance: false },
         playerBalance: 0,
         generationActive: false,
+        generation: { state: 'idle', kind: null, taskId: null, message: '' },
         board: null,
         active: [],
         recruiting: [],
@@ -59,8 +59,12 @@ const page = ref<TasksPage>('board');
 const previousPage = ref<Exclude<TasksPage, 'detail' | 'publish'>>('board');
 const detail = ref<TaskDetailPresentation | null>(null);
 const pendingPublish = ref<TaskPublishedForm | null>(null);
-const boardBusy = ref(false);
-const candidateBusyTaskId = ref('');
+const boardBusy = computed(() => state.value.generation.state === 'running' && state.value.generation.kind === 'board');
+const candidateBusyTaskId = computed(() => (
+    state.value.generation.state === 'running' && state.value.generation.kind === 'candidates'
+        ? state.value.generation.taskId ?? ''
+        : ''
+));
 const writeBusy = ref(false);
 const settingsBusy = ref(false);
 const saveBusy = ref(false);
@@ -140,17 +144,13 @@ function announce(message: string): void {
 
 async function refreshBoard(): Promise<void> {
     if (boardBusy.value || generationDisabledReason.value) {return;}
-    boardBusy.value = true;
     errorMessage.value = '';
     const version = stateVersion;
     try {
-        const body = await request('tasks/refresh', {}, GENERATION_TIMEOUT_MS);
+        const body = await request('tasks/refresh');
         if (!mounted) {return;}
         applyResponseState(body, version);
-        const outcome = isRecord(body) && isRecord(body.outcome) ? body.outcome : null;
-        announce(typeof outcome?.message === 'string' ? outcome.message : '任务已刷新');
     } catch (error) {if (mounted) {errorMessage.value = readableError(error);}}
-    finally {if (mounted) {boardBusy.value = false;}}
 }
 
 async function acceptListing(boardId: string, listingId: string): Promise<void> {
@@ -167,19 +167,17 @@ async function acceptListing(boardId: string, listingId: string): Promise<void> 
 
 async function recruit(task: TaskRecord): Promise<void> {
     if (candidateBusyTaskId.value || generationDisabledReason.value) {return;}
-    candidateBusyTaskId.value = task.taskId;
+    errorMessage.value = '';
     const version = stateVersion;
     try {
         const body = await request('tasks/candidates/refresh', {
             taskId: task.taskId,
             expectedTaskRevision: task.taskRevision,
             expectedEventId: task.eventId,
-        }, GENERATION_TIMEOUT_MS);
+        });
+        if (!mounted) {return;}
         applyResponseState(body, version);
-        const outcome = isRecord(body) && isRecord(body.outcome) ? body.outcome : null;
-        announce(typeof outcome?.message === 'string' ? outcome.message : '招募请求已结束');
-    } catch (error) {errorMessage.value = readableError(error);}
-    finally {candidateBusyTaskId.value = '';}
+    } catch (error) {if (mounted) {errorMessage.value = readableError(error);}}
 }
 
 async function assign(task: TaskRecord, candidateId: string): Promise<void> {
@@ -314,11 +312,6 @@ function go(next: Exclude<TasksPage, 'detail'>): void {
     page.value = next;
 }
 
-watch(page, (next) => {
-    const hostPage = next === 'publish' ? 'published' : next;
-    props.bridge.post('tasks/activate', { chatIdentity: state.value.chatIdentity, page: hostPage });
-});
-
 onMounted(() => {
     mounted = true;
     unsubscribe = props.bridge.subscribe((message) => {
@@ -330,7 +323,7 @@ onMounted(() => {
             errorMessage.value = '任务状态暂时无法读取，请重新打开。';
         }
     });
-    props.bridge.post('tasks/activate', { chatIdentity: state.value.chatIdentity, page: 'board' });
+    props.bridge.post('tasks/activate', { chatIdentity: state.value.chatIdentity });
 });
 
 onBeforeUnmount(() => {
@@ -352,6 +345,10 @@ onBeforeUnmount(() => {
             <p>{{ errorMessage || state.message || actionMessage }}</p>
             <button v-if="requiresConfirmation" type="button" :disabled="saveBusy" @click="confirmSave">{{ saveBusy ? '正在核实…' : '核实保存结果' }}</button>
             <button v-else-if="state.status === 'conflict'" type="button" :disabled="saveBusy" @click="adoptServer">{{ saveBusy ? '正在采用…' : '采用服务端数据' }}</button>
+        </aside>
+
+        <aside v-if="state.generation.message" class="tasks-notice" role="status">
+            <span aria-hidden="true">i</span><p>{{ state.generation.message }}</p>
         </aside>
 
         <div class="tasks-content">

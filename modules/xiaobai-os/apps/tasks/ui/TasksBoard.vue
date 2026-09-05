@@ -29,8 +29,8 @@ const emit = defineEmits<{
         </header>
 
         <div v-if="!board" class="tasks-empty">
-            <h3>当前没有任务</h3>
-            <p>请点击右上角“刷新任务”获取新任务。</p>
+            <h3>{{ busy ? '正在生成任务' : '当前没有任务' }}</h3>
+            <p>{{ busy ? '生成在后台继续，无需停留在此页面。' : '请点击右上角“刷新任务”获取新任务。' }}</p>
         </div>
         <div v-else class="tasks-board-grid">
             <article v-for="listing in board.listings" :key="listing.listingId" class="tasks-listing" :class="{ 'is-accepted': listing.accepted }">

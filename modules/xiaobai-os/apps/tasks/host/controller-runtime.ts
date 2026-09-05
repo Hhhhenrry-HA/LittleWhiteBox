@@ -10,8 +10,8 @@ import type {
     XiaobaiOsChatIdentity,
 } from '../../../types.js';
 import type { TasksService, TasksServiceView } from '../application/service.js';
-import type { TaskGenerationRequests, TaskGenerationRequestResult } from '../generation/request.js';
-import type { BoardCompileResult, CandidateCompileResult } from '../generation/types.js';
+import type { TaskGenerationRequests } from '../generation/request.js';
+import { createTaskGenerationRuntime } from '../generation/runtime.js';
 import type { TasksPresentation, TasksSettings } from '../types.js';
 import { presentTaskDetail, presentTaskHistory, presentTasksState } from './presentation.js';
 
@@ -96,38 +96,6 @@ function publicError(error: unknown): Error {
     return new Error('tasks_operation_failed');
 }
 
-function boardOutcome(result: TaskGenerationRequestResult<BoardCompileResult>): {
-    status: typeof result.status;
-    changed: boolean;
-    count: number;
-    message: string;
-} {
-    const count = result.compile?.data?.listings.length ?? 0;
-    const message = result.status === 'cancelled'
-        ? '已取消'
-        : result.status === 'failed'
-            ? '刷新失败'
-            : result.status === 'partial'
-                ? `已刷新 ${count} 项，部分结果不可用`
-                : `已刷新 ${count} 项`;
-    return { status: result.status, changed: result.changed, count, message };
-}
-
-function candidateOutcome(result: TaskGenerationRequestResult<CandidateCompileResult>): {
-    status: typeof result.status;
-    changed: boolean;
-    count: number;
-    message: string;
-} {
-    const count = result.compile?.data?.candidates.length ?? 0;
-    let message = '招募失败';
-    if (result.status === 'cancelled') {message = '已取消';}
-    else if (result.status === 'unchanged') {message = count ? '候选名单无变化' : '暂无人应征';}
-    else if (result.status === 'partial') {message = '部分候选资料不可用';}
-    else if (result.status === 'updated') {message = count ? `找到 ${count} 名候选人` : '暂无人应征';}
-    return { status: result.status, changed: result.changed, count, message };
-}
-
 export function createTaskControllerRuntime({
     tasks,
     economy,
@@ -147,16 +115,18 @@ export function createTaskControllerRuntime({
     let activation: TaskActivation | null = null;
     let preparation: { activation: TaskActivation; error: string } | null = null;
     let localWriteBusy = false;
-    let boardGeneration = 0;
-    let candidateGeneration = 0;
-    let boardGenerating = false;
-    let candidateGenerating = false;
     let unsubscribeData: (() => void) | null = null;
     let unsubscribeGeneration: (() => void) | null = null;
     let unsubscribeSettings: (() => void) | null = null;
     let unsubscribeMaintenance: (() => void) | null = null;
 
     const currentChatIdentity = () => identityKey(getChatIdentity());
+    const backgroundGeneration = createTaskGenerationRuntime({
+        requests: generation,
+        getChatIdentity: currentChatIdentity,
+        onChange: emitCurrentState,
+        report,
+    });
 
     function assertActivation(payload: UnknownRecord = {}): TaskActivation {
         if (!activation) {throw new Error('tasks_app_inactive');}
@@ -186,12 +156,14 @@ export function createTaskControllerRuntime({
     }
 
     function buildState(chatIdentity: string): TasksPresentation {
+        const generationState = backgroundGeneration.getState(chatIdentity);
         const state = presentTasksState({
             chatIdentity,
             serviceView: serviceView(),
             settings: taskSettings(),
             economyReady: economy.isOpen(),
-            generationActive: isMainGenerationActive() || boardGenerating || candidateGenerating,
+            generationActive: isMainGenerationActive() || generationState.state === 'running',
+            generation: generationState,
             maintenanceStatus: maintenance.getStatus('tasks', chatIdentity),
         });
         if (!preparation || preparation.activation !== activation) {return state;}
@@ -243,7 +215,9 @@ export function createTaskControllerRuntime({
 
     function assertWritable(current: TaskActivation): void {
         if (localWriteBusy) {throw new Error('tasks_operation_busy');}
-        if (boardGenerating || candidateGenerating || isMainGenerationActive()) {throw new Error('tasks_generation_active');}
+        if (backgroundGeneration.getState(current.chatIdentity).state === 'running' || isMainGenerationActive()) {
+            throw new Error('tasks_generation_active');
+        }
         if (tasks.getWriteState() !== 'ready') {throw new Error('tasks_write_blocked');}
         if (!economy.isOpen() || activation !== current || currentChatIdentity() !== current.chatIdentity) {
             throw new Error('tasks_state_unavailable');
@@ -271,49 +245,6 @@ export function createTaskControllerRuntime({
         }
     }
 
-    async function runBoardGeneration(current: TaskActivation, payload: UnknownRecord) {
-        assertWritable(current);
-        const token = ++boardGeneration;
-        boardGenerating = true;
-        emitState(current);
-        try {
-            const result = await generation.refreshBoard();
-            assertSameActivation(current, payload);
-            return { outcome: boardOutcome(result), state: emitState(current) };
-        } catch (error) {
-            assertSameActivation(current, payload);
-            report(error);
-            return { outcome: { status: 'failed', changed: false, count: 0, message: '刷新失败' }, state: emitState(current) };
-        } finally {
-            if (token === boardGeneration) {
-                boardGenerating = false;
-                if (activation === current) {emitCurrentState();}
-            }
-        }
-    }
-
-    async function runCandidateGeneration(current: TaskActivation, payload: UnknownRecord) {
-        assertWritable(current);
-        const input = requireTaskCas(payload);
-        const token = ++candidateGeneration;
-        candidateGenerating = true;
-        emitState(current);
-        try {
-            const result = await generation.refreshCandidates(input);
-            assertSameActivation(current, payload);
-            return { outcome: candidateOutcome(result), state: emitState(current) };
-        } catch (error) {
-            assertSameActivation(current, payload);
-            report(error);
-            return { outcome: { status: 'failed', changed: false, count: 0, message: '招募失败' }, state: emitState(current) };
-        } finally {
-            if (token === candidateGeneration) {
-                candidateGenerating = false;
-                if (activation === current) {emitCurrentState();}
-            }
-        }
-    }
-
     function activate(context: XiaobaiOsAppActivationContext): TasksPresentation {
         cancelForeground('app-reactivated');
         const chatIdentity = currentChatIdentity();
@@ -324,36 +255,21 @@ export function createTaskControllerRuntime({
         return buildState(chatIdentity);
     }
 
-    function cancelGeneration(reason: string): void {
-        boardGeneration += 1;
-        candidateGeneration += 1;
-        boardGenerating = false;
-        candidateGenerating = false;
-        generation.cancelAll(reason);
-    }
-
-    function cancelForeground(reason = 'route-left'): void {
+    function cancelForeground(_reason = 'route-left'): void {
         activation = null;
         preparation = null;
         localWriteBusy = false;
-        cancelGeneration(reason);
+    }
+
+    function cancelAll(reason: string): void {
+        cancelForeground(reason);
+        backgroundGeneration.cancelAll(reason);
     }
 
     async function handleMessage(message: XiaobaiOsHostFrameMessage): Promise<unknown> {
         const payload = isRecord(message.payload) ? message.payload : {};
         const current = assertActivation(payload);
         if (message.type === 'tasks/activate') {
-            const page = typeof payload.page === 'string' ? payload.page : '';
-            if (page !== 'board') {
-                boardGeneration += 1;
-                boardGenerating = false;
-                generation.cancelBoard('route-left');
-            }
-            if (page !== 'published' && page !== 'detail') {
-                candidateGeneration += 1;
-                candidateGenerating = false;
-                generation.cancelCandidates('route-left');
-            }
             return emitState(current);
         }
         if (message.type === 'tasks/detail/read') {
@@ -363,8 +279,15 @@ export function createTaskControllerRuntime({
             const cursor = requireId(payload.cursor, 'tasks_history_cursor_invalid');
             return presentTaskHistory(serviceView().records, cursor);
         }
-        if (message.type === 'tasks/refresh') {return runBoardGeneration(current, payload);}
-        if (message.type === 'tasks/candidates/refresh') {return runCandidateGeneration(current, payload);}
+        if (message.type === 'tasks/refresh' || message.type === 'tasks/candidates/refresh') {
+            assertWritable(current);
+            if (maintenance.getStatus('tasks', current.chatIdentity).state === 'running') {
+                throw new Error('tasks_generation_active');
+            }
+            if (message.type === 'tasks/refresh') {backgroundGeneration.startBoard(current.chatIdentity);}
+            else {backgroundGeneration.startCandidates(current.chatIdentity, requireTaskCas(payload));}
+            return { started: true, state: emitState(current) };
+        }
         if (message.type === 'tasks/board/accept') {
             const boardId = requireId(payload.boardId, 'tasks_request_invalid');
             const listingId = requireId(payload.listingId, 'tasks_request_invalid');
@@ -430,9 +353,9 @@ export function createTaskControllerRuntime({
         activate,
         deactivate: cancelForeground,
         cancelForeground,
-        cancelAll: cancelForeground,
+        cancelAll,
         handleChatChanged() {
-            cancelForeground('chat-changed');
+            cancelAll('chat-changed');
             maintenance.cancelRequested('tasks', 'chat-changed');
             maintenance.invalidateAutomatic('tasks', 'chat-changed');
         },
@@ -440,7 +363,7 @@ export function createTaskControllerRuntime({
         startBackground() {
             unsubscribeData ||= subscribeData(handleDataChange);
             unsubscribeGeneration ||= subscribeGeneration((active) => {
-                if (active) {cancelGeneration('main-generation-started');}
+                if (active) {backgroundGeneration.cancelAll('main-generation-started');}
                 emitCurrentState();
             });
             unsubscribeSettings ||= settings.subscribe(emitCurrentState);
@@ -457,7 +380,7 @@ export function createTaskControllerRuntime({
             unsubscribeGeneration = null;
             unsubscribeSettings = null;
             unsubscribeMaintenance = null;
-            cancelForeground('stopped');
+            cancelAll('stopped');
         },
     });
 }
