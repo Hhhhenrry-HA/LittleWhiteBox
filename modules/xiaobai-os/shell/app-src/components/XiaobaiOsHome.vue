@@ -25,9 +25,7 @@ defineEmits<{
                 @click="$emit('openApp', app)"
             >
                 <span class="xiaobai-os-app-icon" aria-hidden="true">
-                    <svg viewBox="0 0 64 64">
-                        <path v-for="path in app.iconPaths" :key="path" :d="path" />
-                    </svg>
+                    <img :src="app.icon" alt="" width="64" height="64" draggable="false">
                 </span>
                 <span class="xiaobai-os-app-name">{{ app.name }}</span>
             </button>

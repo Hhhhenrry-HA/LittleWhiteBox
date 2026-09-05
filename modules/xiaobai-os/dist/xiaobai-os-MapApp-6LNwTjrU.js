@@ -1,6 +1,5 @@
 /* eslint-disable */
-import { $ as _e, A as D, C as He, D as Ve, E as ce, M as Ue, N as S, Q as G, S as W, T as Xe, _ as $e, a as O, c as C, d as qe, et as h, f as U, l as c, m as ee, o as e, p as le, r as j, s as de, x as u, y as Fe } from "./xiaobai-os-runtime-core.esm-bundler-Dmqi2Zbl.js";
-import { c as Se, i as We, t as Ze } from "./xiaobai-os-runtime-dom.esm-bundler-BYy7nd4d.js";
+import { A as ce, B as h, E as He, I as Ve, L as S, P as D, R as G, S as Ue, T as W, _ as le, b as _e, c as $e, d as e, f as de, g as U, h as Xe, i as qe, j as Fe, k as We, l as j, m as c, p as C, t as Ze, u as O, v as ee, w as u, z as Se } from "./xiaobai-os-runtime-dom.esm-bundler-DQLnRQQ3.js";
 var Qe = { class: "map-viewport" }, Je = ["viewBox", "aria-label"], et = {
   class: "map-viewport-controls",
   "aria-label": "地图缩放控制"
@@ -69,13 +68,13 @@ var Qe = { class: "map-viewport" }, Je = ["viewBox", "aria-label"], et = {
     function p(d) {
       _ && (d.preventDefault(), d.stopPropagation());
     }
-    return Xe(() => [
+    return We(() => [
       r.viewBox[0],
       r.viewBox[1],
       r.viewBox[2],
       r.viewBox[3],
       r.resetKey
-    ], f, { immediate: !0 }), $e(() => {
+    ], f, { immediate: !0 }), _e(() => {
       M && clearTimeout(M);
     }), (d, b) => (u(), c("div", Qe, [(u(), c("svg", {
       ref_key: "svg",
@@ -85,7 +84,7 @@ var Qe = { class: "map-viewport" }, Je = ["viewBox", "aria-label"], et = {
       preserveAspectRatio: "xMidYMid meet",
       role: "img",
       "aria-label": a.label,
-      onWheel: Se(P, ["prevent"]),
+      onWheel: $e(P, ["prevent"]),
       onPointerdown: H,
       onPointermove: Y,
       onPointerup: X,
@@ -704,7 +703,7 @@ var gt = [
           role: n(o).sceneKey ? "button" : void 0,
           tabindex: n(o).sceneKey ? 0 : void 0,
           "aria-label": n(o).sceneKey ? `查看 ${n(o).name} 场景` : n(o).name,
-          onClick: Se((E) => M(n(o)), ["stop"]),
+          onClick: $e((E) => M(n(o)), ["stop"]),
           onKeydown: (E) => m(E, n(o))
         }, [
           e("rect", {
@@ -770,7 +769,7 @@ var gt = [
       _: 1
     }, 8, ["view-box", "reset-key"]));
   }
-}), Yt = jt, mn = Object.freeze([
+}), Yt = jt, hn = Object.freeze([
   "wall",
   "road",
   "water",
@@ -786,14 +785,14 @@ var gt = [
   "magic",
   "secret",
   "light"
-]), bn = Object.freeze([
+]), mn = Object.freeze([
   "rect",
   "circle",
   "path",
   "curve",
   "icon",
   "label"
-]), gn = Object.freeze([
+]), bn = Object.freeze([
   "door",
   "stairs",
   "elevator",
@@ -833,11 +832,11 @@ var gt = [
   "warm-light",
   "cold-light",
   "shadow"
-]), wn = Object.freeze([
+]), gn = Object.freeze([
   "confirmed",
   "inferred",
   "unknown"
-]), kn = Object.freeze([
+]), wn = Object.freeze([
   "door-open",
   "stairs",
   "elevator",
@@ -867,7 +866,7 @@ var gt = [
   "fire",
   "light",
   "water"
-]), xn = Object.freeze(/* @__PURE__ */ new Set([
+]), kn = Object.freeze(/* @__PURE__ */ new Set([
   "floor",
   "ground",
   "surface",
@@ -1004,7 +1003,7 @@ var gt = [
     }
     return (m, f) => (u(), de(Ae, {
       class: "map-scene-viewport",
-      style: _e(n.value),
+      style: Se(n.value),
       "view-box": a.scene.viewBox,
       "reset-key": a.scene.key,
       label: `${a.scene.name} 场景地图`
@@ -1293,7 +1292,7 @@ var gt = [
       };
     }
     function x(v) {
-      return !v || typeof v != "object" ? y() : structuredClone(Ue(v));
+      return !v || typeof v != "object" ? y() : structuredClone(Ve(v));
     }
     function $(v) {
       const t = v.map;
@@ -1422,7 +1421,7 @@ var gt = [
     function Ge(v) {
       return v.key === d.value?.key ? `${v.name}（当前位置）` : v.name;
     }
-    return Fe(() => {
+    return Ue(() => {
       Y = !0, E = l.bridge.subscribe((v) => {
         if (v.type === "map/state") {
           const t = v.payload?.state;
@@ -1434,7 +1433,7 @@ var gt = [
       }).catch(() => {
         o.value = !1;
       });
-    }), $e(() => {
+    }), _e(() => {
       Y = !1, P += 1, E();
     }), (v, t) => (u(), c("main", Ka, [
       e("header", Pa, [t[10] || (t[10] = e("div", { class: "map-brand" }, [e("span", {
@@ -1476,13 +1475,13 @@ var gt = [
         type: "button",
         class: G({ "is-active": g.value === "atlas" }),
         onClick: t[2] || (t[2] = (w) => g.value = "atlas")
-      }, "世界", 2)]), g.value === "scene" ? (u(), c("label", Da, [t[11] || (t[11] = e("span", null, "观察地点", -1)), Ve(e("select", {
+      }, "世界", 2)]), g.value === "scene" ? (u(), c("label", Da, [t[11] || (t[11] = e("span", null, "观察地点", -1)), Fe(e("select", {
         "onUpdate:modelValue": t[3] || (t[3] = (w) => _.value = w),
         disabled: X.value.length === 0
       }, [X.value.length === 0 ? (u(), c("option", Ha, "暂无可查看场景")) : C("", !0), (u(!0), c(j, null, W(X.value, (w) => (u(), c("option", {
         key: w.key,
         value: w.key
-      }, h(Ge(w)), 9, Va))), 128))], 8, Ga), [[We, _.value]])])) : (u(), c("div", Ua, [
+      }, h(Ge(w)), 9, Va))), 128))], 8, Ga), [[qe, _.value]])])) : (u(), c("div", Ua, [
         e("span", null, h(se.value.locations) + " 地点", 1),
         t[12] || (t[12] = e("i", null, null, -1)),
         e("span", null, h(se.value.routes) + " 路线", 1),
@@ -1534,7 +1533,7 @@ var gt = [
         e("div", sn, [
           e("small", null, h(A.value || k.value.name), 1),
           e("h2", null, h(k.value.name), 1),
-          e("span", null, [e("i", { style: _e({ background: Re.value.accent }) }, null, 4), U(h(k.value.mood || "neutral"), 1)])
+          e("span", null, [e("i", { style: Se({ background: Re.value.accent }) }, null, 4), U(h(k.value.mood || "neutral"), 1)])
         ]),
         e("aside", rn, [
           t[30] || (t[30] = e("strong", null, "图例", -1)),
@@ -1605,7 +1604,7 @@ var gt = [
           t[38] || (t[38] = e("h2", null, "地点网络", -1)),
           d.value ? (u(), c("span", dn, [t[36] || (t[36] = e("i", null, null, -1)), U("当前位置 · " + h(d.value.name), 1)])) : C("", !0)
         ]),
-        t[39] || (t[39] = qe('<aside class="map-legend is-atlas" aria-label="世界地图图例"><strong>图例</strong><span><i class="is-current"></i>当前位置</span><span><i class="is-visited"></i>已到访</span><span><i class="is-route"></i>通行路线</span><span><i class="is-hierarchy"></i>隶属层级</span><small>点击有场景的地点可查看</small></aside>', 1))
+        t[39] || (t[39] = Xe('<aside class="map-legend is-atlas" aria-label="世界地图图例"><strong>图例</strong><span><i class="is-current"></i>当前位置</span><span><i class="is-visited"></i>已到访</span><span><i class="is-route"></i>通行路线</span><span><i class="is-hierarchy"></i>隶属层级</span><small>点击有场景的地点可查看</small></aside>', 1))
       ], 64))], 64)), n.value.status === "loading" ? (u(), c("div", vn, [...t[40] || (t[40] = [e("span", null, null, -1), e("p", null, "正在校准地图坐标", -1)])])) : C("", !0)], 2),
       le(Ze, { name: "map-panel" }, {
         default: ce(() => [M.value ? (u(), de(Ta, {
@@ -1634,7 +1633,7 @@ var gt = [
       })
     ]));
   }
-}), Mn = yn;
+}), xn = yn;
 export {
-  Mn as default
+  xn as default
 };

@@ -24,6 +24,7 @@ export function createWalletModule(dependencies: WalletModuleDependencies): Xiao
             return dependencies.createRuntime?.(economy, context.execution)
                 ?? createWalletController({
                     economy,
+                    confirmPending: context.files.retryPending,
                     getChatIdentity: dependencies.getChatIdentity,
                     execution: context.execution,
                 });

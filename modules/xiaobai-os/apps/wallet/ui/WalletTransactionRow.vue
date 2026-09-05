@@ -1,47 +1,17 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import type { WalletTransactionView } from '../types.js';
-
-const MARK_PATHS: Readonly<Record<string, string>> = {
-    income: 'M12 5v14m0 0-5.5-5.5M12 19l5.5-5.5',
-    expense: 'M12 19V5m0 0L6.5 10.5M12 5l5.5 5.5',
-    transfer: 'M4 9h16m0 0-4-4m4 4-4 4M20 15H4m0 0 4 4m-4-4 4-4',
-};
-
-const props = defineProps<{ transaction: WalletTransactionView }>();
-
-const markPath = computed(() => MARK_PATHS[props.transaction.direction] || MARK_PATHS.transfer);
-
-const formattedAmount = computed(() => {
-    const amount = props.transaction.amount.toLocaleString('zh-CN');
-    if (props.transaction.direction === 'income') {return `+${amount}`;}
-    if (props.transaction.direction === 'expense') {return `−${amount}`;}
-    return amount;
-});
-
-const formattedTime = computed(() => {
-    const date = new Date(props.transaction.createdAt);
-    const time = new Intl.DateTimeFormat('zh-CN', {
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-    }).format(date);
-    return props.transaction.sequence === 1 && props.transaction.sourceDomain === 'economy' ? `开户 · ${time}` : time;
-});
+import WalletIcon from './WalletIcon.vue';
+import { walletAmount, walletDirection, walletTransactionIcon } from './wallet-display.js';
+defineProps<{ transaction: WalletTransactionView }>();
+defineEmits<{ open: [transaction: WalletTransactionView] }>();
+const timeFormatter = new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
 </script>
-
 <template>
-    <li class="wallet-row" :class="`is-${transaction.direction}`">
-        <span class="wallet-row-mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path :d="markPath" /></svg>
-        </span>
-        <div class="wallet-row-copy">
-            <strong>{{ transaction.title }}</strong>
-            <p v-if="transaction.note">{{ transaction.note }}</p>
-            <small>{{ transaction.source }} · {{ formattedTime }}</small>
-        </div>
-        <span class="wallet-row-amount">{{ formattedAmount }}</span>
+    <li>
+        <button type="button" class="wallet-row" :class="`is-${transaction.direction}`" @click="$emit('open', transaction)">
+            <span class="wallet-row-mark" aria-hidden="true"><WalletIcon :name="walletTransactionIcon(transaction)" /></span>
+            <span class="wallet-row-copy"><strong>{{ transaction.title }}</strong><small>{{ transaction.source }} · {{ timeFormatter.format(transaction.createdAt) }}</small></span>
+            <span class="wallet-row-value"><strong>{{ walletAmount(transaction) }}</strong><small>{{ walletDirection[transaction.direction] }}</small></span>
+        </button>
     </li>
 </template>

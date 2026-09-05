@@ -1,7 +1,7 @@
 /* eslint-disable */
-import { $ as Y, A as _, C as ne, E as U, N as se, O as W, Q as N, S as G, _ as oe, a as Z, c as C, et as $, f as le, g as ue, j as pe, l as m, m as P, o, p as z, r as Q, s as X, v as de, w as ce, x as c, y as ve } from "./xiaobai-os-runtime-core.esm-bundler-Dmqi2Zbl.js";
-import { c as fe, n as me, t as he } from "./xiaobai-os-runtime-dom.esm-bundler-BYy7nd4d.js";
-var be = [
+import { A as V, B as _, D as t2, E as r2, F as i2, L as o2, M as X, P as y, R as H, S as l2, T as s2, _ as I, b as n2, c as c2, d as i, f as M, g as d2, l as p2, m as u, n as u2, p as R, t as f2, u as K, v as O, w as d, x as h2, y as v2, z as N } from "./xiaobai-os-runtime-dom.esm-bundler-DQLnRQQ3.js";
+import { n as m2, t as $ } from "./xiaobai-os-frame-bridge-8-bd80In.js";
+var g2 = [
   "agent-api",
   "fourth-wall",
   "wallet",
@@ -10,129 +10,128 @@ var be = [
   "game",
   "map",
   "tasks"
-], ye = Object.freeze({
+], y2 = Object.freeze({
   id: "agent-api",
   name: "Agent API",
   accent: "#63d8c6"
-}), ge = Object.freeze({
+}), w2 = Object.freeze({
   id: "bank",
   name: "银行",
   accent: "#b89a58"
-}), Ae = Object.freeze({
+}), b2 = Object.freeze({
   id: "fourth-wall",
   name: "四次元壁",
   accent: "#7567d8"
-}), _e = Object.freeze({
+}), x2 = Object.freeze({
   id: "game",
   name: "游戏",
   accent: "#c8a35a"
-}), Se = Object.freeze({
+}), k2 = Object.freeze({
   id: "map",
   name: "地图",
   accent: "#3aa9ff"
-}), we = Object.freeze({
+}), A2 = Object.freeze({
   id: "shop",
   name: "奇物商店",
   accent: "#a83b32"
-}), ke = Object.freeze({
+}), S2 = Object.freeze({
   id: "tasks",
   name: "任务",
-  accent: "#e8b84a"
-}), Oe = Object.freeze({
+  accent: "#d96840"
+}), O2 = Object.freeze({
   id: "wallet",
   name: "钱包",
   accent: "#a9660f"
-});
-function Me(a) {
-  let t = null, i = null;
+}), _2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23334968'/%3e%3cstop%20offset='1'%20stop-color='%23111c32'/%3e%3c/linearGradient%3e%3clinearGradient%20id='paper'%20x1='30'%20y1='16'%20x2='60'%20y2='72'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23fffdf4'/%3e%3cstop%20offset='1'%20stop-color='%23f2e8d6'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3cpath%20d='M30%2015h31l10%2010v41a7%207%200%200%201-7%207H27a7%207%200%200%201-7-7V25a10%2010%200%200%201%2010-10Z'%20fill='%2313213b'%20opacity='.4'%20transform='translate(0%203)'/%3e%3crect%20x='22'%20y='18'%20width='44'%20height='51'%20rx='10'%20fill='url(%23paper)'%20filter='url(%23shadow)'/%3e%3cpath%20d='M33%2030v28m22-28v28M28%2036h32M28%2051h32'%20stroke='%23b6c9de'%20stroke-width='2'/%3e%3crect%20x='32'%20y='31'%20width='24'%20height='25'%20rx='7'%20fill='%23426ee8'/%3e%3cpath%20d='m42%2037-6%206%206%206m5-12%206%206-6%206'%20stroke='white'%20stroke-width='2.3'%20fill='none'%20stroke-linecap='round'%20stroke-linejoin='round'/%3e%3ccircle%20cx='64'%20cy='66'%20r='11'%20fill='%238be3c2'%20stroke='%231c3048'%20stroke-width='3'/%3e%3cpath%20d='m60%2066%203%203%205-6'%20stroke='%23164d49'%20stroke-width='2'%20fill='none'%20stroke-linecap='round'/%3e%3c/svg%3e", "" + import.meta.url).href, R2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23ab9ced'/%3e%3cstop%20offset='1'%20stop-color='%236552b5'/%3e%3c/linearGradient%3e%3clinearGradient%20id='paper'%20x1='30'%20y1='16'%20x2='60'%20y2='72'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23fffdf4'/%3e%3cstop%20offset='1'%20stop-color='%23f2e8d6'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3crect%20x='23'%20y='16'%20width='43'%20height='54'%20rx='15'%20fill='%23513f99'%20opacity='.45'%20transform='rotate(12%2044%2044)'/%3e%3cpath%20d='M26%2023h34a10%2010%200%200%201%2010%2010v16a10%2010%200%200%201-10%2010H46L34%2070l1-11h-9a10%2010%200%200%201-10-10V33a10%2010%200%200%201%2010-10Z'%20fill='url(%23paper)'%20filter='url(%23shadow)'/%3e%3cpath%20d='M34%2034v15m-4-15h8m-8%2015h8m6-15%205%2015%206-15'%20stroke='%238069c2'%20stroke-width='3'%20fill='none'%20stroke-linecap='round'%20stroke-linejoin='round'/%3e%3cpath%20d='m68%2017%202%206%206%202-6%202-2%206-2-6-6-2%206-2Z'%20fill='%23fbe4a9'/%3e%3c/svg%3e", "" + import.meta.url).href, P2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%234dad91'/%3e%3cstop%20offset='1'%20stop-color='%23176b62'/%3e%3c/linearGradient%3e%3clinearGradient%20id='leather'%20x1='20'%20y1='30'%20x2='65'%20y2='67'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23388d73'/%3e%3cstop%20offset='1'%20stop-color='%23216657'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3cg%20transform='rotate(-10%2044%2035)'%3e%3crect%20x='21'%20y='16'%20width='46'%20height='37'%20rx='6'%20fill='%23dfb46e'/%3e%3crect%20x='25'%20y='23'%20width='40'%20height='32'%20rx='5'%20fill='%23f9e8bc'/%3e%3cpath%20d='M29%2030h27'%20stroke='%23d2b578'%20stroke-width='4'/%3e%3c/g%3e%3crect%20x='16'%20y='33'%20width='56'%20height='37'%20rx='10'%20fill='%23104c48'%20filter='url(%23shadow)'/%3e%3crect%20x='16'%20y='31'%20width='56'%20height='36'%20rx='10'%20fill='url(%23leather)'/%3e%3crect%20x='20'%20y='35'%20width='48'%20height='28'%20rx='7'%20fill='none'%20stroke='%23b3e3cc'%20stroke-opacity='.48'%20stroke-dasharray='2%202'/%3e%3cpath%20d='M59%2043h15v16H59a8%208%200%200%201%200-16Z'%20fill='%23206d60'%20stroke='%2386bba1'%20stroke-width='1'/%3e%3ccircle%20cx='60'%20cy='51'%20r='3'%20fill='%23eed59c'/%3e%3c/svg%3e", "" + import.meta.url).href, G2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23f1b8a1'/%3e%3cstop%20offset='1'%20stop-color='%23d37469'/%3e%3c/linearGradient%3e%3clinearGradient%20id='paper'%20x1='30'%20y1='16'%20x2='60'%20y2='72'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23fffdf4'/%3e%3cstop%20offset='1'%20stop-color='%23f2e8d6'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3cpath%20d='M23%2033h43l5%2034a5%205%200%200%201-5%205H22a5%205%200%200%201-5-5Z'%20fill='%2386483e'%20opacity='.3'/%3e%3cpath%20d='M24%2030h40l5%2034a5%205%200%200%201-5%206H24a5%205%200%200%201-5-6Z'%20fill='url(%23paper)'%20filter='url(%23shadow)'/%3e%3cpath%20d='M34%2033v-8a10%2010%200%200%201%2020%200v8'%20fill='none'%20stroke='%2398594c'%20stroke-width='4'%20stroke-linecap='round'/%3e%3cpath%20d='m44%2041%203.5%208%208.5%203.5-8.5%203.5-3.5%208-3.5-8-8.5-3.5%208.5-3.5Z'%20fill='%23c67560'/%3e%3cpath%20d='m69%2017%202%205%205%202-5%202-2%205-2-5-5-2%205-2Z'%20fill='%23fff1d3'/%3e%3c/svg%3e", "" + import.meta.url).href, I2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%233d807d'/%3e%3cstop%20offset='1'%20stop-color='%23143c45'/%3e%3c/linearGradient%3e%3clinearGradient%20id='metal'%20x1='17'%20y1='14'%20x2='68'%20y2='74'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23d9e6df'/%3e%3cstop%20offset='.5'%20stop-color='%239cb7b5'/%3e%3cstop%20offset='1'%20stop-color='%23789a9e'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3crect%20x='17'%20y='16'%20width='56'%20height='60'%20rx='13'%20fill='%23122e35'%20opacity='.4'/%3e%3crect%20x='17'%20y='14'%20width='54'%20height='60'%20rx='12'%20fill='url(%23metal)'%20filter='url(%23shadow)'/%3e%3crect%20x='23'%20y='20'%20width='42'%20height='47'%20rx='8'%20fill='%23284c55'%20stroke='%23abc6c7'%20stroke-width='2'/%3e%3ccircle%20cx='44'%20cy='44'%20r='16'%20fill='url(%23metal)'/%3e%3ccircle%20cx='44'%20cy='44'%20r='11'%20fill='%2340636a'/%3e%3cpath%20d='M44%2035v18m-9-9h18m-15-6%2012%2012m0-12L38%2050'%20stroke='%23cfe1da'%20stroke-width='2.6'%20stroke-linecap='round'/%3e%3ccircle%20cx='44'%20cy='44'%20r='4.5'%20fill='%23e8c98b'/%3e%3cpath%20d='M22%2029v8m0%2014v8'%20stroke='%23f5f2dc'%20stroke-width='4'%20stroke-linecap='round'/%3e%3c/svg%3e", "" + import.meta.url).href, U2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23e7847d'/%3e%3cstop%20offset='1'%20stop-color='%23af344c'/%3e%3c/linearGradient%3e%3clinearGradient%20id='paper'%20x1='30'%20y1='16'%20x2='60'%20y2='72'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23fffdf4'/%3e%3cstop%20offset='1'%20stop-color='%23f2e8d6'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3cg%20transform='rotate(17%2058%2034)'%3e%3crect%20x='37'%20y='14'%20width='35'%20height='37'%20rx='9'%20fill='%23792741'%20opacity='.4'%20transform='translate(0%203)'/%3e%3crect%20x='37'%20y='14'%20width='35'%20height='35'%20rx='9'%20fill='%23f6c9b5'/%3e%3cg%20fill='%23b24b5b'%3e%3ccircle%20cx='47'%20cy='24'%20r='3'/%3e%3ccircle%20cx='62'%20cy='39'%20r='3'/%3e%3c/g%3e%3c/g%3e%3cg%20transform='rotate(-15%2036%2052)'%20filter='url(%23shadow)'%3e%3crect%20x='15'%20y='31'%20width='43'%20height='43'%20rx='11'%20fill='url(%23paper)'/%3e%3cg%20fill='%23ae3d53'%3e%3ccircle%20cx='27'%20cy='43'%20r='3.6'/%3e%3ccircle%20cx='46'%20cy='43'%20r='3.6'/%3e%3ccircle%20cx='36.5'%20cy='52.5'%20r='3.6'/%3e%3ccircle%20cx='27'%20cy='62'%20r='3.6'/%3e%3ccircle%20cx='46'%20cy='62'%20r='3.6'/%3e%3c/g%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href, B2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%239dccad'/%3e%3cstop%20offset='1'%20stop-color='%234d997d'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3cpath%20d='m14%2026%2020-6%2020%206%2020-7v48l-20%207-20-6-20%206Z'%20fill='%2324694d'%20opacity='.25'%20transform='translate(0%203)'/%3e%3cpath%20d='m14%2024%2020-6%2020%206%2020-7v48l-20%207-20-6-20%206Z'%20fill='%23f5edd4'%20filter='url(%23shadow)'/%3e%3cpath%20d='m34%2018%2020%206v48l-20-6Z'%20fill='%23d9e4bb'/%3e%3cpath%20d='m14%2054%2020-7%2020%206%2020-20'%20stroke='%2392bdce'%20stroke-width='7'%20fill='none'/%3e%3cpath%20d='m20%2032%2017%205%208%2024%2025-5'%20stroke='%23fffef0'%20stroke-width='4'%20fill='none'/%3e%3cpath%20d='M59%2017a12%2012%200%200%200-12%2012c0%2010%2012%2020%2012%2020s12-10%2012-20a12%2012%200%200%200-12-12Z'%20fill='%23e4774f'%20filter='url(%23shadow)'/%3e%3ccircle%20cx='59'%20cy='29'%20r='4.5'%20fill='%23fff5df'/%3e%3c/svg%3e", "" + import.meta.url).href, E2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23f6ac72'/%3e%3cstop%20offset='1'%20stop-color='%23df673d'/%3e%3c/linearGradient%3e%3clinearGradient%20id='paper'%20x1='30'%20y1='16'%20x2='60'%20y2='72'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23fffdf4'/%3e%3cstop%20offset='1'%20stop-color='%23f2e8d6'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3crect%20x='20'%20y='17'%20width='47'%20height='58'%20rx='8'%20fill='%23a84c2d'%20opacity='.3'%20transform='rotate(9%2044%2044)'/%3e%3crect%20x='18'%20y='15'%20width='48'%20height='59'%20rx='8'%20fill='%23f5d7ac'%20transform='rotate(-9%2044%2044)'/%3e%3cpath%20d='M30%2013h23l12%2012v42a7%207%200%200%201-7%207H30a7%207%200%200%201-7-7V20a7%207%200%200%201%207-7Z'%20fill='url(%23paper)'%20filter='url(%23shadow)'/%3e%3cpath%20d='M53%2013v9a3%203%200%200%200%203%203h9'%20fill='%23ead4b8'/%3e%3cpath%20d='M33%2034h21M33%2042h16M33%2050h12'%20stroke='%23d4b49b'%20stroke-width='3'%20stroke-linecap='round'/%3e%3ccircle%20cx='59'%20cy='61'%20r='13'%20fill='%23d96940'%20stroke='%23f9d7a9'%20stroke-width='2'/%3e%3cpath%20d='m53%2061%204%204%208-9'%20stroke='%23fff4db'%20stroke-width='3'%20fill='none'%20stroke-linecap='round'%20stroke-linejoin='round'/%3e%3c/svg%3e", "" + import.meta.url).href;
+function D2(t) {
+  let a = null, r = null;
   return Object.freeze({
     load() {
-      return t ? Promise.resolve(t) : (i ??= a().then((r) => {
-        if (!r?.default) throw new Error("app_component_missing");
-        return t = r.default, t;
-      }).catch((r) => {
-        throw i = null, r;
-      }), i);
+      return a ? Promise.resolve(a) : (r ??= t().then((o) => {
+        if (!o?.default) throw new Error("app_component_missing");
+        return a = o.default, a;
+      }).catch((o) => {
+        throw r = null, o;
+      }), r);
     },
     reset() {
-      t = null, i = null;
+      a = null, r = null;
     }
   });
 }
-function O(a, t, i) {
-  const r = Me(i);
+function b(t, a, r) {
+  const o = D2(r);
   return Object.freeze({
-    ...a,
-    iconPaths: Object.freeze([...t]),
-    load: r.load,
-    resetLoader: r.reset
+    ...t,
+    icon: a,
+    load: o.load,
+    resetLoader: o.reset
   });
 }
-var Ee = Object.freeze({
-  "agent-api": O(ye, ["M14 11h36a4 4 0 0 1 4 4v34a4 4 0 0 1-4 4H14a4 4 0 0 1-4-4V15a4 4 0 0 1 4-4z", "M19 24h26M19 34h18M19 44h11M45 44h.1"], () => import("./xiaobai-os-AgentApiApp-BrtBrc5-.js")),
-  "fourth-wall": O(Ae, ["M13 15h38v29H32l-12 9 3-9H13z", "M22 25h20M22 33h14"], () => import("./xiaobai-os-FourthWallApp-HSJxcdSt.js")),
-  wallet: O(Oe, ["M12 19.5h37a5 5 0 0 1 5 5v24a5 5 0 0 1-5 5H15a5 5 0 0 1-5-5v-30a8 8 0 0 1 8-8h27", "M54 30H42a6 6 0 0 0 0 12h12M43 36h.1"], () => import("./xiaobai-os-WalletApp-iXb6S0sh.js")),
-  shop: O(we, ["M14 19h36l-3 35H17z", "M11 19h42M19 19V11h26v8M23 29h18M22 38h20M21 47h22"], () => import("./xiaobai-os-ShopApp-DMALoGOc.js")),
-  bank: O(ge, ["M9 24h46L32 9z", "M14 52h36M18 24v28M28 24v28M38 24v28M48 24v28"], () => import("./xiaobai-os-BankApp-vbt7TXuR.js")),
-  game: O(_e, ["M15 12h34a6 6 0 0 1 6 6v28a6 6 0 0 1-6 6H15a6 6 0 0 1-6-6V18a6 6 0 0 1 6-6z", "M21 23h.1M43 23h.1M32 32h.1M21 41h.1M43 41h.1"], () => import("./xiaobai-os-GameApp-NkkX-O41.js")),
-  map: O(Se, ["M11 16l13-6 16 6 13-6v38l-13 6-16-6-13 6z", "M24 10v38M40 16v38M18 31l6-3 8 3 8-4 7 3"], () => import("./xiaobai-os-MapApp-CKQ9-ZS5.js")),
-  tasks: O(ke, [
-    "M17 12h30a5 5 0 0 1 5 5v35H12V17a5 5 0 0 1 5-5z",
-    "M21 23h22M21 32h22M21 41h14",
-    "M18 9h28v8H18z"
-  ], () => import("./xiaobai-os-TasksApp-gRCUwxwY.js"))
-}), ee = Object.freeze(be.map((a) => {
-  const t = Ee[a];
-  if (!t) throw new Error(`missing_shell_app:${a}`);
-  return t;
-})), oa = Object.freeze(ee.map((a) => a.id)), Pe = /* @__PURE__ */ P({
+var $2 = Object.freeze({
+  "agent-api": b(y2, _2, () => import("./xiaobai-os-AgentApiApp-CGQI7WIU.js")),
+  "fourth-wall": b(b2, R2, () => import("./xiaobai-os-FourthWallApp-C3BJOS0D.js")),
+  wallet: b(O2, P2, () => import("./xiaobai-os-WalletApp-rKlWEigA.js")),
+  shop: b(A2, G2, () => import("./xiaobai-os-ShopApp-czLKiiyV.js")),
+  bank: b(w2, I2, () => import("./xiaobai-os-BankApp-CfpINhXR.js")),
+  game: b(x2, U2, () => import("./xiaobai-os-GameApp-B0zuDfSc.js")),
+  map: b(k2, B2, () => import("./xiaobai-os-MapApp-6LNwTjrU.js")),
+  tasks: b(S2, E2, () => import("./xiaobai-os-TasksApp-DvyW8uAP.js"))
+}), q = Object.freeze(g2.map((t) => {
+  const a = $2[t];
+  if (!a) throw new Error(`missing_shell_app:${t}`);
+  return a;
+})), ue = Object.freeze(q.map((t) => t.id)), M2 = /* @__PURE__ */ O({
   __name: "AppBoundary",
   emits: ["failed"],
-  setup(a, { emit: t }) {
-    const i = t;
-    return de((r) => (i("failed", r), !1)), (r, n) => ne(r.$slots, "default");
+  setup(t, { emit: a }) {
+    const r = a;
+    return h2((o) => (r("failed", o), !1)), (o, l) => r2(o.$slots, "default");
   }
-}), Re = Pe, xe = { class: "xiaobai-os-home" }, Ie = ["src"], $e = {
+}), H2 = M2, C2 = { class: "xiaobai-os-home" }, L2 = ["src"], T2 = {
   class: "xiaobai-os-app-grid",
   "aria-label": "应用"
-}, Ce = ["onClick"], He = {
+}, Z2 = ["onClick"], j2 = {
   class: "xiaobai-os-app-icon",
   "aria-hidden": "true"
-}, Te = { viewBox: "0 0 64 64" }, ze = ["d"], Be = { class: "xiaobai-os-app-name" }, qe = /* @__PURE__ */ P({
+}, z2 = ["src"], F2 = { class: "xiaobai-os-app-name" }, V2 = /* @__PURE__ */ O({
   __name: "XiaobaiOsHome",
   props: {
     apps: {},
     characterAvatar: {}
   },
   emits: ["openApp"],
-  setup(a) {
-    return (t, i) => (c(), m("main", xe, [
-      a.characterAvatar ? (c(), m("img", {
+  setup(t) {
+    return (a, r) => (d(), u("main", C2, [
+      t.characterAvatar ? (d(), u("img", {
         key: 0,
         class: "xiaobai-os-wallpaper",
-        src: a.characterAvatar,
+        src: t.characterAvatar,
         alt: ""
-      }, null, 8, Ie)) : C("", !0),
-      i[0] || (i[0] = o("div", {
+      }, null, 8, L2)) : R("", !0),
+      r[0] || (r[0] = i("div", {
         class: "xiaobai-os-home-wash",
         "aria-hidden": "true"
       }, null, -1)),
-      o("section", $e, [(c(!0), m(Q, null, G(a.apps, (r) => (c(), m("button", {
-        key: r.id,
+      i("section", T2, [(d(!0), u(p2, null, s2(t.apps, (o) => (d(), u("button", {
+        key: o.id,
         type: "button",
         class: "xiaobai-os-app-tile",
-        style: Y({ "--app-accent": r.accent }),
-        onClick: (n) => t.$emit("openApp", r)
-      }, [o("span", He, [(c(), m("svg", Te, [(c(!0), m(Q, null, G(r.iconPaths, (n) => (c(), m("path", {
-        key: n,
-        d: n
-      }, null, 8, ze))), 128))]))]), o("span", Be, $(r.name), 1)], 12, Ce))), 128))])
+        style: N({ "--app-accent": o.accent }),
+        onClick: (l) => a.$emit("openApp", o)
+      }, [i("span", j2, [i("img", {
+        src: o.icon,
+        alt: "",
+        width: "64",
+        height: "64",
+        draggable: "false"
+      }, null, 8, z2)]), i("span", F2, _(o.name), 1)], 12, Z2))), 128))])
     ]));
   }
-}), Le = qe, je = ["disabled"], De = {
+}), X2 = V2, K2 = ["disabled"], N2 = {
   key: 0,
   "aria-hidden": "true"
-}, Fe = /* @__PURE__ */ P({
+}, q2 = /* @__PURE__ */ O({
   __name: "XiaobaiOsNavigation",
   props: { isHome: { type: Boolean } },
   emits: [
@@ -140,67 +139,67 @@ var Ee = Object.freeze({
     "home",
     "close"
   ],
-  setup(a) {
-    return (t, i) => (c(), m("nav", {
-      class: N(["xiaobai-os-navigation", { "is-home": a.isHome }]),
+  setup(t) {
+    return (a, r) => (d(), u("nav", {
+      class: H(["xiaobai-os-navigation", { "is-home": t.isHome }]),
       "aria-label": "系统导航"
     }, [
-      o("button", {
+      i("button", {
         type: "button",
         class: "xiaobai-os-nav-button",
-        disabled: a.isHome,
+        disabled: t.isHome,
         "aria-label": "返回",
-        onClick: i[0] || (i[0] = (r) => t.$emit("back"))
-      }, [...i[3] || (i[3] = [o("svg", {
+        onClick: r[0] || (r[0] = (o) => a.$emit("back"))
+      }, [...r[3] || (r[3] = [i("svg", {
         viewBox: "0 0 24 24",
         "aria-hidden": "true"
-      }, [o("path", { d: "m14.5 6-6 6 6 6" })], -1)])], 8, je),
-      o("button", {
+      }, [i("path", { d: "m14.5 6-6 6 6 6" })], -1)])], 8, K2),
+      i("button", {
         type: "button",
         class: "xiaobai-os-nav-button xiaobai-os-home-button",
         "aria-label": "主页",
-        onClick: i[1] || (i[1] = (r) => t.$emit("home"))
-      }, [i[4] || (i[4] = o("svg", {
+        onClick: r[1] || (r[1] = (o) => a.$emit("home"))
+      }, [r[4] || (r[4] = i("svg", {
         viewBox: "0 0 24 24",
         "aria-hidden": "true"
-      }, [o("path", { d: "m4.5 11 7.5-6 7.5 6v8h-5v-5h-5v5h-5z" })], -1)), a.isHome ? (c(), m("i", De)) : C("", !0)]),
-      o("button", {
+      }, [i("path", { d: "m4.5 11 7.5-6 7.5 6v8h-5v-5h-5v5h-5z" })], -1)), t.isHome ? (d(), u("i", N2)) : R("", !0)]),
+      i("button", {
         type: "button",
         class: "xiaobai-os-nav-button xiaobai-os-close-button",
         "aria-label": "关闭",
-        onClick: i[2] || (i[2] = (r) => t.$emit("close"))
-      }, [...i[5] || (i[5] = [o("span", null, [o("svg", {
+        onClick: r[2] || (r[2] = (o) => a.$emit("close"))
+      }, [...r[5] || (r[5] = [i("span", null, [i("svg", {
         viewBox: "0 0 24 24",
         "aria-hidden": "true"
-      }, [o("path", { d: "m7 9.5 5 5 5-5" })])], -1)])])
+      }, [i("path", { d: "m7 9.5 5 5 5-5" })])], -1)])])
     ], 2));
   }
-}), Xe = Fe, Ne = /* @__PURE__ */ P({
+}), W2 = q2, J2 = /* @__PURE__ */ O({
   __name: "XiaobaiOsSystemBar",
   props: { isHome: { type: Boolean } },
-  setup(a) {
-    return (t, i) => (c(), m("header", {
-      class: N(["xiaobai-os-system-bar", { "is-home": a.isHome }]),
+  setup(t) {
+    return (a, r) => (d(), u("header", {
+      class: H(["xiaobai-os-system-bar", { "is-home": t.isHome }]),
       "aria-label": "系统状态"
-    }, [...i[0] || (i[0] = [o("span", { class: "xiaobai-os-system-mark" }, "小白", -1), o("span", {
+    }, [...r[0] || (r[0] = [i("span", { class: "xiaobai-os-system-mark" }, "小白", -1), i("span", {
       class: "xiaobai-os-system-status",
       "aria-hidden": "true"
-    }, [o("span", { class: "xiaobai-os-signal" }, [
-      o("i"),
-      o("i"),
-      o("i"),
-      o("i")
-    ]), o("span", { class: "xiaobai-os-battery" }, [o("i")])], -1)])], 2));
+    }, [i("span", { class: "xiaobai-os-signal" }, [
+      i("i"),
+      i("i"),
+      i("i"),
+      i("i")
+    ]), i("span", { class: "xiaobai-os-battery" }, [i("i")])], -1)])], 2));
   }
-}), Ke = Ne, Ve = { class: "xiaobai-os-device" }, Ue = { class: "xiaobai-os-glass" }, We = {
+}), Q2 = J2, Y2 = { class: "xiaobai-os-device" }, ee = { class: "xiaobai-os-glass" }, ae = {
   key: "failure",
   class: "xiaobai-os-app-failure",
   role: "alert"
-}, Ge = { class: "xiaobai-os-app-failure-actions" }, Qe = {
+}, te = { class: "xiaobai-os-app-failure-actions" }, re = {
   key: "loading",
   class: "xiaobai-os-app-loading",
   role: "status"
-}, Je = /* @__PURE__ */ P({
+}, ie = /* @__PURE__ */ O({
   __name: "XiaobaiOsDevice",
   props: {
     apps: {},
@@ -222,330 +221,245 @@ var Ee = Object.freeze({
     "retry",
     "reload"
   ],
-  setup(a) {
-    const t = a, i = Z(() => t.activeApp === null);
-    return (r, n) => (c(), m("div", Ve, [n[9] || (n[9] = o("span", {
+  setup(t) {
+    const a = t, r = K(() => a.activeApp === null);
+    return (o, l) => (d(), u("div", Y2, [l[9] || (l[9] = i("span", {
       class: "xiaobai-os-side-key",
       "aria-hidden": "true"
-    }, null, -1)), o("div", Ue, [
-      z(Ke, { "is-home": i.value }, null, 8, ["is-home"]),
-      o("div", {
+    }, null, -1)), i("div", ee, [
+      I(Q2, { "is-home": r.value }, null, 8, ["is-home"]),
+      i("div", {
         class: "xiaobai-os-stage",
-        style: Y(a.activeApp ? { "--app-accent": a.activeApp.accent } : null)
-      }, [z(he, {
+        style: N(t.activeApp ? { "--app-accent": t.activeApp.accent } : null)
+      }, [I(f2, {
         name: "xiaobai-os-route",
         mode: "out-in"
       }, {
-        default: U(() => [i.value ? (c(), X(Le, {
+        default: V(() => [r.value ? (d(), M(X2, {
           key: "home",
-          apps: a.apps,
-          "character-avatar": a.characterAvatar,
-          onOpenApp: n[0] || (n[0] = (y) => r.$emit("openApp", y))
-        }, null, 8, ["apps", "character-avatar"])) : a.appFailure ? (c(), m("section", We, [
-          n[7] || (n[7] = o("span", {
+          apps: t.apps,
+          "character-avatar": t.characterAvatar,
+          onOpenApp: l[0] || (l[0] = (m) => o.$emit("openApp", m))
+        }, null, 8, ["apps", "character-avatar"])) : t.appFailure ? (d(), u("section", ae, [
+          l[7] || (l[7] = i("span", {
             class: "xiaobai-os-app-failure-mark",
             "aria-hidden": "true"
           }, "!", -1)),
-          o("h1", null, $(a.activeApp?.name) + "暂时无法打开", 1),
-          o("p", null, $(a.appFailure.message), 1),
-          o("div", Ge, [a.appFailure.retryable ? (c(), m("button", {
+          i("h1", null, _(t.activeApp?.name) + "暂时无法打开", 1),
+          i("p", null, _(t.appFailure.message), 1),
+          i("div", te, [t.appFailure.retryable ? (d(), u("button", {
             key: 0,
             type: "button",
-            onClick: n[1] || (n[1] = (y) => r.$emit("retry"))
-          }, "重试")) : C("", !0), o("button", {
+            onClick: l[1] || (l[1] = (m) => o.$emit("retry"))
+          }, "重试")) : R("", !0), i("button", {
             type: "button",
-            onClick: n[2] || (n[2] = (y) => r.$emit("reload"))
+            onClick: l[2] || (l[2] = (m) => o.$emit("reload"))
           }, "重新载入 OS")])
-        ])) : a.appLoading ? (c(), m("div", Qe, [n[8] || (n[8] = o("span", { "aria-hidden": "true" }, null, -1)), le(" 正在打开" + $(a.activeApp?.name), 1)])) : a.activeApp && a.activeComponent ? (c(), m("div", {
-          key: `app:${a.activeApp.id}:${a.appRenderKey}`,
+        ])) : t.appLoading ? (d(), u("div", re, [l[8] || (l[8] = i("span", { "aria-hidden": "true" }, null, -1)), d2(" 正在打开" + _(t.activeApp?.name), 1)])) : t.activeApp && t.activeComponent ? (d(), u("div", {
+          key: `app:${t.activeApp.id}:${t.appRenderKey}`,
           class: "xiaobai-os-app-route"
-        }, [z(Re, { onFailed: n[3] || (n[3] = (y) => r.$emit("renderFailed", y)) }, {
-          default: U(() => [(c(), X(ce(a.activeComponent), {
-            bridge: a.bridge,
-            "initial-state": a.activeState
+        }, [I(H2, { onFailed: l[3] || (l[3] = (m) => o.$emit("renderFailed", m)) }, {
+          default: V(() => [(d(), M(t2(t.activeComponent), {
+            bridge: t.bridge,
+            "initial-state": t.activeState
           }, null, 8, ["bridge", "initial-state"]))]),
           _: 1
-        })])) : C("", !0)]),
+        })])) : R("", !0)]),
         _: 1
       })], 4),
-      z(Xe, {
-        "is-home": i.value,
-        onBack: n[4] || (n[4] = (y) => r.$emit("back")),
-        onHome: n[5] || (n[5] = (y) => r.$emit("home")),
-        onClose: n[6] || (n[6] = (y) => r.$emit("close"))
+      I(W2, {
+        "is-home": r.value,
+        onBack: l[4] || (l[4] = (m) => o.$emit("back")),
+        onHome: l[5] || (l[5] = (m) => o.$emit("home")),
+        onClose: l[6] || (l[6] = (m) => o.$emit("close"))
       }, null, 8, ["is-home"])
     ])]));
   }
-}), Ye = Je, Ze = "LittleWhiteBox-XiaobaiOS", B = class extends Error {
-  code;
-  phase;
-  retryable;
-  requiresAppRetry;
-  constructor(a) {
-    super(a.message || a.error || "host_request_failed"), this.name = "HostRequestError", this.code = a.error || "host_request_failed", this.phase = a.phase || "host", this.retryable = a.retryable !== !1, this.requiresAppRetry = a.requiresAppRetry === !0;
-  }
-};
-function J() {
-  return `xiaobai-os-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
-function ea() {
-  const a = /* @__PURE__ */ new Map(), t = /* @__PURE__ */ new Set();
-  let i = !1, r = null;
-  function n(s, b = {}, u = "") {
-    const l = r && s !== "app/activate" && s !== "app/retry" && s !== "os/frame-ready" && s !== "os/close", x = l && !u ? J() : u;
-    parent.postMessage({
-      source: Ze,
-      type: s,
-      requestId: x,
-      ...l ? r : {},
-      payload: b
-    }, window.location.origin);
-  }
-  function y(s) {
-    const b = String(s.requestId || "");
-    if (!b) return !1;
-    const u = a.get(b);
-    if (!u || u.session && (s.appId !== u.session.appId || s.activationToken !== u.session.activationToken)) return !1;
-    a.delete(b), clearTimeout(u.timer);
-    const l = s.payload;
-    return l?.ok === !1 ? u.reject(new B(l)) : u.resolve(l), !0;
-  }
-  function R(s) {
-    s.origin !== window.location.origin || s.source !== parent || s.data?.source !== "LittleWhiteBox-XiaobaiOS" || typeof s.data.type != "string" || y(s.data) || t.forEach((b) => b(s.data));
-  }
-  function v() {
-    i || (i = !0, window.addEventListener("message", R), n("os/frame-ready"));
-  }
-  function S(s, b = {}, u = 15e3) {
-    const l = J();
-    return new Promise((x, I) => {
-      const q = setTimeout(() => {
-        a.delete(l), I(/* @__PURE__ */ new Error("host_request_timeout"));
-      }, u);
-      a.set(l, {
-        resolve: x,
-        reject: I,
-        timer: q,
-        session: r ? { ...r } : null
-      }), n(s, b, l);
-    });
-  }
-  function w(s) {
-    r = Object.freeze({ ...s });
-  }
-  function h() {
-    const s = r;
-    if (r = null, !!s)
-      for (const [b, u] of a)
-        u.session?.activationToken === s.activationToken && (clearTimeout(u.timer), u.reject(/* @__PURE__ */ new Error("app_inactive")), a.delete(b));
-  }
-  function d() {
-    return r ? { ...r } : null;
-  }
-  function H(s) {
-    return t.add(s), () => t.delete(s);
-  }
-  function M() {
-    i && window.removeEventListener("message", R), i = !1, t.clear(), a.forEach((s) => {
-      clearTimeout(s.timer), s.reject(/* @__PURE__ */ new Error("frame_bridge_disposed"));
-    }), a.clear(), r = null;
-  }
-  return Object.freeze({
-    start: v,
-    post: n,
-    request: S,
-    subscribe: H,
-    setAppSession: w,
-    clearAppSession: h,
-    getAppSession: d,
-    dispose: M
-  });
-}
-var aa = {
+}), oe = ie, le = {
   key: 0,
   class: "xiaobai-os-error",
   role: "alert"
-}, ta = {
+}, se = {
   key: 1,
   class: "xiaobai-os-loading",
   role: "status"
-}, ra = /* @__PURE__ */ P({
+}, ne = /* @__PURE__ */ O({
   __name: "App",
-  setup(a) {
-    const t = ea(), i = _(null), r = _(!1), n = _("light"), y = _(/* @__PURE__ */ new Set()), R = _(""), v = _(null), S = pe(null), w = _(null), h = _(!1), d = _(null), H = _(0), M = _("");
-    let s = null, b = () => {
-    }, u = 0, l = null;
-    const x = Z(() => ee.filter((e) => y.value.has(e.id)));
-    function I(e) {
-      const p = new Set(e.map((k) => String(k.id))), f = v.value && !p.has(v.value.id), A = l && !p.has(l.appId);
-      y.value = p, !(!f && !A) && (u += 1, l = null, v.value = null, S.value = null, w.value = null, h.value = !1, d.value = null, t.clearAppSession());
+  setup(t) {
+    const a = m2(), r = y(null), o = y(!1), l = y("light"), m = y(/* @__PURE__ */ new Set()), C = y(""), p = y(null), x = i2(null), k = y(null), f = y(!1), n = y(null), L = y(0), P = y("");
+    let T = null, Z = () => {
+    }, A = 0, h = null;
+    const W = K(() => q.filter((e) => m.value.has(e.id)));
+    function j(e) {
+      const s = new Set(e.map((w) => String(w.id))), c = p.value && !s.has(p.value.id), g = h && !s.has(h.appId);
+      m.value = s, !(!c && !g) && (A += 1, h = null, p.value = null, x.value = null, k.value = null, f.value = !1, n.value = null, a.clearAppSession());
     }
-    function q(e) {
-      u += 1, l = null, n.value = e.theme === "dark" ? "dark" : "light", I(e.apps || []), R.value = String(e.chat?.characterAvatar || ""), v.value = null, S.value = null, w.value = null, h.value = !1, d.value = null, t.clearAppSession(), r.value = !0;
+    function J(e) {
+      A += 1, h = null, l.value = e.theme === "dark" ? "dark" : "light", j(e.apps || []), C.value = String(e.chat?.characterAvatar || ""), p.value = null, x.value = null, k.value = null, f.value = !1, n.value = null, a.clearAppSession(), o.value = !0;
     }
-    function ae(e) {
-      if (e.type === "os/init" && q(e.payload || {}), e.type === "os/theme-changed" && (n.value = e.payload?.theme === "dark" ? "dark" : "light"), e.type === "os/apps-changed") {
-        const A = e.payload;
-        I(A?.apps || []);
+    function Q(e) {
+      if (e.type === "os/init" && J(e.payload || {}), e.type === "os/theme-changed" && (l.value = e.payload?.theme === "dark" ? "dark" : "light"), e.type === "os/apps-changed") {
+        const g = e.payload;
+        j(g?.apps || []);
       }
       if (e.type === "os/app-state") {
-        const A = e.payload, k = A?.status;
-        A?.appId === v.value?.id && k?.state === "failed" && (h.value = !1, d.value = {
-          phase: k.failure?.phase || "host",
-          message: k.failure?.message || "Host APP 运行失败",
-          retryable: k.failure?.retryable !== !1,
+        const g = e.payload, w = g?.status;
+        g?.appId === p.value?.id && w?.state === "failed" && (f.value = !1, n.value = {
+          phase: w.failure?.phase || "host",
+          message: w.failure?.message || "Host APP 运行失败",
+          retryable: w.failure?.retryable !== !1,
           requiresAppRetry: !0
-        }, t.clearAppSession());
+        }, a.clearAppSession());
       }
-      e.type === "os/error" && (M.value = String(e.payload?.message || "小白 OS 初始化失败"));
-      const p = e.payload?.state;
-      l && e.appId === l.appId && e.type === `${l.appId}/state` && (l.latestState = p);
-      const f = t.getAppSession();
-      v.value && f?.appId === v.value.id && e.appId === f.appId && e.activationToken === f.activationToken && e.type === `${v.value.id}/state` && (w.value = p);
+      e.type === "os/error" && (P.value = String(e.payload?.message || "小白 OS 初始化失败"));
+      const s = e.payload?.state;
+      h && e.appId === h.appId && e.type === `${h.appId}/state` && (h.latestState = s);
+      const c = a.getAppSession();
+      p.value && c?.appId === p.value.id && e.appId === c.appId && e.activationToken === c.activationToken && e.type === `${p.value.id}/state` && (k.value = s);
     }
-    async function L(e) {
-      const p = ++u, f = { appId: e.id };
-      l = f, v.value = e, S.value = null, w.value = null, h.value = !0, d.value = null, t.clearAppSession(), M.value = "";
-      const A = t.request("app/activate", { appId: e.id }), k = e.load(), [E, T] = await Promise.allSettled([A, k]);
+    async function U(e) {
+      const s = ++A, c = { appId: e.id };
+      h = c, p.value = e, x.value = null, k.value = null, f.value = !0, n.value = null, a.clearAppSession(), P.value = "";
+      const g = a.request("app/activate", { appId: e.id }), w = e.load(), [S, G] = await Promise.allSettled([g, w]);
       try {
-        if (p !== u) return;
-        if (E.status === "fulfilled") {
-          if (E.value.appId !== e.id || !E.value.activationToken) throw new Error("app_activation_mismatch");
-          t.setAppSession({
+        if (s !== A) return;
+        if (S.status === "fulfilled") {
+          if (S.value.appId !== e.id || !S.value.activationToken) throw new Error("app_activation_mismatch");
+          a.setAppSession({
             appId: e.id,
-            activationToken: E.value.activationToken
-          }), w.value = f.latestState ?? E.value.state ?? null;
+            activationToken: S.value.activationToken
+          }), k.value = c.latestState ?? S.value.state ?? null;
         } else {
-          const g = E.reason;
-          d.value = {
-            phase: g instanceof B ? g.phase : "host",
-            message: g instanceof Error ? g.message : String(g),
-            retryable: !(g instanceof B) || g.retryable,
-            requiresAppRetry: g instanceof B && g.requiresAppRetry
+          const v = S.reason;
+          n.value = {
+            phase: v instanceof $ ? v.phase : "host",
+            message: v instanceof Error ? v.message : String(v),
+            retryable: !(v instanceof $) || v.retryable,
+            requiresAppRetry: v instanceof $ && v.requiresAppRetry
           };
         }
-        T.status === "fulfilled" ? S.value = W(T.value) : d.value || (d.value = {
+        G.status === "fulfilled" ? x.value = X(G.value) : n.value || (n.value = {
           phase: "ui-load",
-          message: T.reason instanceof Error ? T.reason.message : "APP 界面加载失败",
+          message: G.reason instanceof Error ? G.reason.message : "APP 界面加载失败",
           retryable: !0
-        }), h.value = !1;
-      } catch (g) {
-        h.value = !1, d.value = {
+        }), f.value = !1;
+      } catch (v) {
+        f.value = !1, n.value = {
           phase: "host",
-          message: g instanceof Error ? g.message : String(g),
+          message: v instanceof Error ? v.message : String(v),
           retryable: !0
-        }, t.clearAppSession();
+        }, a.clearAppSession();
       } finally {
-        l === f && (l = null);
+        h === c && (h = null);
       }
     }
-    async function te() {
-      const e = v.value, p = d.value;
-      if (!(!e || !p)) {
-        if (p.phase === "ui-render") {
-          d.value = null, H.value += 1;
+    async function Y() {
+      const e = p.value, s = n.value;
+      if (!(!e || !s)) {
+        if (s.phase === "ui-render") {
+          n.value = null, L.value += 1;
           return;
         }
-        if (p.phase === "ui-load" && t.getAppSession()?.appId === e.id) {
-          h.value = !0, d.value = null, e.resetLoader();
+        if (s.phase === "ui-load" && a.getAppSession()?.appId === e.id) {
+          f.value = !0, n.value = null, e.resetLoader();
           try {
-            S.value = W(await e.load());
-          } catch (f) {
-            d.value = {
+            x.value = X(await e.load());
+          } catch (c) {
+            n.value = {
               phase: "ui-load",
-              message: f instanceof Error ? f.message : "APP 界面加载失败",
+              message: c instanceof Error ? c.message : "APP 界面加载失败",
               retryable: !0
             };
           } finally {
-            h.value = !1;
+            f.value = !1;
           }
           return;
         }
-        if ((p.phase === "activate" || p.phase === "host") && !p.requiresAppRetry) {
-          await L(e);
+        if ((s.phase === "activate" || s.phase === "host") && !s.requiresAppRetry) {
+          await U(e);
           return;
         }
-        h.value = !0, d.value = null;
+        f.value = !0, n.value = null;
         try {
-          await t.request("app/retry", { appId: e.id }), await L(e);
-        } catch (f) {
-          h.value = !1, d.value = {
+          await a.request("app/retry", { appId: e.id }), await U(e);
+        } catch (c) {
+          f.value = !1, n.value = {
             phase: "host",
-            message: f instanceof Error ? f.message : String(f),
+            message: c instanceof Error ? c.message : String(c),
             retryable: !0
           };
         }
       }
     }
-    function j(e) {
-      const p = v.value;
-      p && (d.value = {
+    function B(e) {
+      const s = p.value;
+      s && (n.value = {
         phase: "ui-render",
         message: e instanceof Error ? e.message : "APP 界面渲染失败",
         retryable: !0
-      }, t.post("os/app-ui-failure", {
-        appId: p.id,
+      }, a.post("os/app-ui-failure", {
+        appId: s.id,
         phase: "ui-render"
       }));
     }
-    function K(e) {
-      !v.value || h.value || d.value || (e.preventDefault(), j(e.error ?? new Error(e.message || "APP 界面运行失败")));
+    function z(e) {
+      !p.value || f.value || n.value || (e.preventDefault(), B(e.error ?? new Error(e.message || "APP 界面运行失败")));
     }
-    function V(e) {
-      !v.value || h.value || d.value || (e.preventDefault(), j(e.reason));
+    function F(e) {
+      !p.value || f.value || n.value || (e.preventDefault(), B(e.reason));
     }
-    function re() {
+    function e2() {
       window.location.reload();
     }
+    function E() {
+      A += 1, h = null, a.post("app/deactivate", { appId: p.value?.id || "" }), a.clearAppSession(), p.value = null, x.value = null, k.value = null, f.value = !1, n.value = null;
+    }
     function D() {
-      u += 1, l = null, t.post("app/deactivate", { appId: v.value?.id || "" }), t.clearAppSession(), v.value = null, S.value = null, w.value = null, h.value = !1, d.value = null;
+      A += 1, h = null, a.post("os/close"), a.clearAppSession();
     }
-    function F() {
-      u += 1, l = null, t.post("os/close"), t.clearAppSession();
-    }
-    function ie(e) {
+    function a2(e) {
       if (e.key === "Escape") {
-        e.preventDefault(), v.value ? D() : F();
+        e.preventDefault(), p.value ? E() : D();
         return;
       }
-      if (e.key !== "Tab" || !i.value) return;
-      const p = Array.from(i.value.querySelectorAll('button:not(:disabled), [href], input:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'));
-      if (p.length === 0) return;
-      const f = p[0], A = p[p.length - 1];
-      e.shiftKey && document.activeElement === f ? (e.preventDefault(), A.focus()) : !e.shiftKey && document.activeElement === A && (e.preventDefault(), f.focus());
+      if (e.key !== "Tab" || !r.value) return;
+      const s = Array.from(r.value.querySelectorAll('button:not(:disabled), [href], input:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'));
+      if (s.length === 0) return;
+      const c = s[0], g = s[s.length - 1];
+      e.shiftKey && document.activeElement === c ? (e.preventDefault(), g.focus()) : !e.shiftKey && document.activeElement === g && (e.preventDefault(), c.focus());
     }
-    return ve(async () => {
-      s = document.activeElement instanceof HTMLElement ? document.activeElement : null, b = t.subscribe(ae), t.start(), window.addEventListener("error", K), window.addEventListener("unhandledrejection", V), await ue(), i.value?.focus();
-    }), oe(() => {
-      u += 1, l = null, window.removeEventListener("error", K), window.removeEventListener("unhandledrejection", V), b(), t.dispose(), s?.focus();
-    }), (e, p) => (c(), m("main", {
+    return l2(async () => {
+      T = document.activeElement instanceof HTMLElement ? document.activeElement : null, Z = a.subscribe(Q), a.start(), window.addEventListener("error", z), window.addEventListener("unhandledrejection", F), await v2(), r.value?.focus();
+    }), n2(() => {
+      A += 1, h = null, window.removeEventListener("error", z), window.removeEventListener("unhandledrejection", F), Z(), a.dispose(), T?.focus();
+    }), (e, s) => (d(), u("main", {
       ref_key: "root",
-      ref: i,
-      class: N(["xiaobai-os-shell", `theme-${n.value}`]),
+      ref: r,
+      class: H(["xiaobai-os-shell", `theme-${l.value}`]),
       role: "dialog",
       "aria-modal": "true",
       "aria-label": "小白 OS",
       tabindex: "-1",
-      onKeydown: ie,
-      onClick: fe(F, ["self"])
-    }, [M.value ? (c(), m("div", aa, $(M.value), 1)) : C("", !0), r.value ? (c(), X(Ye, {
+      onKeydown: a2,
+      onClick: c2(D, ["self"])
+    }, [P.value ? (d(), u("div", le, _(P.value), 1)) : R("", !0), o.value ? (d(), M(oe, {
       key: 2,
-      apps: x.value,
-      "active-app": v.value,
-      "active-component": S.value,
-      "active-state": w.value,
-      "app-failure": d.value,
-      "app-loading": h.value,
-      "app-render-key": H.value,
-      bridge: se(t),
-      "character-avatar": R.value,
-      onOpenApp: L,
-      onBack: D,
-      onHome: D,
-      onClose: F,
-      onRenderFailed: j,
-      onRetry: te,
-      onReload: re
+      apps: W.value,
+      "active-app": p.value,
+      "active-component": x.value,
+      "active-state": k.value,
+      "app-failure": n.value,
+      "app-loading": f.value,
+      "app-render-key": L.value,
+      bridge: o2(a),
+      "character-avatar": C.value,
+      onOpenApp: U,
+      onBack: E,
+      onHome: E,
+      onClose: D,
+      onRenderFailed: B,
+      onRetry: Y,
+      onReload: e2
     }, null, 8, [
       "apps",
       "active-app",
@@ -556,7 +470,7 @@ var aa = {
       "app-render-key",
       "bridge",
       "character-avatar"
-    ])) : (c(), m("div", ta, "正在启动小白 OS"))], 34));
+    ])) : (d(), u("div", se, "正在启动小白 OS"))], 34));
   }
-}), ia = ra;
-me(ia).mount("#app");
+}), ce = ne;
+u2(ce).mount("#app");

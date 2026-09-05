@@ -1,78 +1,31 @@
 <script setup lang="ts">
 import type { BankDepositPositionView, BankFundPositionView } from '../types.js';
 import BankProductIcon from './BankProductIcon.vue';
-
-defineProps<{
-    deposits: BankDepositPositionView[];
-    investments: BankFundPositionView[];
-    claimableCount: number;
-    writeDisabledReason: string;
-}>();
-
-defineEmits<{
-    withdraw: [position: BankDepositPositionView];
-    settle: [];
-}>();
+defineProps<{ deposits: BankDepositPositionView[]; investments: BankFundPositionView[]; claimableCount: number; writeDisabledReason: string }>();
+defineEmits<{ withdraw: [position: BankDepositPositionView]; settle: []; browse: [] }>();
 </script>
-
 <template>
-    <section aria-labelledby="bank-positions-title">
-        <header class="bank-section-heading">
-            <h2 id="bank-positions-title">我的头寸</h2>
-            <button
-                v-if="claimableCount"
-                type="button"
-                class="bank-small-claim"
-                :disabled="Boolean(writeDisabledReason)"
-                @click="$emit('settle')"
-            >
-                领取全部 {{ claimableCount }} 笔
-            </button>
-        </header>
-
-        <div v-if="!deposits.length && !investments.length" class="bank-empty-state">
-            <span>◇</span><strong>金库尚无头寸</strong><p>从定期或理财页面选择一份产品开始配置资产。</p>
-        </div>
-
+    <section class="bank-page" aria-labelledby="bank-positions-title">
+        <header class="bank-page-heading"><span class="bank-eyebrow">每份积蓄，都在这里</span><h2 id="bank-positions-title">我的持有</h2><p>到期后手动领取，本金与收益一并回到钱包。</p></header>
+        <button v-if="claimableCount" type="button" class="bank-claim-button" :disabled="Boolean(writeDisabledReason)" @click="$emit('settle')"><span class="bank-claim-icon"><BankProductIcon kind="check" /></span><span><strong>领取全部 {{ claimableCount }} 笔</strong><small>只结算已到期的资产</small></span><BankProductIcon kind="next" /></button>
+        <p v-if="writeDisabledReason" class="bank-hint" role="status">{{ writeDisabledReason }}</p>
+        <div v-if="!deposits.length && !investments.length" class="bank-empty-state"><span><BankProductIcon kind="positions" /></span><h3>积蓄还在钱包里</h3><p>选择一份存单或理财，持有后在这里查看进展。</p><button type="button" class="bank-secondary-button" @click="$emit('browse')">看看定期存单</button></div>
         <div v-if="deposits.length" class="bank-position-group">
-            <header><h3>定期存单</h3><span>{{ deposits.length }}</span></header>
+            <header class="bank-section-heading"><h3>定期存单 <small>{{ deposits.length }}</small></h3></header>
             <article v-for="position in deposits" :key="position.id" class="bank-position-card">
-                <div class="bank-position-top">
-                    <span class="bank-position-mark"><BankProductIcon kind="deposit" /></span>
-                    <div><h4>{{ position.name }}</h4><small>本金 ¤ {{ position.principal.toLocaleString('zh-CN') }}</small></div>
-                    <span class="bank-position-status" :class="{ 'is-due': position.claimable }">{{ position.statusLabel }}</span>
-                </div>
-                <dl>
-                    <div><dt>到期兑付</dt><dd>¤ {{ position.maturityAmount.toLocaleString('zh-CN') }}</dd></div>
-                    <div v-if="!position.claimable"><dt>现在支取</dt><dd class="is-loss">¤ {{ position.earlyWithdrawalAmount.toLocaleString('zh-CN') }}</dd></div>
-                </dl>
-                <button
-                    v-if="!position.claimable"
-                    type="button"
-                    class="bank-withdraw-button"
-                    :disabled="Boolean(writeDisabledReason)"
-                    :title="writeDisabledReason"
-                    @click="$emit('withdraw', position)"
-                >
-                    提前支取
-                </button>
-                <span v-else class="bank-due-note">将在“领取全部”时统一兑付</span>
+                <header><span class="bank-product-mark"><BankProductIcon kind="deposit" /></span><h4>{{ position.name }}</h4><span class="bank-position-status" :class="{ 'is-due': position.claimable }">{{ position.statusLabel }}</span></header>
+                <dl class="bank-position-amounts"><div><dt>存入本金</dt><dd>¤ {{ position.principal.toLocaleString('zh-CN') }}</dd></div><div><dt>到期到账</dt><dd>¤ {{ position.maturityAmount.toLocaleString('zh-CN') }}</dd></div></dl>
+                <footer v-if="!position.claimable"><span>现在支取到账 ¤ {{ position.earlyWithdrawalAmount.toLocaleString('zh-CN') }}</span><button type="button" class="bank-text-button is-loss" :disabled="Boolean(writeDisabledReason)" @click="$emit('withdraw', position)">提前支取</button></footer>
+                <p v-else class="bank-due-note"><BankProductIcon kind="check" />已到期，可通过上方“领取全部”兑付</p>
             </article>
         </div>
-
         <div v-if="investments.length" class="bank-position-group">
-            <header><h3>浮动理财</h3><span>{{ investments.length }}</span></header>
+            <header class="bank-section-heading"><h3>浮动理财 <small>{{ investments.length }}</small></h3></header>
             <article v-for="position in investments" :key="position.id" class="bank-position-card">
-                <div class="bank-position-top">
-                    <span class="bank-position-mark"><BankProductIcon kind="fund" /></span>
-                    <div><h4>{{ position.name }}</h4><small>{{ position.riskLabel }} · 本金 ¤ {{ position.principal.toLocaleString('zh-CN') }}</small></div>
-                    <span class="bank-position-status" :class="{ 'is-due': position.claimable }">{{ position.statusLabel }}</span>
-                </div>
-                <div v-if="position.claimable" class="bank-fund-result">
-                    <span>封存结果已揭晓</span><strong :class="{ 'is-negative': position.resolvedReturnBps < 0 }">{{ position.returnLabel }}</strong>
-                    <small>可兑付 ¤ {{ position.settlementAmount.toLocaleString('zh-CN') }}</small>
-                </div>
-                <p v-else class="bank-sealed-copy">收益结果仍在金库中封存，到期前不会公开。</p>
+                <header><span class="bank-product-mark"><BankProductIcon kind="fund" /></span><h4>{{ position.name }}</h4><span class="bank-position-status" :class="{ 'is-due': position.claimable }">{{ position.statusLabel }}</span></header>
+                <div class="bank-fund-principal"><span>{{ position.riskLabel }} · 申购本金</span><strong>¤ {{ position.principal.toLocaleString('zh-CN') }}</strong></div>
+                <div v-if="position.claimable" class="bank-fund-result" :class="{ 'is-negative': position.resolvedReturnBps < 0 }"><span>到期结果已揭晓</span><strong>{{ position.returnLabel }}</strong><small>可领取 ¤ {{ position.settlementAmount.toLocaleString('zh-CN') }}</small></div>
+                <div v-else class="bank-sealed-copy"><BankProductIcon kind="lock" /><div><strong>收益仍在封存中</strong><p>到期揭晓，锁定期间不可提前退出。</p></div></div>
             </article>
         </div>
     </section>

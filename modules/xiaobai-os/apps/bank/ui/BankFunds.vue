@@ -1,45 +1,23 @@
 <script setup lang="ts">
 import type { BankFundProductView } from '../types.js';
-
-defineProps<{
-    products: BankFundProductView[];
-    balance: number;
-    writeDisabledReason: string;
-}>();
-
-defineEmits<{
-    open: [product: BankFundProductView];
-}>();
+import BankProductIcon from './BankProductIcon.vue';
+defineProps<{ products: BankFundProductView[]; balance: number; writeDisabledReason: string }>();
+defineEmits<{ open: [product: BankFundProductView] }>();
 </script>
-
 <template>
-    <section aria-labelledby="bank-funds-title">
-        <header class="bank-section-heading">
-            <h2 id="bank-funds-title">浮动理财</h2>
-            <small>到期前不揭晓结果</small>
-        </header>
-        <p class="bank-section-intro">收益在开户时封存，到期后才会公开。理财锁定期间不可提前退出。</p>
+    <section class="bank-page" aria-labelledby="bank-funds-title">
+        <header class="bank-page-heading"><span class="bank-eyebrow">留一点空间，给未知的回报</span><h2 id="bank-funds-title">浮动理财</h2><p>有机会获得收益，也可能损失本金。</p></header>
+        <p v-if="writeDisabledReason" class="bank-hint" role="status">{{ writeDisabledReason }}</p>
         <div class="bank-product-grid">
-            <article v-for="(product, index) in products" :key="product.id" class="bank-product-card bank-fund-card">
-                <header>
-                    <span class="bank-product-index">F{{ index + 1 }}</span>
-                    <div><small>{{ product.lockLabel }}</small><h3>{{ product.name }}</h3></div>
-                    <span class="bank-risk-badge" :class="`is-${product.riskLevel}`">{{ product.riskLabel }}</span>
-                </header>
-                <p>{{ product.description }}</p>
-                <div class="bank-rate-block">
-                    <span>合同收益区间</span><strong>{{ product.returnLabel }}</strong><small>实际结果到期可见</small>
-                </div>
-                <dl class="bank-product-terms"><div><dt>开户范围</dt><dd>{{ product.amountLabel }}</dd></div></dl>
-                <button
-                    type="button"
-                    :disabled="Boolean(writeDisabledReason) || balance < product.minAmount"
-                    :title="writeDisabledReason || (balance < product.minAmount ? '可用余额不足最低开户额' : '')"
-                    @click="$emit('open', product)"
-                >
-                    申购理财<span>›</span>
-                </button>
+            <article v-for="product in products" :key="product.id" class="bank-product-card bank-fund-card" :data-risk="product.riskLevel">
+                <header><span class="bank-product-mark"><BankProductIcon kind="fund" /></span><h3>{{ product.name }}</h3><span class="bank-risk-badge" :class="`is-${product.riskLevel}`">{{ product.riskLabel }}</span></header>
+                <p class="bank-fund-description">{{ product.description }}</p>
+                <div class="bank-return-range"><span>整期收益区间 · 非年化</span><strong>{{ product.returnLabel }}</strong><small>锁定 {{ product.lockRounds }} 回合</small></div>
+                <dl class="bank-product-terms"><div><dt>申购范围</dt><dd>{{ product.amountLabel }}</dd></div><div><dt>退出规则</dt><dd>到期前不可退出</dd></div></dl>
+                <button type="button" class="bank-secondary-button bank-full-button" :disabled="Boolean(writeDisabledReason) || balance < product.minAmount" @click="$emit('open', product)">申购这份理财<BankProductIcon kind="next" /></button>
+                <p v-if="balance < product.minAmount" class="bank-product-hint">钱包余额不足最低申购金额</p>
             </article>
         </div>
+        <p class="bank-footnote">收益结果在申购时封存，到期才揭晓。<br>展示的是合同区间，不是预估收益。</p>
     </section>
 </template>

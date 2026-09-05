@@ -1,5 +1,6 @@
 import type { EconomyReadCapability } from '../../../capabilities/economy/index.js';
 import type { XiaobaiOsExecutionScope } from '../../../kernel/execution-scope.js';
+import type { XiaobaiOsFileControls } from '../../../kernel/contracts.js';
 import type { EconomyTransaction, EconomyTransactionPage } from '../../../domains/economy/types.js';
 import type { XiaobaiOsHostFrameMessage } from '../../../host/frame-bridge.js';
 import type {
@@ -38,6 +39,7 @@ interface WalletActivation {
 
 export interface WalletControllerDependencies {
     economy: EconomyReadCapability;
+    confirmPending: XiaobaiOsFileControls['retryPending'];
     getChatIdentity: () => XiaobaiOsChatIdentity | { key?: unknown } | string | null;
     execution?: XiaobaiOsExecutionScope;
 }
@@ -99,6 +101,7 @@ function resolveStatus(
 
 export function createWalletController({
     economy,
+    confirmPending,
     getChatIdentity,
     execution,
 }: WalletControllerDependencies): XiaobaiOsAppRuntime & {
@@ -183,6 +186,12 @@ export function createWalletController({
     async function handleMessage(message: XiaobaiOsHostFrameMessage): Promise<unknown> {
         const payload = isRecord(message.payload) ? message.payload : {};
         const current = assertActivation(payload);
+        if (message.type === 'wallet/confirm-save') {
+            preparation = null;
+            const confirmation = await confirmPending();
+            if (!isCurrent(current)) {throw new Error('聊天已切换，请重新打开钱包');}
+            return { confirmation: confirmation.status, state: emitState(current) };
+        }
         if (message.type === 'wallet/refresh') {
             preparation = null;
             await economy.refresh();

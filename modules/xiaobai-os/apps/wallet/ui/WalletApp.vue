@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, toRaw } from 'vue';
 import type { XiaobaiOsAppProps } from '../../../shell/app-contract.js';
-import type { WalletClientState, WalletTransactionPageView } from '../types.js';
+import type { WalletClientState, WalletTransactionPageView, WalletTransactionView } from '../types.js';
 import WalletAppHeader from './WalletAppHeader.vue';
 import WalletBalanceCard from './WalletBalanceCard.vue';
 import WalletNotice, { type WalletNoticeTone } from './WalletNotice.vue';
 import WalletTransactionList from './WalletTransactionList.vue';
+import WalletTransactionDetail from './WalletTransactionDetail.vue';
 import './wallet-ui.css';
 import './wallet.css';
 
@@ -16,6 +17,7 @@ const refreshing = ref(false);
 const loadingMore = ref(false);
 const errorMessage = ref('');
 const loadMoreError = ref('');
+const selectedTransaction = ref<WalletTransactionView | null>(null);
 let unsubscribe = () => {};
 let requestGeneration = 0;
 
@@ -91,7 +93,7 @@ async function confirmSave(): Promise<void> {
 
 async function loadMore(): Promise<void> {
     const cursor = state.value.nextCursor;
-    if (!cursor || loadingMore.value) {return;}
+    if (!cursor || loadingMore.value || actionBusy.value) {return;}
     const generation = requestGeneration;
     loadingMore.value = true;
     loadMoreError.value = '';
@@ -132,7 +134,7 @@ onBeforeUnmount(() => {
 
 <template>
     <main class="wallet-ui-app wallet-app">
-        <WalletAppHeader title="钱包" />
+        <WalletAppHeader :refreshing="refreshing" :disabled="refreshDisabled" @refresh="refresh" />
 
         <div class="wallet-ui-scroll">
             <WalletBalanceCard :balance="state.balance" :currency="state.currency" :status="state.status" />
@@ -154,19 +156,20 @@ onBeforeUnmount(() => {
 
             <section class="wallet-ledger" aria-labelledby="wallet-ledger-title">
                 <div class="wallet-ui-section-title">
-                    <h2 id="wallet-ledger-title">流水明细</h2>
-                    <small>{{ state.transactionCount }} 笔</small>
+                    <h2 id="wallet-ledger-title">收支账单</h2>
+                    <small>共 {{ state.transactionCount }} 笔</small>
                 </div>
-                <div class="wallet-ui-card">
-                    <WalletTransactionList
-                        :transactions="state.transactions"
-                        :has-more="state.hasMore"
-                        :loading-more="loadingMore"
-                        :error="loadMoreError"
-                        @load-more="loadMore"
-                    />
-                </div>
+                <WalletTransactionList
+                    :transactions="state.transactions"
+                    :has-more="state.hasMore"
+                    :loading-more="loadingMore"
+                    :loading="state.status === 'loading'"
+                    :error="loadMoreError"
+                    @load-more="loadMore"
+                    @open="selectedTransaction = $event"
+                />
             </section>
         </div>
+        <WalletTransactionDetail v-if="selectedTransaction" :transaction="selectedTransaction" @close="selectedTransaction = null" />
     </main>
 </template>

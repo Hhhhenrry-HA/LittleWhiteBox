@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 88" fill="none">
+<defs>
+<linearGradient id="bg" x1="8" y1="0" x2="80" y2="88" gradientUnits="userSpaceOnUse"><stop stop-color="#f6ac72"/><stop offset="1" stop-color="#df673d"/></linearGradient>
+<linearGradient id="paper" x1="30" y1="16" x2="60" y2="72" gradientUnits="userSpaceOnUse"><stop stop-color="#fffdf4"/><stop offset="1" stop-color="#f2e8d6"/></linearGradient>
+<filter id="shadow" x="-35%" y="-25%" width="175%" height="175%" color-interpolation-filters="sRGB"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#2b1a1a" flood-opacity=".22"/></filter>
+</defs>
+<rect width="88" height="88" rx="22" fill="url(#bg)"/>
+<path d="M22 .75h44A21.25 21.25 0 0 1 87.25 22v44A21.25 21.25 0 0 1 66 87.25H22A21.25 21.25 0 0 1 .75 66V22A21.25 21.25 0 0 1 22 .75Z" stroke="white" stroke-opacity=".25" stroke-width="1.5"/>
+<rect x="20" y="17" width="47" height="58" rx="8" fill="#a84c2d" opacity=".3" transform="rotate(9 44 44)"/><rect x="18" y="15" width="48" height="59" rx="8" fill="#f5d7ac" transform="rotate(-9 44 44)"/>
+<path d="M30 13h23l12 12v42a7 7 0 0 1-7 7H30a7 7 0 0 1-7-7V20a7 7 0 0 1 7-7Z" fill="url(#paper)" filter="url(#shadow)"/><path d="M53 13v9a3 3 0 0 0 3 3h9" fill="#ead4b8"/><path d="M33 34h21M33 42h16M33 50h12" stroke="#d4b49b" stroke-width="3" stroke-linecap="round"/><circle cx="59" cy="61" r="13" fill="#d96940" stroke="#f9d7a9" stroke-width="2"/><path d="m53 61 4 4 8-9" stroke="#fff4db" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

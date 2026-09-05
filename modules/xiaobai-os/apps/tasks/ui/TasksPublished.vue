@@ -1,61 +1,16 @@
 <script setup lang="ts">
 import type { TaskRecord } from '../types.js';
-import TaskCandidateList from './TaskCandidateList.vue';
-
-defineProps<{
-    records: TaskRecord[];
-    candidateBusyTaskId: string;
-    writeBusy: boolean;
-    disabledReason: string;
-}>();
-
-const emit = defineEmits<{
-    recruit: [task: TaskRecord];
-    assign: [task: TaskRecord, candidateId: string];
-    cancel: [task: TaskRecord];
-    detail: [taskId: string];
-    publish: [];
-}>();
+import TaskRecordCard from './TaskRecordCard.vue';
+import TaskIcon from './TaskIcon.vue';
+defineProps<{ records: TaskRecord[]; disabledReason: string }>();
+defineEmits<{ open: [task: TaskRecord]; publish: []; history: [] }>();
 </script>
-
 <template>
     <section class="tasks-page">
-        <header class="tasks-page-heading">
-            <div><h2>我发布的任务</h2></div>
-            <button type="button" class="tasks-primary-button" :disabled="Boolean(disabledReason)" :title="disabledReason" @click="emit('publish')">发布新任务</button>
-        </header>
-        <div v-if="!records.length" class="tasks-empty"><h3>还没有发布任务</h3><p>点击右上角“发布新任务”创建委托。</p></div>
-        <div v-else class="tasks-published-list">
-            <article v-for="task in records" :key="task.taskId" class="tasks-published-card">
-                <header>
-                    <div><small>招募中 · 报酬已托管</small><h3>{{ task.title }}</h3></div>
-                    <strong>¤ {{ task.reward }}</strong>
-                </header>
-                <dl>
-                    <div><dt>唯一目标</dt><dd>{{ task.objective }}</dd></div>
-                    <div v-if="task.requirements"><dt>执行约束</dt><dd>{{ task.requirements }}</dd></div>
-                    <div><dt>地点</dt><dd>{{ task.location }}</dd></div>
-                    <div v-if="task.risk"><dt>风险</dt><dd>{{ task.risk }}</dd></div>
-                </dl>
-                <div class="tasks-published-actions">
-                    <button type="button" @click="emit('detail', task.taskId)">查看详情</button>
-                    <button
-                        type="button"
-                        :disabled="writeBusy || Boolean(candidateBusyTaskId) || Boolean(disabledReason)"
-                        :title="disabledReason"
-                        @click="emit('recruit', task)"
-                    >
-                        {{ candidateBusyTaskId === task.taskId ? '正在招募…' : '招募候选人' }}
-                    </button>
-                    <button type="button" class="is-danger" :disabled="writeBusy || Boolean(disabledReason)" :title="disabledReason" @click="emit('cancel', task)">撤回并退款</button>
-                </div>
-                <TaskCandidateList
-                    :task="task"
-                    :busy="writeBusy || Boolean(candidateBusyTaskId)"
-                    :disabled-reason="disabledReason"
-                    @assign="(record, candidateId) => emit('assign', record, candidateId)"
-                />
-            </article>
-        </div>
+        <div class="tasks-publish-invite"><span class="tasks-invite-mark"><TaskIcon name="send" /></span><span class="tasks-eyebrow">你来委托，让故事里的人行动</span><h2>有件事，想托付。</h2><p>写下目标，设定报酬，再选择合适的执行者。</p><button type="button" class="tasks-primary-button" :disabled="Boolean(disabledReason)" @click="$emit('publish')"><TaskIcon name="plus" />发布一份委托</button></div>
+        <p v-if="disabledReason" class="tasks-hint">{{ disabledReason }}</p>
+        <header class="tasks-section-heading"><h3>我的委托 <small>{{ records.length }}</small></h3><button type="button" class="tasks-text-button" @click="$emit('history')">已结束<TaskIcon name="next" /></button></header>
+        <div v-if="!records.length" class="tasks-inline-empty">你发布的委托会留在这里，直到任务结束。</div>
+        <div v-else class="tasks-record-list"><TaskRecordCard v-for="task in records" :key="task.taskId" :task="task" @open="$emit('open', task)" /></div>
     </section>
 </template>

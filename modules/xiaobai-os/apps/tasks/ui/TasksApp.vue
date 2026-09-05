@@ -16,9 +16,18 @@ import TasksHistory from './TasksHistory.vue';
 import TasksPublished from './TasksPublished.vue';
 import TasksSettings from './TasksSettings.vue';
 import { mergeTaskHistoryPage } from './history-pagination.js';
+import TaskIcon from './TaskIcon.vue';
+import TaskListingDetail from './TaskListingDetail.vue';
+import TaskRecruitment from './TaskRecruitment.vue';
+import TaskConfirmDialog from './TaskConfirmDialog.vue';
+import { taskLanes, taskMoney } from './task-display.js';
 import './tasks.css';
 
-type TasksPage = 'board' | 'active' | 'published' | 'history' | 'settings' | 'publish' | 'detail';
+type MainPage = 'board' | 'active' | 'published' | 'history';
+type TasksPage = MainPage | 'settings' | 'publish' | 'detail' | 'listing' | 'recruit';
+type Confirmation = { kind: 'publish'; form: TaskPublishedForm }
+    | { kind: 'cancel'; task: TaskRecord }
+    | { kind: 'assign'; task: TaskRecord; candidateId: string };
 const REQUEST_TIMEOUT_MS = 35_000;
 const props = defineProps<XiaobaiOsAppProps>();
 
@@ -56,9 +65,22 @@ function resultBody(response: unknown): unknown {
 
 const state = ref(initialState(props.initialState));
 const page = ref<TasksPage>('board');
-const previousPage = ref<Exclude<TasksPage, 'detail' | 'publish'>>('board');
+const previousPage = ref<MainPage | 'recruit'>('board');
 const detail = ref<TaskDetailPresentation | null>(null);
-const pendingPublish = ref<TaskPublishedForm | null>(null);
+const confirmation = ref<Confirmation | null>(null);
+const selectedListing = ref<{ boardId: string; listingId: string } | null>(null);
+const selectedTaskId = ref('');
+const historySource = ref<'all' | 'received' | 'published'>('all');
+const content = ref<HTMLElement | null>(null);
+const lanes = computed(() => taskLanes(state.value));
+const receivedActive = computed(() => lanes.value.received);
+const publishedRecords = computed(() => lanes.value.published);
+const recruitmentTask = computed(() => [...publishedRecords.value, ...state.value.history.items].find(task => task.taskId === selectedTaskId.value) ?? null);
+const listing = computed(() => state.value.board?.boardId === selectedListing.value?.boardId
+    ? state.value.board?.listings.find(item => item.listingId === selectedListing.value?.listingId) ?? null : null);
+const isMainPage = computed(() => ['board', 'active', 'published', 'history'].includes(page.value));
+const pageTitle = computed(() => ({ board: '任务', active: '任务', published: '任务', history: '任务', settings: '任务设置', publish: '发布委托', detail: '委托详情', listing: '委托详情', recruit: '招募执行者' })[page.value]);
+let detailRequest = 0;
 const boardBusy = computed(() => state.value.generation.state === 'running' && state.value.generation.kind === 'board');
 const candidateBusyTaskId = computed(() => (
     state.value.generation.state === 'running' && state.value.generation.kind === 'candidates'
@@ -104,6 +126,12 @@ function applyState(next: TasksPresentation): void {
     if (!next || typeof next.chatIdentity !== 'string') {return;}
     state.value = structuredClone(next);
     errorMessage.value = '';
+    const displayedTask = detail.value?.task;
+    if (page.value === 'detail' && displayedTask) {
+        const latest = [...next.active, ...next.recruiting, ...next.history.items]
+            .find(task => task.taskId === displayedTask.taskId);
+        if (latest && latest.eventId !== displayedTask.eventId) {void openDetail(latest.taskId, true);}
+    }
 }
 
 function stateFromBody(body: unknown): TasksPresentation | null {
@@ -161,6 +189,7 @@ async function acceptListing(boardId: string, listingId: string): Promise<void> 
         const body = await request('tasks/board/accept', { boardId, listingId });
         applyResponseState(body, version);
         announce('任务已接取，报酬已进入托管。');
+        if (mounted && page.value === 'listing') {go('active');}
     } catch (error) {errorMessage.value = readableError(error);}
     finally {writeBusy.value = false;}
 }
@@ -180,7 +209,7 @@ async function recruit(task: TaskRecord): Promise<void> {
     } catch (error) {if (mounted) {errorMessage.value = readableError(error);}}
 }
 
-async function assign(task: TaskRecord, candidateId: string): Promise<void> {
+async function assignTask(task: TaskRecord, candidateId: string): Promise<void> {
     if (writeDisabledReason.value) {return;}
     writeBusy.value = true;
     const version = stateVersion;
@@ -192,13 +221,15 @@ async function assign(task: TaskRecord, candidateId: string): Promise<void> {
             candidateId,
         });
         applyResponseState(body, version);
+        confirmation.value = null;
         announce('执行者已确认，任务进入进行中。');
+        if (mounted) {go('published');}
     } catch (error) {errorMessage.value = readableError(error);}
     finally {writeBusy.value = false;}
 }
 
 async function cancelTask(task: TaskRecord): Promise<void> {
-    if (writeDisabledReason.value || !globalThis.confirm(`撤回“${task.title}”并退回 ¤ ${task.reward}？`)) {return;}
+    if (writeDisabledReason.value) {return;}
     writeBusy.value = true;
     const version = stateVersion;
     try {
@@ -208,25 +239,27 @@ async function cancelTask(task: TaskRecord): Promise<void> {
             expectedEventId: task.eventId,
         });
         applyResponseState(body, version);
+        confirmation.value = null;
         announce('任务已撤回，托管报酬已退回钱包。');
+        if (mounted) {go('published');}
     } catch (error) {errorMessage.value = readableError(error);}
     finally {writeBusy.value = false;}
 }
 
 function requestPublish(form: TaskPublishedForm): void {
-    if (!writeDisabledReason.value) {pendingPublish.value = structuredClone(form);}
+    if (!writeDisabledReason.value) {errorMessage.value = ''; confirmation.value = { kind: 'publish', form: structuredClone(form) };}
 }
 
 async function confirmPublish(): Promise<void> {
-    const form = pendingPublish.value;
+    const form = confirmation.value?.kind === 'publish' ? confirmation.value.form : null;
     if (!form || writeDisabledReason.value) {return;}
     writeBusy.value = true;
     const version = stateVersion;
     try {
-        const body = await request('tasks/publish', { form });
+        const body = await request('tasks/publish', { form: toRaw(form) });
         applyResponseState(body, version);
-        pendingPublish.value = null;
-        page.value = 'published';
+        confirmation.value = null;
+        go('published');
         announce('任务已发布，报酬已锁入托管。');
     } catch (error) {errorMessage.value = readableError(error);}
     finally {writeBusy.value = false;}
@@ -253,18 +286,23 @@ async function maintainOnce(): Promise<void> {
     } catch (error) {errorMessage.value = readableError(error);}
 }
 
-async function openDetail(taskId: string): Promise<void> {
-    previousPage.value = page.value === 'detail' || page.value === 'publish' ? 'active' : page.value;
-    page.value = 'detail';
-    detail.value = null;
-    detailBusy.value = true;
+async function openDetail(taskId: string, refresh = false): Promise<void> {
+    if (!refresh) {
+        if (isMainPage.value || page.value === 'recruit') {previousPage.value = page.value as MainPage | 'recruit';}
+        page.value = 'detail';
+        content.value?.scrollTo(0, 0);
+        detail.value = null;
+        detailBusy.value = true;
+    }
+    const requestId = ++detailRequest;
     try {
         const body = await request('tasks/detail/read', { taskId });
+        if (!mounted || requestId !== detailRequest) {return;}
         if (isRecord(body) && isRecord(body.task) && Array.isArray(body.timeline)) {
             detail.value = structuredClone(body as unknown as TaskDetailPresentation);
         }
-    } catch (error) {errorMessage.value = readableError(error);}
-    finally {detailBusy.value = false;}
+    } catch (error) {if (mounted && requestId === detailRequest) {errorMessage.value = readableError(error);}}
+    finally {if (mounted && requestId === detailRequest) {detailBusy.value = false;}}
 }
 
 async function loadMoreHistory(): Promise<void> {
@@ -307,9 +345,59 @@ async function adoptServer(): Promise<void> {
     finally {saveBusy.value = false;}
 }
 
-function go(next: Exclude<TasksPage, 'detail'>): void {
-    if (next !== 'publish') {previousPage.value = next;}
+function go(next: TasksPage): void {
+    if (next === 'settings' && isMainPage.value) {previousPage.value = page.value as MainPage;}
+    detailRequest += 1;
     page.value = next;
+    content.value?.scrollTo(0, 0);
+}
+
+function back(): void {
+    go(page.value === 'detail' || page.value === 'settings' ? previousPage.value
+        : page.value === 'listing' ? 'board' : 'published');
+}
+
+function openListing(boardId: string, listingId: string): void {
+    selectedListing.value = { boardId, listingId };
+    go('listing');
+}
+
+function openPublished(task: TaskRecord): void {
+    if (task.status === 'recruiting') {
+        selectedTaskId.value = task.taskId;
+        go('recruit');
+    } else {void openDetail(task.taskId);}
+}
+
+function showPublishedHistory(): void {
+    historySource.value = 'published';
+    go('history');
+}
+
+function askCancel(task: TaskRecord): void {
+    errorMessage.value = '';
+    confirmation.value = { kind: 'cancel', task };
+}
+
+function askAssign(task: TaskRecord, candidateId: string): void {
+    errorMessage.value = '';
+    confirmation.value = { kind: 'assign', task, candidateId };
+}
+
+function confirmAction(): void {
+    const action = confirmation.value;
+    if (!action) {return;}
+    if (action.kind === 'publish') {void confirmPublish();}
+    else if (action.kind === 'cancel') {void cancelTask(action.task);}
+    else {void assignTask(action.task, action.candidateId);}
+}
+
+function handleEscape(event: KeyboardEvent): void {
+    if (event.key === 'Escape' && !isMainPage.value) {
+        event.stopPropagation();
+        event.preventDefault();
+        back();
+    }
 }
 
 onMounted(() => {
@@ -328,53 +416,52 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
     mounted = false;
+    detailRequest += 1;
     unsubscribe();
-    pendingPublish.value = null;
+    confirmation.value = null;
 });
 </script>
 
 <template>
-    <main class="tasks-app">
+    <main class="tasks-app" @keydown="handleEscape">
         <header class="tasks-app-header">
-            <div class="tasks-brand"><span aria-hidden="true"><i /><i /><i /></span><div><h1>任务</h1></div></div>
-            <div class="tasks-balance"><small>可用余额</small><strong>¤ {{ state.playerBalance }}</strong></div>
+            <button v-if="!isMainPage" type="button" class="tasks-icon-button" aria-label="返回上一页" @click="back"><TaskIcon name="back" /></button>
+            <span v-else class="tasks-brand-mark" aria-hidden="true"><TaskIcon name="ticket" /></span>
+            <h1>{{ pageTitle }}</h1>
+            <div class="tasks-balance"><small>可用余额</small><strong>¤ {{ taskMoney(state.playerBalance) }}</strong></div>
+            <button v-if="isMainPage" type="button" class="tasks-icon-button" aria-label="任务设置" @click="go('settings')"><TaskIcon name="settings" /></button>
         </header>
-
-        <aside v-if="state.message || errorMessage || actionMessage" class="tasks-notice" :class="{ 'is-error': Boolean(errorMessage) || state.status === 'conflict' || state.status === 'blocked', 'is-warning': requiresConfirmation }" role="status">
-            <span>{{ errorMessage ? '!' : requiresConfirmation ? '?' : 'i' }}</span>
-            <p>{{ errorMessage || state.message || actionMessage }}</p>
-            <button v-if="requiresConfirmation" type="button" :disabled="saveBusy" @click="confirmSave">{{ saveBusy ? '正在核实…' : '核实保存结果' }}</button>
-            <button v-else-if="state.status === 'conflict'" type="button" :disabled="saveBusy" @click="adoptServer">{{ saveBusy ? '正在采用…' : '采用服务端数据' }}</button>
-        </aside>
-
-        <aside v-if="state.generation.message" class="tasks-notice" role="status">
-            <span aria-hidden="true">i</span><p>{{ state.generation.message }}</p>
-        </aside>
-
-        <div class="tasks-content">
-            <TasksBoard v-if="page === 'board'" :board="state.board" :busy="boardBusy" :disabled-reason="generationDisabledReason" @refresh="refreshBoard" @accept="acceptListing" />
-            <TasksActive v-else-if="page === 'active'" :records="state.active" @detail="openDetail" />
-            <TasksPublished v-else-if="page === 'published'" :records="state.recruiting" :candidate-busy-task-id="candidateBusyTaskId" :write-busy="writeBusy" :disabled-reason="writeDisabledReason" @recruit="recruit" @assign="assign" @cancel="cancelTask" @detail="openDetail" @publish="go('publish')" />
-            <TasksHistory v-else-if="page === 'history'" :history="state.history" :loading="historyBusy" @detail="openDetail" @load-more="loadMoreHistory" />
-            <TasksSettings v-else-if="page === 'settings'" :auto-maintenance="state.settings.autoMaintenance" :settings-busy="settingsBusy" :maintenance-busy="state.maintenance.state === 'running'" :maintenance-message="maintenanceMessage" :disabled-reason="generationDisabledReason" @update="setAutoMaintenance" @maintain="maintainOnce" />
-            <TaskPublishForm v-else-if="page === 'publish'" :balance="state.playerBalance" :busy="writeBusy" :disabled-reason="writeDisabledReason" @submit="requestPublish" @cancel="go('published')" />
-            <TaskDetail v-else :detail="detail" :loading="detailBusy" @back="go(previousPage)" />
+        <div class="tasks-notices" aria-live="polite">
+            <aside v-if="state.message || (errorMessage && !confirmation) || actionMessage" class="tasks-notice" :class="{ 'is-error': Boolean(errorMessage) || state.status === 'conflict' || state.status === 'blocked', 'is-warning': requiresConfirmation }" role="status">
+                <div><p>{{ (confirmation ? '' : errorMessage) || state.message || actionMessage }}</p><button v-if="requiresConfirmation" type="button" :disabled="saveBusy" @click="confirmSave">{{ saveBusy ? '正在核实…' : '核实保存结果' }}</button><button v-else-if="state.status === 'conflict'" type="button" :disabled="saveBusy" @click="adoptServer">{{ saveBusy ? '正在采用…' : '采用服务端数据' }}</button></div>
+                <button v-if="!state.message" type="button" class="tasks-icon-button" aria-label="关闭提示" @click="errorMessage = ''; actionMessage = ''"><TaskIcon name="close" /></button>
+            </aside>
+            <aside v-if="state.generation.message" class="tasks-notice" role="status"><p>{{ state.generation.message }}</p></aside>
         </div>
-
-        <nav class="tasks-nav" aria-label="任务页面">
-            <button type="button" :class="{ 'is-active': page === 'board' }" @click="go('board')"><span>⌁</span>大厅</button>
-            <button type="button" :class="{ 'is-active': page === 'active' }" @click="go('active')"><span>▶</span>进行中<b v-if="state.active.length">{{ state.active.length }}</b></button>
-            <button type="button" :class="{ 'is-active': page === 'published' || page === 'publish' }" @click="go('published')"><span>◇</span>我发布的<b v-if="state.recruiting.length">{{ state.recruiting.length }}</b></button>
-            <button type="button" :class="{ 'is-active': page === 'history' }" @click="go('history')"><span>▤</span>历史</button>
-            <button type="button" :class="{ 'is-active': page === 'settings' }" @click="go('settings')"><span>⚙</span>设置</button>
+        <nav v-if="page === 'board' || page === 'active'" class="tasks-receive-tabs" aria-label="接任务页面">
+            <button type="button" :aria-pressed="page === 'board'" @click="go('board')">发现委托</button>
+            <button type="button" :aria-pressed="page === 'active'" @click="go('active')">我接的<span v-if="receivedActive.length">{{ receivedActive.length }}</span></button>
         </nav>
-
-        <div v-if="pendingPublish" class="tasks-dialog-backdrop" @click.self="!writeBusy && (pendingPublish = null)">
-            <section class="tasks-dialog" role="alertdialog" aria-modal="true" aria-labelledby="tasks-publish-confirm-title">
-                <h2 id="tasks-publish-confirm-title">确认发布任务？</h2>
-                <p>“{{ pendingPublish.title }}”将立即从钱包锁定 <strong>¤ {{ pendingPublish.reward }}</strong>。招募期间可以撤回；选定执行者后不能撤回。</p>
-                <div><button type="button" :disabled="writeBusy" @click="pendingPublish = null">返回修改</button><button type="button" class="tasks-primary-button" :disabled="Boolean(writeDisabledReason)" :title="writeDisabledReason || undefined" @click="confirmPublish">{{ writeBusy ? '正在保存…' : '确认发布' }}</button></div>
-            </section>
+        <div ref="content" class="tasks-content">
+            <TasksBoard v-if="page === 'board'" :board="state.board" :busy="boardBusy" :disabled-reason="generationDisabledReason" @refresh="refreshBoard" @detail="openListing" />
+            <TasksActive v-else-if="page === 'active'" :records="receivedActive" @detail="openDetail" @discover="go('board')" />
+            <TasksPublished v-else-if="page === 'published'" :records="publishedRecords" :disabled-reason="writeDisabledReason" @open="openPublished" @publish="go('publish')" @history="showPublishedHistory" />
+            <TasksHistory v-else-if="page === 'history'" :history="state.history" :loading="historyBusy" :source="historySource" @filter="historySource = $event" @detail="openDetail" @load-more="loadMoreHistory" />
+            <TasksSettings v-else-if="page === 'settings'" :auto-maintenance="state.settings.autoMaintenance" :settings-busy="settingsBusy" :maintenance-busy="state.maintenance.state === 'running'" :maintenance-message="maintenanceMessage" :disabled-reason="generationDisabledReason" @update="setAutoMaintenance" @maintain="maintainOnce" />
+            <TaskPublishForm v-else-if="page === 'publish'" :balance="state.playerBalance" :busy="writeBusy" :disabled-reason="writeDisabledReason" @submit="requestPublish" />
+            <TaskListingDetail v-else-if="page === 'listing'" :listing="listing" :busy="writeBusy" :disabled-reason="writeDisabledReason" @accept="selectedListing && acceptListing(selectedListing.boardId, selectedListing.listingId)" />
+            <TaskRecruitment v-else-if="page === 'recruit'" :task="recruitmentTask" :busy="writeBusy" :recruiting="Boolean(candidateBusyTaskId)" :disabled-reason="writeDisabledReason" :generation-disabled-reason="generationDisabledReason" @recruit="recruit" @assign="askAssign" @cancel="askCancel" @detail="openDetail" />
+            <TaskDetail v-else :detail="detail" :loading="detailBusy" />
         </div>
+        <nav v-if="isMainPage" class="tasks-nav" aria-label="任务主导航">
+            <button type="button" aria-label="接任务" :aria-current="page === 'board' || page === 'active' ? 'page' : undefined" @click="go('board')"><span><TaskIcon name="compass" /></span>接任务</button>
+            <button type="button" aria-label="我发布" :aria-current="page === 'published' ? 'page' : undefined" @click="go('published')"><span><TaskIcon name="send" /><i v-if="state.recruiting.length" /></span>我发布</button>
+            <button type="button" aria-label="记录" :aria-current="page === 'history' ? 'page' : undefined" @click="go('history')"><span><TaskIcon name="archive" /></span>记录</button>
+        </nav>
+        <TaskConfirmDialog v-if="confirmation" :title="confirmation.kind === 'publish' ? '让这份委托出发？' : confirmation.kind === 'cancel' ? '撤回这份委托？' : '把委托交给这位执行者？'" :confirm-label="confirmation.kind === 'publish' ? '托管并发布' : confirmation.kind === 'cancel' ? '撤回并退款' : '确认委托'" :busy="writeBusy" :disabled-reason="writeDisabledReason" :error="errorMessage" @close="confirmation = null; errorMessage = ''" @confirm="confirmAction">
+            <template v-if="confirmation.kind === 'publish'"><p class="tasks-confirm-name">{{ confirmation.form.title }}</p><strong class="tasks-confirm-amount">¤ {{ taskMoney(confirmation.form.reward) }}</strong><p>报酬将从钱包托管。发布后可招募执行者；选人之前，你可以撤回并全额退回报酬。</p></template>
+            <template v-else-if="confirmation.kind === 'cancel'"><p class="tasks-confirm-name">{{ confirmation.task.title }}</p><strong class="tasks-confirm-amount">¤ {{ taskMoney(confirmation.task.reward) }}</strong><p>撤回后，托管报酬将退回你的钱包。</p></template>
+            <template v-else><p class="tasks-confirm-name">{{ confirmation.task.candidates.find(candidate => candidate.candidateId === (confirmation?.kind === 'assign' ? confirmation.candidateId : ''))?.name }}</p><p>确认后开始执行“{{ confirmation.task.title }}”。执行者确定后，这份委托不能再撤回。</p></template>
+        </TaskConfirmDialog>
     </main>
 </template>

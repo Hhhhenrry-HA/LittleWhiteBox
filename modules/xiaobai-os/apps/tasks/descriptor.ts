@@ -3,5 +3,5 @@ import type { XiaobaiOsAppDescriptor } from '../../types.js';
 export const TASKS_APP_DESCRIPTOR: Readonly<XiaobaiOsAppDescriptor> = Object.freeze({
     id: 'tasks',
     name: '任务',
-    accent: '#e8b84a',
+    accent: '#d96840',
 });

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 88" fill="none">
+<defs>
+<linearGradient id="bg" x1="8" y1="0" x2="80" y2="88" gradientUnits="userSpaceOnUse"><stop stop-color="#f1b8a1"/><stop offset="1" stop-color="#d37469"/></linearGradient>
+<linearGradient id="paper" x1="30" y1="16" x2="60" y2="72" gradientUnits="userSpaceOnUse"><stop stop-color="#fffdf4"/><stop offset="1" stop-color="#f2e8d6"/></linearGradient>
+<filter id="shadow" x="-35%" y="-25%" width="175%" height="175%" color-interpolation-filters="sRGB"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#2b1a1a" flood-opacity=".22"/></filter>
+</defs>
+<rect width="88" height="88" rx="22" fill="url(#bg)"/>
+<path d="M22 .75h44A21.25 21.25 0 0 1 87.25 22v44A21.25 21.25 0 0 1 66 87.25H22A21.25 21.25 0 0 1 .75 66V22A21.25 21.25 0 0 1 22 .75Z" stroke="white" stroke-opacity=".25" stroke-width="1.5"/>
+<path d="M23 33h43l5 34a5 5 0 0 1-5 5H22a5 5 0 0 1-5-5Z" fill="#86483e" opacity=".3"/>
+<path d="M24 30h40l5 34a5 5 0 0 1-5 6H24a5 5 0 0 1-5-6Z" fill="url(#paper)" filter="url(#shadow)"/>
+<path d="M34 33v-8a10 10 0 0 1 20 0v8" fill="none" stroke="#98594c" stroke-width="4" stroke-linecap="round"/>
+<path d="m44 41 3.5 8 8.5 3.5-8.5 3.5-3.5 8-3.5-8-8.5-3.5 8.5-3.5Z" fill="#c67560"/>
+<path d="m69 17 2 5 5 2-5 2-2 5-2-5-5-2 5-2Z" fill="#fff1d3"/>
+</svg>

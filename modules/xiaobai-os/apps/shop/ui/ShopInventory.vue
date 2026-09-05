@@ -1,104 +1,33 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import type { ShopActivationView, ShopCatalogItemView } from '../types.js';
-import ShopItemIcon from './ShopItemIcon.vue';
-
-const props = defineProps<{
-    catalog: ShopCatalogItemView[];
-    activations: ShopActivationView[];
-    writeDisabledReason: string;
-}>();
-
-defineEmits<{
-    use: [item: ShopCatalogItemView];
-    deactivate: [activation: ShopActivationView];
-}>();
-
-const exhaustedOpen = ref(false);
-const active = computed(() => props.activations.filter(activation => activation.state === 'active'));
+import { computed } from 'vue';
+import type { ShopCatalogItemView } from '../types.js';
+import ShopIcon from './ShopIcon.vue';
+import ShopItemArt from './ShopItemArt.vue';
+const props = defineProps<{ catalog: ShopCatalogItemView[]; writeDisabledReason: string }>();
+defineEmits<{ open: [item: ShopCatalogItemView]; use: [item: ShopCatalogItemView]; browse: [] }>();
 const held = computed(() => props.catalog.filter(item => item.quantity > 0));
 const exhausted = computed(() => props.catalog.filter(item => item.purchasedCount > 0 && item.quantity === 0));
-const historyByItem = computed(() => {
-    const counts = new Map<string, number>();
-    for (const activation of props.activations) {
-        if (activation.state !== 'active') {counts.set(activation.itemId, (counts.get(activation.itemId) || 0) + 1);}
-    }
-    return counts;
-});
+const quantity = computed(() => held.value.reduce((total, item) => total + item.quantity, 0));
 </script>
-
 <template>
-    <section class="shop-inventory" aria-labelledby="shop-inventory-title">
-        <header class="shop-section-heading">
-            <h2 id="shop-inventory-title">我的奇物</h2>
-            <small>{{ held.reduce((total, item) => total + item.quantity, 0) }} 件可用</small>
-        </header>
-        <p v-if="writeDisabledReason" class="shop-write-reason" role="status">{{ writeDisabledReason }}</p>
-
-        <section class="shop-inventory-group" aria-labelledby="shop-active-title">
-            <header><h3 id="shop-active-title">生效中</h3><span>{{ active.length }}</span></header>
-            <div v-if="active.length" class="shop-activation-list">
-                <article v-for="activation in active" :key="activation.activationId" class="shop-activation-card">
-                    <div class="shop-mini-mark"><ShopItemIcon :name="activation.icon" /></div>
-                    <div>
-                        <h4>{{ activation.name }}</h4>
-                        <p v-for="parameter in activation.parameters" :key="parameter.label">
-                            <span>{{ parameter.label }}</span>{{ parameter.value }}
-                        </p>
-                        <small>{{ activation.stateLabel }}</small>
-                    </div>
-                    <button
-                        v-if="activation.canDeactivate"
-                        type="button"
-                        :disabled="Boolean(writeDisabledReason)"
-                        :title="writeDisabledReason"
-                        @click="$emit('deactivate', activation)"
-                    >
-                        关闭
-                    </button>
-                </article>
-            </div>
-            <p v-else class="shop-empty-copy">尚无正在影响剧情的奇物。</p>
-        </section>
-
-        <section class="shop-inventory-group" aria-labelledby="shop-held-title">
-            <header><h3 id="shop-held-title">持有</h3><span>{{ held.length }}</span></header>
-            <div v-if="held.length" class="shop-held-grid">
-                <article v-for="item in held" :key="item.id" class="shop-held-card">
-                    <div class="shop-mini-mark"><ShopItemIcon :name="item.icon" /></div>
-                    <div>
-                        <h4>{{ item.name }}</h4>
-                        <p>{{ item.durationLabel }}</p>
-                    </div>
-                    <strong>×{{ item.quantity }}</strong>
-                    <button
-                        type="button"
-                        :disabled="Boolean(writeDisabledReason)"
-                        :title="writeDisabledReason"
-                        @click="$emit('use', item)"
-                    >
-                        使用
-                    </button>
-                </article>
-            </div>
-            <p v-else class="shop-empty-copy">背包还是空的，去货架挑一件吧。</p>
-        </section>
-
-        <section v-if="exhausted.length" class="shop-inventory-group is-exhausted">
-            <button
-                type="button"
-                class="shop-collapse-button"
-                :aria-expanded="exhaustedOpen"
-                @click="exhaustedOpen = !exhaustedOpen"
-            >
-                <span>已耗尽</span><small>{{ exhausted.length }}</small><i aria-hidden="true">⌄</i>
-            </button>
-            <div v-if="exhaustedOpen" class="shop-exhausted-list">
-                <article v-for="item in exhausted" :key="item.id">
-                    <span>{{ item.name }}</span>
-                    <small>购入 {{ item.purchasedCount }} 次<span v-if="historyByItem.get(item.id)"> · 已结束 {{ historyByItem.get(item.id) }}</span></small>
-                </article>
-            </div>
-        </section>
+    <section class="shop-page" aria-labelledby="shop-inventory-title">
+        <header class="shop-page-heading"><span class="shop-eyebrow">已经属于你的奇妙</span><h2 id="shop-inventory-title">我的背包 <small>{{ quantity }} 件</small></h2><p>买下的奇物留在这里。使用一件，才开始影响故事。</p></header>
+        <p v-if="writeDisabledReason" class="shop-hint" role="status">{{ writeDisabledReason }}</p>
+        <div v-if="held.length" class="shop-held-list">
+            <article v-for="item in held" :key="item.id" class="shop-held-card">
+                <button type="button" class="shop-held-open" :aria-label="`查看${item.name}`" @click="$emit('open', item)">
+                    <span class="shop-held-art" :data-category="item.category"><ShopItemArt :name="item.icon" /></span>
+                    <span><small>{{ item.categoryLabel }}</small><strong>{{ item.name }}</strong><span>{{ item.durationLabel }}</span></span>
+                    <b>×{{ item.quantity }}</b>
+                </button>
+                <footer><span>{{ item.duration === 'permanent' ? '永久效果 · 使用前请确认' : item.duration === 'manual' ? '启用后可手动关闭' : '未使用，不会消耗次数' }}</span><button type="button" class="shop-text-button" :disabled="Boolean(writeDisabledReason)" :aria-label="`使用${item.name}`" @click="$emit('use', item)">使用<ShopIcon name="next" /></button></footer>
+            </article>
+        </div>
+        <div v-else class="shop-empty"><span><ShopIcon name="bag" /></span><h3>背包里，还空着一个位置</h3><p>去逛逛，挑一件想带进故事的奇物。</p><button type="button" class="shop-primary-button" @click="$emit('browse')">去逛店<ShopIcon name="next" /></button></div>
+        <details v-if="exhausted.length" class="shop-exhausted">
+            <summary>用过的奇物 <small>{{ exhausted.length }} 种</small><ShopIcon name="next" /></summary>
+            <div v-for="item in exhausted" :key="item.id"><button type="button" @click="$emit('open', item)">{{ item.name }}</button><span>曾购入 {{ item.purchasedCount }} 件 · 库存 0</span></div>
+            <p>库存用完不代表效果结束，启用状态请看「生效中」。</p>
+        </details>
     </section>
 </template>

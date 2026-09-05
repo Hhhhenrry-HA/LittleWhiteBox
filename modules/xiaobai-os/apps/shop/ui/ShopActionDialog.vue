@@ -1,79 +1,65 @@
 <script setup lang="ts">
-import { computed, reactive } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import type { ShopActivationView, ShopCatalogItemView } from '../types.js';
-import ShopItemIcon from './ShopItemIcon.vue';
+import ShopIcon from './ShopIcon.vue';
+import ShopItemArt from './ShopItemArt.vue';
+import { shopUseNotice } from './shop-display.js';
 
 const props = defineProps<{
     mode: 'purchase' | 'use' | 'deactivate';
     item: ShopCatalogItemView;
     activation?: ShopActivationView;
+    balance: number;
     busy: boolean;
     error: string;
+    disabledReason: string;
 }>();
-
-const emit = defineEmits<{
-    cancel: [];
-    confirm: [parameters: Record<string, string>];
-}>();
-
+const emit = defineEmits<{ cancel: []; confirm: [parameters: Record<string, string>] }>();
+const dialog = ref<HTMLDialogElement | null>(null);
 const parameters = reactive<Record<string, string>>({});
-const title = computed(() => {
-    if (props.mode === 'purchase') {return '确认购入';}
-    if (props.mode === 'deactivate') {return '关闭效果';}
-    return '确认使用';
-});
-const confirmation = computed(() => {
-    if (props.mode === 'purchase') {return `将支付 ${props.item.price} 小白币，奇物会先放入背包。`;}
-    if (props.mode === 'deactivate') {return '关闭后将从下一次回复起停止影响剧情，已经发生的事实不会消失。';}
-    if (props.item.duration === 'permanent') {return '这件奇物将永久影响后续剧情，使用后无法关闭。';}
-    return `使用后从下一次回复起${props.item.durationLabel}。`;
-});
-const formValid = computed(() => props.mode !== 'use' || props.item.inputs.every(input => (
-    String(parameters[input.key] || '').trim().length > 0
-)));
-
+const title = computed(() => props.mode === 'purchase' ? '把这份奇妙带回去' : props.mode === 'use' ? '让奇物进入故事' : '关闭这份效果？');
+const formValid = computed(() => props.mode !== 'use' || props.item.inputs.every(input => String(parameters[input.key] || '').trim().length > 0));
+const canSubmit = computed(() => !props.busy && !props.disabledReason && formValid.value);
+onMounted(() => dialog.value?.showModal());
 function submit(): void {
-    if (!props.busy && formValid.value) {emit('confirm', { ...parameters });}
+    if (canSubmit.value) {emit('confirm', { ...parameters });}
+}
+function handleKeydown(event: KeyboardEvent): void {
+    event.stopPropagation();
+    if (event.key !== 'Tab') {return;}
+    const controls = Array.from(dialog.value?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled)') ?? []);
+    const first = controls[0];
+    const last = controls.at(-1);
+    if (!first) {event.preventDefault(); return;}
+    if (event.shiftKey && document.activeElement === first) {event.preventDefault(); last?.focus();}
+    else if (!event.shiftKey && document.activeElement === last) {event.preventDefault(); first.focus();}
 }
 </script>
-
 <template>
-    <dialog
-        open
-        class="shop-dialog"
-        :aria-labelledby="`shop-dialog-${mode}`"
-        @click.self="!busy && $emit('cancel')"
-        @keydown.esc.stop.prevent="!busy && $emit('cancel')"
-    >
-        <form method="dialog" class="shop-dialog-card" @submit.prevent="submit">
-            <h2 :id="`shop-dialog-${mode}`">{{ title }}</h2>
-            <div class="shop-dialog-item">
-                <span><ShopItemIcon :name="item.icon" /></span>
-                <div><strong>{{ item.name }}</strong><small>{{ item.durationLabel }}</small></div>
-            </div>
-
+    <dialog ref="dialog" class="shop-dialog" :aria-label="title" @cancel.prevent="!busy && emit('cancel')" @keydown="handleKeydown">
+        <form @submit.prevent="submit">
+            <header class="shop-dialog-heading"><span class="shop-eyebrow">{{ mode === 'purchase' ? '购入确认' : mode === 'use' ? '使用确认' : '效果管理' }}</span><h2>{{ title }}</h2></header>
+            <div class="shop-dialog-item"><ShopItemArt :name="item.icon" /><div><strong>{{ item.name }}</strong><span>{{ item.durationLabel }}</span><small v-if="mode === 'purchase'">数量 1 件 · 放入背包</small><small v-else-if="mode === 'use'">消耗库存 1 件 · 不再扣款</small></div></div>
+            <dl v-if="mode === 'purchase'" class="shop-payment-summary">
+                <div><dt>本次支付</dt><dd class="shop-payment-total">¤ {{ item.price.toLocaleString('zh-CN') }}</dd></div>
+                <div><dt>钱包可用</dt><dd>¤ {{ balance.toLocaleString('zh-CN') }}</dd></div>
+                <div v-if="balance >= item.price"><dt>支付后余额</dt><dd>¤ {{ (balance - item.price).toLocaleString('zh-CN') }}</dd></div>
+            </dl>
+            <p v-if="mode === 'use'" class="shop-dialog-description">{{ item.description }}</p>
             <label v-for="input in mode === 'use' ? item.inputs : []" :key="input.key" class="shop-dialog-field">
-                <span>{{ input.label }}</span>
-                <input
-                    v-model="parameters[input.key]"
-                    type="text"
-                    :maxlength="input.maxLength"
-                    :placeholder="input.placeholder"
-                    autocomplete="off"
-                    required
-                >
+                <span>{{ input.label }}<small>最多 {{ input.maxLength }} 字</small></span>
+                <input v-model="parameters[input.key]" :disabled="busy" type="text" :maxlength="input.maxLength" :placeholder="input.placeholder" autocomplete="off" required>
             </label>
-
-            <p class="shop-dialog-warning" :class="{ 'is-permanent': mode === 'use' && item.duration === 'permanent' }">
-                {{ confirmation }}
-            </p>
-            <p v-if="error" class="shop-dialog-error" role="alert">{{ error }}</p>
-            <div class="shop-dialog-actions">
-                <button type="button" :disabled="busy" @click="$emit('cancel')">再想想</button>
-                <button type="submit" class="is-primary" :disabled="busy || !formValid">
-                    {{ busy ? '正在封存…' : mode === 'purchase' ? '确认支付' : mode === 'deactivate' ? '确认关闭' : '确认使用' }}
-                </button>
+            <dl v-if="mode === 'deactivate' && activation?.parameters.length" class="shop-effect-parameters"><div v-for="parameter in activation.parameters" :key="parameter.label"><dt>{{ parameter.label }}</dt><dd>{{ parameter.value }}</dd></div></dl>
+            <div class="shop-dialog-note" :class="{ 'is-warning': mode !== 'purchase' && (mode === 'deactivate' || item.duration === 'permanent') }">
+                <ShopIcon :name="mode === 'purchase' ? 'bag' : mode === 'deactivate' || item.duration === 'permanent' ? 'lock' : 'spark'" />
+                <p v-if="mode === 'purchase'">购买不会立即影响聊天。想好后，再从背包中使用。</p>
+                <p v-else-if="mode === 'deactivate'">关闭后，后续新回复不再使用这份效果。已经发生的剧情保留，不返还道具或小白币。</p>
+                <p v-else>{{ shopUseNotice(item) }} 使用后不会返还库存。</p>
             </div>
+            <p v-if="disabledReason && !busy" class="shop-inline-error" role="status">{{ disabledReason }}</p>
+            <p v-if="error" class="shop-inline-error" role="alert">{{ error }}</p>
+            <footer class="shop-dialog-actions"><button type="button" class="shop-secondary-button" :disabled="busy" autofocus @click="emit('cancel')">返回</button><button type="submit" class="shop-primary-button" :disabled="!canSubmit">{{ busy ? '正在保存…' : mode === 'purchase' ? '确认支付' : mode === 'deactivate' ? '确认关闭' : '确认使用' }}</button></footer>
         </form>
     </dialog>
 </template>

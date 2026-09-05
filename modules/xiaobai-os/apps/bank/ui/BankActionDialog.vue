@@ -1,97 +1,75 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import type {
-    BankDepositPositionView,
-    BankDepositProductView,
-    BankFundProductView,
-} from '../types.js';
+import { computed, onMounted, ref } from 'vue';
+import { amountAtBps } from '../../../domains/bank/money.js';
+import type { BankDepositPositionView, BankDepositProductView, BankFundProductView } from '../types.js';
 import BankProductIcon from './BankProductIcon.vue';
-
 const props = defineProps<{
     mode: 'deposit-open' | 'fund-open' | 'withdraw';
     product?: BankDepositProductView | BankFundProductView;
     position?: BankDepositPositionView;
-    balance: number;
-    busy: boolean;
-    error: string;
+    balance: number; busy: boolean; error: string; disabledReason: string; claimableCount: number;
 }>();
-
-const emit = defineEmits<{
-    cancel: [];
-    confirm: [amount?: number];
-}>();
-
+const emit = defineEmits<{ cancel: []; confirm: [amount?: number] }>();
+const dialog = ref<HTMLDialogElement | null>(null);
+onMounted(() => dialog.value?.showModal());
 const amount = ref(props.product ? String(props.product.minAmount) : '');
-const title = computed(() => props.mode === 'deposit-open' ? '开立定期存单' : props.mode === 'fund-open' ? '申购浮动理财' : '确认提前支取');
+const title = computed(() => props.mode === 'deposit-open' ? '存入一份定期' : props.mode === 'fund-open' ? '申购一份理财' : '提前取回这笔存款？');
 const amountValue = computed(() => /^\d+$/.test(amount.value.trim()) ? Number(amount.value) : 0);
 const validationMessage = computed(() => {
     if (props.mode === 'withdraw') {return '';}
     if (!props.product || !Number.isSafeInteger(amountValue.value) || amountValue.value <= 0) {return '请输入正整数金额';}
     if (amountValue.value < props.product.minAmount || amountValue.value > props.product.maxAmount) {
-        return `金额须在 ${props.product.minAmount} 至 ${props.product.maxAmount} 之间`;
+        return `金额须在 ${props.product.minAmount.toLocaleString('zh-CN')} 至 ${props.product.maxAmount.toLocaleString('zh-CN')} 之间`;
     }
     if (amountValue.value > props.balance) {return '可用余额不足';}
     return '';
 });
 const depositProduct = computed(() => props.mode === 'deposit-open' ? props.product as BankDepositProductView : null);
-const estimatedMaturity = computed(() => depositProduct.value
-    ? Math.floor(amountValue.value * (10_000 + depositProduct.value.interestBps) / 10_000)
-    : 0);
-const canSubmit = computed(() => !props.busy && (props.mode === 'withdraw' || !validationMessage.value));
-
+const fundProduct = computed(() => props.mode === 'fund-open' ? props.product as BankFundProductView : null);
+const estimatedMaturity = computed(() => depositProduct.value && !validationMessage.value
+    ? amountAtBps(amountValue.value, depositProduct.value.interestBps) : null);
+const quickAmounts = computed(() => {
+    const product = props.product;
+    if (!product) {return [];}
+    return [...new Set([product.minAmount, product.minAmount * 2, Math.min(product.maxAmount, props.balance)])]
+        .filter(value => value >= product.minAmount && value <= product.maxAmount && value <= props.balance).sort((a, b) => a - b);
+});
+const canSubmit = computed(() => !props.busy && !props.disabledReason && !validationMessage.value);
 function submit(): void {
     if (!canSubmit.value) {return;}
-    if (props.mode === 'withdraw') {emit('confirm'); return;}
-    emit('confirm', amountValue.value);
+    if (props.mode === 'withdraw') {emit('confirm');}
+    else {emit('confirm', amountValue.value);}
+}
+function handleKeydown(event: KeyboardEvent): void {
+    event.stopPropagation();
+    if (event.key !== 'Tab') {return;}
+    const controls = Array.from(dialog.value?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled)') ?? []);
+    const first = controls[0];
+    const last = controls.at(-1);
+    if (!first) {event.preventDefault(); return;}
+    if (event.shiftKey && document.activeElement === first) {event.preventDefault(); last?.focus();}
+    else if (!event.shiftKey && document.activeElement === last) {event.preventDefault(); first.focus();}
 }
 </script>
-
 <template>
-    <dialog
-        open
-        class="bank-dialog"
-        :aria-labelledby="`bank-dialog-${mode}`"
-        @click.self="!busy && $emit('cancel')"
-        @keydown.esc.stop.prevent="!busy && $emit('cancel')"
-    >
-        <form method="dialog" class="bank-dialog-card" @submit.prevent="submit">
-            <h2 :id="`bank-dialog-${mode}`">{{ title }}</h2>
-
-            <div class="bank-dialog-subject">
-                <span><BankProductIcon :kind="mode === 'withdraw' ? 'withdraw' : mode === 'deposit-open' ? 'deposit' : 'fund'" /></span>
-                <div>
-                    <strong>{{ position?.name || product?.name }}</strong>
-                    <small v-if="product">{{ product.lockLabel }}</small>
-                    <small v-else>当前本金 ¤ {{ position?.principal.toLocaleString('zh-CN') }}</small>
-                </div>
-            </div>
-
-            <label v-if="mode !== 'withdraw'" class="bank-dialog-field">
-                <span>开户金额</span>
-                <div><i>¤</i><input v-model="amount" type="text" inputmode="numeric" autocomplete="off" aria-describedby="bank-amount-help"></div>
-                <small id="bank-amount-help">可用 {{ balance.toLocaleString('zh-CN') }} · 范围 {{ product?.minAmount }} - {{ product?.maxAmount }}</small>
-            </label>
-            <p v-if="validationMessage" class="bank-dialog-validation">{{ validationMessage }}</p>
-
-            <dl v-if="mode === 'deposit-open' && depositProduct && !validationMessage" class="bank-dialog-summary">
-                <div><dt>锁定期限</dt><dd>{{ depositProduct.lockLabel }}</dd></div>
-                <div><dt>到期兑付</dt><dd>¤ {{ estimatedMaturity.toLocaleString('zh-CN') }}</dd></div>
-            </dl>
-            <p v-if="mode === 'fund-open'" class="bank-dialog-warning">
-                实际收益将在开户时封存，锁定期间不可退出，到期后才会揭晓并可领取。
-            </p>
-            <p v-if="mode === 'withdraw' && position" class="bank-dialog-warning is-loss">
-                将立即收回 <strong>{{ position.earlyWithdrawalAmount.toLocaleString('zh-CN') }} 小白币</strong>，相较本金损失
-                {{ (position.principal - position.earlyWithdrawalAmount).toLocaleString('zh-CN') }} 小白币。此操作不可撤销。
-            </p>
-            <p v-if="error" class="bank-dialog-error" role="alert">{{ error }}</p>
-
-            <div class="bank-dialog-actions">
-                <button type="button" :disabled="busy" @click="$emit('cancel')">取消</button>
-                <button type="submit" class="is-primary" :disabled="!canSubmit">
-                    {{ busy ? '正在封存…' : mode === 'withdraw' ? `确认收回 ${position?.earlyWithdrawalAmount || 0}` : '确认开户' }}
-                </button>
-            </div>
+    <dialog ref="dialog" class="bank-dialog" :aria-label="title" @cancel.prevent="!busy && emit('cancel')" @keydown="handleKeydown">
+        <form @submit.prevent="submit">
+            <span class="bank-dialog-mark"><BankProductIcon :kind="mode === 'withdraw' ? 'withdraw' : mode === 'deposit-open' ? 'deposit' : 'fund'" /></span>
+            <h2>{{ title }}</h2>
+            <div class="bank-dialog-subject"><strong>{{ position?.name || product?.name }}</strong><span v-if="product">{{ product.lockRounds }} 回合</span></div>
+            <template v-if="mode !== 'withdraw'">
+                <label class="bank-dialog-field"><span>{{ mode === 'deposit-open' ? '存入金额' : '申购金额' }}</span><span class="bank-amount-input"><i>¤</i><input v-model="amount" :disabled="busy" type="text" inputmode="numeric" autocomplete="off" aria-describedby="bank-amount-help"></span></label>
+                <small id="bank-amount-help" class="bank-amount-help">钱包可用 ¤ {{ balance.toLocaleString('zh-CN') }} · {{ product?.amountLabel }}</small>
+                <div class="bank-quick-amounts"><button v-for="value in quickAmounts" :key="value" type="button" :disabled="busy" :aria-pressed="amountValue === value" @click="amount = String(value)">¤ {{ value.toLocaleString('zh-CN') }}</button></div>
+            </template>
+            <p v-if="validationMessage" class="bank-inline-error" role="status">{{ validationMessage }}</p>
+            <dl v-if="depositProduct" class="bank-dialog-summary"><div><dt>整期收益率</dt><dd>{{ depositProduct.interestLabel }}</dd></div><div v-if="estimatedMaturity !== null"><dt>到期到账（含本金）</dt><dd>¤ {{ estimatedMaturity.toLocaleString('zh-CN') }}</dd></div><div><dt>提前支取</dt><dd>本金 {{ depositProduct.earlyPenaltyLabel }}，无利息</dd></div></dl>
+            <template v-if="fundProduct"><dl class="bank-dialog-summary"><div><dt>整期收益区间</dt><dd>{{ fundProduct.returnLabel }}</dd></div><div><dt>风险等级</dt><dd>{{ fundProduct.riskLabel }}</dd></div></dl><p class="bank-dialog-warning">可能损失本金。申购后不能提前退出，实际收益封存至到期才揭晓。</p></template>
+            <template v-if="mode === 'withdraw' && position"><div class="bank-withdraw-amount"><span>现在实际到账</span><strong>¤ {{ position.earlyWithdrawalAmount.toLocaleString('zh-CN') }}</strong></div><dl class="bank-dialog-summary"><div><dt>原存入本金</dt><dd>¤ {{ position.principal.toLocaleString('zh-CN') }}</dd></div><div><dt>提前支取损失</dt><dd class="is-loss">¤ {{ (position.principal - position.earlyWithdrawalAmount).toLocaleString('zh-CN') }}</dd></div></dl><p class="bank-dialog-warning">不再获得到期利息，确认后不可撤销。</p></template>
+            <p v-if="claimableCount" class="bank-amount-help">另有 {{ claimableCount }} 笔到期资产，将随本次操作一并兑付至钱包。</p>
+            <p v-if="disabledReason && !busy" class="bank-inline-error" role="status">{{ disabledReason }}</p>
+            <p v-if="error" class="bank-inline-error" role="alert">{{ error }}</p>
+            <footer class="bank-dialog-actions"><button type="button" class="bank-secondary-button" :disabled="busy" autofocus @click="emit('cancel')">返回</button><button type="submit" class="bank-primary-button" :disabled="!canSubmit">{{ busy ? '正在保存…' : mode === 'withdraw' ? '确认支取' : mode === 'fund-open' ? '确认申购' : '确认存入' }}</button></footer>
         </form>
     </dialog>
 </template>

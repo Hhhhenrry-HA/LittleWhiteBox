@@ -120,6 +120,7 @@ async function createHarness({ openingResult = 'confirmed', ledger = null } = {}
     const economy = composition.capabilities.require(ECONOMY_READ_CAPABILITY);
     const controller = createWalletController({
         economy,
+        confirmPending: composition.transactions.retryPending,
         getChatIdentity: () => host.identity,
     });
     controller.startBackground();
@@ -171,7 +172,7 @@ test('Wallet localizes canonical transactions without exposing a write capabilit
     );
 });
 
-test('an unconfirmed opening keeps zero confirmed balance until Kernel recovery', async () => {
+test('Wallet confirms an uncertain opening through Kernel recovery without minting twice', async () => {
     const harness = await createHarness({ openingResult: 'unconfirmed' });
     await harness.controller.activate(activation(harness.host));
     const pending = await waitForState(harness.host, 'unconfirmed');
@@ -179,7 +180,16 @@ test('an unconfirmed opening keeps zero confirmed balance until Kernel recovery'
     assert.equal(pending.balance, 0);
     assert.equal(pending.transactions.length, 0);
     assert.equal(harness.host.writes, 1);
-    assert.deepEqual(await harness.composition.transactions.retryPending(), { status: 'confirmed' });
+    await assert.rejects(harness.controller.handleMessage({
+        type: 'wallet/confirm-save',
+        payload: { chatIdentity: 'another-chat' },
+    }), /聊天已切换/);
+    const recovery = await harness.controller.handleMessage({
+        type: 'wallet/confirm-save',
+        payload: { chatIdentity: harness.host.identity.key },
+    });
+    assert.equal(recovery.confirmation, 'confirmed');
+    assert.equal(recovery.state.balance, 100);
     const ready = await waitForState(harness.host, 'ready');
     assert.equal(ready.balance, 100);
     assert.equal(harness.host.writes, 1);

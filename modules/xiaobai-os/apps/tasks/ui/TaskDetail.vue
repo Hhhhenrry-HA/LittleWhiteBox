@@ -1,43 +1,25 @@
 <script setup lang="ts">
 import type { TaskDetailPresentation } from '../types.js';
-
+import TaskIcon from './TaskIcon.vue';
+import { taskIssuer, taskMoney, taskStatusLabel } from './task-display.js';
 defineProps<{ detail: TaskDetailPresentation | null; loading: boolean }>();
-const emit = defineEmits<{ back: [] }>();
-
-const statusLabel = {
-    recruiting: '招募中', active: '进行中', completed: '已完成', failed: '已失败', cancelled: '已撤回',
-} as const;
-
 function dateTime(value: number): string {
-    return new Date(value).toLocaleString('zh-CN', { hour12: false });
+    return new Date(value).toLocaleString('zh-CN', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
 }
 </script>
-
 <template>
     <section class="tasks-page tasks-detail-page">
-        <header class="tasks-page-heading"><button type="button" class="tasks-back" @click="emit('back')">← 返回</button><span v-if="detail" class="tasks-detail-status" :data-status="detail.task.status">{{ statusLabel[detail.task.status] }}</span></header>
-        <div v-if="loading" class="tasks-empty"><h3>正在读取任务…</h3></div>
+        <div v-if="loading" class="tasks-empty" role="status"><TaskIcon name="refresh" class="is-spinning" /><h3>正在展开这份委托…</h3></div>
         <template v-else-if="detail">
             <article class="tasks-contract-sheet">
-                <header><div><small>{{ detail.task.grade }} · {{ detail.task.source === 'received' ? '大厅任务' : '我的任务' }}</small><h2>{{ detail.task.title }}</h2></div><strong>¤ {{ detail.task.reward }}</strong></header>
-                <div class="tasks-party-line"><span>出资方<strong>{{ detail.task.issuer.displayName }}</strong></span><i>→</i><span>执行方<strong>{{ detail.task.assignee?.displayName || '等待指派' }}</strong></span></div>
-                <dl>
-                    <div><dt>唯一完成目标</dt><dd>{{ detail.task.objective }}</dd></div>
-                    <div><dt>执行约束</dt><dd>{{ detail.task.requirements || '无附加执行约束' }}</dd></div>
-                    <div><dt>行动地点</dt><dd>{{ detail.task.location }}</dd></div>
-                    <div v-if="detail.task.timing"><dt>时机</dt><dd>{{ detail.task.timing }}</dd></div>
-                    <div><dt>合同风险</dt><dd>{{ detail.task.risk || '未注明' }}</dd></div>
-                    <div><dt>累计进展</dt><dd>{{ detail.task.progressSummary || '尚无已确认进展' }}</dd></div>
-                    <div v-if="detail.task.resultSummary"><dt>最终结果</dt><dd>{{ detail.task.resultSummary }}</dd></div>
-                </dl>
+                <header class="tasks-contract-heading"><span class="tasks-status" :data-status="detail.task.status"><i />{{ taskStatusLabel[detail.task.status] }}</span><h2>{{ detail.task.title }}</h2><p v-if="detail.task.hook">{{ detail.task.hook }}</p></header>
+                <div class="tasks-contract-reward"><span>委托报酬<strong><small>¤</small> {{ taskMoney(detail.task.reward) }}</strong></span><span class="tasks-seal"><TaskIcon name="ticket" />{{ detail.task.source === 'received' ? '终端委托' : '我的委托' }}</span></div>
+                <div class="tasks-party-line"><span>发布者<strong>{{ taskIssuer(detail.task) }}</strong></span><TaskIcon name="next" /><span>执行者<strong>{{ detail.task.assignee?.displayName || '等待选人' }}</strong></span></div>
+                <dl class="tasks-facts"><div><dt>完成目标</dt><dd>{{ detail.task.objective }}</dd></div><div v-if="detail.task.requirements"><dt>执行约束</dt><dd>{{ detail.task.requirements }}</dd></div><div><dt>行动地点</dt><dd>{{ detail.task.location }}</dd></div><div v-if="detail.task.timing"><dt>行动时机</dt><dd>{{ detail.task.timing }}</dd></div><div v-if="detail.task.risk" class="is-risk"><dt>留意风险</dt><dd>{{ detail.task.risk }}</dd></div></dl>
             </article>
-            <section class="tasks-timeline">
-                <h3>任务进展</h3>
-                <ol>
-                    <li v-for="item in detail.timeline" :key="item.eventId"><i /><div><small>{{ dateTime(item.createdAt) }}</small><p>{{ item.summary }}</p></div></li>
-                </ol>
-            </section>
+            <section class="tasks-progress-summary"><span class="tasks-eyebrow">{{ detail.task.resultSummary ? '最终结果' : '当前进展' }}</span><p>{{ detail.task.resultSummary || detail.task.progressSummary || '还没有已确认的进展，下一步在故事中发生。' }}</p></section>
+            <section class="tasks-timeline"><h3>一路走来</h3><ol><li v-for="item in detail.timeline" :key="item.eventId"><i /><div><small>{{ dateTime(item.createdAt) }}</small><p>{{ item.summary }}</p></div></li></ol></section>
         </template>
-        <div v-else class="tasks-empty"><h3>任务无法读取</h3><p>请返回后重试。</p></div>
+        <div v-else class="tasks-empty"><h3>这份委托暂时无法读取</h3><p>请返回后重试。</p></div>
     </section>
 </template>
