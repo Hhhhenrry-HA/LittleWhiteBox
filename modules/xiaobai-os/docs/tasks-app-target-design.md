@@ -351,7 +351,7 @@ interface TaskGenerationContext {
         depth: string[];              // 每项最长 2,000，总计最多 8,000
     };
     storyEvents: string;              // 可选 L2 事件投影，最多 20,000；不可用时为空
-    mapContext: string;               // 普通 OS Map 的完整安全 Atlas 投影，最多 4,000
+    mapContext: string;               // 普通 OS Map 的完整安全 Atlas 投影，最多 800
 }
 
 type TaskGenerationBoundary =
@@ -840,7 +840,7 @@ sidecar replace 已经发出后无法物理回滚。此时必须等待真实保�
 
 小白 OS 运行时，Tasks 自己的 prompt runtime 在主生成`IN_CHAT`、depth 1、system role 安装只读数据块：
 
-- 按`updatedAt`倒序选择最多 5 个 recruiting/active，输出标题、等级、标签、缘由与线索、目标、要求、地点、时机、风险、报酬和此前进展；不单独暴露 issuer/assignee 展示字段。
+- 按`updatedAt`倒序选择最多 5 个可见任务：玩家接收的任务只投影`active`，发布者显示产品入口“任务终端”；玩家发布的任务投影`recruiting/active`，发布者显示玩家角色名，仍在招募时执行者显示“未接”。其余输出为标题、等级、标签、缘由与线索、目标、要求、地点、时机、风险、报酬和此前进展。
 - completed、failed、cancelled 完全不注入。
 
 不注入 board、候选人列表、posture、内部 partyId、escrowAccountId、revision/eventId/actionId、维护规则或 Economy 账户。

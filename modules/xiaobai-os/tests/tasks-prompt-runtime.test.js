@@ -29,7 +29,7 @@ function record(overrides = {}) {
     };
 }
 
-test('the main-roleplay projection includes only escaped active task continuity data', () => {
+test('the main-roleplay projection identifies the publisher and executor without exposing internal ids', () => {
     const prompt = buildTaskPromptBlock([
         record(),
         record({ taskId: 'done-secret', status: 'completed', title: 'Old task', resultSummary: 'Delivered', updatedAt: 3 }),
@@ -38,9 +38,34 @@ test('the main-roleplay projection includes only escaped active task continuity 
     assert.match(prompt, /<active_tasks>/);
     assert.match(prompt, /Deliver &lt;\/active_tasks&gt;/);
     assert.match(prompt, /Reach &#123;&#123;user&#125;&#125; at the tower/);
-    assert.doesNotMatch(prompt, /Player|Eli|party-secret/);
+    assert.match(prompt, /发布者：Player &lt;admin&gt;/);
+    assert.match(prompt, /执行者：Eli &amp; Co\./);
     assert.doesNotMatch(prompt, /Old task|<formal_phone_tasks_read_only>|Deliver <\/active_tasks>/);
     assert.doesNotMatch(prompt, /task-secret|event-secret|party-secret|\{\{user\}\}/);
+});
+
+test('received tasks project only after acceptance while published tasks may remain unassigned', () => {
+    const prompt = buildTaskPromptBlock([
+        record({
+            taskId: 'received-active', source: 'received', status: 'active', title: 'Accepted task',
+            issuer: {
+                kind: 'world', partyId: 'board:received-active', displayName: '任务终端托管',
+                description: '匿名委托报酬的内部结算来源',
+            },
+            assignee: { kind: 'player', displayName: 'Ellie & Player' }, updatedAt: 6,
+        }),
+        record({
+            taskId: 'published-recruiting', source: 'published', status: 'recruiting', title: 'Recruiting task',
+            issuer: { kind: 'player', displayName: 'Ellie' }, assignee: undefined, updatedAt: 5,
+        }),
+        record({ taskId: 'received-unaccepted', source: 'received', status: 'recruiting', title: 'Unaccepted board task', updatedAt: 4 }),
+        record({ taskId: 'received-completed', source: 'received', status: 'completed', title: 'Completed task', updatedAt: 3 }),
+        record({ taskId: 'published-completed', source: 'published', status: 'completed', title: 'Published result', updatedAt: 2 }),
+    ]);
+
+    assert.match(prompt, /Accepted task[\s\S]*发布者：任务终端[\s\S]*执行者：Ellie &amp; Player/u);
+    assert.match(prompt, /Recruiting task[\s\S]*发布者：Ellie[\s\S]*执行者：未接/u);
+    assert.doesNotMatch(prompt, /任务终端托管|匿名委托报酬|board:received-active|Unaccepted board task|Completed task|Published result/u);
 });
 
 test('the main-roleplay projection selects only the five most recently updated ongoing tasks', () => {

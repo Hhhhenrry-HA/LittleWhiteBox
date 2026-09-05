@@ -32,12 +32,20 @@ function escapeTaskText(value: unknown, maximum = 240): string {
 }
 
 function taskBlock(record: TaskRecord): string {
+    const publisher = record.source === 'received'
+        ? '任务终端'
+        : escapeTaskText(record.issuer.displayName, 120);
+    let executor = '';
+    if (record.assignee) {executor = escapeTaskText(record.assignee.displayName, 120);}
+    else if (record.source === 'published' && record.status === 'recruiting') {executor = '未接';}
     return [
         `《${escapeTaskText(record.title, 120)}》`,
         `等级：${escapeTaskText(record.grade, 16)}`,
         Array.isArray(record.tags) && record.tags.length
             ? `标签：${record.tags.map(tag => escapeTaskText(tag, 32)).join('、')}`
             : '',
+        `发布者：${publisher}`,
+        executor ? `执行者：${executor}` : '',
         record.hook ? `缘由与线索：${escapeTaskText(record.hook, 240)}` : '',
         `目标：${escapeTaskText(record.objective, 240)}`,
         record.requirements ? `要求：${escapeTaskText(record.requirements, 240)}` : '',
@@ -51,7 +59,10 @@ function taskBlock(record: TaskRecord): string {
 
 export function buildTaskPromptBlock(recordsValue: readonly TaskRecord[]): string {
     const ongoing = recordsValue
-        .filter(record => record.status === 'recruiting' || record.status === 'active')
+        .filter(record => (
+            (record.source === 'received' && record.status === 'active')
+            || (record.source === 'published' && (record.status === 'recruiting' || record.status === 'active'))
+        ))
         .sort((left, right) => right.updatedAt - left.updatedAt || right.taskId.localeCompare(left.taskId))
         .slice(0, 5);
     if (!ongoing.length) {return '';}

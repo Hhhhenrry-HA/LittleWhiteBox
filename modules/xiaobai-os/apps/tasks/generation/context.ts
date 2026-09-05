@@ -6,7 +6,7 @@ import {
     normalizePromptContext,
 } from '../../../host/prompt-context/normalize.js';
 
-const MAX_MAP_CONTEXT_CHARACTERS = 4_000;
+const MAX_MAP_CONTEXT_CHARACTERS = 800;
 
 function normalizeMapContext(value: unknown): string {
     if (typeof value !== 'string') {return '';}

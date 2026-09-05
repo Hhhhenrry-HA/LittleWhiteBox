@@ -80,9 +80,11 @@ test('main-generation interception installs only the safe current Map projection
     assert.equal(harness.reads, 1);
     assert.equal(harness.prompts[0], '');
     assert.match(harness.prompts.at(-1), /<current_map>/);
-    assert.match(harness.prompts.at(-1), /Hall &lt;unsafe&gt; &#123;&#123;macro&#125;&#125;/);
+    assert.match(harness.prompts.at(-1), /以下是已确认的空间连续性资料。/u);
+    assert.match(harness.prompts.at(-1), /当前位置：Hall &lt;unsafe&gt; &#123;&#123;macro&#125;&#125;/u);
+    assert.match(harness.prompts.at(-1), /可直接到达：暂无已确认路线。/u);
     assert.doesNotMatch(harness.prompts.at(-1), /South door|Counter|Rumored chest/);
-    assert.doesNotMatch(harness.prompts.at(-1), /scene|element|geometry|shape=|category=/i);
+    assert.doesNotMatch(harness.prompts.at(-1), /<current_location|scene|element|geometry|shape=|category=/i);
     assert.doesNotMatch(harness.prompts.at(-1), /<unsafe>|\{\{macro\}\}/);
 
     harness.handlers.requestBuilt();

@@ -207,7 +207,7 @@ test('dependent removals can be ordered freely when their final state is valid',
     assert.doesNotThrow(() => parseMapDomain(removed));
 });
 
-test('prompt projection is local, confirmed-only, escaped, and bounded', () => {
+test('prompt projection is flat, escaped, bounded, and excludes actors and Scene implementation data', () => {
     const domain = validDomain();
     domain.atlas.locations[1].name = 'Hall <unsafe> {{macro}}';
     domain.atlas.actors[1].displayName = 'Keeper & "friend"';
@@ -217,13 +217,17 @@ test('prompt projection is local, confirmed-only, escaped, and bounded', () => {
     });
     const prompt = buildMapPromptBlock(domain);
 
-    assert.match(prompt, /<current_map>/);
-    assert.match(prompt, /<current_location /);
-    assert.match(prompt, /Keeper &amp; &quot;friend&quot;/);
-    assert.match(prompt, /Hall &lt;unsafe&gt; &#123;&#123;macro&#125;&#125;/);
-    assert.doesNotMatch(prompt, /<exit |<anchor |<scene|<element|geometry|shape=/);
+    assert.match(prompt, /^<current_map>\n以下是已确认的空间连续性资料。/u);
+    assert.match(prompt, /当前位置：Hall &lt;unsafe&gt; &#123;&#123;macro&#125;&#125;/u);
+    assert.match(prompt, /所属区域：inn/u);
+    assert.match(prompt, /地点概况：The public hall\./u);
+    assert.match(prompt, /可直接到达：\n- street（经由门）/u);
+    assert.match(prompt, /已确认地点：.*Hall.*属于inn/u);
+    assert.match(prompt, /已确认路线：.*经由门相连/u);
+    assert.doesNotMatch(prompt, /Keeper|<current_location|<parent_location|<adjacent|<actor|<scene|<element|geometry|shape=/iu);
     assert.doesNotMatch(prompt, /Secret rumor|<unsafe>|\{\{macro\}\}/);
-    assert.ok(prompt.length <= MAX_MAP_PROMPT_CHARS);
+    assert.ok(Array.from(prompt).length <= MAX_MAP_PROMPT_CHARS);
+    assert.equal(prompt.endsWith('</current_map>'), true);
 
     const noPlayer = validDomain();
     noPlayer.atlas.actors = noPlayer.atlas.actors.filter(actor => actor.actorKey !== 'player');
@@ -234,23 +238,22 @@ test('prompt projection is local, confirmed-only, escaped, and bounded', () => {
     assert.equal(buildMapPromptBlock({ malformed: true }), '');
 });
 
-test('prompt projection skips an oversized record but still packs later complete records', () => {
-    const noisyName = '&'.repeat(80);
-    const noisyBrief = '&'.repeat(160);
+test('prompt projection skips an oversized relationship but still packs later complete relationships', () => {
+    const noisyName = "'".repeat(80);
     const domain = {
         schemaVersion: MAP_DOMAIN_SCHEMA_VERSION,
         revision: 1,
         atlas: {
             locations: [
                 location('current', { name: 'Current', status: 'visited' }),
-                location('adjacent-a', { name: noisyName, brief: noisyBrief, status: 'visited' }),
-                location('adjacent-b', { name: noisyName, brief: noisyBrief, status: 'visited' }),
-                location('oversized-visited', { name: noisyName, brief: noisyBrief, status: 'visited' }),
-                location('compact-visited', { name: 'Compact place', brief: 'Still fits', status: 'visited' }),
+                location('noisy-parent', { name: noisyName, scale: 'building' }),
+                location('noisy-child', { name: noisyName, parent: 'noisy-parent' }),
+                location('compact-a', { name: 'Compact place A' }),
+                location('compact-b', { name: 'Compact place B' }),
             ],
             links: [
-                { id: 'a', from: 'current', to: 'adjacent-a', kind: 'road', bidirectional: true, label: '&'.repeat(64) },
-                { id: 'b', from: 'current', to: 'adjacent-b', kind: 'road', bidirectional: true, label: '&'.repeat(64) },
+                { id: 'oversized', from: 'noisy-parent', to: 'noisy-child', kind: 'road', bidirectional: true, label: '&'.repeat(64) },
+                { id: 'compact', from: 'compact-a', to: 'compact-b', kind: 'road', bidirectional: true, label: 'Short road' },
             ],
             actors: [{ actorKey: 'player', displayName: 'Player', locationKey: 'current' }],
         },
@@ -258,54 +261,48 @@ test('prompt projection skips an oversized record but still packs later complete
     };
 
     const prompt = buildMapPromptBlock(domain);
-    assert.match(prompt, /Compact place/);
-    assert.match(prompt, /<visited_locations>[\s\S]*<\/visited_locations>/u);
+    assert.match(prompt, /Compact place A与Compact place B经由Short road相连/u);
     assert.equal(Array.from(prompt).length <= MAX_MAP_PROMPT_CHARS, true);
     assert.equal(prompt.endsWith('</current_map>'), true);
 });
 
-test('prompt projection exposes every allowed Atlas section with its public item caps', () => {
-    const parent = location('parent', { name: 'Parent place', scale: 'building', status: 'visited', brief: 'Parent overview' });
-    const known = Array.from({ length: 9 }, (_, index) => location(`known-${index}`, {
-        name: `Known ${index}`, status: 'mentioned', brief: `Known overview ${index}`,
-    }));
-    const adjacent = Array.from({ length: 9 }, (_, index) => location(`adjacent-${index}`, {
-        name: `Adjacent ${index}`, status: 'visited', brief: `Adjacent overview ${index}`,
-    }));
-    const visited = Array.from({ length: 9 }, (_, index) => location(`visited-${index}`, {
-        name: `Visited ${index}`, status: 'visited', brief: `Visited overview ${index}`,
-    }));
+test('prompt projection exposes compact global topology while direct movement respects one-way links', () => {
+    const parent = location('station', { name: '灯塔站', scale: 'building' });
     const domain = {
         schemaVersion: MAP_DOMAIN_SCHEMA_VERSION,
         revision: 99,
         atlas: {
             locations: [
                 parent,
-                location('current', { name: 'Current place', parent: parent.key, brief: 'Current overview' }),
-                ...known,
-                ...adjacent,
-                ...visited,
+                location('home', { name: '蓝袖居住区', parent: parent.key, brief: '配有床铺、小台、卫浴，并连通内院。' }),
+                location('courtyard', { name: '内院', parent: parent.key }),
+                location('roof', { name: '塔顶', parent: parent.key }),
+                location('shaft', { name: '维修井', parent: parent.key }),
+                location('harbor', { name: '港区', scale: 'district', status: 'mentioned' }),
+                location('market', { name: '旧市场', parent: 'harbor', status: 'mentioned' }),
             ],
-            links: adjacent.map((entry, index) => ({
-                id: `route-${index}`, from: 'current', to: entry.key, kind: 'road', bidirectional: true,
-            })),
+            links: [
+                { id: 'courtyard-route', from: 'home', to: 'courtyard', kind: 'passage', label: '走廊', bidirectional: true },
+                { id: 'roof-route', from: 'home', to: 'roof', kind: 'stairs', bidirectional: false },
+                { id: 'shaft-route', from: 'shaft', to: 'home', kind: 'elevator', bidirectional: false },
+                { id: 'market-route', from: 'harbor', to: 'market', kind: 'road', bidirectional: true },
+            ],
             actors: [
-                { actorKey: 'player', displayName: 'Player', locationKey: 'current' },
-                ...Array.from({ length: 13 }, (_, index) => ({
-                    actorKey: `actor-${index}`, displayName: `Actor ${index}`, locationKey: 'current',
-                })),
+                { actorKey: 'player', displayName: '艾莉', locationKey: 'home' },
+                { actorKey: 'keeper', displayName: '白帝', locationKey: 'courtyard' },
             ],
         },
         scenes: {},
     };
 
     const prompt = buildMapPromptBlock(domain);
-    assert.match(prompt, /Current place[^\n]*Current overview/u);
-    assert.match(prompt, /Parent place[^\n]*Parent overview/u);
-    assert.equal((prompt.match(/<adjacent /gu) || []).length, 8);
-    assert.equal((prompt.match(/<known_unvisited_locations>[\s\S]*?<\/known_unvisited_locations>/u)?.[0].match(/<location /gu) || []).length, 8);
-    assert.equal((prompt.match(/<visited_locations>[\s\S]*?<\/visited_locations>/u)?.[0].match(/<location /gu) || []).length, 8);
-    assert.equal((prompt.match(/<actor /gu) || []).length, 12);
-    assert.doesNotMatch(prompt, /Adjacent 8|Known 8|Actor 12|revision|actorKey|locationKey|sceneKey/u);
+    const direct = prompt.match(/可直接到达：\n([\s\S]*?)\n已确认地点：/u)?.[1] ?? '';
+    assert.match(prompt, /当前位置：蓝袖居住区\n所属区域：灯塔站\n地点概况：配有床铺、小台、卫浴，并连通内院。/u);
+    assert.match(direct, /内院（经由走廊）/u);
+    assert.match(direct, /塔顶（经由楼梯，仅可前往）/u);
+    assert.doesNotMatch(direct, /维修井/u);
+    assert.match(prompt, /已确认地点：.*旧市场（属于港区）/u);
+    assert.match(prompt, /已确认路线：.*维修井可经由电梯前往蓝袖居住区.*港区与旧市场经由道路相连/u);
+    assert.doesNotMatch(prompt, /白帝|keeper|actorKey|locationKey|sceneKey|revision/u);
     assert.equal(Array.from(prompt).length <= MAX_MAP_PROMPT_CHARS, true);
 });

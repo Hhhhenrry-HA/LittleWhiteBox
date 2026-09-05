@@ -101,7 +101,7 @@ test('context normalization enforces the sole bounded snapshot', () => {
         ],
         recentMessages: messages,
         worldInfo: { before: 'before', after: 'after', depth: ['a'.repeat(7_000), 'b'.repeat(3_000)] },
-        mapContext: `<current_map>\n${'ﬃ'.repeat(1_400)}\n</current_map>`,
+        mapContext: `<current_map>\n${'ﬃ'.repeat(700)}\n</current_map>`,
     });
 
     assert.equal(normalized.player.displayName, 'Player');
@@ -113,6 +113,11 @@ test('context normalization enforces the sole bounded snapshot', () => {
     assert.equal(normalized.worldInfo.depth.reduce((sum, entry) => sum + Array.from(entry).length, 0), 4_000);
     assert.equal(normalized.mapContext.endsWith('</current_map>'), true);
     assert.equal(normalized.mapContext.includes('ﬃ'), true);
+
+    const oversizedMap = normalizeTaskGenerationContext({
+        mapContext: `<current_map>\n${'x'.repeat(800)}\n</current_map>`,
+    });
+    assert.equal(oversizedMap.mapContext, '');
 });
 
 test('prompt builders use five message layers, escaped dynamic data and no tools', () => {
