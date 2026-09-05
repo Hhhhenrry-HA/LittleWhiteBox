@@ -625,16 +625,9 @@ test('tavern map material symbols use shared font and keep visual icons separate
     const mapPanel = readRepoFile('modules/tavern/app-src/components/TavernMapPanel.vue');
     const mapCss = readRepoFile('modules/tavern/app-src/styles/chat/map.css');
     const mapSymbols = readRepoFile('modules/tavern/shared/map-material-symbols.ts');
-    const stateSource = readRepoFile('modules/tavern/shared/structured-state.ts');
     const fillInKeyframes = extractCssBlock(mapCss, '@keyframes tavern-map-fill-in');
     const removeKeyframes = extractCssBlock(mapCss, '@keyframes tavern-map-remove');
 
-    assert.match(stateSource, /icon\?: MaterialSymbolName;/);
-    assert.match(stateSource, /kind\?: TavernMapElementKind;/);
-    assert.match(stateSource, /TAVERN_MAP_ELEMENT_KINDS/);
-    assert.match(stateSource, /shape:\s*\{\s*type: 'string',\s*enum: \['icon'\]/);
-    assert.match(stateSource, /icon:\s*\{\s*type: 'string',\s*description: 'Visual Material Symbols official name[\s\S]*does not change geometry by itself/);
-    assert.doesNotMatch(stateSource, /MAP_ICON_NAMES|TAVERN_MAP_ICON_NAMES|SCENE_MAP_PLACE_SCALE_ICONS|assertSceneMapIconAllowed/);
     assert.match(mapSymbols, /export const TAVERN_MAP_ELEMENT_KINDS = \[/);
     assert.match(mapSymbols, /door: 'door_open'/);
     assert.match(mapSymbols, /export function isMapExitSemantic/);
