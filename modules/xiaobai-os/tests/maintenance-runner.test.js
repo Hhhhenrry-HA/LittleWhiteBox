@@ -411,6 +411,7 @@ test('an empty provider response is a failure rather than a false unchanged resu
     const outcome = await runManual(harness.runner);
     assert.equal(outcome.status, 'failed');
     assert.equal(outcome.participantResults[0].status, 'failed');
+    assert.equal(harness.runner.getStatus('map', 'chat:one').reason, 'empty-provider-response');
     assert.equal(map.records.commits, 0);
 });
 
@@ -515,6 +516,7 @@ test('three identical failures inject a brake and a fourth ends without a write'
     });
     const outcome = await runManual(harness.runner);
     assert.equal(outcome.status, 'failed');
+    assert.equal(harness.runner.getStatus('map', 'chat:one').reason, 'tool-errors-unresolved');
     assert.equal(harness.calls.run, 4);
     assert.equal(map.records.commits, 0);
 });
@@ -528,6 +530,7 @@ test('round limit commits legal staging as partial and fails when nothing legal 
     const partial = await runManual(partialHarness.runner);
     assert.equal(partialHarness.calls.run, 12);
     assert.equal(partial.status, 'partial');
+    assert.equal(partialHarness.runner.getStatus('map', 'chat:one').reason, 'round-limit');
     assert.equal(staged.records.commits, 1);
 
     const readOnly = createParticipant('map', { tools: [functionTool('map_read')], stageOnTool: false });
@@ -553,6 +556,7 @@ test('provider failure after a legal tool result commits that staging as partial
     });
     const outcome = await runManual(harness.runner);
     assert.equal(outcome.status, 'partial');
+    assert.equal(harness.runner.getStatus('map', 'chat:one').reason, 'provider-failed');
     assert.equal(map.records.commits, 1);
 });
 
@@ -572,8 +576,22 @@ test('failed tool results participate in the repeated-failure brake', async () =
     });
     const outcome = await runManual(harness.runner);
     assert.equal(outcome.status, 'failed');
+    assert.equal(harness.runner.getStatus('map', 'chat:one').reason, 'tool-errors-unresolved');
     assert.equal(harness.calls.run, 4);
     assert.equal(map.records.commits, 0);
+});
+
+test('commit errors are classified as storage failures without leaking raw errors into status', async () => {
+    const map = createParticipant('map', {
+        initiallyStaged: true,
+        commit() { throw new Error('secret-storage-url-and-token'); },
+    });
+    const harness = createHarness({ participants: [map.participant] });
+    const outcome = await runManual(harness.runner);
+    assert.equal(outcome.status, 'failed');
+    assert.equal(harness.runner.getStatus('map', 'chat:one').reason, 'save-failed');
+    assert.doesNotMatch(JSON.stringify(outcome), /secret-storage/);
+    assert.deepEqual(outcome.committedParticipantIds, []);
 });
 
 test('chat changes and explicit-request cancellation discard active staging', async () => {
@@ -786,6 +804,7 @@ test('an unconfirmed manual save never enters the confirmed participant list', a
 
     assert.equal(outcome.status, 'failed');
     assert.equal(outcome.reason, 'save-unconfirmed');
+    assert.equal(harness.runner.getStatus('map', 'chat:one').reason, 'save-unconfirmed');
     assert.deepEqual(outcome.committedParticipantIds, []);
     assert.deepEqual(outcome.failedParticipantIds, ['map']);
     assert.deepEqual(outcome.participantResults, [{

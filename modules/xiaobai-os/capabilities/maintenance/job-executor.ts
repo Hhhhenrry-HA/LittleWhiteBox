@@ -129,7 +129,7 @@ export function createMaintenanceJobExecutor(
                 cancelRun(run, job.cancelledReason || (guardJob(job) ? 'participant-disabled' : 'source-invalidated'));
                 continue;
             }
-            let domainResult;
+            let domainResult: Omit<MaintenanceParticipantOutcome, 'participantId'>;
             let canCommit = false;
             try {
                 domainResult = run.session.getResult();
@@ -142,9 +142,12 @@ export function createMaintenanceJobExecutor(
             const unresolvedToolFailure = loop.unownedFailure
                 || loop.unresolvedParticipantIds.includes(run.participant.id);
             if (loop.status !== 'finished' || unresolvedToolFailure) {
+                const reason = loop.status !== 'finished' ? loop.reason || loop.status : 'tool-errors-unresolved';
                 domainResult = canCommit
-                    ? { status: 'partial' as const, changed: true }
-                    : { status: 'failed' as const, changed: false };
+                    ? { status: 'partial', changed: true, reason }
+                    : { status: 'failed', changed: false, reason };
+            } else if (domainResult.status === 'failed' || domainResult.status === 'partial') {
+                domainResult = { ...domainResult, reason: 'tool-errors-unresolved' };
             }
             if (canCommit) {
                 const ready = await waitForReady(job);
@@ -170,7 +173,7 @@ export function createMaintenanceJobExecutor(
                         onWriteUnconfirmed(job, 'save-unconfirmed');
                     } else {
                         report(error);
-                        domainResult = { status: 'failed' as const, changed: false };
+                        domainResult = { status: 'failed' as const, changed: false, reason: 'save-failed' };
                     }
                 } finally {
                     job.committing = false;
@@ -193,7 +196,7 @@ export function createMaintenanceJobExecutor(
             ...(job.cancelledReason === 'save-unconfirmed'
                 ? { reason: 'save-unconfirmed' }
                 : loop.status !== 'finished'
-                    ? { reason: loop.status }
+                    ? { reason: loop.reason || loop.status }
                     : loop.unownedFailure || loop.unresolvedParticipantIds.length
                         ? { reason: 'tool-errors-unresolved' }
                         : invalidatedAfterCommit

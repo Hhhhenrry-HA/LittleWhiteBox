@@ -32,6 +32,7 @@ export interface ProviderToolLoopResult {
     readonly unresolvedParticipantIds: readonly string[];
     readonly unownedFailure: boolean;
     readonly error?: unknown;
+    readonly reason?: 'empty-provider-response' | 'tool-errors-unresolved';
 }
 
 const MAX_PROVIDER_ROUNDS = 12;
@@ -121,6 +122,7 @@ export async function runProviderToolLoop(options: {
         status: ProviderToolLoopResult['status'],
         rounds: number,
         error?: unknown,
+        reason?: ProviderToolLoopResult['reason'],
     ): ProviderToolLoopResult => ({
         status,
         rounds,
@@ -129,6 +131,7 @@ export async function runProviderToolLoop(options: {
             .filter((id): id is string => id !== null))],
         unownedFailure: [...unresolvedFailures.values()].some(failure => failure.participantId === null),
         ...(error === undefined ? {} : { error }),
+        ...(reason ? { reason } : {}),
     });
 
     let pendingToolResponses: UnknownRecord[] | undefined;
@@ -180,7 +183,7 @@ export async function runProviderToolLoop(options: {
             if (!hasConclusion) {
                 const error = new Error(sawToolExecution ? 'empty_maintenance_conclusion' : 'empty_provider_response');
                 onError(error);
-                return loopResult('provider-failed', round, error);
+                return loopResult('provider-failed', round, error, 'empty-provider-response');
             }
             return loopResult('finished', round);
         }
@@ -210,7 +213,7 @@ export async function runProviderToolLoop(options: {
                     repeatedFailures = failureSignature === lastFailureSignature ? repeatedFailures + 1 : 1;
                     lastFailureSignature = failureSignature;
                     if (repeatedFailures >= 4) {
-                        return loopResult('provider-failed', round, new Error('repeated_tool_failure'));
+                        return loopResult('provider-failed', round, new Error('repeated_tool_failure'), 'tool-errors-unresolved');
                     }
                     if (repeatedFailures === 3) {
                         value = { ...value, brake: 'Repeated identical failure. Change the arguments or stop calling this tool.' };
@@ -226,7 +229,7 @@ export async function runProviderToolLoop(options: {
                 repeatedFailures = failureSignature === lastFailureSignature ? repeatedFailures + 1 : 1;
                 lastFailureSignature = failureSignature;
                 if (repeatedFailures >= 4) {
-                    return loopResult('provider-failed', round, new Error('repeated_tool_failure'));
+                    return loopResult('provider-failed', round, new Error('repeated_tool_failure'), 'tool-errors-unresolved');
                 }
                 value = structuredToolError(
                     error,

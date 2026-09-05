@@ -72,7 +72,7 @@ function createHarness() {
         },
     });
     controller.startBackground();
-    return { controller, host };
+    return { controller, host, maintenance };
 }
 
 function activation(host) {
@@ -176,6 +176,40 @@ test('maintenance completion is projected from Host status without exposing inte
     };
     host.statuses.set('character:1:chat-a', host.status);
     const result = await controller.activate(activation(host));
-    assert.equal(result.maintenanceMessage, '地图更新失败，请稍后重试。');
+    assert.match(result.maintenanceMessage, /未取得具体失败原因/);
     assert.doesNotMatch(result.maintenanceMessage, /provider_secret|Agent API/);
+});
+
+test('Map keeps inspectable failure categories across read-only reopen and refresh', async () => {
+    const { controller, host } = createHarness();
+    for (const [reason, explanation] of [
+        ['agent-not-configured', /配置模型/],
+        ['provider-failed', /模型请求未完成/],
+        ['empty-provider-response', /空内容/],
+        ['tool-errors-unresolved', /未通过检查/],
+        ['round-limit', /处理上限/],
+        ['save-failed', /未能保存/],
+        ['save-unconfirmed', /核实保存结果/],
+    ]) {
+        host.statuses.set(host.identity.key, { state: 'error', mode: 'manual', message: 'failed', reason, lastRunAt: null });
+        const first = controller.activate(activation(host));
+        controller.deactivate();
+        const reopened = controller.activate(activation(host));
+        const refreshed = await controller.handleMessage({ type: 'map/refresh', payload: { chatIdentity: host.identity.key } });
+        assert.match(first.maintenanceMessage, explanation);
+        assert.equal(reopened.maintenanceMessage, first.maintenanceMessage);
+        assert.equal(refreshed.maintenanceMessage, first.maintenanceMessage);
+    }
+    assert.deepEqual(host.calls, []);
+});
+
+test('Map manual admission reports this attempt even if capture failed before a status could be stored', async () => {
+    const { controller, host, maintenance } = createHarness();
+    host.statuses.set(host.identity.key, { state: 'error', mode: 'manual', message: 'failed', reason: 'agent-not-configured', lastRunAt: null });
+    maintenance.startManual = () => ({ status: 'skipped', mode: 'manual', reason: 'capture-failed' });
+    controller.activate(activation(host));
+    const result = await controller.handleMessage({ type: 'map/maintain-once', payload: { chatIdentity: host.identity.key } });
+    assert.equal(result.started, false);
+    assert.match(result.message, /确认聊天已加载/);
+    assert.doesNotMatch(result.message, /配置模型/);
 });

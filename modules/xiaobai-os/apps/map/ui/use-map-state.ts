@@ -4,6 +4,7 @@ import type { MapClientState } from '../types.js';
 
 type Action = 'refresh' | 'settings' | 'maintain' | 'rebuild' | 'confirm' | 'adopt';
 function record(value: unknown): value is Record<string, unknown> {return !!value && typeof value === 'object' && !Array.isArray(value);}
+function maintaining(state: MapClientState): boolean {return state.maintenanceStatus === 'maintaining' || state.maintenanceStatus === 'rebuilding';}
 
 /** The Map UI's host connection. Browsing state is intentionally not owned here. */
 export function useMapState(props: XiaobaiOsAppProps) {
@@ -11,7 +12,6 @@ export function useMapState(props: XiaobaiOsAppProps) {
     const activeRequest = ref<Action | null>(null);
     const localMessage = ref('');
     const localError = ref(false);
-    const dismissedMessage = ref('');
     let mounted = false;
     let requestSequence = 0;
     let pushedVersion = 0;
@@ -33,13 +33,19 @@ export function useMapState(props: XiaobaiOsAppProps) {
         if (busy.value) {return '正在同步…';}
         return '';
     });
-    const message = computed(() => localMessage.value || state.value.message || state.value.maintenanceMessage || '');
-    const notice = computed(() => (state.value.status !== 'ready' || message.value !== dismissedMessage.value) ? message.value : '');
-    const isError = computed(() => localError.value || ['blocked', 'error', 'conflict'].includes(state.value.status) || state.value.maintenanceStatus === 'error');
+    // A status snapshot is history, not a new notification. Storage warnings remain visible.
+    const notice = computed(() => state.value.message || localMessage.value);
+    const isError = computed(() => state.value.message ? ['blocked', 'error', 'conflict', 'unconfirmed'].includes(state.value.status) : localError.value);
     function apply(next: MapClientState): void {
+        const wasMaintaining = maintaining(state.value);
         state.value = structuredClone(next);
-        localMessage.value = '';
-        localError.value = false;
+        if (maintaining(next)) {
+            localMessage.value = '';
+            localError.value = false;
+        } else if (wasMaintaining) {
+            localMessage.value = next.maintenanceMessage || '';
+            localError.value = next.maintenanceStatus === 'error';
+        }
     }
     function readableError(error: unknown, action: Action): string {
         const text = error instanceof Error ? error.message : String(error);
@@ -57,7 +63,6 @@ export function useMapState(props: XiaobaiOsAppProps) {
         const identity = state.value.chatIdentity;
         activeRequest.value = action;
         localMessage.value = '';
-        dismissedMessage.value = '';
         localError.value = false;
         try {
             const response = await props.bridge.request(endpoint, { chatIdentity: identity, ...extra }, 35_000);
@@ -65,6 +70,9 @@ export function useMapState(props: XiaobaiOsAppProps) {
             const result = record(response) ? response.result : undefined;
             const next = record(result) && record(result.state) ? result.state : result;
             if (version === pushedVersion && record(next) && next.chatIdentity === identity) {apply(next as unknown as MapClientState);}
+            if ((action === 'maintain' || action === 'rebuild') && record(result) && typeof result.message === 'string' && result.message) {
+                localMessage.value = result.message;
+            }
             if (action === 'refresh' && state.value.status === 'ready') {localMessage.value = '已同步保存的地图。';}
             if (action === 'settings') {localMessage.value = state.value.autoMaintenance ? '自动更新已开启。' : '自动更新已关闭。';}
             if (action === 'confirm' && state.value.status === 'ready') {localMessage.value = '保存已确认。';}
@@ -80,12 +88,13 @@ export function useMapState(props: XiaobaiOsAppProps) {
         mounted = true;
         unsubscribe = props.bridge.subscribe(message => {
             if (message.type === 'map/state') {
+                const next = (message.payload as { state: MapClientState }).state;
+                if (next.chatIdentity !== state.value.chatIdentity) {return;}
                 pushedVersion += 1;
-                apply((message.payload as { state: MapClientState }).state);
+                apply(next);
             } else if (message.type === 'map/error') {
                 pushedVersion += 1;
                 localError.value = true;
-                dismissedMessage.value = '';
                 localMessage.value = (message.payload as { message?: string }).message || '地图暂时无法读取，请重新打开。';
             }
         });
@@ -93,7 +102,7 @@ export function useMapState(props: XiaobaiOsAppProps) {
     onBeforeUnmount(() => {mounted = false; requestSequence += 1; unsubscribe();});
     return {
         state, activeRequest, busy, disabledReason, requiresConfirmation, status, notice, isError,
-        dismissNotice: () => {dismissedMessage.value = message.value;},
+        dismissNotice: () => {localMessage.value = ''; localError.value = false;},
         refresh: () => {if (!busy.value && !requiresConfirmation.value) {return request('map/refresh', 'refresh');}},
         confirmSave: () => {if (!busy.value) {return request('map/confirm-save', 'confirm');}},
         adopt: () => {if (!busy.value) {return request('map/adopt-server-state', 'adopt');}},

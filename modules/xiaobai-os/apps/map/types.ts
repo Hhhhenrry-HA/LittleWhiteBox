@@ -25,5 +25,6 @@ export interface MapClientState {
     message: string;
     autoMaintenance: boolean;
     maintenanceStatus?: MapMaintenanceStatus;
+    /** Latest in-memory result, available for inspection; not an unread notification. */
     maintenanceMessage?: string;
 }

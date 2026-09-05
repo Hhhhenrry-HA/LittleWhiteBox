@@ -1,6 +1,5 @@
 import type {
     MaintenanceRunner,
-    MaintenanceStatus,
 } from '../../../capabilities/maintenance/runner.js';
 import type { XiaobaiOsHostFrameMessage } from '../../../host/frame-bridge.js';
 import type { XiaobaiOsSettingsRepository } from '../../../host/settings-repository.js';
@@ -10,7 +9,8 @@ import type {
     XiaobaiOsChatIdentity,
 } from '../../../types.js';
 import type { MapService } from '../application/service.js';
-import type { MapClientState, MapClientStatus, MapMaintenanceStatus } from '../types.js';
+import type { MapClientState, MapClientStatus } from '../types.js';
+import { maintenanceState, skippedMaintenanceMessage } from './maintenance-state.js';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -52,38 +52,6 @@ function clientStatus(writeState: ReturnType<MapService['getWriteState']>): {
     }
     if (writeState === 'failed') { return { status: 'error', message: '暂时无法读取保存的地图。' }; }
     return { status: 'ready', message: '' };
-}
-
-function maintenanceState(status: MaintenanceStatus): {
-    maintenanceStatus: MapMaintenanceStatus;
-    maintenanceMessage: string;
-} {
-    if (status.state === 'running') {
-        return {
-            maintenanceStatus: status.mode === 'rebuild' ? 'rebuilding' : 'maintaining',
-            maintenanceMessage: '',
-        };
-    }
-    let maintenanceMessage = '';
-    if (status.message === 'updated') {
-        maintenanceMessage = status.mode === 'rebuild' ? '地图已建立并保存。' : '地图已更新。';
-    } else if (status.message === 'unchanged') {
-        maintenanceMessage = status.mode === 'rebuild' ? '这次没有绘制出地图，可以补充世界设定后重试。' : '地图无需更新。';
-    } else if (status.message === 'partial') {
-        maintenanceMessage = '部分地图已保存，但本次更新未能全部完成。';
-    } else if (status.message === 'cancelled') {
-        maintenanceMessage = '本次地图更新已取消。';
-    } else if (status.message === 'skipped') {
-        maintenanceMessage = status.reason === 'generation-active'
-            ? '当前正在生成回复，暂时不能更新地图。'
-            : '请等当前回复完成后，再更新地图。';
-    } else if (status.state === 'error' || status.message === 'failed') {
-        maintenanceMessage = '地图更新失败，请稍后重试。';
-    }
-    return {
-        maintenanceStatus: status.state === 'error' ? 'error' : 'idle',
-        maintenanceMessage,
-    };
 }
 
 export function createMapController({
@@ -163,13 +131,15 @@ export function createMapController({
 
     function startMaintenance(
         mode: 'manual' | 'rebuild',
-    ): { started: boolean; status: string; state: MapClientState } {
+    ): { started: boolean; status: string; message: string; state: MapClientState } {
         const start = mode === 'rebuild'
             ? maintenance.startRebuild('map')
             : maintenance.startManual('map');
         return {
             started: start.status === 'started',
             status: start.status,
+            message: start.status === 'skipped' ? skippedMaintenanceMessage(start.reason)
+                : start.status === 'busy' ? '地图正在更新，请等待当前更新完成。' : '',
             state: emitState(),
         };
     }
