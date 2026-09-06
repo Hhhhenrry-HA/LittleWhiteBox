@@ -57,6 +57,7 @@
 .messages-image-placeholder { width: 100%; min-height: 125px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 13px; background: linear-gradient(130deg, color-mix(in srgb, var(--messages-accent) 12%, transparent), transparent); font-size: 12px !important; color: var(--messages-accent) !important; }
 .messages-image-placeholder svg { width: 32px; height: 32px; }
 .messages-image-caption { padding: 8px 9px 5px; font-size: 12px; }
+.messages-image-delete { display: block; margin: 2px 4px; padding: 8px 5px; background: none; color: var(--xiaobai-os-muted) !important; font-size: 11px !important; }
 .messages-voice-button { display: flex; gap: 12px; align-items: center; min-height: 36px; padding: 0; background: none; }
 .messages-wave { display: flex; align-items: center; gap: 3px; min-height: 25px; }
 .messages-wave i { display: block; width: 2px; border-radius: 2px; background: currentColor; opacity: .65; }
@@ -76,10 +77,11 @@
 .messages-composer .messages-attach { width: 32px; height: 40px; }
 .messages-send { display: flex; align-items: center; justify-content: center; width: 38px; height: 38px; flex: 0 0 38px; margin-bottom: 1px; border-radius: 50%; background: var(--messages-accent); color: var(--xiaobai-os-surface) !important; }
 .theme-dark .messages-send { color: #133b2e !important; }
-.messages-composer-types { display: flex; gap: 7px; padding: 2px 0 12px; }
-.messages-composer-types button { display: flex; align-items: center; gap: 6px; padding: 8px 13px; font-size: 12px; border-radius: 12px; background: var(--xiaobai-os-screen); }
-.messages-composer-types [aria-pressed=true] { background: var(--messages-outgoing); color: var(--messages-outgoing-ink); }
-.messages-composer-types svg { width: 16px; height: 16px; }
+.messages-attachment-preview { display: flex; align-items: center; gap: 12px; padding: 8px; margin-bottom: 10px; border-radius: 16px; background: var(--xiaobai-os-screen); }
+.messages-attachment-preview > img { width: 64px; height: 64px; object-fit: cover; border-radius: 10px; flex-shrink: 0; }
+.messages-attachment-preview > span { flex: 1; min-width: 0; }
+.messages-attachment-preview strong { display: block; font-size: 12px; font-weight: 500; }
+.messages-attachment-preview small { display: block; margin-top: 4px; font-size: 11px; color: var(--xiaobai-os-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .messages-composer-hint { color: var(--xiaobai-os-muted); font-size: 10px; margin: 0 4px 10px; }
 .messages-composer-wait { margin: 0 4px 10px; color: var(--messages-accent); font-size: 12px; line-height: 1.65; }
 .messages-media-unavailable { color: var(--xiaobai-os-muted) !important; gap: 8px; }

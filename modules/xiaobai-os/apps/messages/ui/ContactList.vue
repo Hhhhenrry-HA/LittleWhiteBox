@@ -3,7 +3,8 @@ import { computed, ref } from 'vue';
 import type { ContactView } from '../types.js';
 import MessageIcon from './MessageIcon.vue';
 import ContactAvatar from './ContactAvatar.vue';
-const props = defineProps<{ contacts: ContactView[]; busyContactId: string; drafts: ReadonlyMap<string, { text: string }> }>();
+import type { MessageDraft } from './draft.js';
+const props = defineProps<{ contacts: ContactView[]; busyContactId: string; drafts: ReadonlyMap<string, MessageDraft> }>();
 defineEmits<{ select: [id: string]; add: [] }>();
 const search = ref('');
 const filtered = computed(() => props.contacts.filter(contact => `${contact.name} ${contact.note}`.toLocaleLowerCase().includes(search.value.toLocaleLowerCase())));
@@ -28,7 +29,7 @@ function time(value: number | null) {
             <p v-if="!filtered.length" class="messages-subtle">没有找到这个人。</p>
             <button v-for="contact in filtered" :key="contact.id" class="messages-contact-row" @click="$emit('select', contact.id)">
                 <ContactAvatar :identity="contact.id" :name="contact.name" />
-                <span class="messages-contact-copy"><span class="messages-contact-heading"><strong>{{ contact.name }}</strong><time>{{ time(contact.lastAt) }}</time></span><span v-if="busyContactId === contact.id" class="messages-preview messages-preview-active">正在等待回复…</span><span v-else-if="drafts.get(contact.id)?.text.trim()" class="messages-preview"><em>草稿</em> {{ drafts.get(contact.id)?.text }}</span><span v-else class="messages-preview">{{ contact.preview }}</span></span>
+                <span class="messages-contact-copy"><span class="messages-contact-heading"><strong>{{ contact.name }}</strong><time>{{ time(contact.lastAt) }}</time></span><span v-if="busyContactId === contact.id" class="messages-preview messages-preview-active">正在等待回复…</span><span v-else-if="drafts.get(contact.id)?.text.trim() || drafts.get(contact.id)?.image" class="messages-preview"><em>草稿</em> {{ drafts.get(contact.id)?.image ? '［图片］' : '' }}{{ drafts.get(contact.id)?.text }}</span><span v-else class="messages-preview">{{ contact.preview }}</span></span>
             </button>
         </div>
         <footer v-if="contacts.length" class="messages-list-footer">{{ contacts.length }} 位联系人 · 只属于你们的对话</footer>

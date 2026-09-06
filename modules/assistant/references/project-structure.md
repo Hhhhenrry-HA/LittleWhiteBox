@@ -98,7 +98,7 @@ LittleWhiteBox/
     ├── tts/                     # 语音 Provider、缓存、播放与消息语音投影
     ├── debug-panel/、template-editor/
     ├── control-audio.js、iframe-renderer.js、immersive-mode.js
-    ├── fourth-wall/、message-media/、plugin-update/、update/
+    ├── message-media/、plugin-update/  # 外层仍独立注册的功能模块
     └── message-preview.js、streaming-generation.js
 ```
 

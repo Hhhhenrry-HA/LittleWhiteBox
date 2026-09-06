@@ -13,7 +13,7 @@ export function projectionText(state: Pick<MessagesDomainV1, 'messages'>, segmen
         '<私人信息>',
         ...(segment.recovered ? ['<补录说明>以下为此前已发生、尚未确认同步的通讯，现补录于此；每条日期为实际发送时间。</补录说明>'] : []),
         ...state.messages.filter(m => ids.has(m.id) && m.seq <= throughSeq).map(message =>
-            `<消息 序号="${message.seq}" 发送者="${escape(message.from)}" 接收者="${escape(message.to)}" 方向="${message.sender === 'user' ? '发出' : '收到'}" 类型="${message.payload.type}" 时间="${new Date(message.createdAt).toISOString()}">${escape(payloadText(message.payload))}</消息>`),
+            `<消息 序号="${message.seq}" 发送者="${escape(message.from)}" 接收者="${escape(message.to)}" 方向="${message.sender === 'user' ? '发出' : '收到'}" 类型="${message.payload.type}" 时间="${new Date(message.createdAt).toISOString()}"${message.payload.type === 'image' && message.payload.attachment ? ` 附件="${escape(message.payload.attachment.path)}"` : ''}>${escape(payloadText(message.payload))}</消息>`),
         '</私人信息>',
     ].join('\n');
 }

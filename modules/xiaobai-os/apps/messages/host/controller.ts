@@ -1,7 +1,8 @@
 import type { XiaobaiOsAppActivationContext, XiaobaiOsAppRuntime } from '../../../types.js';
 import type { XiaobaiOsHostFrameMessage } from '../../../host/frame-bridge.js';
-import { addContact, deleteContact } from '../../../domains/messages/commands.js';
-import { messageString, parsePayload, record } from '../../../domains/messages/invariants.js';
+import { addContact, deleteContact, deleteImageMessage } from '../../../domains/messages/commands.js';
+import { messageString, record } from '../../../domains/messages/invariants.js';
+import { parseOutgoingMessage } from '../application/image-upload.js';
 import { payloadText } from '../../../domains/messages/types.js';
 import { unsyncedIds } from '../application/projection.js';
 import type { MessagesService } from '../application/service.js';
@@ -100,8 +101,15 @@ export function createMessagesController(deps: MessagesControllerDependencies): 
                     });
                 case 'messages/send':
                     if (localBusy) {throw new Error('messages_busy');}
-                    runtime.start(string('contactId'), `input:${string('actionId', 100)}`, parsePayload(payload.payload));
+                    runtime.start(string('contactId'), `input:${string('actionId', 100)}`, parseOutgoingMessage(payload.payload));
                     return state();
+                case 'messages/message/delete-image':
+                    return await exclusive(async () => {
+                        const contactId = string('contactId'); const messageId = string('messageId');
+                        await service.change(domain => deleteImageMessage(domain, contactId, messageId), guard);
+                        runtime.clearError();
+                        return { state: state(), retryMessageId: page(contactId).retryMessageId };
+                    });
                 case 'messages/retry':
                     if (localBusy) {throw new Error('messages_busy');}
                     runtime.start(string('contactId'), string('messageId'));

@@ -1,5 +1,6 @@
 import { MESSAGE_LIMITS as LIMIT, type MessagePayload, type MessagesDomainV1 } from './types.js';
 import { messageReceipt } from './receipt.js';
+import { parseImageAttachment } from './image-attachment.js';
 
 export function record(value: unknown): value is Record<string, unknown> {
     return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -16,11 +17,15 @@ export function messageString(value: unknown, max: number, allowEmpty = false): 
 export function parsePayload(value: unknown): MessagePayload {
     if (!record(value)) {throw new Error('messages_invalid_payload');}
     const allowed = value.type === 'text' ? ['type', 'text']
-        : value.type === 'image' ? ['type', 'description', 'generationPrompt']
+        : value.type === 'image' ? ['type', 'description', 'generationPrompt', 'attachment']
             : value.type === 'voice' ? ['type', 'transcript', 'emotion'] : [];
     if (Object.keys(value).some(key => !allowed.includes(key))) {throw new Error('messages_invalid_payload');}
     if (value.type === 'text') {return { type: 'text', text: messageString(value.text, LIMIT.body) };}
     if (value.type === 'image') {
+        if (value.attachment !== undefined) {
+            if (value.generationPrompt !== undefined) {throw new Error('messages_invalid_image');}
+            return { type: 'image', description: messageString(value.description, LIMIT.body, true), attachment: parseImageAttachment(value.attachment) };
+        }
         return { type: 'image', description: messageString(value.description, LIMIT.body),
             ...(value.generationPrompt === undefined ? {} : { generationPrompt: messageString(value.generationPrompt, LIMIT.body) }) };
     }
@@ -70,8 +75,11 @@ export function validateMessages(value: unknown): asserts value is MessagesDomai
         if (item.sender === 'user') {
             if (item.replyTo !== null) {throw new Error('messages_invalid_reply');}
         } else if (item.sender === 'contact') {
-            const input = messages.get(String(item.replyTo));
-            if (!input || input.sender !== 'user' || input.contactId !== item.contactId) {throw new Error('messages_invalid_reply');}
+            // Deleting an uploaded image preserves replies, without a dangling reference.
+            if (item.replyTo !== null) {
+                const input = typeof item.replyTo === 'string' ? messages.get(item.replyTo) : undefined;
+                if (!input || input.sender !== 'user' || input.contactId !== item.contactId) {throw new Error('messages_invalid_reply');}
+            }
         } else {throw new Error('messages_invalid_sender');}
         messages.set(id, item as unknown as MessagesDomainV1['messages'][number]);
     }

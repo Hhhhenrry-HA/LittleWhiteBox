@@ -6,11 +6,26 @@ export function threadLine(message: PrivateMessage): string {
     return `<message speaker="${escape(message.from)}" type="${message.payload.type}">${escape(payloadText(message.payload))}</message>`;
 }
 
+/** Pixels accompany their named messages; neither filenames nor captions stand in for vision. */
+export function withMessageImages(text: string, messages: PrivateMessage[], images: ReadonlyMap<string, string>) {
+    const attached = messages.filter(message => message.payload.type === 'image' && message.payload.attachment);
+    if (!attached.length) {return text;}
+    const parts: ({ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } })[] = [{ type: 'text', text }];
+    for (const message of attached) {
+        const data = images.get(message.id);
+        if (!data) {throw new Error('messages_image_missing');}
+        parts.push({ type: 'text', text: `<attached_image message="${escape(message.id)}" speaker="${escape(message.from)}">${escape(payloadText(message.payload))}</attached_image>` },
+            { type: 'image_url', image_url: { url: data } });
+    }
+    return parts;
+}
+
 export function buildReplyPrompt(input: {
     contact: MessageContact; context: Awaited<ReturnType<MessagesContext['capture']>>;
-    history: PrivateMessage[]; incoming: PrivateMessage;
+    history: PrivateMessage[]; incoming: PrivateMessage; images?: ReadonlyMap<string, string>;
 }) {
     const { contact, context, history, incoming } = input;
+    const images = input.images ?? new Map<string, string>();
     return {
         systemPrompt: [
             '你正在扮演指定联系人，与玩家进行故事世界内的私人通讯。不是皮下聊天、旁白或客服。',
@@ -21,12 +36,13 @@ export function buildReplyPrompt(input: {
             '只返回一个 JSON 对象 {"replies":[...]}。自然决定条数与媒体类型，不固定三条或三种齐发，最多16条。',
             '每项只能为 {"type":"text","text":"内容"}、{"type":"image","description":"可见画面","generationPrompt":"等价英文视觉提示词，可省略"} 或 {"type":"voice","transcript":"实际说出的原话","emotion":"情绪，可省略"}。每条正文至多4000字符。',
             '图片描述是真实发送的画面，绘图提示不得额外创造事件。语音原文不写音效或旁白。不要输出资产URL、身份ID、序号、思考、解释或工具调用。',
+            '玩家附图的实际画面由随附图片提供；文字是玩家的配文，文件名不代表画面事实。结合图片自然回应。',
         ].join('\n'),
         messages: [
             { role: 'system', content: buildPromptSettingBlock(context) },
             { role: 'system', content: `<story_state>\n${buildPromptCurrentStateBlock(context)}\n<character_continuity>${escape(context.people.map(person => `${person.name}（${person.aliases.join('、')}）\n${person.text}`).join('\n\n'))}</character_continuity>\n</story_state>` },
-            { role: 'user', content: `<private_message_thread>\n<contact>${escape(contact.name)}</contact>\n<identification_note>${escape(contact.note)}</identification_note>\n${contact.summary ? `<earlier_summary>${escape(contact.summary.text)}</earlier_summary>\n` : ''}${history.map(threadLine).join('\n')}\n</private_message_thread>` },
-            { role: 'user', content: `<incoming_private_message>\n${threadLine(incoming)}\n</incoming_private_message>` },
+            { role: 'user', content: withMessageImages(`<private_message_thread>\n<contact>${escape(contact.name)}</contact>\n<identification_note>${escape(contact.note)}</identification_note>\n${contact.summary ? `<earlier_summary>${escape(contact.summary.text)}</earlier_summary>\n` : ''}${history.map(threadLine).join('\n')}\n</private_message_thread>`, history, images) },
+            { role: 'user', content: withMessageImages(`<incoming_private_message>\n${threadLine(incoming)}\n</incoming_private_message>`, [incoming], images) },
             { role: 'user', content: '现在以指定联系人的身份回应本轮私人消息，仅输出约定的 JSON replies 对象。' },
         ],
     };

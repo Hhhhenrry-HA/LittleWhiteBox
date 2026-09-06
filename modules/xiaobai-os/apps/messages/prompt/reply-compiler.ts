@@ -34,6 +34,7 @@ export function compileReplies(response: { text?: unknown; truncated?: unknown; 
     if (!Array.isArray(object.replies) || object.replies.length > MESSAGE_LIMITS.replies) {throw new Error('messages_response_capacity');}
     const replies: MessagePayload[] = [];
     for (const item of object.replies) {
+        if (record(item) && 'attachment' in item) {continue;}
         try {replies.push(parsePayload(item));} catch { /* Invalid siblings never become visible protocol text. */ }
     }
     if (!replies.length) {throw new Error('messages_response_empty');}

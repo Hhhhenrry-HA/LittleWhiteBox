@@ -81,7 +81,7 @@ var H2 = Object.freeze({
   bank: w(w2, U2, () => import("./xiaobai-os-BankApp-tFIcSCqc.js")),
   game: w(x2, B2, () => import("./xiaobai-os-GameApp-DcGXAonX.js")),
   map: w(k2, E2, () => import("./xiaobai-os-MapApp-8F66ZLSl.js")),
-  messages: w(A2, D2, () => import("./xiaobai-os-MessagesApp-DLN_ylul.js")),
+  messages: w(A2, D2, () => import("./xiaobai-os-MessagesApp-cET62YAZ.js")),
   tasks: w(O2, M2, () => import("./xiaobai-os-TasksApp-IN-Plsde.js"))
 }), q = Object.freeze(g2.map((t) => {
   const a = H2[t];

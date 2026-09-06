@@ -80,13 +80,17 @@
 
 .fourth-wall-header-actions button {
     border-radius: 50%;
+    display: grid;
     font-size: 16px;
     height: 34px;
     padding: 0;
+    place-items: center;
+    line-height: 1;
     width: 34px;
 }
 
 .fourth-wall-header-actions button svg {
+    display: block;
     fill: none;
     height: 17px;
     stroke: currentColor;

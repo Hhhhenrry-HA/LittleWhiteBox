@@ -26,6 +26,7 @@ export function createMessagesMedia(getFacades = () => window as Window & { xiao
     }
     async function image(message: PrivateMessage, generate: boolean): Promise<string | null> {
         if (message.payload.type !== 'image') {throw new Error('messages_not_image');}
+        if (message.payload.attachment) {return message.payload.attachment.path;}
         const draw = getFacades().xiaobaixDraw;
         if (!draw || !capabilities().image) {return null;}
         const prompt = message.payload.generationPrompt || message.payload.description;

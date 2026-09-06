@@ -1,4 +1,5 @@
 import { projectionMarker, type ChatMessage } from '../application/projection.js';
+import { parseImageAttachment } from '../../../domains/messages/image-attachment.js';
 
 /** Display only: never reconstruct the sidecar from rendered markup. */
 export function renderPrivateMessages(messages: readonly ChatMessage[], root: ParentNode = document): void {
@@ -23,6 +24,13 @@ export function renderPrivateMessages(messages: readonly ChatMessage[], root: Pa
             const content = document.createElement('div');
             const type = node.getAttribute('类型');
             content.textContent = (type === 'image' ? '［图片］' : type === 'voice' ? '［语音］' : '') + (node.textContent ?? '');
+            if (type === 'image' && node.hasAttribute('附件')) {
+                try {
+                    const attachment = parseImageAttachment({ path: node.getAttribute('附件'), name: '图片' });
+                    const image = document.createElement('img'); image.src = attachment.path; image.alt = '发送的图片'; image.loading = 'lazy';
+                    content.prepend(image);
+                } catch { /* Edited or untrusted paths remain readable text, never remote media. */ }
+            }
             bubble.append(label, content); section.append(bubble);
         }
         target.replaceChildren(section);

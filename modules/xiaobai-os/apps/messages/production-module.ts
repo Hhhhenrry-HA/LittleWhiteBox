@@ -1,4 +1,6 @@
 import type { MainGenerationRuntime } from '../../host/main-generation-runtime.js';
+import { saveBase64AsFile } from '../../../../../../../utils.js';
+import { createMessageImages } from './host/image-attachments.js';
 import { getSillyTavernChatSurface } from '../../host/sillytavern-context.js';
 import { createMessagesModule } from './module.js';
 import { createMessagesTimeline } from './application/timeline.js';
@@ -20,7 +22,7 @@ export function createProductionMessagesModule(mainGeneration: MainGenerationRun
         const timeline = createMessagesTimeline(service, chat.port, id);
         const media = createMessagesMedia();
         let controller: ReturnType<typeof createMessagesController>;
-        const runtime = createMessagesRuntime({ service, timeline, context, agent, id,
+        const runtime = createMessagesRuntime({ service, timeline, context, agent, id, images: createMessageImages(saveBase64AsFile),
             identity: chat.port.identity, isGenerating: mainGeneration.isActive,
             playerName: () => getSillyTavernChatSurface()?.playerName ?? '玩家',
             changed: () => controller?.emit(),

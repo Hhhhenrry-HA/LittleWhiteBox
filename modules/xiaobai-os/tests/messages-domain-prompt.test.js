@@ -1,20 +1,129 @@
 import assert from 'node:assert/strict';
+import { Buffer } from 'node:buffer';
 import test from 'node:test';
 import { emptyMessages, MESSAGE_LIMITS } from '../domains/messages/types.js';
-import { addContact, appendMessages, deleteContact } from '../domains/messages/commands.js';
+import { addContact, appendMessages, deleteContact, deleteImageMessage } from '../domains/messages/commands.js';
 import { validateMessages, parsePayload } from '../domains/messages/invariants.js';
 import { compileReplies, compileSummary } from '../apps/messages/prompt/reply-compiler.js';
 import { buildReplyPrompt } from '../apps/messages/prompt/reply-prompt.js';
-import { summaryBatch } from '../apps/messages/prompt/thread-summary.js';
+import { summaryBatch, buildSummaryPrompt } from '../apps/messages/prompt/thread-summary.js';
 import { normalizePromptContext } from '../host/prompt-context/normalize.js';
 import { projectionText } from '../domains/messages/transcript.js';
 import { projectStoryCharacters } from '../../story-summary/prompt-characters.js';
 import { stampEditedCharacters } from '../../story-summary/data/character-edits.js';
 import { MESSAGES_PARTITION } from '../apps/messages/partition.js';
 import { messageReceipt } from '../domains/messages/receipt.js';
+import { selectContactCandidates } from '../apps/messages/application/contact-candidates.js';
+import { parseOutgoingMessage, uploadedImageReference } from '../apps/messages/application/image-upload.js';
+import { MAX_MESSAGE_IMAGE_BYTES } from '../domains/messages/image-attachment.js';
+import { sameDraft } from '../apps/messages/ui/draft.js';
 
 const contact = id => ({ id, name: id, note: '', createdAt: 1, summary: null });
 const message = (id, contactId, replyTo = null) => ({ segmentId: 'now', contactId, playerName: '玩家', replyTo, entries: [{ id, payload: { type: 'text', text: id } }], createdAt: 2 });
+
+test('outgoing media requires an actual bounded device image and models cannot forge stored attachments', () => {
+    const upload = { name: '照片.png', dataUrl: 'data:image/png;base64,AQID' };
+    const outgoing = parseOutgoingMessage({ type: 'image', description: '', upload });
+    const attachment = uploadedImageReference(upload);
+    assert.deepEqual(parsePayload({ type: 'image', description: '', attachment }).attachment, attachment);
+    assert.deepEqual(outgoing.upload, upload);
+    for (const payload of [
+        { type: 'voice', transcript: '朗读不是录音' }, { type: 'image', description: '不能代替图片' },
+        { type: 'image', description: '', attachment },
+        { type: 'image', upload: { ...upload, dataUrl: 'https://example.com/a.png' } },
+        { type: 'image', upload: { ...upload, dataUrl: 'data:image/svg+xml;base64,AQID' } },
+        { type: 'image', upload: { ...upload, dataUrl: 'data:image/png;base64,' + Buffer.alloc(MAX_MESSAGE_IMAGE_BYTES + 1).toString('base64') } },
+    ]) {assert.throws(() => parseOutgoingMessage(payload), /invalid/);}
+    for (const path of ['https://example.com/a.png', '/user/images/../secret.png', '/user/images/elsewhere/a.png', attachment.path + '?x']) {
+        assert.throws(() => parsePayload({ type: 'image', description: '', attachment: { ...attachment, path } }), /invalid/);
+    }
+    const replies = compileReplies({ text: JSON.stringify({ replies: [
+        { type: 'image', description: '伪造图片', attachment }, { type: 'voice', transcript: '看到了' },
+    ] }) });
+    assert.deepEqual(replies, [{ type: 'voice', transcript: '看到了' }]);
+});
+
+test('image-only history compacts with pixels and receipt digests bind the image reference', () => {
+    const state = emptyMessages(); addContact(state, contact('甲'));
+    const attachment = uploadedImageReference({ name: '照片.png', dataUrl: 'data:image/png;base64,AQID' });
+    for (let i = 0; i < 5; i++) {appendMessages(state, { ...message(`p${i}`, '甲'), entries: [{ id: `p${i}`, payload: { type: 'image', description: '', attachment } }] });}
+    const batch = summaryBatch(state.contacts[0], state.messages);
+    assert.ok(batch.length > 0 && batch.length < state.messages.length);
+    const images = new Map(batch.map(m => [m.id, 'data:image/png;base64,AQID']));
+    const prompt = buildSummaryPrompt(state.contacts[0], batch, images);
+    assert.equal(prompt.messages[0].content.filter(p => p.type === 'image_url').length, batch.length);
+    assert.throws(() => buildSummaryPrompt(state.contacts[0], batch), /image_missing/);
+    state.segments[0].receipt = messageReceipt(state, state.segments[0], 5);
+    assert.equal(MESSAGES_PARTITION.parse(state).ok, true);
+    state.messages[0].payload.attachment.path = '/user/images/xb-os-messages/' + 'b'.repeat(64) + '.png';
+    assert.equal(MESSAGES_PARTITION.parse(state).ok, false);
+});
+
+test('delayed send confirmation only clears the same picture and caption draft', () => {
+    const first = { text: '', image: { name: 'a.png', dataUrl: 'data:image/png;base64,AQID' } };
+    assert.equal(sameDraft(first, structuredClone(first)), true);
+    assert.equal(sameDraft(first, { ...first, text: '新配文' }), false);
+    assert.equal(sameDraft(first, { ...first, image: { ...first.image, dataUrl: 'data:image/png;base64,BAUG' } }), false);
+    assert.equal(sameDraft(first, { text: '', image: null }), false);
+});
+
+test('deleting an image preserves replies and unrelated history, invalidates its summary, and keeps only confirmed receipt members', () => {
+    const state = emptyMessages(); addContact(state, contact('甲')); addContact(state, contact('乙'));
+    appendMessages(state, message('before', '甲'));
+    const attachment = uploadedImageReference({ name: '照片.png', dataUrl: 'data:image/png;base64,AQID' });
+    appendMessages(state, { ...message('photo', '甲'), entries: [{ id: 'photo', payload: { type: 'image', description: '配文', attachment } }] });
+    state.segments[0].receipt = messageReceipt(state, state.segments[0], 2);
+    appendMessages(state, { ...message('reply', '甲', 'photo'), segmentId: 'later' });
+    appendMessages(state, message('other', '乙'));
+    appendMessages(state, message('new', '甲')); // not yet projected
+    state.contacts[0].summary = { throughSeq: 3, text: '包含了旧图片' };
+    state.contacts[1].summary = { throughSeq: 4, text: '其他联系人的摘要' };
+    const nextSeq = state.nextSeq;
+    assert.throws(() => deleteImageMessage(state, '乙', 'photo'), /invalid_image_deletion/);
+    assert.throws(() => deleteImageMessage(state, '甲', 'before'), /invalid_image_deletion/);
+    deleteImageMessage(state, '甲', 'photo');
+    assert.deepEqual(state.messages.map(m => m.id), ['before', 'reply', 'other', 'new']);
+    assert.equal(state.messages[1].replyTo, null);
+    assert.equal(state.messages[1].payload.text, 'reply');
+    assert.equal(state.contacts[0].summary, null);
+    assert.equal(state.contacts[1].summary.text, '其他联系人的摘要');
+    assert.equal(state.segments[0].sealed, true);
+    assert.equal(state.segments[0].receipt.throughSeq, 1);
+    assert.equal(state.nextSeq, nextSeq);
+    assert.equal(MESSAGES_PARTITION.parse(state).ok, true);
+    const deleted = structuredClone(state); deleteImageMessage(state, '甲', 'photo');
+    assert.deepEqual(state, deleted);
+    const invalid = structuredClone(state); invalid.messages[1].replyTo = 'photo';
+    assert.equal(MESSAGES_PARTITION.parse(invalid).ok, false);
+});
+
+test('contact suggestions use known people and exclude the player by canonical name or alias without modifying memory', () => {
+    const store = { lastSummarizedMesId: 2, json: {
+        characters: { main: [{ name: '林舟' }, { name: '林月' }, { name: '大富翁' }] },
+        characterAliases: [{ from: '小舟', to: '林舟' }, { from: '小月', to: '林月' }],
+    } };
+    const people = projectStoryCharacters(store, { throughMessageIndex: 2, currentMessageIndex: 2 });
+    const before = structuredClone(people);
+    for (const playerName of ['林舟', ' 小舟 ']) {
+        const candidates = selectContactCandidates(people, playerName);
+        assert.deepEqual(candidates.map(person => person.name), ['林月', '大富翁']);
+        assert.deepEqual(candidates[0].aliases, ['小月']);
+    }
+    assert.deepEqual(people, before);
+    // A title alone supplies no person; an independently known person may share that name.
+    assert.deepEqual(selectContactCandidates([], '林舟'), []);
+});
+
+test('player exclusion normalizes identity, permits similar NPC names and does not invent a missing player identity', () => {
+    const people = [
+        { name: 'Alice', aliases: ['艾莉丝'], text: '玩家资料' },
+        { name: '艾莉丝的同事', aliases: [], text: '人物资料' },
+    ];
+    assert.deepEqual(selectContactCandidates(people, ' ＡＬＩＣＥ '), [
+        { name: '艾莉丝的同事', aliases: [], text: '' },
+    ]);
+    assert.deepEqual(selectContactCandidates(people, '').map(person => person.name), ['Alice', '艾莉丝的同事']);
+});
 
 test('private messages retain stable global order and reply ownership across deletion and retries', () => {
     const state = emptyMessages(); addContact(state, contact('甲')); addContact(state, contact('乙'));

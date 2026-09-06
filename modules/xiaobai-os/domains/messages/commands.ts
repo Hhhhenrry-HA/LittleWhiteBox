@@ -16,8 +16,7 @@ export function addContact(state: MessagesDomainV1, contact: MessageContact): vo
     validateMessages(state);
 }
 
-export function deleteContact(state: MessagesDomainV1, contactId: string): void {
-    const ids = new Set(state.messages.filter(item => item.contactId === contactId).map(item => item.id));
+function removeMessages(state: MessagesDomainV1, ids: Set<string>): void {
     const messages = new Map(state.messages.map(message => [message.id, message]));
     for (const segment of state.segments) {
         if (!segment.messageIds.some(id => ids.has(id))) {continue;}
@@ -30,8 +29,29 @@ export function deleteContact(state: MessagesDomainV1, contactId: string): void 
         }
     }
     state.segments = state.segments.filter(item => item.messageIds.length);
-    state.messages = state.messages.filter(item => item.contactId !== contactId);
+    state.messages = state.messages.filter(item => !ids.has(item.id));
+}
+
+export function deleteContact(state: MessagesDomainV1, contactId: string): void {
+    removeMessages(state, new Set(state.messages.filter(item => item.contactId === contactId).map(item => item.id)));
     state.contacts = state.contacts.filter(item => item.id !== contactId);
+}
+
+/** Remove only the selected uploaded image, keeping all other messages. */
+export function deleteImageMessage(state: MessagesDomainV1, contactId: string, messageId: string): void {
+    const message = state.messages.find(item => item.id === messageId);
+    if (!message) {return;}
+    if (message.contactId !== contactId || message.sender !== 'user' || message.payload.type !== 'image' || !message.payload.attachment) {
+        throw new Error('messages_invalid_image_deletion');
+    }
+    const ids = new Set([messageId]);
+    for (const reply of state.messages) {
+        if (reply.replyTo === messageId) {reply.replyTo = null;}
+    }
+    const contact = state.contacts.find(item => item.id === contactId)!;
+    if (contact.summary && message.seq <= contact.summary.throughSeq) {contact.summary = null;}
+    removeMessages(state, ids);
+    validateMessages(state);
 }
 
 export function appendMessages(state: MessagesDomainV1, input: {

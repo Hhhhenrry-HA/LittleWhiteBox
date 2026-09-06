@@ -1,6 +1,8 @@
+import type { MessageImageAttachment } from './image-attachment.js';
+
 export type MessagePayload =
     | { type: 'text'; text: string }
-    | { type: 'image'; description: string; generationPrompt?: string }
+    | { type: 'image'; description: string; generationPrompt?: string; attachment?: MessageImageAttachment }
     | { type: 'voice'; transcript: string; emotion?: string };
 
 export interface MessageContact {
@@ -19,6 +21,7 @@ export interface PrivateMessage {
     from: string;
     to: string;
     createdAt: number;
+    /** Null for outgoing messages, or when the triggering image was deleted. */
     replyTo: string | null;
     payload: MessagePayload;
 }
@@ -49,5 +52,8 @@ export function emptyMessages(): MessagesDomainV1 {
 }
 
 export function payloadText(payload: MessagePayload): string {
+    if (payload.type === 'image' && payload.attachment) {
+        return [payload.description, `［附图：${payload.attachment.name}］`].filter(Boolean).join('\n');
+    }
     return payload.type === 'text' ? payload.text : payload.type === 'image' ? payload.description : payload.transcript;
 }
