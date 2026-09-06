@@ -1,5 +1,5 @@
 import type { XiaobaiOsAppDescriptor } from '../../types.js';
 
 export const WORLD_APP_DESCRIPTOR: Readonly<XiaobaiOsAppDescriptor> = Object.freeze({
-    id: 'world', name: '世界', accent: '#a84c3e',
+    id: 'world', name: '世界', accent: '#266d6d',
 });

@@ -21101,7 +21101,7 @@ function qS(e, t, n) {
 var zS = Object.freeze({
   id: "world",
   name: "世界",
-  accent: "#a84c3e"
+  accent: "#266d6d"
 }), Dn = Object.freeze({
   key: "world",
   ownerId: "world",

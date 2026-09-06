@@ -1,10 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none">
-  <defs><linearGradient id="paper" x1="17" y1="4" x2="78" y2="92" gradientUnits="userSpaceOnUse"><stop stop-color="#fbf6ea"/><stop offset="1" stop-color="#d8cbb5"/></linearGradient></defs>
-  <rect width="96" height="96" rx="23" fill="url(#paper)"/>
-  <path d="m18 23 27-6 34 9v54l-34-8-27 5z" fill="#74634e" opacity=".15" transform="translate(0 3)"/>
-  <path d="m18 23 27-6 34 9v54l-34-8-27 5z" fill="#fffaf0"/>
-  <path d="M45 17v55l34 8V26z" fill="#ede3d1"/>
-  <path d="m25 34 13-3m-13 11 13-3m-13 19 13-3m-13 11 13-3m15-20 19 5m-19 4 19 5m-19 7 19 5" stroke="#65594a" stroke-width="2.4" stroke-linecap="round"/>
-  <path d="m54 20 10 3v23l-5-6-5 3z" fill="#a34d3e"/>
-  <path d="M45 20v49" stroke="#c0b298" stroke-opacity=".6"/>
+  <defs>
+    <linearGradient id="sky" x1="13" y1="6" x2="83" y2="89" gradientUnits="userSpaceOnUse"><stop stop-color="#123e4c"/><stop offset=".55" stop-color="#4b9291"/><stop offset="1" stop-color="#a9cfb9"/></linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientTransform="translate(69 37) rotate(90) scale(38 48)" gradientUnits="userSpaceOnUse"><stop stop-color="#fff0c2"/><stop offset="1" stop-color="#d4e9c9" stop-opacity="0"/></radialGradient>
+    <clipPath id="tile"><rect width="96" height="96" rx="23"/></clipPath>
+  </defs>
+  <g clip-path="url(#tile)">
+    <path fill="url(#sky)" d="M0 0h96v96H0z"/>
+    <path fill="url(#glow)" d="M0 0h96v96H0z"/>
+    <path d="M0 57c24-9 39 3 56-3s25-9 40-6v48H0Z" fill="#528d91"/>
+    <path d="M0 63c28-9 42 15 67 2s22-9 29-10v41H0Z" fill="#28616c"/>
+    <path d="M0 70c30-20 53 13 96-7v33H0Z" fill="#113c4b"/>
+    <path d="M8 66c28-12 47 17 80-1" stroke="#d6e8ca" stroke-opacity=".6" stroke-width="1.2"/>
+    <rect x=".75" y=".75" width="94.5" height="94.5" rx="22.25" stroke="#fff" stroke-opacity=".18" stroke-width="1.5"/>
+  </g>
 </svg>
