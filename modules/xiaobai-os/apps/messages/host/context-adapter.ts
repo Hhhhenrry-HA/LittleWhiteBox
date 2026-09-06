@@ -1,6 +1,6 @@
 import { getContext } from '../../../../../../../../extensions.js';
 import { createPromptContextAdapter } from '../../../host/prompt-context/adapter.js';
-import { selectContactCandidates, type KnownPerson } from '../application/contact-candidates.js';
+import { selectKnownPeople, type KnownPerson } from '../../../host/prompt-context/known-people.js';
 import { projectionMarker, type ChatMessage } from '../application/projection.js';
 import { getStorySummaryCharacters } from '../../../../story-summary/story-summary.js';
 import type { MessagesChatPort } from '../application/timeline.js';
@@ -15,7 +15,7 @@ export function createMessagesContext(chat: MessagesChatPort) {
     }
     function knownPeople(): KnownPerson[] {
         // name1 identifies the player only for exclusion; it is not a candidate source.
-        return selectContactCandidates(people(), getContext().name1);
+        return selectKnownPeople(people(), getContext().name1);
     }
     async function capture(contact: MessageContact, history: PrivateMessage[], incoming: PrivateMessage) {
         const excluded = chat.messages().flatMap((message: ChatMessage, index) => projectionMarker(message) ? [index] : []);

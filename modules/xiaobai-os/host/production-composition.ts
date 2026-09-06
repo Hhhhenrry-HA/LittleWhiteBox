@@ -4,6 +4,8 @@ import { createAgentApiModule } from '../apps/agent-api/module.js';
 import { createProductionBankModule } from '../apps/bank/production-module.js';
 import { createProductionFourthWallModule } from '../apps/fourth-wall/production-module.js';
 import { createProductionGameModule } from '../apps/game/production-module.js';
+import { createProductionLearningModule } from '../apps/learning/production-module.js';
+import { createLearningRepository } from '../apps/learning/storage/repository.js';
 import {
     createMapContextCapabilityRegistration,
     MAP_CONTEXT_CAPABILITY,
@@ -86,6 +88,7 @@ export function createProductionBootstrap(
     const bindingEvents = createChatBindingEventAdapter();
     const mainGeneration = createSillyTavernMainGenerationRuntime();
     const promptContext = createPromptContextAdapter();
+    const learningRepository = createLearningRepository(createSillyTavernUserJsonFilePort({ getRequestHeaders }));
     let composition: ReturnType<typeof createKernelComposition>;
 
     const capabilities = [
@@ -113,6 +116,7 @@ export function createProductionBootstrap(
         createAgentApiModule(),
         createProductionFourthWallModule(settings, upstreamFourthWall),
         createProductionMessagesModule(mainGeneration),
+        createProductionLearningModule(learningRepository, promptContext),
         createWalletModule({ getChatIdentity: getSillyTavernChatIdentity }),
         createProductionShopModule({
             getChatIdentity: getSillyTavernChatIdentity,

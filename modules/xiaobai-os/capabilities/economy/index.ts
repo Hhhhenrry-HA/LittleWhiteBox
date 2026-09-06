@@ -35,7 +35,7 @@ export interface EconomyReadView {
 export interface EconomyReadCapability extends EconomyReadView {
     refresh(): Promise<void>;
     isOpen(): boolean;
-    ensureOpen(): Promise<'opened' | 'existing'>;
+    ensureOpen(commitGuard?: () => boolean): Promise<'opened' | 'existing'>;
     getTransactionCount(): number;
     getFileState(): XiaobaiOsFileState;
     subscribe(listener: () => void): () => void;
@@ -188,12 +188,13 @@ function installedReadCapability(
             await store.read();
         },
         isOpen: () => currentLedger() !== null,
-        async ensureOpen() {
+        async ensureOpen(commitGuard?: () => boolean) {
             const result = await store.transact(transaction => {
+                if (commitGuard && !commitGuard()) { throw new Error('Account opening cancelled'); }
                 if (transaction.current) { return 'existing' as const; }
                 transaction.replace(transaction.currentOrInitial());
                 return 'opened' as const;
-            });
+            }, { commitGuard });
             if (result.status === 'confirmed' || result.status === 'unchanged') { return result.result; }
             throw Object.assign(new Error(result.status === 'failed'
                 ? result.error.message

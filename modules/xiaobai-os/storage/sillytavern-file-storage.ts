@@ -135,6 +135,7 @@ export function createSillyTavernUserJsonFilePort(
                         'storage_write_http',
                         responseMessage('JSON file write', response.status, await responseDetail(response)),
                         response.status >= 500,
+                        { httpStatus: response.status },
                     );
                 }
             } finally {

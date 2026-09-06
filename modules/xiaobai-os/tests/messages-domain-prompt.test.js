@@ -13,7 +13,7 @@ import { projectStoryCharacters } from '../../story-summary/prompt-characters.js
 import { stampEditedCharacters } from '../../story-summary/data/character-edits.js';
 import { MESSAGES_PARTITION } from '../apps/messages/partition.js';
 import { messageReceipt } from '../domains/messages/receipt.js';
-import { selectContactCandidates } from '../apps/messages/application/contact-candidates.js';
+import { selectKnownPeople } from '../host/prompt-context/known-people.js';
 import { parseOutgoingMessage, uploadedImageReference } from '../apps/messages/application/image-upload.js';
 import { MAX_MESSAGE_IMAGE_BYTES } from '../domains/messages/image-attachment.js';
 import { sameDraft } from '../apps/messages/ui/draft.js';
@@ -105,13 +105,13 @@ test('contact suggestions use known people and exclude the player by canonical n
     const people = projectStoryCharacters(store, { throughMessageIndex: 2, currentMessageIndex: 2 });
     const before = structuredClone(people);
     for (const playerName of ['林舟', ' 小舟 ']) {
-        const candidates = selectContactCandidates(people, playerName);
+        const candidates = selectKnownPeople(people, playerName);
         assert.deepEqual(candidates.map(person => person.name), ['林月', '大富翁']);
         assert.deepEqual(candidates[0].aliases, ['小月']);
     }
     assert.deepEqual(people, before);
     // A title alone supplies no person; an independently known person may share that name.
-    assert.deepEqual(selectContactCandidates([], '林舟'), []);
+    assert.deepEqual(selectKnownPeople([], '林舟'), []);
 });
 
 test('player exclusion normalizes identity, permits similar NPC names and does not invent a missing player identity', () => {
@@ -119,10 +119,10 @@ test('player exclusion normalizes identity, permits similar NPC names and does n
         { name: 'Alice', aliases: ['艾莉丝'], text: '玩家资料' },
         { name: '艾莉丝的同事', aliases: [], text: '人物资料' },
     ];
-    assert.deepEqual(selectContactCandidates(people, ' ＡＬＩＣＥ '), [
+    assert.deepEqual(selectKnownPeople(people, ' ＡＬＩＣＥ '), [
         { name: '艾莉丝的同事', aliases: [], text: '' },
     ]);
-    assert.deepEqual(selectContactCandidates(people, '').map(person => person.name), ['Alice', '艾莉丝的同事']);
+    assert.deepEqual(selectKnownPeople(people, '').map(person => person.name), ['Alice', '艾莉丝的同事']);
 });
 
 test('private messages retain stable global order and reply ownership across deletion and retries', () => {

@@ -169,7 +169,7 @@ type MessagePayload =
 
 实际接口：`getStorySummaryCharacters({name, throughMessageIndex, maxCharacters, maxPeople})` 返回 `{name, aliases, text}[]`。名单不消耗弧光/事实详情预算；定向人物资料最多 8000 字符、候选最多 200 人。弧光和事实可变，`_addedAt` 不能证明最后修改时间，故由宿主提供真实当前尾楼，人物投影只接受该当前边界，历史/未来边界或越界总结快照整份缺席。现行总结格式允许编辑器条目缺少 `_addedAt`，这种条目只作为当前快照读取，不补造第 0 楼、不修改已有存储；显式非法或未来楼层仍排除。人物编辑保存由 Story Summary 自有 `data/character-edits.js` 为新增/改名项填写保存楼层，同名已有项保留存储中的楼层，重复保存不依赖编辑器回传标记。
 
-Messages 的 `application/contact-candidates.ts` 只投影上述已知人物，按姓名/别名排除玩家本人，比较时去除两端空白并统一 NFKC 与大小写。宿主 `name1` 只用于识别自己；`name1/name2`、角色卡标题和群聊成员卡名不补进候选。不额外调用 Agent 从世界书抽人，空名单或漏列者用姓名/备注补充。不持久化候选、不自动删除已存联系人或通讯，回复上下文的 persona、角色设定与世界书读取不变。
+`host/prompt-context/known-people.ts` 只投影上述已知人物，由 Messages 与语伴共用，按姓名/别名排除玩家本人，比较时去除两端空白并统一 NFKC 与大小写。宿主 `name1` 只用于识别自己；`name1/name2`、角色卡标题和群聊成员卡名不补进候选。不额外调用 Agent 从世界书抽人，空名单或漏列者用姓名/备注补充。不持久化候选、不自动删除已存联系人或通讯，回复上下文的 persona、角色设定与世界书读取不变。
 
 ### 6.3 去重与知识边界
 
