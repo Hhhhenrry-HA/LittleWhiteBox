@@ -75,7 +75,7 @@ function clock(value: number) { return `${Math.floor(value / 60)}:${String(Math.
             <button type="button" aria-label="语伴设置" @click="go('settings')">···</button>
         </header>
         <div v-if="state.busy || state.message || localMessage || state.storage !== 'ready'" class="learning-notice" role="status" aria-live="polite">
-            <template v-if="state.busy"><span class="learning-working-dot" />正在处理，请稍等。<button type="button" :disabled="pending" @click="request('cancel')">停止</button></template>
+            <template v-if="state.busy"><span class="learning-working-dot" />{{ state.message || '正在处理学习操作…' }}<button type="button" :disabled="pending" @click="request('cancel')">停止</button></template>
             <template v-else>{{ localMessage || state.message || (state.storage === 'unconfirmed' ? '上次保存尚未确认，请先核实。' : state.storage === 'conflict' ? '学习文件出现另一版本，请先核实。' : '暂时无法读取学习文件。') }}</template>
             <div v-if="!state.busy" class="learning-row">
                 <button v-if="state.storage === 'unconfirmed' || state.storage === 'conflict'" type="button" :disabled="pending" @click="request('verify')">核实保存</button>

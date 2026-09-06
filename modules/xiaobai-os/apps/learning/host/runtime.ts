@@ -1,7 +1,7 @@
 import type { AgentCapability } from '../../../capabilities/agent/index.js';
 import type { EconomyReadCapability } from '../../../capabilities/economy/index.js';
 import { parseLearningSelection, type LearningSelection } from '../../../domains/learning/notes.js';
-import { learningRecord, learningText, parseLearningLanguageTag, type LearningTeacherPreference } from '../../../domains/learning/profile.js';
+import { learningRecord, learningText, LearningValidationError, parseLearningLanguageTag, type LearningTeacherPreference } from '../../../domains/learning/profile.js';
 import type { LearningAnswer } from '../../../domains/learning/types.js';
 import { learningInteger, requireLearning } from '../../../domains/learning/validation.js';
 import type { KnownPerson } from '../../../host/prompt-context/known-people.js';
@@ -16,7 +16,8 @@ import { createLearningRewards } from '../application/rewards.js';
 import { confirmedLearning, createLearningService, type LearningRepository } from '../application/service.js';
 import { createLearningSpeech } from '../application/speech.js';
 import { createLearningTeacherService } from '../application/teacher.js';
-import { createLearningTeaching, learningTeachingFailure, type LearningClassroom, type LearningTeachingResult } from '../application/teaching.js';
+import { createLearningTeaching, type LearningClassroom, type LearningTeachingResult } from '../application/teaching.js';
+import { learningProgressMessage, reportLearningFailure } from '../application/feedback.js';
 import { LearningStorageError } from '../storage/repository.js';
 import type { LearningClientState } from '../types.js';
 import type { LearningTtsFacade } from './media-adapter.js';
@@ -34,6 +35,7 @@ export function createLearningRuntime(deps: {
     let epoch = 0;
     let job: object | null = null;
     let message = '';
+    let progress = '';
     let loadFailed = false;
     let reply: LearningClientState['reply'] = null;
     let replySelection: LearningSelection | null = null;
@@ -49,7 +51,11 @@ export function createLearningRuntime(deps: {
         return active() && saved?.osId && saved.value?.teacher
             ? { language, osId: saved.osId, chatIdentity, teacher: saved.value.teacher } : null;
     }
-    const teaching = createLearningTeaching({ repository, gateway: deps.agent, current, capture: deps.capture });
+    const teaching = createLearningTeaching({ repository, gateway: deps.agent, current, capture: deps.capture,
+        onProgress: next => {
+            const text = learningProgressMessage(next);
+            if (text !== progress) { progress = text; publish(); }
+        } });
     const practice = createLearningPractice({ repository, teaching, current });
     const speech = createLearningSpeech({ repository, current, getFacade: deps.getTtsFacade,
         onState: media => { if (active()) { activation!.post('learning/media', { media }); } }, onSave: () => publish(),
@@ -66,11 +72,11 @@ export function createLearningRuntime(deps: {
             chatIdentity, language, teacher: saved?.value?.teacher ?? null,
             candidates: teacher.candidates().map(person => ({ name: person.name, aliases: person.aliases })),
             storage: loadFailed ? 'unloaded' : snapshot.status, chatStorage: deps.files.getFileState(), busy: !!job,
-            message, reply, walletOpen: deps.economy.isOpen(), media: speech.media.snapshot(), voices: speech.media.capabilities() };
+            message: job ? progress : message, reply, walletOpen: deps.economy.isOpen(), media: speech.media.snapshot(), voices: speech.media.capabilities() };
     }
     function publish() { if (active()) { activation!.post('learning/state', { state: state() }); } }
     function cancel() {
-        epoch++; teaching.cancel(); speech.stop(); job = null;
+        epoch++; teaching.cancel(); speech.stop(); job = null; progress = '';
         reply = null; replySelection = null;
     }
     function saved(result: { status: string }) {
@@ -207,7 +213,7 @@ export function createLearningRuntime(deps: {
         const owned = epoch;
         const token = {};
         const guard = () => active() && epoch === owned;
-        job = token; message = '';
+        job = token; message = ''; progress = '正在处理学习操作…';
         // Stop first so hearing facts cannot race a teacher snapshot or a submitted answer.
         speech.stop();
         void deps.execution.run(async () => {
@@ -220,11 +226,11 @@ export function createLearningRuntime(deps: {
             }
             catch (error) {
                 if (guard()) {
-                    message = error instanceof LearningStorageError ? learningTeachingFailure(error.code)
+                    message = error instanceof LearningStorageError ? reportLearningFailure(name, error.code, { stage: 'save', cause: error })
                         : error instanceof Error && error.message === 'learning_teacher_is_player' ? '请选择其他已知人物作为老师，不能选择自己。'
-                            : '这次操作未完成，已保存的内容保持不变。请检查输入或重试。';
+                            : reportLearningFailure(name, error instanceof LearningValidationError ? 'learning_input_invalid' : 'learning_action_failed', { stage: 'action', cause: error });
                 }
-            } finally { if (job === token) { job = null; publish(); } }
+            } finally { if (job === token) { job = null; progress = ''; publish(); } }
         });
         publish();
     }
@@ -238,7 +244,10 @@ export function createLearningRuntime(deps: {
                 await deps.store.read(); if (owned !== epoch) { return state(); }
                 await deps.economy.refresh(); if (owned === epoch) { loadFailed = false; }
             } catch (error) {
-                if (owned === epoch) { loadFailed = true; message = error instanceof LearningStorageError ? learningTeachingFailure(error.code) : '暂时无法读取学习记录，请重试读取。'; }
+                if (owned === epoch) {
+                    loadFailed = true;
+                    message = reportLearningFailure('open', error instanceof LearningStorageError ? error.code : 'learning_read_failed', { stage: 'context', cause: error });
+                }
             }
             return state();
         },
