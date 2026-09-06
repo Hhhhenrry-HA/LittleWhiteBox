@@ -177,15 +177,18 @@ test('cancel during image upload cannot publish a late picture into the original
 });
 
 test('cross-contact messages share one native assistant floor; ordinary story seals it permanently', async () => {
-    const h = await harness(); await h.send('甲', 'a'); await h.send('乙', 'b');
+    const h = await harness(); await h.send('甲', 'a', { type: 'text', text: '早些时候的通讯' }); await h.send('乙', 'b');
     assert.equal(h.messages.length, 1); assert.equal(h.service.current().messages.length, 6);
     assert.equal(h.messages[0].extra.swipeable, false);
     const old = h.messages[0].mes;
     h.messages.push({ mes: '下一段剧情', is_user: false });
     await h.deps.timeline.seal(h.deps.timeline.observe(), () => true);
     h.messages.pop(); // deleting later story must not reopen the old timepoint
-    await h.send('甲', 'c');
+    await h.send('甲', 'c', { type: 'text', text: '现在这次的通讯' });
     assert.equal(h.messages.length, 2); assert.equal(h.messages[0].mes, old);
+    assert.match(h.messages[1].mes, /现在这次的通讯/u);
+    assert.doesNotMatch(h.messages[1].mes, /早些时候的通讯/u);
+    assert.equal((h.messages[1].mes.match(/<消息 /gu) ?? []).length, 3); // this send + its two replies only
     assert.deepEqual(unsyncedIds(h.service.current()), []);
 });
 

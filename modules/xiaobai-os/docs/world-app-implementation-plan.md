@@ -104,7 +104,7 @@ apps/world/
 
 ## 6. System @D4 接入
 
-`host/sillytavern-runtime-adapters.ts` 的现有 `setSillyTavernPrompt` 增加可选 depth，默认仍为 1。World 明确使用 4；原 Map／Tasks／Shop 等 D1 不变。
+`host/sillytavern-runtime-adapters.ts` 的现有 `setSillyTavernPrompt` 增加可选 depth，默认仍为 1。World 明确使用 4；Map 按后续确认的空间背景定位明确使用 3，Tasks／Shop 默认 D1 不变。
 
 - 原生位置为 IN_CHAT、SYSTEM、depth 4，`scan=false`。不再注册世界书加载监听，不读取或写入作者条目，也不受 ↑Char 区块开关和世界书条目预算支配；最终请求仍遵守宿主的上下文组装。
 - 本次主生成拦截时，从当前聊天已确认内容取一次快照。维护后到的新内容从后续请求生效，不等待维护。

@@ -212,13 +212,15 @@ sidecar replace 发出前，运行中切聊、关闭自动维护、Map revision 
 
 ## 8. 主 RP 空间摘要
 
-小白 OS 运行且 Map 已有有效世界地点时，自己的 prompt runtime 在主生成的`IN_CHAT`、depth 1、system role 安装`<current_map>`只读空间摘要。它使用独立 extension prompt key，不与 Tasks 或 Shop 拼成共享业务 Prompt，只输出：
+小白 OS 运行且 Map 已有有效世界地点时，自己的 prompt runtime 在主生成的`IN_CHAT`、depth 3、system role 安装`<current_map>`只读空间摘要。它使用独立 extension prompt key，不与 Tasks 或 Shop 拼成共享业务 Prompt，只输出：
 
 - 当前地点、上级区域与当前地点概况；尚无玩家位置时明确标注尚未确定，不阻止世界注入；
 - 从当前位置可直接到达的地点、路径名称与单向约束；
 - 800 字范围内尽可能完整的世界地点层级与路线方向关系。
 
 主剧情不投影人物位置或任何 Scene：不输出当前场景、场景人物、出入口、可互动、主表面/地形，也不暴露 key、坐标、shape、category、revision、材质或模型原始文本。所有动态文字经过规范化、限长和 XML/宿主宏编码；最终 800 字符安全栅栏按完整行或完整关系裁减，始终保留完整`<current_map>`边界。
+
+地图整块使用 System @D3，世界新闻保持 System @D4；深度只决定插入位置，不代表精确的重要性等级。每次主生成仍读取当前已确认地图，不因 D3 使用旧版本，不拆分场景／世界注入或引入动态深度。
 
 该投影不调用 API，自动维护关闭时仍可使用；无有效地图、dry-run 结束、生成停止、切聊或 OS cleanup 时必须清空。安装/移除沿用现有 generation interceptor 生命周期，代码和字段选择仍归 Map 自己所有。
 

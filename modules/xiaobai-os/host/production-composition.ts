@@ -130,7 +130,7 @@ export function createProductionBootstrap(
         createProductionMapModule({
             settings,
             getChatIdentity: getSillyTavernChatIdentity,
-            setPrompt: value => setSillyTavernPrompt('xiaobai_os_map_context', value),
+            setPrompt: value => setSillyTavernPrompt('xiaobai_os_map_context', value, 3),
             subscribePrompt: subscribeMapPromptEvents,
         }),
         createProductionTasksModule({
