@@ -43,6 +43,7 @@ modules/xiaobai-os/
 │  │  ├─ context-adapter.ts    # SillyTavern 卡片/persona/聊天/世界书快照
 │  │  ├─ maintenance-participant.ts
 │  │  ├─ prompt-runtime.ts     # 主 RP 只读任务投影
+│  │  ├─ completion-runtime.ts # 已确认完成的酒馆通知；当前聊天内存去重
 │  │  ├─ settings-runtime.ts     # 自动维护关闭时的即时执行栅栏
 │  │  ├─ presentation.ts
 │  │  └─ controller.ts
@@ -161,7 +162,7 @@ factory 创建的 task/board/listing/candidate/event ID 最长 160，actionId �
 | published | `player` | `escrow:task:<taskId>` | `task_funding` | `tasks:event:<eventId>:funding` |
 | completed（世界 board） | escrow | `player` | `task_settlement` | `tasks:event:<eventId>:settlement` |
 | completed（玩家发布） | escrow | `counterparty:task:<candidateId>` | `task_settlement` | `tasks:event:<eventId>:settlement` |
-| failed（世界 board） | escrow | 原 board counterparty | `task_refund` | `tasks:event:<eventId>:refund` |
+| failed/cancelled（世界 board） | escrow | 原 board counterparty | `task_refund` | `tasks:event:<eventId>:refund` |
 | failed/cancelled（玩家发布） | escrow | `player` | `task_refund` | `tasks:event:<eventId>:refund` |
 
 交易固定`actionId=event.actionId`、`sourceDomain="tasks"`、`sourceId=event.taskId`、`amount=冻结 reward`；title/note 由代码按本地模板生成。其余 Task event 必须零交易。
@@ -246,7 +247,7 @@ commitMaintenance(input: MaintenanceCommitRequest, guard: CommitGuard): Promise<
 
 ### 验证
 
-- 世界接取/完成/失败和玩家发布/撤回/完成/失败六条资金路径；
+- 世界接取/完成/失败/放弃和玩家发布/取消/完成/失败的资金路径；
 - Task/Economy 任一候选不合法时整个 sidecar candidate 不上传；
 - 明确保存失败一起恢复；unconfirmed 下重复点击不生成第二笔资金；
 - funding/settlement/refund 与事件 actionId、sourceId、idempotency key 一一对应；
@@ -377,7 +378,7 @@ activate 和每个状态写成功都返回新的完整`TasksPresentation`（历�
 
 1. `TasksApp.vue`只维护 route、host 消息相关性和页面组合；业务表单、候选人、列表、详情、设置拆到独立组件。
 2. 大厅/候选/维护使用各自业务动作名；不加“使用 Agent”标签或 API 成本弹窗。维护按钮从 Host 状态显示“正在更新”并禁用重复点击。
-3. 发布确认明确显示余额、托管金额和撤回边界；active 任务不出现撤回按钮。
+3. 发布确认明确显示余额、托管金额和取消边界；active 详情提供放弃 / 取消入口，recruiting 仍可取消退款，终态无取消入口。确认框区分两条资金路径，说明取消后退出注入与维护、保留记录且不可撤销。
 4. 详情展示冻结目标、唯一 requirements、出资/执行方、当前累计进展、结果和本地事件时间线。
 5. 设置页解释“仅有 active 任务且出现晚于其状态基线的新接受轮才调用；在下一条 User 保存后处理上一接受轮”；关闭开关不立即检查任务或 Agent。
 6. 所有页面使用 OS 深色 token；原生 select/option/autofill、窄屏、长文本、空态、loading、partial 和保存冲突均完成视觉状态。
@@ -389,6 +390,12 @@ activate 和每个状态写成功都返回新的完整`TasksPresentation`（历�
 - 慢 host 响应先显示页面骨架，不出现长时间空白；
 - 打开、切页、关开关的网络面板无 Agent 请求；
 - 保存已经发出后关闭页面，重开能看到真实最终状态，不显示伪取消。
+
+完成通知由 Tasks 自有 background runtime 订阅 Scoped store 的已确认快照，production composition 接到宿主 toastr（与 `/echo` 相同显示入口，开启 `escapeHtml`）；不拼接 slash command。初次加载和切聊只记录完成事件基线，后续新 completed 才通知；OS 窗口开关不影响订阅。去重集只在当前聊天 / osId 的运行内保存，模块停止时取消订阅。通知异常不能改变结算成功结果。
+
+取消与通知回归复用真实 service / store / Economy 集成测试：两条 active 取消、单次退款、CAS、迟到维护拒绝、失败/未确认不发布、确认后退款或通知、首次历史静默、重读去重、切聊天隔离和通知入口异常。
+
+本次验证：OS 648 项测试、类型、lint、imports 与构建通过；正式 UI 在隔离宿主预览完成 320px / 390px / 桌面、深浅主题及键盘取消确认。浏览器预览不接真实模型或用户存档，真实酒馆聊天触发的完成通知仍待实测。
 
 ## 9. 步骤 G：设置、注册和 Kernel 换轨
 

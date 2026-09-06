@@ -113,7 +113,7 @@ Agent 只负责提出任务文本、候选人文本和活动任务的高层状�
 
 每个候选人包含 name、description、pitch、capability、risk。候选人没有可支取余额；只有最终被选择者才成为任务执行方。选择时沿用该候选人的`candidateId`作为 Task 内的`partyId`并冻结完整资料，完成时对应`counterparty:task:<partyId>`才收到 escrow；不能再生成一个无法追溯候选人的身份 ID。
 
-低报酬、高风险或条件苛刻时，合法结果可以是零人。`recruiting`期间无论是否已有候选人，玩家都可撤回并把 escrow 全额退回 player；选人进入`active`后不能撤回。
+低报酬、高风险或条件苛刻时，合法结果可以是零人。玩家发布的委托在 `recruiting` 或 `active` 期间都可取消，escrow 全额退回 player。玩家接取的 `active` 任务可放弃，escrow 退回原 world counterparty；玩家不领报酬，也不扣钱。取消保留终态记录，不再参与剧情注入或维护，不支持重开。
 
 ### 4.3 活动任务
 
@@ -132,10 +132,11 @@ Agent 只负责提出任务文本、候选人文本和活动任务的高层状�
 ```text
 当前 board listing --接取--> active --progress--> active
                                   |--complete--> completed
-                                  `--fail-----> failed
+                                  |--fail-----> failed
+                                  `--cancel---> cancelled
 
 玩家发布 --> recruiting --替换候选--> recruiting --选择候选--> active
-       `--------------撤回-----------------------------> cancelled
+                    `--cancel--> cancelled                   `--cancel--> cancelled
 ```
 
 | 当前状态 | 命令 | 守卫 | 下一状态 |
@@ -145,6 +146,7 @@ Agent 只负责提出任务文本、候选人文本和活动任务的高层状�
 | recruiting | replace-candidates | 玩家发布任务；task revision/eventId CAS 匹配 | recruiting |
 | recruiting | assign | 玩家发布任务；candidateId 存在；CAS 匹配 | active |
 | recruiting | cancel | 玩家发布任务；CAS 匹配 | cancelled |
+| active | cancel | 玩家接取或发布的任务；CAS 匹配 | cancelled |
 | active | progress | CAS 匹配；summary 不同则写事件，相同则 unchanged 且不消费 actionId/eventId | active |
 | active | complete | CAS 匹配；存在执行者 | completed |
 | active | fail | CAS 匹配；存在原出资方 | failed |
@@ -783,9 +785,9 @@ escrow:task:<taskId>
 | --- | --- | --- |
 | 世界 board | 接取 | world counterparty → task escrow |
 | 世界 board | 完成 | task escrow → player |
-| 世界 board | 失败 | task escrow →原 world counterparty |
+| 世界 board | 失败 / 放弃 | task escrow →原 world counterparty |
 | 玩家发布 | 发布 | player → task escrow |
-| 玩家发布 | 撤回 | task escrow → player |
+| 玩家发布 | 取消（招募中 / 执行中） | task escrow → player |
 | 玩家发布 | NPC 完成 | task escrow →该 NPC counterparty |
 | 玩家发布 | NPC 失败 | task escrow → player |
 
@@ -863,11 +865,15 @@ Tasks 使用暖白 / 深色双主题的轻拟物委托卡界面。主导航分�
 - 接任务 / 发现委托：当前 board、报酬、地点、等级与已接取标记；完整条件进入委托详情，详情中接取；
 - 接任务 / 我接的：仅 received + active；发布者为任务终端，执行者为玩家；
 - 我发布：recruiting 与 published + active 均可见；招募中的委托进入候选人页面，执行中的委托进入进展详情；
-- 招募：候选人能力与风险、选人确认、撤回退款确认；选人后委托仍保留在「我发布」；
+- 招募：候选人能力与风险、选人确认、取消退款确认；选人后委托仍保留在「我发布」；
 - 记录：completed、failed、cancelled，按 updatedAt 倒序本地分页；可筛选接取 / 发布来源，当前已加载页没有匹配项时仍能继续加载；「我发布 / 已结束」进入发布记录；
 - 详情：冻结事实、发布者与执行者、累计进展、结果和事件时间线；收到该任务新事件后更新当前详情，离开页面的迟到读取不覆盖新页面；
 - 发布：目标与地点、选填约束与风险、报酬输入、余额/托管说明和确认弹窗；草稿只在当前页面存活；
 - 设置：自动维护开关、「立即更新」按钮、Host 运行状态和最近结果；不另设 API/token 提醒。
+
+进行中的详情提供「放弃任务」或「取消委托并退回报酬」，确认框分别说明不领报酬、不扣钱 / 全额退款，以及退出后续剧情提醒、保留记录且不可撤销。结束记录不再提供取消入口。
+
+两条线路的 completed 与资金结算确认保存后，通过酒馆 `/echo` 同源全局通知显示任务名和结算结果：接取任务提示报酬到账，发布委托提示执行者完成且托管报酬已支付。无需打开 OS；失败、待核实和其他状态变化不弹完成通知，待核实恢复确认后才通知。按当前聊天 / osId / 完成事件在内存去重；首次读取、重启及切聊载入仅建立基线，不补弹历史，不持久化通知状态。通知显示失败不影响结算。动态文本按纯文本展示，不执行 slash command 或宏。
 
 打开 APP 先同步返回已有本地投影；只有首次没有 Economy 时沿用钱包的异步开户 loading，不得让整个页面等待 host timeout。
 

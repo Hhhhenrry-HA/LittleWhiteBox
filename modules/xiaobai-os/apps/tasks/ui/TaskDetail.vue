@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import type { TaskDetailPresentation } from '../types.js';
+import type { TaskDetailPresentation, TaskRecord } from '../types.js';
 import TaskIcon from './TaskIcon.vue';
 import { taskIssuer, taskMoney, taskStatusLabel } from './task-display.js';
-defineProps<{ detail: TaskDetailPresentation | null; loading: boolean }>();
+defineProps<{ detail: TaskDetailPresentation | null; loading: boolean; busy: boolean; disabledReason: string }>();
+defineEmits<{ cancel: [task: TaskRecord] }>();
 function dateTime(value: number): string {
     return new Date(value).toLocaleString('zh-CN', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
 }
@@ -18,6 +19,11 @@ function dateTime(value: number): string {
                 <dl class="tasks-facts"><div><dt>完成目标</dt><dd>{{ detail.task.objective }}</dd></div><div v-if="detail.task.requirements"><dt>执行约束</dt><dd>{{ detail.task.requirements }}</dd></div><div><dt>行动地点</dt><dd>{{ detail.task.location }}</dd></div><div v-if="detail.task.timing"><dt>行动时机</dt><dd>{{ detail.task.timing }}</dd></div><div v-if="detail.task.risk" class="is-risk"><dt>留意风险</dt><dd>{{ detail.task.risk }}</dd></div></dl>
             </article>
             <section class="tasks-progress-summary"><span class="tasks-eyebrow">{{ detail.task.resultSummary ? '最终结果' : '当前进展' }}</span><p>{{ detail.task.resultSummary || detail.task.progressSummary || '还没有已确认的进展，下一步在故事中发生。' }}</p></section>
+            <div v-if="detail.task.status === 'active' || detail.task.status === 'recruiting'" class="tasks-withdraw">
+                <p>{{ detail.task.source === 'received' ? '不打算继续这份委托了？' : '不再需要这份委托了？' }}</p>
+                <button type="button" class="tasks-text-button is-danger" :disabled="busy || Boolean(disabledReason)" @click="$emit('cancel', detail.task)">{{ detail.task.source === 'received' ? '放弃任务' : '取消委托并退回报酬' }}</button>
+                <p v-if="disabledReason" class="tasks-hint">{{ disabledReason }}</p>
+            </div>
             <section class="tasks-timeline"><h3>一路走来</h3><ol><li v-for="item in detail.timeline" :key="item.eventId"><i /><div><small>{{ dateTime(item.createdAt) }}</small><p>{{ item.summary }}</p></div></li></ol></section>
         </template>
         <div v-else class="tasks-empty"><h3>这份委托暂时无法读取</h3><p>请返回后重试。</p></div>

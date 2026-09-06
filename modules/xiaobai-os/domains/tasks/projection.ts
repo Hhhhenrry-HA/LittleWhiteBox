@@ -105,9 +105,6 @@ function applyTaskEvent(records: Map<string, TaskRecord>, event: TaskEvent): voi
         current.status = 'active';
         current.progressSummary = `${event.assignee.displayName}已接取任务`;
     } else if (event.kind === 'cancelled') {
-        if (current.source !== 'published' || current.status !== 'recruiting') {
-            invalid(`event.${event.eventId}.cancel`);
-        }
         current.status = 'cancelled';
         current.resultSummary = event.resultSummary;
     } else if (event.kind === 'progressed') {

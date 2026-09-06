@@ -120,7 +120,7 @@ export function cancelTask(
         return taskReplayResult(domain, existing);
     }
     const record = currentRecord(domain, taskId);
-    assertRecruiting(record);
+    if (record.status !== 'active' && record.status !== 'recruiting') {throw new TaskError('task_terminal');}
     assertCas(record, cas.expectedTaskRevision, cas.expectedEventId);
     assertFreshTaskIdentities(domain, [actionId]);
     return appendTaskEvent(domain, { kind: 'cancelled', actionId, taskId, observedAssistantCount,

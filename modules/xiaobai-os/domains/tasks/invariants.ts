@@ -26,7 +26,7 @@ export const TASK_MAX_CANDIDATES = 4;
 export const TASK_MAX_BOARD_LISTINGS = 6;
 export const MAX_TASK_PROGRESS_SUMMARY_LENGTH = 120;
 export const MAX_TASK_RESULT_SUMMARY_LENGTH = 2_000;
-export const TASK_CANCELLED_SUMMARY = '玩家撤回了任务。';
+export const TASK_CANCELLED_SUMMARY = '玩家取消了任务。';
 
 const MAX_DATE_MS = 8_640_000_000_000_000;
 const DIRECTIONS = new Set<string>(TASK_DIRECTIONS);

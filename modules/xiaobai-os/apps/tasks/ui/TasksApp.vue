@@ -68,6 +68,7 @@ const page = ref<TasksPage>('board');
 const previousPage = ref<MainPage | 'recruit'>('board');
 const detail = ref<TaskDetailPresentation | null>(null);
 const confirmation = ref<Confirmation | null>(null);
+const cancellingReceived = computed(() => confirmation.value?.kind === 'cancel' && confirmation.value.task.source === 'received');
 const selectedListing = ref<{ boardId: string; listingId: string } | null>(null);
 const selectedTaskId = ref('');
 const historySource = ref<'all' | 'received' | 'published'>('all');
@@ -231,8 +232,8 @@ async function cancelTask(task: TaskRecord): Promise<void> {
         });
         applyResponseState(body, version);
         confirmation.value = null;
-        announce('任务已撤回，托管报酬已退回钱包。');
-        if (mounted) {go('published');}
+        announce(task.source === 'received' ? '已放弃任务，不会扣除小白币。' : '委托已取消，托管报酬已退回钱包。');
+        if (mounted) {go(task.source === 'received' ? 'active' : 'published');}
     } catch (error) {errorMessage.value = readableError(error);}
     finally {writeBusy.value = false;}
 }
@@ -454,17 +455,22 @@ onBeforeUnmount(() => {
             <TaskPublishForm v-else-if="page === 'publish'" :balance="state.playerBalance" :busy="writeBusy" :disabled-reason="writeDisabledReason" @submit="requestPublish" />
             <TaskListingDetail v-else-if="page === 'listing'" :listing="listing" :busy="writeBusy" :disabled-reason="writeDisabledReason" @accept="selectedListing && acceptListing(selectedListing.boardId, selectedListing.listingId)" />
             <TaskRecruitment v-else-if="page === 'recruit'" :task="recruitmentTask" :busy="writeBusy" :recruiting="Boolean(candidateBusyTaskId)" :disabled-reason="writeDisabledReason" :generation-disabled-reason="generationDisabledReason" @recruit="recruit" @assign="askAssign" @cancel="askCancel" @detail="openDetail" />
-            <TaskDetail v-else :detail="detail" :loading="detailBusy" />
+            <TaskDetail v-else :detail="detail" :loading="detailBusy" :busy="writeBusy" :disabled-reason="writeDisabledReason" @cancel="askCancel" />
         </div>
         <nav v-if="isMainPage" class="tasks-nav" aria-label="任务主导航">
             <button type="button" aria-label="接任务" :aria-current="page === 'board' || page === 'active' ? 'page' : undefined" @click="go('board')"><span><TaskIcon name="compass" /></span>接任务</button>
             <button type="button" aria-label="我发布" :aria-current="page === 'published' ? 'page' : undefined" @click="go('published')"><span><TaskIcon name="send" /><i v-if="state.recruiting.length" /></span>我发布</button>
             <button type="button" aria-label="记录" :aria-current="page === 'history' ? 'page' : undefined" @click="go('history')"><span><TaskIcon name="archive" /></span>记录</button>
         </nav>
-        <TaskConfirmDialog v-if="confirmation" :title="confirmation.kind === 'publish' ? '让这份委托出发？' : confirmation.kind === 'cancel' ? '撤回这份委托？' : '把委托交给这位执行者？'" :confirm-label="confirmation.kind === 'publish' ? '托管并发布' : confirmation.kind === 'cancel' ? '撤回并退款' : '确认委托'" :busy="writeBusy" :disabled-reason="writeDisabledReason" :error="errorMessage" @close="confirmation = null; errorMessage = ''" @confirm="confirmAction">
-            <template v-if="confirmation.kind === 'publish'"><p class="tasks-confirm-name">{{ confirmation.form.title }}</p><strong class="tasks-confirm-amount">¤ {{ taskMoney(confirmation.form.reward) }}</strong><p>报酬将从钱包托管。发布后可招募执行者；选人之前，你可以撤回并全额退回报酬。</p></template>
-            <template v-else-if="confirmation.kind === 'cancel'"><p class="tasks-confirm-name">{{ confirmation.task.title }}</p><strong class="tasks-confirm-amount">¤ {{ taskMoney(confirmation.task.reward) }}</strong><p>撤回后，托管报酬将退回你的钱包。</p></template>
-            <template v-else><p class="tasks-confirm-name">{{ confirmation.task.candidates.find(candidate => candidate.candidateId === (confirmation?.kind === 'assign' ? confirmation.candidateId : ''))?.name }}</p><p>确认后开始执行“{{ confirmation.task.title }}”。执行者确定后，这份委托不能再撤回。</p></template>
+        <TaskConfirmDialog v-if="confirmation" :title="confirmation.kind === 'publish' ? '让这份委托出发？' : confirmation.kind === 'cancel' ? (cancellingReceived ? '放弃这份任务？' : '取消这份委托？') : '把委托交给这位执行者？'" :confirm-label="confirmation.kind === 'publish' ? '托管并发布' : confirmation.kind === 'cancel' ? (cancellingReceived ? '确认放弃' : '取消并退款') : '确认委托'" :busy="writeBusy" :disabled-reason="writeDisabledReason" :error="errorMessage" @close="confirmation = null; errorMessage = ''" @confirm="confirmAction">
+            <template v-if="confirmation.kind === 'publish'"><p class="tasks-confirm-name">{{ confirmation.form.title }}</p><strong class="tasks-confirm-amount">¤ {{ taskMoney(confirmation.form.reward) }}</strong><p>报酬将从钱包托管。发布后可招募执行者；任务结束前，你可以取消并全额退回报酬。</p></template>
+            <template v-else-if="confirmation.kind === 'cancel'">
+                <p class="tasks-confirm-name">{{ confirmation.task.title }}</p>
+                <strong v-if="!cancellingReceived" class="tasks-confirm-amount">¤ {{ taskMoney(confirmation.task.reward) }}</strong>
+                <p>{{ cancellingReceived ? '放弃后不再获得任务报酬，也不会扣除你的小白币。' : '取消后，托管报酬将全额退回你的钱包。' }}</p>
+                <p>任务将移入记录，不再参与后续剧情提醒与进展更新。此操作无法撤销。</p>
+            </template>
+            <template v-else><p class="tasks-confirm-name">{{ confirmation.task.candidates.find(candidate => candidate.candidateId === (confirmation?.kind === 'assign' ? confirmation.candidateId : ''))?.name }}</p><p>确认后开始执行“{{ confirmation.task.title }}”。完成后，托管报酬将支付给执行者。</p></template>
         </TaskConfirmDialog>
     </main>
 </template>

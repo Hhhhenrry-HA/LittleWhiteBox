@@ -26,6 +26,7 @@ export { TASKS_PARTITION } from './partition.js';
 
 export interface TasksModuleInstallContext {
     ownerId: string;
+    store: ScopedChatStore<TaskDomainV1>;
     tasks: TasksService;
     economy: EconomyReadCapability;
     agent: AgentCapability;
@@ -59,8 +60,9 @@ export function createTasksModule(dependencies: TasksModuleDependencies): Xiaoba
         async install(context) {
             if (!context.partition) { throw new Error('Tasks partition store is unavailable'); }
             const economy = context.useCapability(ECONOMY_READ_CAPABILITY);
+            const store = context.partition as ScopedChatStore<TaskDomainV1>;
             const tasks = createTasksService(
-                context.partition as ScopedChatStore<TaskDomainV1>,
+                store,
                 context.files,
                 economy,
                 {
@@ -72,6 +74,7 @@ export function createTasksModule(dependencies: TasksModuleDependencies): Xiaoba
             try {
                 const runtime = await dependencies.install({
                     ownerId: context.ownerId,
+                    store,
                     tasks,
                     economy,
                     agent: context.useCapability(AGENT_CAPABILITY),

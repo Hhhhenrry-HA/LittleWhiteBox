@@ -1,7 +1,7 @@
 import type { TaskRecord, TasksPresentation } from '../types.js';
 
 export const taskStatusLabel = {
-    recruiting: '招募中', active: '进行中', completed: '已完成', failed: '未完成', cancelled: '已撤回',
+    recruiting: '招募中', active: '进行中', completed: '已完成', failed: '未完成', cancelled: '已取消',
 } as const;
 
 export function taskMoney(value: number): string {

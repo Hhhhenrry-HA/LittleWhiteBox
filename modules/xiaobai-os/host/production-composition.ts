@@ -145,6 +145,13 @@ export function createProductionBootstrap(
             mainGeneration,
             setPrompt: value => setSillyTavernPrompt('xiaobai_os_tasks_context', value),
             subscribePrompt: subscribeTaskPromptEvents,
+            notifyCompletion: ({ title, message }) => {
+                // Same global toast as /echo severity=success, without parsing task text as commands/macros.
+                const toastr = window.toastr as unknown as {
+                    success?(message: string, title: string, options: { escapeHtml: boolean; timeOut: number }): void;
+                } | undefined;
+                toastr?.success?.(message, title, { escapeHtml: true, timeOut: 8_000 });
+            },
         }),
         createProductionWorldModule({
             getChatIdentity: () => getSillyTavernChatIdentity()?.key ?? '',

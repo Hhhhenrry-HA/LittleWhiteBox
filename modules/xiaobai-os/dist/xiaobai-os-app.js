@@ -92,7 +92,7 @@ var T2 = Object.freeze({
   game: w(x2, E2, () => import("./xiaobai-os-GameApp-C-3aGVWd.js")),
   map: w(k2, D2, () => import("./xiaobai-os-MapApp-BDA2OYTF.js")),
   messages: w(A2, H2, () => import("./xiaobai-os-MessagesApp-C9uAZ5Ib.js")),
-  tasks: w(O2, $2, () => import("./xiaobai-os-TasksApp-69Olwkda.js")),
+  tasks: w(O2, $2, () => import("./xiaobai-os-TasksApp-Cj_oL4i0.js")),
   world: w(R2, L2, () => import("./xiaobai-os-WorldApp-D19bOK70.js")),
   learning: w(G2, C2, () => import("./xiaobai-os-LearningApp-DtCLhmNC.js"))
 }), q = Object.freeze(g2.map((t) => {

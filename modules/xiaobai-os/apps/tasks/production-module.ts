@@ -5,6 +5,7 @@ import { createAppRuntimeGroup } from '../../kernel/runtime-group.js';
 import { createTaskGenerationRequests } from './generation/request.js';
 import { createTaskGenerationContextAdapter } from './host/context-adapter.js';
 import { createTaskController } from './host/controller.js';
+import { createTaskCompletionRuntime, type TaskCompletionNotice } from './host/completion-runtime.js';
 import { createTaskMaintenanceParticipant } from './host/maintenance-participant.js';
 import { createTaskPromptRuntime, type TaskPromptEventHandlers } from './host/prompt-runtime.js';
 import { createTaskSettingsRuntime } from './host/settings-runtime.js';
@@ -18,13 +19,14 @@ export interface ProductionTasksModuleDependencies {
     mainGeneration: MainGenerationRuntime;
     setPrompt(value: string): void;
     subscribePrompt(handlers: TaskPromptEventHandlers): () => void;
+    notifyCompletion(notice: TaskCompletionNotice): void;
 }
 
 export function createProductionTasksModule(dependencies: ProductionTasksModuleDependencies) {
     return createTasksModule({
         getPlayerDisplayName: dependencies.getPlayerDisplayName,
         getObservedAssistantCount: dependencies.getObservedAssistantCount,
-        async install({ tasks, economy, agent, maintenance, mapContext, worldContext, execution }) {
+        async install({ tasks, store, economy, agent, maintenance, mapContext, worldContext, execution }) {
             const unregisterParticipant = maintenance.registerParticipant(createTaskMaintenanceParticipant({
                 tasks,
                 readSettings: () => dependencies.settings.read()?.apps.tasks ?? null,
@@ -59,7 +61,8 @@ export function createProductionTasksModule(dependencies: ProductionTasksModuleD
                 settings: dependencies.settings,
                 maintenance: maintenance.runner,
             });
-            return createAppRuntimeGroup(controller, [prompt, settings]);
+            const completion = createTaskCompletionRuntime({ store, notify: dependencies.notifyCompletion });
+            return createAppRuntimeGroup(controller, [prompt, settings, completion]);
         },
     });
 }

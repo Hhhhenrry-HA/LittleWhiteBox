@@ -14,6 +14,9 @@ import { WORLD_CONTEXT_CAPABILITY } from '../apps/world/context-capability.js';
 import { createTaskIdFactory } from '../apps/tasks/application/ids.js';
 import { createTasksService } from '../apps/tasks/application/service.js';
 import { createTaskController } from '../apps/tasks/host/controller.js';
+import { createTaskCompletionRuntime } from '../apps/tasks/host/completion-runtime.js';
+import { createTaskMaintenanceParticipant } from '../apps/tasks/host/maintenance-participant.js';
+import { buildTaskPromptBlock } from '../apps/tasks/host/prompt-runtime.js';
 import { createTasksModule } from '../apps/tasks/module.js';
 import { TASKS_PARTITION } from '../apps/tasks/partition.js';
 import { ensureEconomy, projectBalances } from '../domains/economy/ledger.js';
@@ -163,6 +166,166 @@ function maintenanceCommand(kind, actionId, record, summary) {
         ...(kind === 'progress' ? { progressSummary: summary } : { resultSummary: summary }),
     };
 }
+
+async function acceptTask(harness, prefix = 'received') {
+    const board = await harness.tasks.replaceBoard({ expectedBoardId: null, listings: [listing()], generatedAt: 10 }, allowCommit);
+    return harness.tasks.acceptListing({
+        actionId: `${prefix}-accept`, boardId: board.view.domain.board.boardId,
+        listingId: board.view.domain.board.listings[0].listingId,
+    }, allowCommit);
+}
+
+function cancellation(record, actionId = 'cancel-task') {
+    return { actionId, taskId: record.taskId, expectedTaskRevision: record.taskRevision, expectedEventId: record.eventId };
+}
+
+test('cancelling either active task line closes escrow once and removes story/maintenance participation', async t => {
+    for (const source of ['received', 'published']) {
+        await t.test(source, async () => {
+            const h = await createHarness();
+            const active = source === 'received' ? await acceptTask(h) : await publishAndAssign(h, 'published');
+            const participant = createTaskMaintenanceParticipant({ tasks: h.tasks, readSettings: () => ({ autoMaintenance: true }) });
+            const turn = { assistantCount: 4 };
+            const pending = participant.createSession(turn, 'automatic');
+            assert.equal(pending.executeTool('TaskComplete', {
+                taskId: active.record.taskId, revision: active.record.taskRevision, resultSummary: '已送达',
+            }).status, 'updated');
+            assert.ok(buildTaskPromptBlock(h.tasks.readCurrent().records));
+
+            const command = cancellation(active.record);
+            const cancelled = await h.tasks.cancel(command, allowCommit);
+            assert.equal(cancelled.record.status, 'cancelled');
+            assert.equal(cancelled.view.playerBalance, 100);
+            assert.equal(projectBalances(ledgerOf(h))[`escrow:task:${active.record.taskId}`], 0);
+            assert.equal(buildTaskPromptBlock(cancelled.view.records), '');
+            assert.equal(participant.createSession(turn, 'automatic'), null);
+            const saved = structuredClone(h.state.persisted);
+            const replay = await h.tasks.cancel(command, allowCommit);
+            assert.equal(replay.changed, false);
+            assert.deepEqual(h.state.persisted, saved);
+            await assert.rejects(pending.commit(allowCommit), /task_terminal/);
+            await assert.rejects(h.tasks.cancel(cancellation(cancelled.record, 'cancel-again'), allowCommit), /task_terminal/);
+            assert.deepEqual(h.state.persisted, saved);
+            assert.equal((await h.tasks.refreshCurrent()).records[0].status, 'cancelled');
+        });
+    }
+});
+
+test('cancellation respects CAS and save confirmation before refunding or removing the task', async () => {
+    const h = await createHarness();
+    const active = await publishAndAssign(h, 'save');
+    const progressed = await h.tasks.commitMaintenance({
+        commands: [maintenanceCommand('progress', 'progress', active.record, '途中遇到封路')], observedAssistantCount: 4,
+    }, allowCommit);
+    await assert.rejects(h.tasks.cancel(cancellation(active.record), allowCommit), /task_revision_conflict/);
+    const command = cancellation(progressed.record);
+    const saved = structuredClone(h.state.persisted);
+    h.state.replaceImpl = async () => ({ status: 'failed', error: { code: 'disk_failed', message: 'disk failed', retryable: true } });
+    await assert.rejects(h.tasks.cancel(command, allowCommit), error => error.code === 'disk_failed');
+    assert.deepEqual(h.state.persisted, saved);
+    h.state.replaceImpl = async () => ({ status: 'unconfirmed', observed: h.state.persisted });
+    await assert.rejects(h.tasks.cancel(command, allowCommit), error => error.uncertain === true);
+    assert.equal(h.tasks.readCurrent().records[0].status, 'active');
+    assert.ok(buildTaskPromptBlock(h.tasks.readCurrent().records));
+    assert.equal(h.economy.getPlayerBalance(), 20);
+    h.state.replaceImpl = null;
+    assert.equal((await h.tasks.confirmPending()).status, 'confirmed');
+    assert.equal(h.tasks.readCurrent().records[0].status, 'cancelled');
+    assert.equal(buildTaskPromptBlock(h.tasks.readCurrent().records), '');
+    assert.equal(h.economy.getPlayerBalance(), 100);
+});
+
+test('both task lines notify after settlement without UI activation, but history and rereads stay silent', async t => {
+    const h = await createHarness();
+    const notices = [];
+    const runtime = createTaskCompletionRuntime({ store: h.store, notify: notice => notices.push(notice) });
+    t.after(() => runtime.stopBackground());
+    runtime.startBackground();
+    runtime.startBackground();
+    const received = await acceptTask(h);
+    const published = await publishAndAssign(h, 'notice');
+    assert.equal(notices.length, 0);
+    await h.tasks.commitMaintenance({ commands: [
+        maintenanceCommand('complete', 'complete-received', received.record, '已送达'),
+        maintenanceCommand('complete', 'complete-published', published.record, '已送达'),
+    ], observedAssistantCount: 4 }, allowCommit);
+    assert.equal(notices.length, 2);
+    assert.match(notices[0].title, /接取/);
+    assert.match(notices[0].message, /封蜡信.*150 小白币已到账/);
+    assert.match(notices[1].title, /发布/);
+    assert.match(notices[1].message, /护送药箱.*艾拉.*80 小白币已支付给执行者/);
+    assert.equal(h.economy.getPlayerBalance(), 170);
+    await h.tasks.refreshCurrent();
+    runtime.handleChatChanged();
+    await h.tasks.refreshCurrent();
+    runtime.stopBackground();
+    runtime.startBackground();
+    await h.tasks.refreshCurrent();
+    assert.equal(notices.length, 2);
+});
+
+test('completion save failures and uncertain results stay silent until recovery confirms the same settlement', async t => {
+    const h = await createHarness();
+    const notices = [];
+    const runtime = createTaskCompletionRuntime({ store: h.store, notify: notice => notices.push(notice) });
+    runtime.startBackground();
+    t.after(() => runtime.stopBackground());
+    const received = await acceptTask(h);
+    const input = { commands: [maintenanceCommand('complete', 'recover-completion', received.record, '已送达')], observedAssistantCount: 4 };
+    h.state.replaceImpl = async () => ({ status: 'failed', error: { code: 'disk_failed', message: 'disk failed', retryable: true } });
+    await assert.rejects(h.tasks.commitMaintenance(input, allowCommit), error => error.code === 'disk_failed');
+    assert.equal(notices.length, 0);
+    h.state.replaceImpl = async () => ({ status: 'unconfirmed', observed: h.state.persisted });
+    await assert.rejects(h.tasks.commitMaintenance(input, allowCommit), error => error.uncertain === true);
+    assert.equal(notices.length, 0);
+    assert.equal(h.economy.getPlayerBalance(), 100);
+    h.state.replaceImpl = null;
+    assert.equal((await h.tasks.confirmPending()).status, 'confirmed');
+    assert.equal(notices.length, 1);
+    assert.equal(h.economy.getPlayerBalance(), 250);
+    await h.tasks.refreshCurrent();
+    assert.equal(notices.length, 1);
+});
+
+test('late completion from another chat is not announced, and returning only establishes the current baseline', async t => {
+    const h = await createHarness();
+    const notices = [];
+    const runtime = createTaskCompletionRuntime({ store: h.store, notify: notice => notices.push(notice) });
+    runtime.startBackground();
+    t.after(() => runtime.stopBackground());
+    const received = await acceptTask(h);
+    const original = structuredClone(h.state.capture);
+    h.state.replaceImpl = async input => {
+        h.state.capture = { identityKey: 'character:tasks.png:chat-b', binding: { ...binding, chatId: 'chat-b' }, reference: null };
+        runtime.handleChatChanged();
+        h.state.persisted = structuredClone(input.candidate);
+        return { status: 'confirmed' };
+    };
+    await h.tasks.commitMaintenance({ commands: [maintenanceCommand('complete', 'late-completion', received.record, '已送达')], observedAssistantCount: 4 }, allowCommit);
+    assert.equal(notices.length, 0);
+    h.state.capture = original;
+    h.state.replaceImpl = null;
+    runtime.handleChatChanged();
+    await h.tasks.refreshCurrent();
+    assert.equal(notices.length, 0);
+    const next = await publishAndAssign(h, 'after-return');
+    await h.tasks.commitMaintenance({ commands: [maintenanceCommand('complete', 'next-completion', next.record, '已送达')], observedAssistantCount: 5 }, allowCommit);
+    assert.equal(notices.length, 1);
+});
+
+test('a notification failure cannot roll back settlement or retrigger it on reread', async t => {
+    const h = await createHarness();
+    let notifications = 0;
+    t.mock.method(console, 'warn', () => {});
+    const runtime = createTaskCompletionRuntime({ store: h.store, notify: () => { notifications++; throw new Error('toast unavailable'); } });
+    runtime.startBackground();
+    t.after(() => runtime.stopBackground());
+    const received = await acceptTask(h);
+    await h.tasks.commitMaintenance({ commands: [maintenanceCommand('complete', 'toast-failure', received.record, '已送达')], observedAssistantCount: 4 }, allowCommit);
+    assert.equal(h.economy.getPlayerBalance(), 250);
+    await h.tasks.refreshCurrent();
+    assert.equal(notifications, 1);
+});
 
 test('Tasks module owns a strict partition and declares its runtime capabilities', async () => {
     assert.equal(TASKS_PARTITION.parse({ schemaVersion: 1, revision: 0, board: null, events: [] }).ok, true);
@@ -443,7 +606,7 @@ test('Tasks keeps recovery available after failed verification and retires only 
     }
 });
 
-test('a corrupt Tasks partition is isolated from Economy reads', async () => {
+test('a corrupt Tasks partition is isolated from Economy reads and notification startup', async t => {
     const harness = await createHarness();
     harness.state.persisted.partitions.tasks = {
         schemaVersion: 1,
@@ -454,6 +617,13 @@ test('a corrupt Tasks partition is isolated from Economy reads', async () => {
     };
 
     await assert.rejects(harness.tasks.refreshCurrent(), /task_invalid_domain|non-canonical|partition/i);
+    t.mock.method(console, 'warn', () => {});
+    const notices = [];
+    const runtime = createTaskCompletionRuntime({ store: harness.store, notify: notice => notices.push(notice) });
+    assert.doesNotThrow(() => runtime.startBackground());
+    assert.doesNotThrow(() => runtime.handleChatChanged());
+    runtime.stopBackground();
+    assert.deepEqual(notices, []);
     await harness.economy.refresh();
     assert.equal(harness.economy.getPlayerBalance(), 100);
     assert.equal(harness.economy.getTransactionCount(), 1);

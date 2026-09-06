@@ -15,7 +15,7 @@ defineEmits<{ recruit: [task: TaskRecord]; assign: [task: TaskRecord, candidateI
                 <p v-if="recruiting" class="tasks-hint" role="status">正在寻找愿意接下委托的人。你可以离开页面，招募会在后台继续。</p>
                 <p v-if="disabledReason || generationDisabledReason" class="tasks-hint">{{ disabledReason || generationDisabledReason }}</p>
                 <TaskCandidateList :task="task" :busy="busy || recruiting" :disabled-reason="disabledReason" @assign="(record, id) => $emit('assign', record, id)" />
-                <div class="tasks-withdraw"><p>暂时不需要这份委托了？</p><button type="button" class="tasks-text-button is-danger" :disabled="busy || Boolean(disabledReason)" @click="$emit('cancel', task)">撤回委托并退回报酬</button></div>
+                <div class="tasks-withdraw"><p>暂时不需要这份委托了？</p><button type="button" class="tasks-text-button is-danger" :disabled="busy || Boolean(disabledReason)" @click="$emit('cancel', task)">取消委托并退回报酬</button></div>
             </template>
             <div v-else class="tasks-empty"><TaskIcon name="check" /><h3>{{ task.status === 'active' ? '执行者已接下委托' : '这份委托已结束' }}</h3><button type="button" class="tasks-primary-button" @click="$emit('detail', task.taskId)">查看任务进展</button></div>
         </template>
