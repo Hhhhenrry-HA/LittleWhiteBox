@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { A as ee, B as Q, C as te, E as A, H as u, I as V, L as ae, N as U, R as le, T as n, _ as ne, a as D, b as F, c as z, d as e, f as O, g as S, i as K, j as N, l as I, m as i, o as G, p, s as X, u as R, v as j, x as ie, y as Y, z as s } from "./xiaobai-os-runtime-dom.esm-bundler-DwdCK5Jt.js";
+import { A as ee, B as Q, C as te, E as A, H as u, I as V, L as ae, N as U, R as le, T as n, _ as ne, a as D, b as F, c as z, d as e, f as O, g as S, i as K, j as N, l as w, m as i, o as G, p, s as X, u as R, v as j, x as ie, y as Y, z as s } from "./xiaobai-os-runtime-dom.esm-bundler-DwdCK5Jt.js";
 var se = ["disabled"], re = {
   key: 0,
   class: "learning-choices"
@@ -84,7 +84,7 @@ var se = ["disabled"], re = {
       onSubmit: z(g, ["prevent"])
     }, [e("fieldset", { disabled: a.disabled }, [
       $[3] || ($[3] = e("legend", { class: "learning-eyebrow" }, "你的回答", -1)),
-      a.response.kind === "choice" ? (n(), i("div", re, [(n(!0), i(I, null, A(a.response.options, (o, k) => (n(), i("label", {
+      a.response.kind === "choice" ? (n(), i("div", re, [(n(!0), i(w, null, A(a.response.options, (o, k) => (n(), i("label", {
         key: o.id,
         class: Q({ selected: r.value.picked.includes(o.id) })
       }, [
@@ -96,7 +96,7 @@ var se = ["disabled"], re = {
         }, null, 40, ue),
         e("span", de, u(String.fromCharCode(65 + k)), 1),
         e("span", null, u(o.text), 1)
-      ], 2))), 128))])) : a.response.kind === "order" ? (n(), i("ol", oe, [(n(!0), i(I, null, A(r.value.order, (o, k) => (n(), i("li", { key: o }, [
+      ], 2))), 128))])) : a.response.kind === "order" ? (n(), i("ol", oe, [(n(!0), i(w, null, A(r.value.order, (o, k) => (n(), i("li", { key: o }, [
         e("span", null, u(a.response.options.find((L) => L.id === o)?.text), 1),
         e("button", {
           type: "button",
@@ -110,17 +110,17 @@ var se = ["disabled"], re = {
           "aria-label": `下移第 ${k + 1} 项`,
           onClick: (L) => C(k, 1)
         }, "↓", 8, be)
-      ]))), 128))])) : a.response.kind === "match" ? (n(), i("div", ge, [(n(!0), i(I, null, A(a.response.left, (o) => (n(), i("label", { key: o.id }, [S(u(o.text) + " ", 1), U(e("select", { "onUpdate:modelValue": (k) => r.value.values[o.id] = k }, [$[1] || ($[1] = e("option", { value: "" }, "选择对应项", -1)), (n(!0), i(I, null, A(a.response.right, (k) => (n(), i("option", {
+      ]))), 128))])) : a.response.kind === "match" ? (n(), i("div", ge, [(n(!0), i(w, null, A(a.response.left, (o) => (n(), i("label", { key: o.id }, [S(u(o.text) + " ", 1), U(e("select", { "onUpdate:modelValue": (k) => r.value.values[o.id] = k }, [$[1] || ($[1] = e("option", { value: "" }, "选择对应项", -1)), (n(!0), i(w, null, A(a.response.right, (k) => (n(), i("option", {
         key: k.id,
         value: k.id
-      }, u(k.text), 9, ye))), 128))], 8, me), [[K, r.value.values[o.id]]])]))), 128))])) : a.response.kind === "evidence" ? (n(), i("div", ke, [(n(!0), i(I, null, A(a.paragraphs, (o) => (n(), i("label", {
+      }, u(k.text), 9, ye))), 128))], 8, me), [[K, r.value.values[o.id]]])]))), 128))])) : a.response.kind === "evidence" ? (n(), i("div", ke, [(n(!0), i(w, null, A(a.paragraphs, (o) => (n(), i("label", {
         key: o.id,
         class: Q({ selected: r.value.picked.includes(o.id) })
       }, [e("input", {
         type: "checkbox",
         checked: r.value.picked.includes(o.id),
         onChange: (k) => b(o.id)
-      }, null, 40, pe), e("span", null, u(o.text), 1)], 2))), 128)), a.paragraphs.length ? p("", !0) : (n(), i("p", fe, "请先展开相关文稿，再选择原文依据。"))])) : a.response.kind === "gaps" ? (n(), i("div", $e, [(n(!0), i(I, null, A(a.response.slots, (o) => (n(), i("label", { key: o.id }, [S(u(o.text), 1), U(e("input", {
+      }, null, 40, pe), e("span", null, u(o.text), 1)], 2))), 128)), a.paragraphs.length ? p("", !0) : (n(), i("p", fe, "请先展开相关文稿，再选择原文依据。"))])) : a.response.kind === "gaps" ? (n(), i("div", $e, [(n(!0), i(w, null, A(a.response.slots, (o) => (n(), i("label", { key: o.id }, [S(u(o.text), 1), U(e("input", {
         "onUpdate:modelValue": (k) => r.value.values[o.id] = k,
         type: "text",
         maxlength: "4000",
@@ -213,7 +213,7 @@ var se = ["disabled"], re = {
             id: a.material.id
           }))
         }, "看文稿", 8, Me)
-      ])) : (n(), i("div", Re, [(n(!0), i(I, null, A(a.material.paragraphs, (g) => (n(), i("div", {
+      ])) : (n(), i("div", Re, [(n(!0), i(w, null, A(a.material.paragraphs, (g) => (n(), i("div", {
         key: g.id,
         class: "learning-paragraph"
       }, [e("p", {
@@ -226,7 +226,7 @@ var se = ["disabled"], re = {
         "aria-label": "选这段提问",
         onClick: (y) => r(g)
       }, "选段", 8, Ne)]))), 128))])),
-      e("div", Be, [(n(!0), i(I, null, A(a.material.parts, (g) => (n(), i("button", {
+      e("div", Be, [(n(!0), i(w, null, A(a.material.parts, (g) => (n(), i("button", {
         key: g.key,
         type: "button",
         disabled: a.disabled,
@@ -272,7 +272,7 @@ var Ee = { class: "learning-feedback" }, Oe = { class: "learning-muted" }, ze = 
         a.attempt.help.replays ? (n(), i("span", ze, " · 重听 " + u(a.attempt.help.replays) + " 次", 1)) : p("", !0),
         a.attempt.help.slowPlayback ? (n(), i("span", Ke, " · 慢放")) : p("", !0)
       ]),
-      a.feedback ? (n(), i(I, { key: 0 }, [
+      a.feedback ? (n(), i(w, { key: 0 }, [
         e("h3", null, u(l[a.feedback.verdict]), 1),
         a.feedback.understanding ? (n(), i("p", Pe, [d[2] || (d[2] = e("b", null, "理解", -1)), S(u(a.feedback.understanding), 1)])) : p("", !0),
         a.feedback.expression ? (n(), i("p", He, [d[3] || (d[3] = e("b", null, "表达", -1)), S(u(a.feedback.expression), 1)])) : p("", !0),
@@ -286,7 +286,7 @@ var Ee = { class: "learning-feedback" }, Oe = { class: "learning-muted" }, ze = 
             message: "请重新审视我的原答与题目。也请考虑其他有效表达，不只对照原来的答案键。"
           }))
         }, u(a.feedback.verdict === "disputed" ? "请老师复核" : "有疑问，请复核"), 9, Je)
-      ], 64)) : (n(), i(I, { key: 1 }, [d[5] || (d[5] = e("p", null, "原答已保存，等待老师评估。", -1)), e("button", {
+      ], 64)) : (n(), i(w, { key: 1 }, [d[5] || (d[5] = e("p", null, "原答已保存，等待老师评估。", -1)), e("button", {
         type: "button",
         disabled: a.disabled,
         onClick: d[1] || (d[1] = (r) => f.$emit("action", "assess", {
@@ -389,7 +389,7 @@ var Xe = {
       e("p", Ze, [m[17] || (m[17] = S("今日这一课 ", -1)), e("span", null, "完成奖励 " + u(a.state.unit.reward.amount) + " 币", 1)]),
       e("h1", null, u(a.state.unit.title), 1),
       e("p", _e, u(a.state.unit.goal), 1),
-      e("nav", et, [(n(!0), i(I, null, A(a.state.unit.exercises, (x, M) => (n(), i("button", {
+      e("nav", et, [(n(!0), i(w, null, A(a.state.unit.exercises, (x, M) => (n(), i("button", {
         key: x.id,
         type: "button",
         disabled: a.disabled,
@@ -397,7 +397,7 @@ var Xe = {
         onClick: (E) => r.value = M
       }, [S(u(String(M + 1).padStart(2, "0")), 1), a.state.unit.attempts.some((E) => E.exerciseId === x.id) ? (n(), i("span", at, " ·")) : p("", !0)], 8, tt))), 128))])
     ]), e("div", lt, [e("div", nt, [
-      (n(!0), i(I, null, A(L.value, (x) => (n(), O(je, {
+      (n(!0), i(w, null, A(L.value, (x) => (n(), O(je, {
         key: x.id,
         material: x,
         "exercise-id": g.value.id,
@@ -440,7 +440,7 @@ var Xe = {
         ]),
         g.value.hint ? (n(), i("p", vt, u(g.value.hint), 1)) : p("", !0),
         g.value.solution ? (n(), i("div", bt, [g.value.solution.kind === "exact" ? (n(), i("p", gt, u(s(Z)(g.value.solution.answer, g.value.response, T.value)), 1)) : g.value.solution.kind === "gaps" ? (n(), i("p", mt, u(g.value.solution.accepted.map((x) => x.forms.join(" / ")).join(`
-`)), 1)) : p("", !0), g.value.solution.kind === "exact" || g.value.solution.kind === "gaps" ? (n(), i(I, { key: 2 }, [S(u(g.value.solution.explanation), 1)], 64)) : (n(), i(I, { key: 3 }, [m[18] || (m[18] = S(" 这是一道开放题，老师会根据你的表达评估。 ", -1)), e("button", {
+`)), 1)) : p("", !0), g.value.solution.kind === "exact" || g.value.solution.kind === "gaps" ? (n(), i(w, { key: 2 }, [S(u(g.value.solution.explanation), 1)], 64)) : (n(), i(w, { key: 3 }, [m[18] || (m[18] = S(" 这是一道开放题，老师会根据你的表达评估。 ", -1)), e("button", {
           type: "button",
           disabled: a.disabled,
           onClick: m[5] || (m[5] = (x) => d("action", "explain", {
@@ -545,7 +545,7 @@ var Xe = {
       ])) : p("", !0),
       a.state.unit.notes.length ? (n(), i("details", Rt, [
         e("summary", null, "本课笔记 · " + u(a.state.unit.notes.length), 1),
-        (n(!0), i(I, null, A(a.state.unit.notes, (x) => (n(), i("article", { key: x.id }, [
+        (n(!0), i(w, null, A(a.state.unit.notes, (x) => (n(), i("article", { key: x.id }, [
           x.selection ? (n(), i("blockquote", qt, u(x.selection.quote), 1)) : p("", !0),
           e("p", null, u(x.text), 1),
           e("button", {
@@ -607,7 +607,7 @@ var Xe = {
         value: a.state.language,
         disabled: a.disabled,
         onChange: o[0] || (o[0] = (k) => d("action", "language", { language: k.target.value }))
-      }, [(n(), i(I, null, A(g, ([k, L]) => e("option", {
+      }, [(n(), i(w, null, A(g, ([k, L]) => e("option", {
         key: k,
         value: k
       }, u(L), 9, Ot)), 64)), g.some(([k]) => k === a.state.language) ? p("", !0) : (n(), i("option", {
@@ -617,7 +617,7 @@ var Xe = {
       e("section", Kt, [
         o[7] || (o[7] = e("h2", null, "谁来陪你学？", -1)),
         e("p", Pt, u(a.state.teacher ? `现在是 ${a.state.teacher.name}。老师选择只属于当前聊天。` : "从已知人物里选一位老师。"), 1),
-        e("div", Ht, [(n(!0), i(I, null, A(a.state.candidates, (k) => (n(), i("button", {
+        e("div", Ht, [(n(!0), i(w, null, A(a.state.candidates, (k) => (n(), i("button", {
           key: k.name,
           type: "button",
           disabled: a.disabled,
@@ -661,7 +661,7 @@ var Xe = {
           maxlength: "800",
           placeholder: "比如：准备英语四级，希望能理解新闻并写出清楚的短文。也可以补充考试日期。"
         }, null, 512), [[D, C.value]])]),
-        e("label", null, [o[10] || (o[10] = S("希望老师用什么语言讲解", -1)), U(e("select", { "onUpdate:modelValue": o[5] || (o[5] = (k) => c.value = k) }, [(n(), i(I, null, A(g, ([k, L]) => e("option", {
+        e("label", null, [o[10] || (o[10] = S("希望老师用什么语言讲解", -1)), U(e("select", { "onUpdate:modelValue": o[5] || (o[5] = (k) => c.value = k) }, [(n(), i(w, null, A(g, ([k, L]) => e("option", {
           key: k,
           value: k
         }, u(L), 9, Gt)), 64))], 512), [[K, c.value]])]),
@@ -699,19 +699,19 @@ var Xe = {
     return (f, d) => (n(), i("section", ta, [
       d[5] || (d[5] = e("p", { class: "learning-eyebrow" }, "不是分数，是走过的路", -1)),
       d[6] || (d[6] = e("h1", null, "学习记录", -1)),
-      a.state.record ? (n(), i(I, { key: 0 }, [
+      a.state.record ? (n(), i(w, { key: 0 }, [
         e("button", {
           type: "button",
           onClick: d[0] || (d[0] = (r) => f.$emit("action", "records", { offset: a.state.records.offset }))
         }, "‹ 返回记录"),
         e("h2", null, u(a.state.record.label), 1),
-        (n(!0), i(I, null, A(a.state.record.evidence, (r) => (n(), i("article", {
+        (n(!0), i(w, null, A(a.state.record.evidence, (r) => (n(), i("article", {
           key: r.attempt.id,
           class: "learning-record-evidence"
         }, [
           e("p", aa, u(new Date(r.attempt.submittedAt).toLocaleDateString()), 1),
           e("h3", null, u(r.exercise.prompt), 1),
-          (n(!0), i(I, null, A(r.materials, (b) => (n(), i("details", { key: b.id }, [e("summary", null, u(b.title), 1), b.hidden ? (n(), i("p", la, "听力文稿尚未展开；原答和反馈如下。")) : (n(!0), i(I, { key: 1 }, A(b.paragraphs, (C) => (n(), i("p", { key: C.id }, u(C.text), 1))), 128))]))), 128)),
+          (n(!0), i(w, null, A(r.materials, (b) => (n(), i("details", { key: b.id }, [e("summary", null, u(b.title), 1), b.hidden ? (n(), i("p", la, "听力文稿尚未展开；原答和反馈如下。")) : (n(!0), i(w, { key: 1 }, A(b.paragraphs, (C) => (n(), i("p", { key: C.id }, u(C.text), 1))), 128))]))), 128)),
           ne(_, {
             attempt: r.attempt,
             feedback: r.assessment,
@@ -737,9 +737,9 @@ var Xe = {
           disabled: a.disabled,
           onClick: d[2] || (d[2] = (r) => f.$emit("remove", "delete-item", { id: a.state.record.id }, "删除这个学习项及其不再被引用的证据？当前课程不会被删除。"))
         }, "删除学习项", 8, ia)
-      ], 64)) : (n(), i(I, { key: 1 }, [
+      ], 64)) : (n(), i(w, { key: 1 }, [
         a.state.records.total ? p("", !0) : (n(), i("p", sa, "真实练习之后，老师会把值得再练的知识点留在这里。一次做对，不急着贴上“掌握”的标签。")),
-        (n(!0), i(I, null, A(a.state.records.items, (r) => (n(), i("button", {
+        (n(!0), i(w, null, A(a.state.records.items, (r) => (n(), i("button", {
           key: r.id,
           class: "learning-record-row",
           type: "button",
@@ -874,53 +874,53 @@ var ka = {
     const { state: l, pending: f, writable: d, localMessage: r, request: b } = ya(a), C = V(l.value.profile && l.value.teacher ? "desk" : "profile"), c = V(null), g = {}, y = V(""), $ = V(null), o = V(null);
     let k = null;
     const L = V(l.value.profile?.voice?.voiceId ?? l.value.voices.defaultVoice), T = V(l.value.profile?.voice?.language ?? l.value.language), q = V(l.value.profile?.voice?.speed ?? 1), B = V(0), P = R(() => l.value.completions.slice(B.value * 20, (B.value + 1) * 20)), H = R(() => new Intl.DisplayNames(["zh-CN"], { type: "language" }).of(l.value.language) ?? l.value.language);
-    N(() => l.value.profile?.voice, (w) => {
-      L.value = w?.voiceId ?? l.value.voices.defaultVoice, T.value = w?.language ?? l.value.language, q.value = w?.speed ?? 1;
-    }), N(() => l.value.unit?.id, (w, t) => {
-      w && w !== t && h("lesson");
-    }), N(() => !!l.value.profile, (w, t) => {
-      w && !t && h("desk");
+    N([() => l.value.language, () => l.value.profile?.voice], ([I, t]) => {
+      L.value = t?.voiceId ?? l.value.voices.defaultVoice, T.value = t?.language ?? I, q.value = t?.speed ?? 1;
+    }), N(() => l.value.unit?.id, (I, t) => {
+      I && I !== t && h("lesson");
+    }), N(() => !!l.value.profile, (I, t) => {
+      I && !t && h("desk");
     }), N(() => l.value.language, () => {
       B.value = 0;
     });
-    async function h(w) {
-      if (c.value && (g[C.value] = c.value.scrollTop), C.value === "lesson" && w !== "lesson" && b("stop"), C.value = w, await F(), c.value) {
-        c.value.scrollTop = g[w] ?? 0;
+    async function h(I) {
+      if (c.value && (g[C.value] = c.value.scrollTop), C.value === "lesson" && I !== "lesson" && b("stop"), C.value = I, await F(), c.value) {
+        c.value.scrollTop = g[I] ?? 0;
         const t = [...c.value.querySelectorAll("h1")].find((v) => v.offsetParent !== null);
         t && (t.tabIndex = -1, t.focus({ preventScroll: !0 }));
       }
     }
-    async function m(w, t, v) {
+    async function m(I, t, v) {
       k = document.activeElement instanceof HTMLElement ? document.activeElement : null, $.value = {
-        action: w,
+        action: I,
         input: t,
         text: v
       }, await F(), o.value?.focus();
     }
-    N($, async (w) => {
-      w || (await F(), k?.focus({ preventScroll: !0 }));
+    N($, async (I) => {
+      I || (await F(), k?.focus({ preventScroll: !0 }));
     });
-    function x(w) {
-      const t = w.currentTarget.querySelectorAll("button");
-      w.shiftKey && document.activeElement === t[0] ? (w.preventDefault(), t[t.length - 1]?.focus()) : !w.shiftKey && document.activeElement === t[t.length - 1] && (w.preventDefault(), t[0]?.focus());
+    function x(I) {
+      const t = I.currentTarget.querySelectorAll("button");
+      I.shiftKey && document.activeElement === t[0] ? (I.preventDefault(), t[t.length - 1]?.focus()) : !I.shiftKey && document.activeElement === t[t.length - 1] && (I.preventDefault(), t[0]?.focus());
     }
-    function M(w = !1) {
+    function M(I = !1) {
       const t = {
         replaceCurrent: !!l.value.unit || l.value.blockedUnit,
-        message: y.value.trim() || (w ? "今天想轻松做一次短练。请按我的目标和实际水平安排，也可以复习合适的知识点。" : "请按我的目标和实际水平准备下一课，选择有帮助的真实材料或练习，也照顾值得复习的知识点。")
+        message: y.value.trim() || (I ? "今天想轻松做一次短练。请按我的目标和实际水平安排，也可以复习合适的知识点。" : "请按我的目标和实际水平准备下一课，选择有帮助的真实材料或练习，也照顾值得复习的知识点。")
       };
       t.replaceCurrent ? m("prepare", t, "准备新课会替换当前课件和本课笔记。已保留的学习证据及奖励资格不受影响；需要完整留存本课，可以先导出学习数据。") : b("prepare", t);
     }
     async function E() {
-      const w = await b("export");
-      if (!w?.document) return;
-      const t = URL.createObjectURL(new Blob([JSON.stringify(w.document, null, 2)], { type: "application/json" })), v = document.createElement("a");
+      const I = await b("export");
+      if (!I?.document) return;
+      const t = URL.createObjectURL(new Blob([JSON.stringify(I.document, null, 2)], { type: "application/json" })), v = document.createElement("a");
       v.href = t, v.download = "LittleWhiteBox_Learning.json", v.click(), setTimeout(() => URL.revokeObjectURL(t), 1e3);
     }
-    function J(w) {
-      return `${Math.floor(w / 60)}:${String(Math.floor(w % 60)).padStart(2, "0")}`;
+    function J(I) {
+      return `${Math.floor(I / 60)}:${String(Math.floor(I % 60)).padStart(2, "0")}`;
     }
-    return (w, t) => (n(), i("section", ka, [
+    return (I, t) => (n(), i("section", ka, [
       e("header", {
         class: "learning-toolbar",
         inert: !!$.value
@@ -933,7 +933,7 @@ var ka = {
         "aria-label": "语伴设置",
         onClick: t[1] || (t[1] = (v) => h("settings"))
       }, "···")], 8, pa),
-      s(l).busy || s(l).message || s(r) || s(l).storage !== "ready" ? (n(), i("div", fa, [s(l).busy ? (n(), i(I, { key: 0 }, [
+      s(l).busy || s(l).message || s(r) || s(l).storage !== "ready" ? (n(), i("div", fa, [s(l).busy ? (n(), i(w, { key: 0 }, [
         t[39] || (t[39] = e("span", { class: "learning-working-dot" }, null, -1)),
         t[40] || (t[40] = S("正在处理，请稍等。", -1)),
         e("button", {
@@ -941,7 +941,7 @@ var ka = {
           disabled: s(f),
           onClick: t[2] || (t[2] = (v) => s(b)("cancel"))
         }, "停止", 8, $a)
-      ], 64)) : (n(), i(I, { key: 1 }, [S(u(s(r) || s(l).message || (s(l).storage === "unconfirmed" ? "上次保存尚未确认，请先核实。" : s(l).storage === "conflict" ? "学习文件出现另一版本，请先核实。" : "暂时无法读取学习文件。")), 1)], 64)), s(l).busy ? p("", !0) : (n(), i("div", ca, [
+      ], 64)) : (n(), i(w, { key: 1 }, [S(u(s(r) || s(l).message || (s(l).storage === "unconfirmed" ? "上次保存尚未确认，请先核实。" : s(l).storage === "conflict" ? "学习文件出现另一版本，请先核实。" : "暂时无法读取学习文件。")), 1)], 64)), s(l).busy ? p("", !0) : (n(), i("div", ca, [
         s(l).storage === "unconfirmed" || s(l).storage === "conflict" ? (n(), i("button", {
           key: 0,
           type: "button",
@@ -1006,7 +1006,7 @@ var ka = {
               class: "learning-primary",
               onClick: t[8] || (t[8] = (v) => h("profile"))
             }, "告诉老师我的目标 →")
-          ])) : (n(), i(I, { key: 1 }, [
+          ])) : (n(), i(w, { key: 1 }, [
             e("section", Ra, [t[45] || (t[45] = e("p", { class: "learning-eyebrow" }, "正在走向", -1)), e("p", null, u(s(l).profile.goal.description), 1)]),
             s(l).unit ? (n(), i("button", {
               key: 0,
@@ -1102,7 +1102,7 @@ var ka = {
           t[54] || (t[54] = e("p", { class: "learning-eyebrow" }, "每一次认真，都算数", -1)),
           t[55] || (t[55] = e("h1", null, "我的收获", -1)),
           s(l).completions.length ? p("", !0) : (n(), i("p", Pa, "跟老师练完一个小目标，成果就会留在这里。没有连签，也没有欠下的功课。")),
-          (n(!0), i(I, null, A(P.value, (v) => (n(), i("article", {
+          (n(!0), i(w, null, A(P.value, (v) => (n(), i("article", {
             key: v.unitId,
             class: "learning-harvest-entry"
           }, [
@@ -1150,7 +1150,7 @@ var ka = {
             value: s(l).language,
             disabled: !s(d),
             onChange: t[19] || (t[19] = (v) => s(b)("language", { language: v.target.value }))
-          }, [(n(!0), i(I, null, A([.../* @__PURE__ */ new Set([s(l).language, ...s(l).languages])], (v) => (n(), i("option", {
+          }, [(n(!0), i(w, null, A([.../* @__PURE__ */ new Set([s(l).language, ...s(l).languages])], (v) => (n(), i("option", {
             key: v,
             value: v
           }, u(new Intl.DisplayNames(["zh-CN"], { type: "language" }).of(v)), 9, _a))), 128))], 40, Za)]),
@@ -1168,7 +1168,7 @@ var ka = {
                 speed: Number(q.value)
               } }), ["prevent"]))
             }, [
-              e("label", null, [t[58] || (t[58] = S("音色", -1)), U(e("select", { "onUpdate:modelValue": t[21] || (t[21] = (v) => L.value = v) }, [(n(!0), i(I, null, A(s(l).voices.voices, (v) => (n(), i("option", {
+              e("label", null, [t[58] || (t[58] = S("音色", -1)), U(e("select", { "onUpdate:modelValue": t[21] || (t[21] = (v) => L.value = v) }, [(n(!0), i(w, null, A(s(l).voices.voices, (v) => (n(), i("option", {
                 key: v.id,
                 value: v.id,
                 disabled: !v.available
@@ -1268,7 +1268,7 @@ var ka = {
           onChange: t[34] || (t[34] = (v) => s(b)("seek", { value: Number(v.target.value) }))
         }, null, 40, bl)) : p("", !0)
       ])) : p("", !0),
-      e("nav", gl, [(n(), i(I, null, A([
+      e("nav", gl, [(n(), i(w, null, A([
         ["desk", "书桌"],
         ["lesson", "课堂"],
         ["records", "记录"],

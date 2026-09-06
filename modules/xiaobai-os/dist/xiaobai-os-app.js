@@ -91,10 +91,10 @@ var T2 = Object.freeze({
   bank: w(w2, B2, () => import("./xiaobai-os-BankApp-QKqBddSY.js")),
   game: w(x2, E2, () => import("./xiaobai-os-GameApp-C-3aGVWd.js")),
   map: w(k2, D2, () => import("./xiaobai-os-MapApp-BDA2OYTF.js")),
-  messages: w(A2, H2, () => import("./xiaobai-os-MessagesApp-C9uAZ5Ib.js")),
-  tasks: w(O2, $2, () => import("./xiaobai-os-TasksApp-Cj_oL4i0.js")),
+  messages: w(A2, H2, () => import("./xiaobai-os-MessagesApp-Bni4cEIH.js")),
+  tasks: w(O2, $2, () => import("./xiaobai-os-TasksApp-D9j0Qdzm.js")),
   world: w(R2, L2, () => import("./xiaobai-os-WorldApp-D19bOK70.js")),
-  learning: w(G2, C2, () => import("./xiaobai-os-LearningApp-DtCLhmNC.js"))
+  learning: w(G2, C2, () => import("./xiaobai-os-LearningApp-y4iz6ZF9.js"))
 }), q = Object.freeze(g2.map((t) => {
   const a = T2[t];
   if (!a) throw new Error(`missing_shell_app:${t}`);

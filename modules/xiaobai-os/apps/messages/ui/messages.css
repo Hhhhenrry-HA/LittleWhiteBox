@@ -89,6 +89,8 @@
 .messages-media-unavailable-note { display: block; margin-top: 5px; }
 .messages-banner { display: flex; flex-wrap: wrap; gap: 7px; padding: 10px 18px; background: color-mix(in srgb, #cb944e 12%, var(--xiaobai-os-surface)); font-size: 11px; line-height: 1.6; }
 .messages-banner span { width: 100%; }.messages-banner button { background: none; padding: 3px 0; margin-right: 12px; text-decoration: underline; }
+.messages-save-actions { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.messages-save-actions button { min-height: 36px; margin-right: 0; }
 .messages-error { font-size: 11px; line-height: 1.7; color: #b15b4a; margin: 0; padding: 10px 18px; }.theme-dark .messages-error { color: #eea592; }
 .messages-notice { font-size: 11px; padding: 8px 16px; text-align: center; color: var(--xiaobai-os-muted); }
 .messages-dialog { width: calc(100% - 32px); max-width: 350px; max-height: 80%; padding: 22px; background: var(--xiaobai-os-surface); color: var(--xiaobai-os-ink); border: 1px solid var(--xiaobai-os-divider); border-radius: 24px; box-shadow: 0 20px 90px #00000040; }

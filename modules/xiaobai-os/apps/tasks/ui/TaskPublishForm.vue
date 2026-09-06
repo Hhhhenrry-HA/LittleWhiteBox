@@ -24,7 +24,7 @@ function submit(): void {
                 <details class="tasks-form-extra"><summary>补充约束与风险 <span>选填</span></summary><div class="tasks-form-group"><label><span>执行约束</span><textarea v-model="form.requirements" maxlength="8000" rows="3" placeholder="对行动方式的要求，不增加第二个目标" /></label><label><span>已知风险</span><textarea v-model="form.risk" maxlength="2000" rows="3" placeholder="有哪些需要执行者提前知道的风险？" /></label></div></details>
                 <div class="tasks-reward-editor"><label><span>为这份委托设定报酬 <b>*</b></span><span class="tasks-amount-input"><i>¤</i><input v-model.number="form.reward" aria-label="托管报酬" type="number" required min="1" :max="balance" step="1"></span></label><div class="tasks-reward-presets"><button v-for="amount in [20, 50, 100]" :key="amount" type="button" :aria-pressed="Number(form.reward) === amount" :disabled="amount > balance" @click="form.reward = amount">¤ {{ amount }}</button></div><p>可用余额 <strong>¤ {{ taskMoney(balance) }}</strong></p><p v-if="Number(form.reward) > balance" class="tasks-error-text" role="status">报酬超出可用余额，请调整金额。</p></div>
             </fieldset>
-            <p class="tasks-hint"><TaskIcon name="ticket" />发布时托管报酬；招募期间可撤回退款，选定执行者后不可撤回。</p>
+            <p class="tasks-hint"><TaskIcon name="ticket" />发布时托管报酬；招募中或执行中均可取消，全额退还托管报酬。</p>
             <p v-if="disabledReason" class="tasks-hint">{{ disabledReason }}</p>
             <button type="submit" class="tasks-primary-button tasks-full-button" :disabled="busy || Boolean(disabledReason) || Number(form.reward) > balance">{{ busy ? '正在发布…' : '预览并发布' }}<TaskIcon name="next" /></button>
         </form>

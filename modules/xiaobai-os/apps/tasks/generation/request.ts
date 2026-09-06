@@ -132,8 +132,8 @@ export function createTaskGenerationRequests({
         }
     }
 
-    async function captureCurrent(): Promise<Awaited<ReturnType<TaskGenerationContextAdapter['capture']>>> {
-        try { return await context.capture(); }
+    async function captureCurrent(includeWorldInfo = true): Promise<Awaited<ReturnType<TaskGenerationContextAdapter['capture']>>> {
+        try { return await context.capture({ includeWorldInfo }); }
         catch (error) {
             if (isStaleRequestError(error)) { throw error; }
             throw new Error('tasks_context_failed', { cause: error });
@@ -199,7 +199,7 @@ export function createTaskGenerationRequests({
             return { valid: false, assistantCount: 0 };
         }
         try {
-            const current = await captureCurrent();
+            const current = await captureCurrent(false);
             const casValid = boundary.kind === 'board'
                 ? boardCas(boundary.expectedBoardId)
                 : !!candidateRecord(boundary);
@@ -208,10 +208,10 @@ export function createTaskGenerationRequests({
                     && !isMainGenerationActive()
                     && tasks.getWriteState() === 'ready'
                     && current.chatIdentity === boundary.chatIdentity
-                    // World news is reference material frozen for this request, not live task/story state.
+                    // World info/news are frozen reference material, not live task/story state.
                     && jsonValuesEqual(
-                        { ...current.contextSnapshot, worldContent: null },
-                        { ...boundary.contextSnapshot, worldContent: null },
+                        { ...current.contextSnapshot, worldInfo: null, worldContent: null },
+                        { ...boundary.contextSnapshot, worldInfo: null, worldContent: null },
                     )
                     && casValid,
                 assistantCount: current.assistantCount,

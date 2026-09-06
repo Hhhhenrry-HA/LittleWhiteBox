@@ -1,9 +1,9 @@
+import { sha256 } from 'js-sha256';
 import type { AcceptedTurnPlayer } from '../../../capabilities/maintenance/accepted-turn-source.js';
 import type { MapDomainEdit } from '../../../domains/map/edit.js';
 import {
     MAX_MAP_ACTORS,
     MAX_MAP_BRIEF_LENGTH,
-    MAX_MAP_ID_LENGTH,
     MAX_MAP_LABEL_LENGTH,
     MAX_MAP_LINKS,
     MAX_MAP_LOCATIONS,
@@ -35,21 +35,9 @@ export interface AtlasIntentCompileResult {
     readonly result: MapToolResult;
 }
 
-function stableTextHash(value: string): string {
-    let hash = 0x811c9dc5;
-    for (const character of value) {
-        hash ^= character.codePointAt(0) || 0;
-        hash = Math.imul(hash, 0x01000193);
-    }
-    return (hash >>> 0).toString(36);
-}
-
 function stableLinkId(from: string, to: string, kind: string, bidirectional: boolean): string {
     const endpoints = bidirectional ? [from, to].sort() : [from, to];
-    const readable = `link:${endpoints.join(':')}:${kind}`;
-    return Array.from(readable).length <= MAX_MAP_ID_LENGTH
-        ? readable
-        : `link:${stableTextHash(`${bidirectional ? 'both' : 'one'}:${endpoints.join(':')}:${kind}`)}:${kind}`;
+    return `link:${sha256(JSON.stringify([bidirectional, ...endpoints, kind]))}`;
 }
 
 function unsupportedFields(value: Record<string, unknown>, allowed: ReadonlySet<string>): string[] {

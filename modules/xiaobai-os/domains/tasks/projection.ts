@@ -9,10 +9,6 @@ function invalid(detail: string): never {
     throw new TaskError('task_invalid_domain', detail);
 }
 
-function sameJson(left: unknown, right: unknown): boolean {
-    return JSON.stringify(left) === JSON.stringify(right);
-}
-
 function applyTaskEvent(records: Map<string, TaskRecord>, event: TaskEvent): void {
     const current = records.get(event.taskId);
     if (event.kind === 'accepted') {
@@ -90,16 +86,12 @@ function applyTaskEvent(records: Map<string, TaskRecord>, event: TaskEvent): voi
             invalid(`event.${event.eventId}.assign`);
         }
         const candidate = current.candidates.find(entry => entry.candidateId === event.assignee.partyId);
-        const expected = candidate ? {
-            kind: 'world' as const,
-            partyId: candidate.candidateId,
-            displayName: candidate.name,
-            description: candidate.description,
-            pitch: candidate.pitch,
-            capability: candidate.capability,
-            risk: candidate.risk,
-        } : null;
-        if (!expected || !sameJson(event.assignee, expected)) {invalid(`event.${event.eventId}.candidate`);}
+        if (!candidate || event.assignee.kind !== 'world'
+            || event.assignee.displayName !== candidate.name
+            || event.assignee.description !== candidate.description
+            || event.assignee.pitch !== candidate.pitch
+            || event.assignee.capability !== candidate.capability
+            || event.assignee.risk !== candidate.risk) {invalid(`event.${event.eventId}.candidate`);}
         current.assignee = structuredClone(event.assignee);
         current.candidates = [];
         current.status = 'active';

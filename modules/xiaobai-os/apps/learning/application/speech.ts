@@ -1,5 +1,6 @@
 import { parseLearningVoice, learningSpeechParts } from '../../../domains/learning/speech.js';
 import { requireLearning } from '../../../domains/learning/validation.js';
+import { canReadLearningScope } from '../../../domains/learning/types.js';
 import { createLearningMedia, type LearningSpeech, type LearningTtsFacade, type LearningMediaState } from '../host/media-adapter.js';
 import { confirmedLearning, createLearningService, type LearningRepository } from './service.js';
 import type { LearningClassroom } from './teaching.js';
@@ -8,14 +9,14 @@ import type { LearningClassroom } from './teaching.js';
 export function createLearningSpeech(options: {
     repository: LearningRepository; current(): LearningClassroom | null;
     getFacade?: () => LearningTtsFacade | undefined; onState(state: LearningMediaState): void;
-    onSave(): void; onError(): void;
+    onSave(): void; onError(error?: unknown): void;
 }) {
     const service = createLearningService(options.repository);
     let pending: Promise<boolean> = Promise.resolve(true);
     const hearingWrites: Array<() => Promise<void>> = [];
     let blocked = false;
     let revision = 0;
-    let listening: { classroom: LearningClassroom; unitId: string; exerciseId: string; request: LearningSpeech } | null = null;
+    let listening: { classroom: LearningClassroom; unitId: string; exerciseId: string; materialId: string; request: LearningSpeech } | null = null;
     const media = createLearningMedia({ getFacade: options.getFacade, isCurrent: () => !!options.current(), onState: options.onState,
         onPlayback(request, event) {
             const owner = listening;
@@ -23,9 +24,18 @@ export function createLearningSpeech(options: {
             const guard = () => JSON.stringify(options.current()) === JSON.stringify(owner.classroom);
             hearingWrites.push(async () => {
                 if (!guard()) { return; }
+                // Adoption can replace the lesson while later playback events are still queued.
+                // Only retry a fact while its original exercise and exact spoken span still exist.
+                const unit = confirmedLearning(options.repository)?.data.profiles.find(entry => entry.language === owner.classroom.language)?.unit;
+                const exercise = unit?.exercises.find(entry => entry.id === owner.exerciseId);
+                const material = unit?.materials.find(entry => entry.id === owner.materialId);
+                if (unit?.id !== owner.unitId || !exercise || exercise.skill !== 'listening'
+                    || !canReadLearningScope(unit.scope, owner.classroom.osId)
+                    || !exercise.materialIds.includes(owner.materialId) || !material
+                    || !learningSpeechParts(material).some(part => part.key === request.key && part.text === request.text)) { return; }
                 const result = await service.listening(owner.classroom.language, owner.unitId, owner.exerciseId,
                     { voiceId: request.voiceId, language: request.language, speed: request.speed },
-                    event.started ? request.key : null, event.slow, owner.classroom.osId, guard);
+                    request.key, event.started, event.slow, owner.classroom.osId, guard);
                 // An uncertain candidate belongs to repository recovery; never increment it twice.
                 if (result.status !== 'confirmed' && result.status !== 'unchanged') { options.onError(); media.stop(); }
                 options.onSave();
@@ -40,9 +50,9 @@ export function createLearningSpeech(options: {
             try {
                 await hearingWrites[0]();
                 hearingWrites.shift();
-            } catch {
+            } catch (error) {
                 // Definite rejection/read failure: retain the actual event for an explicit retry.
-                blocked = true; options.onError(); media.stop(); return false;
+                blocked = true; options.onError(error); media.stop(); return false;
             }
         }
         blocked = false;
@@ -52,6 +62,8 @@ export function createLearningSpeech(options: {
     function stop() { revision++; listening = null; media.stop(); }
     return {
         media, stop, flush,
+        // Cleanup waits for already-started writes, but need not retry an event that cannot fit.
+        async settle() { await pending; },
         async play(input: { materialId: string; partKey: string; exerciseId?: string }) {
             stop();
             const own = revision;
@@ -74,14 +86,14 @@ export function createLearningSpeech(options: {
             if (!capability.enabled) {
                 await media.play({ key: part.key, text: '', voiceId: '', language: classroom.language, speed: 1 }); return;
             }
-            const locked = isListening && unit.listening?.find(entry => entry.exerciseId === exercise.id)?.voice;
+            const locked = isListening && unit.listening?.find(entry => entry.parts.some(heard => heard.key === part.key))?.voice;
             const voice = parseLearningVoice(locked || profile?.voice || { voiceId: capability.defaultVoice, language: classroom.language, speed: 1 });
             if (!capability.voices.some(entry => entry.id === voice.voiceId && entry.available)) {
                 await media.play({ ...voice, key: part.key, text: '' }); return;
             }
             if (!guard()) { return; }
             const request = { ...voice, key: part.key, text: part.text };
-            if (isListening) { listening = { classroom, unitId: unit.id, exerciseId: exercise.id, request }; }
+            if (isListening) { listening = { classroom, unitId: unit.id, exerciseId: exercise.id, materialId: material.id, request }; }
             await media.play(request);
         },
         async say(text: string) {

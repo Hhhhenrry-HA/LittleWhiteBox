@@ -17,7 +17,7 @@ export function createMessagesService(store: ScopedChatStore<MessagesDomainV1>, 
     }
     return { current, change, refresh: () => store.read(), subscribe: store.subscribe,
         fileState: files.getFileState, pending: () => files.hasPendingCommit('messages'),
-        confirm: files.retryPending, subscribeFile: files.subscribeFileState };
+        confirm: files.retryPending, adoptServerState: files.adoptServerState, subscribeFile: files.subscribeFileState };
 }
 
 export type MessagesService = ReturnType<typeof createMessagesService>;

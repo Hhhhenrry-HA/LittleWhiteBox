@@ -16,7 +16,7 @@ const state = ref(props.initialState as MessagesClientState);
 const selected = ref(''); const page = ref<ThreadPage>({ contactId: '', messages: [], hasMore: false, retryMessageId: null });
 const loading = ref(false); const working = ref(false); const error = ref('');
 const conversation = ref<InstanceType<typeof Conversation> | null>(null);
-const dialog = ref<HTMLDialogElement | null>(null); const mode = ref<'add' | 'detail' | 'delete' | 'delete-image' | 'sync' | 'recover'>('add');
+const dialog = ref<HTMLDialogElement | null>(null); const mode = ref<'add' | 'detail' | 'delete' | 'delete-image' | 'sync' | 'recover' | 'adopt'>('add');
 const imageToDelete = ref('');
 const name = ref(''); const note = ref(''); const personSearch = ref('');
 const action = ref(createMessageId()); const contactAction = ref(createMessageId());
@@ -129,18 +129,31 @@ function removeImage() {
     });
 }
 function recover() {void run(async () => {apply(await request('messages/recover')); close();});}
+function adoptServer() {
+    void run(async () => {
+        apply(await request('messages/adopt-server-state'));
+        if (state.value.fileState === 'ready' && !state.value.pendingSave) {close();}
+        else {error.value = '暂时未能采用服务器版本，请检查网络后重试。当前记录保持不变。';}
+    });
+}
 onUnmounted(() => {alive = false; threadRequest++; unsubscribe();});
 </script>
 <template>
     <main class="messages-app">
-        <div v-if="needsSave" class="messages-banner" role="status"><span>有消息还在等待保存确认，已保存的记录不会丢失。</span><button :disabled="working || !!state.busy" @click="operation(state.pendingSave ? 'messages/confirm' : 'messages/refresh')">检查保存</button></div>
+        <div v-if="needsSave" class="messages-banner" role="status">
+            <span>{{ state.fileState === 'conflict' ? '服务器上的存档已有变化，请选择如何处理。' : '有消息还在等待保存确认，已保存的记录不会丢失。' }}</span>
+            <div class="messages-save-actions">
+                <button :disabled="working || !!state.busy" @click="operation(state.pendingSave ? 'messages/confirm' : 'messages/refresh')">检查保存</button>
+                <button v-if="state.fileState === 'conflict'" :disabled="working || !!state.busy || state.generationActive" @click="open('adopt')">采用服务器版本</button>
+            </div>
+        </div>
         <div v-else-if="state.unsynced && !state.busy" class="messages-banner" role="status"><span>{{ state.unsynced }} 条消息已保留，尚未写入主聊天。</span><button :disabled="disabled" @click="open('sync')">查看</button></div>
         <div v-if="state.generationActive" class="messages-notice">故事正在继续，稍后就能发送消息。</div>
         <p v-if="error || state.error" class="messages-error" role="alert">{{ error || state.error }}</p>
         <Conversation v-if="contact" :key="contact.id" ref="conversation" v-model:draft="draft" :contact="contact" :page="page" :bridge="bridge" :chat-identity="state.chatIdentity" :disabled="disabled" :stage="state.busy?.contactId === contact.id ? state.busy.stage : ''" :loading="loading" :load-more="() => readThread(true)" :media="state.media" :waiting-for="waitingFor" @back="back" @details="open('detail')" @send="send" @retry="retry" @delete-image="confirmImageDelete" />
         <ContactList v-else :contacts="state.contacts" :busy-contact-id="state.busy?.contactId ?? ''" :drafts="drafts" @select="select" @add="open('add')" />
         <dialog ref="dialog" class="messages-dialog" @keydown.esc.stop @click="event => { if (event.target === dialog) close(); }">
-            <header><ContactAvatar v-if="mode === 'detail' && contact" :identity="contact.id" :name="contact.name" small /><h2>{{ mode === 'add' ? '新的对话' : mode === 'detail' ? contact?.name : mode === 'delete' ? '删除联系人？' : mode === 'delete-image' ? '删除这条图片消息？' : mode === 'sync' ? '消息还未写入主聊天' : '在当前位置补记？' }}</h2><button class="messages-icon-button" aria-label="关闭" @click="close"><MessageIcon name="close" /></button></header>
+            <header><ContactAvatar v-if="mode === 'detail' && contact" :identity="contact.id" :name="contact.name" small /><h2>{{ mode === 'add' ? '新的对话' : mode === 'detail' ? contact?.name : mode === 'delete' ? '删除联系人？' : mode === 'delete-image' ? '删除这条图片消息？' : mode === 'sync' ? '消息还未写入主聊天' : mode === 'adopt' ? '采用服务器版本？' : '在当前位置补记？' }}</h2><button class="messages-icon-button" aria-label="关闭" @click="close"><MessageIcon name="close" /></button></header>
             <p v-if="error" class="messages-error" role="alert">{{ error }}</p>
             <template v-if="mode === 'add'">
                 <label class="messages-search"><MessageIcon name="search" /><input v-model="personSearch" placeholder="查找已知人物" aria-label="查找已知人物"></label>
@@ -151,6 +164,7 @@ onUnmounted(() => {alive = false; threadRequest++; unsubscribe();});
             <template v-else-if="mode === 'delete'"><p>会删除信息 APP 内与 {{ contact?.name }} 的全部通讯和摘要，不能恢复。主聊天中的「私人信息」楼层不会删除，其他联系人不受影响。</p><button class="messages-danger" :disabled="disabled" @click="remove">确认删除</button><button class="messages-secondary" @click="mode = 'detail'">保留联系人</button></template>
             <template v-else-if="mode === 'delete-image'"><p>这条图片及配文将从信息 APP 中删除，不再发送给模型，不能恢复。其他消息保留。</p><p class="messages-subtle">主聊天里的记录和图库原图不会删除。</p><button class="messages-danger" :disabled="disabled" @click="removeImage">确认删除</button><button class="messages-secondary" @click="close">取消</button></template>
             <template v-else-if="mode === 'sync'"><p>信息 APP 已保留这些消息。重试只会补上主聊天里的记录，不会再次向对方发送，也不会重新生成回复。</p><button class="messages-primary" :disabled="disabled" @click="sync">重试写入</button><details class="messages-manual"><summary>原来的记录已被修改或删除？</summary><p>不会覆盖你的修改。需要这些消息继续进入剧情时，可以在当前位置另加一条补记。</p><button class="messages-secondary" :disabled="disabled" @click="mode = 'recover'">查看补记方式</button></details></template>
+            <template v-else-if="mode === 'adopt'"><p>将读取服务器上的当前聊天小白 OS 存档，放弃本地尚未确认的修改。信息 APP 会显示服务器已保存的联系人和消息。</p><p class="messages-subtle">这项选择作用于当前聊天的整份 OS 存档，不会删除主聊天里的记录，也不会重新生成回复。</p><button class="messages-danger" :disabled="working || !!state.busy || state.generationActive" @click="adoptServer">确认采用服务器版本</button><button class="messages-secondary" :disabled="working" @click="close">暂不处理</button></template>
             <template v-else><p>先检查已有记录；仍未写入的消息会在主聊天当前位置标为「补录」，保留原发送时间。不会覆盖旧记录或恢复你删除的那一条。</p><button class="messages-primary" :disabled="disabled" @click="recover">确认补记</button><button class="messages-secondary" @click="close">暂不补记</button></template>
         </dialog>
     </main>

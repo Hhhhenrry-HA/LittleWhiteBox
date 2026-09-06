@@ -19,7 +19,7 @@ import { parseOutgoingMessage } from '../apps/messages/application/image-upload.
 const clone = structuredClone;
 async function harness() {
     const binding = { kind: 'character', ownerLocator: 'test.png', chatId: 'chat' };
-    const h = { identity: 'chat', persisted: null, writes: 0, replace: null, messages: [], remote: [], publishes: 0, failProjection: false, apiCalls: 0, response: null,
+    const h = { identity: 'chat', persisted: null, writes: 0, replace: null, read: null, messages: [], remote: [], publishes: 0, failProjection: false, apiCalls: 0, response: null,
         images: new Map(), uploads: 0, upload: null, requests: [] };
     h.persisted = { formatVersion: 1, osId: 'os', binding, revision: 0, commitId: 'initial', partitions: {} };
     let serial = 0; const id = () => `id-${++serial}`;
@@ -28,7 +28,7 @@ async function harness() {
     const coordinator = createTransactionCoordinator({ partitions: registry, createId: id,
         chatReferences: { capture, isCurrent: value => value.identityKey === h.identity, install: async () => ({ status: 'confirmed' }) },
         storage: {
-            async read() {return clone(h.persisted);},
+            async read() {return h.read ? h.read() : clone(h.persisted);},
             async replace(input) {h.writes++; if (h.replace) {return h.replace(input);} h.persisted = clone(input.candidate); return { status: 'confirmed' };},
             async delete() {return 'deleted';},
         },
@@ -71,6 +71,43 @@ async function harness() {
 const photo = parseOutgoingMessage({ type: 'image', description: '', upload: {
     name: '照片.png', dataUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a2XsAAAAASUVORK5CYII=',
 } });
+
+test('a real sidecar conflict can be explicitly adopted through Messages, then edited and sent again', async () => {
+    const h = await harness(); await h.send('甲', 'existing');
+    const runtime = createMessagesRuntime({ ...h.deps, identity: () => h.identity, isGenerating: () => false, changed() {} });
+    const controller = createMessagesController({ ...h.deps, runtime, identity: () => h.identity,
+        context: { ...h.deps.context, knownPeople: () => [] }, media: { capabilities: () => ({ image: false, voice: false }), cancelAll() {} },
+        isGenerating: () => false, subscribeGeneration: () => () => {}, subscribeChat: () => () => {} });
+    controller.activate({ isCurrent: () => true, post() {} });
+    const command = (type, payload = {}) => controller.handleMessage({ type: `messages/${type}`, payload: { chatIdentity: 'chat', ...payload } });
+    await command('refresh');
+    const original = h.service.current(); const calls = h.apiCalls; const native = clone(h.messages);
+    h.replace = () => {
+        h.persisted.revision++; h.persisted.commitId = 'server-conflict';
+        h.persisted.partitions.messages.contacts[0].note = '服务器的备注';
+        return { status: 'conflict', observed: clone(h.persisted) };
+    };
+    await assert.rejects(command('contact/note', { contactId: '甲', note: '未保存的备注' }));
+    for (let i = 0; i < 3; i++) {
+        const state = await command('confirm');
+        assert.equal(state.fileState, 'conflict'); assert.equal(state.pendingSave, true);
+    }
+    assert.deepEqual(h.service.current(), original);
+    h.read = async () => {throw new Error('offline');};
+    assert.equal((await command('adopt-server-state')).fileState, 'conflict');
+    assert.equal(h.service.pending(), true); assert.deepEqual(h.service.current(), original);
+    h.read = null; h.replace = null;
+    const recovered = await command('adopt-server-state');
+    assert.equal(recovered.fileState, 'ready'); assert.equal(recovered.pendingSave, false);
+    assert.equal(recovered.contacts.find(contact => contact.id === '甲').note, '服务器的备注');
+    assert.equal(h.apiCalls, calls); assert.deepEqual(h.messages, native);
+    assert.equal((await command('contact/delete', { contactId: '乙' })).contacts.length, 1);
+    await h.send('甲', 'after-recovery');
+    assert.equal(h.apiCalls, calls + 1);
+    h.identity = 'another';
+    await assert.rejects(command('adopt-server-state'), /messages_chat_changed/);
+    await runtime.stop(); controller.deactivate();
+});
 
 test('device image is saved once, persists as a local reference, and reaches the reply model as pixels after rereading', async () => {
     const h = await harness();

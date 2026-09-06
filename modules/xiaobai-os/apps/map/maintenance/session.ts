@@ -82,6 +82,7 @@ export function createMapMaintenanceSession(
 
     return Object.freeze({
         participantId: 'map',
+        commitPolicy: mode === 'rebuild' ? 'complete-run' : 'staged',
         prompt: buildMapMaintenancePrompt(mode),
         dataMessages: Object.freeze([{ role: 'user' as const, content: buildMapAtlasDataMessage(initialStaged) }]),
         tools: MAP_MAINTENANCE_TOOLS,
@@ -113,10 +114,10 @@ export function createMapMaintenanceSession(
             }
             throw new TypeError(`Unknown map maintenance tool: ${name}`);
         },
-        canCommit: hasChanges,
+        canCommit: () => hasChanges() && (mode !== 'rebuild' || unresolvedFailures.size === 0),
         getResult() {
-            const changed = hasChanges();
             const unresolved = unresolvedFailures.size > 0;
+            const changed = hasChanges() && (mode !== 'rebuild' || !unresolved);
             return Object.freeze({
                 status: unresolved ? (changed ? 'partial' : 'failed') : changed ? 'updated' : 'unchanged',
                 changed,
@@ -124,6 +125,7 @@ export function createMapMaintenanceSession(
         },
         async commit(beforeCommit: MaintenanceCommitGuard): Promise<MapServiceView | undefined> {
             assertActive();
+            if (mode === 'rebuild' && unresolvedFailures.size) { throw new Error('map_rebuild_edits_unresolved'); }
             if (!hasChanges()) { return map.readCurrent(); }
             const guard = () => {
                 assertActive();

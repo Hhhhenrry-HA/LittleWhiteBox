@@ -53,9 +53,11 @@ export function createLearningRuntime(deps: {
     const practice = createLearningPractice({ repository, teaching, current });
     const speech = createLearningSpeech({ repository, current, getFacade: deps.getTtsFacade,
         onState: media => { if (active()) { activation!.post('learning/media', { media }); } }, onSave: () => publish(),
-        onError: () => { message = repository.snapshot().status === 'ready'
-            ? '听取记录保存失败，已暂停播放。请重试刚才的操作，会先重试保存听取记录。'
-            : '听取记录未确认保存，请先核实保存再作答；原题保持不变。'; publish(); } });
+        onError: error => { message = error instanceof LearningStorageError && error.code === 'learning_file_full'
+            ? '学习文件已满，已暂停播放。请先导出或清理不需要的学习记录；腾出空间后再操作，会重试保存听取记录。'
+            : repository.snapshot().status === 'ready'
+                ? '听取记录保存失败，已暂停播放。请重试刚才的操作，会先重试保存听取记录。'
+                : '听取记录未确认保存，请先核实保存再作答；原题保持不变。'; publish(); } });
 
     function state(): LearningClientState {
         const snapshot = repository.snapshot();
@@ -209,7 +211,13 @@ export function createLearningRuntime(deps: {
         // Stop first so hearing facts cannot race a teacher snapshot or a submitted answer.
         speech.stop();
         void deps.execution.run(async () => {
-            try { if (await speech.flush() && guard()) { await action(name, input, guard); } }
+            try {
+                const cleanup = ['delete-note', 'delete-item', 'delete-attempt', 'abandon', 'delete-language', 'clear'].includes(name);
+                // Free space before retrying hearing writes. Repository confirmation/conflict guards still apply.
+                if (cleanup) { await speech.settle(); }
+                else if (!await speech.flush()) { return; }
+                if (guard()) { await action(name, input, guard); }
+            }
             catch (error) {
                 if (guard()) {
                     message = error instanceof LearningStorageError ? learningTeachingFailure(error.code)

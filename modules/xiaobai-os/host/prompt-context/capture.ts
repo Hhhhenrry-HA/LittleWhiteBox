@@ -136,19 +136,21 @@ export function createHostPromptContextAdapter({
             worldInfo: { before: '', after: '', depth: [] },
             storyEvents: '',
         };
-        const includeNames = context.worldInfoIncludeNames === true;
-        const scanChat = [...options.worldInfoScanMessages ?? [], ...messages.map((message) => {
-            const text = String(message.text || '');
-            return includeNames ? `${message.speakerName}: ${text}` : text;
-        }).reverse()];
-        const globalScanData = promptScanData(context, report);
-        const hostMaxContext = Number(context.maxContext);
-        const worldInfoContext = Number.isFinite(hostMaxContext) && hostMaxContext > 0
-            ? Math.floor(hostMaxContext)
-            : 8_192;
         const [worldInfo, storyEvents] = await Promise.all([
             (async (): Promise<PromptContextInput['worldInfo']> => {
-                if (typeof context.getWorldInfoPrompt !== 'function') {return { before: '', after: '', depth: [] };}
+                if (options.includeWorldInfo === false || typeof context.getWorldInfoPrompt !== 'function') {
+                    return { before: '', after: '', depth: [] };
+                }
+                const includeNames = context.worldInfoIncludeNames === true;
+                const scanChat = [...options.worldInfoScanMessages ?? [], ...messages.map((message) => {
+                    const text = String(message.text || '');
+                    return includeNames ? `${message.speakerName}: ${text}` : text;
+                }).reverse()];
+                const globalScanData = promptScanData(context, report);
+                const hostMaxContext = Number(context.maxContext);
+                const worldInfoContext = Number.isFinite(hostMaxContext) && hostMaxContext > 0
+                    ? Math.floor(hostMaxContext)
+                    : 8_192;
                 try {
                     const value = await context.getWorldInfoPrompt(scanChat, worldInfoContext, true, globalScanData);
                     const result = isRecord(value) ? value : {};

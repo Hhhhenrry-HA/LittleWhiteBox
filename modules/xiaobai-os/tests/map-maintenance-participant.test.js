@@ -385,7 +385,8 @@ test('Atlas reads default to a compact summary and page explicit collections', a
     const links = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.ATLAS_READ, {
         mode: 'links', from: 'place-1', query: 'main',
     });
-    assert.deepEqual(links.data.links.map(link => link.id), ['link:place-0:place-1:road']);
+    assert.equal(links.data.links.length, 1);
+    assert.deepEqual([links.data.links[0].from, links.data.links[0].to, links.data.links[0].kind], ['place-0', 'place-1', 'road']);
 
     const actor = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.ATLAS_READ, {
         mode: 'actors', actorKey: 'keeper',
@@ -443,7 +444,7 @@ test('declarative Atlas edits create and clear hierarchy with idempotent bidirec
     const map = harness.map.readCurrent().map;
     assert.equal(map.atlas.locations.find(location => location.key === 'cellar').parent, 'inn');
     assert.equal(map.atlas.links.length, 1);
-    assert.equal(map.atlas.links[0].id, 'link:cellar:inn:stairs');
+    assert.equal(map.atlas.links[0].id, result.applied.find(item => item.collection === 'links').id);
     assert.equal(map.atlas.actors[0].displayName, 'Alice');
 
     const unparent = await harness.participant.createSession(acceptedSource(), 'manual');
@@ -453,6 +454,67 @@ test('declarative Atlas edits create and clear hierarchy with idempotent bidirec
     assert.equal(unparentResult.status, 'updated');
     await unparent.commit(() => true);
     assert.equal(Object.hasOwn(harness.map.readCurrent().map.atlas.locations.find(location => location.key === 'cellar'), 'parent'), false);
+});
+
+test('auto route IDs distinguish colon-bearing keys, long keys, and direction, and remain stable on retries', async () => {
+    const harness = createHarness();
+    const session = await harness.participant.createSession(acceptedSource(), 'manual');
+    const long = '市'.repeat(70);
+    const routes = [
+        { from: 'city:gate', to: 'road', kind: 'road' }, { from: 'city', to: 'gate:road', kind: 'road' },
+        { from: 'city', to: 'gate:road', kind: 'road', bidirectional: false },
+        { from: 'gate:road', to: 'city', kind: 'road', bidirectional: false },
+        { from: `${long}:a`, to: 'b', kind: 'path' }, { from: long, to: 'a:b', kind: 'path' },
+    ];
+    const keys = [...new Set(routes.flatMap(route => [route.from, route.to]))];
+    const first = await session.executeTool('MapAtlasEdit', { locations: keys.map(key => ({ key, name: key })), links: routes });
+    assert.equal(first.ok, true);
+    await session.commit(() => true);
+    const before = harness.map.readCurrent().map.atlas.links;
+    assert.equal(new Set(before.map(link => link.id)).size, routes.length);
+    assert.ok(before.every(link => [...link.id].length <= 80));
+    const retry = await harness.participant.createSession(acceptedSource(), 'manual');
+    const reversed = routes.map(route => route.bidirectional === false ? route : { ...route, from: route.to, to: route.from });
+    assert.equal((await retry.executeTool('MapAtlasEdit', { links: reversed })).status, 'unchanged');
+    assert.deepEqual((await retry.executeTool('MapAtlasRead', { mode: 'document' })).data.atlas.links, before);
+});
+
+test('a valid 128-child region is deleted atomically with its links, scenes and actors', async () => {
+    const harness = createHarness();
+    const session = await harness.participant.createSession(acceptedSource(), 'manual');
+    const result = await session.executeTool('MapAtlasEdit', {
+        locations: [{ key: 'region', name: 'Region', scale: 'region' }, { key: 'outside', name: 'Outside' },
+            ...Array.from({ length: 128 }, (_, index) => ({ key: `child-${index}`, name: `Child ${index}`, parent: 'region' }))],
+        links: Array.from({ length: 128 }, (_, index) => ({ from: `child-${index}`, to: 'outside', kind: 'road' })),
+        actors: [{ actorKey: 'player', locationKey: 'child-0' }, { actorKey: 'keeper', displayName: 'Keeper', locationKey: 'outside' }],
+    });
+    assert.equal(result.ok, true);
+    assert.equal((await session.executeTool('MapSceneEdit', { ...indoorFixture, scene: 'child-0' })).ok, true);
+    await session.commit(() => true);
+    const removal = await harness.participant.createSession(acceptedSource(), 'manual');
+    const deleted = await removal.executeTool('MapAtlasEdit', { remove: { locationKeys: ['region'] } });
+    assert.equal(deleted.ok, true, JSON.stringify(deleted));
+    assert.equal((await removal.executeTool('MapAtlasEdit', { remove: { locationKeys: ['region'] } })).status, 'unchanged');
+    await removal.commit(() => true);
+    await harness.map.refreshCurrent();
+    const map = harness.map.readCurrent().map;
+    assert.deepEqual(map.atlas.locations.map(place => place.key), ['outside']);
+    assert.deepEqual(map.atlas.links, []); assert.deepEqual(map.scenes, {});
+    assert.deepEqual(map.atlas.actors.map(actor => actor.actorKey), ['keeper']);
+});
+
+test('a rebuild cannot directly commit unresolved edits, but may commit after repair', async () => {
+    const harness = createHarness();
+    const session = await harness.participant.createSession(acceptedSource(), 'rebuild');
+    await session.executeTool('MapAtlasEdit', { locations: [{ key: 'good', name: 'Good' }, { key: 'bad', name: '' }] });
+    assert.equal(await session.canCommit(), false);
+    assert.deepEqual(session.getResult(), { status: 'failed', changed: false });
+    await assert.rejects(session.commit(() => true), /map_rebuild_edits_unresolved/);
+    assert.equal(harness.writes.length, 0);
+    await session.executeTool('MapAtlasEdit', { locations: [{ key: 'bad', name: 'Fixed' }] });
+    assert.equal(await session.canCommit(), true);
+    await session.commit(() => true);
+    assert.equal(harness.map.readCurrent().map.atlas.locations.length, 2);
 });
 
 test('Atlas retry tracking does not conflate identical location and actor keys', async () => {

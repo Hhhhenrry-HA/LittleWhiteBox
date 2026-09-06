@@ -105,6 +105,7 @@ export async function createClassroomFixture({ listening = false, lesson: lesson
         async reenter() { runtime.deactivate(); active = true; state = await runtime.activate(context()); return state; },
         async changeChat() { chat = 'runtime-b'; envelope = null; coordinator.invalidateCurrent(); runtime.handleChatChanged(); state = await runtime.activate(context()); return state; },
         confirmUser() { userFile = flags.heldUser; flags.userFailure = false; },
+        replaceUser(value) { userFile = structuredClone(value); },
         confirmLedger() { envelope = flags.heldLedger; flags.ledgerUnknown = false; },
         async dispose() { active = false; await execution.dispose(); await capabilities.dispose(); },
     };

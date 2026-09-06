@@ -1,7 +1,7 @@
 import { learningEvidence, replaceLearningAssessment } from '../../../domains/learning/assessment.js';
 import { objectiveLearningVerdict, parseLearningAnswer } from '../../../domains/learning/exercise.js';
 import { parseLearningHelp } from '../../../domains/learning/facts.js';
-import { parseLearningVoice } from '../../../domains/learning/speech.js';
+import { learningListeningBasis, learningSpeechParts, parseLearningVoice } from '../../../domains/learning/speech.js';
 import type { LearningNote } from '../../../domains/learning/notes.js';
 import { canReadLearningScope, type LearningData, type LearningScope } from '../../../domains/learning/types.js';
 import { combineLearningScope, learningId, learningTimestamp, parseLearningScope, requireLearning } from '../../../domains/learning/validation.js';
@@ -40,16 +40,17 @@ export function createLearningService(repository: LearningRepository, options: {
             const answer = parseLearningAnswer(input.answer, exercise.response, unit.materials);
             requireLearning(input.scope.kind === 'public' || input.scope.osId === input.osId, 'scope', 'Use the current story identity');
             const scope = combineLearningScope(unit.scope, parseLearningScope(input.scope, 'scope'));
-            const listening = unit.listening?.find(entry => entry.exerciseId === exercise.id);
+            const listening = exercise.skill === 'listening' ? learningListeningBasis(unit.listening ?? [],
+                unit.materials.filter(material => exercise.materialIds.includes(material.id)).flatMap(learningSpeechParts).map(part => part.key)) : null;
             const help = parseLearningHelp({ answer: unit.revealed.answers.includes(exercise.id), hint: unit.revealed.hints.includes(exercise.id),
                 feedback: unit.attempts.some(attempt => attempt.exerciseId === exercise.id
                     && unit.assessments.some(assessment => assessment.attemptId === attempt.id && canReadLearningScope(assessment.scope, input.osId))),
                 transcript: exercise.skill === 'listening' && unit.materials.some(material => exercise.materialIds.includes(material.id) && material.transcriptRevealed),
-                replays: listening ? listening.parts.reduce((sum, part) => sum + Math.max(0, part.count - 1), 0) : input.replays,
+                replays: listening?.replays ?? input.replays,
                 slowPlayback: listening?.slowPlayback ?? input.slowPlayback });
             const attempt = { id: learningId(createId(), 'attemptId'), exerciseId: exercise.id, answer, scope,
                 submittedAt: learningTimestamp(now(), 'submittedAt'), help,
-                ...(listening?.parts.length ? { listening: structuredClone(listening.voice) } : {}) };
+                ...(listening ? { listening: structuredClone(listening.parts) } : {}) };
             unit.attempts.push(attempt);
             const verdict = objectiveLearningVerdict(exercise, answer);
             if (verdict !== null && exercise.rule.kind !== 'semantic') {
@@ -91,21 +92,25 @@ export function createLearningService(repository: LearningRepository, options: {
                 else if (!unit.notes.some(entry => entry.id === note.id)) { unit.notes.push(structuredClone(note)); }
             }, guard);
         },
-        listening(language: string, unitId: string, exerciseId: string, voice: unknown, partKey: string | null,
-            slow: boolean, osId: string, guard: () => boolean) {
+        listening(language: string, unitId: string, exerciseId: string, voice: unknown, partKey: string,
+            started: boolean, slow: boolean, osId: string, guard: () => boolean) {
             return mutate(language, (data, index) => {
                 const unit = data.profiles[index].unit;
                 requireLearning(unit?.id === unitId && canReadLearningScope(unit.scope, osId)
                     && unit.exercises.some(exercise => exercise.id === exerciseId && exercise.skill === 'listening'), 'exerciseId', 'Select a current listening exercise');
+                const exercise = unit.exercises.find(entry => entry.id === exerciseId)!;
+                requireLearning(unit.materials.filter(material => exercise.materialIds.includes(material.id))
+                    .flatMap(learningSpeechParts).some(part => part.key === partKey), 'partKey', 'Select an actual material span');
+                // A new record covers one span; slowing unrelated audio must not taint another material.
                 const records = unit.listening ?? [];
-                let record = records.find(entry => entry.exerciseId === exerciseId);
-                if (!record && !partKey) { return; }
-                if (!record) { record = { exerciseId, voice: parseLearningVoice(voice), parts: [], slowPlayback: false }; records.push(record); }
-                unit.listening = records;
-                if (partKey) {
-                    const part = record.parts.find(entry => entry.key === partKey);
-                    if (part) { part.count++; } else { record.parts.push({ key: partKey, count: 1 }); }
+                let record = records.find(entry => entry.exerciseId === exerciseId && entry.parts.some(part => part.key === partKey));
+                if (!record && !started) { return; }
+                if (!record) {
+                    record = { exerciseId, voice: parseLearningVoice(voice), parts: [{ key: partKey, count: 0 }], slowPlayback: false };
+                    records.push(record);
                 }
+                unit.listening = records;
+                if (started) { record.parts.find(part => part.key === partKey)!.count++; }
                 record.slowPlayback ||= slow;
             }, guard);
         },

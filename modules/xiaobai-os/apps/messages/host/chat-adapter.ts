@@ -49,9 +49,14 @@ export function createMessagesChatAdapter(isGenerating: () => boolean) {
         finalizedThrough: getStorySummaryCommittedThrough,
         async confirm(expected, marker, text) {
             if (identity() !== expected) {return false;}
-            const remote = await readRemote(context());
+            const source = context();
+            const attempt = attempts.get(marker.segmentId);
+            const remote = await readRemote(source);
+            if (identity() !== expected || context().chat !== source.chat) {return false;}
             const matches = remote.filter(message => projectionMarker(message)?.segmentId === marker.segmentId);
-            return matches.length === 1 && matches[0].mes === text && same(projectionMarker(matches[0]), marker);
+            const confirmed = matches.length === 1 && matches[0].mes === text && same(projectionMarker(matches[0]), marker);
+            if (confirmed && attempts.get(marker.segmentId) === attempt) {attempts.delete(marker.segmentId);}
+            return confirmed;
         },
         async publish(input) {
             const source = context();
@@ -88,7 +93,10 @@ export function createMessagesChatAdapter(isGenerating: () => boolean) {
                     message.swipe_info = [{ send_date: message.send_date, gen_started: null, gen_finished: null, extra: structuredClone(message.extra) }];
                 }
                 source.chatMetadata.tainted = true;
-                attempts.set(input.marker.segmentId, { before: retry?.before ?? before, after: structuredClone(source.chat) });
+                // The latest remote read is this attempt's baseline, including when a
+                // previous native save succeeded but its confirmation was interrupted.
+                const attempt = { before: remote, after: structuredClone(source.chat) };
+                attempts.set(input.marker.segmentId, attempt);
                 if (input.index === null) {
                     await source.eventSource.emit(event_types.MESSAGE_RECEIVED, index, 'command');
                     if (!current()) {return false;}
@@ -108,7 +116,7 @@ export function createMessagesChatAdapter(isGenerating: () => boolean) {
                 const saved = await readRemote(source);
                 const matches = saved.filter(item => projectionMarker(item)?.segmentId === input.marker.segmentId);
                 const confirmed = matches.length === 1 && matches[0].mes === input.text && same(projectionMarker(matches[0]), input.marker);
-                if (confirmed) {attempts.delete(input.marker.segmentId);}
+                if (confirmed && attempts.get(input.marker.segmentId) === attempt) {attempts.delete(input.marker.segmentId);}
                 return confirmed;
             } finally {writing = null;}
         },

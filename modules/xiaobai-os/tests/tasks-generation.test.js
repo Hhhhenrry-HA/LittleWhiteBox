@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { performance } from 'node:perf_hooks';
 import test from 'node:test';
 
 import { buildTaskBoardPrompt } from '../apps/tasks/generation/board-prompt.js';
@@ -186,6 +187,40 @@ test('board compiler canonicalizes whitespace after either specific-timing colon
         assert.equal(result.ok, true);
         assert.equal(result.data.listings[0].timing, '特定时机：黄昏');
     }
+});
+
+test('trailing-comma repair preserves punctuation, escaped quotes and backslashes inside task text', () => {
+    const objective = '抄写符号 ,} 和 ,] 及 "引号,}\\路径,]" 到收据';
+    const draft = listing('禁忌', { objective });
+    const applicant = candidate('艾拉', { pitch: objective });
+    for (const wrapped of [false, true]) {
+        const wrap = text => wrapped ? `说明\n\`\`\`json\n${text}\n\`\`\`\n结束` : text;
+        // Only the two outer trailing commas are invalid JSON.
+        const board = compileTaskBoardResponse(wrap(`{"tasks":[${JSON.stringify(draft)}, \n],\t}`));
+        assert.equal(board.ok, true);
+        assert.equal(board.data.listings[0].objective, objective);
+        const candidates = compileTaskCandidateResponse(wrap(`{"candidates":[${JSON.stringify(applicant)},\r\n], }`));
+        assert.equal(candidates.ok, true);
+        assert.equal(candidates.data.candidates[0].pitch, objective);
+    }
+});
+
+test('unmarked malformed responses remain bounded and do not salvage nested task fragments', () => {
+    // A generous UI-stall bound, not a microbenchmark: the original 32KB case took seconds.
+    for (const size of [32_000, 256_000]) {
+        for (const raw of ['{'.repeat(size), '{'.repeat(size / 2) + '}'.repeat(size / 2)]) {
+            const started = performance.now();
+            const result = compileTaskCandidateResponse(raw);
+            assert.equal(result.ok, false);
+            assert.equal(result.changed, false);
+            assert.equal(result.data, undefined);
+            assert.ok(performance.now() - started < 1_000, `${size} characters stalled synchronous parsing`);
+        }
+    }
+    const valid = JSON.stringify({ tasks: [listing('禁忌')] });
+    assert.equal(compileTaskBoardResponse(`{"unfinished":${valid}`).skipped[0].reason, 'response_truncated');
+    assert.equal(compileTaskBoardResponse(`{invalid:${valid}}`).skipped[0].reason, 'json_not_found');
+    assert.equal(compileTaskBoardResponse(`{not json}\n${valid}`).ok, true);
 });
 
 test('board compiler preserves valid siblings and reports the bad direction item', () => {

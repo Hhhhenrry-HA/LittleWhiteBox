@@ -41,6 +41,8 @@ export interface PromptContextCapture {
 }
 
 export interface PromptContextCaptureOptions {
+    /** Disable world-info scanning when checking live state against a frozen request. */
+    readonly includeWorldInfo?: boolean;
     /** Inclusive chat message boundary. Defaults to the current chat tail. */
     readonly throughMessageIndex?: number;
     /** Recent context contains only messages before this index. */

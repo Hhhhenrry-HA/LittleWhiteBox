@@ -23,7 +23,11 @@ const speed = ref(state.value.profile?.voice?.speed ?? 1);
 const harvestPage = ref(0);
 const harvest = computed(() => state.value.completions.slice(harvestPage.value * 20, (harvestPage.value + 1) * 20));
 const languageName = computed(() => new Intl.DisplayNames(['zh-CN'], { type: 'language' }).of(state.value.language) ?? state.value.language);
-watch(() => state.value.profile?.voice, value => { voice.value = value?.voiceId ?? state.value.voices.defaultVoice; voiceLanguage.value = value?.language ?? state.value.language; speed.value = value?.speed ?? 1; });
+watch([() => state.value.language, () => state.value.profile?.voice], ([language, value]) => {
+    voice.value = value?.voiceId ?? state.value.voices.defaultVoice;
+    voiceLanguage.value = value?.language ?? language;
+    speed.value = value?.speed ?? 1;
+});
 watch(() => state.value.unit?.id, (id, old) => { if (id && id !== old) { void go('lesson'); } });
 watch(() => !!state.value.profile, (exists, old) => { if (exists && !old) { void go('desk'); } });
 watch(() => state.value.language, () => { harvestPage.value = 0; });

@@ -1,12 +1,208 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createClassroomFixture } from './fixtures/learning-classroom.js';
+import { createClassroomFixture, fixtureLesson } from './fixtures/learning-classroom.js';
 import { createLearningSpeech } from '../apps/learning/application/speech.js';
 import { createLearningService } from '../apps/learning/application/service.js';
 import { learningClassView } from '../apps/learning/application/projection.js';
 import { parseLearningData } from '../domains/learning/data.js';
 import { learningSpeechParts } from '../domains/learning/speech.js';
 import { createLearningPractice } from '../apps/learning/application/practice.js';
+import { independentLearningSuccess } from '../domains/learning/progress.js';
+import { MAX_LEARNING_WRITE_BYTES } from '../apps/learning/storage/document.js';
+
+function playbackFixture() {
+    const players = []; const calls = [];
+    const facade = { isEnabled: () => true,
+        getVoices: () => ({ defaultVoice: 'voice-a', voices: [{ id: 'voice-a', available: true }, { id: 'voice-b', available: true }] }),
+        createPlayer() {
+            const player = { activate: () => true, playNow: () => true, dispose() {}, setPlaybackRate: value => value };
+            players.push(player); return player;
+        },
+        synthesize: async (text, options) => { calls.push({ text, ...options }); return new Blob(['fixture']); },
+        openSettings() {},
+    };
+    return { facade, players, calls };
+}
+
+test('adopting a lesson replacement retires obsolete queued hearing events without blocking the classroom', async t => {
+    for (const replacement of ['removed-unit', 'replaced-unit', 'removed-question', 'changed-span', 'other-story']) {
+        await t.test(replacement, async sub => {
+            const audio = playbackFixture();
+            const lesson = structuredClone(fixtureLesson);
+            lesson.exercises.push({ ...structuredClone(lesson.exercises[0]), key: 'q2', skill: 'listening' });
+            const h = await createClassroomFixture({ listening: true, lesson, getTtsFacade: () => audio.facade });
+            sub.after(h.dispose); await h.openLesson();
+            const unit = h.profile().unit; const material = unit.materials[0];
+            await h.command('play', { materialId: material.id, exerciseId: unit.exercises[0].id, partKey: learningSpeechParts(material)[0].key });
+            const server = structuredClone(h.repository.snapshot().document);
+            server.revision++; server.commitId = 'external-replacement';
+            if (replacement === 'removed-unit') { server.data.profiles[0].unit = null; }
+            if (replacement === 'replaced-unit') { server.data.profiles[0].unit.id = 'new-server-lesson'; }
+            if (replacement === 'removed-question') { server.data.profiles[0].unit.exercises.shift(); }
+            if (replacement === 'changed-span') { server.data.profiles[0].unit.materials[0].paragraphs[0].text = 'A different audio passage.'; }
+            if (replacement === 'other-story') { server.data.profiles[0].unit.scope.osId = 'other'; server.data.profiles[0].unit.originOsId = 'other'; }
+            h.replaceUser(server);
+            // The playing write discovers a conflict; slow playback is already waiting behind it.
+            audio.players[0].onStateChange('playing');
+            await h.command('rate', { value: 0.75 });
+            assert.equal((await h.command('read')).storage, 'conflict');
+            await h.command('adopt-server');
+            const writes = h.counts.userWrites;
+            const read = await h.command('read');
+            assert.equal(read.storage, 'ready'); assert.equal(read.message, '');
+            assert.equal(h.counts.userWrites, writes);
+            assert.equal(h.profile().unit?.listening, undefined);
+            await h.reenter();
+            const calls = h.counts.provider;
+            const prepared = await h.command('prepare', { message: '准备新课。', replaceCurrent: !!h.profile().unit });
+            assert.equal(prepared.storage, 'ready'); assert.ok(prepared.unit);
+            assert.ok(h.counts.provider > calls);
+        });
+    }
+});
+
+test('shared material carries real listening, replay and slow-play facts across questions, but not unrelated audio', async t => {
+    const audio = playbackFixture();
+    const lesson = structuredClone(fixtureLesson);
+    lesson.materials.push({ key: 'other', title: 'Another audio', kind: 'authored', text: 'The train leaves at seven.' });
+    const question = lesson.exercises[0]; question.skill = 'listening';
+    lesson.exercises = [question, { ...structuredClone(question), key: 'q2' },
+        { ...structuredClone(question), key: 'q3', materialKeys: ['other'] },
+        { ...structuredClone(question), key: 'q4', materialKeys: ['text', 'other'] }];
+    const h = await createClassroomFixture({ lesson, getTtsFacade: () => audio.facade }); t.after(h.dispose); await h.openLesson();
+    const unit = h.profile().unit; const [first, second, unrelated, combined] = unit.exercises;
+    const [material, other] = unit.materials;
+    const key = learningSpeechParts(material)[0].key;
+    await h.command('play', { materialId: material.id, exerciseId: first.id, partKey: key });
+    audio.players.at(-1).onStateChange('playing'); await h.command('read');
+    const service = createLearningService(h.repository);
+    const answer = async exercise => {
+        await service.prepareAttempt({ language: 'en', unitId: unit.id, exerciseId: exercise.id, answer: { kind: 'choice', ids: ['a'] },
+            scope: unit.scope, osId: unit.originOsId, replays: 0, slowPlayback: false }).save(() => true);
+        return h.profile().unit.attempts.at(-1);
+    };
+    const attempt = await answer(second);
+    assert.equal(attempt.listening[0].voice.voiceId, 'voice-a');
+    assert.equal(attempt.help.replays, 0); assert.equal(attempt.help.slowPlayback, false);
+    assert.equal(independentLearningSuccess({ exercise: second, attempt, assessment: { verdict: 'correct' } }), true);
+    assert.equal((await answer(unrelated)).listening, undefined);
+    await service.setVoice('en', { voiceId: 'voice-b', language: 'en', speed: 1 }, () => true);
+    await h.command('play', { materialId: material.id, exerciseId: second.id, partKey: key });
+    assert.equal(audio.calls.at(-1).speaker, 'voice-a');
+    audio.players.at(-1).onStateChange('playing'); await h.command('rate', { value: 0.75 }); await h.command('read');
+    const repeated = await answer(second);
+    assert.equal(repeated.help.replays, 1); assert.equal(repeated.help.slowPlayback, true);
+    await h.reenter();
+    const originalAgain = await answer(first);
+    assert.equal(originalAgain.help.replays, 1); assert.equal(originalAgain.help.slowPlayback, true);
+    // The same question also plays another material, at normal speed. Its slow flag stays span-local.
+    await h.command('play', { materialId: material.id, exerciseId: combined.id, partKey: key });
+    audio.players.at(-1).onStateChange('playing'); await h.command('rate', { value: 0.75 }); await h.command('read');
+    await h.command('play', { materialId: other.id, exerciseId: combined.id, partKey: learningSpeechParts(other)[0].key });
+    assert.equal(audio.calls.at(-1).speaker, 'voice-b');
+    audio.players.at(-1).onStateChange('playing'); await h.command('read');
+    const otherAttempt = await answer(unrelated);
+    assert.ok(otherAttempt.listening); assert.equal(otherAttempt.help.replays, 0); assert.equal(otherAttempt.help.slowPlayback, false);
+    const combinedAttempt = await answer(combined);
+    assert.deepEqual(combinedAttempt.listening, [
+        { key, voice: { voiceId: 'voice-a', language: 'en', speed: 1 }, count: 3, slowPlayback: true },
+        { key: learningSpeechParts(other)[0].key, voice: { voiceId: 'voice-b', language: 'en', speed: 1 }, count: 1, slowPlayback: false },
+    ]);
+    assert.equal(combinedAttempt.help.replays, 2); assert.equal(combinedAttempt.help.slowPlayback, true);
+    assert.deepEqual(h.profile().unit.attempts.find(entry => entry.id === attempt.id), attempt);
+    // Representative evidence must keep all voices even after the original lesson is removed.
+    const assessed = await h.command('complete');
+    assert.equal(assessed.storage, 'ready');
+    await h.command('abandon'); await h.reenter();
+    assert.deepEqual(h.profile().items.flatMap(item => item.evidence).find(entry => entry.attempt.id === combinedAttempt.id).attempt, combinedAttempt);
+    // An earlier answer is a snapshot, not a moving view of later listening.
+    assert.equal(attempt.listening.length, 1); assert.equal(attempt.listening[0].count, 1);
+    assert.doesNotThrow(() => parseLearningData(h.repository.snapshot().document.data));
+});
+
+test('a listening snapshot keeps distinct voices for the same span and validates span ownership', async t => {
+    const lesson = structuredClone(fixtureLesson); lesson.exercises[0].skill = 'listening';
+    lesson.exercises.push({ ...structuredClone(lesson.exercises[0]), key: 'q2' });
+    const h = await createClassroomFixture({ lesson }); t.after(h.dispose); await h.openLesson();
+    const service = createLearningService(h.repository); const unit = h.profile().unit;
+    const key = learningSpeechParts(unit.materials[0])[0].key;
+    for (const [index, voiceId] of ['voice-a', 'voice-b'].entries()) {
+        await service.listening('en', unit.id, unit.exercises[index].id, { voiceId, language: 'en', speed: 1 }, key, true, index === 1, unit.originOsId, () => true);
+    }
+    await service.prepareAttempt({ language: 'en', unitId: unit.id, exerciseId: unit.exercises[1].id, answer: { kind: 'choice', ids: ['a'] },
+        scope: unit.scope, osId: unit.originOsId, replays: 0, slowPlayback: false }).save(() => true);
+    await h.reenter();
+    const attempt = h.profile().unit.attempts[0];
+    assert.deepEqual(attempt.listening.map(part => [part.key, part.voice.voiceId, part.count, part.slowPlayback]),
+        [[key, 'voice-a', 1, false], [key, 'voice-b', 1, true]]);
+    assert.equal(attempt.help.replays, 1); assert.equal(attempt.help.slowPlayback, true);
+    for (const change of [parts => { parts[0].key = 'missing:0'; }, parts => { parts[0].count = 0; },
+        parts => { parts.push(structuredClone(parts[0])); }, parts => { parts.length = 0; }]) {
+        const bad = structuredClone(h.repository.snapshot().document.data);
+        change(bad.profiles[0].unit.attempts[0].listening);
+        assert.throws(() => parseLearningData(bad));
+    }
+});
+
+async function fillLearningFile(h) {
+    const document = structuredClone(h.repository.snapshot().document);
+    document.revision++; document.commitId = 'capacity-fixture';
+    const profile = document.data.profiles[0];
+    const target = MAX_LEARNING_WRITE_BYTES - 16;
+    const size = value => new TextEncoder().encode(JSON.stringify(value)).byteLength;
+    let bytes = size(document);
+    // Valid archived completions exercise the real 8 MiB check, not a mocked file-full error.
+    while (bytes < target) {
+        const completion = { unitId: `archived-${profile.completions.length}`, completedAt: '2026-09-01T00:00:00.000Z',
+            summary: 'x'.repeat(2000), scope: { kind: 'public' }, attemptIds: ['archived-answer'],
+            reward: { originOsId: profile.unit.originOsId, amount: 20, title: 'Lesson', note: 'Completed' } };
+        const overhead = size(completion) - 2000 + (profile.completions.length ? 1 : 0);
+        const available = target - bytes - overhead;
+        if (available < 1) { profile.selfAssessment += 'x'.repeat(target - bytes); break; }
+        completion.summary = 'x'.repeat(Math.min(2000, available));
+        profile.completions.push(completion); bytes += overhead + completion.summary.length;
+    }
+    assert.equal(size(document), target);
+    h.replaceUser(document); await h.command('read');
+    assert.equal(h.state().storage, 'ready');
+}
+
+test('file-full hearing writes permit cleanup, preserve retries, and never resurrect cleared lessons', async t => {
+    const audio = playbackFixture();
+    const h = await createClassroomFixture({ listening: true, getTtsFacade: () => audio.facade }); t.after(h.dispose); await h.openLesson();
+    const unit = h.profile().unit; const exercise = unit.exercises[0]; const material = unit.materials[0];
+    await createLearningService(h.repository).note('en', unit.id, { id: 'old-note', text: 'x'.repeat(4000), exerciseId: exercise.id, selection: null }, () => true);
+    await fillLearningFile(h);
+    const play = { materialId: material.id, exerciseId: exercise.id, partKey: learningSpeechParts(material)[0].key };
+    await h.command('play', play); const writes = h.counts.userWrites;
+    audio.players.at(-1).onStateChange('playing'); await h.command('rate', { value: 0.75 });
+    const failed = await h.command('read');
+    assert.match(failed.message, /文件已满/); assert.equal(failed.storage, 'ready');
+    assert.equal(h.counts.userWrites, writes); assert.equal(h.profile().unit.listening, undefined);
+    h.flags.userRejected = true;
+    await h.command('delete-note', { id: 'old-note' });
+    assert.equal(h.profile().unit.notes.length, 1); // Failed cleanup does not discard the pending hearing fact.
+    h.flags.userRejected = false;
+    await h.command('delete-note', { id: 'old-note' });
+    assert.equal(h.profile().unit.notes.length, 0);
+    const recovered = await h.command('read');
+    assert.equal(recovered.message, '');
+    assert.equal(h.profile().unit.listening[0].parts[0].count, 1);
+    assert.equal(h.profile().unit.listening[0].slowPlayback, true);
+    // Fill the remaining space again; a second question creates a new hearing record.
+    const server = structuredClone(h.repository.snapshot().document);
+    server.data.profiles[0].unit.exercises.push({ ...structuredClone(exercise), id: 'second-listening' });
+    server.revision++; server.commitId = 'second-question'; h.replaceUser(server); await h.command('read');
+    await fillLearningFile(h);
+    await h.command('play', { ...play, exerciseId: 'second-listening' }); audio.players.at(-1).onStateChange('playing');
+    assert.match((await h.command('read')).message, /文件已满/);
+    await h.command('clear');
+    assert.deepEqual(h.repository.snapshot().document.data, { profiles: [] });
+    assert.equal((await h.command('read')).message, '');
+    await h.reenter(); assert.deepEqual(h.state().languages, []);
+    const calls = h.counts.provider; await h.openLesson();
+    assert.ok(h.counts.provider > calls); assert.equal(h.profile().unit.listening, undefined);
+});
 
 test('formal classroom opens without a model, saves a lesson, submits, completes and automatically pays once', async t => {
     const h = await createClassroomFixture(); t.after(h.dispose);
@@ -110,7 +306,7 @@ test('only actual audio play records listening; replays freeze the original voic
     await service.prepareAttempt({ language: 'en', unitId: unit.id, exerciseId: exercise.id, answer: { kind: 'choice', ids: ['a'] },
         scope: unit.scope, osId: unit.originOsId, replays: 0, slowPlayback: false }).save(() => true);
     const attempt = h.profile().unit.attempts[0];
-    assert.equal(attempt.listening.voiceId, 'voice-a'); assert.equal(attempt.help.replays, 1); assert.equal(attempt.help.slowPlayback, true);
+    assert.equal(attempt.listening[0].voice.voiceId, 'voice-a'); assert.equal(attempt.help.replays, 1); assert.equal(attempt.help.slowPlayback, true);
     const bad = structuredClone(h.repository.snapshot().document.data); bad.profiles[0].unit.listening[0].parts[0].key = 'made-up';
     assert.throws(() => parseLearningData(bad)); assert.deepEqual(errors, []);
 });
@@ -226,7 +422,15 @@ for (const failure of ['rejected', 'unknown']) {
         const submission = { unitId: unit.id, exerciseId: exercise.id, answer: { kind: 'choice', ids: ['a'] } };
         await h.command('submit', submission);
         assert.equal(h.profile().unit.attempts.length, 0); assert.equal(h.counts.provider, calls);
-        if (failure === 'unknown') { h.confirmUser(); await h.command('verify'); }
+        if (failure === 'unknown') {
+            const before = h.repository.snapshot().document; const writes = h.counts.userWrites;
+            for (const name of ['delete-note', 'delete-item', 'delete-attempt', 'abandon', 'delete-language', 'clear']) {
+                assert.equal((await h.command(name, { id: 'anything' })).storage, 'unconfirmed');
+                assert.deepEqual(h.repository.snapshot().document, before);
+            }
+            assert.equal(h.counts.userWrites, writes);
+            h.confirmUser(); await h.command('verify');
+        }
         else { h.flags.userRejected = false; }
         await h.command('submit', submission);
         const attempt = h.profile().unit.attempts[0];

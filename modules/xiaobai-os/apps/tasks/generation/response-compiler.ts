@@ -12,6 +12,7 @@ import {
     type TaskPosture,
 } from '../../../domains/tasks/types.js';
 import { normalizeTaskTiming } from '../../../domains/tasks/invariants.js';
+import { extractTaskJsonValue } from './json-response.js';
 import type {
     BoardCompileResult,
     CandidateCompileResult,
@@ -102,57 +103,6 @@ function explicitlyTruncated(options: TaskResponseCompileOptions): boolean {
     return reason === 'length' || reason === 'max_tokens' || reason === 'max_output_tokens';
 }
 
-function parseJsonCandidate(source: string): { ok: true; value: unknown } | { ok: false } {
-    try {
-        return { ok: true, value: JSON.parse(source) as unknown };
-    } catch {
-        const repaired = source.replace(/,(\s*[}\]])/gu, '$1');
-        if (repaired === source) {return { ok: false };}
-        try {
-            return { ok: true, value: JSON.parse(repaired) as unknown };
-        } catch {
-            return { ok: false };
-        }
-    }
-}
-
-function extractJsonValue(source: string):
-    | { ok: true; value: unknown }
-    | { ok: false; reason: Extract<TaskCompileReason, 'response_truncated' | 'json_not_found'> } {
-    const trimmed = source.trim();
-    const direct = parseJsonCandidate(trimmed);
-    if (direct.ok) {return direct;}
-
-    let sawUnclosedObject = false;
-    for (let start = 0; start < source.length; start += 1) {
-        if (source[start] !== '{') {continue;}
-        let depth = 0;
-        let quoted = false;
-        let escaped = false;
-        let closed = false;
-        for (let index = start; index < source.length; index += 1) {
-            const character = source[index];
-            if (quoted) {
-                if (escaped) {escaped = false;}
-                else if (character === '\\') {escaped = true;}
-                else if (character === '"') {quoted = false;}
-                continue;
-            }
-            if (character === '"') {quoted = true; continue;}
-            if (character === '{') {depth += 1; continue;}
-            if (character !== '}') {continue;}
-            depth -= 1;
-            if (depth !== 0) {continue;}
-            closed = true;
-            const parsed = parseJsonCandidate(source.slice(start, index + 1));
-            if (parsed.ok) {return parsed;}
-            break;
-        }
-        if (!closed) {sawUnclosedObject = true;}
-    }
-    return { ok: false, reason: sawUnclosedObject ? 'response_truncated' : 'json_not_found' };
-}
-
 function extractRoot(
     value: unknown,
     collection: CollectionName,
@@ -166,7 +116,7 @@ function extractRoot(
     if (source.length > maximumLength) {
         return { ok: false, result: failed(collection, 'response_too_large') };
     }
-    const extracted = extractJsonValue(source);
+    const extracted = extractTaskJsonValue(source);
     if (!extracted.ok) {
         return { ok: false, result: failed(collection, extracted.reason) };
     }

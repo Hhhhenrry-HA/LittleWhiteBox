@@ -260,14 +260,16 @@ commitMaintenance(input: MaintenanceCommitRequest, guard: CommitGuard): Promise<
 1. `context-adapter.ts`只捕获终态第 7.1 节唯一`TaskGenerationContext`；请求层在同一时点把它与 board/task CAS 组装为判别式`TaskGenerationBoundary`。adapter 直接从`getContext()`复制允许的角色卡/persona/消息字段。世界书调用`getWorldInfoPrompt(..., hostMaxContext, true, globalScanData)`，同步宿主“扫描包含说话人名”设置，并传入已展开 persona/角色卡扫描资料；把`worldInfoBefore/worldInfoAfter`映射为文本，并从`worldInfoDepth[*].entries`展开文本。输出纯快照，不把 host 对象泄漏到 APP，也不把 task revision/eventId 发送给模型。
 2. `generation/context.ts`统一做名字/正文规范化与容量裁剪；共享 XML formatter 负责动态资料的 XML/宿主宏转义。`safePromptJson`只用于 XML 内仍需保留 JSON 结构的领域投影：编码`< > &`，并只在 JSON 字符串内部编码花括号，保证宿主宏不展开且整体仍可无损解析。
 3. Board/Candidate Prompt 按终态第 7.2 节分别实现，严格组装静态职责、system`<setting>`、system`<current_state>`、user`<task_data>`和 user 命令五层。不得写一个带 mode 分支的巨型字符串生成器，也不得 import Tavern 运行时代码。
-4. `response-compiler.ts`实现终态第 7.3 节的有界 JSON 提取、一次尾随逗号修复、闭合 reason、每项白名单编译和 partial 结果。Compiler 只返回无 ID board/candidate drafts；Candidates 先以规范字段比较现值，相同则返回既有 IDs/unchanged，不同才返回 drafts。
-5. `generation/request.ts`在本地前置条件满足后才`loadConfig → openSession → run`。一次请求一个 session、一个 Provider 回合、`tools:[]`；不为无工具请求扩展 gateway。保存前通过同一 adapter 重捕获并深比较唯一 context snapshot，再检查 activation token、主生成、expected boardId 或 task revision/eventId CAS 和 Kernel 文件写状态；全部通过后调用 application service，由 service 分配本批 ID 并执行唯一 Scoped transaction，generation 不 import ID factory 或 Store。
+4. `generation/json-response.ts`负责有界 JSON 提取和一次尾随逗号修复：单向扫描互不重叠的外层对象，不从残缺外层中抢救嵌套片段；仅修复字符串之外的结构逗号，保留正文及其转义。`response-compiler.ts`负责闭合 reason、每项白名单编译和 partial 结果，只返回无 ID board/candidate drafts；Candidates 先以规范字段比较现值，相同则返回既有 IDs/unchanged，不同才返回 drafts。
+5. `generation/request.ts`在本地前置条件满足后才`loadConfig → openSession → run`。一次请求一个 session、一个 Provider 回合、`tools:[]`；不为无工具请求扩展 gateway。世界书和世界新闻是本次请求冻结的参考素材。保存前通过同一 adapter 以`includeWorldInfo:false`重捕获角色、玩家、近期剧情、总结与地图并深比较，不再扫描概率世界书，也不把新闻变化当作剧情变化；同时检查 activation token、主生成、expected boardId 或 task revision/eventId CAS 和 Kernel 文件写状态。全部通过后调用 application service，由 service 分配本批 ID 并执行唯一 Scoped transaction，generation 不 import ID factory 或 Store。共享素材适配器默认仍扫描世界书，其他 APP 行为不变。
 6. board 和 candidate 的 AbortController 由任务模块持有；后台运行态只在当前运行内保存，同一时刻只接收一项显式生成，Host 接收即返回。离开页面、退出 APP、关闭 OS 窗口不取消，重开从 Host 恢复状态；切聊、主聊天开始生成、模块停用或 OS cleanup 取消尚未保存的请求。
 
 ### 验证
 
 - 使用终态第 14.1–14.3 节公开 fixture 验证公开领域结果；
 - JSON 外少量文本、尾随逗号、混合好坏、重复方向/名字、空候选、截断和超大数组；
+- 32KB／256KB 未声明截断的异常响应、嵌套残片拒绝、字符串内逗号与转义保真；概率世界书只扫描一次且 board/candidate 的真实上下文和最终提交 CAS 保护保留；
+- 当前 V1 执行者对象的字段顺序不影响读取；字段内容仍须逐项匹配已选候选事实，读取不改写存档；
 - 全坏保留旧状态，部分成功只保存合法项并返回 partial；
 - API 结果返回后切聊、board 被换新、task revision/eventId 变化均无写入；
 - 不对 Prompt 单词或完整字符串做快照。只验证不可信数据没有进入 system rules、请求无工具且输出结果符合编译契约。

@@ -35,8 +35,6 @@ export type MapSceneEdit =
 /** Internal canonical commands emitted by Map intent compilers; never exposed as Agent tools. */
 export type MapDomainEdit = MapLocationEdit | MapLinkEdit | MapActorEdit | MapSceneEdit;
 
-const MAX_DOMAIN_EDITS = 256;
-
 function replaceByKey<T>(items: T[], value: T, keyOf: (item: T) => string): void {
     const index = items.findIndex(item => keyOf(item) === keyOf(value));
     if (index === -1) {items.push(structuredClone(value));}
@@ -111,8 +109,10 @@ function applyEdit(candidate: MapDomainV1, edit: MapDomainEdit): void {
 /** Applies canonical internal commands atomically and advances one observable domain revision. */
 export function applyMapDomainEdits(current: MapDomainV1, edits: readonly MapDomainEdit[]): MapDomainV1 {
     const original = parseMapDomain(current);
-    if (!Array.isArray(edits) || edits.length > MAX_DOMAIN_EDITS) {
-        throw new MapDomainError('map_invalid_edit', `edits must contain at most ${MAX_DOMAIN_EDITS} commands`);
+    // Tools bound their declarations and the domain bounds saved data. One valid
+    // cascade can expand to many more internal removals than the input count.
+    if (!Array.isArray(edits)) {
+        throw new MapDomainError('map_invalid_edit', 'edits must be an array');
     }
     const before = JSON.stringify({ atlas: original.atlas, scenes: original.scenes });
     const candidate = structuredClone(original);

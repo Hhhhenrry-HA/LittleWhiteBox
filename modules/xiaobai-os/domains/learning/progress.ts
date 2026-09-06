@@ -9,7 +9,7 @@ const active = (evidence: LearningEvidence) => ['text', 'gaps'].includes(evidenc
 export function independentLearningSuccess(evidence: LearningEvidence): boolean {
     const help = evidence.attempt.help;
     return evidence.assessment.verdict === 'correct' && !help.answer && !help.hint && !help.feedback
-        && (evidence.exercise.skill !== 'listening' || (!!evidence.attempt.listening && !help.transcript));
+        && (evidence.exercise.skill !== 'listening' || (!!evidence.attempt.listening?.length && !help.transcript));
 }
 function distinct(left: LearningEvidence, right: LearningEvidence): boolean {
     return day(left) !== day(right) && context(left) !== context(right);

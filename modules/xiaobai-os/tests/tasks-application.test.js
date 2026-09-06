@@ -179,6 +179,32 @@ function cancellation(record, actionId = 'cancel-task') {
     return { actionId, taskId: record.taskId, expectedTaskRevision: record.taskRevision, expectedEventId: record.eventId };
 }
 
+test('current task storage accepts reordered assignee fields while rejecting changed assignment facts', async () => {
+    const h = await createHarness();
+    const assigned = await publishAndAssign(h, 'field-order');
+    const disk = h.state.persisted;
+    const event = disk.partitions.tasks.events.find(entry => entry.kind === 'assigned');
+    event.assignee = Object.fromEntries(Object.entries(event.assignee).reverse());
+    const originalDisk = structuredClone(disk);
+    const writes = h.state.writes.length;
+    const reordered = await h.tasks.refreshCurrent();
+    assert.equal(reordered.writeState, 'ready');
+    assert.deepEqual(reordered.records[0].assignee, assigned.record.assignee);
+    assert.deepEqual(h.state.persisted, originalDisk, 'reading must not rewrite a valid current file');
+    assert.equal(h.state.writes.length, writes);
+
+    for (const field of ['partyId', 'displayName', 'description', 'pitch', 'capability', 'risk']) {
+        const changed = structuredClone(disk);
+        changed.partitions.tasks.events.find(entry => entry.kind === 'assigned').assignee[field] += '-changed';
+        h.state.persisted = changed;
+        await assert.rejects(h.tasks.refreshCurrent(), /task_invalid_domain|partition/i,
+            `${field} is a frozen assignment fact`);
+    }
+    h.state.persisted = disk;
+    const recovered = await h.tasks.refreshCurrent();
+    assert.deepEqual(recovered.records[0].assignee, assigned.record.assignee);
+});
+
 test('cancelling either active task line closes escrow once and removes story/maintenance participation', async t => {
     for (const source of ['received', 'published']) {
         await t.test(source, async () => {

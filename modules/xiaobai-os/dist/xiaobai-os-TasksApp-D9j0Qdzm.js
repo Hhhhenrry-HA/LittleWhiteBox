@@ -238,7 +238,7 @@ var _e = { class: "tasks-page tasks-detail-page" }, et = {
           Number(s.reward) > t.balance ? (i(), d("p", At, "报酬超出可用余额，请调整金额。")) : f("", !0)
         ])
       ], 8, wt),
-      e("p", Dt, [c(y, { name: "ticket" }), r[16] || (r[16] = b("发布时托管报酬；招募期间可撤回退款，选定执行者后不可撤回。", -1))]),
+      e("p", Dt, [c(y, { name: "ticket" }), r[16] || (r[16] = b("发布时托管报酬；招募中或执行中均可取消，全额退还托管报酬。", -1))]),
       t.disabledReason ? (i(), d("p", qt, u(t.disabledReason), 1)) : f("", !0),
       e("button", {
         type: "submit",

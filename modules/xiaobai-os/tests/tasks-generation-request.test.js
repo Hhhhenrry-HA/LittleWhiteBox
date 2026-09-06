@@ -1,9 +1,28 @@
 import assert from 'node:assert/strict';
+import { Buffer } from 'node:buffer';
+import process from 'node:process';
 import test from 'node:test';
+import { build } from 'esbuild';
 
 import { createTaskGenerationRequests } from '../apps/tasks/generation/request.js';
 import { normalizeTaskGenerationContext } from '../apps/tasks/generation/context.js';
 import { createTaskGenerationRuntime } from '../apps/tasks/generation/runtime.js';
+import { createHostPromptContextAdapter } from '../host/prompt-context/capture.js';
+
+// Exercise the real Tasks adapter; only its unused native default is substituted for Node.
+const compiled = await build({
+    entryPoints: ['modules/xiaobai-os/apps/tasks/host/context-adapter.ts'], absWorkingDir: process.cwd(),
+    bundle: true, write: false, format: 'esm', platform: 'node', logLevel: 'silent',
+    plugins: [{ name: 'injected-prompt-context', setup(builder) {
+        builder.onResolve({ filter: /host\/prompt-context\/adapter\.js$/ },
+            () => ({ path: 'default', namespace: 'fixture' }));
+        builder.onLoad({ filter: /.*/, namespace: 'fixture' }, () => ({
+            contents: 'export function createPromptContextAdapter() { throw new Error("Test must inject host context"); }',
+        }));
+    } }],
+});
+// eslint-disable-next-line no-unsanitized/method -- Trusted repository code with a fixed, fail-fast native default substitute.
+const { createTaskGenerationContextAdapter } = await import(`data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`);
 
 function validConfig() {
     return {
@@ -53,6 +72,8 @@ function createHarness({
     loadConfig,
     openSession,
     beforeProviderReturns = () => {},
+    beforeFinalGuard = () => {},
+    contextAdapter,
     records = [],
 } = {}) {
     const state = {
@@ -65,9 +86,11 @@ function createHarness({
         openSessionCount: 0,
     };
     const view = { domain: null, records, playerBalance: 100, writeState: 'ready' };
+    state.view = view;
     async function replace(_input, guard) {
         if (!await guard()) {throw new Error('tasks_commit_guard_failed');}
         if (changeBeforeFinalGuard) {state.capture = snapshot('已经变化的身份');}
+        beforeFinalGuard();
         if (!await guard()) {throw new Error('tasks_commit_guard_failed');}
         state.writes += 1;
         return { changed: true, view };
@@ -79,7 +102,7 @@ function createHarness({
         replaceBoard: replace,
         replaceCandidates: replace,
     };
-    const context = {
+    const context = contextAdapter ?? {
         currentChatIdentity: () => 'character:1:chat-a',
         async capture() {
             state.captureCount += 1;
@@ -142,6 +165,61 @@ test('generation exposes actionable API errors without raw provider details or a
         runtime.reconcileSave('chat', true);
         assert.deepEqual(runtime.getState('chat'), result, 'unrelated storage recovery must not clear an API failure');
         assert.equal(calls, scenario.loadConfig ? 0 : 1);
+    }
+});
+
+test('probabilistic world info is scanned once per request while live story and CAS guards remain active', async t => {
+    const candidate = { name: '船工', description: '熟悉港口', pitch: '我来送', capability: '识水路', risk: '不擅陆路' };
+    for (const kind of ['board', 'candidates']) {
+        for (const change of ['none', 'chat', 'message', 'swipe', 'persona', 'character', 'summary', 'map', 'cas', 'final-message']) {
+            await t.test(`${kind}: ${change}`, async () => {
+                let scans = 0;
+                let summary = '玩家抵达港口';
+                let map = '<current_map>港口</current_map>';
+                const host = {
+                    chatId: 'chat-a', characterId: 1, name1: '玩家', name2: '船工',
+                    characters: { 1: { name: '船工', avatar: 'sailor.png', description: '熟悉港口' } },
+                    powerUserSettings: { persona_description: '旅人' },
+                    chat: [{ mes: '玩家抵达港口', is_user: false, swipe_id: 0 }],
+                    getWorldInfoPrompt() {
+                        scans++;
+                        return { worldInfoBefore: scans % 2 ? '集市今日开放' : '', worldInfoAfter: '', worldInfoDepth: [] };
+                    },
+                };
+                const record = { taskId: 'delivery', taskRevision: 1, eventId: 'posted', source: 'published', status: 'recruiting',
+                    issuer: { displayName: '玩家' }, title: '送箱子', objective: '送到仓库', location: '港口', risk: '破损', reward: 100, candidates: [] };
+                const adapter = createTaskGenerationContextAdapter({
+                    promptContext: createHostPromptContextAdapter({ readContext: () => host, readStoryEvents: () => summary }),
+                    readMapContext: () => map,
+                });
+                const { requests, state } = createHarness({
+                    contextAdapter: adapter, records: [record],
+                    providerText: kind === 'board' ? response() : JSON.stringify({ candidates: [candidate] }),
+                    beforeProviderReturns(state) {
+                        if (change === 'chat') { host.chatId = 'chat-b'; }
+                        if (change === 'message') { host.chat[0].mes = '玩家离开港口'; }
+                        if (change === 'swipe') { host.chat[0].swipe_id = 1; }
+                        if (change === 'persona') { host.powerUserSettings.persona_description = '商人'; }
+                        if (change === 'character') { host.characters[1].description = '不识水路'; }
+                        if (change === 'summary') { summary = '港口已经封锁'; }
+                        if (change === 'map') { map = '<current_map>城门</current_map>'; }
+                        if (change === 'cas' && kind === 'candidates') { record.taskRevision++; }
+                        if (change === 'cas' && kind === 'board') { state.view.domain = { board: { boardId: 'another-board' } }; }
+                    },
+                    beforeFinalGuard() {
+                        if (change === 'final-message') { host.chat[0].mes = '保存前剧情变化'; }
+                    },
+                });
+                const result = await (kind === 'board' ? requests.refreshBoard() : requests.refreshCandidates({
+                    taskId: record.taskId, expectedTaskRevision: 1, expectedEventId: record.eventId,
+                }));
+                assert.equal(scans, 1, 'validating a result must not reroll probabilistic world info');
+                assert.equal(result.changed, change === 'none');
+                assert.equal(result.status === 'cancelled', change !== 'none');
+                assert.equal(state.writes, change === 'none' ? 1 : 0);
+                assert.deepEqual(state.reports, []);
+            });
+        }
     }
 });
 

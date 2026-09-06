@@ -4,6 +4,9 @@ import test from 'node:test';
 import { createMaintenanceRegistry } from '../capabilities/maintenance/registry.js';
 import { createMaintenanceRunner } from '../capabilities/maintenance/runner.js';
 import { aggregateMaintenanceStatus } from '../capabilities/maintenance/outcome.js';
+import { createMapKernelHarness } from './map-kernel-harness.js';
+import { createMapMaintenanceParticipant } from '../apps/map/host/maintenance-participant.js';
+import { createEmptyMapDomain } from '../domains/map/state.js';
 
 const user = mes => ({ is_user: true, is_system: false, mes, name: 'Alice' });
 const assistant = mes => ({ is_user: false, is_system: false, mes, name: 'Narrator', swipe_id: 0 });
@@ -151,6 +154,52 @@ test('aggregate outcome reports partial only when some participant actually pres
     assert.equal(aggregateMaintenanceStatus([
         result('map', 'failed'), result('tasks', 'updated', true),
     ]), 'partial');
+});
+
+test('real Map rebuild replaces old content only after a complete successful run; incremental failure keeps valid additions', async t => {
+    for (const mode of ['manual', 'rebuild']) {
+        for (const ending of ['provider-error', 'unresolved', 'corrected', 'success', 'cancelled']) {
+            await t.test(`${mode}/${ending}`, async () => {
+                const original = createEmptyMapDomain();
+                original.atlas.locations = ['home', 'city', 'gate'].map(key => ({ key, name: key, scale: 'room', status: 'visited' }));
+                original.atlas.actors = [{ actorKey: 'player', displayName: 'Alice', locationKey: 'home' }];
+                const kernel = createMapKernelHarness(original);
+                const participant = createMapMaintenanceParticipant({ map: kernel.map, readSettings: () => ({ autoMaintenance: true }) });
+                const h = createHarness({ participants: [participant], agent: {
+                    async run(_request, round) {
+                        if (round === 1) {
+                            return { toolCalls: [{ id: 'new-place', name: 'MapAtlasEdit', arguments: JSON.stringify({
+                                locations: [{ key: 'new', name: 'New' }, ...(['unresolved', 'corrected'].includes(ending) ? [{ key: 'broken', name: '' }] : [])],
+                            }) }] };
+                        }
+                        if (ending === 'provider-error') {throw new Error('offline');}
+                        if (ending === 'cancelled') {h.runner.cancelAll(); return { text: 'cancelled' };}
+                        if (ending === 'corrected' && round === 2) {
+                            return { toolCalls: [{ id: 'repair', name: 'MapAtlasEdit', arguments: JSON.stringify({ locations: [{ key: 'broken', name: 'Repaired' }] }) }] };
+                        }
+                        return { text: 'done' };
+                    },
+                } });
+                const start = mode === 'rebuild' ? h.runner.startRebuild('map') : h.runner.startManual('map');
+                const result = await start.completion;
+                const success = ending === 'success' || ending === 'corrected';
+                const saved = ending !== 'cancelled' && (mode === 'manual' || success);
+                assert.equal(kernel.state.writes.length, saved ? 1 : 0);
+                assert.deepEqual(result.committedParticipantIds, saved ? ['map'] : []);
+                if (!saved) {
+                    assert.deepEqual(kernel.state.persisted.partitions.map, original);
+                    assert.equal(result.status, ending === 'cancelled' ? 'cancelled' : 'failed');
+                } else {
+                    const map = kernel.state.persisted.partitions.map;
+                    assert.equal(map.atlas.locations.some(place => place.key === 'new'), true);
+                    assert.equal(map.atlas.locations.some(place => place.key === 'home'), mode === 'manual');
+                    assert.deepEqual(map.atlas.actors, mode === 'manual' ? original.atlas.actors : []);
+                    assert.equal(result.status, success ? 'updated' : 'partial');
+                }
+                h.runner.stopBackground();
+            });
+        }
+    }
 });
 
 test('registry and disabled automatic mode perform no capture-adjacent Agent work', async () => {

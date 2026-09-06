@@ -1,5 +1,5 @@
 import { parseLearningAnswer } from './exercise.js';
-import { parseLearningVoice } from './speech.js';
+import { parseLearningHeardParts } from './speech.js';
 import { learningRecord, learningText } from './profile.js';
 import { LEARNING_LIMITS as L, type LearningAssessment, type LearningAttempt, type LearningExercise, type LearningHelp, type LearningMaterial } from './types.js';
 import { learningArray, learningBoolean, learningEnum, learningId, learningInteger, learningTimestamp, parseLearningScope, requireLearning, uniqueLearning } from './validation.js';
@@ -48,7 +48,7 @@ export function parseLearningAttempt(value: unknown, exercises: LearningExercise
         answer: parseLearningAnswer(item.answer, exercise.response, materials, `${path}.answer`),
         submittedAt: learningTimestamp(item.submittedAt, `${path}.submittedAt`), help: parseLearningHelp(item.help, `${path}.help`),
         scope: parseLearningScope(item.scope, `${path}.scope`),
-        ...(item.listening === undefined ? {} : { listening: parseLearningVoice(item.listening, `${path}.listening`) }) };
+        ...(item.listening === undefined ? {} : { listening: parseLearningHeardParts(item.listening, exercise, materials, `${path}.listening`) }) };
 }
 
 export function parseLearningAssessment(value: unknown, path = 'assessment'): LearningAssessment {

@@ -51,11 +51,16 @@ export interface LearningHelp {
 }
 export interface LearningSpeechVoice { voiceId: string; language: string; speed: number }
 export interface LearningListening {
+    /** Origin of playback, not an exclusive owner of the material's hearing facts. */
     exerciseId: string; voice: LearningSpeechVoice; parts: { key: string; count: number }[]; slowPlayback: boolean;
+}
+/** Answer-time hearing facts, grouped by actual material span and synthesis voice. */
+export interface LearningHeardPart {
+    key: string; voice: LearningSpeechVoice; count: number; slowPlayback: boolean;
 }
 export interface LearningAttempt {
     id: string; exerciseId: string; answer: LearningAnswer; submittedAt: string; help: LearningHelp; scope: LearningScope;
-    listening?: LearningSpeechVoice;
+    listening?: LearningHeardPart[];
 }
 export interface LearningAssessment {
     attemptId: string;

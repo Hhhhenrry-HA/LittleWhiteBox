@@ -116,6 +116,14 @@ export function createMessagesController(deps: MessagesControllerDependencies): 
                     return state();
                 case 'messages/confirm':
                     return await exclusive(async () => {await service.confirm(); runtime.clearError(); return state();});
+                case 'messages/adopt-server-state':
+                    return await exclusive(async () => {
+                        if (!guard()) {throw new Error('messages_chat_changed');}
+                        const result = await service.adoptServerState();
+                        if (!guard()) {throw new Error('messages_chat_changed');}
+                        if (result.status === 'adopted') {timeline.reset(); runtime.clearError();}
+                        return state();
+                    });
                 case 'messages/sync':
                     return await exclusive(async () => {await syncCurrentMessages(service, timeline, guard); runtime.clearError(); return state();});
                 case 'messages/recover':
