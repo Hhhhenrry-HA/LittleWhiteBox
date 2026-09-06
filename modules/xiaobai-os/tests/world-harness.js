@@ -14,10 +14,11 @@ export function deferred() {
     const promise = new Promise(done => { resolve = done; });
     return { promise, resolve };
 }
-export async function worldHarness(initial = null, { participants = [], captureBackground } = {}) {
+export async function worldHarness(initial = null, { participants = [], captureBackground, chatIdentity } = {}) {
     const binding = { kind: 'character', ownerLocator: 'world.png', chatId: 'test-world' };
     let id = 0;
     const state = {
+        chatIdentity,
         capture: { identityKey: 'world:one', binding, reference: initial ? { formatVersion: 1, osId: 'world-os' } : null },
         persisted: initial ? { formatVersion: 1, osId: 'world-os', binding, revision: 0, commitId: 'initial', partitions: { world: initial } } : null,
         writes: [], replace: null, messages: [{ is_user: false, mes: '港城迎来初夏。', name: '旁白' }],
@@ -43,13 +44,14 @@ export async function worldHarness(initial = null, { participants = [], captureB
             async delete() { return 'deleted'; },
         },
     });
-    const world = createWorldService(coordinator.createScopedStore(WORLD_PARTITION), coordinator);
+    const getChatIdentity = () => state.chatIdentity ?? state.capture.identityKey;
+    const world = createWorldService(coordinator.createScopedStore(WORLD_PARTITION), coordinator, getChatIdentity);
     await world.refreshCurrent();
     const participant = createWorldMaintenanceParticipant(world);
     const runner = createMaintenanceRunner({
         registry: createMaintenanceRegistry([participant, ...participants]),
         ...(captureBackground ? { captureBackground } : {}),
-        captureSurface: () => ({ identityKey: state.capture.identityKey, messages: state.messages, playerName: '玩家' }),
+        captureSurface: () => ({ identityKey: getChatIdentity(), messages: state.messages, playerName: '玩家' }),
         isGenerationActive: () => false,
         writeGate: { getState: coordinator.getFileState, subscribe: listener => coordinator.subscribeFileState(change => listener(change.state)) },
         gateway: {
@@ -62,9 +64,9 @@ export async function worldHarness(initial = null, { participants = [], captureB
             }; },
         },
     });
-    const source = () => ({ chatIdentity: state.capture.identityKey, messages: [], messageCount: 1,
+    const source = () => ({ chatIdentity: getChatIdentity(), messages: [], messageCount: 1,
         assistantCount: 1, player: { actorKey: 'player', displayName: '玩家' } });
-    return { world, participant, coordinator, runner, state,
+    return { world, participant, coordinator, runner, state, getChatIdentity,
         session: mode => participant.createSession(source(), mode ?? 'rebuild'),
         dispose() { runner.stopBackground(); world.dispose(); },
     };

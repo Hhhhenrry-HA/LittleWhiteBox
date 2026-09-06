@@ -268,7 +268,7 @@ function rf(e) {
           for (const g of r) {
             if (!g.install) continue;
             if (g.partition && !l.createStore) throw new Error(`capability partition store is unavailable: ${g.partition.key}`);
-            const _ = new Set((g.dependencies ?? []).map((C) => C.id)), y = await g.install({
+            const _ = new Set((g.dependencies ?? []).map((C) => C.id)), b = await g.install({
               partition: g.partition ? l.createStore?.(g.partition, g.dependencies) ?? null : null,
               files: l.files ?? null,
               require(C) {
@@ -277,14 +277,14 @@ function rf(e) {
                 return o.get(C.id);
               }
             });
-            o.set(g.token.id, y);
+            o.set(g.token.id, b);
           }
           c = !0;
         } catch (g) {
           for (const _ of [...r].reverse()) {
-            const y = o.get(_.token.id);
-            if (y !== void 0) try {
-              await _.dispose?.(y);
+            const b = o.get(_.token.id);
+            if (b !== void 0) try {
+              await _.dispose?.(b);
             } catch {
             }
           }
@@ -305,8 +305,8 @@ function rf(e) {
   }
   function m(l, g, _) {
     if (!c) throw new Error(`capability is not installed: ${l.id}`);
-    const y = /* @__PURE__ */ new Map(), C = (A) => {
-      if (y.has(A.id)) return y.get(A.id);
+    const b = /* @__PURE__ */ new Map(), C = (A) => {
+      if (b.has(A.id)) return b.get(A.id);
       const S = t.get(A.id);
       if (!S) throw Object.assign(/* @__PURE__ */ new Error(`capability is not registered: ${A.id}`), {
         code: "capability_unavailable",
@@ -314,7 +314,7 @@ function rf(e) {
       });
       if (!S.bindTransaction) {
         const w = f(A);
-        return y.set(A.id, w), w;
+        return b.set(A.id, w), w;
       }
       const k = new Set((S.dependencies ?? []).map((w) => w.id)), I = S.bindTransaction({
         requesterId: g,
@@ -324,7 +324,7 @@ function rf(e) {
           return C(w);
         }
       });
-      return y.set(A.id, I), I;
+      return b.set(A.id, I), I;
     };
     return C(l);
   }
@@ -335,8 +335,8 @@ function rf(e) {
       if (_ !== void 0)
         try {
           await g.dispose?.(_);
-        } catch (y) {
-          l.push(y);
+        } catch (b) {
+          l.push(b);
         }
     }
     if (o.clear(), c = !1, l.length > 0) throw new AggregateError(l, "capability disposal failed");
@@ -436,35 +436,35 @@ function df(e, t) {
   async function p(l) {
     const g = s(), _ = Gr(l.payload) ? l.payload : {};
     if (l.type === "agent-api/reload") {
-      const y = await o();
+      const b = await o();
       if (!a(g)) throw new Error("app_inactive");
-      return y;
+      return b;
     }
     if (l.type === "agent-api/save") {
-      const y = Gr(_.patch) ? _.patch : {}, C = await e.saveConfig(y);
+      const b = Gr(_.patch) ? _.patch : {}, C = await e.saveConfig(b);
       if (!a(g)) throw new Error("app_inactive");
       return C;
     }
     if (l.type === "agent-api/pull-models") {
       if (!Gr(_.providerConfig)) throw new Error("模型配置无效");
-      const y = u();
+      const b = u();
       try {
-        const C = await e.pullModels(_.providerConfig, y.signal);
+        const C = await e.pullModels(_.providerConfig, b.signal);
         if (!a(g)) throw new Error("app_inactive");
         return { models: C };
       } finally {
-        d(y);
+        d(b);
       }
     }
     if (l.type === "agent-api/test-connection") {
       if (!Gr(_.providerConfig)) throw new Error("模型配置无效");
-      const y = u();
+      const b = u();
       try {
-        const C = await e.testConnection(_.providerConfig, y.signal);
+        const C = await e.testConnection(_.providerConfig, b.signal);
         if (!a(g)) throw new Error("app_inactive");
         return C;
       } finally {
-        d(y);
+        d(b);
       }
     }
     throw new Error("未知的 Agent API 操作");
@@ -700,7 +700,7 @@ function yf({ bank: e, economy: t, getChatIdentity: n, isMainGenerationActive: r
   function _(v, E) {
     return v.post("bank/state", { state: E }), E;
   }
-  function y(v = s) {
+  function b(v = s) {
     if (!v) throw new Error("银行 APP 未激活");
     return _(v, g(v.chatIdentity));
   }
@@ -720,12 +720,12 @@ function yf({ bank: e, economy: t, getChatIdentity: n, isMainGenerationActive: r
     o = E;
     const x = () => {
       o !== E || s !== v || f() !== v.chatIdentity || C().then(() => {
-        o !== E || s !== v || f() !== v.chatIdentity || (o = null, y(v));
+        o !== E || s !== v || f() !== v.chatIdentity || (o = null, b(v));
       }).catch(($) => {
         o !== E || s !== v || f() !== v.chatIdentity || (console.error("[LittleWhiteBox] 银行数据准备失败", $), o = {
           activation: v,
           error: "银行数据暂时无法读取，请稍后重试。"
-        }, y(v));
+        }, b(v));
       });
     };
     a ? a.setTimeout(x, 0) : globalThis.setTimeout(x, 0);
@@ -750,7 +750,7 @@ function yf({ bank: e, economy: t, getChatIdentity: n, isMainGenerationActive: r
       const R = await x();
       return p(v, E), $(R);
     } catch (R) {
-      throw s === v && f() === v.chatIdentity && vo(R) && y(v), R;
+      throw s === v && f() === v.chatIdentity && vo(R) && b(v), R;
     } finally {
       s === v && (c = !1);
     }
@@ -762,7 +762,7 @@ function yf({ bank: e, economy: t, getChatIdentity: n, isMainGenerationActive: r
     const E = hd(v.payload) ? v.payload : {}, x = m(E);
     if (v.type === "bank/refresh") {
       if (c) throw new Error("已有银行操作正在处理");
-      return o = null, typeof e.refreshCurrent == "function" && await e.refreshCurrent(), await C(), p(x, E), y(x);
+      return o = null, typeof e.refreshCurrent == "function" && await e.refreshCurrent(), await C(), p(x, E), b(x);
     }
     if (v.type === "bank/records/load-more") {
       if (c) throw new Error("已有银行操作正在处理");
@@ -777,7 +777,7 @@ function yf({ bank: e, economy: t, getChatIdentity: n, isMainGenerationActive: r
     if (v.type === "bank/confirm-save")
       return o = null, I(x, E, () => e.confirmPending(), (R) => ({
         confirmation: R.status,
-        state: y(x)
+        state: b(x)
       }));
     const $ = {
       ...gf(E),
@@ -812,11 +812,11 @@ function yf({ bank: e, economy: t, getChatIdentity: n, isMainGenerationActive: r
     }
     throw new Error("未知的银行操作");
   }
-  function b() {
+  function y() {
     const v = s;
     if (!(!v || f() !== v.chatIdentity))
       try {
-        y(v);
+        b(v);
       } catch (E) {
         v.post("bank/error", { message: E instanceof Error ? E.message : String(E) });
       }
@@ -829,7 +829,7 @@ function yf({ bank: e, economy: t, getChatIdentity: n, isMainGenerationActive: r
     handleChatChanged: k,
     handleMessage: h,
     startBackground() {
-      u || (u = i(() => b())), d || (d = e.subscribe(b));
+      u || (u = i(() => y())), d || (d = e.subscribe(y));
     },
     stopBackground() {
       u?.(), u = null, d?.(), d = null, k();
@@ -1952,8 +1952,8 @@ function Om({ createActivityId: e, createEventId: t, createPositionId: n, random
     f.domain.events.some((C) => C.eventId === l) && J("bank_invalid_context", "event-id-conflict");
     const g = p ? fr(n(), "position-id", !0) : null;
     g && f.domain.events.some((C) => (C.command.kind === "deposit-open" || C.command.kind === "fund-open") && C.command.positionId === g) && J("bank_invalid_context", "position-id-conflict");
-    const _ = Array.from({ length: m }, () => fr(e(), "activity-id")), y = new Set(f.domain.events.flatMap((C) => C.result.activities.map((A) => A.id)));
-    return (new Set(_).size !== _.length || _.some((C) => y.has(C))) && J("bank_invalid_context", "activity-id-conflict"), {
+    const _ = Array.from({ length: m }, () => fr(e(), "activity-id")), b = new Set(f.domain.events.flatMap((C) => C.result.activities.map((A) => A.id)));
+    return (new Set(_).size !== _.length || _.some((C) => b.has(C))) && J("bank_invalid_context", "activity-id-conflict"), {
       eventId: l,
       positionId: g,
       activityIds: _
@@ -1967,7 +1967,7 @@ function Om({ createActivityId: e, createEventId: t, createPositionId: n, random
     return i("deposit-open", f, (m) => {
       const p = Yf(f.productId), l = Er(p, f.amount), g = Wr(m.state, m.assistantTurn);
       $o(m.playerBalance, g, l);
-      const _ = a(m, g.length, !0), y = {
+      const _ = a(m, g.length, !0), b = {
         id: _.positionId,
         productId: p.id,
         principal: l,
@@ -1980,13 +1980,13 @@ function Om({ createActivityId: e, createEventId: t, createPositionId: n, random
       })), A = Ur(C, s(C, _.activityIds));
       return A.changes.push({
         kind: "deposit-opened",
-        position: y
+        position: b
       }), {
         eventId: _.eventId,
         command: {
           kind: "deposit-open",
           productId: p.id,
-          positionId: y.id,
+          positionId: b.id,
           amount: l,
           settledPositionIds: g.map((S) => S.id)
         },
@@ -2004,15 +2004,15 @@ function Om({ createActivityId: e, createEventId: t, createPositionId: n, random
       })), {
         position: l,
         early: !0
-      }], y = a(m, _.length, !1);
+      }], b = a(m, _.length, !1);
       return {
-        eventId: y.eventId,
+        eventId: b.eventId,
         command: {
           kind: "deposit-withdraw-early",
           positionId: p,
           settledPositionIds: g.map((C) => C.id)
         },
-        result: Ur(_, s(_, y.activityIds))
+        result: Ur(_, s(_, b.activityIds))
       };
     });
   }
@@ -2020,13 +2020,13 @@ function Om({ createActivityId: e, createEventId: t, createPositionId: n, random
     return i("fund-open", f, (m) => {
       const p = Zf(f.productId), l = Er(p, f.amount), g = Wr(m.state, m.assistantTurn);
       $o(m.playerBalance, g, l);
-      const _ = a(m, g.length, !0), y = Qf(p, l, r), C = {
+      const _ = a(m, g.length, !0), b = Qf(p, l, r), C = {
         id: _.positionId,
         productId: p.id,
         principal: l,
         startTurn: m.assistantTurn,
         maturityTurn: m.assistantTurn + p.lockRounds,
-        ...y
+        ...b
       }, A = g.map((k) => ({
         position: k,
         early: !1
@@ -2162,11 +2162,11 @@ function Mm(e, t, n, { now: r = Date.now, createEventId: i = () => pa("bank-even
       writeState: t.getFileState()
     };
   }
-  function y(k = {}) {
+  function b(k = {}) {
     return _(g(), c(), n.getPlayerBalance(), k);
   }
   async function C(k = {}) {
-    return await n.refresh(), await e.read(), y(k);
+    return await n.refresh(), await e.read(), b(k);
   }
   const S = Om({
     createActivityId: s,
@@ -2175,7 +2175,7 @@ function Mm(e, t, n, { now: r = Date.now, createEventId: i = () => pa("bank-even
     random: o,
     runAction: async (k, I, w) => {
       let h = !1;
-      const b = () => {
+      const y = () => {
         if (u()) throw new Error("bank_main_generation_active");
       }, v = await e.transact((x) => {
         const $ = x.useCapability(Ge), R = x.currentOrInitial();
@@ -2187,7 +2187,7 @@ function Mm(e, t, n, { now: r = Date.now, createEventId: i = () => pa("bank-even
             assistantTurn: T,
             playerBalance: $.getPlayerBalance()
           };
-        b(), Sm(I.actionId), Em(R, I);
+        y(), Sm(I.actionId), Em(R, I);
         const D = w({
           domain: R,
           state: Cr(R),
@@ -2207,7 +2207,7 @@ function Mm(e, t, n, { now: r = Date.now, createEventId: i = () => pa("bank-even
           playerBalance: $.getPlayerBalance()
         };
       }, { commitGuard() {
-        return h || b(), !0;
+        return h || y(), !0;
       } });
       if (v.status === "failed" || v.status === "unconfirmed" || v.status === "conflict") throw Pm(v);
       const E = v.result;
@@ -2215,7 +2215,7 @@ function Mm(e, t, n, { now: r = Date.now, createEventId: i = () => pa("bank-even
     }
   });
   return Object.freeze({
-    readCurrent: y,
+    readCurrent: b,
     refreshCurrent: C,
     ...S,
     confirmPending: t.retryPending,
@@ -2570,7 +2570,7 @@ function ip({ getSettings: e, subscribe: t, capture: n, generate: r, commit: i, 
     const S = l !== null;
     return l?.abort(), l = null, s?.(), S;
   }
-  async function y(S) {
+  async function b(S) {
     const k = e?.();
     if (!k?.enabled || l || o() || u() - g < m) return !1;
     const I = Number(k.probability);
@@ -2580,8 +2580,8 @@ function ip({ getSettings: e, subscribe: t, capture: n, generate: r, commit: i, 
     try {
       const h = await n?.(S);
       if (!h || w.signal.aborted || (g = u(), await rp(S?.kind === "ai_message" ? 1e3 + c() * 1e3 : 500 + c() * 500, w.signal, d, f), !r || !i)) return !1;
-      const b = await r(h, w.signal);
-      return w.signal.aborted || !String(b || "").trim() || (await i(h, String(b).trim(), w.signal), w.signal.aborted) ? !1 : (a?.(String(b).trim()), !0);
+      const y = await r(h, w.signal);
+      return w.signal.aborted || !String(y || "").trim() || (await i(h, String(y).trim(), w.signal), w.signal.aborted) ? !1 : (a?.(String(y).trim()), !0);
     } catch (h) {
       return (h !== null && typeof h == "object" && "name" in h ? String(h.name) : "") !== "AbortError" && console.warn("[LittleWhiteBox] 四次元壁吐槽失败", h), !1;
     } finally {
@@ -2590,7 +2590,7 @@ function ip({ getSettings: e, subscribe: t, capture: n, generate: r, commit: i, 
   }
   function C() {
     const S = e?.()?.enabled === !0;
-    S && !p && (p = t?.(y) || (() => {
+    S && !p && (p = t?.(b) || (() => {
     })), !S && p && (_(), p(), p = null);
   }
   function A() {
@@ -2601,7 +2601,7 @@ function ip({ getSettings: e, subscribe: t, capture: n, generate: r, commit: i, 
     sync: C,
     stop: A,
     cancel: _,
-    handleEvent: y,
+    handleEvent: b,
     isRunning: () => l !== null
   });
 }
@@ -3059,7 +3059,7 @@ function Rp({ chatRepository: e, settingsRepository: t, getChatIdentity: n, getC
     if (T && !String(R.sessionId || "")) throw new Error("四次元壁记录标识缺失");
     return f;
   }
-  function y(R, T = {}, P = !1) {
+  function b(R, T = {}, P = !1) {
     const D = _(T, P);
     if (D !== R) throw new Error("四次元壁页面已切换，请重试");
     return D;
@@ -3246,29 +3246,29 @@ function Rp({ chatRepository: e, settingsRepository: t, getChatIdentity: n, getC
   function h(R = "deactivated") {
     $(R);
   }
-  async function b(R, T, P) {
+  async function y(R, T, P) {
     let D;
     try {
       D = await e.mutateCurrentChatFourthWall(P);
     } catch (K) {
       if (ga(K)) {
-        y(R, T);
+        b(R, T);
         const H = e.readCurrentChatFourthWall();
         H && A(H);
       }
       throw K;
     }
-    return y(R, T), D;
+    return b(R, T), D;
   }
   async function v(R, T) {
-    return A(await b(_(R, !0), R, T));
+    return A(await y(_(R, !0), R, T));
   }
   async function E(R, T, P) {
     try {
       await t.mutateFourthWall(P);
     } catch (D) {
       if (ga(D)) {
-        y(R, T);
+        b(R, T);
         const K = e.readCurrentChatFourthWall();
         K && A(K);
       }
@@ -3307,7 +3307,7 @@ function Rp({ chatRepository: e, settingsRepository: t, getChatIdentity: n, getC
     if (P === "send") {
       const D = _(T, !0);
       if (p.isRunning()) throw new Error("已有回复正在生成");
-      const K = String(T.content || "").trim(), H = String(T.sessionId || ""), L = await b(D, T, (N) => ha(N, H, {
+      const K = String(T.content || "").trim(), H = String(T.sessionId || ""), L = await y(D, T, (N) => ha(N, H, {
         role: "user",
         content: K,
         ts: u()
@@ -3323,7 +3323,7 @@ function Rp({ chatRepository: e, settingsRepository: t, getChatIdentity: n, getC
       const D = _(T, !0);
       p.cancel("regenerated");
       let K = "";
-      const H = String(T.sessionId || ""), L = await b(D, T, (N) => {
+      const H = String(T.sessionId || ""), L = await y(D, T, (N) => {
         const j = gp(N, H);
         return K = j.userInput, j.state;
       }), O = A(L);
@@ -3336,7 +3336,7 @@ function Rp({ chatRepository: e, settingsRepository: t, getChatIdentity: n, getC
     }
     if (P === "update-global-settings") {
       const D = _(T), K = T.patch && typeof T.patch == "object" && !Array.isArray(T.patch) ? T.patch : {};
-      await E(D, T, (L) => xp(L, K)), I?.sync(), y(D, T);
+      await E(D, T, (L) => xp(L, K)), I?.sync(), b(D, T);
       const H = e.readCurrentChatFourthWall();
       if (!H) throw new Error("四次元壁聊天数据不存在");
       return A(H);
@@ -3346,7 +3346,7 @@ function Rp({ chatRepository: e, settingsRepository: t, getChatIdentity: n, getC
       await E(D, T, (L) => ({
         ...L,
         promptTemplates: K.promptTemplates
-      })), y(D, T);
+      })), b(D, T);
       const H = e.readCurrentChatFourthWall();
       if (!H) throw new Error("四次元壁聊天数据不存在");
       return A(H);
@@ -3461,11 +3461,11 @@ function Pp({ getFacade: e = Np } = {}) {
         prompt: f,
         cacheNamespace: "fourth-wall",
         signal: p.signal,
-        onProgress(g, _, y) {
+        onProgress(g, _, b) {
           t.get(d) === p && u?.({
             status: String(g || ""),
             position: g === "queued" ? Number(_ || 0) + 1 : 0,
-            delay: y ? Math.round(y / 1e3) : void 0
+            delay: b ? Math.round(b / 1e3) : void 0
           });
         }
       });
@@ -3955,18 +3955,18 @@ function nh({ game: e, economy: t, getChatIdentity: n, isMainGenerationActive: r
   function f() {
     return Yp(n());
   }
-  function m(b = {}) {
+  function m(y = {}) {
     if (!s) throw new Error("游戏 APP 未激活");
     const v = f();
-    if (!v || v !== s.chatIdentity || typeof b.chatIdentity != "string" || b.chatIdentity !== v) throw new Error("聊天已切换，请重新打开游戏");
+    if (!v || v !== s.chatIdentity || typeof y.chatIdentity != "string" || y.chatIdentity !== v) throw new Error("聊天已切换，请重新打开游戏");
     return s;
   }
-  function p(b, v) {
-    if (m(v) !== b) throw new Error("游戏页面已切换，请重试");
+  function p(y, v) {
+    if (m(v) !== y) throw new Error("游戏页面已切换，请重试");
   }
-  function l(b) {
+  function l(y) {
     const v = Jp({
-      chatIdentity: b,
+      chatIdentity: y,
       serviceView: e.readCurrent({
         activityOffset: 0,
         activityLimit: Fo
@@ -3984,58 +3984,58 @@ function nh({ game: e, economy: t, getChatIdentity: n, isMainGenerationActive: r
       message: ""
     };
   }
-  function g(b = s) {
-    if (!b) throw new Error("游戏 APP 未激活");
-    const v = l(b.chatIdentity);
-    return b.post("game/state", { state: v }), v;
+  function g(y = s) {
+    if (!y) throw new Error("游戏 APP 未激活");
+    const v = l(y.chatIdentity);
+    return y.post("game/state", { state: v }), v;
   }
   async function _() {
     if (!t.isOpen())
       try {
         await t.ensureOpen();
-      } catch (b) {
-        if (!Zp(b)) throw b;
+      } catch (y) {
+        if (!Zp(y)) throw y;
       }
   }
-  function y(b) {
+  function b(y) {
     const v = {
-      activation: b,
+      activation: y,
       error: ""
     };
     o = v;
     const E = () => {
-      o !== v || s !== b || f() !== b.chatIdentity || _().then(() => {
-        o !== v || s !== b || f() !== b.chatIdentity || (o = null, g(b));
+      o !== v || s !== y || f() !== y.chatIdentity || _().then(() => {
+        o !== v || s !== y || f() !== y.chatIdentity || (o = null, g(y));
       }).catch((x) => {
-        o !== v || s !== b || f() !== b.chatIdentity || (console.error("[LittleWhiteBox] 游戏数据准备失败", x), o = {
-          activation: b,
+        o !== v || s !== y || f() !== y.chatIdentity || (console.error("[LittleWhiteBox] 游戏数据准备失败", x), o = {
+          activation: y,
           error: "游戏数据暂时无法读取，请稍后重试。"
-        }, g(b));
+        }, g(y));
       });
     };
     a ? a.setTimeout(E, 0) : globalThis.setTimeout(E, 0);
   }
-  function C(b) {
+  function C(y) {
     A();
     const v = f();
     if (!v) throw new Error("请先打开一个聊天");
     const E = {
       chatIdentity: v,
-      post: b.post
+      post: y.post
     };
-    return s = E, t.isOpen() || y(E), l(v);
+    return s = E, t.isOpen() || b(E), l(v);
   }
   function A() {
     s = null, o = null, c = !1;
   }
-  async function S(b, v, E) {
+  async function S(y, v, E) {
     if (c) throw new Error("已有游戏操作正在处理");
     c = !0;
     try {
       const x = await E();
-      return p(b, v), {
+      return p(y, v), {
         value: x,
-        state: l(b.chatIdentity)
+        state: l(y.chatIdentity)
       };
     } catch (x) {
       throw e.getWriteState() === "failed" && e.hasPendingSave() ? Object.assign(/* @__PURE__ */ new Error("本局结果尚未保存。请重试保存后再继续游戏。"), {
@@ -4044,28 +4044,28 @@ function nh({ game: e, economy: t, getChatIdentity: n, isMainGenerationActive: r
         cause: x
       }) : x;
     } finally {
-      s === b && (c = !1);
+      s === y && (c = !1);
     }
   }
-  function k(b) {
+  function k(y) {
     return {
-      ...Qp(b),
-      actionId: Fa(b.actionId, "操作标识")
+      ...Qp(y),
+      actionId: Fa(y.actionId, "操作标识")
     };
   }
-  function I(b) {
+  function I(y) {
     return {
-      ...k(b),
-      gameId: Fa(b.gameId, "赌局")
+      ...k(y),
+      gameId: Fa(y.gameId, "赌局")
     };
   }
-  async function w(b) {
-    const v = Ss(b.payload) ? b.payload : {}, E = m(v);
-    if (b.type === "game/refresh")
+  async function w(y) {
+    const v = Ss(y.payload) ? y.payload : {}, E = m(v);
+    if (y.type === "game/refresh")
       return o = null, (await S(E, v, async () => {
         await e.refreshCurrent(), await _();
       })).state;
-    if (b.type === "game/confirm-save") {
+    if (y.type === "game/confirm-save") {
       o = null;
       const x = await S(E, v, e.confirmPending);
       return {
@@ -4073,7 +4073,7 @@ function nh({ game: e, economy: t, getChatIdentity: n, isMainGenerationActive: r
         state: x.state
       };
     }
-    if (b.type === "game/records/load-more") {
+    if (y.type === "game/records/load-more") {
       if (c) throw new Error("已有游戏操作正在处理");
       const x = zn(v.offset, "记录页码", 1);
       return Hd(e.readCurrent({
@@ -4081,63 +4081,63 @@ function nh({ game: e, economy: t, getChatIdentity: n, isMainGenerationActive: r
         activityLimit: Fo
       }));
     }
-    if (b.type === "game/dice/start") {
+    if (y.type === "game/dice/start") {
       const x = {
         ...k(v),
         bet: zn(v.bet, "下注", 1)
       };
       return (await S(E, v, () => e.startDice(x))).state;
     }
-    if (b.type === "game/dice/bid") {
+    if (y.type === "game/dice/bid") {
       const x = {
         ...I(v),
         bid: eh(v.bid)
       };
       return (await S(E, v, () => e.bidDice(x))).state;
     }
-    if (b.type === "game/dice/challenge") {
+    if (y.type === "game/dice/challenge") {
       const x = I(v);
       return (await S(E, v, () => e.challengeDice(x))).state;
     }
-    if (b.type === "game/push/start") {
+    if (y.type === "game/push/start") {
       const x = k(v);
       return (await S(E, v, () => e.startPush(x))).state;
     }
-    if (b.type === "game/push/draw") {
+    if (y.type === "game/push/draw") {
       const x = I(v);
       return (await S(E, v, () => e.drawPush(x))).state;
     }
-    if (b.type === "game/push/cash-out") {
+    if (y.type === "game/push/cash-out") {
       const x = I(v);
       return (await S(E, v, () => e.cashOutPush(x))).state;
     }
-    if (b.type === "game/ladder/start") {
+    if (y.type === "game/ladder/start") {
       const x = {
         ...k(v),
         bet: zn(v.bet, "下注", 1)
       };
       return (await S(E, v, () => e.startLadder(x))).state;
     }
-    if (b.type === "game/ladder/step") {
+    if (y.type === "game/ladder/step") {
       const x = {
         ...I(v),
         choice: th(v.choice)
       };
       return (await S(E, v, () => e.stepLadder(x))).state;
     }
-    if (b.type === "game/ladder/cash-out") {
+    if (y.type === "game/ladder/cash-out") {
       const x = I(v);
       return (await S(E, v, () => e.cashOutLadder(x))).state;
     }
     throw new Error("未知的游戏操作");
   }
   function h() {
-    const b = s;
-    if (!(!b || c || f() !== b.chatIdentity))
+    const y = s;
+    if (!(!y || c || f() !== y.chatIdentity))
       try {
-        g(b);
+        g(y);
       } catch {
-        b.post("game/error", { message: "游戏状态暂时无法读取，请重新打开。" });
+        y.post("game/error", { message: "游戏状态暂时无法读取，请重新打开。" });
       }
   }
   return Object.freeze({
@@ -5400,8 +5400,8 @@ function $g({ random: e, runAction: t, unusedGameId: n }) {
     }, (p, l) => {
       const g = On(p.state, "dice", m.gameId);
       g.kind !== "dice" && G("game_action_invalid", "game-type-mismatch");
-      const _ = Sn(m.bid, "player"), y = g.game.bids.at(-1);
-      y && !Br(_, y) && G("game_dice_bid_not_higher");
+      const _ = Sn(m.bid, "player"), b = g.game.bids.at(-1);
+      b && !Br(_, b) && G("game_dice_bid_not_higher");
       const C = wh(g.game, _, e), A = {
         kind: "dice-bid",
         gameId: g.game.id,
@@ -5476,19 +5476,19 @@ function $g({ random: e, runAction: t, unusedGameId: n }) {
     }, (p, l) => {
       const g = On(p.state, "push", m.gameId);
       g.kind !== "push" && G("game_action_invalid", "game-type-mismatch");
-      const _ = cg(g.game), y = {
+      const _ = cg(g.game), b = {
         kind: "push-draw",
         gameId: g.game.id
       };
       return _.kind === "continued" ? {
-        command: y,
+        command: b,
         result: _a({
           kind: "push",
           game: _.game
         }),
         economyLegs: []
       } : {
-        command: y,
+        command: b,
         ...xn({
           kind: "push",
           settlement: _.settlement
@@ -5556,20 +5556,20 @@ function $g({ random: e, runAction: t, unusedGameId: n }) {
     }, (p, l) => {
       const g = On(p.state, "ladder", m.gameId);
       g.kind !== "ladder" && G("game_action_invalid", "game-type-mismatch"), Rs(m.choice);
-      const _ = mg(g.game, m.choice, e), y = {
+      const _ = mg(g.game, m.choice, e), b = {
         kind: "ladder-step",
         gameId: g.game.id,
         choice: m.choice
       };
       return _.kind === "continued" ? {
-        command: y,
+        command: b,
         result: _a({
           kind: "ladder",
           game: _.game
         }),
         economyLegs: []
       } : {
-        command: y,
+        command: b,
         ...xn({
           kind: "ladder",
           settlement: _.settlement
@@ -5671,7 +5671,7 @@ function Pg(e, t, n, { now: r = Date.now, createGameId: i = (u) => Ia(`game-${u}
   function _(I = {}) {
     return g(l(), n.getPlayerBalance(), I);
   }
-  async function y() {
+  async function b() {
     return await n.refresh(), await e.read(), _();
   }
   function C(I, w) {
@@ -5684,18 +5684,18 @@ function Pg(e, t, n, { now: r = Date.now, createGameId: i = (u) => Ia(`game-${u}
   }
   function A(I, w) {
     const h = ba(i(w), "game-id", !0);
-    return I.game.events.some((b) => b.command.gameId === h) && G("game_invalid", "game-id-conflict"), h;
+    return I.game.events.some((y) => y.command.gameId === h) && G("game_invalid", "game-id-conflict"), h;
   }
   const k = $g({
     random: o,
     runAction: async (I, w, h) => {
-      let b = !1;
+      let y = !1;
       const v = () => {
         if (c()) throw new Error("game_main_generation_active");
       }, E = await e.transact(($) => {
         const R = $.useCapability(Ge), T = C($.current, R);
         if (Og(T.game, I.actionId, w))
-          return b = !0, {
+          return y = !0, {
             game: T.game,
             balance: T.balance
           };
@@ -5721,7 +5721,7 @@ function Pg(e, t, n, { now: r = Date.now, createGameId: i = (u) => Ia(`game-${u}
       }, {
         retainFailedCandidate: !0,
         commitGuard() {
-          return b || v(), !0;
+          return y || v(), !0;
         }
       });
       if (E.status === "failed" || E.status === "unconfirmed" || E.status === "conflict") throw Ng(E);
@@ -5732,7 +5732,7 @@ function Pg(e, t, n, { now: r = Date.now, createGameId: i = (u) => Ia(`game-${u}
   });
   return Object.freeze({
     readCurrent: _,
-    refreshCurrent: y,
+    refreshCurrent: b,
     ...k,
     confirmPending: () => t.retryPending(),
     getWriteState: () => t.getFileState(),
@@ -5993,7 +5993,7 @@ function qg({ map: e, settings: t, maintenance: n, getChatIdentity: r, subscribe
   function _() {
     a = null;
   }
-  function y(k) {
+  function b(k) {
     const I = k === "rebuild" ? n.startRebuild("map") : n.startManual("map");
     return {
       started: I.status === "started",
@@ -6024,8 +6024,8 @@ function qg({ map: e, settings: t, maintenance: n, getChatIdentity: r, subscribe
       if (typeof I.enabled != "boolean") throw new TypeError("地图自动维护开关无效");
       return await t.setMapAutoMaintenance(I.enabled), f(w, I), p(w);
     }
-    if (k.type === "map/maintain-once") return y("manual");
-    if (k.type === "map/rebuild") return y("rebuild");
+    if (k.type === "map/maintain-once") return b("manual");
+    if (k.type === "map/rebuild") return b("rebuild");
     throw new Error("未知的地图操作");
   }
   function A() {
@@ -6825,19 +6825,19 @@ function xy(e, t, n) {
   let p = !1;
   const l = (S, k, I, w, h) => {
     try {
-      const b = hi(c, w);
-      return c = b.domain, p ||= b.changed, u.push(...w), d.push({
+      const y = hi(c, w);
+      return c = y.domain, p ||= y.changed, u.push(...w), d.push({
         collection: S,
         index: k,
         id: I,
-        changed: b.changed
+        changed: y.changed
       }), !0;
-    } catch (b) {
+    } catch (y) {
       return f.push({
         collection: S,
         index: k,
         id: I,
-        reason: gi(b),
+        reason: gi(y),
         hint: h
       }), !1;
     }
@@ -6845,9 +6845,9 @@ function xy(e, t, n) {
     raw: S,
     index: k
   }));
-  let y = !0;
-  for (; _.length && y; ) {
-    y = !1;
+  let b = !0;
+  for (; _.length && b; ) {
+    b = !1;
     for (let S = 0; S < _.length; S += 1) {
       const { raw: k, index: I } = _[S];
       if (!De(k)) continue;
@@ -6862,17 +6862,17 @@ function xy(e, t, n) {
         }), _.splice(S, 1), S -= 1;
         continue;
       }
-      const b = hn(k.name), v = me(k.parent);
-      if (!w || !b || v && !c.atlas.locations.some((P) => P.key === v)) continue;
+      const y = hn(k.name), v = me(k.parent);
+      if (!w || !y || v && !c.atlas.locations.some((P) => P.key === v)) continue;
       const E = c.atlas.locations.find((P) => P.key === w), x = Ce(k.scale, yy) || E?.scale || "room", $ = Ce(k.status, by) || E?.status || "mentioned", R = {
         ...E || {
           key: w,
-          name: b,
+          name: y,
           scale: x,
           status: $
         },
         key: w,
-        name: b,
+        name: y,
         scale: x,
         status: $
       };
@@ -6881,7 +6881,7 @@ function xy(e, t, n) {
       T && (R.brief = T), k.position === null ? delete R.position : k.position !== void 0 && (R.position = k.position), k.terrain === null ? delete R.terrain : k.terrain !== void 0 && (R.terrain = k.terrain), l("locations", I, w, [{
         op: "upsert-location",
         location: R
-      }], "Create the parent first or correct this location.") ? (_.splice(S, 1), S -= 1, y = !0) : (_.splice(S, 1), S -= 1);
+      }], "Create the parent first or correct this location.") ? (_.splice(S, 1), S -= 1, b = !0) : (_.splice(S, 1), S -= 1);
     }
   }
   for (const { raw: S, index: k } of _) {
@@ -6916,8 +6916,8 @@ function xy(e, t, n) {
       });
       return;
     }
-    const w = me(S.from), h = me(S.to), b = Ce(S.kind, wy), v = S.bidirectional !== !1, E = me(S.id, w && h && b ? Ey(w, h, b, v) : "");
-    if (!w || !h || !b || !E) {
+    const w = me(S.from), h = me(S.to), y = Ce(S.kind, wy), v = S.bidirectional !== !1, E = me(S.id, w && h && y ? Ey(w, h, y, v) : "");
+    if (!w || !h || !y || !E) {
       f.push({
         collection: "links",
         index: k,
@@ -6931,7 +6931,7 @@ function xy(e, t, n) {
       id: E,
       from: x,
       to: $,
-      kind: b,
+      kind: y,
       bidirectional: v
     }, T = hn(S.label, "", 160);
     T && (R.label = T), l("links", k, E, [{
@@ -6961,8 +6961,8 @@ function xy(e, t, n) {
       });
       return;
     }
-    const w = me(S.actorKey), h = w === "user" ? "player" : w, b = me(S.locationKey);
-    if (!h || !b) {
+    const w = me(S.actorKey), h = w === "user" ? "player" : w, y = me(S.locationKey);
+    if (!h || !y) {
       f.push({
         collection: "actors",
         index: k,
@@ -6975,7 +6975,7 @@ function xy(e, t, n) {
     l("actors", k, h, Cy(c, {
       actorKey: h,
       displayName: v,
-      locationKey: b
+      locationKey: y
     }), "Use an existing location key.");
   }), (Array.isArray(i.linkIds) ? i.linkIds : []).forEach((S, k) => {
     const I = me(S);
@@ -7793,32 +7793,32 @@ function db(e, t, n, r, i) {
     const g = Ce(e.shape, Ls), _ = cb(i?.category ?? e.cat, e.geo, d);
     if (c = g || (e.shape === void 0 ? i?.shape : void 0), c && !bu(c, e.geo, d) && _ && _ !== c ? (r.push(`Shape "${c}" for ${a} had unusable geo; used "${_}" instead.`), c = _) : !c && _ && (c = _, r.push(`Inferred shape "${c}" for ${a}.`)), !c) throw new Error(`shape_or_matching_geo_required:${a}`);
     if (c === "rect") {
-      const y = Gt(e.geo.center), C = hu(e.geo.size);
-      if (!y || !C) throw new Error(`rect_requires_center_and_size:${a}`);
+      const b = Gt(e.geo.center), C = hu(e.geo.size);
+      if (!b || !C) throw new Error(`rect_requires_center_and_size:${a}`);
       u = {
-        x: y[0] - C[0] / 2,
-        y: y[1] - C[1] / 2,
+        x: b[0] - C[0] / 2,
+        y: b[1] - C[1] / 2,
         width: C[0],
         height: C[1]
       };
     } else if (c === "circle") {
-      const y = Gt(e.geo.at), C = $i(e.geo.radius);
-      if (!y || C === null) throw new Error(`circle_requires_at_and_radius:${a}`);
+      const b = Gt(e.geo.at), C = $i(e.geo.radius);
+      if (!b || C === null) throw new Error(`circle_requires_at_and_radius:${a}`);
       u = {
-        x: y[0],
-        y: y[1],
+        x: b[0],
+        y: b[1],
         radius: C
       };
     } else if (c === "path" || c === "curve") {
-      const y = Xa(c === "path" ? e.geo.points : e.geo.curve);
-      if (!y) throw new Error(`${c}_requires_two_points:${a}`);
-      u = { points: y };
+      const b = Xa(c === "path" ? e.geo.points : e.geo.curve);
+      if (!b) throw new Error(`${c}_requires_two_points:${a}`);
+      u = { points: b };
     } else {
-      const y = Gt(e.geo.at);
-      if (!y) throw new Error(`${c}_requires_at:${a}`);
+      const b = Gt(e.geo.at);
+      if (!b) throw new Error(`${c}_requires_at:${a}`);
       u = {
-        x: y[0],
-        y: y[1]
+        x: b[0],
+        y: b[1]
       };
     }
   }
@@ -7873,8 +7873,8 @@ function db(e, t, n, r, i) {
     const l = i?.category === "actor" ? i.actorKey : void 0;
     let g = Object.hasOwn(e, "actorKey") ? me(e.actorKey) : l || a;
     if (l) {
-      const y = g === "user" ? "player" : g;
-      Object.hasOwn(e, "actorKey") && y !== l && r.push(`Ignored actorKey change for ${a}; existing actor identity "${l}" is stable.`), g = l;
+      const b = g === "user" ? "player" : g;
+      Object.hasOwn(e, "actorKey") && b !== l && r.push(`Ignored actorKey change for ${a}; existing actor identity "${l}" is stable.`), g = l;
     }
     if (!g) throw new Error(`actor_key_required:${a}`);
     const _ = i ? g === "player" : g === "player" || g === "user" || !Object.hasOwn(e, "actorKey") && m.kind === "player";
@@ -7969,7 +7969,7 @@ function lb(e, t, n) {
   let c = e;
   const u = [], d = [], f = [], m = [];
   let p = !1;
-  const l = ub(c, o), g = l?.key || o, _ = l?.sceneKey || l?.key || o, y = hn(t.title, l?.name || o), C = Ce(t.scale, eb) || l?.scale || "room", A = Ce(t.status, tb) || (t.playerHere === !0 ? "visited" : l?.status || "mentioned"), S = Array.isArray(t.viewBox) && t.viewBox.length === 4 ? t.viewBox.map(Ha) : null, k = S?.every((b) => b !== null) && S[2] > 0 && S[3] > 0 ? S : void 0;
+  const l = ub(c, o), g = l?.key || o, _ = l?.sceneKey || l?.key || o, b = hn(t.title, l?.name || o), C = Ce(t.scale, eb) || l?.scale || "room", A = Ce(t.status, tb) || (t.playerHere === !0 ? "visited" : l?.status || "mentioned"), S = Array.isArray(t.viewBox) && t.viewBox.length === 4 ? t.viewBox.map(Ha) : null, k = S?.every((y) => y !== null) && S[2] > 0 && S[3] > 0 ? S : void 0;
   t.viewBox !== void 0 && !k && d.push("Ignored invalid scene viewBox.");
   const I = Ce(t.mood, nb);
   if (t.mood !== void 0 && t.mood !== null && !I && d.push("Ignored invalid scene mood."), !l && i.length === 0) return {
@@ -7985,11 +7985,11 @@ function lb(e, t, n) {
   const w = [], h = {
     ...l || {
       key: g,
-      name: y,
+      name: b,
       scale: C,
       status: A
     },
-    name: y,
+    name: b,
     scale: C,
     status: A,
     sceneKey: _
@@ -8001,7 +8001,7 @@ function lb(e, t, n) {
     op: "initialize-scene",
     scene: {
       key: _,
-      name: y,
+      name: b,
       status: "active",
       viewBox: k || [
         0,
@@ -8013,21 +8013,21 @@ function lb(e, t, n) {
     }
   });
   else {
-    const b = {
-      name: y,
+    const y = {
+      name: b,
       status: "active"
     };
-    k && (b.viewBox = k), I ? b.mood = I : t.mood === null && (b.mood = null), w.push({
+    k && (y.viewBox = k), I ? y.mood = I : t.mood === null && (y.mood = null), w.push({
       op: "update-scene",
       sceneKey: _,
-      changes: b
+      changes: y
     });
   }
   t.playerHere === !0 && w.push(...ac(c, "player", n.displayName, g, { sceneKey: _ }));
   try {
-    const b = hi(c, w);
-    c = b.domain, p ||= b.changed, u.push(...w);
-  } catch (b) {
+    const y = hi(c, w);
+    c = y.domain, p ||= y.changed, u.push(...w);
+  } catch (y) {
     return {
       domain: e,
       edits: [],
@@ -8035,15 +8035,15 @@ function lb(e, t, n) {
         skipped: [{
           index: 0,
           id: o,
-          reason: gi(b),
+          reason: gi(y),
           hint: "Correct the scene identity or hierarchy and retry."
         }],
         warnings: d
       })
     };
   }
-  return a.forEach((b, v) => {
-    const E = me(b);
+  return a.forEach((y, v) => {
+    const E = me(y);
     if (!E) {
       m.push({
         collection: "remove",
@@ -8075,10 +8075,10 @@ function lb(e, t, n) {
         hint: "Use an element id from this scene."
       });
     }
-  }), i.forEach((b, v) => {
-    const E = De(b) ? me(b.id) : "";
+  }), i.forEach((y, v) => {
+    const E = De(y) ? me(y.id) : "";
     try {
-      const x = c.scenes[_]?.elements.find((P) => P.id === E), $ = db(b, v, n, d, x), R = [];
+      const x = c.scenes[_]?.elements.find((P) => P.id === E), $ = db(y, v, n, d, x), R = [];
       if ($.element.category === "actor" && $.element.actorKey) {
         const P = c.atlas.actors.find((D) => D.actorKey === $.element.actorKey);
         R.push(...ac(c, $.element.actorKey, $.element.actorKey === "player" ? n.displayName : $.element.label || P?.displayName || $.element.actorKey, g, {
@@ -8680,8 +8680,8 @@ function yb(e, t, n) {
     if (u) throw new Error("map_maintenance_session_invalid");
     if (d) throw new Error("map_maintenance_session_committed");
   }, m = () => !nt(Yr(s), Yr(o)) && !nt(Yr(s), Yr(a)), p = (l, g, _) => {
-    const y = (A) => `${l}:${A}:call:*`, C = (A) => !A.collection || !A.id ? y(g) : `${l}:${g}:${l === "scene" && (A.collection === "elements" || A.collection === "remove") ? "element" : A.collection}:${A.id}`;
-    s = _.domain, _.result.ok && (c.delete(y(g)), g !== "*" && c.delete(y("*")));
+    const b = (A) => `${l}:${A}:call:*`, C = (A) => !A.collection || !A.id ? b(g) : `${l}:${g}:${l === "scene" && (A.collection === "elements" || A.collection === "remove") ? "element" : A.collection}:${A.id}`;
+    s = _.domain, _.result.ok && (c.delete(b(g)), g !== "*" && c.delete(b("*")));
     for (const A of _.result.applied) A.id && c.delete(C(A));
     for (const A of _.result.skipped) c.set(C(A), A.reason || "map_intent_failed");
     return _.result;
@@ -8700,9 +8700,9 @@ function yb(e, t, n) {
         if (!De(g)) throw new TypeError("MapSceneRead expects an object.");
         const _ = Object.keys(g).filter((k) => k !== "scene");
         if (_.length) throw new TypeError(`MapSceneRead has unsupported fields: ${_.join(", ")}.`);
-        const y = me(g.scene);
-        if (!y) throw new TypeError("MapSceneRead.scene is required.");
-        const C = dc(s, y), A = s.scenes[C], S = s.atlas.locations.find((k) => k.sceneKey === C);
+        const b = me(g.scene);
+        if (!b) throw new TypeError("MapSceneRead.scene is required.");
+        const C = dc(s, b), A = s.scenes[C], S = s.atlas.locations.find((k) => k.sceneKey === C);
         return ge({ data: {
           revision: s.revision,
           scene: A && S ? mb(A, S) : null
@@ -8736,8 +8736,8 @@ function yb(e, t, n) {
         });
         return d = !0, _;
       } catch (_) {
-        const y = _ !== null && typeof _ == "object" ? _ : null;
-        if (y?.uncertain !== !0 && y?.code !== "chat_changed" || (d = !0, y.uncertain === !0)) throw _;
+        const b = _ !== null && typeof _ == "object" ? _ : null;
+        if (b?.uncertain !== !0 && b?.code !== "chat_changed" || (d = !0, b.uncertain === !0)) throw _;
         return;
       }
     },
@@ -8825,9 +8825,9 @@ function vu(e) {
   m.length ? s.push("可直接到达：", ...m) : i && !f.length && c("可直接到达：暂无已记录路线。");
   const p = (l, g) => {
     const _ = [];
-    for (const y of g) {
-      const C = `${l}${[..._, y].join("；")}。`;
-      o([...s, C]) && _.push(y);
+    for (const b of g) {
+      const C = `${l}${[..._, b].join("；")}。`;
+      o([...s, C]) && _.push(b);
     }
     _.length && s.push(`${l}${_.join("；")}。`);
   };
@@ -9253,15 +9253,15 @@ async function Ub(e) {
     if (!h || m[h]) throw new Error(h ? `duplicate_tool:${h}` : "invalid_tool");
     m[h] = I, p.push(w);
   }
-  const l = /* @__PURE__ */ new Map(), g = (I, w, h, b) => ({
+  const l = /* @__PURE__ */ new Map(), g = (I, w, h, y) => ({
     status: I,
     rounds: w,
     unresolvedParticipantIds: [...new Set([...l.values()].map((v) => v.participantId).filter((v) => v !== null))],
     unownedFailure: [...l.values()].some((v) => v.participantId === null),
     ...h === void 0 ? {} : { error: h },
-    ...b ? { reason: b } : {}
+    ...y ? { reason: y } : {}
   });
-  let _, y = "", C = !1, A = !1, S = "", k = 0;
+  let _, b = "", C = !1, A = !1, S = "", k = 0;
   for (let I = 1; I <= Zr; I += 1) {
     for (; ; ) {
       if (a.aborted || !s() || !await o() || a.aborted || !s()) return g("cancelled", I - 1);
@@ -9269,26 +9269,26 @@ async function Ub(e) {
     }
     let w;
     try {
-      const v = t.supportsSessionToolLoop && (!!_ || !!y);
+      const v = t.supportsSessionToolLoop && (!!_ || !!b);
       w = await t.run({
         systemPrompt: f,
         messages: v ? [] : d,
         tools: p,
         signal: a,
         ...t.supportsSessionToolLoop && _ ? { toolResponses: _ } : {},
-        ...t.supportsSessionToolLoop && !_ && y ? { finalAnswerReminderText: y } : {}
+        ...t.supportsSessionToolLoop && !_ && b ? { finalAnswerReminderText: b } : {}
       });
     } catch (v) {
       return a.aborted || !s() ? g("cancelled", I - 1, v) : (u(v), g("provider-failed", I, v));
     }
-    if (_ = void 0, y = "", !s()) return g("cancelled", I);
+    if (_ = void 0, b = "", !s()) return g("cancelled", I);
     const h = Ul(w, t.providerConfig, { fallbackPrefix: `maintenance-${I}` });
     if (!h.length) {
       const v = !!String(w.text || "").trim();
       if (!v && C && !A && I < Zr) {
         A = !0;
         const E = "Tool results are complete. Stop calling tools and finish this maintenance run with a concise conclusion.";
-        t.supportsSessionToolLoop ? y = E : d.push({
+        t.supportsSessionToolLoop ? b = E : d.push({
           role: "system",
           content: E
         });
@@ -9301,7 +9301,7 @@ async function Ub(e) {
       return g("finished", I);
     }
     C = !0, d.push(Fl(w, h, { fallbackPrefix: `maintenance-${I}` }));
-    const b = [];
+    const y = [];
     for (const v of h) {
       if (a.aborted || !s()) return g("cancelled", I);
       const E = m[v.name], x = v.name || "<unknown>";
@@ -9340,14 +9340,14 @@ ${es(P)}`, k = R === S ? k + 1 : 1, S = R, k >= 4) return g("provider-failed", I
         toolCallId: v.id,
         toolName: v.name,
         content: T
-      })), b.push({
+      })), y.push({
         id: v.id,
         name: v.name,
         response: $,
         ...Object.hasOwn(v, "providerId") ? { providerId: String(v.providerId || "") } : {}
       });
     }
-    if (_ = b, I === Zr) return g("round-limit", I);
+    if (_ = y, I === Zr) return g("round-limit", I);
   }
   return g("round-limit", Zr);
 }
@@ -9373,11 +9373,11 @@ function Vb(e) {
 }
 function Hb(e, t, n, r) {
   const { guardJob: i, guardRun: a, waitForReady: s, invalidate: o, automaticToken: c, updateStatus: u, onWriteUnconfirmed: d, captureBackground: f, report: m } = r;
-  async function p(_, y) {
+  async function p(_, b) {
     for (; i(_); ) {
       if (n.getState() === "ready") return {
         started: !0,
-        value: await y()
+        value: await b()
       };
       if (!await s(_)) return { started: !1 };
     }
@@ -9385,14 +9385,14 @@ function Hb(e, t, n, r) {
   }
   function l(_) {
     if (_.participantId) {
-      const y = e.selectById(_.participantId, _.mode);
-      return y ? [y] : [];
+      const b = e.selectById(_.participantId, _.mode);
+      return b ? [b] : [];
     }
-    return e.selectByMode("automatic").filter((y) => !_.excludedParticipantIds.has(y.id));
+    return e.selectByMode("automatic").filter((b) => !_.excludedParticipantIds.has(b.id));
   }
-  async function g(_, y) {
+  async function g(_, b) {
     const C = [..._.earlyResults], A = [], S = (w, h) => {
-      o(w, h), C.some((b) => b.participantId === w.participant.id) || C.push({
+      o(w, h), C.some((y) => y.participantId === w.participant.id) || C.push({
         participantId: w.participant.id,
         status: "cancelled",
         changed: !1,
@@ -9404,10 +9404,10 @@ function Hb(e, t, n, r) {
         S(w, _.cancelledReason || (i(_) ? "participant-disabled" : "source-invalidated"));
         continue;
       }
-      const h = y.unownedFailure || y.unresolvedParticipantIds.includes(w.participant.id), b = y.status === "finished" && !h;
+      const h = b.unownedFailure || b.unresolvedParticipantIds.includes(w.participant.id), y = b.status === "finished" && !h;
       let v, E = !1;
       try {
-        v = w.session.getResult(), E = (w.session.commitPolicy !== "complete-run" || b) && await w.session.canCommit();
+        v = w.session.getResult(), E = (w.session.commitPolicy !== "complete-run" || y) && await w.session.canCommit();
       } catch (x) {
         m(x), C.push({
           participantId: w.participant.id,
@@ -9417,13 +9417,13 @@ function Hb(e, t, n, r) {
         });
         continue;
       }
-      if (b)
+      if (y)
         (v.status === "failed" || v.status === "partial") && (v = {
           ...v,
           reason: "tool-errors-unresolved"
         });
       else {
-        const x = y.status !== "finished" ? y.reason || (y.status === "provider-failed" ? mu(y.error) : y.status) : "tool-errors-unresolved";
+        const x = b.status !== "finished" ? b.reason || (b.status === "provider-failed" ? mu(b.error) : b.status) : "tool-errors-unresolved";
         v = E ? {
           status: "partial",
           changed: !0,
@@ -9463,125 +9463,125 @@ function Hb(e, t, n, r) {
     }
     const k = !i(_);
     if (k && !A.length && _.cancelledReason !== "save-unconfirmed") return Ke(_, _.cancelledReason || "source-invalidated");
-    const I = Za(C, y.status === "finished" ? "unchanged" : "failed");
+    const I = Za(C, b.status === "finished" ? "unchanged" : "failed");
     return Gn({
       mode: _.mode,
       status: I,
       participantIds: xr(_),
       committedParticipantIds: A,
       participantResults: C,
-      ..._.cancelledReason === "save-unconfirmed" ? { reason: "save-unconfirmed" } : y.status !== "finished" ? { reason: y.reason || y.status } : y.unownedFailure || y.unresolvedParticipantIds.length ? { reason: "tool-errors-unresolved" } : k ? { reason: _.cancelledReason ? "cancelled-after-commit" : "source-invalidated-after-commit" } : {}
+      ..._.cancelledReason === "save-unconfirmed" ? { reason: "save-unconfirmed" } : b.status !== "finished" ? { reason: b.reason || b.status } : b.unownedFailure || b.unresolvedParticipantIds.length ? { reason: "tool-errors-unresolved" } : k ? { reason: _.cancelledReason ? "cancelled-after-commit" : "source-invalidated-after-commit" } : {}
     });
   }
-  return async function(y) {
-    if (!i(y) || !await s(y)) return Ke(y, y.cancelledReason || "source-invalidated");
-    const C = l(y);
+  return async function(b) {
+    if (!i(b) || !await s(b)) return Ke(b, b.cancelledReason || "source-invalidated");
+    const C = l(b);
     if (!C.length) return Gn({
-      mode: y.mode,
+      mode: b.mode,
       status: "skipped",
-      participantIds: y.participantId ? [y.participantId] : [],
+      participantIds: b.participantId ? [b.participantId] : [],
       reason: "participant-disabled"
     });
-    for (const b of C) {
-      if (!i(y)) return Ke(y, "source-invalidated");
-      u(y, b.id, {
+    for (const y of C) {
+      if (!i(b)) return Ke(b, "source-invalidated");
+      u(b, y.id, {
         state: "running",
-        mode: y.mode,
+        mode: b.mode,
         message: "",
         reason: ""
       });
       try {
-        const v = await b.createSession(y.source, y.mode);
+        const v = await y.createSession(b.source, b.mode);
         if (v === null) {
-          y.earlyResults.push({
-            participantId: b.id,
+          b.earlyResults.push({
+            participantId: y.id,
             status: "skipped",
             changed: !1,
             reason: "no-work"
           });
           continue;
         }
-        if (v.participantId !== b.id) throw new Error(`participant_mismatch:${b.id}`);
-        y.sessions.push({
-          participant: b,
+        if (v.participantId !== y.id) throw new Error(`participant_mismatch:${y.id}`);
+        b.sessions.push({
+          participant: y,
           session: v,
-          automaticToken: c(b.id),
+          automaticToken: c(y.id),
           invalid: !1
         });
       } catch (v) {
-        m(v), u(y, b.id, {
+        m(v), u(b, y.id, {
           state: "error",
-          mode: y.mode,
+          mode: b.mode,
           message: "failed",
           reason: "session-creation-failed"
-        }), y.earlyResults.push({
-          participantId: b.id,
+        }), b.earlyResults.push({
+          participantId: y.id,
           status: "failed",
           changed: !1,
           reason: "session-creation-failed"
         });
       }
     }
-    if (!i(y)) return Ke(y, y.cancelledReason || "source-invalidated");
-    for (const b of y.sessions)
-      !b.invalid && !a(y, b) && o(b, "participant-disabled"), b.invalid && !y.earlyResults.some((v) => v.participantId === b.participant.id) && y.earlyResults.push({
-        participantId: b.participant.id,
+    if (!i(b)) return Ke(b, b.cancelledReason || "source-invalidated");
+    for (const y of b.sessions)
+      !y.invalid && !a(b, y) && o(y, "participant-disabled"), y.invalid && !b.earlyResults.some((v) => v.participantId === y.participant.id) && b.earlyResults.push({
+        participantId: y.participant.id,
         status: "cancelled",
         changed: !1,
         reason: "participant-disabled"
       });
-    const A = y.sessions.filter((b) => !b.invalid);
+    const A = b.sessions.filter((y) => !y.invalid);
     if (!A.length) {
-      if (y.cancelledReason) return Ke(y, y.cancelledReason);
-      const b = Za(y.earlyResults, "failed");
+      if (b.cancelledReason) return Ke(b, b.cancelledReason);
+      const y = Za(b.earlyResults, "failed");
       return Gn({
-        mode: y.mode,
-        status: b,
+        mode: b.mode,
+        status: y,
         participantIds: C.map((v) => v.id),
-        participantResults: y.earlyResults,
-        reason: b === "cancelled" ? "participant-disabled" : b === "skipped" ? "no-work" : "session-creation-failed"
+        participantResults: b.earlyResults,
+        reason: y === "cancelled" ? "participant-disabled" : y === "skipped" ? "no-work" : "session-creation-failed"
       });
     }
     try {
-      const b = await p(y, () => f(y.source, y.mode, A.filter((v) => a(y, v)).map((v) => v.participant.id)));
-      if (!b.started || !i(y)) return Ke(y, y.cancelledReason || "source-invalidated");
-      y.backgroundMessages = [...b.value];
-    } catch (b) {
-      return m(b), pr(y, A.map((v) => v.participant.id), "background-capture-failed");
+      const y = await p(b, () => f(b.source, b.mode, A.filter((v) => a(b, v)).map((v) => v.participant.id)));
+      if (!y.started || !i(b)) return Ke(b, b.cancelledReason || "source-invalidated");
+      b.backgroundMessages = [...y.value];
+    } catch (y) {
+      return m(y), pr(b, A.map((v) => v.participant.id), "background-capture-failed");
     }
     let S, k, I;
     try {
-      const b = await p(y, t.loadConfig);
-      if (!b.started || (S = b.value, (!i(y) || n.getState() !== "ready") && !await s(y)))
-        return Ke(y, "source-invalidated");
+      const y = await p(b, t.loadConfig);
+      if (!y.started || (S = y.value, (!i(b) || n.getState() !== "ready") && !await s(b)))
+        return Ke(b, "source-invalidated");
       k = ms(S || {}), I = hs(k);
-    } catch (b) {
-      return m(b), pr(y, A.map((v) => v.participant.id), "config-load-failed");
+    } catch (y) {
+      return m(y), pr(b, A.map((v) => v.participant.id), "config-load-failed");
     }
-    if (!String(I.model || "").trim() || !ps(I.provider) && !String(I.apiKey || "").trim()) return pr(y, A.map((b) => b.participant.id), "agent-not-configured");
+    if (!String(I.model || "").trim() || !ps(I.provider) && !String(I.apiKey || "").trim()) return pr(b, A.map((y) => y.participant.id), "agent-not-configured");
     let w;
     try {
-      const b = await p(y, () => t.openSession(S));
-      if (!b.started) return Ke(y, "source-invalidated");
-      w = b.value;
-    } catch (b) {
-      return m(b), pr(y, A.map((v) => v.participant.id), "agent-session-failed");
+      const y = await p(b, () => t.openSession(S));
+      if (!y.started) return Ke(b, "source-invalidated");
+      w = y.value;
+    } catch (y) {
+      return m(y), pr(b, A.map((v) => v.participant.id), "agent-session-failed");
     }
     const h = await Ub({
       agent: w,
-      sessions: A.map((b) => ({
-        session: b.session,
-        isActive: () => a(y, b)
+      sessions: A.map((y) => ({
+        session: y.session,
+        isActive: () => a(b, y)
       })),
-      backgroundMessages: y.backgroundMessages,
-      sourceMessage: Vb(y.source),
-      signal: y.controller.signal,
-      guard: () => i(y),
-      beforeRound: () => s(y),
+      backgroundMessages: b.backgroundMessages,
+      sourceMessage: Vb(b.source),
+      signal: b.controller.signal,
+      guard: () => i(b),
+      beforeRound: () => s(b),
       isRoundReady: () => n.getState() === "ready",
       onError: m
     });
-    return h.status === "cancelled" ? Ke(y, y.cancelledReason || "source-invalidated") : await g(y, h);
+    return h.status === "cancelled" ? Ke(b, b.cancelledReason || "source-invalidated") : await g(b, h);
   };
 }
 var Xb = Object.freeze({
@@ -9616,7 +9616,7 @@ var fc = Object.freeze({
 function Yb({ registry: e, gateway: t, captureSurface: n, isGenerationActive: r, writeGate: i = Xb, schedule: a = (u) => queueMicrotask(u), now: s = () => Date.now(), onError: o = () => {
 }, captureBackground: c = async () => [] }) {
   const u = Kb(), d = /* @__PURE__ */ new Map(), f = /* @__PURE__ */ Object.create(null), m = /* @__PURE__ */ Object.create(null), p = /* @__PURE__ */ new Set();
-  let l = 0, g = !1, _ = !1, y = null, C = null, A = null;
+  let l = 0, g = !1, _ = !1, b = null, C = null, A = null;
   const S = (M) => {
     try {
       o(M);
@@ -9648,7 +9648,7 @@ function Yb({ registry: e, gateway: t, captureSurface: n, isGenerationActive: r,
     } catch (je) {
       S(je);
     }
-  }, b = (M, q) => {
+  }, y = (M, q) => {
     M.settled || (M.settled = !0, M.resolve?.(q));
   }, v = (M, q) => {
     if (!M.invalid) {
@@ -9690,7 +9690,7 @@ function Yb({ registry: e, gateway: t, captureSurface: n, isGenerationActive: r,
         message: "cancelled",
         reason: M.cancelledReason
       });
-      M.committing || b(M, Ke(M, M.cancelledReason));
+      M.committing || y(M, Ke(M, M.cancelledReason));
     }
   }
   function D(M) {
@@ -9722,7 +9722,7 @@ function Yb({ registry: e, gateway: t, captureSurface: n, isGenerationActive: r,
           }
           const M = u.shift();
           if (!M) continue;
-          y = M;
+          b = M;
           let q;
           try {
             q = await K(M);
@@ -9744,10 +9744,10 @@ function Yb({ registry: e, gateway: t, captureSurface: n, isGenerationActive: r,
               ].includes(ee.status) ? { lastRunAt: z } : {}
             });
           }
-          b(M, q), y = null;
+          y(M, q), b = null;
         }
       } finally {
-        y = null, _ = !1, u.size && i.getState() === "ready" && L();
+        b = null, _ = !1, u.size && i.getState() === "ready" && L();
       }
     }
   }
@@ -9853,7 +9853,7 @@ function Yb({ registry: e, gateway: t, captureSurface: n, isGenerationActive: r,
     return z ? (O(N("automatic", z, null)), !0) : !1;
   }
   function ve(M = "cancelled") {
-    l += 1, y && P(y, M);
+    l += 1, b && P(b, M);
     for (const q of u.drain()) P(q, M);
   }
   return Object.freeze({
@@ -9868,17 +9868,17 @@ function Yb({ registry: e, gateway: t, captureSurface: n, isGenerationActive: r,
     startRebuild: (M) => B("rebuild", M),
     cancelRequested(M, q) {
       const z = String(M || "").trim();
-      f[z] = k(f, z) + 1, y?.mode !== "automatic" && y?.participantId === z && P(y, q);
+      f[z] = k(f, z) + 1, b?.mode !== "automatic" && b?.participantId === z && P(b, q);
       for (const te of u.removeWhere((ee) => ee.mode !== "automatic" && ee.participantId === z)) P(te, q);
     },
     invalidateAutomatic(M, q) {
       const z = String(M || "").trim();
       if (m[z] = k(m, z) + 1, u.forEach((te) => {
         te.mode === "automatic" && te.excludedParticipantIds.add(z);
-      }), y?.mode === "automatic") {
-        y.excludedParticipantIds.add(z);
-        const te = y.sessions.find((ee) => ee.participant.id === z);
-        te && v(te, q || "automatic-invalidated"), y.sessions.length && y.sessions.every((ee) => ee.invalid) && P(y, q || "automatic-invalidated");
+      }), b?.mode === "automatic") {
+        b.excludedParticipantIds.add(z);
+        const te = b.sessions.find((ee) => ee.participant.id === z);
+        te && v(te, q || "automatic-invalidated"), b.sessions.length && b.sessions.every((ee) => ee.invalid) && P(b, q || "automatic-invalidated");
       }
     },
     handleChatChanged: () => ve("chat-changed"),
@@ -9959,11 +9959,11 @@ function nw(e, t) {
     const p = Ot(d), l = await e.transact((g) => {
       const _ = g.current;
       if ((_?.revision ?? 0) !== f) throw new Qb();
-      const y = _ ?? xi();
-      if (ew(y, p)) return _;
+      const b = _ ?? xi();
+      if (ew(b, p)) return _;
       const C = Ot({
         ...p,
-        revision: y.revision + 1
+        revision: b.revision + 1
       });
       return g.replace(C), C;
     }, { commitGuard: m ? async () => (await m(), !0) : void 0 });
@@ -10174,24 +10174,24 @@ var pc = /* @__PURE__ */ cd(((e, t) => {
     }), u && (i.JS_SHA256_NO_ARRAY_BUFFER_IS_VIEW || !ArrayBuffer.isView) && (ArrayBuffer.isView = function(h) {
       return typeof h == "object" && h.buffer && h.buffer.constructor === ArrayBuffer;
     });
-    var _ = function(h, b) {
+    var _ = function(h, y) {
       return function(v) {
-        return new k(b, !0).update(v)[h]();
+        return new k(y, !0).update(v)[h]();
       };
-    }, y = function(h) {
-      var b = _("hex", h);
-      s && (b = C(b, h)), b.create = function() {
+    }, b = function(h) {
+      var y = _("hex", h);
+      s && (y = C(y, h)), y.create = function() {
         return new k(h);
-      }, b.update = function(x) {
-        return b.create().update(x);
+      }, y.update = function(x) {
+        return y.create().update(x);
       };
       for (var v = 0; v < l.length; ++v) {
         var E = l[v];
-        b[E] = _(E, h);
+        y[E] = _(E, h);
       }
-      return b;
-    }, C = function(h, b) {
-      var v = pc(), E = pc().Buffer, x = b ? "sha224" : "sha256", $;
+      return y;
+    }, C = function(h, y) {
+      var v = pc(), E = pc().Buffer, x = y ? "sha224" : "sha256", $;
       E.from && !i.JS_SHA256_NO_BUFFER_FROM ? $ = E.from : $ = function(T) {
         return new E(T);
       };
@@ -10201,25 +10201,25 @@ var pc = /* @__PURE__ */ cd(((e, t) => {
         return T.constructor === ArrayBuffer && (T = new Uint8Array(T)), Array.isArray(T) || ArrayBuffer.isView(T) || T.constructor === E ? v.createHash(x).update($(T)).digest("hex") : h(T);
       };
       return R;
-    }, A = function(h, b) {
+    }, A = function(h, y) {
       return function(v, E) {
-        return new I(v, b, !0).update(E)[h]();
+        return new I(v, y, !0).update(E)[h]();
       };
     }, S = function(h) {
-      var b = A("hex", h);
-      b.create = function(x) {
+      var y = A("hex", h);
+      y.create = function(x) {
         return new I(x, h);
-      }, b.update = function(x, $) {
-        return b.create(x).update($);
+      }, y.update = function(x, $) {
+        return y.create(x).update($);
       };
       for (var v = 0; v < l.length; ++v) {
         var E = l[v];
-        b[E] = A(E, h);
+        y[E] = A(E, h);
       }
-      return b;
+      return y;
     };
-    function k(h, b) {
-      b ? (g[0] = g[16] = g[1] = g[2] = g[3] = g[4] = g[5] = g[6] = g[7] = g[8] = g[9] = g[10] = g[11] = g[12] = g[13] = g[14] = g[15] = 0, this.blocks = g) : this.blocks = [
+    function k(h, y) {
+      y ? (g[0] = g[16] = g[1] = g[2] = g[3] = g[4] = g[5] = g[6] = g[7] = g[8] = g[9] = g[10] = g[11] = g[12] = g[13] = g[14] = g[15] = 0, this.blocks = g) : this.blocks = [
         0,
         0,
         0,
@@ -10241,7 +10241,7 @@ var pc = /* @__PURE__ */ cd(((e, t) => {
     }
     k.prototype.update = function(h) {
       if (!this.finalized) {
-        var b, v = typeof h;
+        var y, v = typeof h;
         if (v !== "string") {
           if (v === "object") {
             if (h === null) throw new Error(n);
@@ -10249,10 +10249,10 @@ var pc = /* @__PURE__ */ cd(((e, t) => {
             else if (!Array.isArray(h) && (!u || !ArrayBuffer.isView(h)))
               throw new Error(n);
           } else throw new Error(n);
-          b = !0;
+          y = !0;
         }
         for (var E, x = 0, $, R = h.length, T = this.blocks; x < R; ) {
-          if (this.hashed && (this.hashed = !1, T[0] = this.block, this.block = T[16] = T[1] = T[2] = T[3] = T[4] = T[5] = T[6] = T[7] = T[8] = T[9] = T[10] = T[11] = T[12] = T[13] = T[14] = T[15] = 0), b) for ($ = this.start; x < R && $ < 64; ++x) T[$ >>> 2] |= h[x] << m[$++ & 3];
+          if (this.hashed && (this.hashed = !1, T[0] = this.block, this.block = T[16] = T[1] = T[2] = T[3] = T[4] = T[5] = T[6] = T[7] = T[8] = T[9] = T[10] = T[11] = T[12] = T[13] = T[14] = T[15] = 0), y) for ($ = this.start; x < R && $ < 64; ++x) T[$ >>> 2] |= h[x] << m[$++ & 3];
           else for ($ = this.start; x < R && $ < 64; ++x)
             E = h.charCodeAt(x), E < 128 ? T[$ >>> 2] |= E << m[$++ & 3] : E < 2048 ? (T[$ >>> 2] |= (192 | E >>> 6) << m[$++ & 3], T[$ >>> 2] |= (128 | E & 63) << m[$++ & 3]) : E < 55296 || E >= 57344 ? (T[$ >>> 2] |= (224 | E >>> 12) << m[$++ & 3], T[$ >>> 2] |= (128 | E >>> 6 & 63) << m[$++ & 3], T[$ >>> 2] |= (128 | E & 63) << m[$++ & 3]) : (E = 65536 + ((E & 1023) << 10 | h.charCodeAt(++x) & 1023), T[$ >>> 2] |= (240 | E >>> 18) << m[$++ & 3], T[$ >>> 2] |= (128 | E >>> 12 & 63) << m[$++ & 3], T[$ >>> 2] |= (128 | E >>> 6 & 63) << m[$++ & 3], T[$ >>> 2] |= (128 | E & 63) << m[$++ & 3]);
           this.lastByteIndex = $, this.bytes += $ - this.start, $ >= 64 ? (this.block = T[16], this.start = $ - 64, this.hash(), this.hashed = !0) : this.start = $;
@@ -10262,31 +10262,31 @@ var pc = /* @__PURE__ */ cd(((e, t) => {
     }, k.prototype.finalize = function() {
       if (!this.finalized) {
         this.finalized = !0;
-        var h = this.blocks, b = this.lastByteIndex;
-        h[16] = this.block, h[b >>> 2] |= f[b & 3], this.block = h[16], b >= 56 && (this.hashed || this.hash(), h[0] = this.block, h[16] = h[1] = h[2] = h[3] = h[4] = h[5] = h[6] = h[7] = h[8] = h[9] = h[10] = h[11] = h[12] = h[13] = h[14] = h[15] = 0), h[14] = this.hBytes << 3 | this.bytes >>> 29, h[15] = this.bytes << 3, this.hash();
+        var h = this.blocks, y = this.lastByteIndex;
+        h[16] = this.block, h[y >>> 2] |= f[y & 3], this.block = h[16], y >= 56 && (this.hashed || this.hash(), h[0] = this.block, h[16] = h[1] = h[2] = h[3] = h[4] = h[5] = h[6] = h[7] = h[8] = h[9] = h[10] = h[11] = h[12] = h[13] = h[14] = h[15] = 0), h[14] = this.hBytes << 3 | this.bytes >>> 29, h[15] = this.bytes << 3, this.hash();
       }
     }, k.prototype.hash = function() {
-      var h = this.h0, b = this.h1, v = this.h2, E = this.h3, x = this.h4, $ = this.h5, R = this.h6, T = this.h7, P = this.blocks, D, K, H, L, O, N, j, B, X, ue, ve;
+      var h = this.h0, y = this.h1, v = this.h2, E = this.h3, x = this.h4, $ = this.h5, R = this.h6, T = this.h7, P = this.blocks, D, K, H, L, O, N, j, B, X, ue, ve;
       for (D = 16; D < 64; ++D)
         O = P[D - 15], K = (O >>> 7 | O << 25) ^ (O >>> 18 | O << 14) ^ O >>> 3, O = P[D - 2], H = (O >>> 17 | O << 15) ^ (O >>> 19 | O << 13) ^ O >>> 10, P[D] = P[D - 16] + K + P[D - 7] + H << 0;
-      for (ve = b & v, D = 0; D < 64; D += 4)
-        this.first ? (this.is224 ? (B = 300032, O = P[0] - 1413257819, T = O - 150054599 << 0, E = O + 24177077 << 0) : (B = 704751109, O = P[0] - 210244248, T = O - 1521486534 << 0, E = O + 143694565 << 0), this.first = !1) : (K = (h >>> 2 | h << 30) ^ (h >>> 13 | h << 19) ^ (h >>> 22 | h << 10), H = (x >>> 6 | x << 26) ^ (x >>> 11 | x << 21) ^ (x >>> 25 | x << 7), B = h & b, L = B ^ h & v ^ ve, j = x & $ ^ ~x & R, O = T + H + j + p[D] + P[D], N = K + L, T = E + O << 0, E = O + N << 0), K = (E >>> 2 | E << 30) ^ (E >>> 13 | E << 19) ^ (E >>> 22 | E << 10), H = (T >>> 6 | T << 26) ^ (T >>> 11 | T << 21) ^ (T >>> 25 | T << 7), X = E & h, L = X ^ E & b ^ B, j = T & x ^ ~T & $, O = R + H + j + p[D + 1] + P[D + 1], N = K + L, R = v + O << 0, v = O + N << 0, K = (v >>> 2 | v << 30) ^ (v >>> 13 | v << 19) ^ (v >>> 22 | v << 10), H = (R >>> 6 | R << 26) ^ (R >>> 11 | R << 21) ^ (R >>> 25 | R << 7), ue = v & E, L = ue ^ v & h ^ X, j = R & T ^ ~R & x, O = $ + H + j + p[D + 2] + P[D + 2], N = K + L, $ = b + O << 0, b = O + N << 0, K = (b >>> 2 | b << 30) ^ (b >>> 13 | b << 19) ^ (b >>> 22 | b << 10), H = ($ >>> 6 | $ << 26) ^ ($ >>> 11 | $ << 21) ^ ($ >>> 25 | $ << 7), ve = b & v, L = ve ^ b & E ^ ue, j = $ & R ^ ~$ & T, O = x + H + j + p[D + 3] + P[D + 3], N = K + L, x = h + O << 0, h = O + N << 0, this.chromeBugWorkAround = !0;
-      this.h0 = this.h0 + h << 0, this.h1 = this.h1 + b << 0, this.h2 = this.h2 + v << 0, this.h3 = this.h3 + E << 0, this.h4 = this.h4 + x << 0, this.h5 = this.h5 + $ << 0, this.h6 = this.h6 + R << 0, this.h7 = this.h7 + T << 0;
+      for (ve = y & v, D = 0; D < 64; D += 4)
+        this.first ? (this.is224 ? (B = 300032, O = P[0] - 1413257819, T = O - 150054599 << 0, E = O + 24177077 << 0) : (B = 704751109, O = P[0] - 210244248, T = O - 1521486534 << 0, E = O + 143694565 << 0), this.first = !1) : (K = (h >>> 2 | h << 30) ^ (h >>> 13 | h << 19) ^ (h >>> 22 | h << 10), H = (x >>> 6 | x << 26) ^ (x >>> 11 | x << 21) ^ (x >>> 25 | x << 7), B = h & y, L = B ^ h & v ^ ve, j = x & $ ^ ~x & R, O = T + H + j + p[D] + P[D], N = K + L, T = E + O << 0, E = O + N << 0), K = (E >>> 2 | E << 30) ^ (E >>> 13 | E << 19) ^ (E >>> 22 | E << 10), H = (T >>> 6 | T << 26) ^ (T >>> 11 | T << 21) ^ (T >>> 25 | T << 7), X = E & h, L = X ^ E & y ^ B, j = T & x ^ ~T & $, O = R + H + j + p[D + 1] + P[D + 1], N = K + L, R = v + O << 0, v = O + N << 0, K = (v >>> 2 | v << 30) ^ (v >>> 13 | v << 19) ^ (v >>> 22 | v << 10), H = (R >>> 6 | R << 26) ^ (R >>> 11 | R << 21) ^ (R >>> 25 | R << 7), ue = v & E, L = ue ^ v & h ^ X, j = R & T ^ ~R & x, O = $ + H + j + p[D + 2] + P[D + 2], N = K + L, $ = y + O << 0, y = O + N << 0, K = (y >>> 2 | y << 30) ^ (y >>> 13 | y << 19) ^ (y >>> 22 | y << 10), H = ($ >>> 6 | $ << 26) ^ ($ >>> 11 | $ << 21) ^ ($ >>> 25 | $ << 7), ve = y & v, L = ve ^ y & E ^ ue, j = $ & R ^ ~$ & T, O = x + H + j + p[D + 3] + P[D + 3], N = K + L, x = h + O << 0, h = O + N << 0, this.chromeBugWorkAround = !0;
+      this.h0 = this.h0 + h << 0, this.h1 = this.h1 + y << 0, this.h2 = this.h2 + v << 0, this.h3 = this.h3 + E << 0, this.h4 = this.h4 + x << 0, this.h5 = this.h5 + $ << 0, this.h6 = this.h6 + R << 0, this.h7 = this.h7 + T << 0;
     }, k.prototype.hex = function() {
       this.finalize();
-      var h = this.h0, b = this.h1, v = this.h2, E = this.h3, x = this.h4, $ = this.h5, R = this.h6, T = this.h7, P = d[h >>> 28 & 15] + d[h >>> 24 & 15] + d[h >>> 20 & 15] + d[h >>> 16 & 15] + d[h >>> 12 & 15] + d[h >>> 8 & 15] + d[h >>> 4 & 15] + d[h & 15] + d[b >>> 28 & 15] + d[b >>> 24 & 15] + d[b >>> 20 & 15] + d[b >>> 16 & 15] + d[b >>> 12 & 15] + d[b >>> 8 & 15] + d[b >>> 4 & 15] + d[b & 15] + d[v >>> 28 & 15] + d[v >>> 24 & 15] + d[v >>> 20 & 15] + d[v >>> 16 & 15] + d[v >>> 12 & 15] + d[v >>> 8 & 15] + d[v >>> 4 & 15] + d[v & 15] + d[E >>> 28 & 15] + d[E >>> 24 & 15] + d[E >>> 20 & 15] + d[E >>> 16 & 15] + d[E >>> 12 & 15] + d[E >>> 8 & 15] + d[E >>> 4 & 15] + d[E & 15] + d[x >>> 28 & 15] + d[x >>> 24 & 15] + d[x >>> 20 & 15] + d[x >>> 16 & 15] + d[x >>> 12 & 15] + d[x >>> 8 & 15] + d[x >>> 4 & 15] + d[x & 15] + d[$ >>> 28 & 15] + d[$ >>> 24 & 15] + d[$ >>> 20 & 15] + d[$ >>> 16 & 15] + d[$ >>> 12 & 15] + d[$ >>> 8 & 15] + d[$ >>> 4 & 15] + d[$ & 15] + d[R >>> 28 & 15] + d[R >>> 24 & 15] + d[R >>> 20 & 15] + d[R >>> 16 & 15] + d[R >>> 12 & 15] + d[R >>> 8 & 15] + d[R >>> 4 & 15] + d[R & 15];
+      var h = this.h0, y = this.h1, v = this.h2, E = this.h3, x = this.h4, $ = this.h5, R = this.h6, T = this.h7, P = d[h >>> 28 & 15] + d[h >>> 24 & 15] + d[h >>> 20 & 15] + d[h >>> 16 & 15] + d[h >>> 12 & 15] + d[h >>> 8 & 15] + d[h >>> 4 & 15] + d[h & 15] + d[y >>> 28 & 15] + d[y >>> 24 & 15] + d[y >>> 20 & 15] + d[y >>> 16 & 15] + d[y >>> 12 & 15] + d[y >>> 8 & 15] + d[y >>> 4 & 15] + d[y & 15] + d[v >>> 28 & 15] + d[v >>> 24 & 15] + d[v >>> 20 & 15] + d[v >>> 16 & 15] + d[v >>> 12 & 15] + d[v >>> 8 & 15] + d[v >>> 4 & 15] + d[v & 15] + d[E >>> 28 & 15] + d[E >>> 24 & 15] + d[E >>> 20 & 15] + d[E >>> 16 & 15] + d[E >>> 12 & 15] + d[E >>> 8 & 15] + d[E >>> 4 & 15] + d[E & 15] + d[x >>> 28 & 15] + d[x >>> 24 & 15] + d[x >>> 20 & 15] + d[x >>> 16 & 15] + d[x >>> 12 & 15] + d[x >>> 8 & 15] + d[x >>> 4 & 15] + d[x & 15] + d[$ >>> 28 & 15] + d[$ >>> 24 & 15] + d[$ >>> 20 & 15] + d[$ >>> 16 & 15] + d[$ >>> 12 & 15] + d[$ >>> 8 & 15] + d[$ >>> 4 & 15] + d[$ & 15] + d[R >>> 28 & 15] + d[R >>> 24 & 15] + d[R >>> 20 & 15] + d[R >>> 16 & 15] + d[R >>> 12 & 15] + d[R >>> 8 & 15] + d[R >>> 4 & 15] + d[R & 15];
       return this.is224 || (P += d[T >>> 28 & 15] + d[T >>> 24 & 15] + d[T >>> 20 & 15] + d[T >>> 16 & 15] + d[T >>> 12 & 15] + d[T >>> 8 & 15] + d[T >>> 4 & 15] + d[T & 15]), P;
     }, k.prototype.toString = k.prototype.hex, k.prototype.digest = function() {
       this.finalize();
-      var h = this.h0, b = this.h1, v = this.h2, E = this.h3, x = this.h4, $ = this.h5, R = this.h6, T = this.h7, P = [
+      var h = this.h0, y = this.h1, v = this.h2, E = this.h3, x = this.h4, $ = this.h5, R = this.h6, T = this.h7, P = [
         h >>> 24 & 255,
         h >>> 16 & 255,
         h >>> 8 & 255,
         h & 255,
-        b >>> 24 & 255,
-        b >>> 16 & 255,
-        b >>> 8 & 255,
-        b & 255,
+        y >>> 24 & 255,
+        y >>> 16 & 255,
+        y >>> 8 & 255,
+        y & 255,
         v >>> 24 & 255,
         v >>> 16 & 255,
         v >>> 8 & 255,
@@ -10311,10 +10311,10 @@ var pc = /* @__PURE__ */ cd(((e, t) => {
       return this.is224 || P.push(T >>> 24 & 255, T >>> 16 & 255, T >>> 8 & 255, T & 255), P;
     }, k.prototype.array = k.prototype.digest, k.prototype.arrayBuffer = function() {
       this.finalize();
-      var h = /* @__PURE__ */ new ArrayBuffer(this.is224 ? 28 : 32), b = new DataView(h);
-      return b.setUint32(0, this.h0), b.setUint32(4, this.h1), b.setUint32(8, this.h2), b.setUint32(12, this.h3), b.setUint32(16, this.h4), b.setUint32(20, this.h5), b.setUint32(24, this.h6), this.is224 || b.setUint32(28, this.h7), h;
+      var h = /* @__PURE__ */ new ArrayBuffer(this.is224 ? 28 : 32), y = new DataView(h);
+      return y.setUint32(0, this.h0), y.setUint32(4, this.h1), y.setUint32(8, this.h2), y.setUint32(12, this.h3), y.setUint32(16, this.h4), y.setUint32(20, this.h5), y.setUint32(24, this.h6), this.is224 || y.setUint32(28, this.h7), h;
     };
-    function I(h, b, v) {
+    function I(h, y, v) {
       var E, x = typeof h;
       if (x === "string") {
         var $ = [], R = h.length, T = 0, P;
@@ -10327,13 +10327,13 @@ var pc = /* @__PURE__ */ cd(((e, t) => {
         else if (!Array.isArray(h) && (!u || !ArrayBuffer.isView(h)))
           throw new Error(n);
       } else throw new Error(n);
-      h.length > 64 && (h = new k(b, !0).update(h).array());
+      h.length > 64 && (h = new k(y, !0).update(h).array());
       var D = [], K = [];
       for (E = 0; E < 64; ++E) {
         var H = h[E] || 0;
         D[E] = 92 ^ H, K[E] = 54 ^ H;
       }
-      k.call(this, b, v), this.update(K), this.oKeyPad = D, this.inner = !0, this.sharedMemory = v;
+      k.call(this, y, v), this.update(K), this.oKeyPad = D, this.inner = !0, this.sharedMemory = v;
     }
     I.prototype = new k(), I.prototype.finalize = function() {
       if (k.prototype.finalize.call(this), this.inner) {
@@ -10342,8 +10342,8 @@ var pc = /* @__PURE__ */ cd(((e, t) => {
         k.call(this, this.is224, this.sharedMemory), this.update(this.oKeyPad), this.update(h), k.prototype.finalize.call(this);
       }
     };
-    var w = y();
-    w.sha256 = w, w.sha224 = y(!0), w.sha256.hmac = S(), w.sha224.hmac = S(!0), o ? t.exports = w : (i.sha256 = w.sha256, i.sha224 = w.sha224, c && define(function() {
+    var w = b();
+    w.sha256 = w, w.sha224 = b(!0), w.sha256.hmac = S(), w.sha224.hmac = S(!0), o ? t.exports = w : (i.sha256 = w.sha256, i.sha224 = w.sha224, c && define(function() {
       return w;
     }));
   })();
@@ -10677,8 +10677,8 @@ function lw(e, t, n) {
   }
   async function d(p, l, g) {
     await e.change((_) => {
-      const y = _.segments.find((C) => C.id === p);
-      y && l.throughSeq >= (y.receipt?.throughSeq ?? 0) && (y.receipt = {
+      const b = _.segments.find((C) => C.id === p);
+      b && l.throughSeq >= (b.receipt?.throughSeq ?? 0) && (b.receipt = {
         throughSeq: l.throughSeq,
         digest: l.digest
       });
@@ -10686,21 +10686,21 @@ function lw(e, t, n) {
   }
   async function f(p, l) {
     if (!l()) throw new Error("messages_boundary_changed");
-    const g = t.identity(), _ = e.current(), y = _.segments.find((w) => w.id === p);
-    if (!y) throw new Error("messages_segment_missing");
+    const g = t.identity(), _ = e.current(), b = _.segments.find((w) => w.id === p);
+    if (!b) throw new Error("messages_segment_missing");
     const C = a(p);
     if (C.length === 1) {
-      const { message: w } = C[0], h = qe(w), b = bi(_, y, h.throughSeq);
-      if (w.mes === b && (0, $r.sha256)(b) === h.digest && h.throughSeq > (y.receipt?.throughSeq ?? 0) && await t.confirm(g, h, b)) {
+      const { message: w } = C[0], h = qe(w), y = bi(_, b, h.throughSeq);
+      if (w.mes === y && (0, $r.sha256)(y) === h.digest && h.throughSeq > (b.receipt?.throughSeq ?? 0) && await t.confirm(g, h, y)) {
         if (!l()) throw new Error("messages_boundary_changed");
         await d(p, h, l);
       }
     }
-    const A = e.current().segments.find((w) => w.id === p), S = _.messages.filter((w) => y.messageIds.includes(w.id)).at(-1)?.seq ?? 0;
+    const A = e.current().segments.find((w) => w.id === p), S = _.messages.filter((w) => b.messageIds.includes(w.id)).at(-1)?.seq ?? 0;
     if ((A.receipt?.throughSeq ?? 0) >= S) return;
     if (!s(A))
       throw await c([p], l), new Error("messages_projection_closed");
-    const k = bi(_, y), I = {
+    const k = bi(_, b), I = {
       version: 1,
       segmentId: p,
       throughSeq: S,
@@ -10718,20 +10718,20 @@ function lw(e, t, n) {
   }
   async function m(p) {
     const l = new Set(Rr(e.current()));
-    for (const y of e.current().segments)
-      if (y.messageIds.some((C) => l.has(C)))
+    for (const b of e.current().segments)
+      if (b.messageIds.some((C) => l.has(C)))
         try {
-          await f(y.id, p);
+          await f(b.id, p);
         } catch (C) {
           if (!p() || e.pending() || !(C instanceof Error) || C.message !== "messages_projection_closed") throw C;
         }
     const g = Rr(e.current());
     if (!g.length) return;
     const _ = n();
-    r.add(_), await e.change((y) => {
-      y.segments.forEach((C) => {
+    r.add(_), await e.change((b) => {
+      b.segments.forEach((C) => {
         C.sealed = !0;
-      }), y.segments.push({
+      }), b.segments.push({
         id: _,
         messageIds: g,
         sealed: !1,
@@ -10857,7 +10857,7 @@ function fw(e) {
         }
         if (!f() || o.chat[p] !== l || l.mes !== s.text) return !1;
         o.groupId ? await Hl(o.groupId, !1) : await Dl({ chatName: o.chatId });
-        const g = (await r(o)).filter((y) => qe(y)?.segmentId === s.marker.segmentId), _ = g.length === 1 && g[0].mes === s.text && Nn(qe(g[0]), s.marker);
+        const g = (await r(o)).filter((b) => qe(b)?.segmentId === s.marker.segmentId), _ = g.length === 1 && g[0].mes === s.text && Nn(qe(g[0]), s.marker);
         return _ && n.delete(s.marker.segmentId), _;
       } finally {
         t = null;
@@ -11077,14 +11077,14 @@ function ww({ readContext: e, readStoryEvents: t, report: n = () => {
     }, g = s.worldInfoIncludeNames === !0, _ = [...a.worldInfoScanMessages ?? [], ...m.map((I) => {
       const w = String(I.text || "");
       return g ? `${I.speakerName}: ${w}` : w;
-    }).reverse()], y = bw(s, n), C = Number(s.maxContext), A = Number.isFinite(C) && C > 0 ? Math.floor(C) : 8192, [S, k] = await Promise.all([(async () => {
+    }).reverse()], b = bw(s, n), C = Number(s.maxContext), A = Number.isFinite(C) && C > 0 ? Math.floor(C) : 8192, [S, k] = await Promise.all([(async () => {
       if (typeof s.getWorldInfoPrompt != "function") return {
         before: "",
         after: "",
         depth: []
       };
       try {
-        const I = await s.getWorldInfoPrompt(_, A, !0, y), w = Fn(I) ? I : {}, h = Array.isArray(w.worldInfoDepth) ? w.worldInfoDepth.flatMap((b) => !Fn(b) || !Array.isArray(b.entries) ? [] : b.entries.filter((v) => typeof v == "string")) : [];
+        const I = await s.getWorldInfoPrompt(_, A, !0, b), w = Fn(I) ? I : {}, h = Array.isArray(w.worldInfoDepth) ? w.worldInfoDepth.flatMap((y) => !Fn(y) || !Array.isArray(y.entries) ? [] : y.entries.filter((v) => typeof v == "string")) : [];
         return {
           before: w.worldInfoBefore,
           after: w.worldInfoAfter,
@@ -11222,8 +11222,8 @@ function Aw(e = () => window) {
     try {
       const _ = await p.checkGeneratedImageCache(l);
       if (g.signal.aborted) throw new Error("messages_media_cancelled");
-      const y = s(_);
-      if (y || !m) return y;
+      const b = s(_);
+      if (b || !m) return b;
       const C = await p.generateSharedImage({
         ...l,
         signal: g.signal,
@@ -11603,13 +11603,13 @@ async function Dw(e, t) {
   const g = await i.openSession(l);
   if (s(), !String(g.providerConfig.model ?? "").trim()) throw new Error("messages_agent_not_configured");
   let _ = n.current().contacts.find((v) => v.id === t.contactId);
-  const y = p.filter((v) => v.id !== u.id);
+  const b = p.filter((v) => v.id !== u.id);
   async function C(v) {
     const E = /* @__PURE__ */ new Map();
     for (const x of v) x.payload.type === "image" && x.payload.attachment && (E.set(x.id, await e.images.load(x.payload.attachment, t.signal)), s());
     return E;
   }
-  let A = wc(_, y);
+  let A = wc(_, b);
   for (; A.length; ) {
     t.stage("summarizing");
     const v = await C(A), E = await g.run({
@@ -11626,12 +11626,12 @@ async function Dw(e, t) {
         throughSeq: $,
         text: x
       };
-    }, t.guard), s(), _ = n.current().contacts.find((T) => T.id === t.contactId), A = wc(_, y);
+    }, t.guard), s(), _ = n.current().contacts.find((T) => T.id === t.contactId), A = wc(_, b);
   }
   t.stage("replying");
-  const S = await a.capture(_, y, u);
+  const S = await a.capture(_, b, u);
   s();
-  const k = y.filter((v) => v.seq > (_.summary?.throughSeq ?? 0)), I = await C([...k, u]), w = Rw({
+  const k = b.filter((v) => v.seq > (_.summary?.throughSeq ?? 0)), I = await C([...k, u]), w = Rw({
     contact: _,
     context: S,
     incoming: u,
@@ -11643,7 +11643,7 @@ async function Dw(e, t) {
     signal: t.signal
   });
   s();
-  const b = Tw(h).map((v) => ({
+  const y = Tw(h).map((v) => ({
     id: e.id(),
     payload: v
   }));
@@ -11655,7 +11655,7 @@ async function Dw(e, t) {
       contactId: t.contactId,
       playerName: u.from,
       replyTo: u.id,
-      entries: b,
+      entries: y,
       createdAt: Date.now()
     });
   }, t.guard), !(!t.guard() || t.signal.aborted) && (t.stage("syncing"), await r.sync(c, t.guard));
@@ -11804,7 +11804,7 @@ function Bw(e) {
         case "messages/contact/add":
           return await g(async () => {
             const I = `contact:${k("actionId", 100)}`, w = k("name", 120), h = pe(A.note ?? "", 600, !0).trim();
-            return await t.change((b) => Sw(b, {
+            return await t.change((y) => Sw(y, {
               id: I,
               name: w,
               note: h,
@@ -11819,9 +11819,9 @@ function Bw(e) {
           return await g(async () => {
             const I = k("contactId"), w = pe(A.note, 600, !0).trim();
             return await t.change((h) => {
-              const b = h.contacts.find((v) => v.id === I);
-              if (!b) throw new Error("messages_contact_missing");
-              b.note = w;
+              const y = h.contacts.find((v) => v.id === I);
+              if (!y) throw new Error("messages_contact_missing");
+              y.note = w;
             }, S), m();
           });
         case "messages/contact/delete":
@@ -11852,11 +11852,11 @@ function Bw(e) {
         case "messages/image/check":
         case "messages/image/generate":
         case "messages/voice/play": {
-          const I = k("messageId"), w = s, h = t.current().messages.find((b) => b.id === I);
+          const I = k("messageId"), w = s, h = t.current().messages.find((y) => y.id === I);
           if (!h) throw new Error("messages_message_missing");
-          return C.type === "messages/voice/play" ? (i.play(h, (b) => w?.post("messages/voice-state", {
+          return C.type === "messages/voice/play" ? (i.play(h, (y) => w?.post("messages/voice-state", {
             messageId: I,
-            status: b
+            status: y
           })), { started: !0 }) : { data: await i.image(h, C.type === "messages/image/generate") };
         }
         case "messages/voice/stop":
@@ -11870,7 +11870,7 @@ function Bw(e) {
       throw u = h, p(), new Error(h);
     }
   }
-  function y() {
+  function b() {
     s = null, o = "", i.cancelAll();
   }
   return {
@@ -11881,14 +11881,14 @@ function Bw(e) {
         console.warn("[LittleWhiteBox] 信息读取失败", A), u = "通讯记录暂时无法读取，请重试。", p();
       }), m();
     },
-    deactivate: y,
-    cancelForeground: y,
-    handleWindowClosed: y,
+    deactivate: b,
+    cancelForeground: b,
+    handleWindowClosed: b,
     cancelAll() {
-      d++, a.cancel(), y();
+      d++, a.cancel(), b();
     },
     handleChatChanged() {
-      d++, a.cancel(), a.clearError(), n.reset(), u = "", y();
+      d++, a.cancel(), a.clearError(), n.reset(), u = "", b();
     },
     startBackground() {
       f.length || (f = [
@@ -11905,7 +11905,7 @@ function Bw(e) {
       ]);
     },
     async stopBackground() {
-      d++, f.forEach((C) => C()), f = [], y(), await a.stop();
+      d++, f.forEach((C) => C()), f = [], b(), await a.stop();
     }
   };
 }
@@ -12981,44 +12981,44 @@ function Cv({ readCurrent: e, persist: t, now: n = Date.now, onError: r = (i, a)
   const i = /* @__PURE__ */ new Map();
   let a = 0;
   function s(_) {
-    let y = i.get(_);
-    return y || (y = {
+    let b = i.get(_);
+    return b || (b = {
       tickets: [],
       draining: !1,
       scheduled: !1,
       paused: !1
-    }, i.set(_, y)), y;
+    }, i.set(_, b)), b;
   }
-  function o(_, y) {
+  function o(_, b) {
     return zu(_, {
       ...ju(_),
-      actionId: y.actionId,
-      receipt: y.receipt
+      actionId: b.actionId,
+      receipt: b.receipt
     }, {
-      now: () => y.projectedAt,
-      createEventId: () => y.projectedEventId
+      now: () => b.projectedAt,
+      createEventId: () => b.projectedEventId
     });
   }
-  function c(_, y) {
-    return o(_, y).domain;
+  function c(_, b) {
+    return o(_, b).domain;
   }
-  function u(_, y) {
-    return (y?.tickets || []).reduce(c, structuredClone(_));
+  function u(_, b) {
+    return (b?.tickets || []).reduce(c, structuredClone(_));
   }
   function d(_) {
-    const y = e();
-    return y?.chatIdentity === _ ? y : null;
+    const b = e();
+    return b?.chatIdentity === _ ? b : null;
   }
-  async function f(_, y) {
-    if (!(y.draining || y.paused)) {
-      y.draining = !0;
+  async function f(_, b) {
+    if (!(b.draining || b.paused)) {
+      b.draining = !0;
       try {
-        for (; !y.paused && y.tickets.length > 0; ) {
-          const C = y.tickets[0];
+        for (; !b.paused && b.tickets.length > 0; ) {
+          const C = b.tickets[0];
           try {
-            await t(vc(C)), y.tickets.shift();
+            await t(vc(C)), b.tickets.shift();
           } catch (A) {
-            y.paused = !0;
+            b.paused = !0;
             try {
               r(A, vc(C));
             } catch (S) {
@@ -13027,49 +13027,49 @@ function Cv({ readCurrent: e, persist: t, now: n = Date.now, onError: r = (i, a)
           }
         }
       } finally {
-        y.draining = !1, y.tickets.length === 0 && i.delete(_);
+        b.draining = !1, b.tickets.length === 0 && i.delete(_);
       }
     }
   }
-  function m(_, y) {
-    y.scheduled || y.draining || y.paused || y.tickets.length === 0 || (y.scheduled = !0, queueMicrotask(() => {
-      y.scheduled = !1, f(_, y);
+  function m(_, b) {
+    b.scheduled || b.draining || b.paused || b.tickets.length === 0 || (b.scheduled = !0, queueMicrotask(() => {
+      b.scheduled = !1, f(_, b);
     }));
   }
   function p(_) {
-    const y = d(_);
-    if (!y) return null;
+    const b = d(_);
+    if (!b) return null;
     const C = i.get(_);
-    if (!y.domain) {
+    if (!b.domain) {
       if (C?.tickets.length) throw new Error("shop_delivery_base_missing");
       return null;
     }
-    return u(y.domain, C);
+    return u(b.domain, C);
   }
   function l(_) {
-    const y = String(_.chatIdentity || "").trim();
-    if (!y) throw new Error("shop_generation_chat_changed");
-    const C = d(y);
+    const b = String(_.chatIdentity || "").trim();
+    if (!b) throw new Error("shop_generation_chat_changed");
+    const C = d(b);
     if (!C?.domain) throw new Error("shop_generation_chat_changed");
-    const A = er(_.receipt), S = i.get(y), k = u(C.domain, S);
+    const A = er(_.receipt), S = i.get(b), k = u(C.domain, S);
     let I;
     do
       I = `shop-pending-${++a}`;
-    while (k.events.some((b) => b.eventId === I));
+    while (k.events.some((y) => y.eventId === I));
     const w = {
-      chatIdentity: y,
+      chatIdentity: b,
       actionId: String(_.actionId || "").trim(),
       receipt: A,
       projectedAt: n(),
       projectedEventId: I
     };
     if (!o(k, w).created) return;
-    const h = S || s(y);
-    h.tickets.push(w), h.paused = !1, m(y, h);
+    const h = S || s(b);
+    h.tickets.push(w), h.paused = !1, m(b, h);
   }
   function g(_) {
-    const y = i.get(_);
-    y && (y.paused = !1, m(_, y));
+    const b = i.get(_);
+    b && (b.paused = !1, m(_, b));
   }
   return Object.freeze({
     readCurrent: p,
@@ -13216,13 +13216,13 @@ function qu({ shop: e, economy: t, getChatIdentity: n, isMainGenerationActive: r
     const h = g(w.chatIdentity);
     return w.post("shop/state", { state: h }), h;
   }
-  function y(w) {
+  function b(w) {
     const h = {
       activation: w,
       error: ""
     };
     o = h;
-    const b = async () => {
+    const y = async () => {
       if (!(o !== h || !m(w)))
         try {
           if (await t.ensureOpen(), o !== h || !m(w)) return;
@@ -13235,28 +13235,28 @@ function qu({ shop: e, economy: t, getChatIdentity: n, isMainGenerationActive: r
           }, _(w);
         }
     };
-    a ? a.setTimeout(b, 0) : globalThis.setTimeout(() => {
-      b();
+    a ? a.setTimeout(y, 0) : globalThis.setTimeout(() => {
+      y();
     }, 0);
   }
   function C(w) {
     A();
     const h = f();
     if (!h) throw new Error("请先打开一个聊天");
-    const b = {
+    const y = {
       chatIdentity: h,
       post: w.post
     };
-    return s = b, t.isOpen() || y(b), g(h);
+    return s = y, t.isOpen() || b(y), g(h);
   }
   function A() {
     s = null, o = null, c = !1;
   }
-  async function S(w, h, b) {
+  async function S(w, h, y) {
     if (c) throw new Error("已有商店操作正在处理");
     c = !0;
     try {
-      const v = await b();
+      const v = await y();
       return l(w, h), _(w), v;
     } catch (v) {
       throw m(w) && ni(v) && v.uncertain === !0 && _(w), v;
@@ -13265,23 +13265,23 @@ function qu({ shop: e, economy: t, getChatIdentity: n, isMainGenerationActive: r
     }
   }
   async function k(w) {
-    const h = ni(w.payload) ? w.payload : {}, b = p(h);
+    const h = ni(w.payload) ? w.payload : {}, y = p(h);
     if (w.type === "shop/refresh")
-      return o = null, await e.refreshCurrent(), e.getWriteState() === "ready" && !t.isOpen() && await t.ensureOpen(), l(b, h), _(b);
+      return o = null, await e.refreshCurrent(), e.getWriteState() === "ready" && !t.isOpen() && await t.ensureOpen(), l(y, h), _(y);
     if (w.type === "shop/confirm-save") {
       if (o = null, c) throw new Error("已有商店操作正在处理");
       const E = await e.confirmPending();
-      return l(b, h), {
+      return l(y, h), {
         confirmation: E.status,
-        state: _(b)
+        state: _(y)
       };
     }
     if (w.type === "shop/adopt-server-state") {
       if (o = null, c) throw new Error("已有商店操作正在处理");
       const E = await e.adoptServerState();
-      return l(b, h), {
+      return l(y, h), {
         adoption: E.status,
-        state: _(b)
+        state: _(y)
       };
     }
     const v = {
@@ -13293,8 +13293,8 @@ function qu({ shop: e, economy: t, getChatIdentity: n, isMainGenerationActive: r
         ...v,
         itemId: cr(h.itemId, "商品")
       };
-      return S(b, h, async () => ti({
-        chatIdentity: b.chatIdentity,
+      return S(y, h, async () => ti({
+        chatIdentity: y.chatIdentity,
         serviceView: await e.purchaseCurrent(E),
         generationActive: r()
       }));
@@ -13305,8 +13305,8 @@ function qu({ shop: e, economy: t, getChatIdentity: n, isMainGenerationActive: r
         itemId: cr(h.itemId, "商品"),
         parameters: ni(h.parameters) ? h.parameters : {}
       };
-      return S(b, h, async () => ti({
-        chatIdentity: b.chatIdentity,
+      return S(y, h, async () => ti({
+        chatIdentity: y.chatIdentity,
         serviceView: await e.activateCurrent(E),
         generationActive: r()
       }));
@@ -13317,8 +13317,8 @@ function qu({ shop: e, economy: t, getChatIdentity: n, isMainGenerationActive: r
         itemId: cr(h.itemId, "商品"),
         activationId: cr(h.activationId, "生效实例")
       };
-      return S(b, h, async () => ti({
-        chatIdentity: b.chatIdentity,
+      return S(y, h, async () => ti({
+        chatIdentity: y.chatIdentity,
         serviceView: await e.deactivateCurrent(E),
         generationActive: r()
       }));
@@ -13540,19 +13540,19 @@ function qv({ captureConversation: e, readShop: t, enqueueDelivery: n, bindReply
       try {
         const w = e(), h = w ? t(w.identityKey) : null;
         if (!w || !h || I?.chatIdentity && I.chatIdentity !== w.identityKey || S === "regenerate" && I && !I.regenerateReceipt) return;
-        const b = S === "normal" ? Bu(h) : S === "regenerate" && I?.regenerateReceipt ? I.regenerateReceipt : Tc(w);
-        if (k !== u || !Kv(b) || (i(jv(Dt(h), b)), I?.dryRun === !0)) return;
+        const y = S === "normal" ? Bu(h) : S === "regenerate" && I?.regenerateReceipt ? I.regenerateReceipt : Tc(w);
+        if (k !== u || !Kv(y) || (i(jv(Dt(h), y)), I?.dryRun === !0)) return;
         S === "normal" ? f = {
           generation: k,
           kind: "delivery",
           chatIdentity: w.identityKey,
           actionId: s(),
-          receipt: b
+          receipt: y
         } : S === "regenerate" && (f = {
           generation: k,
           kind: "reuse",
           chatIdentity: w.identityKey,
-          receipt: b
+          receipt: y
         });
       } catch (w) {
         k === u && (f = null, m()), o(w);
@@ -13566,8 +13566,8 @@ function qv({ captureConversation: e, readShop: t, enqueueDelivery: n, bindReply
         return;
       }
       try {
-        const h = e(), b = h?.messages[Number(A)];
-        if (!h || h.identityKey !== k.chatIdentity || Number(A) !== h.messages.length - 1 || b?.role !== "assistant" || !b.content.trim()) return;
+        const h = e(), y = h?.messages[Number(A)];
+        if (!h || h.identityKey !== k.chatIdentity || Number(A) !== h.messages.length - 1 || y?.role !== "assistant" || !y.content.trim()) return;
         const v = r({
           chatIdentity: k.chatIdentity,
           messageId: Number(A),
@@ -13587,7 +13587,7 @@ function qv({ captureConversation: e, readShop: t, enqueueDelivery: n, bindReply
       }
     }
   }
-  function y() {
+  function b() {
     c || (c = a({
       generationStarted: l,
       intercept: g,
@@ -13601,7 +13601,7 @@ function qv({ captureConversation: e, readShop: t, enqueueDelivery: n, bindReply
     c?.(), c = null, p();
   }
   return Object.freeze({
-    startBackground: y,
+    startBackground: b,
     stopBackground: C,
     handleChatChanged: p,
     cancelAll: p
@@ -13655,79 +13655,79 @@ function Uv(e, t, n, { getCurrentChatIdentity: r, now: i = Date.now, createEvent
   const f = () => {
     d || (d = !0, queueMicrotask(() => {
       d = !1;
-      for (const b of u) try {
-        b();
+      for (const y of u) try {
+        y();
       } catch (v) {
         console.error("[LittleWhiteBox] Shop listener failed", v);
       }
     }));
   }, m = e.subscribe(f), p = n.subscribe(f), l = t.subscribeFileState(f), g = () => e.peekCurrent()?.value ?? null;
-  function _(b = g()) {
+  function _(y = g()) {
     return {
-      domain: b ? structuredClone(b) : null,
-      projection: Dt(b || Lu()),
+      domain: y ? structuredClone(y) : null,
+      projection: Dt(y || Lu()),
       balance: n.getPlayerBalance(),
       writeState: t.getFileState()
     };
   }
-  async function y() {
+  async function b() {
     return await e.read(), _();
   }
   function C() {
     if (o()) throw new Error("shop_main_generation_active");
   }
-  function A(b) {
-    const v = String(b || "").trim();
+  function A(y) {
+    const v = String(y || "").trim();
     if (!v || r() !== v) throw new Error("shop_generation_chat_changed");
   }
-  async function S(b) {
-    if (b.status === "failed" || b.status === "unconfirmed" || b.status === "conflict") throw Wv(b);
-    return _(b.status === "confirmed" ? b.snapshot.value : b.result);
+  async function S(y) {
+    if (y.status === "failed" || y.status === "unconfirmed" || y.status === "conflict") throw Wv(y);
+    return _(y.status === "confirmed" ? y.snapshot.value : y.result);
   }
-  async function k(b) {
+  async function k(y) {
     return S(await e.transact((v) => {
-      const E = Av(v.currentOrInitial(), b, c), x = v.useCapability(Ge);
+      const E = Av(v.currentOrInitial(), y, c), x = v.useCapability(Ge);
       return E.created && (x.postAction(Gu(E.event)), v.replace(E.domain)), ri(E.domain, x), E.domain;
     }));
   }
-  async function I(b) {
+  async function I(y) {
     return C(), S(await e.transact((v) => {
       C();
       const E = v.currentOrInitial();
       ri(E, v.useCapability(Ge));
-      const x = E.events.find((T) => T.actionId === b.actionId), $ = x?.action.kind === "activate" ? x.action.activationId : String(s() || "").trim(), R = Sv(E, {
-        ...b,
+      const x = E.events.find((T) => T.actionId === y.actionId), $ = x?.action.kind === "activate" ? x.action.activationId : String(s() || "").trim(), R = Sv(E, {
+        ...y,
         activationId: $
       }, c);
       return R.created && v.replace(R.domain), R.domain;
     }, { commitGuard: () => (C(), !0) }));
   }
-  async function w(b) {
+  async function w(y) {
     return C(), S(await e.transact((v) => {
       C();
       const E = v.currentOrInitial();
       ri(E, v.useCapability(Ge));
-      const x = Ev(E, b, c);
+      const x = Ev(E, y, c);
       return x.created && v.replace(x.domain), x.domain;
     }, { commitGuard: () => (C(), !0) }));
   }
-  async function h(b) {
-    const v = er(b.receipt);
-    return A(b.chatIdentity), S(await e.transact((E) => {
-      A(b.chatIdentity);
+  async function h(y) {
+    const v = er(y.receipt);
+    return A(y.chatIdentity), S(await e.transact((E) => {
+      A(y.chatIdentity);
       const x = E.currentOrInitial();
       ri(x, E.useCapability(Ge));
       const $ = zu(x, {
         ...ju(x),
-        actionId: b.actionId,
+        actionId: y.actionId,
         receipt: v
       }, c);
       return $.created && E.replace($.domain), $.domain;
-    }, { commitGuard: () => (A(b.chatIdentity), !0) }));
+    }, { commitGuard: () => (A(y.chatIdentity), !0) }));
   }
   return Object.freeze({
     readCurrent: () => _(),
-    refreshCurrent: y,
+    refreshCurrent: b,
     purchaseCurrent: k,
     activateCurrent: I,
     deactivateCurrent: w,
@@ -13735,8 +13735,8 @@ function Uv(e, t, n, { getCurrentChatIdentity: r, now: i = Date.now, createEvent
     confirmPending: t.retryPending,
     adoptServerState: t.adoptServerState,
     getWriteState: t.getFileState,
-    subscribe(b) {
-      return u.add(b), () => u.delete(b);
+    subscribe(y) {
+      return u.add(y), () => u.delete(y);
     },
     dispose() {
       m(), p(), l(), u.clear();
@@ -15096,10 +15096,10 @@ function W_({ gateway: e, tasks: t, context: n, isMainGenerationActive: r, now: 
   function p(w, h) {
     return u(w)?.token === h.token && !h.controller.signal.aborted;
   }
-  function l(w, h, b) {
+  function l(w, h, y) {
     if (!p(w, h) || r() || t.getWriteState() !== "ready") return !1;
     try {
-      return n.currentChatIdentity() === b;
+      return n.currentChatIdentity() === y;
     } catch {
       return !1;
     }
@@ -15115,14 +15115,14 @@ function W_({ gateway: e, tasks: t, context: n, isMainGenerationActive: r, now: 
     const h = hs(ms(w || {}));
     if (!String(h.model || "").trim() || !ps(h.provider) && !String(h.apiKey || "").trim()) throw new Error("tasks_agent_not_configured");
   }
-  async function y(w, h, b) {
+  async function b(w, h, y) {
     let v;
     try {
       v = await e.loadConfig();
     } catch (x) {
       throw new Error("tasks_config_load_failed", { cause: x });
     }
-    if (!b()) throw new DOMException("Aborted", "AbortError");
+    if (!y()) throw new DOMException("Aborted", "AbortError");
     _(v);
     let E;
     try {
@@ -15130,7 +15130,7 @@ function W_({ gateway: e, tasks: t, context: n, isMainGenerationActive: r, now: 
     } catch (x) {
       throw new Error("tasks_agent_session_failed", { cause: x });
     }
-    if (!b()) throw new DOMException("Aborted", "AbortError");
+    if (!y()) throw new DOMException("Aborted", "AbortError");
     return await E.run({
       systemPrompt: h.systemPrompt,
       messages: h.messages.map((x) => ({ ...x })),
@@ -15142,22 +15142,22 @@ function W_({ gateway: e, tasks: t, context: n, isMainGenerationActive: r, now: 
     return ((t.readCurrent().domain?.board ?? null)?.boardId ?? null) === w;
   }
   function A(w) {
-    const h = t.readCurrent().records.find((b) => b.taskId === w.taskId);
+    const h = t.readCurrent().records.find((y) => y.taskId === w.taskId);
     return h?.source === "published" && h.status === "recruiting" && h.taskRevision === w.expectedTaskRevision && h.eventId === w.expectedEventId ? h : null;
   }
-  async function S(w, h, b) {
+  async function S(w, h, y) {
     if (!p(w, h) || r() || t.getWriteState() !== "ready") return {
       valid: !1,
       assistantCount: 0
     };
     try {
-      const v = await g(), E = b.kind === "board" ? C(b.expectedBoardId) : !!A(b);
+      const v = await g(), E = y.kind === "board" ? C(y.expectedBoardId) : !!A(y);
       return {
-        valid: p(w, h) && !r() && t.getWriteState() === "ready" && v.chatIdentity === b.chatIdentity && nt({
+        valid: p(w, h) && !r() && t.getWriteState() === "ready" && v.chatIdentity === y.chatIdentity && nt({
           ...v.contextSnapshot,
           worldContent: null
         }, {
-          ...b.contextSnapshot,
+          ...y.contextSnapshot,
           worldContent: null
         }) && E,
         assistantCount: v.assistantCount
@@ -15173,14 +15173,14 @@ function W_({ gateway: e, tasks: t, context: n, isMainGenerationActive: r, now: 
     const w = "board", h = d(w);
     try {
       if (r() || t.getWriteState() !== "ready") return ft(w);
-      const b = t.readCurrent(), v = await g(), E = {
+      const y = t.readCurrent(), v = await g(), E = {
         kind: w,
         chatIdentity: v.chatIdentity,
         contextSnapshot: v.contextSnapshot,
-        expectedBoardId: b.domain?.board?.boardId ?? null
+        expectedBoardId: y.domain?.board?.boardId ?? null
       };
       if (!l(w, h, E.chatIdentity) || !C(E.expectedBoardId)) return ft(w);
-      const x = await y(h, a_(E.contextSnapshot), () => l(w, h, E.chatIdentity) && C(E.expectedBoardId));
+      const x = await b(h, a_(E.contextSnapshot), () => l(w, h, E.chatIdentity) && C(E.expectedBoardId));
       if (!p(w, h)) return ft(w);
       const $ = q_(Pc(x), {
         finishReason: x.finishReason,
@@ -15205,15 +15205,15 @@ function W_({ gateway: e, tasks: t, context: n, isMainGenerationActive: r, now: 
         compile: $,
         action: R
       };
-    } catch (b) {
-      if (h.controller.signal.aborted || !p(w, h) || Ra(b)) return ft(w);
-      throw a(b), b;
+    } catch (y) {
+      if (h.controller.signal.aborted || !p(w, h) || Ra(y)) return ft(w);
+      throw a(y), y;
     } finally {
       m(w, h);
     }
   }
   async function I(w) {
-    const h = "candidates", b = d(h);
+    const h = "candidates", y = d(h);
     try {
       if (r() || t.getWriteState() !== "ready") return ft(h);
       const v = A(w);
@@ -15224,13 +15224,13 @@ function W_({ gateway: e, tasks: t, context: n, isMainGenerationActive: r, now: 
         contextSnapshot: E.contextSnapshot,
         ...w
       };
-      if (!l(h, b, x.chatIdentity) || !A(x)) return ft(h);
-      const $ = await y(b, f_(x.contextSnapshot, F_(v)), () => l(h, b, x.chatIdentity) && !!A(x));
-      if (!p(h, b)) return ft(h);
+      if (!l(h, y, x.chatIdentity) || !A(x)) return ft(h);
+      const $ = await b(y, f_(x.contextSnapshot, F_(v)), () => l(h, y, x.chatIdentity) && !!A(x));
+      if (!p(h, y)) return ft(h);
       const R = G_(Pc($), v.candidates, {
         finishReason: $.finishReason,
         truncated: Mc($)
-      }), T = await S(h, b, x);
+      }), T = await S(h, y, x);
       if (!T.valid) return ft(h);
       if (!R.changed || R.data?.mode !== "replace") return {
         kind: h,
@@ -15245,7 +15245,7 @@ function W_({ gateway: e, tasks: t, context: n, isMainGenerationActive: r, now: 
         expectedEventId: x.expectedEventId,
         candidates: R.data.candidates,
         observedAssistantCount: T.assistantCount
-      }, async () => (await S(h, b, x)).valid);
+      }, async () => (await S(h, y, x)).valid);
       return {
         kind: h,
         status: R.status,
@@ -15254,10 +15254,10 @@ function W_({ gateway: e, tasks: t, context: n, isMainGenerationActive: r, now: 
         action: D
       };
     } catch (v) {
-      if (b.controller.signal.aborted || !p(h, b) || Ra(v)) return ft(h);
+      if (y.controller.signal.aborted || !p(h, y) || Ra(v)) return ft(h);
       throw a(v), v;
     } finally {
-      m(h, b);
+      m(h, y);
     }
   }
   return Object.freeze({
@@ -15599,7 +15599,7 @@ function cI({ tasks: e, economy: t, generation: n, settings: r, maintenance: i, 
     f();
   }, 0);
 }, report: d = (f) => console.error("[LittleWhiteBox] Tasks controller failed", f) }) {
-  let f = null, m = null, p = !1, l = null, g = null, _ = null, y = null;
+  let f = null, m = null, p = !1, l = null, g = null, _ = null, b = null;
   const C = () => sI(a()), A = Q_({
     requests: n,
     getChatIdentity: C,
@@ -15649,7 +15649,7 @@ function cI({ tasks: e, economy: t, generation: n, settings: r, maintenance: i, 
       message: ""
     };
   }
-  function b(L = f) {
+  function y(L = f) {
     if (!L) throw new Error("tasks_app_inactive");
     const O = h(L.chatIdentity);
     return L.post("tasks/state", { state: O }), O;
@@ -15658,7 +15658,7 @@ function cI({ tasks: e, economy: t, generation: n, settings: r, maintenance: i, 
     const L = f;
     if (!(!L || C() !== L.chatIdentity))
       try {
-        b(L);
+        y(L);
       } catch (O) {
         d(O), L.post("tasks/error", { code: "tasks_state_unavailable" });
       }
@@ -15670,12 +15670,12 @@ function cI({ tasks: e, economy: t, generation: n, settings: r, maintenance: i, 
     };
     m = O, u(() => {
       m !== O || f !== L || C() !== L.chatIdentity || t.ensureOpen().then(() => {
-        m !== O || f !== L || C() !== L.chatIdentity || (m = null, b(L));
+        m !== O || f !== L || C() !== L.chatIdentity || (m = null, y(L));
       }).catch((N) => {
         m !== O || f !== L || C() !== L.chatIdentity || (d(N), m = {
           activation: L,
           error: "任务数据暂时无法读取，请稍后重试。"
-        }, b(L));
+        }, y(L));
       });
     });
   }
@@ -15695,7 +15695,7 @@ function cI({ tasks: e, economy: t, generation: n, settings: r, maintenance: i, 
       const B = await N(j);
       return k(L, O), {
         result: B,
-        state: b(L)
+        state: y(L)
       };
     } catch (B) {
       throw d(B), f === L && C() === L.chatIdentity && v(), oI(B);
@@ -15721,7 +15721,7 @@ function cI({ tasks: e, economy: t, generation: n, settings: r, maintenance: i, 
   }
   async function K(L) {
     const O = fl(L.payload) ? L.payload : {}, N = S(O);
-    if (L.type === "tasks/activate") return b(N);
+    if (L.type === "tasks/activate") return y(N);
     if (L.type === "tasks/detail/read") return aI(I(), fn(O.taskId, "tasks_request_invalid"));
     if (L.type === "tasks/history/load-more") {
       const j = fn(O.cursor, "tasks_history_cursor_invalid");
@@ -15731,7 +15731,7 @@ function cI({ tasks: e, economy: t, generation: n, settings: r, maintenance: i, 
       if ($(N), i.getStatus("tasks", N.chatIdentity).state === "running") throw new Error("tasks_generation_active");
       return L.type === "tasks/refresh" ? A.startBoard(N.chatIdentity) : A.startCandidates(N.chatIdentity, Na(O)), {
         started: !0,
-        state: b(N)
+        state: y(N)
       };
     }
     if (L.type === "tasks/board/accept") {
@@ -15771,7 +15771,7 @@ function cI({ tasks: e, economy: t, generation: n, settings: r, maintenance: i, 
     }
     if (L.type === "tasks/settings/update") {
       if (typeof O.autoMaintenance != "boolean") throw new Error("tasks_request_invalid");
-      return await r.setTasksAutoMaintenance(O.autoMaintenance), k(N, O), b(N);
+      return await r.setTasksAutoMaintenance(O.autoMaintenance), k(N, O), y(N);
     }
     if (L.type === "tasks/maintenance/run") {
       $(N);
@@ -15779,23 +15779,23 @@ function cI({ tasks: e, economy: t, generation: n, settings: r, maintenance: i, 
       return {
         started: j.status === "started",
         status: j.status,
-        state: b(N)
+        state: y(N)
       };
     }
     if (L.type === "tasks/save/confirm") {
       const j = await e.confirmPending();
       return k(N, O), {
         confirmation: j.status,
-        state: b(N)
+        state: y(N)
       };
     }
     if (L.type === "tasks/read")
-      return m = null, await e.refreshCurrent(), k(N, O), t.isOpen() || E(N), { state: b(N) };
+      return m = null, await e.refreshCurrent(), k(N, O), t.isOpen() || E(N), { state: y(N) };
     if (L.type === "tasks/save/adopt-server") {
       const j = await e.adoptServerState();
       return k(N, O), {
         adoption: j.status,
-        state: b(N)
+        state: y(N)
       };
     }
     throw new Error("tasks_request_unknown");
@@ -15815,12 +15815,12 @@ function cI({ tasks: e, economy: t, generation: n, settings: r, maintenance: i, 
     startBackground() {
       l ||= c(H), g ||= o((L) => {
         L && A.cancelAll("main-generation-started"), v();
-      }), _ ||= r.subscribe(v), y ||= i.subscribeStatus((L, O) => {
+      }), _ ||= r.subscribe(v), b ||= i.subscribeStatus((L, O) => {
         L === "tasks" && f?.chatIdentity === O && v();
       });
     },
     stopBackground() {
-      l?.(), g?.(), _?.(), y?.(), l = null, g = null, _ = null, y = null, D("stopped");
+      l?.(), g?.(), _?.(), b?.(), l = null, g = null, _ = null, b = null, D("stopped");
     }
   });
 }
@@ -16886,10 +16886,10 @@ function ek(e, t, n, { now: r = Date.now, ids: i = MI({ now: r }), getPlayerDisp
   async function _(A, S) {
     await jc(A);
     const k = await e.transact((w) => {
-      const h = w.currentOrInitial(), b = w.useCapability(Ge);
-      La(h, b);
-      const v = S(h, b);
-      return La(v.domain, b), v.changed && w.replace(v.domain), v;
+      const h = w.currentOrInitial(), y = w.useCapability(Ge);
+      La(h, y);
+      const v = S(h, y);
+      return La(v.domain, y), v.changed && w.replace(v.domain), v;
     }, { commitGuard: async () => (await jc(A), !0) });
     if (k.status === "failed" || k.status === "unconfirmed" || k.status === "conflict") throw Lc(k);
     const I = k.result;
@@ -16899,13 +16899,13 @@ function ek(e, t, n, { now: r = Date.now, ids: i = MI({ now: r }), getPlayerDisp
       view: l(k.status === "confirmed" ? k.snapshot.value : I.domain)
     };
   }
-  const y = {
+  const b = {
     now: r,
     ids: i,
     getPlayerDisplayName: a,
     getObservedAssistantCount: s,
     execute: _
-  }, C = VI(y);
+  }, C = VI(b);
   return Object.freeze({
     readCurrent: () => l(),
     refreshCurrent: g,
@@ -16914,7 +16914,7 @@ function ek(e, t, n, { now: r = Date.now, ids: i = MI({ now: r }), getPlayerDisp
       return i.create("action", A ? Wt(A) : /* @__PURE__ */ new Set());
     },
     ...C,
-    commitMaintenance: QI(y),
+    commitMaintenance: QI(b),
     getWriteState: () => t.getFileState(),
     confirmPending: () => t.retryPending(),
     adoptServerState: () => t.adoptServerState(),
@@ -17104,15 +17104,15 @@ function dk(e, t) {
 }
 function uk({ economy: e, confirmPending: t, getChatIdentity: n, execution: r }) {
   let i = null, a = null, s = null;
-  const o = () => sk(n()), c = (y) => i === y && o() === y.chatIdentity;
-  function u(y = {}) {
+  const o = () => sk(n()), c = (b) => i === b && o() === b.chatIdentity;
+  function u(b = {}) {
     if (!i) throw new Error("钱包 APP 未激活");
-    if (!c(i) || String(y.chatIdentity || "") !== i.chatIdentity) throw new Error("聊天已切换，请重新打开钱包");
+    if (!c(i) || String(b.chatIdentity || "") !== i.chatIdentity) throw new Error("聊天已切换，请重新打开钱包");
     return i;
   }
-  function d(y) {
+  function d(b) {
     const C = {
-      chatIdentity: y,
+      chatIdentity: b,
       currency: "小白币",
       balance: e.getPlayerBalance(),
       transactionCount: e.getTransactionCount(),
@@ -17129,50 +17129,50 @@ function uk({ economy: e, confirmPending: t, getChatIdentity: n, execution: r })
       message: ""
     };
   }
-  function f(y = i) {
-    if (!y) throw new Error("钱包 APP 未激活");
-    const C = d(y.chatIdentity);
-    return y.post("wallet/state", { state: C }), C;
+  function f(b = i) {
+    if (!b) throw new Error("钱包 APP 未激活");
+    const C = d(b.chatIdentity);
+    return b.post("wallet/state", { state: C }), C;
   }
-  function m(y) {
+  function m(b) {
     const C = {
-      activation: y,
+      activation: b,
       error: ""
     };
     a = C;
     const A = async () => {
-      if (!(a !== C || !c(y)))
+      if (!(a !== C || !c(b)))
         try {
-          if (await e.ensureOpen(), a !== C || !c(y)) return;
-          a = null, f(y);
+          if (await e.ensureOpen(), a !== C || !c(b)) return;
+          a = null, f(b);
         } catch (S) {
-          if (a !== C || !c(y)) return;
+          if (a !== C || !c(b)) return;
           a = Kc(S) && S.uncertain === !0 ? null : {
-            activation: y,
+            activation: b,
             error: "钱包数据暂时无法读取，请稍后重试。"
-          }, f(y);
+          }, f(b);
         }
     };
     r ? r.setTimeout(A, 0) : globalThis.setTimeout(() => {
       A();
     }, 0);
   }
-  function p(y) {
+  function p(b) {
     l();
     const C = o();
     if (!C) throw new Error("请先打开一个聊天");
     const A = {
       chatIdentity: C,
-      post: y.post
+      post: b.post
     };
     return i = A, e.isOpen() || m(A), d(C);
   }
   function l() {
     i = null, a = null;
   }
-  async function g(y) {
-    const C = Kc(y.payload) ? y.payload : {}, A = u(C);
-    if (y.type === "wallet/confirm-save") {
+  async function g(b) {
+    const C = Kc(b.payload) ? b.payload : {}, A = u(C);
+    if (b.type === "wallet/confirm-save") {
       a = null;
       const S = await t();
       if (!c(A)) throw new Error("聊天已切换，请重新打开钱包");
@@ -17181,11 +17181,11 @@ function uk({ economy: e, confirmPending: t, getChatIdentity: n, execution: r })
         state: f(A)
       };
     }
-    if (y.type === "wallet/refresh") {
+    if (b.type === "wallet/refresh") {
       if (a = null, await e.refresh(), e.getFileState() === "ready" && !e.isOpen() && await e.ensureOpen(), !c(A)) throw new Error("聊天已切换，请重新打开钱包");
       return f(A);
     }
-    if (y.type === "wallet/load-more") {
+    if (b.type === "wallet/load-more") {
       const S = Number(C.beforeSequence);
       if (!Number.isSafeInteger(S) || S < 2) throw new Error("钱包流水游标无效");
       return qc(e.listTransactions({
@@ -17196,12 +17196,12 @@ function uk({ economy: e, confirmPending: t, getChatIdentity: n, execution: r })
     throw new Error("未知的钱包操作");
   }
   function _() {
-    const y = i;
-    if (!(!y || !c(y)))
+    const b = i;
+    if (!(!b || !c(b)))
       try {
-        f(y);
+        f(b);
       } catch {
-        y.post("wallet/error", { message: "钱包状态暂时无法读取，请重新打开。" });
+        b.post("wallet/error", { message: "钱包状态暂时无法读取，请重新打开。" });
       }
   }
   return r?.addCleanup(() => l()), Object.freeze({
@@ -17320,67 +17320,68 @@ function as(e) {
     })
   };
 }
-function fk(e, t) {
-  const n = /* @__PURE__ */ new Set(), r = () => {
-    for (const c of n) try {
-      c();
-    } catch (u) {
-      console.error("[LittleWhiteBox] World state listener failed", u);
+function fk(e, t, n) {
+  const r = /* @__PURE__ */ new Set(), i = () => {
+    for (const u of r) try {
+      u();
+    } catch (d) {
+      console.error("[LittleWhiteBox] World state listener failed", d);
     }
-  }, i = e.subscribe(r), a = t.subscribeFileState(r);
-  function s() {
-    const c = e.peekCurrent();
+  }, a = e.subscribe(i), s = t.subscribeFileState(i);
+  function o() {
+    const u = e.peekCurrent();
     return {
-      identityKey: c?.identityKey ?? "",
-      world: structuredClone(c?.value ?? wl()),
+      identityKey: u?.identityKey ?? "",
+      chatIdentity: u ? n() : "",
+      world: structuredClone(u?.value ?? wl()),
       writeState: t.getFileState(),
       pendingSave: t.hasPendingCommit()
     };
   }
-  async function o(c, u, d) {
-    const f = () => !!c && e.peekCurrent()?.identityKey === c && d();
-    if (!f()) throw new Error("world_context_changed");
-    const m = await e.transact((p) => {
-      if (!f()) throw new Error("world_context_changed");
-      const l = p.currentOrInitial(), g = as(u(l));
-      (l.subscribed !== g.subscribed || l.injectToStory !== g.injectToStory || !Ki(l, g)) && p.replace(g);
-    }, { commitGuard: f });
-    if (m.status === "failed" || m.status === "unconfirmed" || m.status === "conflict") throw Object.assign(/* @__PURE__ */ new Error(`world_save_${m.status}`), {
-      code: m.status === "failed" ? m.error.code : m.status === "unconfirmed" ? "SAVE_UNCONFIRMED" : "SAVE_CONFLICT",
-      uncertain: m.status === "unconfirmed"
+  async function c(u, d, f) {
+    const m = () => !!u && e.peekCurrent()?.identityKey === u && f();
+    if (!m()) throw new Error("world_context_changed");
+    const p = await e.transact((l) => {
+      if (!m()) throw new Error("world_context_changed");
+      const g = l.currentOrInitial(), _ = as(d(g));
+      (g.subscribed !== _.subscribed || g.injectToStory !== _.injectToStory || !Ki(g, _)) && l.replace(_);
+    }, { commitGuard: m });
+    if (p.status === "failed" || p.status === "unconfirmed" || p.status === "conflict") throw Object.assign(/* @__PURE__ */ new Error(`world_save_${p.status}`), {
+      code: p.status === "failed" ? p.error.code : p.status === "unconfirmed" ? "SAVE_UNCONFIRMED" : "SAVE_CONFLICT",
+      uncertain: p.status === "unconfirmed"
     });
-    return s();
+    return o();
   }
   return Object.freeze({
-    readCurrent: s,
+    readCurrent: o,
     async refreshCurrent() {
-      return await e.read(), s();
+      return await e.read(), o();
     },
-    setPreference(c, u, d, f) {
-      return o(c, (m) => ({
-        ...m,
-        [u]: d
-      }), f);
+    setPreference(u, d, f, m) {
+      return c(u, (p) => ({
+        ...p,
+        [d]: f
+      }), m);
     },
-    replaceContent(c, u, d, f) {
-      const m = oo(d);
-      return o(c, (p) => {
-        if (!Ki(_n(p), u)) throw new Error("world_content_conflict");
+    replaceContent(u, d, f, m) {
+      const p = oo(f);
+      return c(u, (l) => {
+        if (!Ki(_n(l), d)) throw new Error("world_content_conflict");
         return {
-          ...p,
-          ...m
+          ...l,
+          ...p
         };
-      }, f);
+      }, m);
     },
     confirmPending: t.retryPending,
     adoptServerState: t.adoptServerState,
-    subscribe(c) {
-      return n.add(c), () => {
-        n.delete(c);
+    subscribe(u) {
+      return r.add(u), () => {
+        r.delete(u);
       };
     },
     dispose() {
-      i(), a(), n.clear();
+      a(), s(), r.clear();
     }
   });
 }
@@ -17422,10 +17423,10 @@ function pk(e) {
     ],
     async install(t) {
       if (!t.partition) throw new Error("World partition unavailable");
-      const n = fk(t.partition, t.files);
+      const n = fk(t.partition, t.files, e.getChatIdentity);
       return t.execution.addCleanup(n.dispose), t.execution.addCleanup(t.useCapability(Xn).registerProvider((r) => {
         const i = n.readCurrent();
-        return i.identityKey === r && (i.world.overview || i.world.news.length) ? _n(i.world) : null;
+        return r && i.chatIdentity === r && (i.world.overview || i.world.news.length) ? _n(i.world) : null;
       })), e.install({
         world: n,
         execution: t.execution,
@@ -17484,7 +17485,7 @@ function gk({ world: e, maintenance: t, getChatIdentity: n, checkAgent: r }) {
   let i = null, a, s;
   function o() {
     const p = n(), l = e.readCurrent();
-    if (l.identityKey !== p) throw new Error("聊天已切换，请重新打开世界。");
+    if (!p || l.chatIdentity !== p) throw new Error("聊天已切换，请重新打开世界。");
     const g = t.getStatus("world", p), _ = !l.pendingSave && l.writeState === "ready" && g.reason === "save-unconfirmed";
     return {
       chatIdentity: p,
@@ -17545,45 +17546,46 @@ function gk({ world: e, maintenance: t, getChatIdentity: n, checkAgent: r }) {
       const l = p.payload, g = i;
       if (!g || !c(g) || l?.chatIdentity !== g.chatIdentity) throw new Error("聊天已切换，请重新打开世界。");
       if (g.busy) throw new Error("正在处理上一次操作，请稍候。");
+      const _ = e.readCurrent().identityKey;
       g.busy = !0;
-      let _ = "";
-      const y = () => c(g);
+      let b = "";
+      const C = () => c(g);
       try {
         if (p.type === "world/read") await e.refreshCurrent();
         else if (p.type === "world/confirm-save") {
-          const C = e.readCurrent().world.subscribed, A = await e.confirmPending();
-          if (!y()) throw new Error("页面已切换。");
-          A.status === "confirmed" && !C && e.readCurrent().world.subscribed && (_ = f());
+          const A = e.readCurrent().world.subscribed, S = await e.confirmPending();
+          if (!C()) throw new Error("页面已切换。");
+          S.status === "confirmed" && !A && e.readCurrent().world.subscribed && (b = f());
         } else if (p.type === "world/adopt-server-state") await e.adoptServerState();
         else {
           if (e.readCurrent().writeState !== "ready") throw new Error("请先处理当前保存或读取问题。");
-          if (p.type === "world/refresh") _ = f();
+          if (p.type === "world/refresh") b = f();
           else if (p.type === "world/subscribe" || p.type === "world/background") {
             if (typeof l.enabled != "boolean") throw new Error("开关值无效。");
-            const C = p.type === "world/subscribe" ? "subscribed" : "injectToStory", A = e.readCurrent().world[C];
-            if (C === "subscribed" && l.enabled && !A) {
-              let S = !1;
+            const A = p.type === "world/subscribe" ? "subscribed" : "injectToStory", S = e.readCurrent().world[A];
+            if (A === "subscribed" && l.enabled && !S) {
+              let k = !1;
               try {
-                S = await r();
+                k = await r();
               } catch {
               }
-              if (!S) throw new Error("请先在 API 应用中配置可用的模型。");
+              if (!k) throw new Error("请先在 API 应用中配置可用的模型。");
             }
-            if (!y()) throw new Error("页面已切换，本次操作已停止。");
-            C === "subscribed" && !l.enabled && d("unsubscribed");
+            if (!C()) throw new Error("页面已切换，本次操作已停止。");
+            A === "subscribed" && !l.enabled && d("unsubscribed");
             try {
-              await e.setPreference(g.chatIdentity, C, l.enabled, y);
+              await e.setPreference(_, A, l.enabled, C);
             } catch {
               throw new Error("设置未确认保存，请先检查保存状态。");
             }
-            if (!y()) throw new Error("页面已切换。");
-            C === "subscribed" && l.enabled && !A && (_ = f());
+            if (!C()) throw new Error("页面已切换。");
+            A === "subscribed" && l.enabled && !S && (b = f());
           } else throw new Error("未知的世界操作。");
         }
-        if (!y()) throw new Error("页面已切换。");
+        if (!C()) throw new Error("页面已切换。");
         return {
           state: o(),
-          message: _
+          message: b
         };
       } finally {
         g.busy = !1;
@@ -17790,7 +17792,7 @@ function Ik(e) {
     isEnabled: (t) => t !== "automatic" || e.readCurrent().world.subscribed,
     async createSession(t, n) {
       const r = await e.refreshCurrent();
-      if (r.identityKey !== t.chatIdentity) throw new Error("world_chat_changed");
+      if (!t.chatIdentity || r.chatIdentity !== t.chatIdentity) throw new Error("world_chat_changed");
       return n === "automatic" && !r.world.subscribed ? null : _k(e, n);
     }
   };
@@ -17825,7 +17827,7 @@ function Ak(e) {
           o();
           try {
             const c = t.readCurrent();
-            c.identityKey === n() && r(kk(c.world));
+            c.chatIdentity && c.chatIdentity === n() && r(kk(c.world));
           } catch (c) {
             console.error("[LittleWhiteBox] World background unavailable", c);
           }
@@ -17833,7 +17835,7 @@ function Ak(e) {
       }), s ??= t.subscribe(() => {
         try {
           const c = t.readCurrent();
-          (!c.world.injectToStory || c.identityKey !== n()) && o();
+          (!c.world.injectToStory || !c.chatIdentity || c.chatIdentity !== n()) && o();
         } catch {
           o();
         }
@@ -17847,23 +17849,26 @@ function Ak(e) {
   };
 }
 function Sk(e) {
-  return pk({ install({ world: t, maintenance: n, agent: r, execution: i }) {
-    const a = n.registerParticipant(Ik(t));
-    return i.addCleanup(a), Ji(gk({
-      world: t,
-      maintenance: n.runner,
-      getChatIdentity: e.getChatIdentity,
-      async checkAgent() {
-        const s = hs(ms(await r.loadConfig()));
-        return !!String(s.model || "").trim() && (ps(s.provider) || !!String(s.apiKey || "").trim());
-      }
-    }), [Ak({
-      world: t,
-      getChatIdentity: e.getChatIdentity,
-      setPrompt: e.setPrompt,
-      subscribe: e.subscribePrompt
-    })]);
-  } });
+  return pk({
+    getChatIdentity: e.getChatIdentity,
+    install({ world: t, maintenance: n, agent: r, execution: i }) {
+      const a = n.registerParticipant(Ik(t));
+      return i.addCleanup(a), Ji(gk({
+        world: t,
+        maintenance: n.runner,
+        getChatIdentity: e.getChatIdentity,
+        async checkAgent() {
+          const s = hs(ms(await r.loadConfig()));
+          return !!String(s.model || "").trim() && (ps(s.provider) || !!String(s.apiKey || "").trim());
+        }
+      }), [Ak({
+        world: t,
+        getChatIdentity: e.getChatIdentity,
+        setPrompt: e.setPrompt,
+        subscribe: e.subscribePrompt
+      })]);
+    }
+  });
 }
 function Ek(e, t, n) {
   if (e.mainChatId !== t.chatId || e.binding.kind !== t.kind || e.binding.ownerLocator !== t.ownerLocator || !Object.hasOwn(n, mn.key)) return;
@@ -18593,7 +18598,7 @@ function Wk(e) {
     const S = s.get(A.identityKey);
     return S ? await u(S, !0) : await g();
   }
-  async function y(A, S) {
+  async function b(A, S) {
     const k = await i.findByChatId(A, S);
     if (k.length !== 1) return "retained";
     const [I] = k;
@@ -18609,7 +18614,7 @@ function Wk(e) {
   return Object.freeze({
     resolveCurrent: g,
     retryPendingCurrent: _,
-    handleChatDeleted: y,
+    handleChatDeleted: b,
     handleCharacterRenamed: C
   });
 }
@@ -18640,7 +18645,7 @@ function Uk(e) {
     l();
   }, _ = () => {
     l();
-  }, y = () => {
+  }, b = () => {
     o.visibilityState === "visible" && l();
   }, C = (I) => {
     t.handleChatDeleted(String(I || "")).catch(c);
@@ -18648,14 +18653,14 @@ function Uk(e) {
     t.handleCharacterRenamed(String(I || ""), String(w || "")).then(l).catch(c);
   };
   function S() {
-    u || (u = !0, d += 1, i.on(a.chatChanged, g), i.on(a.chatRenamed, g), i.on(a.chatDeleted, C), i.on(a.groupChatDeleted, C), i.on(a.characterRenamed, A), s.addEventListener("focus", _), o.addEventListener("visibilitychange", y), l());
+    u || (u = !0, d += 1, i.on(a.chatChanged, g), i.on(a.chatRenamed, g), i.on(a.chatDeleted, C), i.on(a.groupChatDeleted, C), i.on(a.characterRenamed, A), s.addEventListener("focus", _), o.addEventListener("visibilitychange", b), l());
   }
   async function k() {
     if (!u) {
       p && await p;
       return;
     }
-    u = !1, d += 1, m = !1, i.removeListener(a.chatChanged, g), i.removeListener(a.chatRenamed, g), i.removeListener(a.chatDeleted, C), i.removeListener(a.groupChatDeleted, C), i.removeListener(a.characterRenamed, A), s.removeEventListener("focus", _), o.removeEventListener("visibilitychange", y), p && await p;
+    u = !1, d += 1, m = !1, i.removeListener(a.chatChanged, g), i.removeListener(a.chatRenamed, g), i.removeListener(a.chatDeleted, C), i.removeListener(a.groupChatDeleted, C), i.removeListener(a.characterRenamed, A), s.removeEventListener("focus", _), o.removeEventListener("visibilitychange", b), p && await p;
   }
   return Object.freeze({
     start: S,
@@ -18778,21 +18783,21 @@ function Xk(e = {}) {
       });
       if (g.status === 404) return null;
       if (!g.ok) {
-        const y = await Bn(g);
-        throw new Xe("storage_read_http", Ar("Sidecar read", g.status, y), g.status >= 500 || g.status === 408 || g.status === 429);
+        const b = await Bn(g);
+        throw new Xe("storage_read_http", Ar("Sidecar read", g.status, b), g.status >= 500 || g.status === 408 || g.status === 429);
       }
       let _;
       try {
         _ = JSON.parse(await g.text());
-      } catch (y) {
-        throw new Xe("storage_invalid_json", "Sidecar contains invalid JSON", !1, { cause: y });
+      } catch (b) {
+        throw new Xe("storage_invalid_json", "Sidecar contains invalid JSON", !1, { cause: b });
       }
       try {
-        const y = os(_);
-        if (y.osId !== d) throw new Xe("storage_identity_mismatch", `Sidecar ${oi(d)} contains osId ${y.osId}`, !1);
-        return y;
-      } catch (y) {
-        throw y instanceof Xe ? y : new Xe("storage_invalid_envelope", "Sidecar envelope is invalid", !1, { cause: y });
+        const b = os(_);
+        if (b.osId !== d) throw new Xe("storage_identity_mismatch", `Sidecar ${oi(d)} contains osId ${b.osId}`, !1);
+        return b;
+      } catch (b) {
+        throw b instanceof Xe ? b : new Xe("storage_invalid_envelope", "Sidecar envelope is invalid", !1, { cause: b });
       }
     } catch (l) {
       if (l instanceof Xe) throw l;
@@ -19197,10 +19202,10 @@ function fA({ documentTarget: e = document, windowTarget: t = window, stylesheet
 }, subscribeAppDescriptorsChanged: a = () => () => {
 }, subscribeAppStatusChanged: s = () => () => {
 }, getInitSnapshot: o = () => ({}), getAppDescriptors: c = () => [], getAppStatuses: u = () => ({}), captureChatBinding: d = () => null, onChatRequired: f = () => {
-}, isChatBindingCurrent: m = () => !0, createActivationToken: p = () => globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`, appRuntime: l = {}, bridgeFactory: g = sA, onError: _ = (y) => console.error("[LittleWhiteBox] 小白 OS 运行失败", y) } = {}) {
+}, isChatBindingCurrent: m = () => !0, createActivationToken: p = () => globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`, appRuntime: l = {}, bridgeFactory: g = sA, onError: _ = (b) => console.error("[LittleWhiteBox] 小白 OS 运行失败", b) } = {}) {
   if (!n || !r) throw new TypeError("xiaobai OS lifecycle requires stylesheetHref and frameSrc");
-  const y = n, C = r;
-  let A = !1, S = null, k = null, I = null, w = null, h = null, b = null, v = null, E = null, x = null, $ = null, R = null, T = 0, P = 0;
+  const b = n, C = r;
+  let A = !1, S = null, k = null, I = null, w = null, h = null, y = null, v = null, E = null, x = null, $ = null, R = null, T = 0, P = 0;
   const D = /* @__PURE__ */ new Set();
   function K(F, W) {
     return !!W && F.identityKey === W.identityKey && F.binding.kind === W.binding.kind && F.binding.ownerLocator === W.binding.ownerLocator && F.binding.chatId === W.binding.chatId && (!F.reference || F.reference.osId === W.reference?.osId);
@@ -19232,7 +19237,7 @@ function fA({ documentTarget: e = document, windowTarget: t = window, stylesheet
   }
   function j() {
     let F = e.getElementById(di);
-    return F || (F = e.createElement("link"), F.id = di, F.rel = "stylesheet", F.href = y, e.head.append(F), F);
+    return F || (F = e.createElement("link"), F.id = di, F.rel = "stylesheet", F.href = b, e.head.append(F), F);
   }
   async function B(F) {
     if (P += 1, $ = null, !x) {
@@ -19478,7 +19483,7 @@ function fA({ documentTarget: e = document, windowTarget: t = window, stylesheet
     F.persisted || rr();
   }
   function Be() {
-    return A || (j(), S = e.getElementById(Tl), S || (S = uA(e), lA(e, S)), S.addEventListener("click", Pe), h = i(kt), b = a(X), v = s(ue), t.addEventListener("pagehide", je), O(() => l.startBackground?.()), A = !0), !0;
+    return A || (j(), S = e.getElementById(Tl), S || (S = uA(e), lA(e, S)), S.addEventListener("click", Pe), h = i(kt), y = a(X), v = s(ue), t.addEventListener("pagehide", je), O(() => l.startBackground?.()), A = !0), !0;
   }
   async function rr() {
     if (!A && !S && !k && !e.getElementById(di)) return;
@@ -19486,7 +19491,7 @@ function fA({ documentTarget: e = document, windowTarget: t = window, stylesheet
     const F = Promise.resolve().then(() => l.cancelAll?.("cleanup")), W = ve("cleanup");
     z();
     const de = Promise.resolve().then(() => l.stopBackground?.());
-    h?.(), h = null, b?.(), b = null, v?.(), v = null, t.removeEventListener("pagehide", je), S?.removeEventListener("click", Pe), S?.remove(), S = null, e.getElementById(di)?.remove(), A = !1, await Promise.allSettled([
+    h?.(), h = null, y?.(), y = null, v?.(), v = null, t.removeEventListener("pagehide", je), S?.removeEventListener("click", Pe), S?.remove(), S = null, e.getElementById(di)?.remove(), A = !1, await Promise.allSettled([
       F,
       W,
       de,
@@ -19628,8 +19633,8 @@ function gA(e, t) {
     if (!h || typeof w.install != "function" || !Array.isArray(w.capabilities)) throw new TypeError("invalid app module");
     if (n.has(h)) throw new Error(`duplicate app module: ${h}`);
     if (w.partition && w.partition.ownerId !== h) throw new Error(`partition ${w.partition.key} must be owned by app ${h}`);
-    const b = w.capabilities.map((v) => v.id);
-    if (new Set(b).size !== b.length) throw new Error(`app ${h} declares a capability more than once`);
+    const y = w.capabilities.map((v) => v.id);
+    if (new Set(y).size !== y.length) throw new Error(`app ${h} declares a capability more than once`);
     n.set(h, {
       module: w,
       status: {
@@ -19644,9 +19649,9 @@ function gA(e, t) {
     }), i.push(Object.freeze({ ...w.descriptor }));
   }
   function o(w, h) {
-    const b = n.get(w);
-    if (b) {
-      b.status = h;
+    const y = n.get(w);
+    if (y) {
+      y.status = h;
       for (const v of r) try {
         v(w, h);
       } catch (E) {
@@ -19655,18 +19660,18 @@ function gA(e, t) {
     }
   }
   function c(w, h) {
-    const b = w.releaseQueue.then(async () => {
+    const y = w.releaseQueue.then(async () => {
       const v = w.runtime, E = w.execution;
       w.runtime = null, w.execution = null;
       const x = [];
       return v && x.push(Promise.resolve().then(() => w.module.dispose?.(v))), E && x.push(E.dispose(h)), (await Promise.allSettled(x)).filter(($) => $.status === "rejected").map(($) => $.reason);
     });
-    return w.releaseQueue = b, b;
+    return w.releaseQueue = y, y;
   }
   async function u(w) {
     const h = n.get(w);
     if (!h) throw new Error(`unknown app module: ${w}`);
-    const b = ++h.generation;
+    const y = ++h.generation;
     await c(h, "app-retry");
     let v = "dependency";
     o(w, {
@@ -19682,7 +19687,7 @@ function gA(e, t) {
       const $ = /* @__PURE__ */ Symbol("no-background-failure");
       let R = $;
       const T = new hA((K) => {
-        h.generation !== b || h.execution !== T || (R = K, o(w, {
+        h.generation !== y || h.execution !== T || (R = K, o(w, {
           state: "failed",
           failure: ur("background", K)
         }), c(h, "app-background-failed"));
@@ -19728,9 +19733,9 @@ function gA(e, t) {
     if (a) return Promise.reject(/* @__PURE__ */ new Error("app_registry_disposed"));
     const h = n.get(w);
     if (!h) return Promise.reject(/* @__PURE__ */ new Error(`unknown app module: ${w}`));
-    const b = h.installQueue.then(() => u(w), () => u(w));
-    return h.installQueue = b.catch(() => {
-    }), b;
+    const y = h.installQueue.then(() => u(w), () => u(w));
+    return h.installQueue = y.catch(() => {
+    }), y;
   }
   async function f() {
     await Promise.all([...n.keys()].map(d));
@@ -19748,48 +19753,48 @@ function gA(e, t) {
     const h = n.get(w);
     if (!h) throw Object.assign(/* @__PURE__ */ new Error("app_unavailable"), { code: "app_unavailable" });
     if (h.status.state !== "ready" || !h.runtime) {
-      const b = h.status.state === "failed" ? h.status.failure : null;
-      throw Object.assign(new Error(b?.message ?? "APP is not ready"), {
-        code: b?.code ?? "app_not_ready",
-        phase: b?.phase ?? (h.status.state === "loading" ? h.status.phase : "install"),
-        retryable: b?.retryable ?? !0
+      const y = h.status.state === "failed" ? h.status.failure : null;
+      throw Object.assign(new Error(y?.message ?? "APP is not ready"), {
+        code: y?.code ?? "app_not_ready",
+        phase: y?.phase ?? (h.status.state === "loading" ? h.status.phase : "install"),
+        retryable: y?.retryable ?? !0
       });
     }
     return h;
   }
   async function g(w, h) {
-    const b = l(w), v = b.runtime, E = b.generation;
+    const y = l(w), v = y.runtime, E = y.generation;
     try {
       return await v?.activate?.(h);
     } catch (x) {
-      throw ed(x) && b.runtime === v && b.generation === E && (await c(b, "app-activation-failed"), o(w, {
+      throw ed(x) && y.runtime === v && y.generation === E && (await c(y, "app-activation-failed"), o(w, {
         state: "failed",
         failure: ur("activate", x)
       })), x;
     }
   }
   async function _(w, h) {
-    const b = n.get(w);
-    if (b?.runtime)
+    const y = n.get(w);
+    if (y?.runtime)
       try {
-        await b.runtime.deactivate?.(h);
+        await y.runtime.deactivate?.(h);
       } catch (v) {
         console.error(`[LittleWhiteBox] 小白 OS APP ${w} 停用失败`, v);
       }
   }
-  async function y(w, h) {
-    const b = l(w), v = b.runtime, E = b.generation;
+  async function b(w, h) {
+    const y = l(w), v = y.runtime, E = y.generation;
     try {
       return await v?.handleMessage?.(h);
     } catch (x) {
-      throw ed(x) && b.runtime === v && b.generation === E && (await c(b, "app-runtime-failed"), o(w, {
+      throw ed(x) && y.runtime === v && y.generation === E && (await c(y, "app-runtime-failed"), o(w, {
         state: "failed",
         failure: ur("runtime", x)
       })), x;
     }
   }
-  async function C(w, h, b) {
-    const v = [...n.entries()].filter(([, $]) => $.runtime !== null), E = await Promise.allSettled(v.map(([, $]) => b($.runtime))), x = [];
+  async function C(w, h, y) {
+    const v = [...n.entries()].filter(([, $]) => $.runtime !== null), E = await Promise.allSettled(v.map(([, $]) => y($.runtime))), x = [];
     E.forEach(($, R) => {
       if ($.status !== "rejected") return;
       const [T] = v[R];
@@ -19815,8 +19820,8 @@ function gA(e, t) {
     a = !0, await Promise.allSettled([...n.values()].map((h) => h.installQueue));
     const w = (await Promise.allSettled([...n.values()].map(async (h) => {
       h.generation += 1;
-      const b = await c(h, "app-registry-disposed");
-      if (b.length > 0) throw new AggregateError(b, `app ${h.module.descriptor.id} disposal failed`);
+      const y = await c(h, "app-registry-disposed");
+      if (y.length > 0) throw new AggregateError(y, `app ${h.module.descriptor.id} disposal failed`);
     }))).filter((h) => h.status === "rejected").map((h) => h.reason);
     if (w.length > 0) throw new AggregateError(w, "app module disposal failed");
   }
@@ -19827,7 +19832,7 @@ function gA(e, t) {
     retry: k,
     activate: g,
     deactivate: _,
-    handleMessage: y,
+    handleMessage: b,
     cancelForeground: (w) => C("cancelForeground", null, (h) => h.cancelForeground?.(w)),
     cancelAll: (w) => C("cancelAll", null, (h) => h.cancelAll?.(w)),
     handleWindowOpened: () => C("handleWindowOpened", "background", (w) => w.handleWindowOpened?.()),
@@ -19978,7 +19983,7 @@ function kA(e) {
   function _(O) {
     return s.get(O.identityKey) ?? "ready";
   }
-  function y(O) {
+  function b(O) {
     return o.get(O.identityKey) ?? ke("storage_pending", "A prepared sidecar candidate is waiting to be retried", !0);
   }
   async function C(O) {
@@ -20056,7 +20061,7 @@ function kA(e) {
       }
     }
   }
-  async function b(O) {
+  async function y(O) {
     const N = {
       formatVersion: 1,
       osId: O.candidate.osId
@@ -20074,7 +20079,7 @@ function kA(e) {
     return j.status === "unconfirmed" ? (O.stage = "reference", u.set(O.capture.identityKey, O), g(O.capture.identityKey, "unconfirmed", j.error), "unconfirmed") : (await h(O.capture, O.candidate.osId), O.retainFailedCandidate ? (O.stage = "replace", u.set(O.capture.identityKey, O), g(O.capture.identityKey, "failed", j.error)) : (u.delete(O.capture.identityKey), g(O.capture.identityKey, "ready")), "failed");
   }
   async function v(O) {
-    return O.capture.reference ? (I(O.capture, O.candidate), u.delete(O.capture.identityKey), g(O.capture.identityKey, "ready"), "confirmed") : await b(O);
+    return O.capture.reference ? (I(O.capture, O.candidate), u.delete(O.capture.identityKey), g(O.capture.identityKey, "ready"), "confirmed") : await y(O);
   }
   function E(O, N) {
     O.stage = "replace", O.observed = N.status === "unconfirmed" || N.status === "conflict" ? N.observed : null, u.set(O.capture.identityKey, O), g(O.capture.identityKey, N.status === "conflict" ? "conflict" : "unconfirmed", N.status === "conflict" ? ke("storage_conflict", "The sidecar changed while this write was in flight", !1) : ke("storage_unconfirmed", "The sidecar write result could not be confirmed", !0));
@@ -20101,7 +20106,7 @@ function kA(e) {
         };
         if (u.has(z.identityKey)) return {
           status: "failed",
-          error: y(z)
+          error: b(z)
         };
         if (q.signal?.aborted) return {
           status: "failed",
@@ -20308,7 +20313,7 @@ function kA(e) {
       const N = u.get(O.identityKey);
       if (!N) return { status: "none" };
       if (await l(N.capture), N.stage === "reference") {
-        const X = await b(N);
+        const X = await y(N);
         return X === "confirmed" ? { status: "confirmed" } : X === "unconfirmed" ? { status: "unconfirmed" } : {
           status: "failed",
           error: ke("reference_install_failed", "Could not install the sidecar chat reference", !0)
@@ -20372,7 +20377,7 @@ function kA(e) {
       }
       if (!N.capture.reference) {
         N.candidate = j;
-        const B = await b(N);
+        const B = await y(N);
         return B === "confirmed" ? { status: "adopted" } : { status: B };
       }
       return I(N.capture, j), u.delete(N.capture.identityKey), g(N.capture.identityKey, "ready"), { status: "adopted" };
@@ -20771,15 +20776,15 @@ function BA(e) {
   if (typeof e?.getExtensionSettings != "function" || typeof e?.saveSettings != "function") throw new TypeError("settings repository requires getExtensionSettings and saveSettings");
   const t = jA(), n = /* @__PURE__ */ new Set(), r = /* @__PURE__ */ new Set();
   function i(_) {
-    for (const y of n) try {
-      y(ht(_));
+    for (const b of n) try {
+      b(ht(_));
     } catch (C) {
       console.error("[LittleWhiteBox] 小白 OS 设置监听失败", C);
     }
   }
   function a(_) {
-    for (const y of r) try {
-      y(ht(_));
+    for (const b of r) try {
+      b(ht(_));
     } catch (C) {
       console.error("[LittleWhiteBox] 小白 OS 设置写入监听失败", C);
     }
@@ -20793,44 +20798,44 @@ function BA(e) {
   }
   async function c() {
     return t(async () => {
-      const _ = Ba(e), y = Object.hasOwn(_, "xiaobaiOs"), C = _.xiaobaiOs, A = y ? {
+      const _ = Ba(e), b = Object.hasOwn(_, "xiaobaiOs"), C = _.xiaobaiOs, A = b ? {
         value: md(C),
         legacyKeys: Ka.filter((I) => Object.hasOwn(_, I))
-      } : tf(_), S = ht(A.value), k = !y || !nt(C, S) || A.legacyKeys.length > 0;
+      } : tf(_), S = ht(A.value), k = !b || !nt(C, S) || A.legacyKeys.length > 0;
       return _.xiaobaiOs = S, A.legacyKeys.forEach((I) => delete _[I]), k && await e.saveSettings(), ht(S);
     });
   }
   async function u(_) {
     if (typeof _ != "function") throw new TypeError("settings mutation action must be a function");
     return t(async () => {
-      const y = Ba(e);
-      if (!Object.hasOwn(y, "xiaobaiOs")) throw new fo("SETTINGS_NOT_PREPARED", "Xiaobai OS settings have not been prepared");
-      ja(y.xiaobaiOs);
-      const C = _(ht(ht(y.xiaobaiOs)));
+      const b = Ba(e);
+      if (!Object.hasOwn(b, "xiaobaiOs")) throw new fo("SETTINGS_NOT_PREPARED", "Xiaobai OS settings have not been prepared");
+      ja(b.xiaobaiOs);
+      const C = _(ht(ht(b.xiaobaiOs)));
       if (!ls(C)) throw new TypeError("settings mutation action must return the complete next state");
       ja(C);
       const A = ht(C);
-      return y.xiaobaiOs = A, s(A);
+      return b.xiaobaiOs = A, s(A);
     });
   }
   function d(_) {
     if (typeof _ != "boolean") throw new TypeError("enabled must be a boolean");
-    return u((y) => (y.enabled = _, y));
+    return u((b) => (b.enabled = _, b));
   }
   function f(_) {
     if (typeof _ != "boolean") throw new TypeError("map auto-maintenance must be a boolean");
-    return u((y) => (y.apps.map.autoMaintenance = _, y));
+    return u((b) => (b.apps.map.autoMaintenance = _, b));
   }
   function m(_) {
     if (typeof _ != "boolean") throw new TypeError("tasks auto-maintenance must be a boolean");
-    return u((y) => (y.apps.tasks.autoMaintenance = _, y));
+    return u((b) => (b.apps.tasks.autoMaintenance = _, b));
   }
   function p(_) {
     if (typeof _ != "function") throw new TypeError("fourth-wall settings action must be a function");
-    return u((y) => {
-      const C = _(ht(y.apps.fourthWall));
+    return u((b) => {
+      const C = _(ht(b.apps.fourthWall));
       if (!ls(C)) throw new TypeError("fourth-wall settings action must return the complete next state");
-      return y.apps.fourthWall = C, y;
+      return b.apps.fourthWall = C, b;
     });
   }
   function l(_) {

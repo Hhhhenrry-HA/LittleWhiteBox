@@ -29,14 +29,14 @@ export function createWorldPromptRuntime(dependencies: {
                     try {
                         const current = world.readCurrent();
                         // Read only the confirmed snapshot; never wait for maintenance or a save.
-                        if (current.identityKey === getChatIdentity()) { setPrompt(buildWorldStoryPrompt(current.world)); }
+                        if (current.chatIdentity && current.chatIdentity === getChatIdentity()) { setPrompt(buildWorldStoryPrompt(current.world)); }
                     } catch (error) { console.error('[LittleWhiteBox] World background unavailable', error); }
                 },
             });
             unsubscribeData ??= world.subscribe(() => {
                 try {
                     const current = world.readCurrent();
-                    if (!current.world.injectToStory || current.identityKey !== getChatIdentity()) { clear(); }
+                    if (!current.world.injectToStory || !current.chatIdentity || current.chatIdentity !== getChatIdentity()) { clear(); }
                 } catch { clear(); }
             });
         },

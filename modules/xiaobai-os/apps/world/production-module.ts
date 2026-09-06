@@ -12,6 +12,7 @@ export function createProductionWorldModule(dependencies: {
     subscribePrompt(handlers: WorldPromptEventHandlers): () => void;
 }) {
     return createWorldModule({
+        getChatIdentity: dependencies.getChatIdentity,
         install({ world, maintenance, agent, execution }) {
             const unregister = maintenance.registerParticipant(createWorldMaintenanceParticipant(world));
             execution.addCleanup(unregister);

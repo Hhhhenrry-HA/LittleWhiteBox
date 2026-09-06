@@ -4,13 +4,20 @@ import { worldContent } from '../../../domains/world/projection.js';
 import { createEmptyWorld, sameWorldContent, type WorldContent, type WorldDomainV1 } from '../../../domains/world/types.js';
 
 export interface WorldView {
+    /** Sidecar binding key; character owners use the avatar filename, not the UI index. */
     identityKey: string;
+    /** Runtime chat key used by the UI, maintenance runner and context consumers. */
+    chatIdentity: string;
     world: WorldDomainV1;
     writeState: XiaobaiOsFileState;
     pendingSave: boolean;
 }
 
-export function createWorldService(store: ScopedChatStore<WorldDomainV1>, files: XiaobaiOsFileControls) {
+export function createWorldService(
+    store: ScopedChatStore<WorldDomainV1>,
+    files: XiaobaiOsFileControls,
+    getChatIdentity: () => string,
+) {
     const listeners = new Set<() => void>();
     const publish = (): void => {
         for (const listener of listeners) {
@@ -21,7 +28,8 @@ export function createWorldService(store: ScopedChatStore<WorldDomainV1>, files:
     const unsubscribeFile = files.subscribeFileState(publish);
     function readCurrent(): WorldView {
         const snapshot = store.peekCurrent();
-        return { identityKey: snapshot?.identityKey ?? '', world: structuredClone(snapshot?.value ?? createEmptyWorld()),
+        return { identityKey: snapshot?.identityKey ?? '', chatIdentity: snapshot ? getChatIdentity() : '',
+            world: structuredClone(snapshot?.value ?? createEmptyWorld()),
             writeState: files.getFileState(), pendingSave: files.hasPendingCommit() };
     }
 

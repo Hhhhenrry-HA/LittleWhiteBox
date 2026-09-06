@@ -8,7 +8,7 @@ export function createWorldMaintenanceParticipant(world: WorldService): Maintena
         isEnabled: mode => mode !== 'automatic' || world.readCurrent().world.subscribed,
         async createSession(source, mode) {
             const current = await world.refreshCurrent();
-            if (current.identityKey !== source.chatIdentity) { throw new Error('world_chat_changed'); }
+            if (!source.chatIdentity || current.chatIdentity !== source.chatIdentity) { throw new Error('world_chat_changed'); }
             if (mode === 'automatic' && !current.world.subscribed) { return null; }
             return createWorldMaintenanceSession(world, mode);
         },

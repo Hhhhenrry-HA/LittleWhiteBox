@@ -10,11 +10,11 @@ import { article, deferred, tick, worldHarness } from './world-harness.js';
 function controller(h, checkAgent = async () => true) {
     const pushes = [];
     const runtime = createWorldController({ world: h.world, maintenance: h.runner,
-        getChatIdentity: () => h.state.capture.identityKey, checkAgent });
+        getChatIdentity: h.getChatIdentity, checkAgent });
     runtime.startBackground();
     const activate = () => runtime.activate({ activationToken: 'world', isCurrent: () => true,
         post(type, payload) { pushes.push({ type, payload }); return true; } });
-    const request = (type, extra = {}) => runtime.handleMessage({ type: `world/${type}`, payload: { chatIdentity: h.state.capture.identityKey, ...extra } });
+    const request = (type, extra = {}) => runtime.handleMessage({ type: `world/${type}`, payload: { chatIdentity: h.getChatIdentity(), ...extra } });
     return { runtime, pushes, activate, request };
 }
 
@@ -33,6 +33,42 @@ test('opening and reading are read-only; subscription without a scene saves inte
     await tick();
     assert.equal(h.state.requests.length, 0);
     assert.equal(h.state.writes.length, 1);
+});
+
+test('World opens, subscribes and publishes when runtime and sidecar chat keys differ', async t => {
+    const h = await worldHarness(null, { chatIdentity: 'character:0:test-world' }); t.after(h.dispose);
+    h.state.capture.identityKey = 'character:world.png:test-world';
+    await h.world.refreshCurrent();
+    const c = controller(h); t.after(() => c.runtime.stopBackground());
+    const opened = c.activate();
+    assert.equal(opened.chatIdentity, 'character:0:test-world');
+    assert.equal(opened.world.subscribed, false);
+    await c.request('read');
+    assert.equal(h.state.writes.length, 0);
+    assert.equal(h.state.requests.length, 0);
+
+    let round = 0;
+    h.state.generate = async () => ++round === 1
+        ? { toolCalls: [{ id: 'news', name: 'WorldEdit', arguments: JSON.stringify({ upsert: [article()] }) }] }
+        : { text: 'Updated.' };
+    const done = deferred();
+    const off = h.runner.subscribeStatus((id, identity, status) => {
+        if (id === 'world' && identity === h.getChatIdentity() && status.state !== 'running') { done.resolve(status); }
+    }); t.after(off);
+    assert.equal((await c.request('subscribe', { enabled: true })).state.world.subscribed, true);
+    assert.equal((await done.promise).message, 'updated');
+    assert.deepEqual(h.state.persisted.partitions.world.news, [article()]);
+    assert.equal(h.state.persisted.binding.ownerLocator, 'world.png');
+    assert.ok(c.pushes.some(push => push.type === 'world/state'
+        && push.payload.state.chatIdentity === h.getChatIdentity() && push.payload.state.world.news.length === 1));
+    await c.request('background', { enabled: false });
+    assert.equal(h.state.persisted.partitions.world.injectToStory, false);
+    const requests = h.state.requests.length;
+    c.runtime.deactivate();
+    assert.deepEqual(c.activate().world.news, [article()]);
+    await c.request('read');
+    assert.equal(h.state.requests.length, requests);
+    await assert.rejects(c.request('background', { chatIdentity: h.state.capture.identityKey, enabled: true }), /聊天已切换/);
 });
 
 test('World preserves safe API failure categories through maintenance and reopening does not retry', async t => {
@@ -68,11 +104,12 @@ test('configuration and unconfirmed preference saves do not start generation', a
 });
 
 test('switching chat during the subscription preflight cannot save or generate for another chat', async t => {
-    const h = await worldHarness(); t.after(h.dispose);
+    const h = await worldHarness(null, { chatIdentity: 'character:0:test-world' }); t.after(h.dispose);
     const config = deferred();
     const c = controller(h, () => config.promise); t.after(() => c.runtime.stopBackground()); c.activate();
     const waiting = c.request('subscribe', { enabled: true });
     h.state.capture.identityKey = 'world:two';
+    h.state.chatIdentity = 'character:1:other-world';
     c.runtime.handleChatChanged();
     await h.world.refreshCurrent();
     config.resolve(true);
@@ -154,13 +191,14 @@ test('leaving the page preserves maintenance; closing the window or disabling th
 
 test('world prompt captures confirmed content once and cleans generation, preference and lifecycle boundaries', async t => {
     const initial = { ...createEmptyWorld(), news: [article()] };
-    const h = await worldHarness(initial); t.after(h.dispose);
+    const h = await worldHarness(initial, { chatIdentity: 'character:0:test-world' }); t.after(h.dispose);
     let events; let prompt = ''; let unsubscribed = 0;
-    const runtime = createWorldPromptRuntime({ world: h.world, getChatIdentity: () => h.state.capture.identityKey,
+    const runtime = createWorldPromptRuntime({ world: h.world, getChatIdentity: h.getChatIdentity,
         setPrompt: value => { prompt = value; }, subscribe: handlers => { events = handlers; return () => { unsubscribed++; }; } });
     runtime.startBackground(); runtime.startBackground();
     events.generationStarted(); assert.equal(prompt, '');
     events.intercept(); const snapshot = prompt;
+    assert.equal(snapshot, buildWorldStoryPrompt(initial));
     const session = await h.session();
     await session.executeTool('WorldEdit', { upsert: [article('future')] });
     await session.commit(() => true);
@@ -173,6 +211,14 @@ test('world prompt captures confirmed content once and cleans generation, prefer
     events.intercept(); events.generationStopped(); assert.equal(prompt, '');
     events.intercept(); events.generationEnded(); assert.equal(prompt, '');
     events.intercept(); runtime.handleChatChanged(); assert.equal(prompt, '');
+    const originalCapture = structuredClone(h.state.capture);
+    h.state.capture = { identityKey: 'world:two', binding: { ...originalCapture.binding, chatId: 'other' }, reference: null };
+    h.state.chatIdentity = 'character:0:other';
+    events.intercept(); assert.equal(prompt, '');
+    await h.world.refreshCurrent();
+    events.intercept(); assert.equal(prompt, '');
+    h.state.capture = originalCapture;
+    h.state.chatIdentity = 'character:0:test-world';
     events.intercept(); runtime.cancelAll('os-disabled'); assert.equal(prompt, '');
     runtime.stopBackground(); assert.equal(unsubscribed, 1);
     assert.equal(prompt, '');

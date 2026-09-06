@@ -18,7 +18,7 @@ export function createWorldController({ world, maintenance, getChatIdentity, che
     function state(): WorldClientState {
         const chatIdentity = getChatIdentity();
         const view = world.readCurrent();
-        if (view.identityKey !== chatIdentity) { throw new Error('聊天已切换，请重新打开世界。'); }
+        if (!chatIdentity || view.chatIdentity !== chatIdentity) { throw new Error('聊天已切换，请重新打开世界。'); }
         const status = maintenance.getStatus('world', chatIdentity);
         const recovered = !view.pendingSave && view.writeState === 'ready' && status.reason === 'save-unconfirmed';
         return { chatIdentity, world: view.world, writeState: view.writeState, pendingSave: view.pendingSave,
@@ -76,6 +76,7 @@ export function createWorldController({ world, maintenance, getChatIdentity, che
                 throw new Error('聊天已切换，请重新打开世界。');
             }
             if (current.busy) { throw new Error('正在处理上一次操作，请稍候。'); }
+            const storageIdentityKey = world.readCurrent().identityKey;
             current.busy = true;
             let notice = '';
             const guard = () => isCurrent(current);
@@ -104,7 +105,7 @@ export function createWorldController({ world, maintenance, getChatIdentity, che
                         }
                         if (!guard()) { throw new Error('页面已切换，本次操作已停止。'); }
                         if (key === 'subscribed' && !payload.enabled) { cancel('unsubscribed'); }
-                        try { await world.setPreference(current.chatIdentity, key, payload.enabled, guard); }
+                        try { await world.setPreference(storageIdentityKey, key, payload.enabled, guard); }
                         catch { throw new Error('设置未确认保存，请先检查保存状态。'); }
                         if (!guard()) { throw new Error('页面已切换。'); }
                         if (key === 'subscribed' && payload.enabled && !before) { notice = start(); }

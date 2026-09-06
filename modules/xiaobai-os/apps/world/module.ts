@@ -11,6 +11,7 @@ import { WORLD_PARTITION } from './partition.js';
 import { WORLD_CONTEXT_CAPABILITY } from './context-capability.js';
 
 export function createWorldModule(dependencies: {
+    getChatIdentity(): string;
     install(context: { world: WorldService; maintenance: MaintenanceCapability; agent: AgentCapability; execution: AppInstallContext['execution'] }): XiaobaiOsAppRuntime;
 }): XiaobaiOsAppModule {
     return {
@@ -19,11 +20,11 @@ export function createWorldModule(dependencies: {
         capabilities: [AGENT_CAPABILITY, MAINTENANCE_CAPABILITY, WORLD_CONTEXT_CAPABILITY],
         async install(context) {
             if (!context.partition) { throw new Error('World partition unavailable'); }
-            const world = createWorldService(context.partition as ScopedChatStore<WorldDomainV1>, context.files);
+            const world = createWorldService(context.partition as ScopedChatStore<WorldDomainV1>, context.files, dependencies.getChatIdentity);
             context.execution.addCleanup(world.dispose);
             context.execution.addCleanup(context.useCapability(WORLD_CONTEXT_CAPABILITY).registerProvider(chatIdentity => {
                 const current = world.readCurrent();
-                return current.identityKey === chatIdentity && (current.world.overview || current.world.news.length)
+                return !!chatIdentity && current.chatIdentity === chatIdentity && (current.world.overview || current.world.news.length)
                     ? worldContent(current.world) : null;
             }));
             return dependencies.install({ world, execution: context.execution, maintenance: context.useCapability(MAINTENANCE_CAPABILITY),

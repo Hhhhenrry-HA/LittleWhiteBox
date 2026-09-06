@@ -24,7 +24,7 @@ async function installContext(h, t) {
     await capabilities.install();
     const context = capabilities.require(WORLD_CONTEXT_CAPABILITY);
     const cleanups = [];
-    const module = createWorldModule({ install: () => ({}) });
+    const module = createWorldModule({ getChatIdentity: h.getChatIdentity, install: () => ({}) });
     await module.install({
         partition: h.coordinator.createScopedStore(WORLD_PARTITION), files: h.coordinator,
         execution: { addCleanup: cleanup => cleanups.push(cleanup) },
@@ -40,25 +40,27 @@ async function installContext(h, t) {
 
 test('optional world material uses confirmed content, ignores subscription/D4 switches, and releases on disposal', async t => {
     const initial = { ...createEmptyWorld(), injectToStory: false, overview: '初夏的港城', news: [article()] };
-    const h = await worldHarness(initial); t.after(h.dispose);
+    const h = await worldHarness(initial, { chatIdentity: 'character:0:test-world' }); t.after(h.dispose);
     const { context, dispose } = await installContext(h, t);
-    assert.deepEqual(context.readCurrent('world:one'), worldContent(initial));
+    const identity = h.getChatIdentity();
+    assert.deepEqual(context.readCurrent(identity), worldContent(initial));
+    assert.equal(context.readCurrent(h.state.capture.identityKey), null);
     assert.equal(context.readCurrent('world:other'), null);
-    const copy = context.readCurrent('world:one'); copy.news[0].body = 'consumer change';
-    assert.deepEqual(context.readCurrent('world:one'), worldContent(initial));
+    const copy = context.readCurrent(identity); copy.news[0].body = 'consumer change';
+    assert.deepEqual(context.readCurrent(identity), worldContent(initial));
 
     const next = { overview: '新背景', news: [article('new')] };
     h.state.replace = () => ({ status: 'unconfirmed', observed: null });
     await assert.rejects(h.world.replaceContent('world:one', worldContent(initial), next, () => true));
-    assert.deepEqual(context.readCurrent('world:one'), worldContent(initial));
+    assert.deepEqual(context.readCurrent(identity), worldContent(initial));
     h.state.replace = null;
     await h.world.confirmPending();
-    assert.deepEqual(context.readCurrent('world:one'), next);
+    assert.deepEqual(context.readCurrent(identity), next);
     await h.world.replaceContent('world:one', next, { overview: '', news: [] }, () => true);
-    assert.equal(context.readCurrent('world:one'), null);
+    assert.equal(context.readCurrent(identity), null);
     assert.equal(h.state.requests.length, 0);
     await dispose();
-    assert.equal(context.readCurrent('world:one'), null);
+    assert.equal(context.readCurrent(identity), null);
 });
 
 test('map/tasks runs receive world material without a World run, while a combined run includes it once', async t => {
