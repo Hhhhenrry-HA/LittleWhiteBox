@@ -27,6 +27,7 @@ const {
     refreshDisabled,
 } = client;
 const scroll = ref<HTMLElement | null>(null);
+let lobbyScroll = 0;
 const page = ref<'lobby' | 'room' | 'records'>(state.value.activeGame ? 'room' : 'lobby');
 const selected = ref<GameKind | null>(state.value.activeGame?.kind || null);
 const roomComponent = shallowRef<Component | null>(null);
@@ -58,9 +59,12 @@ async function loadRoom(): Promise<void> {
         }
     }
 }
-watch([page, selected, () => Boolean(state.value.activeGame), () => Boolean(settlement.value)], () => {
+watch([page, selected, () => Boolean(state.value.activeGame), () => Boolean(settlement.value)], (_, previous) => {
+    if (previous[0] === 'lobby') {
+        lobbyScroll = scroll.value?.scrollTop || 0;
+    }
     void nextTick(() => {
-        scroll.value?.scrollTo({ top: 0 });
+        scroll.value?.scrollTo({ top: page.value === 'lobby' ? lobbyScroll : 0 });
     });
 });
 watch(selected, loadRoom, { immediate: true });
@@ -73,8 +77,13 @@ watch(settlement, (value) => {
 watch(
     () => state.value.chatIdentity,
     () => {
+        lobbyScroll = 0;
         selected.value = state.value.activeGame?.kind || null;
         page.value = selected.value ? 'room' : 'lobby';
+        void nextTick(() => {
+            lobbyScroll = 0;
+            scroll.value?.scrollTo({ top: 0 });
+        });
     },
 );
 function open(kind: GameKind): void {
@@ -114,8 +123,8 @@ onBeforeUnmount(() => {
                 ‹
             </button>
             <h1>{{ page === 'room' ? room?.name : '游戏' }}</h1>
-            <div class="game-funds">
-                <small>可用小白币</small><strong>¤ {{ funds.balance.toLocaleString('zh-CN') }}</strong>
+            <div class="game-funds" aria-label="可用小白币">
+                <strong>¤ {{ funds.balance.toLocaleString('zh-CN') }}</strong>
             </div>
         </header>
         <nav class="game-nav" aria-label="游戏页面">
@@ -124,7 +133,7 @@ onBeforeUnmount(() => {
                 :aria-current="page === 'lobby' ? 'page' : undefined"
                 @click="leave('lobby')"
             >
-                游艺室
+                大厅
             </button>
             <button
                 v-if="state.activeGame"
@@ -132,14 +141,14 @@ onBeforeUnmount(() => {
                 :aria-current="page === 'room' && selected === state.activeGame.kind ? 'page' : undefined"
                 @click="resume"
             >
-                继续这一局 <i />
+                继续 <i />
             </button>
             <button
                 type="button"
                 :aria-current="page === 'records' ? 'page' : undefined"
                 @click="leave('records')"
             >
-                玩过的局
+                记录
             </button>
         </nav>
         <aside v-if="state.message || error || state.generationActive" class="game-notice" role="status">
@@ -165,9 +174,9 @@ onBeforeUnmount(() => {
             </button>
         </aside>
         <div ref="scroll" class="game-scroll">
-            <GameLobby v-if="page === 'lobby'" :active-game="state.activeGame" @open="open" />
+            <GameLobby v-show="page === 'lobby'" :key="state.chatIdentity" :active-game="state.activeGame" @open="open" />
             <GameRecords
-                v-else-if="page === 'records'"
+                v-if="page === 'records'"
                 :records="state.records"
                 :total="state.total"
                 :has-more="state.hasMore"
@@ -175,7 +184,7 @@ onBeforeUnmount(() => {
                 :error="recordsError"
                 @load-more="client.loadMore"
             />
-            <template v-else>
+            <template v-else-if="page === 'room'">
                 <div v-if="roomLoading" class="game-empty" role="status"><p>正在摆好桌面…</p></div>
                 <div v-else-if="roomError" class="game-empty" role="status">
                     <p>{{ roomError }}</p>

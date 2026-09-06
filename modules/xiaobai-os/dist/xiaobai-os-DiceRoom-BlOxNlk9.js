@@ -1,7 +1,7 @@
 /* eslint-disable */
 import { C as I, E as B, H as m, I as T, T as i, _ as S, d as e, f as k, g as h, j as N, l as D, m as r, p as E, u as $, v as A, x as V, z as p } from "./xiaobai-os-runtime-dom.esm-bundler-DwdCK5Jt.js";
-import { a as C, c as L, i as M, o as G, r as j, s as w } from "./xiaobai-os-room-catalog-CxUsjTUC.js";
-import { n as z, t as H } from "./xiaobai-os-GameResult-CNgu2VIf.js";
+import { a as C, c as L, i as M, o as G, r as j, s as w } from "./xiaobai-os-room-catalog-GDoMHdYd.js";
+import { n as z, t as H } from "./xiaobai-os-GameResult-BoKKS9Ni.js";
 var O = ["aria-label"], U = {
   class: "dice-call-dice",
   "aria-hidden": "true"
@@ -90,7 +90,7 @@ var O = ["aria-label"], U = {
         h("至少有几个相同的点数？")
       ], -1)])])),
       e("div", W, [
-        l[8] || (l[8] = e("small", null, "你的骰子 · 只有你看得见", -1)),
+        l[8] || (l[8] = e("small", null, "你的骰子", -1)),
         e("div", X, [(i(!0), r(D, null, B(a.game.playerDice, (v, R) => (i(), k(w, {
           key: R,
           value: v,
@@ -154,7 +154,7 @@ var O = ["aria-label"], U = {
         onClick: l[3] || (l[3] = (v) => f.$emit("challenge"))
       }, " 开盅 ", 8, se)])),
       e("details", ue, [
-        l[14] || (l[14] = e("summary", null, "怎么叫？看看刚才怎么喊的", -1)),
+        l[14] || (l[14] = e("summary", null, "规则与叫骰记录", -1)),
         l[15] || (l[15] = e("p", null, "数量更多，或数量相同而点数更大，都算加叫。一点只作百搭，不能单独叫。", -1)),
         e("ol", re, [(i(!0), r(D, null, B(a.game.bids, (v, R) => (i(), r("li", { key: R }, [e("span", null, m(v.by === "player" ? "你" : "对方"), 1), e("strong", null, m(p(C)(v)), 1)]))), 128))])
       ])

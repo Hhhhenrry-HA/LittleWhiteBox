@@ -1,7 +1,7 @@
 /* eslint-disable */
-import { B as $, C as a2, D as r2, E as i2, H as _, I as y, L as o2, M as V, O as l2, P as X, S as s2, T as d, V as N, _ as U, b as n2, c as c2, d as i, f as H, g as d2, l as p2, m as f, n as f2, p as R, t as u2, u as K, v as O, x as h2, z as v2 } from "./xiaobai-os-runtime-dom.esm-bundler-DwdCK5Jt.js";
-import { n as m2, t as D } from "./xiaobai-os-frame-bridge-8-bd80In.js";
-var g2 = [
+import { B as H, C as te, D as ie, E as re, H as O, I as b, L as le, M as Z, O as se, P as X, S as oe, T as p, V as N, _ as E, b as ne, c as ce, d as r, f as C, g as pe, l as de, m as u, n as ue, p as _, t as fe, u as K, v as S, x as ve, z as he } from "./xiaobai-os-runtime-dom.esm-bundler-DwdCK5Jt.js";
+import { n as me, t as L } from "./xiaobai-os-frame-bridge-8-bd80In.js";
+var ge = [
   "agent-api",
   "fourth-wall",
   "messages",
@@ -13,143 +13,143 @@ var g2 = [
   "world",
   "tasks",
   "learning"
-], y2 = Object.freeze({
+], be = Object.freeze({
   id: "agent-api",
   name: "Agent API",
-  accent: "#63d8c6"
-}), w2 = Object.freeze({
+  accent: "#00b8c5"
+}), we = Object.freeze({
   id: "bank",
   name: "银行",
-  accent: "#b89a58"
-}), b2 = Object.freeze({
+  accent: "#175ce5"
+}), ye = Object.freeze({
   id: "fourth-wall",
   name: "四次元壁",
-  accent: "#7567d8"
-}), x2 = Object.freeze({
+  accent: "#8b50f5"
+}), xe = Object.freeze({
   id: "game",
   name: "游戏",
-  accent: "#c8a35a"
-}), k2 = Object.freeze({
+  accent: "#ef486f"
+}), ke = Object.freeze({
   id: "map",
   name: "地图",
-  accent: "#3aa9ff"
-}), A2 = Object.freeze({
+  accent: "#2795f5"
+}), Ae = Object.freeze({
   id: "messages",
   name: "信息",
-  accent: "#65ac91"
-}), S2 = Object.freeze({
+  accent: "#0bbe61"
+}), Pe = Object.freeze({
   id: "shop",
   name: "奇物商店",
-  accent: "#a83b32"
-}), O2 = Object.freeze({
+  accent: "#f34b42"
+}), Se = Object.freeze({
   id: "tasks",
   name: "任务",
-  accent: "#d96840"
-}), _2 = Object.freeze({
+  accent: "#7950eb"
+}), Oe = Object.freeze({
   id: "wallet",
   name: "钱包",
-  accent: "#a9660f"
-}), R2 = Object.freeze({
+  accent: "#f69a0e"
+}), _e = Object.freeze({
   id: "world",
   name: "世界",
-  accent: "#266d6d"
-}), G2 = Object.freeze({
+  accent: "#1388f5"
+}), Re = Object.freeze({
   id: "learning",
   name: "语伴",
-  accent: "#347c72"
-}), P2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23334968'/%3e%3cstop%20offset='1'%20stop-color='%23111c32'/%3e%3c/linearGradient%3e%3clinearGradient%20id='paper'%20x1='30'%20y1='16'%20x2='60'%20y2='72'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23fffdf4'/%3e%3cstop%20offset='1'%20stop-color='%23f2e8d6'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3cpath%20d='M30%2015h31l10%2010v41a7%207%200%200%201-7%207H27a7%207%200%200%201-7-7V25a10%2010%200%200%201%2010-10Z'%20fill='%2313213b'%20opacity='.4'%20transform='translate(0%203)'/%3e%3crect%20x='22'%20y='18'%20width='44'%20height='51'%20rx='10'%20fill='url(%23paper)'%20filter='url(%23shadow)'/%3e%3cpath%20d='M33%2030v28m22-28v28M28%2036h32M28%2051h32'%20stroke='%23b6c9de'%20stroke-width='2'/%3e%3crect%20x='32'%20y='31'%20width='24'%20height='25'%20rx='7'%20fill='%23426ee8'/%3e%3cpath%20d='m42%2037-6%206%206%206m5-12%206%206-6%206'%20stroke='white'%20stroke-width='2.3'%20fill='none'%20stroke-linecap='round'%20stroke-linejoin='round'/%3e%3ccircle%20cx='64'%20cy='66'%20r='11'%20fill='%238be3c2'%20stroke='%231c3048'%20stroke-width='3'/%3e%3cpath%20d='m60%2066%203%203%205-6'%20stroke='%23164d49'%20stroke-width='2'%20fill='none'%20stroke-linecap='round'/%3e%3c/svg%3e", "" + import.meta.url).href, U2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23ab9ced'/%3e%3cstop%20offset='1'%20stop-color='%236552b5'/%3e%3c/linearGradient%3e%3clinearGradient%20id='paper'%20x1='30'%20y1='16'%20x2='60'%20y2='72'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23fffdf4'/%3e%3cstop%20offset='1'%20stop-color='%23f2e8d6'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3crect%20x='23'%20y='16'%20width='43'%20height='54'%20rx='15'%20fill='%23513f99'%20opacity='.45'%20transform='rotate(12%2044%2044)'/%3e%3cpath%20d='M26%2023h34a10%2010%200%200%201%2010%2010v16a10%2010%200%200%201-10%2010H46L34%2070l1-11h-9a10%2010%200%200%201-10-10V33a10%2010%200%200%201%2010-10Z'%20fill='url(%23paper)'%20filter='url(%23shadow)'/%3e%3cpath%20d='M34%2034v15m-4-15h8m-8%2015h8m6-15%205%2015%206-15'%20stroke='%238069c2'%20stroke-width='3'%20fill='none'%20stroke-linecap='round'%20stroke-linejoin='round'/%3e%3cpath%20d='m68%2017%202%206%206%202-6%202-2%206-2-6-6-2%206-2Z'%20fill='%23fbe4a9'/%3e%3c/svg%3e", "" + import.meta.url).href, I2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%234dad91'/%3e%3cstop%20offset='1'%20stop-color='%23176b62'/%3e%3c/linearGradient%3e%3clinearGradient%20id='leather'%20x1='20'%20y1='30'%20x2='65'%20y2='67'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23388d73'/%3e%3cstop%20offset='1'%20stop-color='%23216657'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3cg%20transform='rotate(-10%2044%2035)'%3e%3crect%20x='21'%20y='16'%20width='46'%20height='37'%20rx='6'%20fill='%23dfb46e'/%3e%3crect%20x='25'%20y='23'%20width='40'%20height='32'%20rx='5'%20fill='%23f9e8bc'/%3e%3cpath%20d='M29%2030h27'%20stroke='%23d2b578'%20stroke-width='4'/%3e%3c/g%3e%3crect%20x='16'%20y='33'%20width='56'%20height='37'%20rx='10'%20fill='%23104c48'%20filter='url(%23shadow)'/%3e%3crect%20x='16'%20y='31'%20width='56'%20height='36'%20rx='10'%20fill='url(%23leather)'/%3e%3crect%20x='20'%20y='35'%20width='48'%20height='28'%20rx='7'%20fill='none'%20stroke='%23b3e3cc'%20stroke-opacity='.48'%20stroke-dasharray='2%202'/%3e%3cpath%20d='M59%2043h15v16H59a8%208%200%200%201%200-16Z'%20fill='%23206d60'%20stroke='%2386bba1'%20stroke-width='1'/%3e%3ccircle%20cx='60'%20cy='51'%20r='3'%20fill='%23eed59c'/%3e%3c/svg%3e", "" + import.meta.url).href, M2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23f1b8a1'/%3e%3cstop%20offset='1'%20stop-color='%23d37469'/%3e%3c/linearGradient%3e%3clinearGradient%20id='paper'%20x1='30'%20y1='16'%20x2='60'%20y2='72'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23fffdf4'/%3e%3cstop%20offset='1'%20stop-color='%23f2e8d6'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3cpath%20d='M23%2033h43l5%2034a5%205%200%200%201-5%205H22a5%205%200%200%201-5-5Z'%20fill='%2386483e'%20opacity='.3'/%3e%3cpath%20d='M24%2030h40l5%2034a5%205%200%200%201-5%206H24a5%205%200%200%201-5-6Z'%20fill='url(%23paper)'%20filter='url(%23shadow)'/%3e%3cpath%20d='M34%2033v-8a10%2010%200%200%201%2020%200v8'%20fill='none'%20stroke='%2398594c'%20stroke-width='4'%20stroke-linecap='round'/%3e%3cpath%20d='m44%2041%203.5%208%208.5%203.5-8.5%203.5-3.5%208-3.5-8-8.5-3.5%208.5-3.5Z'%20fill='%23c67560'/%3e%3cpath%20d='m69%2017%202%205%205%202-5%202-2%205-2-5-5-2%205-2Z'%20fill='%23fff1d3'/%3e%3c/svg%3e", "" + import.meta.url).href, B2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%233d807d'/%3e%3cstop%20offset='1'%20stop-color='%23143c45'/%3e%3c/linearGradient%3e%3clinearGradient%20id='metal'%20x1='17'%20y1='14'%20x2='68'%20y2='74'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23d9e6df'/%3e%3cstop%20offset='.5'%20stop-color='%239cb7b5'/%3e%3cstop%20offset='1'%20stop-color='%23789a9e'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3crect%20x='17'%20y='16'%20width='56'%20height='60'%20rx='13'%20fill='%23122e35'%20opacity='.4'/%3e%3crect%20x='17'%20y='14'%20width='54'%20height='60'%20rx='12'%20fill='url(%23metal)'%20filter='url(%23shadow)'/%3e%3crect%20x='23'%20y='20'%20width='42'%20height='47'%20rx='8'%20fill='%23284c55'%20stroke='%23abc6c7'%20stroke-width='2'/%3e%3ccircle%20cx='44'%20cy='44'%20r='16'%20fill='url(%23metal)'/%3e%3ccircle%20cx='44'%20cy='44'%20r='11'%20fill='%2340636a'/%3e%3cpath%20d='M44%2035v18m-9-9h18m-15-6%2012%2012m0-12L38%2050'%20stroke='%23cfe1da'%20stroke-width='2.6'%20stroke-linecap='round'/%3e%3ccircle%20cx='44'%20cy='44'%20r='4.5'%20fill='%23e8c98b'/%3e%3cpath%20d='M22%2029v8m0%2014v8'%20stroke='%23f5f2dc'%20stroke-width='4'%20stroke-linecap='round'/%3e%3c/svg%3e", "" + import.meta.url).href, E2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23e7847d'/%3e%3cstop%20offset='1'%20stop-color='%23af344c'/%3e%3c/linearGradient%3e%3clinearGradient%20id='paper'%20x1='30'%20y1='16'%20x2='60'%20y2='72'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23fffdf4'/%3e%3cstop%20offset='1'%20stop-color='%23f2e8d6'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3cg%20transform='rotate(17%2058%2034)'%3e%3crect%20x='37'%20y='14'%20width='35'%20height='37'%20rx='9'%20fill='%23792741'%20opacity='.4'%20transform='translate(0%203)'/%3e%3crect%20x='37'%20y='14'%20width='35'%20height='35'%20rx='9'%20fill='%23f6c9b5'/%3e%3cg%20fill='%23b24b5b'%3e%3ccircle%20cx='47'%20cy='24'%20r='3'/%3e%3ccircle%20cx='62'%20cy='39'%20r='3'/%3e%3c/g%3e%3c/g%3e%3cg%20transform='rotate(-15%2036%2052)'%20filter='url(%23shadow)'%3e%3crect%20x='15'%20y='31'%20width='43'%20height='43'%20rx='11'%20fill='url(%23paper)'/%3e%3cg%20fill='%23ae3d53'%3e%3ccircle%20cx='27'%20cy='43'%20r='3.6'/%3e%3ccircle%20cx='46'%20cy='43'%20r='3.6'/%3e%3ccircle%20cx='36.5'%20cy='52.5'%20r='3.6'/%3e%3ccircle%20cx='27'%20cy='62'%20r='3.6'/%3e%3ccircle%20cx='46'%20cy='62'%20r='3.6'/%3e%3c/g%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href, D2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%239dccad'/%3e%3cstop%20offset='1'%20stop-color='%234d997d'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3cpath%20d='m14%2026%2020-6%2020%206%2020-7v48l-20%207-20-6-20%206Z'%20fill='%2324694d'%20opacity='.25'%20transform='translate(0%203)'/%3e%3cpath%20d='m14%2024%2020-6%2020%206%2020-7v48l-20%207-20-6-20%206Z'%20fill='%23f5edd4'%20filter='url(%23shadow)'/%3e%3cpath%20d='m34%2018%2020%206v48l-20-6Z'%20fill='%23d9e4bb'/%3e%3cpath%20d='m14%2054%2020-7%2020%206%2020-20'%20stroke='%2392bdce'%20stroke-width='7'%20fill='none'/%3e%3cpath%20d='m20%2032%2017%205%208%2024%2025-5'%20stroke='%23fffef0'%20stroke-width='4'%20fill='none'/%3e%3cpath%20d='M59%2017a12%2012%200%200%200-12%2012c0%2010%2012%2020%2012%2020s12-10%2012-20a12%2012%200%200%200-12-12Z'%20fill='%23e4774f'%20filter='url(%23shadow)'/%3e%3ccircle%20cx='59'%20cy='29'%20r='4.5'%20fill='%23fff5df'/%3e%3c/svg%3e", "" + import.meta.url).href, H2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2096%2096'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='a'%20x1='16'%20y1='4'%20x2='80'%20y2='96'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23b1e7c9'/%3e%3cstop%20offset='.5'%20stop-color='%2363ad8b'/%3e%3cstop%20offset='1'%20stop-color='%23347459'/%3e%3c/linearGradient%3e%3clinearGradient%20id='b'%20x1='30'%20y1='21'%20x2='65'%20y2='68'%3e%3cstop%20stop-color='%23fff'/%3e%3cstop%20offset='1'%20stop-color='%23e4f4eb'/%3e%3c/linearGradient%3e%3cfilter%20id='s'%20x='0'%20y='0'%20width='100%25'%20height='110%25'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='2.5'%20flood-color='%23173c2c'%20flood-opacity='.2'/%3e%3c/filter%3e%3c/defs%3e%3crect%20x='2'%20y='2'%20width='92'%20height='92'%20rx='23'%20fill='url(%23a)'/%3e%3crect%20x='3'%20y='3'%20width='90'%20height='90'%20rx='22'%20stroke='%23fff'%20stroke-opacity='.35'/%3e%3cpath%20d='M24%2062c-4-5-6-10-6-16%200-15%2013-27%2030-27s30%2012%2030%2027S65%2073%2048%2073c-5%200-9-1-13-3l-13%206%202-14Z'%20fill='url(%23b)'%20filter='url(%23s)'/%3e%3cg%20fill='%23559475'%3e%3ccircle%20cx='35'%20cy='46'%20r='3.5'/%3e%3ccircle%20cx='48'%20cy='46'%20r='3.5'/%3e%3ccircle%20cx='61'%20cy='46'%20r='3.5'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href, $2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='8'%20y1='0'%20x2='80'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23f6ac72'/%3e%3cstop%20offset='1'%20stop-color='%23df673d'/%3e%3c/linearGradient%3e%3clinearGradient%20id='paper'%20x1='30'%20y1='16'%20x2='60'%20y2='72'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23fffdf4'/%3e%3cstop%20offset='1'%20stop-color='%23f2e8d6'/%3e%3c/linearGradient%3e%3cfilter%20id='shadow'%20x='-35%25'%20y='-25%25'%20width='175%25'%20height='175%25'%20color-interpolation-filters='sRGB'%3e%3cfeDropShadow%20dx='0'%20dy='3'%20stdDeviation='3'%20flood-color='%232b1a1a'%20flood-opacity='.22'/%3e%3c/filter%3e%3c/defs%3e%3crect%20width='88'%20height='88'%20rx='22'%20fill='url(%23bg)'/%3e%3cpath%20d='M22%20.75h44A21.25%2021.25%200%200%201%2087.25%2022v44A21.25%2021.25%200%200%201%2066%2087.25H22A21.25%2021.25%200%200%201%20.75%2066V22A21.25%2021.25%200%200%201%2022%20.75Z'%20stroke='white'%20stroke-opacity='.25'%20stroke-width='1.5'/%3e%3crect%20x='20'%20y='17'%20width='47'%20height='58'%20rx='8'%20fill='%23a84c2d'%20opacity='.3'%20transform='rotate(9%2044%2044)'/%3e%3crect%20x='18'%20y='15'%20width='48'%20height='59'%20rx='8'%20fill='%23f5d7ac'%20transform='rotate(-9%2044%2044)'/%3e%3cpath%20d='M30%2013h23l12%2012v42a7%207%200%200%201-7%207H30a7%207%200%200%201-7-7V20a7%207%200%200%201%207-7Z'%20fill='url(%23paper)'%20filter='url(%23shadow)'/%3e%3cpath%20d='M53%2013v9a3%203%200%200%200%203%203h9'%20fill='%23ead4b8'/%3e%3cpath%20d='M33%2034h21M33%2042h16M33%2050h12'%20stroke='%23d4b49b'%20stroke-width='3'%20stroke-linecap='round'/%3e%3ccircle%20cx='59'%20cy='61'%20r='13'%20fill='%23d96940'%20stroke='%23f9d7a9'%20stroke-width='2'/%3e%3cpath%20d='m53%2061%204%204%208-9'%20stroke='%23fff4db'%20stroke-width='3'%20fill='none'%20stroke-linecap='round'%20stroke-linejoin='round'/%3e%3c/svg%3e", "" + import.meta.url).href, L2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2096%2096'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='sky'%20x1='13'%20y1='6'%20x2='83'%20y2='89'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23123e4c'/%3e%3cstop%20offset='.55'%20stop-color='%234b9291'/%3e%3cstop%20offset='1'%20stop-color='%23a9cfb9'/%3e%3c/linearGradient%3e%3cradialGradient%20id='glow'%20cx='0'%20cy='0'%20r='1'%20gradientTransform='translate(69%2037)%20rotate(90)%20scale(38%2048)'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23fff0c2'/%3e%3cstop%20offset='1'%20stop-color='%23d4e9c9'%20stop-opacity='0'/%3e%3c/radialGradient%3e%3cclipPath%20id='tile'%3e%3crect%20width='96'%20height='96'%20rx='23'/%3e%3c/clipPath%3e%3c/defs%3e%3cg%20clip-path='url(%23tile)'%3e%3cpath%20fill='url(%23sky)'%20d='M0%200h96v96H0z'/%3e%3cpath%20fill='url(%23glow)'%20d='M0%200h96v96H0z'/%3e%3cpath%20d='M0%2057c24-9%2039%203%2056-3s25-9%2040-6v48H0Z'%20fill='%23528d91'/%3e%3cpath%20d='M0%2063c28-9%2042%2015%2067%202s22-9%2029-10v41H0Z'%20fill='%2328616c'/%3e%3cpath%20d='M0%2070c30-20%2053%2013%2096-7v33H0Z'%20fill='%23113c4b'/%3e%3cpath%20d='M8%2066c28-12%2047%2017%2080-1'%20stroke='%23d6e8ca'%20stroke-opacity='.6'%20stroke-width='1.2'/%3e%3crect%20x='.75'%20y='.75'%20width='94.5'%20height='94.5'%20rx='22.25'%20stroke='%23fff'%20stroke-opacity='.18'%20stroke-width='1.5'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href, C2 = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2096%2096'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='paper'%20x2='0'%20y2='1'%3e%3cstop%20stop-color='%23faf5e9'/%3e%3cstop%20offset='1'%20stop-color='%23e8e2d3'/%3e%3c/linearGradient%3e%3clinearGradient%20id='cover'%20x2='1'%20y2='1'%3e%3cstop%20stop-color='%23418f82'/%3e%3cstop%20offset='1'%20stop-color='%23205c55'/%3e%3c/linearGradient%3e%3c/defs%3e%3crect%20width='96'%20height='96'%20rx='23'%20fill='url(%23cover)'/%3e%3cpath%20d='M22%2022h43a8%208%200%200%201%208%208v45H30a8%208%200%200%201-8-8z'%20fill='%23133f39'%20opacity='.35'/%3e%3cpath%20d='M22%2018h43a7%207%200%200%201%207%207v46H29a7%207%200%200%201-7-7z'%20fill='url(%23paper)'/%3e%3cpath%20d='M29%2018v53M39%2050h21M39%2057h15'%20stroke='%23367b70'%20stroke-opacity='.4'%20stroke-width='2'/%3e%3cpath%20d='m40%2041%207-16h3l7%2016m-14-6h11'%20stroke='%23347c72'%20stroke-width='2.7'%20stroke-linecap='round'%20stroke-linejoin='round'/%3e%3cpath%20d='m63%2048%207%205-14%2021-10%206%202-12z'%20fill='%23d8ab59'%20stroke='%23f6deaa'%20stroke-width='1.3'/%3e%3cpath%20d='m46%2080%204-9%205%204z'%20fill='%23294e46'/%3e%3c/svg%3e", "" + import.meta.url).href;
-function z2(a) {
-  let t = null, r = null;
+  accent: "#2467ed"
+}), Ie = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='12'%20y1='0'%20x2='76'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%2325dccc'/%3e%3cstop%20offset='1'%20stop-color='%2300a9c4'/%3e%3c/linearGradient%3e%3cclipPath%20id='tile'%3e%3crect%20width='88'%20height='88'%20rx='22'/%3e%3c/clipPath%3e%3c/defs%3e%3cg%20clip-path='url(%23tile)'%3e%3crect%20width='88'%20height='88'%20fill='url(%23bg)'/%3e%3crect%20x='24'%20y='24'%20width='40'%20height='40'%20rx='11'%20stroke='%23fff'%20stroke-width='4'/%3e%3cpath%20d='M34%2016v8m10-8v8m10-8v8M34%2064v8m10-8v8m10-8v8M16%2034h8m-8%2010h8m-8%2010h8m40-20h8m-8%2010h8m-8%2010h8'%20stroke='%23fff'%20stroke-width='3.5'%20stroke-linecap='round'/%3e%3cpath%20d='m39%2036-8%208%208%208m10-16%208%208-8%208'%20stroke='%23fff'%20stroke-width='3.5'%20stroke-linecap='round'%20stroke-linejoin='round'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href, Ee = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='12'%20y1='0'%20x2='76'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23a168ff'/%3e%3cstop%20offset='1'%20stop-color='%236837f1'/%3e%3c/linearGradient%3e%3cclipPath%20id='tile'%3e%3crect%20width='88'%20height='88'%20rx='22'/%3e%3c/clipPath%3e%3c/defs%3e%3cg%20clip-path='url(%23tile)'%3e%3crect%20width='88'%20height='88'%20fill='url(%23bg)'/%3e%3cpath%20d='M26%2022h37a10%2010%200%200%201%2010%2010v20a10%2010%200%200%201-10%2010H43L27%2074V62h-1a10%2010%200%200%201-10-10V32a10%2010%200%200%201%2010-10Z'%20fill='%23fff'/%3e%3cpath%20d='M32%2035v16m-4-16h8m-8%2016h8m8-16%206%2016%207-16'%20stroke='%238046ee'%20stroke-width='3.5'%20stroke-linecap='round'%20stroke-linejoin='round'/%3e%3cpath%20d='m70%2011%202%206%206%202-6%202-2%206-2-6-6-2%206-2Z'%20fill='%23c8fff3'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href, Me = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='12'%20y1='0'%20x2='76'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23ffc535'/%3e%3cstop%20offset='1'%20stop-color='%23ff991a'/%3e%3c/linearGradient%3e%3cclipPath%20id='tile'%3e%3crect%20width='88'%20height='88'%20rx='22'/%3e%3c/clipPath%3e%3c/defs%3e%3cg%20clip-path='url(%23tile)'%3e%3crect%20width='88'%20height='88'%20fill='url(%23bg)'/%3e%3cpath%20d='m23%2030%2037-12a5%205%200%200%201%206%204v15H23Z'%20fill='%23fff'/%3e%3cpath%20d='M23%2029h42a8%208%200%200%201%208%208v28a8%208%200%200%201-8%208H23a8%208%200%200%201-8-8V37a8%208%200%200%201%208-8Z'%20fill='%23252938'/%3e%3cpath%20d='M24%2039h37'%20stroke='%23fff'%20stroke-opacity='.3'%20stroke-width='2.5'%20stroke-linecap='round'/%3e%3crect%20x='52'%20y='45'%20width='23'%20height='16'%20rx='6'%20fill='%23fff'/%3e%3ccircle%20cx='59'%20cy='53'%20r='2.5'%20fill='%23252938'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href, Ue = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='12'%20y1='0'%20x2='76'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23ff805d'/%3e%3cstop%20offset='1'%20stop-color='%23ff434e'/%3e%3c/linearGradient%3e%3cclipPath%20id='tile'%3e%3crect%20width='88'%20height='88'%20rx='22'/%3e%3c/clipPath%3e%3c/defs%3e%3cg%20clip-path='url(%23tile)'%3e%3crect%20width='88'%20height='88'%20fill='url(%23bg)'/%3e%3cpath%20d='M23%2029h42l6%2039a6%206%200%200%201-6%207H23a6%206%200%200%201-6-7Z'%20fill='%23fff'/%3e%3cpath%20d='M33%2032V25a11%2011%200%200%201%2022%200v7'%20stroke='%23fff'%20stroke-width='4.5'%20stroke-linecap='round'/%3e%3cpath%20d='M33%2049c2%2014%2020%2014%2022%200'%20stroke='%23fa5951'%20stroke-width='3.5'%20stroke-linecap='round'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href, $e = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='12'%20y1='0'%20x2='76'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23353c4c'/%3e%3cstop%20offset='1'%20stop-color='%23111723'/%3e%3c/linearGradient%3e%3cclipPath%20id='tile'%3e%3crect%20width='88'%20height='88'%20rx='22'/%3e%3c/clipPath%3e%3c/defs%3e%3cg%20clip-path='url(%23tile)'%3e%3crect%20width='88'%20height='88'%20fill='url(%23bg)'/%3e%3cpath%20d='m18%2034%2026-17%2026%2017Z'%20fill='%23fff'/%3e%3cpath%20d='M22%2063V42m15%2021V42m14%2021V42m15%2021V42'%20stroke='%23fff'%20stroke-width='6'%20stroke-linecap='round'/%3e%3cpath%20d='M18%2072h52'%20stroke='%23fff'%20stroke-width='5'%20stroke-linecap='round'/%3e%3ccircle%20cx='44'%20cy='29'%20r='3'%20fill='%23465368'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href, Be = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='12'%20y1='0'%20x2='76'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23ff7386'/%3e%3cstop%20offset='1'%20stop-color='%23ef385e'/%3e%3c/linearGradient%3e%3cclipPath%20id='tile'%3e%3crect%20width='88'%20height='88'%20rx='22'/%3e%3c/clipPath%3e%3c/defs%3e%3cg%20clip-path='url(%23tile)'%3e%3crect%20width='88'%20height='88'%20fill='url(%23bg)'/%3e%3cpath%20d='M30%2028h28a13%2013%200%200%201%2013%2010l6%2020a9%209%200%200%201-15%209l-8-8H34l-8%208a9%209%200%200%201-15-9l6-20a13%2013%200%200%201%2013-10Z'%20fill='%23fff'/%3e%3cpath%20d='M28%2037v17m-8-8h16'%20stroke='%23ed4066'%20stroke-width='4'%20stroke-linecap='round'/%3e%3ccircle%20cx='60'%20cy='39'%20r='3.5'%20fill='%238554ed'/%3e%3ccircle%20cx='67'%20cy='48'%20r='3.5'%20fill='%2316bad0'/%3e%3cpath%20d='M38%2025v-4a6%206%200%200%201%206-6h8'%20stroke='%23fff'%20stroke-width='3'%20stroke-linecap='round'%20opacity='.8'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href, Le = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='12'%20y1='0'%20x2='76'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23f8fcff'/%3e%3cstop%20offset='1'%20stop-color='%23e7f3ff'/%3e%3c/linearGradient%3e%3cclipPath%20id='tile'%3e%3crect%20width='88'%20height='88'%20rx='22'/%3e%3c/clipPath%3e%3c/defs%3e%3cg%20clip-path='url(%23tile)'%3e%3crect%20width='88'%20height='88'%20fill='url(%23bg)'/%3e%3cpath%20d='M0%200h39v32H0Z'%20fill='%2389eb9b'/%3e%3cpath%20d='M53%200h35v39H53Z'%20fill='%2345cf86'/%3e%3cpath%20d='M0%2048h28v40H0Z'%20fill='%23a0e89d'/%3e%3cpath%20d='M46%2053h42v35H46Z'%20fill='%2390d6ff'/%3e%3cpath%20d='M0%2039h88M39%200v88'%20stroke='%23fff'%20stroke-width='9'/%3e%3cpath%20d='m4%2085%2077-63'%20stroke='%23fff'%20stroke-width='12'/%3e%3cpath%20d='m4%2085%2077-63'%20stroke='%23ffcb45'%20stroke-width='5'/%3e%3cpath%20d='M60%2014a16%2016%200%200%200-16%2016c0%2013%2016%2028%2016%2028s16-15%2016-28a16%2016%200%200%200-16-16Z'%20fill='%23fa4c60'/%3e%3ccircle%20cx='60'%20cy='30'%20r='6'%20fill='%23fff'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href, Ce = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='12'%20y1='0'%20x2='76'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%2351e766'/%3e%3cstop%20offset='1'%20stop-color='%2305b959'/%3e%3c/linearGradient%3e%3cclipPath%20id='tile'%3e%3crect%20width='88'%20height='88'%20rx='22'/%3e%3c/clipPath%3e%3c/defs%3e%3cg%20clip-path='url(%23tile)'%3e%3crect%20width='88'%20height='88'%20fill='url(%23bg)'/%3e%3cpath%20d='M73%2041c0%2015-13%2027-30%2027-4%200-8-1-12-2l-16%207%205-15c-5-5-8-10-8-17%200-15%2014-27%2031-27s30%2012%2030%2027Z'%20fill='%23fff'/%3e%3ccircle%20cx='30'%20cy='42'%20r='3.5'%20fill='%231cc765'/%3e%3ccircle%20cx='43'%20cy='42'%20r='3.5'%20fill='%231cc765'/%3e%3ccircle%20cx='56'%20cy='42'%20r='3.5'%20fill='%231cc765'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href, He = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='12'%20y1='0'%20x2='76'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%239d72ff'/%3e%3cstop%20offset='1'%20stop-color='%236b3eec'/%3e%3c/linearGradient%3e%3cclipPath%20id='tile'%3e%3crect%20width='88'%20height='88'%20rx='22'/%3e%3c/clipPath%3e%3c/defs%3e%3cg%20clip-path='url(%23tile)'%3e%3crect%20width='88'%20height='88'%20fill='url(%23bg)'/%3e%3crect%20x='22'%20y='15'%20width='48'%20height='61'%20rx='9'%20fill='%23fff'/%3e%3cpath%20d='m17%2033%205%205%209-11m-14%2028%205%205%209-11'%20stroke='%23caffdc'%20stroke-width='4.5'%20stroke-linecap='round'%20stroke-linejoin='round'/%3e%3cpath%20d='M39%2032h19M39%2040h12M39%2053h19M39%2061h12'%20stroke='%238658ec'%20stroke-width='3.5'%20stroke-linecap='round'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href, Ge = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='12'%20y1='0'%20x2='76'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%2332c8ff'/%3e%3cstop%20offset='1'%20stop-color='%23086ef2'/%3e%3c/linearGradient%3e%3cclipPath%20id='tile'%3e%3crect%20width='88'%20height='88'%20rx='22'/%3e%3c/clipPath%3e%3c/defs%3e%3cg%20clip-path='url(%23tile)'%3e%3crect%20width='88'%20height='88'%20fill='url(%23bg)'/%3e%3ccircle%20cx='44'%20cy='44'%20r='28'%20stroke='%23fff'%20stroke-width='3'/%3e%3cellipse%20cx='44'%20cy='44'%20rx='13'%20ry='28'%20stroke='%23fff'%20stroke-width='2.5'/%3e%3cpath%20d='M18%2034h52M16%2048h56M23%2061h42'%20stroke='%23fff'%20stroke-width='2.5'/%3e%3cpath%20d='m64%2018%207-5%205%205-5%207Z'%20fill='%23b5ffe0'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href, Te = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='12'%20y1='0'%20x2='76'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%234099ff'/%3e%3cstop%20offset='1'%20stop-color='%232260f1'/%3e%3c/linearGradient%3e%3cclipPath%20id='tile'%3e%3crect%20width='88'%20height='88'%20rx='22'/%3e%3c/clipPath%3e%3c/defs%3e%3cg%20clip-path='url(%23tile)'%3e%3crect%20width='88'%20height='88'%20fill='url(%23bg)'/%3e%3cpath%20d='M23%2017h32a9%209%200%200%201%209%209v25a9%209%200%200%201-9%209H37L23%2070V60a9%209%200%200%201-9-9V26a9%209%200%200%201%209-9Z'%20fill='%23fff'/%3e%3cpath%20d='m27%2048%2010-23%2010%2023m-17-7h14'%20stroke='%232773f5'%20stroke-width='3.5'%20stroke-linecap='round'%20stroke-linejoin='round'/%3e%3crect%20x='48'%20y='48'%20width='29'%20height='29'%20rx='9'%20fill='%2390ecff'/%3e%3cpath%20d='M54%2058h17m-9-4v4m5%200c-1%208-6%2011-12%2014m2-12c2%205%207%2010%2013%2012'%20stroke='%231952aa'%20stroke-width='2'%20stroke-linecap='round'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href;
+function De(t) {
+  let a = null, i = null;
   return Object.freeze({
     load() {
-      return t ? Promise.resolve(t) : (r ??= a().then((o) => {
-        if (!o?.default) throw new Error("app_component_missing");
-        return t = o.default, t;
-      }).catch((o) => {
-        throw r = null, o;
-      }), r);
+      return a ? Promise.resolve(a) : (i ??= t().then((l) => {
+        if (!l?.default) throw new Error("app_component_missing");
+        return a = l.default, a;
+      }).catch((l) => {
+        throw i = null, l;
+      }), i);
     },
     reset() {
-      t = null, r = null;
+      a = null, i = null;
     }
   });
 }
-function w(a, t, r) {
-  const o = z2(r);
+function w(t, a, i) {
+  const l = De(i);
   return Object.freeze({
-    ...a,
-    icon: t,
-    load: o.load,
-    resetLoader: o.reset
+    ...t,
+    icon: a,
+    load: l.load,
+    resetLoader: l.reset
   });
 }
-var T2 = Object.freeze({
-  "agent-api": w(y2, P2, () => import("./xiaobai-os-AgentApiApp-MQ6rh0GN.js")),
-  "fourth-wall": w(b2, U2, () => import("./xiaobai-os-FourthWallApp-CEYFeRmI.js")),
-  wallet: w(_2, I2, () => import("./xiaobai-os-WalletApp-D35tA2Lk.js")),
-  shop: w(S2, M2, () => import("./xiaobai-os-ShopApp-CZ49vHjo.js")),
-  bank: w(w2, B2, () => import("./xiaobai-os-BankApp-QKqBddSY.js")),
-  game: w(x2, E2, () => import("./xiaobai-os-GameApp-C-3aGVWd.js")),
-  map: w(k2, D2, () => import("./xiaobai-os-MapApp-BDA2OYTF.js")),
-  messages: w(A2, H2, () => import("./xiaobai-os-MessagesApp-Bni4cEIH.js")),
-  tasks: w(O2, $2, () => import("./xiaobai-os-TasksApp-D9j0Qdzm.js")),
-  world: w(R2, L2, () => import("./xiaobai-os-WorldApp-BAN_B-bp.js")),
-  learning: w(G2, C2, () => import("./xiaobai-os-LearningApp-prsZtPax.js"))
-}), q = Object.freeze(g2.map((a) => {
-  const t = T2[a];
-  if (!t) throw new Error(`missing_shell_app:${a}`);
-  return t;
-})), ye = Object.freeze(q.map((a) => a.id)), Z2 = /* @__PURE__ */ O({
+var je = Object.freeze({
+  "agent-api": w(be, Ie, () => import("./xiaobai-os-AgentApiApp-MQ6rh0GN.js")),
+  "fourth-wall": w(ye, Ee, () => import("./xiaobai-os-FourthWallApp-CEYFeRmI.js")),
+  wallet: w(Oe, Me, () => import("./xiaobai-os-WalletApp-D35tA2Lk.js")),
+  shop: w(Pe, Ue, () => import("./xiaobai-os-ShopApp-BbjvuqSP.js")),
+  bank: w(we, $e, () => import("./xiaobai-os-BankApp-D0ZbUfMo.js")),
+  game: w(xe, Be, () => import("./xiaobai-os-GameApp-B78sgmUd.js")),
+  map: w(ke, Le, () => import("./xiaobai-os-MapApp-BDA2OYTF.js")),
+  messages: w(Ae, Ce, () => import("./xiaobai-os-MessagesApp-D-ivW0Tl.js")),
+  tasks: w(Se, He, () => import("./xiaobai-os-TasksApp-WuFHj6iI.js")),
+  world: w(_e, Ge, () => import("./xiaobai-os-WorldApp-8GzCYqf4.js")),
+  learning: w(Re, Te, () => import("./xiaobai-os-LearningApp-nH1ZX5bc.js"))
+}), q = Object.freeze(ge.map((t) => {
+  const a = je[t];
+  if (!a) throw new Error(`missing_shell_app:${t}`);
+  return a;
+})), ba = Object.freeze(q.map((t) => t.id)), ze = /* @__PURE__ */ S({
   __name: "AppBoundary",
   emits: ["failed"],
-  setup(a, { emit: t }) {
-    const r = t;
-    return s2((o) => (r("failed", o), !1)), (o, l) => r2(o.$slots, "default");
+  setup(t, { emit: a }) {
+    const i = a;
+    return oe((l) => (i("failed", l), !1)), (l, s) => ie(l.$slots, "default");
   }
-}), j2 = Z2, F2 = { class: "xiaobai-os-home" }, V2 = ["src"], X2 = {
+}), Fe = ze, Ve = { class: "xiaobai-os-home" }, Ze = ["src"], Xe = {
   class: "xiaobai-os-app-grid",
   "aria-label": "应用"
-}, N2 = ["onClick"], K2 = {
+}, Ne = ["onClick"], Ke = {
   class: "xiaobai-os-app-icon",
   "aria-hidden": "true"
-}, q2 = ["src"], W2 = { class: "xiaobai-os-app-name" }, J2 = /* @__PURE__ */ O({
+}, qe = ["src"], We = { class: "xiaobai-os-app-name" }, Je = /* @__PURE__ */ S({
   __name: "XiaobaiOsHome",
   props: {
     apps: {},
     characterAvatar: {}
   },
   emits: ["openApp"],
-  setup(a) {
-    return (t, r) => (d(), f("main", F2, [
-      a.characterAvatar ? (d(), f("img", {
+  setup(t) {
+    return (a, i) => (p(), u("main", Ve, [
+      t.characterAvatar ? (p(), u("img", {
         key: 0,
         class: "xiaobai-os-wallpaper",
-        src: a.characterAvatar,
+        src: t.characterAvatar,
         alt: ""
-      }, null, 8, V2)) : R("", !0),
-      r[0] || (r[0] = i("div", {
+      }, null, 8, Ze)) : _("", !0),
+      i[0] || (i[0] = r("div", {
         class: "xiaobai-os-home-wash",
         "aria-hidden": "true"
       }, null, -1)),
-      i("section", X2, [(d(!0), f(p2, null, i2(a.apps, (o) => (d(), f("button", {
-        key: o.id,
+      r("section", Xe, [(p(!0), u(de, null, re(t.apps, (l) => (p(), u("button", {
+        key: l.id,
         type: "button",
         class: "xiaobai-os-app-tile",
-        style: N({ "--app-accent": o.accent }),
-        onClick: (l) => t.$emit("openApp", o)
-      }, [i("span", K2, [i("img", {
-        src: o.icon,
+        style: N({ "--app-accent": l.accent }),
+        onClick: (s) => a.$emit("openApp", l)
+      }, [r("span", Ke, [r("img", {
+        src: l.icon,
         alt: "",
         width: "64",
         height: "64",
         draggable: "false"
-      }, null, 8, q2)]), i("span", W2, _(o.name), 1)], 12, N2))), 128))])
+      }, null, 8, qe)]), r("span", We, O(l.name), 1)], 12, Ne))), 128))])
     ]));
   }
-}), Q2 = J2, Y2 = ["disabled"], ee = {
+}), Qe = Je, Ye = ["disabled"], ea = {
   key: 0,
   "aria-hidden": "true"
-}, te = /* @__PURE__ */ O({
+}, aa = /* @__PURE__ */ S({
   __name: "XiaobaiOsNavigation",
   props: { isHome: { type: Boolean } },
   emits: [
@@ -157,67 +157,67 @@ var T2 = Object.freeze({
     "home",
     "close"
   ],
-  setup(a) {
-    return (t, r) => (d(), f("nav", {
-      class: $(["xiaobai-os-navigation", { "is-home": a.isHome }]),
+  setup(t) {
+    return (a, i) => (p(), u("nav", {
+      class: H(["xiaobai-os-navigation", { "is-home": t.isHome }]),
       "aria-label": "系统导航"
     }, [
-      i("button", {
+      r("button", {
         type: "button",
         class: "xiaobai-os-nav-button",
-        disabled: a.isHome,
+        disabled: t.isHome,
         "aria-label": "返回",
-        onClick: r[0] || (r[0] = (o) => t.$emit("back"))
-      }, [...r[3] || (r[3] = [i("svg", {
+        onClick: i[0] || (i[0] = (l) => a.$emit("back"))
+      }, [...i[3] || (i[3] = [r("svg", {
         viewBox: "0 0 24 24",
         "aria-hidden": "true"
-      }, [i("path", { d: "m14.5 6-6 6 6 6" })], -1)])], 8, Y2),
-      i("button", {
+      }, [r("path", { d: "m14.5 6-6 6 6 6" })], -1)])], 8, Ye),
+      r("button", {
         type: "button",
         class: "xiaobai-os-nav-button xiaobai-os-home-button",
         "aria-label": "主页",
-        onClick: r[1] || (r[1] = (o) => t.$emit("home"))
-      }, [r[4] || (r[4] = i("svg", {
+        onClick: i[1] || (i[1] = (l) => a.$emit("home"))
+      }, [i[4] || (i[4] = r("svg", {
         viewBox: "0 0 24 24",
         "aria-hidden": "true"
-      }, [i("path", { d: "m4.5 11 7.5-6 7.5 6v8h-5v-5h-5v5h-5z" })], -1)), a.isHome ? (d(), f("i", ee)) : R("", !0)]),
-      i("button", {
+      }, [r("path", { d: "m4.5 11 7.5-6 7.5 6v8h-5v-5h-5v5h-5z" })], -1)), t.isHome ? (p(), u("i", ea)) : _("", !0)]),
+      r("button", {
         type: "button",
         class: "xiaobai-os-nav-button xiaobai-os-close-button",
         "aria-label": "关闭",
-        onClick: r[2] || (r[2] = (o) => t.$emit("close"))
-      }, [...r[5] || (r[5] = [i("span", null, [i("svg", {
+        onClick: i[2] || (i[2] = (l) => a.$emit("close"))
+      }, [...i[5] || (i[5] = [r("span", null, [r("svg", {
         viewBox: "0 0 24 24",
         "aria-hidden": "true"
-      }, [i("path", { d: "m7 9.5 5 5 5-5" })])], -1)])])
+      }, [r("path", { d: "m7 9.5 5 5 5-5" })])], -1)])])
     ], 2));
   }
-}), ae = te, re = /* @__PURE__ */ O({
+}), ta = aa, ia = /* @__PURE__ */ S({
   __name: "XiaobaiOsSystemBar",
   props: { isHome: { type: Boolean } },
-  setup(a) {
-    return (t, r) => (d(), f("header", {
-      class: $(["xiaobai-os-system-bar", { "is-home": a.isHome }]),
+  setup(t) {
+    return (a, i) => (p(), u("header", {
+      class: H(["xiaobai-os-system-bar", { "is-home": t.isHome }]),
       "aria-label": "系统状态"
-    }, [...r[0] || (r[0] = [i("span", { class: "xiaobai-os-system-mark" }, "小白", -1), i("span", {
+    }, [...i[0] || (i[0] = [r("span", { class: "xiaobai-os-system-mark" }, "小白", -1), r("span", {
       class: "xiaobai-os-system-status",
       "aria-hidden": "true"
-    }, [i("span", { class: "xiaobai-os-signal" }, [
-      i("i"),
-      i("i"),
-      i("i"),
-      i("i")
-    ]), i("span", { class: "xiaobai-os-battery" }, [i("i")])], -1)])], 2));
+    }, [r("span", { class: "xiaobai-os-signal" }, [
+      r("i"),
+      r("i"),
+      r("i"),
+      r("i")
+    ]), r("span", { class: "xiaobai-os-battery" }, [r("i")])], -1)])], 2));
   }
-}), ie = re, oe = { class: "xiaobai-os-device" }, le = { class: "xiaobai-os-glass" }, se = {
+}), ra = ia, la = { class: "xiaobai-os-device" }, sa = { class: "xiaobai-os-glass" }, oa = {
   key: "failure",
   class: "xiaobai-os-app-failure",
   role: "alert"
-}, ne = { class: "xiaobai-os-app-failure-actions" }, ce = {
+}, na = { class: "xiaobai-os-app-failure-actions" }, ca = {
   key: "loading",
   class: "xiaobai-os-app-loading",
   role: "status"
-}, de = /* @__PURE__ */ O({
+}, pa = /* @__PURE__ */ S({
   __name: "XiaobaiOsDevice",
   props: {
     apps: {},
@@ -239,147 +239,147 @@ var T2 = Object.freeze({
     "retry",
     "reload"
   ],
-  setup(a) {
-    const t = a, r = K(() => t.activeApp === null);
-    return (o, l) => (d(), f("div", oe, [l[9] || (l[9] = i("span", {
+  setup(t) {
+    const a = t, i = K(() => a.activeApp === null);
+    return (l, s) => (p(), u("div", la, [s[9] || (s[9] = r("span", {
       class: "xiaobai-os-side-key",
       "aria-hidden": "true"
-    }, null, -1)), i("div", le, [
-      U(ie, { "is-home": r.value }, null, 8, ["is-home"]),
-      i("div", {
+    }, null, -1)), r("div", sa, [
+      E(ra, { "is-home": i.value }, null, 8, ["is-home"]),
+      r("div", {
         class: "xiaobai-os-stage",
-        style: N(a.activeApp ? { "--app-accent": a.activeApp.accent } : null)
-      }, [U(u2, {
+        style: N(t.activeApp ? { "--app-accent": t.activeApp.accent } : null)
+      }, [E(fe, {
         name: "xiaobai-os-route",
         mode: "out-in"
       }, {
-        default: V(() => [r.value ? (d(), H(Q2, {
+        default: Z(() => [i.value ? (p(), C(Qe, {
           key: "home",
-          apps: a.apps,
-          "character-avatar": a.characterAvatar,
-          onOpenApp: l[0] || (l[0] = (m) => o.$emit("openApp", m))
-        }, null, 8, ["apps", "character-avatar"])) : a.appFailure ? (d(), f("section", se, [
-          l[7] || (l[7] = i("span", {
+          apps: t.apps,
+          "character-avatar": t.characterAvatar,
+          onOpenApp: s[0] || (s[0] = (m) => l.$emit("openApp", m))
+        }, null, 8, ["apps", "character-avatar"])) : t.appFailure ? (p(), u("section", oa, [
+          s[7] || (s[7] = r("span", {
             class: "xiaobai-os-app-failure-mark",
             "aria-hidden": "true"
           }, "!", -1)),
-          i("h1", null, _(a.activeApp?.name) + "暂时无法打开", 1),
-          i("p", null, _(a.appFailure.message), 1),
-          i("div", ne, [a.appFailure.retryable ? (d(), f("button", {
+          r("h1", null, O(t.activeApp?.name) + "暂时无法打开", 1),
+          r("p", null, O(t.appFailure.message), 1),
+          r("div", na, [t.appFailure.retryable ? (p(), u("button", {
             key: 0,
             type: "button",
-            onClick: l[1] || (l[1] = (m) => o.$emit("retry"))
-          }, "重试")) : R("", !0), i("button", {
+            onClick: s[1] || (s[1] = (m) => l.$emit("retry"))
+          }, "重试")) : _("", !0), r("button", {
             type: "button",
-            onClick: l[2] || (l[2] = (m) => o.$emit("reload"))
+            onClick: s[2] || (s[2] = (m) => l.$emit("reload"))
           }, "重新载入 OS")])
-        ])) : a.appLoading ? (d(), f("div", ce, [l[8] || (l[8] = i("span", { "aria-hidden": "true" }, null, -1)), d2(" 正在打开" + _(a.activeApp?.name), 1)])) : a.activeApp && a.activeComponent ? (d(), f("div", {
-          key: `app:${a.activeApp.id}:${a.appRenderKey}`,
+        ])) : t.appLoading ? (p(), u("div", ca, [s[8] || (s[8] = r("span", { "aria-hidden": "true" }, null, -1)), pe(" 正在打开" + O(t.activeApp?.name), 1)])) : t.activeApp && t.activeComponent ? (p(), u("div", {
+          key: `app:${t.activeApp.id}:${t.appRenderKey}`,
           class: "xiaobai-os-app-route"
-        }, [U(j2, { onFailed: l[3] || (l[3] = (m) => o.$emit("renderFailed", m)) }, {
-          default: V(() => [(d(), H(l2(a.activeComponent), {
-            bridge: a.bridge,
-            "initial-state": a.activeState
+        }, [E(Fe, { onFailed: s[3] || (s[3] = (m) => l.$emit("renderFailed", m)) }, {
+          default: Z(() => [(p(), C(se(t.activeComponent), {
+            bridge: t.bridge,
+            "initial-state": t.activeState
           }, null, 8, ["bridge", "initial-state"]))]),
           _: 1
-        })])) : R("", !0)]),
+        })])) : _("", !0)]),
         _: 1
       })], 4),
-      U(ae, {
-        "is-home": r.value,
-        onBack: l[4] || (l[4] = (m) => o.$emit("back")),
-        onHome: l[5] || (l[5] = (m) => o.$emit("home")),
-        onClose: l[6] || (l[6] = (m) => o.$emit("close"))
+      E(ta, {
+        "is-home": i.value,
+        onBack: s[4] || (s[4] = (m) => l.$emit("back")),
+        onHome: s[5] || (s[5] = (m) => l.$emit("home")),
+        onClose: s[6] || (s[6] = (m) => l.$emit("close"))
       }, null, 8, ["is-home"])
     ])]));
   }
-}), pe = de, fe = {
+}), da = pa, ua = {
   key: 0,
   class: "xiaobai-os-error",
   role: "alert"
-}, ue = {
+}, fa = {
   key: 1,
   class: "xiaobai-os-loading",
   role: "status"
-}, he = /* @__PURE__ */ O({
+}, va = /* @__PURE__ */ S({
   __name: "App",
-  setup(a) {
-    const t = m2(), r = y(null), o = y(!1), l = y("light"), m = y(/* @__PURE__ */ new Set()), L = y(""), p = y(null), x = o2(null), k = y(null), u = y(!1), n = y(null), C = y(0), G = y("");
-    let z = null, T = () => {
-    }, A = 0, h = null;
+  setup(t) {
+    const a = me(), i = b(null), l = b(!1), s = b("light"), m = b(/* @__PURE__ */ new Set()), G = b(""), d = b(null), x = le(null), k = b(null), f = b(!1), n = b(null), T = b(0), R = b("");
+    let D = null, j = () => {
+    }, A = 0, v = null;
     const W = K(() => q.filter((e) => m.value.has(e.id)));
-    function Z(e) {
-      const s = new Set(e.map((b) => String(b.id))), c = p.value && !s.has(p.value.id), g = h && !s.has(h.appId);
-      m.value = s, !(!c && !g) && (A += 1, h = null, p.value = null, x.value = null, k.value = null, u.value = !1, n.value = null, t.clearAppSession());
+    function z(e) {
+      const o = new Set(e.map((y) => String(y.id))), c = d.value && !o.has(d.value.id), g = v && !o.has(v.appId);
+      m.value = o, !(!c && !g) && (A += 1, v = null, d.value = null, x.value = null, k.value = null, f.value = !1, n.value = null, a.clearAppSession());
     }
     function J(e) {
-      A += 1, h = null, l.value = e.theme === "dark" ? "dark" : "light", Z(e.apps || []), L.value = String(e.chat?.characterAvatar || ""), p.value = null, x.value = null, k.value = null, u.value = !1, n.value = null, t.clearAppSession(), o.value = !0;
+      A += 1, v = null, s.value = e.theme === "dark" ? "dark" : "light", z(e.apps || []), G.value = String(e.chat?.characterAvatar || ""), d.value = null, x.value = null, k.value = null, f.value = !1, n.value = null, a.clearAppSession(), l.value = !0;
     }
     function Q(e) {
-      if (e.type === "os/init" && J(e.payload || {}), e.type === "os/theme-changed" && (l.value = e.payload?.theme === "dark" ? "dark" : "light"), e.type === "os/apps-changed") {
+      if (e.type === "os/init" && J(e.payload || {}), e.type === "os/theme-changed" && (s.value = e.payload?.theme === "dark" ? "dark" : "light"), e.type === "os/apps-changed") {
         const g = e.payload;
-        Z(g?.apps || []);
+        z(g?.apps || []);
       }
       if (e.type === "os/app-state") {
-        const g = e.payload, b = g?.status;
-        g?.appId === p.value?.id && b?.state === "failed" && (u.value = !1, n.value = {
-          phase: b.failure?.phase || "host",
-          message: b.failure?.message || "Host APP 运行失败",
-          retryable: b.failure?.retryable !== !1,
+        const g = e.payload, y = g?.status;
+        g?.appId === d.value?.id && y?.state === "failed" && (f.value = !1, n.value = {
+          phase: y.failure?.phase || "host",
+          message: y.failure?.message || "Host APP 运行失败",
+          retryable: y.failure?.retryable !== !1,
           requiresAppRetry: !0
-        }, t.clearAppSession());
+        }, a.clearAppSession());
       }
-      e.type === "os/error" && (G.value = String(e.payload?.message || "小白 OS 初始化失败"));
-      const s = e.payload?.state;
-      h && e.appId === h.appId && e.type === `${h.appId}/state` && (h.latestState = s);
-      const c = t.getAppSession();
-      p.value && c?.appId === p.value.id && e.appId === c.appId && e.activationToken === c.activationToken && e.type === `${p.value.id}/state` && (k.value = s);
+      e.type === "os/error" && (R.value = String(e.payload?.message || "小白 OS 初始化失败"));
+      const o = e.payload?.state;
+      v && e.appId === v.appId && e.type === `${v.appId}/state` && (v.latestState = o);
+      const c = a.getAppSession();
+      d.value && c?.appId === d.value.id && e.appId === c.appId && e.activationToken === c.activationToken && e.type === `${d.value.id}/state` && (k.value = o);
     }
-    async function I(e) {
-      const s = ++A, c = { appId: e.id };
-      h = c, p.value = e, x.value = null, k.value = null, u.value = !0, n.value = null, t.clearAppSession(), G.value = "";
-      const g = t.request("app/activate", { appId: e.id }), b = e.load(), [S, P] = await Promise.allSettled([g, b]);
+    async function M(e) {
+      const o = ++A, c = { appId: e.id };
+      v = c, d.value = e, x.value = null, k.value = null, f.value = !0, n.value = null, a.clearAppSession(), R.value = "";
+      const g = a.request("app/activate", { appId: e.id }), y = e.load(), [P, I] = await Promise.allSettled([g, y]);
       try {
-        if (s !== A) return;
-        if (S.status === "fulfilled") {
-          if (S.value.appId !== e.id || !S.value.activationToken) throw new Error("app_activation_mismatch");
-          t.setAppSession({
+        if (o !== A) return;
+        if (P.status === "fulfilled") {
+          if (P.value.appId !== e.id || !P.value.activationToken) throw new Error("app_activation_mismatch");
+          a.setAppSession({
             appId: e.id,
-            activationToken: S.value.activationToken
-          }), k.value = c.latestState ?? S.value.state ?? null;
+            activationToken: P.value.activationToken
+          }), k.value = c.latestState ?? P.value.state ?? null;
         } else {
-          const v = S.reason;
+          const h = P.reason;
           n.value = {
-            phase: v instanceof D ? v.phase : "host",
-            message: v instanceof Error ? v.message : String(v),
-            retryable: !(v instanceof D) || v.retryable,
-            requiresAppRetry: v instanceof D && v.requiresAppRetry
+            phase: h instanceof L ? h.phase : "host",
+            message: h instanceof Error ? h.message : String(h),
+            retryable: !(h instanceof L) || h.retryable,
+            requiresAppRetry: h instanceof L && h.requiresAppRetry
           };
         }
-        P.status === "fulfilled" ? x.value = X(P.value) : n.value || (n.value = {
+        I.status === "fulfilled" ? x.value = X(I.value) : n.value || (n.value = {
           phase: "ui-load",
-          message: P.reason instanceof Error ? P.reason.message : "APP 界面加载失败",
+          message: I.reason instanceof Error ? I.reason.message : "APP 界面加载失败",
           retryable: !0
-        }), u.value = !1;
-      } catch (v) {
-        u.value = !1, n.value = {
+        }), f.value = !1;
+      } catch (h) {
+        f.value = !1, n.value = {
           phase: "host",
-          message: v instanceof Error ? v.message : String(v),
+          message: h instanceof Error ? h.message : String(h),
           retryable: !0
-        }, t.clearAppSession();
+        }, a.clearAppSession();
       } finally {
-        h === c && (h = null);
+        v === c && (v = null);
       }
     }
     async function Y() {
-      const e = p.value, s = n.value;
-      if (!(!e || !s)) {
-        if (s.phase === "ui-render") {
-          n.value = null, C.value += 1;
+      const e = d.value, o = n.value;
+      if (!(!e || !o)) {
+        if (o.phase === "ui-render") {
+          n.value = null, T.value += 1;
           return;
         }
-        if (s.phase === "ui-load" && t.getAppSession()?.appId === e.id) {
-          u.value = !0, n.value = null, e.resetLoader();
+        if (o.phase === "ui-load" && a.getAppSession()?.appId === e.id) {
+          f.value = !0, n.value = null, e.resetLoader();
           try {
             x.value = X(await e.load());
           } catch (c) {
@@ -389,19 +389,19 @@ var T2 = Object.freeze({
               retryable: !0
             };
           } finally {
-            u.value = !1;
+            f.value = !1;
           }
           return;
         }
-        if ((s.phase === "activate" || s.phase === "host") && !s.requiresAppRetry) {
-          await I(e);
+        if ((o.phase === "activate" || o.phase === "host") && !o.requiresAppRetry) {
+          await M(e);
           return;
         }
-        u.value = !0, n.value = null;
+        f.value = !0, n.value = null;
         try {
-          await t.request("app/retry", { appId: e.id }), await I(e);
+          await a.request("app/retry", { appId: e.id }), await M(e);
         } catch (c) {
-          u.value = !1, n.value = {
+          f.value = !1, n.value = {
             phase: "host",
             message: c instanceof Error ? c.message : String(c),
             retryable: !0
@@ -409,75 +409,75 @@ var T2 = Object.freeze({
         }
       }
     }
-    function M(e) {
-      const s = p.value;
-      s && (n.value = {
+    function U(e) {
+      const o = d.value;
+      o && (n.value = {
         phase: "ui-render",
         message: e instanceof Error ? e.message : "APP 界面渲染失败",
         retryable: !0
-      }, t.post("os/app-ui-failure", {
-        appId: s.id,
+      }, a.post("os/app-ui-failure", {
+        appId: o.id,
         phase: "ui-render"
       }));
     }
-    function j(e) {
-      !p.value || u.value || n.value || (e.preventDefault(), M(e.error ?? new Error(e.message || "APP 界面运行失败")));
-    }
     function F(e) {
-      !p.value || u.value || n.value || (e.preventDefault(), M(e.reason));
+      !d.value || f.value || n.value || (e.preventDefault(), U(e.error ?? new Error(e.message || "APP 界面运行失败")));
     }
-    function e2() {
+    function V(e) {
+      !d.value || f.value || n.value || (e.preventDefault(), U(e.reason));
+    }
+    function ee() {
       window.location.reload();
     }
+    function $() {
+      A += 1, v = null, a.post("app/deactivate", { appId: d.value?.id || "" }), a.clearAppSession(), d.value = null, x.value = null, k.value = null, f.value = !1, n.value = null;
+    }
     function B() {
-      A += 1, h = null, t.post("app/deactivate", { appId: p.value?.id || "" }), t.clearAppSession(), p.value = null, x.value = null, k.value = null, u.value = !1, n.value = null;
+      A += 1, v = null, a.post("os/close"), a.clearAppSession();
     }
-    function E() {
-      A += 1, h = null, t.post("os/close"), t.clearAppSession();
-    }
-    function t2(e) {
+    function ae(e) {
       if (e.key === "Escape") {
-        e.preventDefault(), p.value ? B() : E();
+        e.preventDefault(), d.value ? $() : B();
         return;
       }
-      if (e.key !== "Tab" || !r.value) return;
-      const s = Array.from(r.value.querySelectorAll('button:not(:disabled), [href], input:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'));
-      if (s.length === 0) return;
-      const c = s[0], g = s[s.length - 1];
+      if (e.key !== "Tab" || !i.value) return;
+      const o = Array.from(i.value.querySelectorAll('button:not(:disabled), [href], input:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'));
+      if (o.length === 0) return;
+      const c = o[0], g = o[o.length - 1];
       e.shiftKey && document.activeElement === c ? (e.preventDefault(), g.focus()) : !e.shiftKey && document.activeElement === g && (e.preventDefault(), c.focus());
     }
-    return a2(async () => {
-      z = document.activeElement instanceof HTMLElement ? document.activeElement : null, T = t.subscribe(Q), t.start(), window.addEventListener("error", j), window.addEventListener("unhandledrejection", F), await n2(), r.value?.focus();
-    }), h2(() => {
-      A += 1, h = null, window.removeEventListener("error", j), window.removeEventListener("unhandledrejection", F), T(), t.dispose(), z?.focus();
-    }), (e, s) => (d(), f("main", {
+    return te(async () => {
+      D = document.activeElement instanceof HTMLElement ? document.activeElement : null, j = a.subscribe(Q), a.start(), window.addEventListener("error", F), window.addEventListener("unhandledrejection", V), await ne(), i.value?.focus();
+    }), ve(() => {
+      A += 1, v = null, window.removeEventListener("error", F), window.removeEventListener("unhandledrejection", V), j(), a.dispose(), D?.focus();
+    }), (e, o) => (p(), u("main", {
       ref_key: "root",
-      ref: r,
-      class: $(["xiaobai-os-shell", `theme-${l.value}`]),
+      ref: i,
+      class: H(["xiaobai-os-shell", `theme-${s.value}`]),
       role: "dialog",
       "aria-modal": "true",
       "aria-label": "小白 OS",
       tabindex: "-1",
-      onKeydown: t2,
-      onClick: c2(E, ["self"])
-    }, [G.value ? (d(), f("div", fe, _(G.value), 1)) : R("", !0), o.value ? (d(), H(pe, {
+      onKeydown: ae,
+      onClick: ce(B, ["self"])
+    }, [R.value ? (p(), u("div", ua, O(R.value), 1)) : _("", !0), l.value ? (p(), C(da, {
       key: 2,
       apps: W.value,
-      "active-app": p.value,
+      "active-app": d.value,
       "active-component": x.value,
       "active-state": k.value,
       "app-failure": n.value,
-      "app-loading": u.value,
-      "app-render-key": C.value,
-      bridge: v2(t),
-      "character-avatar": L.value,
-      onOpenApp: I,
-      onBack: B,
-      onHome: B,
-      onClose: E,
-      onRenderFailed: M,
+      "app-loading": f.value,
+      "app-render-key": T.value,
+      bridge: he(a),
+      "character-avatar": G.value,
+      onOpenApp: M,
+      onBack: $,
+      onHome: $,
+      onClose: B,
+      onRenderFailed: U,
       onRetry: Y,
-      onReload: e2
+      onReload: ee
     }, null, 8, [
       "apps",
       "active-app",
@@ -488,7 +488,7 @@ var T2 = Object.freeze({
       "app-render-key",
       "bridge",
       "character-avatar"
-    ])) : (d(), f("div", ue, "正在启动小白 OS"))], 34));
+    ])) : (p(), u("div", fa, "正在启动小白 OS"))], 34));
   }
-}), ve = he;
-f2(ve).mount("#app");
+}), ha = va;
+ue(ha).mount("#app");

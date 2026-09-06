@@ -2,6 +2,7 @@ import { parseLearningData } from '../../../domains/learning/data.js';
 import type { LearningData } from '../../../domains/learning/types.js';
 import type { JsonUserFilePort } from '../../../storage/sidecar-index.js';
 import { XiaobaiOsStorageError } from '../../../storage/storage-port.js';
+import { createLearningId } from '../application/identity.js';
 import { LEARNING_FILENAME, MAX_LEARNING_WRITE_BYTES, parseLearningDocument, sameLearningDocument, type LearningDocument } from './document.js';
 
 export class LearningStorageError extends Error {
@@ -23,7 +24,7 @@ export function createLearningRepository(files: JsonUserFilePort, options: {
     createId?: () => string;
     locks?: Pick<LockManager, 'request'> | null;
 } = {}) {
-    const createId = options.createId ?? (() => crypto.randomUUID());
+    const createId = options.createId ?? createLearningId;
     const locks = options.locks === undefined ? globalThis.navigator?.locks : options.locks;
     let confirmed: LearningDocument | null | undefined;
     let pending: PendingWrite | null = null;

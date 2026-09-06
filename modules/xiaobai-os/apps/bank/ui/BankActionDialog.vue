@@ -2,7 +2,6 @@
 import { computed, onMounted, ref } from 'vue';
 import { amountAtBps } from '../../../domains/bank/money.js';
 import type { BankDepositPositionView, BankDepositProductView, BankFundProductView } from '../types.js';
-import BankProductIcon from './BankProductIcon.vue';
 const props = defineProps<{
     mode: 'deposit-open' | 'fund-open' | 'withdraw';
     product?: BankDepositProductView | BankFundProductView;
@@ -13,7 +12,7 @@ const emit = defineEmits<{ cancel: []; confirm: [amount?: number] }>();
 const dialog = ref<HTMLDialogElement | null>(null);
 onMounted(() => dialog.value?.showModal());
 const amount = ref(props.product ? String(props.product.minAmount) : '');
-const title = computed(() => props.mode === 'deposit-open' ? '存入一份定期' : props.mode === 'fund-open' ? '申购一份理财' : '提前取回这笔存款？');
+const title = computed(() => props.mode === 'deposit-open' ? '存入定期' : props.mode === 'fund-open' ? '申购理财' : '提前支取');
 const amountValue = computed(() => /^\d+$/.test(amount.value.trim()) ? Number(amount.value) : 0);
 const validationMessage = computed(() => {
     if (props.mode === 'withdraw') {return '';}
@@ -54,7 +53,6 @@ function handleKeydown(event: KeyboardEvent): void {
 <template>
     <dialog ref="dialog" class="bank-dialog" :aria-label="title" @cancel.prevent="!busy && emit('cancel')" @keydown="handleKeydown">
         <form @submit.prevent="submit">
-            <span class="bank-dialog-mark"><BankProductIcon :kind="mode === 'withdraw' ? 'withdraw' : mode === 'deposit-open' ? 'deposit' : 'fund'" /></span>
             <h2>{{ title }}</h2>
             <div class="bank-dialog-subject"><strong>{{ position?.name || product?.name }}</strong><span v-if="product">{{ product.lockRounds }} 回合</span></div>
             <template v-if="mode !== 'withdraw'">

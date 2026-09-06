@@ -17,7 +17,7 @@ const props = defineProps<{
 const emit = defineEmits<{ cancel: []; confirm: [parameters: Record<string, string>] }>();
 const dialog = ref<HTMLDialogElement | null>(null);
 const parameters = reactive<Record<string, string>>({});
-const title = computed(() => props.mode === 'purchase' ? '把这份奇妙带回去' : props.mode === 'use' ? '让奇物进入故事' : '关闭这份效果？');
+const title = computed(() => props.mode === 'purchase' ? '确认购买' : props.mode === 'use' ? '使用奇物' : '关闭效果？');
 const formValid = computed(() => props.mode !== 'use' || props.item.inputs.every(input => String(parameters[input.key] || '').trim().length > 0));
 const canSubmit = computed(() => !props.busy && !props.disabledReason && formValid.value);
 onMounted(() => dialog.value?.showModal());
@@ -38,7 +38,7 @@ function handleKeydown(event: KeyboardEvent): void {
 <template>
     <dialog ref="dialog" class="shop-dialog" :aria-label="title" @cancel.prevent="!busy && emit('cancel')" @keydown="handleKeydown">
         <form @submit.prevent="submit">
-            <header class="shop-dialog-heading"><span class="shop-eyebrow">{{ mode === 'purchase' ? '购入确认' : mode === 'use' ? '使用确认' : '效果管理' }}</span><h2>{{ title }}</h2></header>
+            <header class="shop-dialog-heading"><h2>{{ title }}</h2></header>
             <div class="shop-dialog-item"><ShopItemArt :name="item.icon" /><div><strong>{{ item.name }}</strong><span>{{ item.durationLabel }}</span><small v-if="mode === 'purchase'">数量 1 件 · 放入背包</small><small v-else-if="mode === 'use'">消耗库存 1 件 · 不再扣款</small></div></div>
             <dl v-if="mode === 'purchase'" class="shop-payment-summary">
                 <div><dt>本次支付</dt><dd class="shop-payment-total">¤ {{ item.price.toLocaleString('zh-CN') }}</dd></div>

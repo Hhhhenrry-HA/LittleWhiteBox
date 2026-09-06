@@ -20,7 +20,7 @@ export const fixtureLesson = {
 
 export async function createClassroomFixture({ listening = false, lesson: lessonInput = fixtureLesson, getTtsFacade = () => undefined } = {}) {
     let chat = 'runtime-a'; let envelope = null; let userFile = null; let serial = 0;
-    const flags = { userFailure: false, userRejected: false, heldUser: null, ledgerFailure: false, ledgerUnknown: false, heldLedger: null, providerFailure: false, providerGate: null, prepareReply: null };
+    const flags = { userFailure: false, userRejected: false, heldUser: null, ledgerFailure: false, ledgerUnknown: false, heldLedger: null, providerFailure: false, providerGate: null, prepareReply: null, profileReply: null };
     const counts = { provider: 0, userWrites: 0, ledgerWrites: 0 };
     const failures = [];
     const reference = () => ({ identityKey: `storage-${chat}`, binding: { kind: 'character', ownerLocator: 'fixture.png', chatId: chat },
@@ -43,7 +43,7 @@ export async function createClassroomFixture({ listening = false, lesson: lesson
         if (flags.userRejected) { throw new XiaobaiOsStorageError('fixture_rejected', 'fixed rejection', false, { httpStatus: 403 }); }
         if (flags.userFailure) { flags.heldUser = structuredClone(value); throw new Error('fixture response lost'); }
         userFile = structuredClone(value);
-    } }, { createId: () => `commit-${++serial}`, locks: null });
+    } }, { locks: null });
     const profile = () => repository.snapshot().document?.data.profiles[0];
     const call = (name, args) => ({ id: name, name, arguments: JSON.stringify(args) });
     const gateway = { loadConfig: async () => ({}), openSession: async () => {
@@ -57,6 +57,7 @@ export async function createClassroomFixture({ listening = false, lesson: lesson
             const input = JSON.parse(message.content.slice(message.content.indexOf('\n') + 1, message.content.lastIndexOf('\n')));
             const action = input.action;
             if (action.kind === 'profile') {
+                if (flags.profileReply !== null) { return { text: flags.profileReply }; }
                 return { toolCalls: [call('LearningProfileEdit', { explanationLanguage: 'zh-CN', selfAssessment: '有高中基础，听力需要练习。', goal: { description: '备考英语四级，读懂新闻，写出清晰的短文。' } })] };
             }
             if (action.kind === 'prepare') {

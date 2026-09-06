@@ -50,6 +50,7 @@ const writeDisabledReason = computed(() => {
     return '';
 });
 const refreshDisabled = computed(() => refreshing.value || actionBusy.value || requiresConfirmation.value);
+const noticeMessage = computed(() => errorMessage.value || state.value.message || (state.value.status !== 'loading' && !pending.value ? writeDisabledReason.value : ''));
 
 function createActionId(): string {
     if (typeof globalThis.crypto?.randomUUID === 'function') {return `bank-ui:${globalThis.crypto.randomUUID()}`;}
@@ -236,20 +237,20 @@ onBeforeUnmount(() => {
 <template>
     <main class="bank-app">
         <header class="bank-header">
-            <span class="bank-brand"><BankProductIcon kind="vault" /></span><h1>银行</h1>
-            <div class="bank-header-balance"><small>钱包可用</small><strong>¤ {{ state.status === 'loading' ? '—' : state.balance.toLocaleString('zh-CN') }}</strong></div>
+            <h1>银行</h1>
+            <div class="bank-header-balance" aria-label="钱包可用余额"><strong>¤ {{ state.status === 'loading' ? '—' : state.balance.toLocaleString('zh-CN') }}</strong></div>
             <button type="button" class="bank-icon-button" :disabled="refreshDisabled" aria-label="刷新银行" @click="refresh"><BankProductIcon kind="refresh" :class="{ 'is-spinning': refreshing }" /></button>
         </header>
-        <div v-if="state.message || errorMessage" class="bank-notice-area">
+        <div v-if="noticeMessage" class="bank-notice-area">
             <aside class="bank-notice" :class="{ 'is-error': Boolean(errorMessage) || state.status === 'blocked' || state.status === 'conflict' }" role="status">
-                <strong>{{ errorMessage && state.status === 'ready' ? '操作未完成' : state.statusLabel }}</strong><p>{{ errorMessage || state.message }}</p>
+                <p>{{ noticeMessage }}</p>
                 <button v-if="requiresConfirmation" type="button" :disabled="refreshing || actionBusy" @click="confirmSave">{{ refreshing ? '正在核实…' : '核实保存结果' }}</button>
                 <button v-else-if="state.status === 'blocked' || state.status === 'conflict'" type="button" :disabled="refreshDisabled" @click="refresh">{{ refreshing ? '正在读取…' : '重新读取银行' }}</button>
             </aside>
         </div>
         <div ref="content" class="bank-scroll">
-            <div v-if="state.status === 'loading'" class="bank-empty-state" role="status"><span><BankProductIcon kind="refresh" class="is-spinning" /></span><h3>正在打开你的金库…</h3><p>余额与持有资产准备好后，会显示在这里。</p></div>
-            <BankVault v-else-if="page === 'vault'" :balance="state.balance" :locked-amount="state.lockedAmount" :current-turn="state.currentTurn" :deposit-count="state.deposits.length" :fund-count="state.investments.length" :claimable-count="state.claimableCount" :write-disabled-reason="writeDisabledReason" @navigate="navigate" @settle="settleDue" />
+            <div v-if="state.status === 'loading'" class="bank-empty-state" role="status"><BankProductIcon kind="refresh" class="is-spinning" /><h3>正在读取资产…</h3></div>
+            <BankVault v-else-if="page === 'vault'" :locked-amount="state.lockedAmount" :current-turn="state.currentTurn" :deposit-count="state.deposits.length" :fund-count="state.investments.length" :claimable-count="state.claimableCount" :write-disabled-reason="writeDisabledReason" @navigate="navigate" @settle="settleDue" />
             <BankDeposits v-else-if="page === 'deposits'" :products="state.products.deposits" :balance="state.balance" :write-disabled-reason="writeDisabledReason" @open="product => openProduct(product, 'deposit-open')" />
             <BankFunds v-else-if="page === 'funds'" :products="state.products.funds" :balance="state.balance" :write-disabled-reason="writeDisabledReason" @open="product => openProduct(product, 'fund-open')" />
             <BankPositions v-else-if="page === 'positions'" :deposits="state.deposits" :investments="state.investments" :claimable-count="state.claimableCount" :write-disabled-reason="writeDisabledReason" @withdraw="openWithdrawal" @settle="settleDue" @browse="navigate('deposits')" />

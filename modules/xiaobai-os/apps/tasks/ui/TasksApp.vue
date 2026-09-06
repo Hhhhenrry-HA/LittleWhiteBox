@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, toRaw } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRaw } from 'vue';
 import type { XiaobaiOsAppProps } from '../../../shell/app-contract.js';
 import type {
     TaskDetailPresentation,
@@ -73,6 +73,7 @@ const selectedListing = ref<{ boardId: string; listingId: string } | null>(null)
 const selectedTaskId = ref('');
 const historySource = ref<'all' | 'received' | 'published'>('all');
 const content = ref<HTMLElement | null>(null);
+const pagePositions: Partial<Record<TasksPage, { scrollTop: number; focusKey: string }>> = {};
 const lanes = computed(() => taskLanes(state.value));
 const receivedActive = computed(() => lanes.value.received);
 const publishedRecords = computed(() => lanes.value.published);
@@ -180,8 +181,8 @@ async function acceptListing(boardId: string, listingId: string): Promise<void> 
     try {
         const body = await request('tasks/board/accept', { boardId, listingId });
         applyResponseState(body, version);
-        announce('任务已接取，报酬已进入托管。');
         if (mounted && page.value === 'listing') {go('active');}
+        announce('任务已接取，报酬已进入托管。');
     } catch (error) {errorMessage.value = readableError(error);}
     finally {writeBusy.value = false;}
 }
@@ -214,8 +215,8 @@ async function assignTask(task: TaskRecord, candidateId: string): Promise<void> 
         });
         applyResponseState(body, version);
         confirmation.value = null;
-        announce('执行者已确认，任务进入进行中。');
         if (mounted) {go('published');}
+        announce('执行者已确认，任务进入进行中。');
     } catch (error) {errorMessage.value = readableError(error);}
     finally {writeBusy.value = false;}
 }
@@ -232,8 +233,8 @@ async function cancelTask(task: TaskRecord): Promise<void> {
         });
         applyResponseState(body, version);
         confirmation.value = null;
-        announce(task.source === 'received' ? '已放弃任务，不会扣除小白币。' : '委托已取消，托管报酬已退回钱包。');
         if (mounted) {go(task.source === 'received' ? 'active' : 'published');}
+        announce(task.source === 'received' ? '已放弃任务，不会扣除小白币。' : '委托已取消，托管报酬已退回钱包。');
     } catch (error) {errorMessage.value = readableError(error);}
     finally {writeBusy.value = false;}
 }
@@ -281,8 +282,7 @@ async function maintainOnce(): Promise<void> {
 async function openDetail(taskId: string, refresh = false): Promise<void> {
     if (!refresh) {
         if (isMainPage.value || page.value === 'recruit') {previousPage.value = page.value as MainPage | 'recruit';}
-        page.value = 'detail';
-        content.value?.scrollTo(0, 0);
+        go('detail');
         detail.value = null;
         detailBusy.value = true;
     }
@@ -349,16 +349,30 @@ async function retryRead(): Promise<void> {
     finally { saveBusy.value = false; }
 }
 
-function go(next: TasksPage): void {
+function go(next: TasksPage, restore = false): void {
+    actionMessage.value = '';
     if (next === 'settings' && isMainPage.value) {previousPage.value = page.value as MainPage;}
+    pagePositions[page.value] = {
+        scrollTop: content.value?.scrollTop ?? 0,
+        focusKey: document.activeElement instanceof HTMLElement ? document.activeElement.dataset.navigationId ?? '' : '',
+    };
     detailRequest += 1;
     page.value = next;
-    content.value?.scrollTo(0, 0);
+    void nextTick(() => {
+        if (!mounted || page.value !== next) {return;}
+        const position = restore ? pagePositions[next] : undefined;
+        content.value?.scrollTo(0, position?.scrollTop ?? 0);
+        const trigger = position?.focusKey
+            ? Array.from(content.value?.closest('main')?.querySelectorAll<HTMLButtonElement>('button[data-navigation-id]') ?? [])
+                .find(button => button.dataset.navigationId === position.focusKey)
+            : undefined;
+        (trigger ?? content.value)?.focus({ preventScroll: true });
+    });
 }
 
 function back(): void {
     go(page.value === 'detail' || page.value === 'settings' ? previousPage.value
-        : page.value === 'listing' ? 'board' : 'published');
+        : page.value === 'listing' ? 'board' : 'published', true);
 }
 
 function openListing(boardId: string, listingId: string): void {
@@ -430,10 +444,9 @@ onBeforeUnmount(() => {
     <main class="tasks-app" @keydown="handleEscape">
         <header class="tasks-app-header">
             <button v-if="!isMainPage" type="button" class="tasks-icon-button" aria-label="返回上一页" @click="back"><TaskIcon name="back" /></button>
-            <span v-else class="tasks-brand-mark" aria-hidden="true"><TaskIcon name="ticket" /></span>
             <h1>{{ pageTitle }}</h1>
-            <div class="tasks-balance"><small>可用余额</small><strong>¤ {{ taskMoney(state.playerBalance) }}</strong></div>
-            <button v-if="isMainPage" type="button" class="tasks-icon-button" aria-label="任务设置" @click="go('settings')"><TaskIcon name="settings" /></button>
+            <div class="tasks-balance" aria-label="小白币余额"><strong>¤ {{ taskMoney(state.playerBalance) }}</strong></div>
+            <button v-if="isMainPage" type="button" class="tasks-icon-button" aria-label="任务设置" data-navigation-id="settings" @click="go('settings')"><TaskIcon name="settings" /></button>
         </header>
         <div class="tasks-notices" aria-live="polite">
             <aside v-if="state.message || (errorMessage && !confirmation) || actionMessage" class="tasks-notice" :class="{ 'is-error': Boolean(errorMessage) || state.status === 'conflict' || state.status === 'blocked', 'is-warning': requiresConfirmation }" role="status">
@@ -442,11 +455,7 @@ onBeforeUnmount(() => {
             </aside>
             <aside v-if="state.generation.message && !state.message" class="tasks-notice" role="status"><p>{{ state.generation.message }}</p></aside>
         </div>
-        <nav v-if="page === 'board' || page === 'active'" class="tasks-receive-tabs" aria-label="接任务页面">
-            <button type="button" :aria-pressed="page === 'board'" @click="go('board')">发现委托</button>
-            <button type="button" :aria-pressed="page === 'active'" @click="go('active')">我接的<span v-if="receivedActive.length">{{ receivedActive.length }}</span></button>
-        </nav>
-        <div ref="content" class="tasks-content">
+        <div ref="content" class="tasks-content" tabindex="-1">
             <TasksBoard v-if="page === 'board'" :board="state.board" :busy="boardBusy" :disabled-reason="generationDisabledReason" @refresh="refreshBoard" @detail="openListing" />
             <TasksActive v-else-if="page === 'active'" :records="receivedActive" @detail="openDetail" @discover="go('board')" />
             <TasksPublished v-else-if="page === 'published'" :records="publishedRecords" :disabled-reason="writeDisabledReason" @open="openPublished" @publish="go('publish')" @history="showPublishedHistory" />
@@ -458,11 +467,12 @@ onBeforeUnmount(() => {
             <TaskDetail v-else :detail="detail" :loading="detailBusy" :busy="writeBusy" :disabled-reason="writeDisabledReason" @cancel="askCancel" />
         </div>
         <nav v-if="isMainPage" class="tasks-nav" aria-label="任务主导航">
-            <button type="button" aria-label="接任务" :aria-current="page === 'board' || page === 'active' ? 'page' : undefined" @click="go('board')"><span><TaskIcon name="compass" /></span>接任务</button>
+            <button type="button" aria-label="发现委托" :aria-current="page === 'board' ? 'page' : undefined" @click="go('board')"><span><TaskIcon name="compass" /></span>发现</button>
+            <button type="button" aria-label="我接的" :aria-current="page === 'active' ? 'page' : undefined" @click="go('active')"><span><TaskIcon name="ticket" /></span>我接的</button>
             <button type="button" aria-label="我发布" :aria-current="page === 'published' ? 'page' : undefined" @click="go('published')"><span><TaskIcon name="send" /><i v-if="state.recruiting.length" /></span>我发布</button>
             <button type="button" aria-label="记录" :aria-current="page === 'history' ? 'page' : undefined" @click="go('history')"><span><TaskIcon name="archive" /></span>记录</button>
         </nav>
-        <TaskConfirmDialog v-if="confirmation" :title="confirmation.kind === 'publish' ? '让这份委托出发？' : confirmation.kind === 'cancel' ? (cancellingReceived ? '放弃这份任务？' : '取消这份委托？') : '把委托交给这位执行者？'" :confirm-label="confirmation.kind === 'publish' ? '托管并发布' : confirmation.kind === 'cancel' ? (cancellingReceived ? '确认放弃' : '取消并退款') : '确认委托'" :busy="writeBusy" :disabled-reason="writeDisabledReason" :error="errorMessage" @close="confirmation = null; errorMessage = ''" @confirm="confirmAction">
+        <TaskConfirmDialog v-if="confirmation" :title="confirmation.kind === 'publish' ? '确认发布' : confirmation.kind === 'cancel' ? (cancellingReceived ? '放弃任务？' : '取消委托？') : '确认执行者'" :confirm-label="confirmation.kind === 'publish' ? '托管并发布' : confirmation.kind === 'cancel' ? (cancellingReceived ? '确认放弃' : '取消并退款') : '确认委托'" :busy="writeBusy" :disabled-reason="writeDisabledReason" :error="errorMessage" @close="confirmation = null; errorMessage = ''" @confirm="confirmAction">
             <template v-if="confirmation.kind === 'publish'"><p class="tasks-confirm-name">{{ confirmation.form.title }}</p><strong class="tasks-confirm-amount">¤ {{ taskMoney(confirmation.form.reward) }}</strong><p>报酬将从钱包托管。发布后可招募执行者；任务结束前，你可以取消并全额退回报酬。</p></template>
             <template v-else-if="confirmation.kind === 'cancel'">
                 <p class="tasks-confirm-name">{{ confirmation.task.title }}</p>

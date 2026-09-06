@@ -70,9 +70,6 @@ onBeforeUnmount(() => clearTimeout(timer));
 <template>
     <section class="ladder-table">
         <header class="room-heading">
-            <div>
-                <span>走一段好运</span>
-            </div>
             <small>本局筹码 ¤ {{ game.bet }}</small>
         </header>
         <div class="ladder-landscape" :class="{ 'is-climbing': stepping || judging, 'is-fallen': fell }">

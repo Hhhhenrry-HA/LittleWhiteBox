@@ -121,3 +121,29 @@ test('classroom publishes real progress, exposes the error code and allows expli
     assert.ok(retried.profile); assert.equal(retried.busy, false); assert.equal(retried.message, '');
     assert.equal(logs.mock.calls.length, 1); assert.deepEqual(h.failures, []);
 });
+
+// Browser contract: LAN HTTP exposes getRandomValues but not randomUUID.
+// Use production ID creation through the full classroom, including confirmed file saves.
+test('LAN HTTP can save a profile, prepare, answer, keep a note and finish a lesson', async t => {
+    const original = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
+    const getRandomValues = globalThis.crypto.getRandomValues.bind(globalThis.crypto);
+    Object.defineProperty(globalThis, 'crypto', { configurable: true, value: { getRandomValues } });
+    t.after(() => Object.defineProperty(globalThis, 'crypto', original));
+    const h = await createClassroomFixture(); t.after(h.dispose);
+    const opened = await h.openLesson();
+    assert.equal(opened.storage, 'ready');
+    assert.ok(opened.profile); assert.ok(opened.unit);
+    const unit = h.profile().unit;
+    await h.command('explain', { exerciseId: unit.exercises[0].id, message: '请解释这段话。' });
+    await h.command('save-note');
+    assert.equal(h.profile().unit.notes.length, 1);
+    await h.command('submit', { unitId: unit.id, exerciseId: unit.exercises[0].id, answer: { kind: 'choice', ids: ['a'] } });
+    assert.equal(h.profile().unit.attempts.length, 1);
+    const completed = await h.command('complete');
+    assert.equal(completed.storage, 'ready');
+    assert.equal(h.profile().completions.length, 1);
+    assert.deepEqual(h.failures, []);
+    const saved = h.repository.snapshot().document;
+    await h.reenter();
+    assert.deepEqual(h.repository.snapshot().document, saved);
+});

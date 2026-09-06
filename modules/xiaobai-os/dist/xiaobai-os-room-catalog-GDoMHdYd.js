@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { B as R, C as $, E as h, H as f, I as A, T as l, V as z, d as i, f as E, j as T, l as m, m as c, p as w, v as y, w as U, z as u } from "./xiaobai-os-runtime-dom.esm-bundler-DwdCK5Jt.js";
+import { B as R, C as $, E as h, H as f, I as A, T as c, V as z, d as i, f as E, j as T, l as m, m as l, p as w, v as y, w as U, z as u } from "./xiaobai-os-runtime-dom.esm-bundler-DwdCK5Jt.js";
 var I = {
   1: [[2, 2]],
   2: [[1, 1], [3, 3]],
@@ -155,7 +155,7 @@ var V = ["aria-label"], N = { class: "game-die-stage" }, F = { class: "game-die-
     }
     return $(M), U(() => {
       g?.cancel(), v?.cancel();
-    }), T(() => t.value, M), (o, n) => (l(), c("div", {
+    }), T(() => t.value, M), (o, n) => (c(), l("div", {
       ref_key: "shell",
       ref: b,
       class: R(["game-die", { "is-hit": e.highlight }]),
@@ -165,10 +165,10 @@ var V = ["aria-label"], N = { class: "game-die-stage" }, F = { class: "game-die-
       ref_key: "cube",
       ref: p,
       class: "game-die-cube"
-    }, [(l(), c(m, null, h(a, (d) => i("div", {
+    }, [(c(), l(m, null, h(a, (d) => i("div", {
       key: d.side,
       class: R(["game-die-face", [d.side, { "is-result": d.face === e.value }]])
-    }, [i("div", F, [(l(!0), c(m, null, h(u(I)[d.face], ([k, x], C) => (l(), c("i", {
+    }, [i("div", F, [(c(!0), l(m, null, h(u(I)[d.face], ([k, x], C) => (c(), l("i", {
       key: C,
       class: "game-die-pip",
       style: z({ gridArea: `${k} / ${x}` })
@@ -203,21 +203,21 @@ var j = {
   __name: "DiceRecord",
   props: { detail: {} },
   setup(e) {
-    return (t, a) => e.detail.kind === "dice" ? (l(), c("div", j, [
+    return (t, a) => e.detail.kind === "dice" ? (c(), l("div", j, [
       i("p", null, f(e.detail.finalBid.by === "player" ? "你" : "对方") + "叫" + f(u(L)(e.detail.finalBid)) + " · " + f(e.detail.challenger === "player" ? "你" : "对方") + "开盅 ", 1),
       i("p", null, " 实际有" + f(u(L)({
         count: e.detail.matchingDiceCount,
         face: e.detail.finalBid.face
       })) + "（一点百搭） ", 1),
       a[0] || (a[0] = i("span", null, "对方的骰子", -1)),
-      i("div", H, [(l(!0), c(m, null, h(e.detail.dealerDice, (s, r) => (l(), E(D, {
+      i("div", H, [(c(!0), l(m, null, h(e.detail.dealerDice, (s, r) => (c(), E(D, {
         key: r,
         value: s,
         animate: !1,
         highlight: u(G)(s, e.detail.finalBid.face)
       }, null, 8, ["value", "highlight"]))), 128))]),
       a[1] || (a[1] = i("span", null, "你的骰子", -1)),
-      i("div", X, [(l(!0), c(m, null, h(e.detail.playerDice, (s, r) => (l(), E(D, {
+      i("div", X, [(c(!0), l(m, null, h(e.detail.playerDice, (s, r) => (c(), E(D, {
         key: r,
         value: s,
         animate: !1,
@@ -229,7 +229,7 @@ var j = {
   __name: "PushRecord",
   props: { detail: {} },
   setup(e) {
-    return (t, a) => e.detail.kind === "push" ? (l(), c("p", K, "这局找到了 " + f(e.detail.revealedCoins) + " 张金币。", 1)) : w("", !0);
+    return (t, a) => e.detail.kind === "push" ? (c(), l("p", K, "这局找到了 " + f(e.detail.revealedCoins) + " 张金币。", 1)) : w("", !0);
   }
 }), ee = W, te = {
   key: 0,
@@ -243,9 +243,9 @@ var j = {
       medium: "跨一步",
       risky: "大胆跃"
     };
-    return (a, s) => e.detail.kind === "ladder" ? (l(), c("ol", te, [(l(!0), c(m, null, h(e.detail.steps, (r) => (l(), c("li", { key: r.floor }, " 第 " + f(r.floor) + " 层 · " + f(t[r.choice]) + " · " + f(r.success ? "走过了，攒下 ¤ " + r.amountAfterStep : "没站稳"), 1))), 128))])) : w("", !0);
+    return (a, s) => e.detail.kind === "ladder" ? (c(), l("ol", te, [(c(!0), l(m, null, h(e.detail.steps, (r) => (c(), l("li", { key: r.floor }, " 第 " + f(r.floor) + " 层 · " + f(t[r.choice]) + " · " + f(r.success ? "走过了，攒下 ¤ " + r.amountAfterStep : "没站稳"), 1))), 128))])) : w("", !0);
   }
-}), re = ae, le = [
+}), re = ae, ce = [
   {
     id: "dice",
     name: "大话骰",
@@ -278,30 +278,30 @@ var j = {
   }
 ];
 function _(e) {
-  return le.find((t) => t.id === e);
+  return ce.find((t) => t.id === e);
 }
-var ce = [
+var le = [
   {
     ..._("dice"),
     record: J,
-    artwork: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20360%20230'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='cup'%20x1='115'%20y1='50'%20x2='245'%20y2='140'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23ab704a'/%3e%3cstop%20offset='.5'%20stop-color='%2367432e'/%3e%3cstop%20offset='1'%20stop-color='%23342d26'/%3e%3c/linearGradient%3e%3clinearGradient%20id='die'%20x2='1'%20y2='1'%3e%3cstop%20stop-color='%23fffdf0'/%3e%3cstop%20offset='1'%20stop-color='%23ddd5b9'/%3e%3c/linearGradient%3e%3c/defs%3e%3cellipse%20cx='180'%20cy='190'%20rx='111'%20ry='23'%20fill='%23082e27'%20opacity='.25'/%3e%3cg%20transform='rotate(-12%20184%20123)'%3e%3cpath%20d='M129%2057Q181%2027%20230%2057L245%20159Q183%20202%20113%20164Z'%20fill='url(%23cup)'%20stroke='%23caa277'%20stroke-width='2'/%3e%3cellipse%20cx='180'%20cy='59'%20rx='51'%20ry='19'%20fill='%23916746'%20stroke='%23caa277'%20stroke-width='3'/%3e%3cellipse%20cx='180'%20cy='59'%20rx='39'%20ry='12'%20fill='%23473323'/%3e%3cpath%20d='M116%20151Q183%20185%20243%20146'%20stroke='%23b68c60'%20stroke-width='4'/%3e%3cpath%20d='M137%2088L132%20140M146%2094L143%20145'%20stroke='%23c39e73'%20opacity='.3'%20stroke-width='2'/%3e%3c/g%3e%3cg%20transform='translate(232%20137)%20rotate(16)'%3e%3crect%20width='56'%20height='56'%20rx='12'%20fill='url(%23die)'%20stroke='%23fff7d9'/%3e%3cg%20fill='%23235349'%3e%3ccircle%20cx='16'%20cy='15'%20r='4'/%3e%3ccircle%20cx='40'%20cy='15'%20r='4'/%3e%3ccircle%20cx='16'%20cy='28'%20r='4'/%3e%3ccircle%20cx='40'%20cy='28'%20r='4'/%3e%3ccircle%20cx='16'%20cy='41'%20r='4'/%3e%3ccircle%20cx='40'%20cy='41'%20r='4'/%3e%3c/g%3e%3c/g%3e%3cg%20transform='translate(88%20164)%20rotate(-16)'%3e%3crect%20width='49'%20height='49'%20rx='11'%20fill='url(%23die)'%20stroke='%23fff7d9'/%3e%3ccircle%20cx='24.5'%20cy='24.5'%20r='7'%20fill='%23af4937'/%3e%3c/g%3e%3cpath%20d='m282%2068%205-11m-2%2026%2014-4M90%2091l-10-7'%20stroke='%23bbab72'%20stroke-width='3'%20stroke-linecap='round'/%3e%3c/svg%3e", "" + import.meta.url).href,
-    load: () => import("./xiaobai-os-DiceRoom-DTsTNe3R.js")
+    artwork: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20360%20230'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='cup'%20x1='115'%20y1='50'%20x2='245'%20y2='140'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23b4cce2'/%3e%3cstop%20offset='.5'%20stop-color='%23edf6ff'/%3e%3cstop%20offset='1'%20stop-color='%237295b4'/%3e%3c/linearGradient%3e%3clinearGradient%20id='die'%20x2='1'%20y2='1'%3e%3cstop%20stop-color='%23fff'/%3e%3cstop%20offset='1'%20stop-color='%23dce7f2'/%3e%3c/linearGradient%3e%3c/defs%3e%3cellipse%20cx='180'%20cy='190'%20rx='111'%20ry='23'%20fill='%230c6c83'%20opacity='.25'/%3e%3cg%20transform='rotate(-12%20184%20123)'%3e%3cpath%20d='M129%2057Q181%2027%20230%2057L245%20159Q183%20202%20113%20164Z'%20fill='url(%23cup)'%20stroke='%23fff'%20stroke-width='2'/%3e%3cellipse%20cx='180'%20cy='59'%20rx='51'%20ry='19'%20fill='%23bdd5e7'%20stroke='%23fff'%20stroke-width='3'/%3e%3cellipse%20cx='180'%20cy='59'%20rx='39'%20ry='12'%20fill='%23375675'/%3e%3cpath%20d='M116%20151Q183%20185%20243%20146'%20stroke='%23fff'%20stroke-width='4'/%3e%3cpath%20d='M137%2088L132%20140M146%2094L143%20145'%20stroke='%23fff'%20opacity='.3'%20stroke-width='2'/%3e%3c/g%3e%3cg%20transform='translate(232%20137)%20rotate(16)'%3e%3crect%20width='56'%20height='56'%20rx='12'%20fill='url(%23die)'%20stroke='%23fff'/%3e%3cg%20fill='%2322364d'%3e%3ccircle%20cx='16'%20cy='15'%20r='4'/%3e%3ccircle%20cx='40'%20cy='15'%20r='4'/%3e%3ccircle%20cx='16'%20cy='28'%20r='4'/%3e%3ccircle%20cx='40'%20cy='28'%20r='4'/%3e%3ccircle%20cx='16'%20cy='41'%20r='4'/%3e%3ccircle%20cx='40'%20cy='41'%20r='4'/%3e%3c/g%3e%3c/g%3e%3cg%20transform='translate(88%20164)%20rotate(-16)'%3e%3crect%20width='49'%20height='49'%20rx='11'%20fill='url(%23die)'%20stroke='%23fff'/%3e%3ccircle%20cx='24.5'%20cy='24.5'%20r='7'%20fill='%23f14260'/%3e%3c/g%3e%3cpath%20d='m282%2068%205-11m-2%2026%2014-4M90%2091l-10-7'%20stroke='%231db49c'%20stroke-width='3'%20stroke-linecap='round'/%3e%3c/svg%3e", "" + import.meta.url).href,
+    load: () => import("./xiaobai-os-DiceRoom-BlOxNlk9.js")
   },
   {
     ..._("push"),
     record: ee,
-    artwork: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20360%20230'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='gold'%20x2='1'%20y2='1'%3e%3cstop%20stop-color='%23f3db89'/%3e%3cstop%20offset='1'%20stop-color='%23b8823f'/%3e%3c/linearGradient%3e%3c/defs%3e%3cellipse%20cx='180'%20cy='198'%20rx='106'%20ry='19'%20fill='%23351f23'%20opacity='.18'/%3e%3cg%20transform='translate(85%2060)%20rotate(-17%2055%2072)'%3e%3crect%20width='110'%20height='145'%20rx='12'%20fill='%23633b43'%20stroke='%23c99979'%20stroke-width='3'/%3e%3crect%20x='9'%20y='9'%20width='92'%20height='127'%20rx='7'%20stroke='%23c99979'/%3e%3cpath%20d='m55%2033%2028%2039-28%2039-28-39Z'%20fill='%23b17a68'/%3e%3cpath%20d='m55%2048%2016%2024-16%2024-16-24Z'%20stroke='%23e4ba8d'/%3e%3c/g%3e%3cg%20transform='translate(169%2039)%20rotate(13%2054%2074)'%3e%3crect%20width='110'%20height='150'%20rx='12'%20fill='%23fff5da'%20stroke='%23dcc6a1'%20stroke-width='2'/%3e%3ccircle%20cx='55'%20cy='75'%20r='30'%20fill='url(%23gold)'%20stroke='%23b78238'%20stroke-width='3'/%3e%3ccircle%20cx='55'%20cy='75'%20r='23'%20stroke='%23fff0b7'%20stroke-width='2'/%3e%3cpath%20d='m55%2055%206%2013%2014%202-10%2010%203%2015-13-7-13%207%203-15-10-10%2014-2Z'%20fill='%23aa7337'/%3e%3cpath%20d='M13%2017h10m-5-5v10M87%20130h10m-5-5v10'%20stroke='%23b58a43'%20stroke-width='2'/%3e%3c/g%3e%3cg%20stroke='%23b78238'%20stroke-width='2'%3e%3cellipse%20cx='262'%20cy='192'%20rx='26'%20ry='11'%20fill='%23a97439'/%3e%3cellipse%20cx='262'%20cy='186'%20rx='26'%20ry='11'%20fill='url(%23gold)'/%3e%3cellipse%20cx='247'%20cy='172'%20rx='26'%20ry='11'%20fill='url(%23gold)'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href,
-    load: () => import("./xiaobai-os-PushRoom-3x3QOAkf.js")
+    artwork: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20360%20230'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='gold'%20x2='1'%20y2='1'%3e%3cstop%20stop-color='%23ffdf62'/%3e%3cstop%20offset='1'%20stop-color='%23ffae1a'/%3e%3c/linearGradient%3e%3c/defs%3e%3cellipse%20cx='180'%20cy='198'%20rx='106'%20ry='19'%20fill='%23302470'%20opacity='.18'/%3e%3cg%20transform='translate(85%2060)%20rotate(-17%2055%2072)'%3e%3crect%20width='110'%20height='145'%20rx='12'%20fill='%235961cc'%20stroke='%23bac8ff'%20stroke-width='3'/%3e%3crect%20x='9'%20y='9'%20width='92'%20height='127'%20rx='7'%20stroke='%23bac8ff'/%3e%3cpath%20d='m55%2033%2028%2039-28%2039-28-39Z'%20fill='%238598f0'/%3e%3cpath%20d='m55%2048%2016%2024-16%2024-16-24Z'%20stroke='%23fff'/%3e%3c/g%3e%3cg%20transform='translate(169%2039)%20rotate(13%2054%2074)'%3e%3crect%20width='110'%20height='150'%20rx='12'%20fill='%23fff'%20stroke='%23dee5ff'%20stroke-width='2'/%3e%3ccircle%20cx='55'%20cy='75'%20r='30'%20fill='url(%23gold)'%20stroke='%23eea522'%20stroke-width='3'/%3e%3ccircle%20cx='55'%20cy='75'%20r='23'%20stroke='%23fff4be'%20stroke-width='2'/%3e%3cpath%20d='m55%2055%206%2013%2014%202-10%2010%203%2015-13-7-13%207%203-15-10-10%2014-2Z'%20fill='%23cb7a00'/%3e%3cpath%20d='M13%2017h10m-5-5v10M87%20130h10m-5-5v10'%20stroke='%23ffc14d'%20stroke-width='2'/%3e%3c/g%3e%3cg%20stroke='%23eea522'%20stroke-width='2'%3e%3cellipse%20cx='262'%20cy='192'%20rx='26'%20ry='11'%20fill='%23c98712'/%3e%3cellipse%20cx='262'%20cy='186'%20rx='26'%20ry='11'%20fill='url(%23gold)'/%3e%3cellipse%20cx='247'%20cy='172'%20rx='26'%20ry='11'%20fill='url(%23gold)'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href,
+    load: () => import("./xiaobai-os-PushRoom-BFuAB_f5.js")
   },
   {
     ..._("ladder"),
     record: re,
-    artwork: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20360%20230'%20fill='none'%3e%3cellipse%20cx='178'%20cy='201'%20rx='118'%20ry='18'%20fill='%23463724'%20opacity='.16'/%3e%3cpath%20d='M70%20164h43v-29h43v-29h43V77h43V48h45v146H70Z'%20fill='%23b68b4e'/%3e%3cpath%20d='m70%20164%2019-11h43l-19%2011Zm43-29%2019-11h43l-19%2011Zm43-29%2019-11h43l-19%2011Zm43-29%2019-11h43l-19%2011Zm43-29%2019-11h45l-19%2011Z'%20fill='%23f0d39b'/%3e%3cpath%20d='m287%2048%2019-11v146l-19%2011Z'%20fill='%238d633c'/%3e%3cpath%20d='M70%20194h217'%20stroke='%23704f33'%20stroke-width='3'/%3e%3ccircle%20cx='134'%20cy='107'%20r='12'%20fill='%23f6e8c9'/%3e%3cpath%20d='m129%20122-8%2014%2025%201-1-16Z'%20fill='%233f7868'/%3e%3cpath%20d='m128%20137-9%2014m20-14%208%204m-4-17%2017-11'%20stroke='%232e5148'%20stroke-width='6'%20stroke-linecap='round'/%3e%3cpath%20d='m266%2014%204%207%209%202-6%207%201%208-8-4-8%204%201-8-6-7%209-2Z'%20fill='%23fff0b5'%20stroke='%23ba8c47'/%3e%3cpath%20d='m83%2057%205-10m-4%2024%2012-3m115-44%204-8'%20stroke='%23c7a368'%20stroke-width='3'%20stroke-linecap='round'/%3e%3c/svg%3e", "" + import.meta.url).href,
-    load: () => import("./xiaobai-os-LadderRoom-BdZfPH0u.js")
+    artwork: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20360%20230'%20fill='none'%3e%3cellipse%20cx='178'%20cy='201'%20rx='118'%20ry='18'%20fill='%232054a0'%20opacity='.16'/%3e%3cpath%20d='M70%20164h43v-29h43v-29h43V77h43V48h45v146H70Z'%20fill='%23549cec'/%3e%3cpath%20d='m70%20164%2019-11h43l-19%2011Zm43-29%2019-11h43l-19%2011Zm43-29%2019-11h43l-19%2011Zm43-29%2019-11h43l-19%2011Zm43-29%2019-11h45l-19%2011Z'%20fill='%23d9f0ff'/%3e%3cpath%20d='m287%2048%2019-11v146l-19%2011Z'%20fill='%23246bc8'/%3e%3cpath%20d='M70%20194h217'%20stroke='%231f5db3'%20stroke-width='3'/%3e%3ccircle%20cx='134'%20cy='107'%20r='12'%20fill='%23fff'/%3e%3cpath%20d='m129%20122-8%2014%2025%201-1-16Z'%20fill='%23fa6957'/%3e%3cpath%20d='m128%20137-9%2014m20-14%208%204m-4-17%2017-11'%20stroke='%23cc3b47'%20stroke-width='6'%20stroke-linecap='round'/%3e%3cpath%20d='m266%2014%204%207%209%202-6%207%201%208-8-4-8%204%201-8-6-7%209-2Z'%20fill='%23ffdf60'%20stroke='%23e9a31a'/%3e%3cpath%20d='m83%2057%205-10m-4%2024%2012-3m115-44%204-8'%20stroke='%235da8ed'%20stroke-width='3'%20stroke-linecap='round'/%3e%3c/svg%3e", "" + import.meta.url).href,
+    load: () => import("./xiaobai-os-LadderRoom-x4DTkV5s.js")
   }
 ];
 function ne(e) {
-  return ce.find((t) => t.id === e);
+  return le.find((t) => t.id === e);
 }
 export {
   L as a,
@@ -311,5 +311,5 @@ export {
   G as o,
   _ as r,
   D as s,
-  ce as t
+  le as t
 };

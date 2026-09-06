@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import TaskIcon from './TaskIcon.vue';
 defineProps<{ title: string; confirmLabel: string; busy: boolean; disabledReason: string; error: string }>();
 const emit = defineEmits<{ close: []; confirm: [] }>();
 const dialog = ref<HTMLDialogElement | null>(null);
@@ -22,7 +21,6 @@ function handleKeydown(event: KeyboardEvent): void {
 </script>
 <template>
     <dialog ref="dialog" class="tasks-dialog" :aria-label="title" @cancel.prevent="!busy && emit('close')" @keydown="handleKeydown">
-        <span class="tasks-dialog-mark"><TaskIcon name="ticket" /></span>
         <h2 id="tasks-confirm-title">{{ title }}</h2>
         <div class="tasks-dialog-copy"><slot /></div>
         <p v-if="error" class="tasks-dialog-error" role="alert">{{ error }}</p>

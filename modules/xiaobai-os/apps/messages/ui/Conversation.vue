@@ -27,10 +27,10 @@ defineExpose({ sent() {bottom = true; void stick();} });
 </script>
 <template>
     <section class="messages-conversation">
-        <header class="messages-thread-header"><button class="messages-icon-button" aria-label="返回信息" @click="$emit('back')"><MessageIcon name="back" /></button><ContactAvatar :identity="contact.id" :name="contact.name" small /><div><h2>{{ contact.name }}</h2><p>私人对话</p></div><button class="messages-icon-button" aria-label="联系人详情" @click="$emit('details')"><MessageIcon name="more" /></button></header>
+        <header class="messages-thread-header"><button class="messages-icon-button" aria-label="返回信息" @click="$emit('back')"><MessageIcon name="back" /></button><ContactAvatar :identity="contact.id" :name="contact.name" small /><div><h2>{{ contact.name }}</h2></div><button class="messages-icon-button" aria-label="联系人详情" @click="$emit('details')"><MessageIcon name="more" /></button></header>
         <div ref="scroller" class="messages-thread-scroll" @scroll="scroll">
             <button v-if="page.hasMore" class="messages-older" :disabled="loading" @click="more">{{ loading ? '读取中…' : '查看更早的消息' }}</button>
-            <p v-if="!page.messages.length" class="messages-thread-start">{{ loading ? '正在读取消息…' : `这是你和 ${contact.name} 的对话。` }}<br><template v-if="!loading">从一句问候开始吧。</template></p>
+            <p v-if="loading && !page.messages.length" class="messages-thread-start">正在读取消息…</p>
             <template v-for="(message, index) in page.messages" :key="message.id">
                 <time v-if="index === 0 || message.createdAt - page.messages[index - 1].createdAt > 300000" class="messages-time">{{ new Date(message.createdAt).toLocaleString(undefined, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }}</time>
                 <MessageBubble :message="message" :bridge="bridge" :chat-identity="chatIdentity" :media="media" :disabled="disabled" @resize="stick" @delete-image="$emit('deleteImage', $event)" />

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { LearningClassView } from '../application/projection.js';
 import type { LearningSelection } from '../../../domains/learning/notes.js';
+import LearningIcon from './LearningIcon.vue';
 type Material = NonNullable<LearningClassView['unit']>['materials'][number];
-const props = defineProps<{ material: Material; disabled: boolean; exerciseId: string; listening: boolean }>();
+const props = defineProps<{ material: Material; disabled: boolean; exerciseId: string }>();
 const emit = defineEmits<{ action: [name: string, input: Record<string, unknown>]; select: [selection: LearningSelection] }>();
 function selectParagraph(paragraph: { id: string; text: string }) {
     emit('select', { materialId: props.material.id, paragraphId: paragraph.id, start: 0, end: paragraph.text.length, quote: paragraph.text });
@@ -24,7 +25,6 @@ function selectRange(event: MouseEvent | KeyboardEvent, paragraph: { id: string;
 
 <template>
     <article class="learning-material">
-        <p class="learning-eyebrow">{{ listening ? 'Listening · 听力材料' : 'Reading · 阅读材料' }}</p>
         <h2>{{ material.title }}</h2>
         <div class="learning-source">
             <span v-if="material.provenance.kind === 'authored'">老师自编练习</span>
@@ -32,7 +32,6 @@ function selectRange(event: MouseEvent | KeyboardEvent, paragraph: { id: string;
         </div>
         <div v-if="material.hidden" class="learning-listening-cover">
             <svg viewBox="0 0 140 60" aria-hidden="true"><path d="M8 27v6m10-14v22m10-31v40m10-26v12m10-35v58m10-47v36m10-27v18m10-37v56m10-36v16m10-29v42m10-31v20m10-16v12m10-8v4" stroke="currentColor" stroke-width="3" stroke-linecap="round" fill="none" /></svg>
-            <p>先用耳朵，认识这段话。</p><small>需要时可以看文稿，这次练习会记为有辅助。</small>
             <button type="button" :disabled="disabled" @click="emit('action', 'reveal', { kind: 'transcripts', id: material.id })">看文稿</button>
         </div>
         <div v-else class="learning-material-body">
@@ -46,9 +45,9 @@ function selectRange(event: MouseEvent | KeyboardEvent, paragraph: { id: string;
                 v-for="part in material.parts" :key="part.key" type="button" :disabled="disabled"
                 @click="emit('action', 'play', { materialId: material.id, partKey: part.key, exerciseId })"
             >
-                ▷ {{ material.parts.length > 1 ? `听第 ${part.number} 段` : '听这段' }}
+                <LearningIcon name="play" />{{ material.parts.length > 1 ? `听第 ${part.number} 段` : '播放朗读' }}
             </button>
         </div>
-        <small>声音为 TTS 合成朗读，不是来源网站的原声。</small>
+        <small v-if="material.parts.length">TTS 合成朗读</small>
     </article>
 </template>

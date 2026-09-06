@@ -11,6 +11,7 @@ import type { XiaobaiOsAppActivationContext, XiaobaiOsAppRuntime } from '../../.
 import type { LearningTeacherContext } from '../agent/context.js';
 import type { LearningAction } from '../agent/session.js';
 import { learningClassView } from '../application/projection.js';
+import { createLearningId } from '../application/identity.js';
 import { createLearningPractice } from '../application/practice.js';
 import { createLearningRewards } from '../application/rewards.js';
 import { confirmedLearning, createLearningService, type LearningRepository } from '../application/service.js';
@@ -68,7 +69,10 @@ export function createLearningRuntime(deps: {
     function state(): LearningClientState {
         const snapshot = repository.snapshot();
         const saved = deps.store.peekCurrent();
-        return { ...learningClassView(snapshot.document?.data ?? { profiles: [] }, language, saved?.osId ?? null, offset, recordId),
+        const view = learningClassView(snapshot.document?.data ?? { profiles: [] }, language, saved?.osId ?? null, offset, recordId);
+        // Keep navigation on the displayed page when deletion or a server read shrinks the list.
+        offset = view.records.offset;
+        return { ...view,
             chatIdentity, language, teacher: saved?.value?.teacher ?? null,
             candidates: teacher.candidates().map(person => ({ name: person.name, aliases: person.aliases })),
             storage: loadFailed ? 'unloaded' : snapshot.status, chatStorage: deps.files.getFileState(), busy: !!job,
@@ -196,7 +200,7 @@ export function createLearningRuntime(deps: {
             requireLearning(reply?.exerciseId && lesson.exercises.some(exercise => exercise.id === reply!.exerciseId), 'reply', 'Choose a current explanation');
             if (lesson.notes?.some(note => note.exerciseId === reply!.exerciseId && note.text === reply!.text
                 && JSON.stringify(note.selection) === JSON.stringify(replySelection))) { return; }
-            saved(await service.note(language, lesson.id, { id: crypto.randomUUID(), text: reply.text, exerciseId: reply.exerciseId, selection: replySelection }, guard)); return;
+            saved(await service.note(language, lesson.id, { id: createLearningId(), text: reply.text, exerciseId: reply.exerciseId, selection: replySelection }, guard)); return;
         }
         if (name === 'delete-note') { saved(await service.note(language, unit().id, String(input.id), guard)); return; }
         if (name === 'reward') { await pay(String(input.unitId), input.openWallet === true, guard); return; }

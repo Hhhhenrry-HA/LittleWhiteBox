@@ -7,8 +7,8 @@ const dateFormatter = new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month:
 </script>
 <template>
     <section class="bank-page" aria-labelledby="bank-records-title">
-        <header class="bank-page-heading"><span class="bank-eyebrow">每一笔兑付，都有回执</span><h2 id="bank-records-title">金融记录 <small>{{ total }} 笔</small></h2><p>到期领取和提前支取的结果，留在这里。</p></header>
-        <div v-if="!activities.length" class="bank-empty-state"><span><BankProductIcon kind="records" /></span><h3>还没有兑付记录</h3><p>存入的资产可以在“持有”中查看。</p></div>
+        <header class="bank-page-heading"><h2 id="bank-records-title">兑付记录 <small>{{ total }} 笔</small></h2></header>
+        <div v-if="!activities.length" class="bank-empty-state"><BankProductIcon kind="records" /><h3>暂无兑付记录</h3></div>
         <div v-else class="bank-record-list">
             <details v-for="activity in activities" :key="activity.id" class="bank-record-row">
                 <summary><span class="bank-product-mark"><BankProductIcon :kind="activity.kind" /></span><span class="bank-record-main"><strong>{{ activity.productName }}</strong><small>{{ activity.resultLabel }}</small></span><span class="bank-record-net" :class="{ 'is-negative': activity.net < 0, 'is-flat': activity.net === 0 }"><strong>{{ activity.net > 0 ? '+' : '' }}{{ activity.net.toLocaleString('zh-CN') }}</strong><small>{{ activity.net < 0 ? '净损失' : activity.net > 0 ? '净收益' : '持平' }}</small></span><BankProductIcon kind="next" /></summary>
@@ -17,6 +17,5 @@ const dateFormatter = new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month:
         </div>
         <p v-if="error" class="bank-inline-error" role="alert">{{ error }}</p>
         <button v-if="hasMore" type="button" class="bank-secondary-button bank-full-button bank-load-more" :disabled="loadingMore" @click="$emit('loadMore')">{{ loadingMore ? '正在读取…' : '查看更早的记录' }}</button>
-        <p v-else-if="activities.length" class="bank-footnote">以上是全部兑付记录</p>
     </section>
 </template>

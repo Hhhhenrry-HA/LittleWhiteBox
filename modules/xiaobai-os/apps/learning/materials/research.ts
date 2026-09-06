@@ -3,6 +3,7 @@ import { safePromptJson } from '../../../capabilities/maintenance/prompt-safety.
 import { learningRecord, learningText, LearningValidationError } from '../../../domains/learning/profile.js';
 import { learningArray, learningId, learningInteger, requireLearning } from '../../../domains/learning/validation.js';
 import type { createLearningSourceRegistry, LearningSource } from './lesson-sources.js';
+import { createLearningId } from '../application/identity.js';
 import { extractLearningSources, LearningMaterialError, learningPublicUrl } from './tavily-extract.js';
 
 export const LEARNING_RESEARCH_LIMITS = Object.freeze({ searches: 2, urls: 4, query: 400,
@@ -51,7 +52,7 @@ export function createLearningResearch(config: { tavilyApiKey?: string; tavilyBa
 }) {
     const candidates = new Map<string, Candidate>();
     const extracted = new Map<string, { source: LearningSource; truncated: boolean }>();
-    const createId = options.createId ?? (() => crypto.randomUUID());
+    const createId = options.createId ?? createLearningId;
     let searches = 0;
     let urls = 0;
     const available = isTavilyConfigured(config);

@@ -76,9 +76,6 @@ onBeforeUnmount(() => clearTimeout(timer));
 <template>
     <section class="push-table">
         <header class="room-heading">
-            <div>
-                <span>凭一点手气</span>
-            </div>
             <small>本局筹码 ¤ {{ game.bet }}</small>
         </header>
         <div class="push-felt">
@@ -95,7 +92,7 @@ onBeforeUnmount(() => clearTimeout(timer));
                         <span class="push-card-back" aria-hidden="true"><b>金</b></span>
                         <span
                             class="push-card-face"
-                            :class="{ 'is-bomb': settlement ? settlement.record.outcomeLabel : face === 'bomb' }"
+                            :class="{ 'is-bomb': face === 'bomb' }"
                             aria-hidden="true"
                         ><b>{{ face === 'bomb' ? '✹' : '¤' }}</b><small>{{ face === 'bomb' ? '炸弹' : '+50' }}</small></span>
                     </div>

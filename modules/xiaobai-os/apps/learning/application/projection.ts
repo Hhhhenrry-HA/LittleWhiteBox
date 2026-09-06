@@ -20,6 +20,7 @@ export function learningClassView(data: LearningData, language: string, osId: st
     const unit = profile?.unit && visible(profile.unit.scope) ? profile.unit : null;
     const items = profile?.items ?? [];
     const item = items.find(entry => entry.id === recordId);
+    const pageOffset = Math.min(offset, Math.floor(Math.max(0, items.length - 1) / 30) * 30);
     return {
         languages: data.profiles.map(entry => entry.language),
         profile: profile ? { language: profile.language, explanationLanguage: profile.explanationLanguage,
@@ -35,7 +36,7 @@ export function learningClassView(data: LearningData, language: string, osId: st
             assessments: unit.assessments.filter(assessment => visible(assessment.scope)
                 && unit.attempts.slice(-80).some(attempt => attempt.id === assessment.attemptId)),
         } : null,
-        records: { offset, total: items.length, items: items.slice(offset, offset + 30).map(entry => ({
+        records: { offset: pageOffset, total: items.length, items: items.slice(pageOffset, pageOffset + 30).map(entry => ({
             id: entry.id, label: visible(entry.scope) ? entry.label : '其他故事中的学习项', skill: entry.skill,
             ...learningProgress(entry), readable: visible(entry.scope), evidenceCount: entry.evidence.filter(evidence => visible(evidence.scope)).length,
         })) },

@@ -28,8 +28,7 @@ function formatTime(value: number): string {
     <section class="game-records" aria-labelledby="game-records-title">
         <header class="game-section-heading">
             <div>
-                <span>输赢都是故事</span>
-                <h2 id="game-records-title">玩过的局</h2>
+                <h2 id="game-records-title">记录</h2>
             </div>
             <small>{{ total }} 局</small>
         </header>
@@ -57,7 +56,7 @@ function formatTime(value: number): string {
                         <strong>{{ record.net > 0 ? '+' : '' }}{{ record.net }}</strong>
                     </div>
                     <details>
-                        <summary>看看这一局</summary>
+                        <summary>本局详情</summary>
                         <component :is="gameRoom(record.game).record" :detail="record.detail" />
                     </details>
                 </div>
@@ -65,7 +64,7 @@ function formatTime(value: number): string {
         </div>
         <div v-else class="game-record-empty">
             <span aria-hidden="true">◇</span>
-            <p>还没玩过，去大厅挑一局吧。</p>
+            <p>暂无游戏记录</p>
         </div>
 
         <p v-if="error" class="game-inline-error" role="status">{{ error }}</p>
@@ -76,7 +75,7 @@ function formatTime(value: number): string {
             :disabled="loadingMore"
             @click="$emit('loadMore')"
         >
-            {{ loadingMore ? '正在翻阅…' : '继续翻阅记录' }}
+            {{ loadingMore ? '正在翻阅…' : '更多记录' }}
         </button>
     </section>
 </template>

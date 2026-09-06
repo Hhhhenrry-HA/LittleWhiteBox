@@ -33,7 +33,7 @@ function submit() {
 <template>
     <form class="learning-answer" @submit.prevent="submit">
         <fieldset :disabled="disabled">
-            <legend class="learning-eyebrow">你的回答</legend>
+            <legend class="learning-sr-only">你的回答</legend>
             <div v-if="response.kind === 'choice'" class="learning-choices">
                 <label v-for="(option, index) in response.options" :key="option.id" :class="{ selected: draft.picked.includes(option.id) }">
                     <input :type="response.multiple ? 'checkbox' : 'radio'" name="answer-choice" :checked="draft.picked.includes(option.id)" @change="choose(option.id)">
@@ -61,7 +61,7 @@ function submit() {
             <div v-else-if="response.kind === 'gaps'" class="learning-fields">
                 <label v-for="slot in response.slots" :key="slot.id">{{ slot.text }}<input v-model="draft.values[slot.id]" type="text" maxlength="4000" autocomplete="off"></label>
             </div>
-            <label v-else class="learning-writing"><span class="learning-muted">用你自己的表达就好。</span><textarea v-model="draft.text" rows="6" maxlength="4000" placeholder="在这里写下你的回答…" /></label>
+            <label v-else class="learning-writing"><span class="learning-sr-only">你的回答</span><textarea v-model="draft.text" rows="6" maxlength="4000" placeholder="写下你的回答…" /></label>
             <button class="learning-primary" type="submit" :disabled="!ready">交给老师 →</button>
         </fieldset>
     </form>

@@ -6,6 +6,7 @@ import type { LearningNote } from '../../../domains/learning/notes.js';
 import { canReadLearningScope, type LearningData, type LearningScope } from '../../../domains/learning/types.js';
 import { combineLearningScope, learningId, learningTimestamp, parseLearningScope, requireLearning } from '../../../domains/learning/validation.js';
 import type { createLearningRepository } from '../storage/repository.js';
+import { createLearningId } from './identity.js';
 
 export type LearningRepository = ReturnType<typeof createLearningRepository>;
 
@@ -16,7 +17,7 @@ export function confirmedLearning(repository: LearningRepository) {
 }
 
 export function createLearningService(repository: LearningRepository, options: { createId?: () => string; now?: () => string } = {}) {
-    const createId = options.createId ?? (() => crypto.randomUUID());
+    const createId = options.createId ?? createLearningId;
     const now = options.now ?? (() => new Date().toISOString());
     const mutate = (language: string, change: (data: LearningData, index: number) => void, guard: () => boolean) => {
         const expected = confirmedLearning(repository);

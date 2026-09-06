@@ -1,6 +1,7 @@
 <script setup lang="ts">
-defineProps<{ name: 'back' | 'plus' | 'send' | 'image' | 'voice' | 'search' | 'more' | 'close' | 'play' | 'stop' }>();
+defineProps<{ name: 'back' | 'plus' | 'send' | 'image' | 'voice' | 'search' | 'more' | 'close' | 'play' | 'stop' | 'message' }>();
 const paths = {
+    message: 'M5 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-6 3V6a2 2 0 0 1 2-2Z',
     back: 'm14 5-7 7 7 7', plus: 'M12 5v14M5 12h14', send: 'm5 12 7-7 7 7M12 5v15',
     image: 'M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Zm-1 12 5-5 4 4 3-3 4 4M15 8h.01',
     voice: 'M9 5a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0V5Zm-3 6a6 6 0 0 0 12 0M12 17v4M9 21h6',

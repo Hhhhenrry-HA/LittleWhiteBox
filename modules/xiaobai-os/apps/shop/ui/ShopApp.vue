@@ -137,21 +137,29 @@ function openAction(mode: PendingAction['mode'], item: ShopCatalogItemView, acti
 }
 
 function navigate(next: ShopPage): void {
+    successMessage.value = '';
     selectedItemId.value = null;
     page.value = next;
     content.value?.scrollTo(0, 0);
 }
 
-function openDetail(item: ShopCatalogItemView): void {
+async function openDetail(item: ShopCatalogItemView): Promise<void> {
+    successMessage.value = '';
     listScrollTop = content.value?.scrollTop ?? 0;
     selectedItemId.value = item.id;
+    await nextTick();
+    if (selectedItemId.value !== item.id) {return;}
     content.value?.scrollTo(0, 0);
+    content.value?.querySelector<HTMLButtonElement>('.shop-detail-back')?.focus({ preventScroll: true });
 }
 
 async function closeDetail(): Promise<void> {
+    const itemId = selectedItemId.value;
     selectedItemId.value = null;
     await nextTick();
     content.value?.scrollTo(0, listScrollTop);
+    Array.from(content.value?.querySelectorAll<HTMLButtonElement>('button[data-item-id]') ?? [])
+        .find(button => button.dataset.itemId === itemId)?.focus({ preventScroll: true });
 }
 
 function openDeactivation(activation: ShopActivationView): void {
@@ -186,10 +194,10 @@ async function submitAction(parameters: Record<string, string>): Promise<void> {
         if (generation !== requestGeneration || pending.value !== action) {return;}
         applyState(response.result);
         pending.value = null;
+        navigate(action.mode === 'purchase' ? 'inventory' : 'effects');
         successMessage.value = action.mode === 'purchase'
             ? `${item.name}已放入背包 · 已支付 ${item.price.toLocaleString('zh-CN')} 小白币`
             : action.mode === 'use' ? `${item.name}已启用 · 已使用 1 件库存` : `${item.name}的效果已关闭`;
-        navigate(action.mode === 'purchase' ? 'inventory' : 'effects');
     } catch (error) {
         if (generation === requestGeneration && pending.value === action) {dialogError.value = readableError(error);}
     } finally {
@@ -219,20 +227,20 @@ onBeforeUnmount(() => {
 <template>
     <main class="shop-app">
         <header class="shop-header">
-            <span class="shop-brand"><ShopIcon name="shop" /></span><h1>奇物商店</h1>
-            <div class="shop-balance"><small>钱包可用</small><strong>¤ {{ state.status === 'loading' ? '—' : state.balance.toLocaleString('zh-CN') }}</strong></div>
+            <h1>奇物商店</h1>
+            <div class="shop-balance" aria-label="小白币余额"><strong>¤ {{ state.status === 'loading' ? '—' : state.balance.toLocaleString('zh-CN') }}</strong></div>
             <button type="button" class="shop-icon-button" :disabled="refreshDisabled" aria-label="刷新商店" @click="refresh"><ShopIcon name="refresh" :class="{ 'is-spinning': refreshing }" /></button>
         </header>
         <div v-if="state.message || errorMessage || successMessage" class="shop-notice-area">
             <aside v-if="state.message || errorMessage" class="shop-notice" :class="{ 'is-error': errorMessage || state.status === 'blocked' || state.status === 'conflict' }" role="status">
-                <strong>{{ state.status === 'unconfirmed' ? '保存待核实' : state.status === 'conflict' ? '状态冲突' : errorMessage ? '操作未完成' : '商店状态' }}</strong><p>{{ errorMessage || state.message }}</p>
+                <p>{{ errorMessage || state.message }}</p>
                 <button v-if="requiresConfirmation" type="button" :disabled="refreshing || actionBusy" @click="confirmSave">{{ refreshing ? '正在核实…' : '核实保存结果' }}</button>
                 <button v-else-if="state.status === 'blocked' || errorMessage" type="button" :disabled="refreshDisabled" @click="refresh">{{ refreshing ? '正在读取…' : '重新读取商店' }}</button>
             </aside>
             <div v-if="successMessage" class="shop-success" role="status"><ShopIcon name="check" /><span>{{ successMessage }}</span><button type="button" class="shop-icon-button" aria-label="关闭成功提示" @click="successMessage = ''"><ShopIcon name="close" /></button></div>
         </div>
         <div ref="content" class="shop-scroll">
-            <div v-if="state.status === 'loading'" class="shop-empty" role="status"><span><ShopIcon name="shop" /></span><h3>正在打开奇物店…</h3><p>货架、背包和账本准备好后，会显示在这里。</p></div>
+            <div v-if="state.status === 'loading'" class="shop-empty" role="status"><ShopIcon name="shop" /><h3>正在读取商店…</h3></div>
             <template v-else>
                 <ShopShelf v-if="page === 'shelf'" v-show="!selectedItem" :catalog="state.catalog" @open="openDetail" />
                 <ShopInventory v-else-if="page === 'inventory'" v-show="!selectedItem" :catalog="state.catalog" :write-disabled-reason="activationDisabledReason" @open="openDetail" @use="item => openAction('use', item)" @browse="navigate('shelf')" />

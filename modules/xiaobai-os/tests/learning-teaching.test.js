@@ -180,6 +180,11 @@ test('empty replies, exhausted rounds and unresolved tools do not publish drafts
 });
 
 test('article paging is cached, bounded, keeps real text and consumes no extra requests', async t => {
+    // Real browser boundary: search/source identities cannot require a secure HTTP origin.
+    const originalCrypto = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
+    const getRandomValues = globalThis.crypto.getRandomValues.bind(globalThis.crypto);
+    Object.defineProperty(globalThis, 'crypto', { configurable: true, value: { getRandomValues } });
+    t.after(() => Object.defineProperty(globalThis, 'crypto', originalCrypto));
     let calls = 0;
     const paragraph = 'A<&树'.repeat(1200);
     t.mock.method(globalThis, 'fetch', async url => {

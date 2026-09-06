@@ -10,6 +10,70 @@ import { createLearningPractice } from '../apps/learning/application/practice.js
 import { independentLearningSuccess } from '../domains/learning/progress.js';
 import { MAX_LEARNING_WRITE_BYTES } from '../apps/learning/storage/document.js';
 
+test('profile clarification returns the teacher reply without inventing a saved goal, and accepts a follow-up', async t => {
+    const h = await createClassroomFixture(); t.after(h.dispose);
+    await h.command('teacher', { teacher: { name: '林老师', note: '' } });
+    h.flags.profileReply = '你准备哪一次四级考试？更想先练听力还是阅读？';
+    const writes = h.counts.userWrites;
+    const question = await h.command('profile', { message: '想考四级，水平还不确定。' });
+    assert.equal(question.profile, null);
+    assert.equal(question.busy, false);
+    assert.equal(question.message, '');
+    assert.deepEqual(question.reply, { action: 'profile', text: h.flags.profileReply });
+    assert.equal(h.counts.userWrites, writes);
+    h.flags.profileReply = null;
+    const saved = await h.command('profile', { message: '准备十二月四级，先练听力。' });
+    assert.ok(saved.profile);
+    assert.equal(saved.storage, 'ready');
+});
+
+test('records stay on a populated page after deletion, verification and server replacement', async t => {
+    const h = await createClassroomFixture(); t.after(h.dispose); await h.openLesson();
+    const initial = h.repository.snapshot().document;
+    const data = structuredClone(initial.data);
+    data.profiles[0].items = Array.from({ length: 61 }, (_, index) => ({
+        id: `item-${index}`, label: `学习项 ${index + 1}`, skill: 'reading', scope: { kind: 'public' }, evidence: [],
+    }));
+    await h.repository.save(initial, data, () => true);
+    const calls = h.counts.provider;
+    assert.equal((await h.command('records', { offset: 60, id: 'item-60' })).record.id, 'item-60');
+    h.flags.userFailure = true;
+    const uncertain = await h.command('delete-item', { id: 'item-60' });
+    assert.equal(uncertain.storage, 'unconfirmed');
+    assert.equal(uncertain.records.offset, 60);
+    assert.equal(uncertain.records.items[0].id, 'item-60');
+    h.confirmUser();
+    const verified = await h.command('verify');
+    assert.equal(verified.records.offset, 30);
+    assert.equal(verified.records.items.length, 30);
+    const server = h.repository.snapshot().document;
+    server.revision++; server.commitId = 'records-trimmed';
+    server.data.profiles[0].items = server.data.profiles[0].items.slice(0, 31);
+    h.replaceUser(server);
+    assert.equal((await h.command('read')).records.offset, 30);
+    await h.command('records', { offset: 30, id: 'item-30' });
+    const deleted = await h.command('delete-item', { id: 'item-30' });
+    assert.equal(deleted.record, null);
+    assert.equal(deleted.records.total, 30);
+    assert.equal(deleted.records.offset, 0);
+    assert.equal(deleted.records.items.length, 30);
+    // A later growth must not resurrect the stale page that was already corrected.
+    await h.repository.save(h.repository.snapshot().document, data, () => true);
+    assert.equal((await h.command('read')).records.offset, 0);
+    await h.command('records', { offset: 60 });
+    const replacement = h.repository.snapshot().document;
+    replacement.revision++; replacement.commitId = 'records-replaced';
+    replacement.data.profiles[0].items = replacement.data.profiles[0].items.slice(0, 1);
+    h.replaceUser(replacement);
+    assert.equal((await h.command('delete-item', { id: 'item-60' })).storage, 'conflict');
+    const adopted = await h.command('adopt-server');
+    assert.equal(adopted.records.offset, 0);
+    assert.equal(adopted.records.items.length, 1);
+    const empty = await h.command('delete-item', { id: 'item-0' });
+    assert.deepEqual(empty.records, { offset: 0, total: 0, items: [] });
+    assert.equal(h.counts.provider, calls);
+});
+
 function playbackFixture() {
     const players = []; const calls = [];
     const facade = { isEnabled: () => true,

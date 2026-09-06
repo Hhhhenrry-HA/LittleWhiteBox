@@ -1,16 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 340" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 280" fill="none">
+  <style>
+    :root { --sky-top: #dcedff; --sky-bottom: #f5faff; --sea-top: #b5d9f2; --sea-bottom: #e4f1fa; --light: #fffdf1; --near: #759dc1; --far: #8bb6d3; --glint: #fff; }
+    @media (prefers-color-scheme: dark) {
+      :root { --sky-top: #172a43; --sky-bottom: #304e74; --sea-top: #416185; --sea-bottom: #243b56; --light: #dcecff; --near: #233d5d; --far: #345573; --glint: #89b9e1; }
+    }
+  </style>
   <defs>
-    <linearGradient id="sky" x1="80" y1="0" x2="610" y2="300" gradientUnits="userSpaceOnUse"><stop stop-color="#102f3b"/><stop offset=".48" stop-color="#3b787d"/><stop offset="1" stop-color="#b6d6be"/></linearGradient>
-    <radialGradient id="light" cx="0" cy="0" r="1" gradientTransform="translate(574 152) rotate(90) scale(160 350)" gradientUnits="userSpaceOnUse"><stop stop-color="#fff2c5" stop-opacity=".93"/><stop offset=".5" stop-color="#d6e8c9" stop-opacity=".4"/><stop offset="1" stop-color="#b1d6c7" stop-opacity="0"/></radialGradient>
-    <linearGradient id="far" x1="540" y1="158" x2="530" y2="340" gradientUnits="userSpaceOnUse"><stop stop-color="#528f90"/><stop offset="1" stop-color="#254e5b"/></linearGradient>
-    <linearGradient id="near" x1="135" y1="175" x2="360" y2="340" gradientUnits="userSpaceOnUse"><stop stop-color="#153e4b"/><stop offset="1" stop-color="#0c2b38"/></linearGradient>
-    <linearGradient id="rim" x1="30" y1="214" x2="754" y2="209" gradientUnits="userSpaceOnUse"><stop stop-color="#aad2c4" stop-opacity="0"/><stop offset=".66" stop-color="#e3edcf" stop-opacity=".8"/><stop offset="1" stop-color="#cde4c9" stop-opacity="0"/></linearGradient>
+    <linearGradient id="sky" x1="500" y1="0" x2="500" y2="280" gradientUnits="userSpaceOnUse">
+      <stop stop-color="var(--sky-top)"/><stop offset="1" stop-color="var(--sky-bottom)"/>
+    </linearGradient>
+    <linearGradient id="sea" x1="500" y1="172" x2="500" y2="280" gradientUnits="userSpaceOnUse">
+      <stop stop-color="var(--sea-top)"/><stop offset="1" stop-color="var(--sea-bottom)"/>
+    </linearGradient>
   </defs>
-  <path fill="url(#sky)" d="M0 0h780v340H0z"/>
-  <path fill="url(#light)" d="M0 0h780v340H0z"/>
-  <path d="M0 183C182 159 357 192 494 170s193-34 286-20v190H0Z" fill="#a2c7ba" fill-opacity=".3"/>
-  <path d="M0 222c168-46 240-9 378-7 181 2 260-68 402-32v157H0Z" fill="url(#far)"/>
-  <path d="M0 270c144-108 290-18 431-45 141-26 248-44 349-7" stroke="url(#rim)" stroke-width="1.4"/>
-  <path d="M0 260c125-74 241-35 355-3 153 42 302 5 425-34v117H0Z" fill="url(#near)"/>
-  <path d="M360 253c156 30 276 5 420-30" stroke="#9fc9bc" stroke-opacity=".25"/>
+  <path fill="url(#sky)" d="M0 0h1000v280H0z"/>
+  <circle cx="735" cy="81" r="27" fill="var(--light)"/>
+  <path d="M0 174c193-10 338 2 510-5s336-5 490 4v107H0Z" fill="url(#sea)"/>
+  <path d="M0 173c202-9 353 3 509-4s335-5 491 4" stroke="var(--glint)" stroke-width="1.5"/>
+  <path d="M0 260c91-17 130-56 225-57 131-1 176 77 323 77H0Z" fill="var(--near)"/>
+  <path d="M695 280c119-44 196-30 305-71v71Z" fill="var(--far)"/>
+  <path d="m661 200 153 1m-188 16h216m-235 18h279" stroke="var(--glint)" stroke-opacity=".55"/>
 </svg>

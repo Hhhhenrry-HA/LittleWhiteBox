@@ -61,7 +61,7 @@ function bid(): void {
             <p>猜猜两个人的骰子里<br>至少有几个相同的点数？</p>
         </div>
         <div class="dice-own-hand">
-            <small>你的骰子 · 只有你看得见</small>
+            <small>你的骰子</small>
             <div class="game-dice-row">
                 <Die v-for="(die, index) in game.playerDice" :key="index" :value="die" :delay="index * 45" />
             </div>
@@ -132,7 +132,7 @@ function bid(): void {
             </button>
         </div>
         <details class="game-small-rules">
-            <summary>怎么叫？看看刚才怎么喊的</summary>
+            <summary>规则与叫骰记录</summary>
             <p>数量更多，或数量相同而点数更大，都算加叫。一点只作百搭，不能单独叫。</p>
             <ol class="dice-call-history">
                 <li v-for="(call, index) in game.bids" :key="index">

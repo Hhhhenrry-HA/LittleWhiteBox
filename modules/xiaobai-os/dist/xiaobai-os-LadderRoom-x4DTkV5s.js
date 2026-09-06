@@ -1,7 +1,7 @@
 /* eslint-disable */
-import { B as b, E as $, H as u, I as c, T as m, V as h, d as a, f as p, j as C, l as g, m as v, p as R, u as B, v as F, x as L, z as A } from "./xiaobai-os-runtime-dom.esm-bundler-DwdCK5Jt.js";
-import { r as O } from "./xiaobai-os-room-catalog-CxUsjTUC.js";
-import { n as T, t as G } from "./xiaobai-os-GameResult-CNgu2VIf.js";
+import { B as c, E as k, H as u, I as b, T as m, V as $, d as a, f as p, j as C, l as g, m as v, p as R, u as B, v as F, x as L, z as A } from "./xiaobai-os-runtime-dom.esm-bundler-DwdCK5Jt.js";
+import { r as O } from "./xiaobai-os-room-catalog-GDoMHdYd.js";
+import { n as T, t as G } from "./xiaobai-os-GameResult-BoKKS9Ni.js";
 var S = { class: "ladder-table" }, z = { class: "room-heading" }, I = { class: "ladder-prize" }, j = {
   class: "ladder-stairs",
   "aria-label": "五层阶梯"
@@ -24,7 +24,7 @@ var S = { class: "ladder-table" }, z = { class: "room-heading" }, I = { class: "
     "revealed"
   ],
   setup(t) {
-    const o = t, l = c({ ...o.game }), d = c(!1), s = c(!1);
+    const o = t, l = b({ ...o.game }), d = b(!1), s = b(!1);
     let r;
     const f = {
       safe: {
@@ -63,26 +63,26 @@ var S = { class: "ladder-table" }, z = { class: "room-heading" }, I = { class: "
         });
       });
     }, { immediate: !0 });
-    const k = B(() => !!o.disabledReason || o.stepping || d.value || !!o.settlement);
+    const h = B(() => !!o.disabledReason || o.stepping || d.value || !!o.settlement);
     return L(() => clearTimeout(r)), (i, e) => (m(), v("section", S, [
-      a("header", z, [e[4] || (e[4] = a("div", null, [a("span", null, "走一段好运")], -1)), a("small", null, "本局筹码 ¤ " + u(t.game.bet), 1)]),
-      a("div", { class: b(["ladder-landscape", {
+      a("header", z, [a("small", null, "本局筹码 ¤ " + u(t.game.bet), 1)]),
+      a("div", { class: c(["ladder-landscape", {
         "is-climbing": t.stepping || d.value,
         "is-fallen": s.value
       }]) }, [
         a("div", I, [a("span", null, u(t.settlement && !d.value ? "这一局，拿回" : l.value.canCashOut ? "现在收手，带走" : "走过第一层就能收手"), 1), a("strong", null, u(t.settlement && !d.value ? "¤ " + t.settlement.record.payout : l.value.canCashOut ? "¤ " + l.value.cashoutAmount : "从这里出发"), 1)]),
-        a("div", j, [(m(), v(g, null, $(5, (n) => a("div", {
+        a("div", j, [(m(), v(g, null, k(5, (n) => a("div", {
           key: n,
-          class: b(["ladder-stair", {
+          class: c(["ladder-stair", {
             "is-done": n <= l.value.completedFloors,
             "is-next": n === l.value.completedFloors + 1
           }]),
-          style: h({ "--floor": n })
+          style: $({ "--floor": n })
         }, [a("span", null, u(n), 1), n === 5 ? (m(), v("i", E, "✦")) : R("", !0)], 6)), 64)), a("span", {
           class: "ladder-traveler",
-          style: h({ "--position": l.value.completedFloors }),
+          style: $({ "--position": l.value.completedFloors }),
           "aria-hidden": "true"
-        }, [...e[5] || (e[5] = [a("i", null, null, -1)])], 4)]),
+        }, [...e[4] || (e[4] = [a("i", null, null, -1)])], 4)]),
         a("p", V, u(t.stepping || d.value ? "迈出这一步，看看能不能站稳…" : s.value ? "这一步没站稳，下局再来。" : l.value.completedFloors === 5 ? "五层登顶！" : "已走过 " + l.value.completedFloors + " 层 / 共 5 层"), 1)
       ], 2),
       t.settlement && !d.value ? (m(), p(G, {
@@ -98,24 +98,24 @@ var S = { class: "ladder-table" }, z = { class: "room-heading" }, I = { class: "
         "balance-after",
         "disabled"
       ])) : t.settlement ? R("", !0) : (m(), v(g, { key: 1 }, [
-        a("div", w, [a("h3", null, "第 " + u(l.value.completedFloors + 1) + " 层，怎么走？", 1), e[6] || (e[6] = a("p", null, "成功继续向上，失败本局归零。", -1))]),
-        a("div", M, [(m(!0), v(g, null, $(l.value.nextChoices, (n) => (m(), v("button", {
+        a("div", w, [a("h3", null, "第 " + u(l.value.completedFloors + 1) + " 层，怎么走？", 1), e[5] || (e[5] = a("p", null, "成功继续向上，失败本局归零。", -1))]),
+        a("div", M, [(m(!0), v(g, null, k(l.value.nextChoices, (n) => (m(), v("button", {
           key: n.choice,
           type: "button",
-          class: b("is-" + n.choice),
-          disabled: k.value,
+          class: c("is-" + n.choice),
+          disabled: h.value,
           onClick: (J) => i.$emit("step", n.choice)
         }, [
           a("i", D, u(f[n.choice].mark), 1),
           a("strong", null, u(f[n.choice].name), 1),
           a("span", null, u(n.successProbabilityBps / 100) + "% 能走过", 1),
-          e[7] || (e[7] = a("small", null, "走过后拿回", -1)),
+          e[6] || (e[6] = a("small", null, "走过后拿回", -1)),
           a("b", null, "¤ " + u(n.successAmount), 1)
         ], 10, N))), 128))]),
         a("button", {
           type: "button",
           class: "game-secondary-action ladder-cashout",
-          disabled: k.value || !l.value.canCashOut,
+          disabled: h.value || !l.value.canCashOut,
           onClick: e[3] || (e[3] = (n) => i.$emit("cashOut"))
         }, u(l.value.canCashOut ? "就到这里，带走 ¤ " + l.value.cashoutAmount : "走过第一层后，可以收手"), 9, H)
       ], 64))

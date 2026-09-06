@@ -6,6 +6,7 @@ import { canReadLearningScope, type LearningData, type LearningScope, type Rewar
 import { requireLearning } from '../../../domains/learning/validation.js';
 import { LEARNING_REWARD_PRICES } from '../../../domains/learning/reward.js';
 import { createLearningLessonCompiler } from '../application/lesson.js';
+import { createLearningId } from '../application/identity.js';
 import { confirmedLearning, type LearningRepository } from '../application/service.js';
 import { createLearningSourceRegistry } from '../materials/lesson-sources.js';
 import { buildLearningDataMessage, readLearning } from './data-projection.js';
@@ -33,7 +34,7 @@ export function createLearningSession(repository: LearningRepository, options: {
     const inputScope = structuredClone(options.inputScope);
     requireLearning(inputScope.kind === 'public' || inputScope.osId === options.osId, 'scope', 'Use the current story identity');
     const accessOsId = inputScope.kind === 'story' ? options.osId : null;
-    const createId = options.createId ?? (() => crypto.randomUUID());
+    const createId = options.createId ?? createLearningId;
     const now = options.now ?? (() => new Date().toISOString());
     const canonicalLanguage = parseLearningLanguageTag(options.language, 'language');
     let staged: LearningData = structuredClone(expected?.data ?? { profiles: [] });

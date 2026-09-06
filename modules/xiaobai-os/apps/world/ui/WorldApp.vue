@@ -19,7 +19,6 @@ let returnId = '';
 const latest = computed(() => state.value.world.news.find(item => item.id === reading.value?.id));
 const articleUpdate = computed(() => !latest.value ? 'removed'
     : JSON.stringify(latest.value) === JSON.stringify(reading.value) ? 'same' : 'updated');
-const hasContent = computed(() => !!state.value.world.overview || state.value.world.news.length > 0);
 const canRefresh = computed(() => writable.value && !refreshing.value);
 
 async function openArticle(item: WorldNews) {
@@ -77,12 +76,10 @@ function leaveMenu(event: FocusEvent) {
                         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7" /><circle cx="12" cy="12" r="1.7" /><circle cx="19" cy="12" r="1.7" /></svg>
                     </summary>
                     <div class="world-menu-sheet">
-                        <span class="world-menu-heading">订阅与背景</span>
                         <button type="button" :disabled="!writable" @click="request('subscribe', { enabled: !state.world.subscribed })">
                             <span>{{ state.world.subscribed ? '取消订阅' : '订阅新闻' }}</span>
-                            <span class="world-menu-value">{{ state.world.subscribed ? '已订阅' : '未订阅' }}</span>
                         </button>
-                        <p>订阅后随剧情更新新闻，会使用模型。取消后保留已有内容。</p>
+                        <p>随剧情更新，将调用模型。取消订阅后保留新闻。</p>
                         <label>
                             <span>作为剧情背景</span>
                             <input
@@ -90,7 +87,7 @@ function leaveMenu(event: FocusEvent) {
                                 @change="request('background', { enabled: ($event.target as HTMLInputElement).checked })"
                             >
                         </label>
-                        <p>将概况与短摘要提供给后续剧情。独立于订阅开关。</p>
+                        <p>将近况提供给后续剧情。</p>
                     </div>
                 </details>
             </div>
@@ -112,24 +109,21 @@ function leaveMenu(event: FocusEvent) {
             <WorldOpening :overview="state.world.overview" />
 
             <section v-if="state.world.news.length" class="world-news-list" aria-label="各处见闻">
-                <div class="world-section-heading"><span>各处见闻</span><span>{{ state.world.news.length }} 则</span></div>
                 <article v-for="item in state.world.news" :key="item.id" class="world-news-item">
                     <button type="button" :data-article-id="item.id" @click="openArticle(item)">
                         <span class="world-item-text"><h2>{{ item.title }}</h2><span class="world-item-summary">{{ item.summary }}</span></span>
-                        <svg class="world-item-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
                     </button>
                 </article>
             </section>
             <section v-else class="world-empty">
-                <h2>{{ refreshing ? '正在收集远方的见闻' : state.world.subscribed ? '见闻还在路上' : hasContent ? '继续看看各处的消息' : '远方，也有故事' }}</h2>
-                <p>{{ state.world.subscribed ? '已订阅，新闻会随剧情持续更新。\n有了新的见闻，就会出现在这里。' : '认识镜头之外的人与事。\n订阅后，新的见闻会随剧情陆续到来。' }}</p>
+                <h2>{{ refreshing ? '正在更新新闻' : state.world.subscribed ? '已订阅，等待新闻' : '暂无新闻' }}</h2>
                 <button
                     type="button" class="world-primary" :disabled="!canRefresh"
                     @click="state.world.subscribed ? request('refresh') : request('subscribe', { enabled: true })"
                 >
                     {{ refreshing ? '正在更新…' : pending ? '正在处理…' : state.world.subscribed ? '获取新闻' : '订阅新闻' }}
                 </button>
-                <small>获取及维护新闻会使用已配置的模型</small>
+                <small>获取及更新将调用模型</small>
             </section>
         </div>
 

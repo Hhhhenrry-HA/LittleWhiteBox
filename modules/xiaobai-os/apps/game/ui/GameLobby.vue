@@ -17,19 +17,9 @@ const visible = computed(() =>
 </script>
 <template>
     <section class="game-lobby">
-        <div class="game-lobby-intro">
-            <span>小白游艺室</span>
-            <h2>故事之外，<br>玩一小局。</h2>
-            <p>斗点智，碰点运气。<br>输赢都是小白币。</p>
-            <div class="game-lobby-emblem" aria-hidden="true"><i>✦</i><b>玩</b><small>一局好时光</small></div>
-        </div>
         <button v-if="activeGame" type="button" class="game-continue" @click="$emit('open', activeGame.kind)">
-            <img :src="gameRoom(activeGame.kind).artwork" alt=""><span><small>你的这一局还在</small><strong>{{ gameRoom(activeGame.kind).name }}</strong></span><b>继续玩 →</b>
+            <img :src="gameRoom(activeGame.kind).artwork" alt=""><span><small>进行中</small><strong>{{ gameRoom(activeGame.kind).name }}</strong></span><b>继续 →</b>
         </button>
-        <div class="game-browse-heading">
-            <h3>挑个好玩的</h3>
-            <span>{{ GAME_ROOMS.length }} 款游戏</span>
-        </div>
         <label class="game-search"><svg viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="10.5" cy="10.5" r="6.5" />
             <path d="m16 16 4 4" /></svg><input v-model="search" type="search" placeholder="找个游戏" aria-label="搜索游戏"></label>
@@ -54,11 +44,10 @@ const visible = computed(() =>
                 @click="$emit('open', room.id)"
             >
                 <div class="game-tile-art">
-                    <img :src="room.artwork" alt="" loading="lazy"><span>{{ room.category }}</span>
+                    <img :src="room.artwork" alt="" loading="lazy">
                 </div>
                 <div class="game-tile-copy">
                     <h3>{{ room.name }}</h3>
-                    <p>{{ room.tagline }}</p>
                     <span>{{ room.entry }} <i aria-hidden="true">↗</i></span>
                 </div>
             </button>

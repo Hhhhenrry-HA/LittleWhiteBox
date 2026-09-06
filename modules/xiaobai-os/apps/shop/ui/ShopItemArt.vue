@@ -4,19 +4,19 @@ import ShopItemIcon from './ShopItemIcon.vue';
 const props = defineProps<{ name: string }>();
 const id = useId();
 const tones: Record<string, readonly [string, string, string]> = {
-    local_florist: ['#c96c73', '#f8c5b9', '#914b59'], card_giftcard: ['#bf6b4c', '#eeb78a', '#813f32'],
-    sentiment_satisfied: ['#cca74c', '#f4e6a2', '#9d7933'], star: ['#ad8d49', '#f3dfa2', '#77633f'],
-    eco: ['#668960', '#b5cbaa', '#3d654b'], healing: ['#819caf', '#d4e7e4', '#557985'],
-    ink_eraser: ['#c98b81', '#f4c9b8', '#945b55'], badge: ['#698691', '#c8dedb', '#435f69'],
-    theater_comedy: ['#9a839d', '#d9c4db', '#6a5a80'], lab_research: ['#6d9e94', '#c4e4ca', '#436f66'],
-    photo_camera: ['#63797c', '#b3c6bd', '#3d5355'], handshake: ['#b58f51', '#ebd7a3', '#86683c'],
-    visibility_off: ['#7b809d', '#bdc5db', '#515571'], gavel: ['#ae8851', '#e8c895', '#785533'],
-    auto_awesome: ['#c39b54', '#f5dda4', '#8e7344'], forum: ['#699a99', '#c3dfd5', '#487471'],
-    spa: ['#8fa978', '#dde6bd', '#627e58'], face: ['#b09d8e', '#e7d5bb', '#80736b'],
-    switch_account: ['#8f8ca6', '#d7d5e5', '#625f7c'], medical_services: ['#a7886c', '#e8d1af', '#786447'],
-    timer_off: ['#b39253', '#f2dda6', '#80623b'], door_sliding: ['#7b94a0', '#cddfe2', '#526d7d'],
-    near_me: ['#b59a6a', '#f1dfb8', '#8a6941'], shield_moon: ['#7186a3', '#ccd9df', '#4b6282'],
-    thunderstorm: ['#71989e', '#c4e2dc', '#4f747e'],
+    local_florist: ['#ed6b8d', '#ffd2df', '#b33d64'], card_giftcard: ['#f07856', '#ffc4a7', '#c74d37'],
+    sentiment_satisfied: ['#edbe48', '#fff0ac', '#ba8625'], star: ['#dcae3d', '#ffeb9f', '#a37825'],
+    eco: ['#58a872', '#b9e5bf', '#287c56'], healing: ['#64a8d9', '#cfedff', '#337cb6'],
+    ink_eraser: ['#ed8c9d', '#ffdae1', '#bf536e'], badge: ['#5e9cbf', '#c4e8ff', '#366e9d'],
+    theater_comedy: ['#aa7ace', '#e8d5ff', '#7550aa'], lab_research: ['#4aaa91', '#b7f1dd', '#257c65'],
+    photo_camera: ['#607a9e', '#cbdaf1', '#334d73'], handshake: ['#dfa64c', '#ffe0a3', '#a9722e'],
+    visibility_off: ['#8874c4', '#d5c7ff', '#594394'], gavel: ['#ba8746', '#f5d39a', '#87552e'],
+    auto_awesome: ['#e0ad43', '#ffe6a3', '#ac7a24'], forum: ['#479eb7', '#beecf4', '#28728f'],
+    spa: ['#83b567', '#daf0b7', '#538743'], face: ['#d3b29b', '#fce5d5', '#a27f68'],
+    switch_account: ['#9281ca', '#e0d8ff', '#6451a2'], medical_services: ['#d77c80', '#ffd4d6', '#a74755'],
+    timer_off: ['#d7a945', '#ffeba8', '#9f742a'], door_sliding: ['#5c9bb9', '#c8eaff', '#326b94'],
+    near_me: ['#d8ab69', '#ffe8c1', '#a37942'], shield_moon: ['#648bc8', '#ccddff', '#3e65a8'],
+    thunderstorm: ['#549dbb', '#c3efff', '#317996'],
 };
 const tone = computed(() => tones[props.name] ?? tones.auto_awesome);
 const bottle = computed(() => ['healing', 'lab_research', 'medical_services'].includes(props.name));
@@ -26,20 +26,20 @@ const card = computed(() => ['badge', 'switch_account', 'forum', 'gavel', 'hands
     <svg class="shop-item-art" viewBox="0 0 160 160" aria-hidden="true" focusable="false" :style="{ '--item-color': tone[0], '--item-light': tone[1], '--item-dark': tone[2] }">
         <defs>
             <linearGradient :id="`${id}-body`" x1="0" y1="0" x2="1" y2="1"><stop stop-color="var(--item-light)" /><stop offset=".5" stop-color="var(--item-color)" /><stop offset="1" stop-color="var(--item-dark)" /></linearGradient>
-            <linearGradient :id="`${id}-metal`" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fbefc6" /><stop offset=".46" stop-color="#cfad6c" /><stop offset="1" stop-color="#917347" /></linearGradient>
-            <linearGradient :id="`${id}-glass`" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fffef2" stop-opacity=".9" /><stop offset=".5" stop-color="var(--item-light)" stop-opacity=".8" /><stop offset="1" stop-color="var(--item-color)" stop-opacity=".9" /></linearGradient>
+            <linearGradient :id="`${id}-metal`" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff2bc" /><stop offset=".46" stop-color="#e7bd62" /><stop offset="1" stop-color="#b18a3d" /></linearGradient>
+            <linearGradient :id="`${id}-glass`" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff" stop-opacity=".9" /><stop offset=".5" stop-color="var(--item-light)" stop-opacity=".8" /><stop offset="1" stop-color="var(--item-color)" stop-opacity=".9" /></linearGradient>
         </defs>
         <ellipse cx="80" cy="136" rx="39" ry="6" fill="var(--item-dark)" opacity=".12" />
         <g class="shop-art-object" stroke-linecap="round" stroke-linejoin="round" :fill="`url(#${id}-body)`">
             <g v-if="name === 'local_florist'" transform="rotate(-9 80 80)">
-                <path d="m45 66 34 64 37-64-34 20Z" fill="#e8d0aa" stroke="#b99a70" stroke-width="1.5" />
+                <path d="m45 66 34 64 37-64-34 20Z" fill="#ffeddb" stroke="#d7bda7" stroke-width="1.5" />
                 <path d="m51 65 32 22-5 43m5-43 28-25" fill="none" stroke="#fbecd0" stroke-width="3" />
-                <path d="M77 107 65 49m15 57 15-58M77 86c-25-2-27-20-27-20 24-2 29 18 29 18m3-8c2-19 22-17 22-17-2 16-22 17-22 17" fill="#739367" stroke="#668359" stroke-width="2" />
-                <g fill="#dc9291"><circle cx="61" cy="42" r="10" /><circle cx="72" cy="40" r="10" /><circle cx="77" cy="50" r="10" /><circle cx="68" cy="59" r="10" /><circle cx="57" cy="54" r="10" /></g>
+                <path d="M77 107 65 49m15 57 15-58M77 86c-25-2-27-20-27-20 24-2 29 18 29 18m3-8c2-19 22-17 22-17-2 16-22 17-22 17" fill="#70b784" stroke="#499965" stroke-width="2" />
+                <g fill="#ed839e"><circle cx="61" cy="42" r="10" /><circle cx="72" cy="40" r="10" /><circle cx="77" cy="50" r="10" /><circle cx="68" cy="59" r="10" /><circle cx="57" cy="54" r="10" /></g>
                 <circle cx="66" cy="50" r="7" fill="#f2d792" />
-                <g fill="#f0cbb2"><circle cx="88" cy="39" r="8" /><circle cx="99" cy="39" r="8" /><circle cx="103" cy="49" r="8" /><circle cx="92" cy="54" r="8" /><circle cx="85" cy="47" r="8" /></g>
+                <g fill="#ffd8bb"><circle cx="88" cy="39" r="8" /><circle cx="99" cy="39" r="8" /><circle cx="103" cy="49" r="8" /><circle cx="92" cy="54" r="8" /><circle cx="85" cy="47" r="8" /></g>
                 <circle cx="95" cy="46" r="6" fill="#d5ad61" />
-                <path d="m67 107 24 1m-11 0c-29-21-24 13-1 3 27 10 26-19 1-3m-1 3-9 13m11-14 10 11" fill="none" stroke="#a85550" stroke-width="4" />
+                <path d="m67 107 24 1m-11 0c-29-21-24 13-1 3 27 10 26-19 1-3m-1 3-9 13m11-14 10 11" fill="none" stroke="#d8546e" stroke-width="4" />
             </g>
             <g v-else-if="name === 'card_giftcard'" transform="rotate(-8 80 80)">
                 <rect x="38" y="65" width="85" height="65" rx="9" /><path d="M91 70v60h14V70" fill="#7d4840" opacity=".42" />
@@ -52,7 +52,7 @@ const card = computed(() => ['badge', 'switch_account', 'forum', 'gavel', 'hands
                 <path d="M61 45h38v20c0 6 22 14 22 30v21c0 11-8 17-18 17H57c-10 0-18-6-18-17V95c0-16 22-24 22-30Z" :fill="`url(#${id}-glass)`" stroke="var(--item-color)" stroke-width="1.5" />
                 <path d="M43 94c25-9 48 9 74 0v21q0 14-17 14H60q-17 0-17-14Z" opacity=".85" />
                 <path d="M54 77q-9 8-9 17v18" stroke="#fffae9" stroke-width="4" fill="none" />
-                <rect x="59" y="87" width="43" height="32" rx="4" fill="#f7edcf" transform="rotate(-5 80 103)" />
+                <rect x="59" y="87" width="43" height="32" rx="4" fill="#fff9ee" transform="rotate(-5 80 103)" />
                 <path v-if="name === 'medical_services'" d="M77 95h7v8h8v7h-8v8h-7v-8h-8v-7h8Z" fill="var(--item-dark)" transform="translate(0 -4)" />
                 <path v-else-if="name === 'lab_research'" d="m80 94 11 9-11 10-11-10Z" fill="var(--item-dark)" />
                 <path v-else d="M70 102q10-12 20 0-10 13-20 0Z" fill="none" stroke="var(--item-dark)" stroke-width="2" />
@@ -80,7 +80,7 @@ const card = computed(() => ['badge', 'switch_account', 'forum', 'gavel', 'hands
                 <path d="M80 27c-22 0-33 25-34 44l-20 55c34 14 74 14 108 0l-20-55c-1-19-12-44-34-44Z" stroke="var(--item-dark)" stroke-width="2" /><path d="M80 39c-16 0-24 18-24 30q24 18 48 0c0-12-8-30-24-30Z" fill="var(--item-dark)" /><path d="M76 86 65 127m18-38 14 39" stroke="var(--item-light)" opacity=".45" fill="none" stroke-width="2" /><circle cx="80" cy="83" r="5" fill="#e7d09a" /><path d="m34 73 6-8m82-18 5-7" stroke="#b7a77e" stroke-width="2" />
             </g>
             <g v-else-if="name === 'timer_off'" transform="rotate(10 80 80)">
-                <circle cx="80" cy="29" r="10" fill="none" stroke="#b19158" stroke-width="6" /><rect x="72" y="36" width="16" height="12" rx="3" fill="#c3a469" /><circle cx="80" cy="89" r="45" :fill="`url(#${id}-metal)`" stroke="#9e804b" stroke-width="2" /><circle cx="80" cy="89" r="35" fill="#f6eccf" stroke="#9e804b" /><path d="M80 59v6m0 48v6M50 89h6m48 0h6m-9-21-4 4m-38-4 4 4m38 38-4-4m-38 4 4-4" stroke="#a59470" stroke-width="2" /><path d="M80 70v19l14 12" fill="none" stroke="#685d47" stroke-width="3" /><circle cx="80" cy="89" r="4" fill="#b3955a" /><path d="M49 65q17-24 43-13" fill="none" stroke="#fff6d3" stroke-width="3" />
+                <circle cx="80" cy="29" r="10" fill="none" stroke="#b19158" stroke-width="6" /><rect x="72" y="36" width="16" height="12" rx="3" fill="#c3a469" /><circle cx="80" cy="89" r="45" :fill="`url(#${id}-metal)`" stroke="#9e804b" stroke-width="2" /><circle cx="80" cy="89" r="35" fill="#fffbf1" stroke="#9e804b" /><path d="M80 59v6m0 48v6M50 89h6m48 0h6m-9-21-4 4m-38-4 4 4m38 38-4-4m-38 4 4-4" stroke="#a59470" stroke-width="2" /><path d="M80 70v19l14 12" fill="none" stroke="#685d47" stroke-width="3" /><circle cx="80" cy="89" r="4" fill="#b3955a" /><path d="M49 65q17-24 43-13" fill="none" stroke="#fff6d3" stroke-width="3" />
             </g>
             <g v-else-if="name === 'door_sliding'">
                 <path d="M42 132V65a38 38 0 0 1 76 0v67Z" stroke="var(--item-dark)" stroke-width="2" /><path d="M51 125V65a29 29 0 0 1 58 0v60Z" fill="#e0e6db" /><path d="M79 40v85h27V66a29 29 0 0 0-27-26Z" fill="#547283" /><path d="m54 125 25-85v85Z" fill="#f6ebc9" /><path d="M36 133h88" stroke="#ae9a75" stroke-width="7" /><circle cx="88" cy="89" r="3" fill="#e5cf9b" /><path d="m58 62 6-9m36 15 2-9" stroke="#fffae6" stroke-width="2" />
@@ -104,7 +104,7 @@ const card = computed(() => ['badge', 'switch_account', 'forum', 'gavel', 'hands
                 <path d="M44 66q0-37 36-37t36 37v27c-3 24-23 38-36 40-13-2-33-16-36-40Z" stroke="var(--item-dark)" stroke-width="1.5" /><path d="M57 76h12m23 0h12M80 74l-4 20h9m-19 14q14 6 28 0" fill="none" stroke="var(--item-dark)" stroke-width="3" /><path d="M54 53q8-16 27-17" fill="none" stroke="#f7e7cf" stroke-width="4" />
             </g>
             <g v-else-if="name === 'sentiment_satisfied'" transform="rotate(-12 80 80)">
-                <rect x="36" y="30" width="91" height="101" rx="9" fill="#f8edcf" /><circle cx="81" cy="78" r="34" stroke="#ba994e" stroke-width="1.5" /><path d="M61 71q6-8 12 0m15 0q6-8 12 0M65 87q16 17 32 0" fill="none" stroke="#76602f" stroke-width="3.5" /><path d="m103 116 21-18v24q-10 11-21-6" fill="#ddcb9f" /><path d="M52 40h20" stroke="#fff9e6" stroke-width="3" />
+                <rect x="36" y="30" width="91" height="101" rx="9" fill="#fff8da" /><circle cx="81" cy="78" r="34" stroke="#ba994e" stroke-width="1.5" /><path d="M61 71q6-8 12 0m15 0q6-8 12 0M65 87q16 17 32 0" fill="none" stroke="#76602f" stroke-width="3.5" /><path d="m103 116 21-18v24q-10 11-21-6" fill="#eddb9c" /><path d="M52 40h20" stroke="#fff9e6" stroke-width="3" />
             </g>
             <g v-else>
                 <circle cx="80" cy="81" r="45" fill="none" :stroke="`url(#${id}-metal)`" stroke-width="7" /><circle cx="80" cy="81" r="37" :fill="`url(#${id}-glass)`" /><path d="m80 42 11 25 27 4-20 19 5 28-23-14-23 14 5-28-20-19 27-4Z" stroke="#9f834c" stroke-width="1.5" /><path d="m80 53 0 40 25-19-23-4" fill="#fff0c3" opacity=".7" /><path v-if="name === 'auto_awesome'" d="m126 27 3 8 8 3-8 3-3 8-3-8-8-3 8-3Zm-94 71 3 7 7 3-7 3-3 7-3-7-7-3 7-3Z" fill="#d4b778" />

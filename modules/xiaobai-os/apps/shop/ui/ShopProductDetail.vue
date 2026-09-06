@@ -12,9 +12,8 @@ const purchaseReason = computed(() => props.writeDisabledReason || shopPurchaseR
     <section class="shop-detail" aria-labelledby="shop-detail-title">
         <div class="shop-detail-art" :data-category="item.category">
             <button type="button" class="shop-detail-back shop-icon-button" aria-label="返回商品列表" @click="$emit('back')"><ShopIcon name="back" /></button>
-            <span class="shop-detail-category">{{ item.categoryLabel }} · 奇物</span>
+            <span class="shop-detail-category">{{ item.categoryLabel }}</span>
             <ShopItemArt :name="item.icon" />
-            <span class="shop-detail-engraving" aria-hidden="true">小白奇物店 · 珍藏一份可能</span>
         </div>
         <div class="shop-detail-copy">
             <header><h2 id="shop-detail-title">{{ item.name }}</h2><strong class="shop-detail-price"><small>¤</small> {{ item.price.toLocaleString('zh-CN') }}</strong></header>
@@ -24,13 +23,13 @@ const purchaseReason = computed(() => props.writeDisabledReason || shopPurchaseR
                 <div><dt><ShopIcon name="bag" />背包持有</dt><dd>{{ item.quantity }} 件</dd></div>
                 <div v-if="item.purchaseLimit !== null"><dt><ShopIcon name="lock" />购买限制</dt><dd>最多 {{ item.purchaseLimit }} 件 · 已购 {{ item.purchasedCount }} 件</dd></div>
             </dl>
-            <section class="shop-use-guide"><h3>使用前，知道这些</h3><p>{{ shopUseNotice(item) }}</p><p v-if="item.inputs.length">使用时需要填写：{{ item.inputs.map(input => input.label).join('、') }}。</p><p>每次使用消耗 1 件库存，不会再次扣款。已经发生的剧情不会因效果结束而撤销。</p></section>
+            <details class="shop-use-guide"><summary>使用说明</summary><p>{{ shopUseNotice(item) }}</p><p v-if="item.inputs.length">使用时需要填写：{{ item.inputs.map(input => input.label).join('、') }}。</p><p>每次使用消耗 1 件库存，不会再次扣款。已经发生的剧情不会因效果结束而撤销。</p></details>
             <p v-if="item.duration === 'permanent'" class="shop-hint is-warning"><ShopIcon name="lock" />永久生效指启用后的效果规则，不是可重复使用的库存。</p>
             <div v-if="item.quantity" class="shop-detail-owned"><span><ShopIcon name="check" />背包里已有 {{ item.quantity }} 件</span><button type="button" class="shop-text-button" :disabled="Boolean(activationDisabledReason)" @click="$emit('use')">使用一件<ShopIcon name="next" /></button><p v-if="activationDisabledReason">{{ activationDisabledReason }}</p></div>
         </div>
         <footer class="shop-detail-checkout">
             <p v-if="purchaseReason" class="shop-checkout-reason" role="status">{{ purchaseReason }}</p>
-            <div><span><small>钱包可用</small><strong>¤ {{ balance.toLocaleString('zh-CN') }}</strong></span><button type="button" class="shop-primary-button" :disabled="Boolean(purchaseReason)" @click="$emit('purchase')">{{ item.quantity ? '再购入一件' : '购入这件奇物' }}<ShopIcon name="bag" /></button></div>
+            <div><span><small>小白币</small><strong>¤ {{ item.price.toLocaleString('zh-CN') }}</strong></span><button type="button" class="shop-primary-button" :disabled="Boolean(purchaseReason)" @click="$emit('purchase')">{{ item.quantity ? '再买一件' : '购买' }}<ShopIcon name="bag" /></button></div>
             <small>购买后放入背包，不会自动使用</small>
         </footer>
     </section>

@@ -8,13 +8,6 @@ const net = computed(() => (props.record.net > 0 ? '+' : '') + props.record.net.
 </script>
 <template>
     <section class="game-result" :class="'is-' + record.outcomeTone" aria-label="本局结算">
-        <small>这一局，{{
-            record.outcomeTone === 'win'
-                ? '赢得漂亮'
-                : record.outcomeTone === 'loss'
-                    ? '下次再会'
-                    : '见好就收'
-        }}</small>
         <h3>{{ record.outcomeLabel }}</h3>
         <strong class="game-result-net">{{ net }}<small>小白币</small></strong>
         <p>下注 {{ record.amountIn }} · 拿回 {{ record.payout }}（含返还的本金）</p>

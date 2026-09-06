@@ -33,12 +33,8 @@ const reason = computed(
 <template>
     <section class="game-entry" :class="'is-' + room.tone">
         <div class="game-entry-art">
-            <img :src="room.artwork" alt=""><span>{{ room.category }} · 小白游艺室</span>
+            <img :src="room.artwork" alt="">
         </div>
-        <header>
-            <h2>{{ room.name }}</h2>
-            <p>{{ room.tagline }}</p>
-        </header>
         <ol class="game-entry-rules">
             <li v-for="rule in rules" :key="rule">{{ rule }}</li>
         </ol>
@@ -47,7 +43,7 @@ const reason = computed(
             <button type="button" class="game-primary-action" @click="$emit('resume')">继续那一局</button>
         </div>
         <div v-else class="game-entry-stake">
-            <h3>{{ minimum === maximum ? '本局入场' : '拿多少筹码上桌？' }}</h3>
+            <h3>{{ minimum === maximum ? '本局入场' : '本局筹码' }}</h3>
             <div v-if="minimum !== maximum" class="game-stake-chips" aria-label="选择下注">
                 <button
                     v-for="chip in chips"
@@ -74,7 +70,7 @@ const reason = computed(
                 :disabled="Boolean(reason)"
                 @click="$emit('start', bet)"
             >
-                下注 {{ bet || '—' }}，开始玩
+                下注 {{ bet || '—' }} · 开始
             </button>
             <p v-if="reason" class="game-inline-note" role="status">{{ reason }}</p>
         </div>
