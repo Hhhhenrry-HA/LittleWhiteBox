@@ -24,6 +24,7 @@ interface TaskActivation {
 
 type TaskControllerService = Pick<TasksService,
     | 'readCurrent'
+    | 'refreshCurrent'
     | 'createActionId'
     | 'acceptListing'
     | 'publish'
@@ -142,12 +143,13 @@ export function createTaskControllerRuntime({
     }
 
     function serviceView(): TasksServiceView {
-        if (economy.isOpen()) {return tasks.readCurrent();}
+        const view = tasks.readCurrent();
+        if (economy.isOpen()) {return view;}
         return {
+            ...view,
             domain: null,
             records: [],
             playerBalance: 0,
-            writeState: tasks.getWriteState(),
         };
     }
 
@@ -156,19 +158,21 @@ export function createTaskControllerRuntime({
     }
 
     function buildState(chatIdentity: string): TasksPresentation {
+        const view = serviceView();
+        backgroundGeneration.reconcileSave(chatIdentity, !view.pendingSave && view.writeState === 'ready');
         const generationState = backgroundGeneration.getState(chatIdentity);
         const state = presentTasksState({
             chatIdentity,
-            serviceView: serviceView(),
+            serviceView: view,
             settings: taskSettings(),
             economyReady: economy.isOpen(),
             generationActive: isMainGenerationActive() || generationState.state === 'running',
             generation: generationState,
             maintenanceStatus: maintenance.getStatus('tasks', chatIdentity),
         });
-        if (!preparation || preparation.activation !== activation) {return state;}
-        if (preparation.error) {return { ...state, status: 'blocked', message: preparation.error };}
         if (state.status === 'unconfirmed' || state.status === 'conflict') {return state;}
+        if (!preparation || preparation.activation !== activation || economy.isOpen()) {return state;}
+        if (preparation.error) {return { ...state, status: 'blocked', message: preparation.error };}
         return { ...state, status: 'loading', message: '' };
     }
 
@@ -338,6 +342,13 @@ export function createTaskControllerRuntime({
             const confirmation = await tasks.confirmPending();
             assertSameActivation(current, payload);
             return { confirmation: confirmation.status, state: emitState(current) };
+        }
+        if (message.type === 'tasks/read') {
+            preparation = null;
+            await tasks.refreshCurrent();
+            assertSameActivation(current, payload);
+            if (!economy.isOpen()) {schedulePreparation(current);}
+            return { state: emitState(current) };
         }
         if (message.type === 'tasks/save/adopt-server') {
             const adoption = await tasks.adoptServerState();

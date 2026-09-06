@@ -24,7 +24,7 @@ export function createProductionTasksModule(dependencies: ProductionTasksModuleD
     return createTasksModule({
         getPlayerDisplayName: dependencies.getPlayerDisplayName,
         getObservedAssistantCount: dependencies.getObservedAssistantCount,
-        async install({ tasks, economy, agent, maintenance, mapContext, execution }) {
+        async install({ tasks, economy, agent, maintenance, mapContext, worldContext, execution }) {
             const unregisterParticipant = maintenance.registerParticipant(createTaskMaintenanceParticipant({
                 tasks,
                 readSettings: () => dependencies.settings.read()?.apps.tasks ?? null,
@@ -33,7 +33,10 @@ export function createProductionTasksModule(dependencies: ProductionTasksModuleD
             const generation = createTaskGenerationRequests({
                 gateway: agent,
                 tasks,
-                context: createTaskGenerationContextAdapter({ readMapContext: mapContext.readPromptContext }),
+                context: createTaskGenerationContextAdapter({
+                    readMapContext: mapContext.readPromptContext,
+                    readWorldContext: worldContext.readCurrent,
+                }),
                 isMainGenerationActive: dependencies.mainGeneration.isActive,
             });
             const controller = createTaskController({

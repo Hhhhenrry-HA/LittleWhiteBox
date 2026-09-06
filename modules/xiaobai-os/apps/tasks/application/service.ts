@@ -30,6 +30,7 @@ export interface TasksServiceView {
     records: TaskRecord[];
     playerBalance: number;
     writeState: XiaobaiOsFileState;
+    pendingSave: boolean;
 }
 
 export interface TasksActionResult {
@@ -149,6 +150,7 @@ function transactionError(result: {
         code: commitRejected ? 'tasks_commit_guard_failed' : result.error?.code ?? `storage_${result.status}`,
         retryable: result.error?.retryable ?? true,
         uncertain: result.status === 'unconfirmed',
+        saveStatus: result.status,
     });
 }
 
@@ -195,6 +197,7 @@ export function createTasksService(
             records: domain ? projectTaskRecords(domain) : [],
             playerBalance: economy.getPlayerBalance(),
             writeState: files.getFileState(),
+            pendingSave: files.hasPendingCommit(),
         };
     }
 

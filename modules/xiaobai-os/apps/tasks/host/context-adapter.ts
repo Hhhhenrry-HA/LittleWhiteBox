@@ -2,6 +2,7 @@ import {
     createPromptContextAdapter,
 } from '../../../host/prompt-context/adapter.js';
 import type { PromptContextAdapter } from '../../../host/prompt-context/types.js';
+import type { WorldContextCapability } from '../../world/context-capability.js';
 import { normalizeTaskGenerationContext } from '../generation/context.js';
 import type { TaskGenerationContext } from '../generation/types.js';
 
@@ -19,11 +20,13 @@ export interface TaskGenerationContextAdapter {
 interface TaskGenerationContextAdapterDependencies {
     readonly promptContext?: PromptContextAdapter;
     readonly readMapContext?: () => string;
+    readonly readWorldContext?: WorldContextCapability['readCurrent'];
 }
 
 export function createTaskGenerationContextAdapter({
     promptContext = createPromptContextAdapter(),
     readMapContext = () => '',
+    readWorldContext = () => null,
 }: TaskGenerationContextAdapterDependencies = {}): TaskGenerationContextAdapter {
     function currentChatIdentity(): string {
         return promptContext.currentChatIdentity();
@@ -32,6 +35,7 @@ export function createTaskGenerationContextAdapter({
     async function capture(): Promise<TaskGenerationCapture> {
         const captured = await promptContext.capture();
         const mapContext = readMapContext();
+        const worldContent = readWorldContext(captured.chatIdentity);
         if (currentChatIdentity() !== captured.chatIdentity) {throw new Error('tasks_chat_changed');}
         return {
             chatIdentity: captured.chatIdentity,
@@ -39,6 +43,7 @@ export function createTaskGenerationContextAdapter({
             contextSnapshot: normalizeTaskGenerationContext({
                 ...captured.contextSnapshot,
                 mapContext,
+                worldContent,
             }),
         };
     }

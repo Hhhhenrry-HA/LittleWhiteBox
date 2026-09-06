@@ -1,5 +1,6 @@
 import { normalizeAgentSettings } from '../../../agent-core/config.js';
 import { isSillyTavernProvider, resolveActiveProviderConfig } from '../../../agent-core/provider-resolution.js';
+import { classifyProviderFailure } from '../agent/provider-failure.js';
 import type { AcceptedTurnSource } from './accepted-turn-source.js';
 import {
     cancelledJobOutcome,
@@ -45,6 +46,7 @@ export interface MaintenanceJobExecutorHooks {
     captureBackground: (
         source: AcceptedTurnSource,
         mode: MaintenanceQueuedJob['mode'],
+        participantIds: readonly string[],
     ) => readonly MaintenanceDataMessage[] | Promise<readonly MaintenanceDataMessage[]>;
     report: (error: unknown) => void;
 }
@@ -129,20 +131,24 @@ export function createMaintenanceJobExecutor(
                 cancelRun(run, job.cancelledReason || (guardJob(job) ? 'participant-disabled' : 'source-invalidated'));
                 continue;
             }
+            const unresolvedToolFailure = loop.unownedFailure
+                || loop.unresolvedParticipantIds.includes(run.participant.id);
+            const completed = loop.status === 'finished' && !unresolvedToolFailure;
             let domainResult: Omit<MaintenanceParticipantOutcome, 'participantId'>;
             let canCommit = false;
             try {
                 domainResult = run.session.getResult();
-                canCommit = await run.session.canCommit();
+                canCommit = (run.session.commitPolicy !== 'complete-run' || completed)
+                    && await run.session.canCommit();
             } catch (error) {
                 report(error);
                 results.push({ participantId: run.participant.id, status: 'failed', changed: false, reason: 'session-result-failed' });
                 continue;
             }
-            const unresolvedToolFailure = loop.unownedFailure
-                || loop.unresolvedParticipantIds.includes(run.participant.id);
-            if (loop.status !== 'finished' || unresolvedToolFailure) {
-                const reason = loop.status !== 'finished' ? loop.reason || loop.status : 'tool-errors-unresolved';
+            if (!completed) {
+                const reason = loop.status !== 'finished'
+                    ? loop.reason || (loop.status === 'provider-failed' ? classifyProviderFailure(loop.error) : loop.status)
+                    : 'tool-errors-unresolved';
                 domainResult = canCommit
                     ? { status: 'partial', changed: true, reason }
                     : { status: 'failed', changed: false, reason };
@@ -282,7 +288,9 @@ export function createMaintenanceJobExecutor(
         }
 
         try {
-            const capture = await startWhenReady(job, () => captureBackground(job.source, job.mode));
+            const capture = await startWhenReady(job, () => captureBackground(
+                job.source, job.mode, active.filter(run => guardRun(job, run)).map(run => run.participant.id),
+            ));
             if (!capture.started || !guardJob(job)) {
                 return cancelledJobOutcome(job, job.cancelledReason || 'source-invalidated');
             }

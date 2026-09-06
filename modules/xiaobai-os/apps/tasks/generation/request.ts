@@ -133,7 +133,11 @@ export function createTaskGenerationRequests({
     }
 
     async function captureCurrent(): Promise<Awaited<ReturnType<TaskGenerationContextAdapter['capture']>>> {
-        return await context.capture();
+        try { return await context.capture(); }
+        catch (error) {
+            if (isStaleRequestError(error)) { throw error; }
+            throw new Error('tasks_context_failed', { cause: error });
+        }
     }
 
     function assertConfigured(value: unknown): void {
@@ -150,10 +154,14 @@ export function createTaskGenerationRequests({
         prompt: TaskGenerationPrompt,
         preflight: () => boolean,
     ): Promise<UnknownRecord> {
-        const loaded = await gateway.loadConfig();
+        let loaded: unknown;
+        try { loaded = await gateway.loadConfig(); }
+        catch (error) { throw new Error('tasks_config_load_failed', { cause: error }); }
         if (!preflight()) {throw new DOMException('Aborted', 'AbortError');}
         assertConfigured(loaded);
-        const session = await gateway.openSession(loaded);
+        let session: Awaited<ReturnType<typeof gateway.openSession>>;
+        try { session = await gateway.openSession(loaded); }
+        catch (error) { throw new Error('tasks_agent_session_failed', { cause: error }); }
         if (!preflight()) {throw new DOMException('Aborted', 'AbortError');}
         return await session.run({
             systemPrompt: prompt.systemPrompt,
@@ -200,7 +208,11 @@ export function createTaskGenerationRequests({
                     && !isMainGenerationActive()
                     && tasks.getWriteState() === 'ready'
                     && current.chatIdentity === boundary.chatIdentity
-                    && jsonValuesEqual(current.contextSnapshot, boundary.contextSnapshot)
+                    // World news is reference material frozen for this request, not live task/story state.
+                    && jsonValuesEqual(
+                        { ...current.contextSnapshot, worldContent: null },
+                        { ...boundary.contextSnapshot, worldContent: null },
+                    )
                     && casValid,
                 assistantCount: current.assistantCount,
             };

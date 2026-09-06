@@ -1,3 +1,4 @@
+import { buildWorldDataMessage } from '../../world/prompt-data.js';
 import {
     buildPromptCurrentStateBlock,
     buildPromptSettingBlock,
@@ -41,7 +42,10 @@ export function buildTaskCandidatePrompt(
 ): TaskGenerationPrompt {
     const setting = buildPromptSettingBlock(contextSnapshot, { economyScale: TASK_ECONOMY_SCALE });
     const currentState = buildPromptCurrentStateBlock(contextSnapshot, {
-        additionalSections: contextSnapshot.mapContext ? [contextSnapshot.mapContext] : [],
+        additionalSections: [
+            contextSnapshot.mapContext,
+            ...(contextSnapshot.worldContent ? [buildWorldDataMessage(contextSnapshot.worldContent)] : []),
+        ],
     });
     const taskData = [
         '<task_data>',

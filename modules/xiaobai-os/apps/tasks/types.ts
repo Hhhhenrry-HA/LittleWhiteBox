@@ -6,7 +6,6 @@ export interface TasksSettings {
 }
 
 export type TasksClientStatus = 'ready' | 'loading' | 'saving' | 'unconfirmed' | 'conflict' | 'blocked';
-export type TasksMaintenanceOutcome = 'none' | 'updated' | 'unchanged' | 'partial' | 'failed' | 'cancelled' | 'no-work';
 
 export interface TasksGenerationState {
     state: 'idle' | 'running';
@@ -40,7 +39,7 @@ export interface TasksPresentation {
     history: TaskHistoryPage;
     maintenance: {
         state: 'idle' | 'running';
-        lastOutcome: TasksMaintenanceOutcome;
+        message: string;
     };
 }
 

@@ -5,6 +5,7 @@ import {
 } from '../../../host/prompt-context/format.js';
 import { TASK_ECONOMY_SCALE } from '../economy-scale.js';
 import type { TaskGenerationContext, TaskGenerationPrompt } from './types.js';
+import { buildWorldDataMessage } from '../../world/prompt-data.js';
 
 const ROLE = [
     '# Role',
@@ -85,7 +86,10 @@ function buildTaskData(): string {
 export function buildTaskBoardPrompt(contextSnapshot: TaskGenerationContext): TaskGenerationPrompt {
     const setting = buildPromptSettingBlock(contextSnapshot, { economyScale: TASK_ECONOMY_SCALE });
     const currentState = buildPromptCurrentStateBlock(contextSnapshot, {
-        additionalSections: contextSnapshot.mapContext ? [contextSnapshot.mapContext] : [],
+        additionalSections: [
+            contextSnapshot.mapContext,
+            ...(contextSnapshot.worldContent ? [buildWorldDataMessage(contextSnapshot.worldContent)] : []),
+        ],
     });
     return {
         systemPrompt: TASK_BOARD_SYSTEM_PROMPT,

@@ -5,6 +5,7 @@ import type {
 import {
     normalizePromptContext,
 } from '../../../host/prompt-context/normalize.js';
+import { worldContent } from '../../../domains/world/projection.js';
 
 const MAX_MAP_CONTEXT_CHARACTERS = 800;
 
@@ -22,13 +23,15 @@ function normalizeMapContext(value: unknown): string {
     return normalized;
 }
 
-/** Normalizes a host-independent raw projection into the sole generation snapshot. */
-export function normalizeTaskGenerationContext(value: TaskGenerationContextInput | unknown): TaskGenerationContext {
+/** Normalizes raw host fields and copies the validated World capability projection. */
+export function normalizeTaskGenerationContext(value: TaskGenerationContextInput): TaskGenerationContext {
     const source = value && typeof value === 'object' && !Array.isArray(value)
-        ? value as TaskGenerationContextInput
+        ? value
         : {};
     return {
         ...normalizePromptContext(source),
         mapContext: normalizeMapContext(source.mapContext),
+        worldContent: source.worldContent === undefined || source.worldContent === null
+            ? null : worldContent(source.worldContent),
     };
 }

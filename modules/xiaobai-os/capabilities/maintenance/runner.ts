@@ -7,7 +7,7 @@ import {
     matchesAcceptedTurnSource,
 } from './accepted-turn-source.js';
 import { createFifoCoordinator } from './fifo-coordinator.js';
-import { createMaintenanceJobExecutor, type MaintenanceGateway } from './job-executor.js';
+import { createMaintenanceJobExecutor, type MaintenanceGateway, type MaintenanceJobExecutorHooks } from './job-executor.js';
 import {
     cancelledJobOutcome,
     failedJobOutcome,
@@ -16,7 +16,7 @@ import {
     type MaintenanceSessionRun,
 } from './job.js';
 import { createMaintenanceOutcome, type MaintenanceRunOutcome } from './outcome.js';
-import type { MaintenanceDataMessage, MaintenanceMode, MaintenanceParticipant, MaintenanceRegistry } from './registry.js';
+import type { MaintenanceMode, MaintenanceParticipant, MaintenanceRegistry } from './registry.js';
 import {
     ALWAYS_READY_WRITE_GATE,
     type MaintenanceRootWriteGate,
@@ -64,7 +64,7 @@ export interface MaintenanceRunnerDependencies {
     readonly schedule?: (callback: () => void) => void;
     readonly now?: () => number;
     readonly onError?: (error: unknown) => void;
-    readonly captureBackground?: (source: AcceptedTurnSource, mode: MaintenanceMode) => readonly MaintenanceDataMessage[] | Promise<readonly MaintenanceDataMessage[]>;
+    readonly captureBackground?: MaintenanceJobExecutorHooks['captureBackground'];
 }
 
 export interface MaintenanceRunner {

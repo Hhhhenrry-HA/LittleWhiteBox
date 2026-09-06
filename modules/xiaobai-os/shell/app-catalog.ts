@@ -9,6 +9,7 @@ import { MESSAGES_APP_DESCRIPTOR } from '../apps/messages/descriptor.js';
 import { SHOP_APP_DESCRIPTOR } from '../apps/shop/descriptor.js';
 import { TASKS_APP_DESCRIPTOR } from '../apps/tasks/descriptor.js';
 import { WALLET_APP_DESCRIPTOR } from '../apps/wallet/descriptor.js';
+import { WORLD_APP_DESCRIPTOR } from '../apps/world/descriptor.js';
 const agentApiIcon = new URL('../apps/agent-api/ui/icon.svg', import.meta.url).href;
 const fourthWallIcon = new URL('../apps/fourth-wall/ui/icon.svg', import.meta.url).href;
 const walletIcon = new URL('../apps/wallet/ui/icon.svg', import.meta.url).href;
@@ -18,6 +19,7 @@ const gameIcon = new URL('../apps/game/ui/icon.svg', import.meta.url).href;
 const mapIcon = new URL('../apps/map/ui/icon.svg', import.meta.url).href;
 const messagesIcon = new URL('../apps/messages/ui/icon.svg', import.meta.url).href;
 const tasksIcon = new URL('../apps/tasks/ui/icon.svg', import.meta.url).href;
+const worldIcon = new URL('../apps/world/ui/icon.svg', import.meta.url).href;
 
 interface ComponentModule {
     default: Component;
@@ -82,6 +84,7 @@ const appsById: Readonly<Record<string, XiaobaiOsAppDefinition>> = Object.freeze
     map: defineApp(MAP_APP_DESCRIPTOR, mapIcon, () => import('../apps/map/ui/MapApp.vue')),
     messages: defineApp(MESSAGES_APP_DESCRIPTOR, messagesIcon, () => import('../apps/messages/ui/MessagesApp.vue')),
     tasks: defineApp(TASKS_APP_DESCRIPTOR, tasksIcon, () => import('../apps/tasks/ui/TasksApp.vue')),
+    world: defineApp(WORLD_APP_DESCRIPTOR, worldIcon, () => import('../apps/world/ui/WorldApp.vue')),
 });
 
 export const xiaobaiOsApps: readonly XiaobaiOsAppDefinition[] = Object.freeze(appIds.map(id => {

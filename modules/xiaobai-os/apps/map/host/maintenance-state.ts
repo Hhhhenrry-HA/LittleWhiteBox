@@ -1,13 +1,15 @@
 import type { MaintenanceStatus } from '../../../capabilities/maintenance/runner.js';
 import type { MapClientState } from '../types.js';
+import { providerFailureMessage } from '../../../capabilities/agent/provider-failure.js';
 
 // Only closed, application-owned categories cross into the UI; never provider errors or credentials.
 function failureReason(reason: string): string {
+    const providerMessage = providerFailureMessage(reason);
+    if (providerMessage) { return providerMessage; }
     switch (reason) {
         case 'agent-not-configured': return '请先在 API 应用中配置模型和所需的密钥。';
         case 'config-load-failed': return '未能读取模型配置，请打开 API 应用检查后重试。';
         case 'agent-session-failed': return '模型连接未能建立，请检查 API 配置后重试。';
-        case 'provider-failed': return '模型请求未完成，请检查 API 配置与连接后重试。';
         case 'empty-provider-response': return '模型返回了空内容，请稍后重试，或在 API 应用中更换模型。';
         case 'tool-errors-unresolved': return '模型提交的地图修改未通过检查，请重试；反复出现时可更换模型。';
         case 'round-limit': return '模型在本次处理上限内未完成绘制，可以稍后继续更新。';

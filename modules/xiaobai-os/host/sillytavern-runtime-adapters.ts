@@ -12,16 +12,17 @@ import { createModuleEvents, event_types } from '../../../core/event-manager.js'
 import type { ShopPromptEventHandlers } from '../apps/shop/host/prompt-runtime.js';
 import type { MapPromptEventHandlers } from '../apps/map/host/prompt-runtime.js';
 import type { TaskPromptEventHandlers } from '../apps/tasks/host/prompt-runtime.js';
+import type { WorldPromptEventHandlers } from '../apps/world/host/prompt-runtime.js';
 import { createMainGenerationRuntime, type MainGenerationRuntime } from './main-generation-runtime.js';
 
-type SimplePromptHandlers = MapPromptEventHandlers | TaskPromptEventHandlers;
+type SimplePromptHandlers = MapPromptEventHandlers | TaskPromptEventHandlers | WorldPromptEventHandlers;
 
-export function setSillyTavernPrompt(key: string, value: string): void {
+export function setSillyTavernPrompt(key: string, value: string, depth = 1): void {
     setExtensionPrompt(
         key,
         value,
         Number(extension_prompt_types.IN_CHAT) || 1,
-        1,
+        depth,
         false,
         Number(extension_prompt_roles.SYSTEM) || 0,
     );
@@ -102,6 +103,14 @@ export const subscribeTaskPromptEvents = (handlers: TaskPromptEventHandlers): ((
         'xiaobaiOsTasksPrompt',
         'xiaobai_os_tasks_context',
         GENERATE_INTERCEPTOR_ORDER.XIAOBAI_OS_TASKS,
+        handlers,
+    );
+
+export const subscribeWorldPromptEvents = (handlers: WorldPromptEventHandlers): (() => void) =>
+    subscribeSimplePromptEvents(
+        'xiaobaiOsWorldPrompt',
+        'xiaobai_os_world_context',
+        GENERATE_INTERCEPTOR_ORDER.XIAOBAI_OS_WORLD,
         handlers,
     );
 

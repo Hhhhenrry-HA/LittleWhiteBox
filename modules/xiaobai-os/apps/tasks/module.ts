@@ -13,6 +13,7 @@ import type { ScopedChatStore } from '../../kernel/contracts.js';
 import type { TaskDomainV1 } from '../../domains/tasks/types.js';
 import type { XiaobaiOsAppRuntime } from '../../types.js';
 import { MAP_CONTEXT_CAPABILITY, type MapContextCapability } from '../map/context-capability.js';
+import { WORLD_CONTEXT_CAPABILITY, type WorldContextCapability } from '../world/context-capability.js';
 import {
     createTasksService,
     type TasksService,
@@ -30,6 +31,7 @@ export interface TasksModuleInstallContext {
     agent: AgentCapability;
     maintenance: MaintenanceCapability;
     mapContext: MapContextCapability;
+    worldContext: WorldContextCapability;
     execution: AppInstallContext['execution'];
 }
 
@@ -52,6 +54,7 @@ export function createTasksModule(dependencies: TasksModuleDependencies): Xiaoba
             AGENT_CAPABILITY,
             MAINTENANCE_CAPABILITY,
             MAP_CONTEXT_CAPABILITY,
+            WORLD_CONTEXT_CAPABILITY,
         ],
         async install(context) {
             if (!context.partition) { throw new Error('Tasks partition store is unavailable'); }
@@ -74,6 +77,7 @@ export function createTasksModule(dependencies: TasksModuleDependencies): Xiaoba
                     agent: context.useCapability(AGENT_CAPABILITY),
                     maintenance: context.useCapability(MAINTENANCE_CAPABILITY),
                     mapContext: context.useCapability(MAP_CONTEXT_CAPABILITY),
+                    worldContext: context.useCapability(WORLD_CONTEXT_CAPABILITY),
                     execution: context.execution,
                 });
                 services.set(runtime, tasks);

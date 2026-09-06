@@ -321,7 +321,7 @@ Controller 向 iframe 返回的唯一完整状态为：
 interface TasksPresentation {
     status: 'ready' | 'loading' | 'saving' | 'unconfirmed' | 'conflict' | 'blocked';
     message: string;
-    writeState: 'ready' | 'saving' | 'unconfirmed' | 'conflict';
+    writeState: 'loading' | 'ready' | 'saving' | 'unconfirmed' | 'conflict' | 'failed';
     settings: { autoMaintenance: boolean };
     playerBalance: number;
     generationActive: boolean;
@@ -339,7 +339,7 @@ interface TasksPresentation {
     };
     maintenance: {
         state: 'idle' | 'running';
-        lastOutcome: 'none' | 'updated' | 'unchanged' | 'partial' | 'failed' | 'cancelled' | 'no-work';
+        message: string; // Host 根据完整结果和原因生成安全文案，不丢弃 skipped 原因
     };
 }
 
@@ -355,9 +355,11 @@ interface TaskDetailPresentation {
 }
 ```
 
-Host 路由固定为：`tasks/activate`、`tasks/detail/read`、`tasks/refresh`、`tasks/board/accept`、`tasks/publish`、`tasks/candidates/refresh`、`tasks/candidates/assign`、`tasks/cancel`、`tasks/maintenance/run`、`tasks/settings/update`、`tasks/history/load-more`。除 activate 外，所有请求携带激活返回的 app activation token；任务动作再携带`taskId + expectedTaskRevision + expectedEventId`，其中 expectedEventId 只作为不透明 CAS；board accept 携带`boardId + listingId`；settings/update 只接受`autoMaintenance`。文件确认/采用服务端数据是 Kernel/Shell 路由，不属于 Tasks。Controller 不接受余额、账户、新 eventId/actionId、issuer/assignee 对象或任务 status。
+Host 路由固定为：`tasks/activate`、`tasks/read`、`tasks/detail/read`、`tasks/refresh`、`tasks/board/accept`、`tasks/publish`、`tasks/candidates/refresh`、`tasks/candidates/assign`、`tasks/cancel`、`tasks/maintenance/run`、`tasks/settings/update`、`tasks/history/load-more`、`tasks/save/confirm`、`tasks/save/adopt-server`。除 activate 外，所有请求携带激活返回的 app activation token；任务动作再携带`taskId + expectedTaskRevision + expectedEventId`，其中 expectedEventId 只作为不透明 CAS；board accept 携带`boardId + listingId`；settings/update 只接受`autoMaintenance`。文件确认/采用服务端数据由 Tasks 入口转交 Kernel，不另建保存流程。Controller 不接受余额、账户、新 eventId/actionId、issuer/assignee 对象或任务 status。
 
-`status`由本地 presentation 唯一派生：首次 Economy 开户为 loading，Kernel 文件状态映射 saving/unconfirmed/conflict，初始化明确失败为 blocked，其余为 ready；`message`只取稳定本地文案。`generationActive=true`时所有写动作和 Agent 请求禁用，只读仍可用。
+`status`由本地 presentation 唯一派生：首次 Economy 开户和文件读取为 loading；Kernel 文件状态映射 saving/unconfirmed/conflict。`failed` 时有待核实候选仍显示 unconfirmed 并保留核实入口，无候选才显示 blocked 和重试读取；初始化明确失败为 blocked。`message`只取稳定本地文案。`generationActive=true`时所有写动作和 Agent 请求禁用，只读仍可用。
+
+失败反馈保留配置、Provider、安全校验与保存阶段的区别。Provider 的 HTTP 状态仅映射到受控分类（密钥／权限、请求不支持、限流／额度、超时、服务不可用），不把错误正文或密钥传给 UI。未开始检查不显示为“无需更新”。保存恢复沿用同一候选；只有实际 confirmed/adopted 才提示成功，恢复后只撤换对应保存失败提示，不清掉无关 API 失败。故障原因和运行状态仅驻留当前运行，不新增持久化字段，不新增自动重试。
 
 activate 和每个状态写成功都返回新的完整`TasksPresentation`（历史重置为第一页），不让 iframe 自己乐观拼 TaskRecord；`history/load-more`只返回下一页，iframe 仅按 taskId 合并这类只读分页；`detail/read`按 taskId 返回`TaskDetailPresentation`，不暴露 actionId 或账户。失败响应只给稳定本地 code，presentation 映射用户文案。刷新/候选/maintenance 另带各自 outcome，不能把 Provider error 塞进 state。
 

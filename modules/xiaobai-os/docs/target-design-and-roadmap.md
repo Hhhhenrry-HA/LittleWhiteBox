@@ -63,6 +63,7 @@ Shell 静态保留所有已交付 APP 的图标和 descriptor。APP Host、依�
 | 赌局 | Game | Game 分区事件链和私有状态 |
 | 商品库存与效果 | Shop | Shop 分区事件链 |
 | 世界图册与场景地图 | Map | Map 分区规范 Atlas/Scene |
+| 镜头外新闻与轻背景 | World | world 分区的订阅偏好、概况与当前新闻 |
 | 正式任务 | Tasks | Tasks 分区事件链；资金仍以 Economy 为准 |
 | 私人联系人和通讯历史 | Messages / 信息 APP | messages 分区；普通聊天只保存发生时点的楼层投影 |
 | 四次元壁会话 | Fourth Wall | fourthWall 分区 sessions |
@@ -132,6 +133,12 @@ upstream 已上线的旧 fw 数据是唯一需要保留的聊天业务兼容对�
 Map 提供可探索的世界 Atlas 和地点 Scene：优先实现作者设计，合理补齐世界地理与当前场所的普通布局；人物位置与已发生事件必须有剧情证据。世界地图／当前场景可直接切换，打开、查看、缩放均为本地操作。主 RP 只获得角色扮演友好的 current_map Atlas 连续性资料，不暴露 Scene 实现字段。
 
 完整契约见 [Map APP 终态设计](./map-app-target-design.md)。
+
+### 世界
+
+World 是刊物式的镜头外见闻：订阅后随有效接受轮维护，取消保留内容，手动刷新独立于订阅。当前概况与新闻归 `world` 分区，模型通过 WorldRead / WorldEdit 更新；只将已确认概况与短摘要以 System @D4 提供给主剧情，背景开关独立。阅读不请求模型，历史分支只继承偏好。
+
+任务、地图的既有素材包会附带已确认的世界新闻；通常完整，初始资料超预算时省略正文并说明，没有则省略，同轮已有则不重复。这里只共享资料，不自动转任务或强制扩图，无新增请求或设置。完整边界见 [世界 APP 设计](./world-app-target-design.md)，实现、验证及未验收项见 [施工记录](./world-app-implementation-plan.md)。信息联动、小白板迁移与 ENA 接入仍留后。
 
 ### 任务
 

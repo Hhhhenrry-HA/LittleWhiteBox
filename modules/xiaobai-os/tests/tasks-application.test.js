@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { setImmediate } from 'node:timers';
 
 import {
     createEconomyCapabilityRegistrations,
@@ -9,8 +10,10 @@ import {
 import { AGENT_CAPABILITY } from '../capabilities/agent/index.js';
 import { MAINTENANCE_CAPABILITY } from '../capabilities/maintenance/index.js';
 import { MAP_CONTEXT_CAPABILITY } from '../apps/map/context-capability.js';
+import { WORLD_CONTEXT_CAPABILITY } from '../apps/world/context-capability.js';
 import { createTaskIdFactory } from '../apps/tasks/application/ids.js';
 import { createTasksService } from '../apps/tasks/application/service.js';
+import { createTaskController } from '../apps/tasks/host/controller.js';
 import { createTasksModule } from '../apps/tasks/module.js';
 import { TASKS_PARTITION } from '../apps/tasks/partition.js';
 import { ensureEconomy, projectBalances } from '../domains/economy/ledger.js';
@@ -161,7 +164,7 @@ function maintenanceCommand(kind, actionId, record, summary) {
     };
 }
 
-test('Tasks module owns a strict partition and declares only its five runtime capabilities', async () => {
+test('Tasks module owns a strict partition and declares its runtime capabilities', async () => {
     assert.equal(TASKS_PARTITION.parse({ schemaVersion: 1, revision: 0, board: null, events: [] }).ok, true);
     assert.equal(TASKS_PARTITION.parse({ schemaVersion: 1, revision: 0, board: null, events: [], extra: true }).ok, false);
 
@@ -176,6 +179,7 @@ test('Tasks module owns a strict partition and declares only its five runtime ca
         AGENT_CAPABILITY.id,
         MAINTENANCE_CAPABILITY.id,
         MAP_CONTEXT_CAPABILITY.id,
+        WORLD_CONTEXT_CAPABILITY.id,
     ]);
     const removed = [];
     await module.clearData({ removePartition: async key => { removed.push(key); } });
@@ -369,6 +373,74 @@ test('unconfirmed writes stay hidden and file-control retry reuses one candidate
     assert.equal(harness.tasks.readCurrent().records.length, 1);
     assert.equal(harness.economy.getPlayerBalance(), 20);
     assert.equal(ledgerOf(harness).transactions.filter(transaction => transaction.sourceDomain === 'tasks').length, 1);
+});
+
+test('Tasks keeps recovery available after failed verification and retires only the recovered save notice', async t => {
+    for (const recovery of ['confirm', 'adopt-server', 'external-confirm']) {
+        await t.test(recovery, async sub => {
+            const h = await createHarness();
+            let generations = 0;
+            const controller = createTaskController({
+                tasks: h.tasks, economy: h.economy,
+                generation: {
+                    async refreshBoard() {
+                        generations++;
+                        await h.tasks.replaceBoard({ expectedBoardId: null, listings: [listing()], generatedAt: 1000 }, allowCommit);
+                        return { kind: 'board', status: 'updated', changed: true };
+                    },
+                    cancelAll() {},
+                },
+                settings: { read: () => null, subscribe: () => () => {} },
+                maintenance: { getStatus: () => ({ state: 'idle', message: '', reason: '', mode: null, lastRunAt: null }), subscribeStatus: () => () => {} },
+                getChatIdentity: () => h.state.capture.identityKey, isMainGenerationActive: () => false,
+                subscribeGeneration: () => () => {}, report() {},
+            });
+            controller.startBackground();
+            sub.after(() => { controller.stopBackground(); h.tasks.dispose(); });
+            const activate = () => controller.activate({ post: () => true });
+            const request = type => controller.handleMessage({ type: `tasks/${type}`, payload: { chatIdentity: h.state.capture.identityKey } });
+            activate();
+            h.state.replaceImpl = async () => ({ status: 'unconfirmed', observed: h.state.persisted });
+            await request('refresh');
+            await new Promise(resolve => setImmediate(resolve));
+            const initial = await request('activate');
+            assert.equal(initial.status, 'unconfirmed');
+            assert.equal(initial.board, null);
+            assert.match(initial.generation.message, /先核实保存/);
+
+            h.state.replaceImpl = async () => ({ status: 'failed', error: { code: 'offline', message: 'offline', retryable: true } });
+            const failed = await request('save/confirm');
+            assert.equal(failed.confirmation, 'failed');
+            assert.equal(failed.state.writeState, 'failed');
+            assert.equal(failed.state.status, 'unconfirmed');
+            assert.equal(h.tasks.readCurrent().pendingSave, true);
+            assert.match(failed.state.message, /再次核实/);
+            await assert.rejects(request('refresh'), /tasks_write_blocked/);
+            controller.deactivate();
+            assert.equal(activate().status, 'unconfirmed');
+
+            h.state.replaceImpl = null;
+            if (recovery === 'adopt-server') {
+                h.state.persisted.revision++;
+                h.state.persisted.commitId = 'another-writer';
+                assert.equal((await request('save/confirm')).state.status, 'conflict');
+            }
+            let recovered;
+            if (recovery === 'external-confirm') {
+                controller.deactivate();
+                await h.tasks.confirmPending();
+                recovered = activate();
+            } else { recovered = (await request(`save/${recovery}`)).state; }
+            assert.equal(recovered.status, 'ready');
+            assert.equal(h.tasks.readCurrent().pendingSave, false);
+            assert.equal(recovered.generation.message, '');
+            assert.equal(Boolean(recovered.board), recovery !== 'adopt-server');
+            assert.equal(generations, 1);
+            if (recovery !== 'adopt-server') {
+                assert.deepEqual(h.state.writes[0].candidate, h.state.writes.at(-1).candidate);
+            }
+        });
+    }
 });
 
 test('a corrupt Tasks partition is isolated from Economy reads', async () => {

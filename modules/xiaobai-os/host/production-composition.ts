@@ -15,6 +15,9 @@ import type { ChatMessage } from '../apps/messages/application/projection.js';
 import { createProductionShopModule } from '../apps/shop/production-module.js';
 import { createProductionTasksModule } from '../apps/tasks/production-module.js';
 import { createWalletModule } from '../apps/wallet/module.js';
+import { createProductionWorldModule } from '../apps/world/production-module.js';
+import { createWorldContextCapabilityRegistration, WORLD_CONTEXT_CAPABILITY } from '../apps/world/context-capability.js';
+import { copyWorldBranch } from '../apps/world/host/branch-copy.js';
 import { createFourthWallUpstreamImport } from '../apps/fourth-wall/upgrade/upstream-import.js';
 import { createAgentCapabilityRegistration } from '../capabilities/agent/index.js';
 import { createEconomyCapabilityRegistrations } from '../capabilities/economy/index.js';
@@ -34,7 +37,7 @@ import { createSidecarIndex } from '../storage/sidecar-index.js';
 import { createXiaobaiOsBootstrap, type XiaobaiOsBootstrap } from './bootstrap.js';
 import { createKernelComposition } from './kernel-composition.js';
 import { createPromptContextAdapter } from './prompt-context/adapter.js';
-import { buildPromptCurrentStateBlock, buildPromptSettingBlock } from './prompt-context/format.js';
+import { createMaintenanceBackgroundCapture } from './prompt-context/maintenance-background.js';
 import type { XiaobaiOsSettingsRepository } from './settings-repository.js';
 import {
     getSillyTavernAssistantTurnCount,
@@ -50,6 +53,7 @@ import {
     subscribeMapPromptEvents,
     subscribeShopPromptEvents,
     subscribeTaskPromptEvents,
+    subscribeWorldPromptEvents,
     subscribeXiaobaiOsChatChanged,
 } from './sillytavern-runtime-adapters.js';
 
@@ -68,12 +72,16 @@ export function createProductionBootstrap(
         recordOrphan: index.remember,
         recordReference: index.remember,
     });
+    const copyMessagesBranch = createMessagesBranchCopy(() => {
+        const capture = metadata.capture();
+        const surface = getSillyTavernChatSurface();
+        return capture && surface ? { identityKey: capture.identityKey, messages: surface.messages as ChatMessage[] } : null;
+    });
     const bindingManager = createChatBindingManager({ metadata, references, storage, index,
-        prepareClonedPartitions: createMessagesBranchCopy(() => {
-            const capture = metadata.capture();
-            const surface = getSillyTavernChatSurface();
-            return capture && surface ? { identityKey: capture.identityKey, messages: surface.messages as ChatMessage[] } : null;
-        }),
+        prepareClonedPartitions(capture, source, partitions) {
+            copyMessagesBranch(capture, source, partitions);
+            copyWorldBranch(capture, source, partitions);
+        },
     });
     const bindingEvents = createChatBindingEventAdapter();
     const mainGeneration = createSillyTavernMainGenerationRuntime();
@@ -84,6 +92,7 @@ export function createProductionBootstrap(
         createAgentCapabilityRegistration(),
         ...createEconomyCapabilityRegistrations(),
         createMapContextCapabilityRegistration(),
+        createWorldContextCapabilityRegistration(),
         createMaintenanceCapabilityRegistration({
             captureSurface: getSillyTavernChatSurface,
             isGenerationActive: mainGeneration.isActive,
@@ -91,25 +100,11 @@ export function createProductionBootstrap(
                 getState: () => composition.transactions.getFileState(),
                 subscribe: listener => composition.transactions.subscribeFileState(change => listener(change.state)),
             },
-            async captureBackground(source, mode) {
-                const firstAcceptedIndex = source.messages[0]?.index ?? source.trigger?.index ?? 0;
-                const acceptedThroughIndex = source.messages.at(-1)?.index ?? firstAcceptedIndex;
-                const captured = await promptContext.capture({
-                    throughMessageIndex: acceptedThroughIndex,
-                    recentBeforeIndex: firstAcceptedIndex,
-                });
-                const mapContext = mode === 'rebuild'
-                    ? ''
-                    : composition.capabilities.require(MAP_CONTEXT_CAPABILITY).readPromptContext();
-                const setting = buildPromptSettingBlock(captured.contextSnapshot);
-                const currentState = buildPromptCurrentStateBlock(captured.contextSnapshot, {
-                    additionalSections: mapContext ? [mapContext] : [],
-                });
-                return [
-                    { role: 'system' as const, content: setting },
-                    ...(currentState ? [{ role: 'system' as const, content: currentState }] : []),
-                ];
-            },
+            captureBackground: createMaintenanceBackgroundCapture({
+                promptContext,
+                readMapContext: () => composition.capabilities.require(MAP_CONTEXT_CAPABILITY).readPromptContext(),
+                readWorldContext: identity => composition.capabilities.require(WORLD_CONTEXT_CAPABILITY).readCurrent(identity),
+            }),
             onError: error => console.error('[LittleWhiteBox] 小白 OS 后台维护失败', error),
         }),
     ];
@@ -146,6 +141,11 @@ export function createProductionBootstrap(
             mainGeneration,
             setPrompt: value => setSillyTavernPrompt('xiaobai_os_tasks_context', value),
             subscribePrompt: subscribeTaskPromptEvents,
+        }),
+        createProductionWorldModule({
+            getChatIdentity: () => getSillyTavernChatIdentity()?.key ?? '',
+            setPrompt: value => setSillyTavernPrompt('xiaobai_os_world_context', value, 4),
+            subscribePrompt: subscribeWorldPromptEvents,
         }),
     ];
 

@@ -30,6 +30,8 @@ export interface MaintenanceSession {
     readonly prompt: string;
     readonly dataMessages: readonly MaintenanceDataMessage[];
     readonly tools: readonly MaintenanceFunctionDeclaration[];
+    /** Defaults to preserving valid staging; complete-run requires a finished loop without unresolved tool failures for this domain. */
+    readonly commitPolicy?: 'staged' | 'complete-run';
     executeTool: (name: string, args: unknown) => unknown | Promise<unknown>;
     canCommit: () => boolean | Promise<boolean>;
     /** Reports domain-owned semantic tool failures as well as staged changes. */

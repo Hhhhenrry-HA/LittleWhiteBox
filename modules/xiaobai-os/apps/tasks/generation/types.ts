@@ -7,13 +7,16 @@ import type {
     PromptContextInput,
     PromptContextSnapshot,
 } from '../../../host/prompt-context/types.js';
+import type { WorldContent } from '../../../domains/world/types.js';
 
 export interface TaskGenerationContext extends PromptContextSnapshot {
     readonly mapContext: string;
+    readonly worldContent: WorldContent | null;
 }
 
 export interface TaskGenerationContextInput extends PromptContextInput {
     readonly mapContext?: unknown;
+    readonly worldContent?: WorldContent | null;
 }
 
 export type TaskGenerationBoundary =

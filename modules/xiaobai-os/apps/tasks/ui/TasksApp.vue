@@ -45,7 +45,7 @@ function fallbackState(): TasksPresentation {
         active: [],
         recruiting: [],
         history: { items: [], nextCursor: null, hasMore: false },
-        maintenance: { state: 'idle', lastOutcome: 'none' },
+        maintenance: { state: 'idle', message: '' },
     };
 }
 
@@ -112,16 +112,7 @@ const writeDisabledReason = computed(() => {
 const generationDisabledReason = computed(() => (
     writeDisabledReason.value || (state.value.maintenance.state === 'running' ? '正在更新任务' : '')
 ));
-const maintenanceMessage = computed(() => {
-    const outcome = state.value.maintenance.lastOutcome;
-    if (outcome === 'updated') {return '任务已更新。';}
-    if (outcome === 'unchanged') {return '当前任务无需更新。';}
-    if (outcome === 'partial') {return '部分任务状态已保存。';}
-    if (outcome === 'failed') {return '任务更新失败，请稍后重试。';}
-    if (outcome === 'cancelled') {return '本次任务更新已取消。';}
-    if (outcome === 'no-work') {return '当前没有需要更新的任务进展。';}
-    return '';
-});
+const maintenanceMessage = computed(() => state.value.maintenance.message);
 function applyState(next: TasksPresentation): void {
     if (!next || typeof next.chatIdentity !== 'string') {return;}
     state.value = structuredClone(next);
@@ -324,11 +315,12 @@ async function loadMoreHistory(): Promise<void> {
 async function confirmSave(): Promise<void> {
     if (saveBusy.value) {return;}
     saveBusy.value = true;
+    errorMessage.value = ''; actionMessage.value = '';
     const version = stateVersion;
     try {
         const body = await request('tasks/save/confirm');
         applyResponseState(body, version);
-        announce('保存结果已重新核实。');
+        if (isRecord(body) && body.confirmation === 'confirmed') { announce('保存已确认。'); }
     } catch (error) {errorMessage.value = readableError(error);}
     finally {saveBusy.value = false;}
 }
@@ -336,13 +328,24 @@ async function confirmSave(): Promise<void> {
 async function adoptServer(): Promise<void> {
     if (saveBusy.value) {return;}
     saveBusy.value = true;
+    errorMessage.value = ''; actionMessage.value = '';
     const version = stateVersion;
     try {
         const body = await request('tasks/save/adopt-server');
         applyResponseState(body, version);
-        announce('已采用服务端数据。');
+        if (isRecord(body) && body.adoption === 'adopted') { announce('已采用服务端数据。'); }
     } catch (error) {errorMessage.value = readableError(error);}
     finally {saveBusy.value = false;}
+}
+
+async function retryRead(): Promise<void> {
+    if (saveBusy.value) {return;}
+    saveBusy.value = true;
+    errorMessage.value = ''; actionMessage.value = '';
+    const version = stateVersion;
+    try { applyResponseState(await request('tasks/read'), version); }
+    catch { errorMessage.value = '读取未完成，请检查存储连接后重试读取。'; }
+    finally { saveBusy.value = false; }
 }
 
 function go(next: TasksPage): void {
@@ -433,10 +436,10 @@ onBeforeUnmount(() => {
         </header>
         <div class="tasks-notices" aria-live="polite">
             <aside v-if="state.message || (errorMessage && !confirmation) || actionMessage" class="tasks-notice" :class="{ 'is-error': Boolean(errorMessage) || state.status === 'conflict' || state.status === 'blocked', 'is-warning': requiresConfirmation }" role="status">
-                <div><p>{{ (confirmation ? '' : errorMessage) || state.message || actionMessage }}</p><button v-if="requiresConfirmation" type="button" :disabled="saveBusy" @click="confirmSave">{{ saveBusy ? '正在核实…' : '核实保存结果' }}</button><button v-else-if="state.status === 'conflict'" type="button" :disabled="saveBusy" @click="adoptServer">{{ saveBusy ? '正在采用…' : '采用服务端数据' }}</button></div>
+                <div><p>{{ state.message || (confirmation ? '' : errorMessage) || actionMessage }}</p><button v-if="requiresConfirmation" type="button" :disabled="saveBusy" @click="confirmSave">{{ saveBusy ? '正在核实…' : '核实保存结果' }}</button><button v-else-if="state.status === 'conflict'" type="button" :disabled="saveBusy" @click="adoptServer">{{ saveBusy ? '正在采用…' : '采用服务端数据' }}</button><button v-else-if="state.status === 'blocked'" type="button" :disabled="saveBusy" @click="retryRead">{{ saveBusy ? '正在读取…' : '重试读取' }}</button></div>
                 <button v-if="!state.message" type="button" class="tasks-icon-button" aria-label="关闭提示" @click="errorMessage = ''; actionMessage = ''"><TaskIcon name="close" /></button>
             </aside>
-            <aside v-if="state.generation.message" class="tasks-notice" role="status"><p>{{ state.generation.message }}</p></aside>
+            <aside v-if="state.generation.message && !state.message" class="tasks-notice" role="status"><p>{{ state.generation.message }}</p></aside>
         </div>
         <nav v-if="page === 'board' || page === 'active'" class="tasks-receive-tabs" aria-label="接任务页面">
             <button type="button" :aria-pressed="page === 'board'" @click="go('board')">发现委托</button>

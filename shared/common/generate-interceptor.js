@@ -17,6 +17,7 @@ export const GENERATE_INTERCEPTOR_ORDER = Object.freeze({
     XIAOBAI_OS_SHOP: 400,
     XIAOBAI_OS_MAP: 410,
     XIAOBAI_OS_TASKS: 420,
+    XIAOBAI_OS_WORLD: 430,
 });
 
 const handlers = new Map();

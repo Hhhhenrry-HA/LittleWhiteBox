@@ -6,10 +6,10 @@ import type {
     TaskHistoryPage,
     TasksClientStatus,
     TasksGenerationState,
-    TasksMaintenanceOutcome,
     TasksPresentation,
     TasksSettings,
 } from '../types.js';
+import { taskMaintenanceMessage } from '../feedback.js';
 
 export const TASK_HISTORY_PAGE_SIZE = 20;
 
@@ -61,20 +61,16 @@ function clientStatus(view: TasksServiceView, economyReady: boolean): { status: 
     if (view.writeState === 'conflict') {
         return { status: 'conflict', message: '服务端任务与当前候选不一致。采用服务端数据后才能继续写入。' };
     }
-    if (view.writeState === 'unconfirmed') {
-        return { status: 'unconfirmed', message: '任务保存结果尚未确认，任务与资金写入已冻结。' };
+    if (view.writeState === 'unconfirmed' || (view.pendingSave && view.writeState === 'failed')) {
+        return { status: 'unconfirmed', message: view.writeState === 'failed'
+            ? '核实保存未完成，待保存内容仍保留。请检查存储连接后再次核实，不要重复生成。'
+            : '任务保存结果尚未确认，请先核实保存，暂时不能修改任务或资金。' };
     }
     if (view.writeState === 'saving') {return { status: 'saving', message: '正在确认任务与资金保存结果…' };}
+    if (view.writeState === 'loading') {return { status: 'loading', message: '正在读取任务数据…' };}
+    if (view.writeState === 'failed') {return { status: 'blocked', message: '暂时无法读取任务数据，请检查存储连接后重试读取。' };}
     if (!economyReady) {return { status: 'blocked', message: '钱包尚未完成开户，请重新读取。' };}
     return { status: 'ready', message: '' };
-}
-
-function maintenanceOutcome(status: MaintenanceStatus): TasksMaintenanceOutcome {
-    if (status.message === 'updated' || status.message === 'unchanged' || status.message === 'partial'
-        || status.message === 'failed' || status.message === 'cancelled') {
-        return status.message;
-    }
-    return status.message === 'skipped' ? 'no-work' : 'none';
 }
 
 export function presentTasksState({
@@ -120,7 +116,7 @@ export function presentTasksState({
         history: presentTaskHistory(records),
         maintenance: {
             state: maintenanceStatus.state === 'running' ? 'running' : 'idle',
-            lastOutcome: maintenanceOutcome(maintenanceStatus),
+            message: taskMaintenanceMessage(maintenanceStatus, !serviceView.pendingSave && serviceView.writeState === 'ready'),
         },
     };
 }
