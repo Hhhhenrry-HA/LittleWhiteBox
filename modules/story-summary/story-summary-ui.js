@@ -2,6 +2,7 @@
 // iframe 内 UI 逻辑
 
 import { EVENT_MEMORY_ROLES, projectEditedSummaryEvents } from './data/events.js';
+import { DEFAULT_SUMMARY_DELAY_FLOORS, normalizeSummaryDelayFloors } from './data/summary-delay.js';
 
 (function () {
     'use strict';
@@ -67,13 +68,13 @@ import { EVENT_MEMORY_ROLES, projectEditedSummaryEvents } from './data/events.js
 
     const DEFAULT_MEMORY_PROMPT_TEMPLATE = `以上是还留在眼前的对话
 以下是脑海里的记忆：
-• [定了的事] 这些是不会变的
+• [定了的事] 已确立的事实，以后续明确发生的变化为准
 • [其他人的事] 别人的经历，当前角色可能不知晓
 • 其余部分是过往经历的回忆碎片
 
-请内化这些记忆：
+请内化这些记忆：剧情中已确立的事实与关系发展，优先于初始设定中的旧状态。
 {$剧情记忆}
-这些记忆是真实的，请自然地记住它们。`;
+这些记忆是真实的，请自然地记住它们，并结合当前剧情理解事件距今多久。`;
 
     const EMPTY_BUILTIN_SUMMARY_PROMPTS = Object.freeze({
         summarySystemPrompt: '',
@@ -84,7 +85,7 @@ import { EVENT_MEMORY_ROLES, projectEditedSummaryEvents } from './data/events.js
         summaryUserJsonFormatPrompt: '',
         summaryAssistantCheckPrompt: '',
         summaryUserConfirmPrompt: '',
-        summaryAssistantPrefillPrompt: '',
+        summaryUserGeneratePrompt: '',
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -281,7 +282,7 @@ import { EVENT_MEMORY_ROLES, projectEditedSummaryEvents } from './data/events.js
     const config = {
         api: { provider: 'st', url: '', key: '', model: '', modelCache: [] },
         gen: { temperature: null, top_p: null, top_k: null, presence_penalty: null, frequency_penalty: null },
-        trigger: { enabled: false, interval: 20, timing: 'before_user', role: 'system', useStream: true, maxPerRun: 100, wrapperHead: '', wrapperTail: '', forceInsertAtEnd: false },
+        trigger: { enabled: false, interval: 20, delayFloors: DEFAULT_SUMMARY_DELAY_FLOORS, timing: 'before_user', role: 'system', useStream: true, maxPerRun: 100, wrapperHead: '', wrapperTail: '', forceInsertAtEnd: false },
         ui: { hideSummarized: true, keepVisibleCount: 6, useVectorBoundary: true },
         prompts: {
             memoryTemplate: '',
@@ -1160,7 +1161,7 @@ import { EVENT_MEMORY_ROLES, projectEditedSummaryEvents } from './data/events.js
         $('gen-frequency').value = config.gen.frequency_penalty ?? '';
         $('trigger-enabled').checked = config.trigger.enabled;
         $('trigger-interval').value = config.trigger.interval;
-        $('trigger-delay-floors').value = config.trigger.delayFloors ?? 0;
+        $('trigger-delay-floors').value = normalizeSummaryDelayFloors(config.trigger.delayFloors);
         $('trigger-timing').value = config.trigger.timing;
         $('trigger-role').value = config.trigger.role || 'system';
         $('trigger-stream').checked = config.trigger.useStream !== false;
@@ -1237,7 +1238,7 @@ import { EVENT_MEMORY_ROLES, projectEditedSummaryEvents } from './data/events.js
         config.trigger.role = $('trigger-role').value || 'system';
         config.trigger.enabled = $('trigger-enabled').checked;
         config.trigger.interval = Math.max(1, Math.min(30, parseInt($('trigger-interval').value) || 20));
-        config.trigger.delayFloors = Math.max(0, Math.min(30, parseInt($('trigger-delay-floors').value) || 0));
+        config.trigger.delayFloors = normalizeSummaryDelayFloors($('trigger-delay-floors').value);
         config.trigger.useStream = $('trigger-stream').checked;
         config.trigger.maxPerRun = parseInt($('trigger-max-per-run').value) || 100;
         config.trigger.wrapperHead = $('trigger-wrapper-head').value;
@@ -1257,7 +1258,7 @@ import { EVENT_MEMORY_ROLES, projectEditedSummaryEvents } from './data/events.js
         $('summary-user-json-format-prompt').value = builtInSummaryPrompts.summaryUserJsonFormatPrompt;
         $('summary-assistant-check-prompt').value = builtInSummaryPrompts.summaryAssistantCheckPrompt;
         $('summary-user-confirm-prompt').value = builtInSummaryPrompts.summaryUserConfirmPrompt;
-        $('summary-assistant-prefill-prompt').value = builtInSummaryPrompts.summaryAssistantPrefillPrompt;
+        $('summary-user-generate-prompt').value = builtInSummaryPrompts.summaryUserGeneratePrompt;
     }
 
     async function saveSettings() {
@@ -2629,9 +2630,7 @@ import { EVENT_MEMORY_ROLES, projectEditedSummaryEvents } from './data/events.js
 
         // 延迟总结楼层范围校验
         $('trigger-delay-floors').onchange = e => {
-            let val = parseInt(e.target.value) || 0;
-            val = Math.max(0, Math.min(30, val));
-            e.target.value = val;
+            e.target.value = normalizeSummaryDelayFloors(e.target.value);
         };
 
         // Current chat switch (saved immediately in chat metadata)

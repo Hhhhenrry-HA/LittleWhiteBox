@@ -9,7 +9,7 @@ import {
     DEFAULT_SUMMARY_USER_JSON_FORMAT_PROMPT,
     DEFAULT_SUMMARY_ASSISTANT_CHECK_PROMPT,
     DEFAULT_SUMMARY_USER_CONFIRM_PROMPT,
-    DEFAULT_SUMMARY_ASSISTANT_PREFILL_PROMPT,
+    DEFAULT_SUMMARY_USER_GENERATE_PROMPT,
 } from "../data/config.js";
 import { getRequestHeaders } from "../../../../../../../script.js";
 import { getStreamingReply } from "../../../../../../../scripts/openai.js";
@@ -32,7 +32,6 @@ const PROVIDER_MAP = {
     cohere: "cohere",
 };
 
-const JSON_PREFILL = DEFAULT_SUMMARY_ASSISTANT_PREFILL_PROMPT;
 const HOST_GENERATION_PROVIDERS = new Set(['openai']);
 const SUMMARY_GENERATION_TIMEOUT_MS = 180_000;
 const SUMMARY_CANCELLED_CODE = 'summary_generation_cancelled';
@@ -156,7 +155,6 @@ function buildHostMessages(promptData) {
     return [
         ...(Array.isArray(promptData.topMessages) ? promptData.topMessages : []),
         ...(Array.isArray(promptData.bottomMessages) ? promptData.bottomMessages : []),
-        { role: 'assistant', content: promptData.assistantPrefill },
     ].filter(message => String(message?.content || '').trim());
 }
 
@@ -281,7 +279,7 @@ function buildSummaryMessages(existingSummary, existingFacts, newHistoryText, hi
     const userJsonFormatPrompt = DEFAULT_SUMMARY_USER_JSON_FORMAT_PROMPT;
     const assistantCheckPrompt = DEFAULT_SUMMARY_ASSISTANT_CHECK_PROMPT;
     const userConfirmPrompt = DEFAULT_SUMMARY_USER_CONFIRM_PROMPT;
-    const assistantPrefillPrompt = DEFAULT_SUMMARY_ASSISTANT_PREFILL_PROMPT;
+    const userGeneratePrompt = DEFAULT_SUMMARY_USER_GENERATE_PROMPT;
     const { text: factsText, predicates } = formatFactsForLLM(existingFacts);
 
     const predicatesHint = predicates.length > 0
@@ -310,13 +308,13 @@ function buildSummaryMessages(existingSummary, existingFacts, newHistoryText, hi
     const bottomMessages = [
         { role: 'user', content: metaProtocolStartPrompt + '\n' + jsonFormat },
         { role: 'assistant', content: checkContent },
-        { role: 'user', content: userConfirmPrompt }
+        { role: 'user', content: userConfirmPrompt },
+        { role: 'user', content: userGeneratePrompt }
     ];
 
     return {
         top64: b64UrlEncode(JSON.stringify(topMessages)),
         bottom64: b64UrlEncode(JSON.stringify(bottomMessages)),
-        assistantPrefill: assistantPrefillPrompt,
         topMessages,
         bottomMessages,
     };
@@ -336,7 +334,8 @@ export function parseSummaryJson(raw) {
         .trim();
 
     try {
-        return JSON.parse(cleaned);
+        const parsed = JSON.parse(cleaned);
+        return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
     } catch { }
 
     const start = cleaned.indexOf('{');
@@ -345,7 +344,8 @@ export function parseSummaryJson(raw) {
         let jsonStr = cleaned.slice(start, end + 1)
             .replace(/,(\s*[}\]])/g, '$1');
         try {
-            return JSON.parse(jsonStr);
+            const parsed = JSON.parse(jsonStr);
+            return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
         } catch { }
     }
 
@@ -413,7 +413,7 @@ export async function generateSummary(options) {
             if (xbLog.isEnabled()) {
                 xbLog.info("storySummaryLlm", `LLM输出(len=${rawOutput?.length || 0}): ${String(rawOutput || "").slice(0, 1200)}`);
             }
-            return JSON_PREFILL + rawOutput;
+            return rawOutput;
         }
 
         const streamingMod = getStreamingModule();
@@ -427,7 +427,6 @@ export async function generateSummary(options) {
             nonstream: useStream ? 'false' : 'true',
             top64: promptData.top64,
             bottom64: promptData.bottom64,
-            bottomassistant: promptData.assistantPrefill,
             id: sessionId,
         };
 
@@ -468,7 +467,7 @@ export async function generateSummary(options) {
             xbLog.info("storySummaryLlm", `LLM输出(len=${rawOutput?.length || 0}): ${String(rawOutput || "").slice(0, 1200)}`);
         }
 
-        return JSON_PREFILL + rawOutput;
+        return rawOutput;
     } finally {
         signal?.removeEventListener?.('abort', handleAbort);
     }

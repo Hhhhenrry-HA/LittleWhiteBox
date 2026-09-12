@@ -2901,24 +2901,23 @@ async function getHideBoundaryFloor(store) {
 }
 
 async function applyHideState({ reset = true } = {}) {
+    if (reset) cancelHideApplyTimer();
     if (!isStorySummaryConsumableForCurrentChat()) return;
     const store = getSummaryStore();
     const ui = getHideUiSettings();
     if (!ui.hideSummarized) return;
 
     const boundary = await getHideBoundaryFloor(store);
-    if (boundary < 0) return;
-
     const range = calcHideRange(boundary, ui.keepVisibleCount);
-    if (!range) return;
 
     if (reset) {
         // 仅在隐藏范围可能缩小时清理历史残留；普通后台维护只补 hide，避免短暂全展开。
         await unhideAllMessages();
-        await executeSlashCommand(`/hide ${range.start}-${range.end}`);
+        if (range) await executeSlashCommand(`/hide ${range.start}-${range.end}`);
         return;
     }
 
+    if (!range) return;
     const changed = applyHideRangeInMemory(range);
     if (changed > 0) {
         xbLog.info(MODULE_ID, `后台隐藏已同步到当前聊天状态：${range.start}-${range.end} changed=${changed}`);
@@ -2930,13 +2929,13 @@ function cancelHideApplyTimer() {
     hideApplyTimer = null;
 }
 
-function applyHideStateDebounced({ reset = false } = {}) {
+function applyHideStateDebounced() {
     cancelHideApplyTimer();
     hideApplyTimer = setTimeout(() => {
         hideApplyTimer = null;
         if (!isStorySummaryConsumableForCurrentChat()) return;
         if (!getHideUiSettings().hideSummarized) return;
-        applyHideState({ reset }).catch((e) => xbLog.warn(MODULE_ID, "applyHideState failed", e));
+        applyHideState({ reset: false }).catch((e) => xbLog.warn(MODULE_ID, "applyHideState failed", e));
     }, HIDE_APPLY_DEBOUNCE_MS);
 }
 
@@ -3056,8 +3055,7 @@ async function maybeAutoRunSummary(reason) {
 
     const store = getSummaryStore();
     const lastSummarized = store?.lastSummarizedMesId ?? -1;
-    const sourceEnd = getSummarySourceEnd(chat, chat.length - 1);
-    const target = Math.min(sourceEnd, chat.length - 1 - (Number(trig?.delayFloors) || 0));
+    const target = getSummarySourceEnd(chat, chat.length - 1, trig.delayFloors);
     const pending = target - lastSummarized;
     if (pending < (trig.interval || 1)) return;
 
@@ -3207,7 +3205,7 @@ async function handleFrameMessage(event) {
                 break;
             }
             const ctx = getContext();
-            currentMesId = (ctx.chat?.length ?? 1) - 1 - (Number(getSummaryPanelConfig()?.trigger?.delayFloors) || 0);
+            currentMesId = (ctx.chat?.length ?? 1) - 1;
             handleManualGenerate(currentMesId, data.config || {});
             break;
         }
@@ -3501,14 +3499,21 @@ async function handleFrameMessage(event) {
             const { chat, chatId } = getContext();
             cancelPendingEventEditSync();
             cancelRecallAndClearPrompt('summary-cleared');
-            const cleared = await runVectorWriteTask(
-                { chatId, kind: 'summary-clear', scope: VECTOR_WRITE_SCOPES.IO },
-                async () => {
-                    if (getContext()?.chatId !== chatId) return false;
-                    await clearSummaryData(chatId);
-                    return true;
-                },
-            );
+            let cleared;
+            try {
+                cleared = await runVectorWriteTask(
+                    { chatId, kind: 'summary-clear', scope: VECTOR_WRITE_SCOPES.IO },
+                    async () => {
+                        if (getContext()?.chatId !== chatId) return false;
+                        await clearSummaryData(chatId);
+                        return true;
+                    },
+                );
+            } catch (error) {
+                xbLog.error(MODULE_ID, '清空总结失败', error);
+                await executeSlashCommand('/echo severity=error 清空总结失败，原总结已保留；请查看日志后重试');
+                break;
+            }
             if (!cleared) break;
             lastRecallLogText = "";
             invalidateLexicalIndex();
@@ -3564,7 +3569,7 @@ async function handleFrameMessage(event) {
             notifyStorySummaryChatState();
 
             if (!result.success) {
-                await executeSlashCommand("/echo severity=error 回退总结失败：数据已被修改或历史链不完整，未应用任何更改");
+                await executeSlashCommand("/echo severity=error 回退总结失败，原总结已保留；请查看日志后重试");
                 break;
             }
 
@@ -3808,6 +3813,7 @@ async function handleChatChanged(scheduledChatId = getContext()?.chatId || '') {
     if (isChatStale(scheduledChatId)) return;
     const newLength = Array.isArray(chat) ? chat.length : 0;
 
+    let vectorFloorsTruncated = false;
     const rollback = await runVectorWriteTask(
         {
             chatId: scheduledChatId,
@@ -3818,7 +3824,12 @@ async function handleChatChanged(scheduledChatId = getContext()?.chatId || '') {
             if (isChatStale(scheduledChatId)) return { status: 'stale' };
             const result = await rollbackSummaryIfNeeded();
             if (result.status !== 'failed' && !isChatStale(scheduledChatId)) {
-                await reconcileVectorFloorsOnLoad(scheduledChatId, newLength);
+                try {
+                    vectorFloorsTruncated = await reconcileVectorFloorsOnLoad(scheduledChatId, newLength);
+                } catch (error) {
+                    await clearHideState();
+                    throw error;
+                }
             }
             return result;
         },
@@ -3835,7 +3846,7 @@ async function handleChatChanged(scheduledChatId = getContext()?.chatId || '') {
     const store = getSummaryStore();
 
     if (getHideUiSettings().hideSummarized) {
-        await applyHideState({ reset: false });
+        await applyHideState({ reset: rollback.status === 'rolled_back' || vectorFloorsTruncated });
     }
 
     if (frameReady) {
@@ -3908,13 +3919,17 @@ async function handleMessageDeletedNow(scheduledChatId) {
     // 产品边界：只保证“删除末尾”或“从某层向后删除”的一致性。ST 编辑器中的
     // 单条中间删除会重排后续 mesId，但 MESSAGE_DELETED 只提供新长度；该低频操作不在支持范围。
     const rollback = await rollbackSummaryIfNeeded();
-    // 回滚失败也要裁掉越界派生数据，否则 L0/L1 会一直指向已删楼层。
-    await truncateVectorDataFromFloor(chatId, newLength);
-
     invalidateLexicalIndex();
+    // 回滚失败也要裁掉越界派生数据，否则 L0/L1 会一直指向已删楼层。
+    try {
+        await truncateVectorDataFromFloor(chatId, newLength);
+    } catch (error) {
+        // 派生数据同步失败时边界不可信，至少恢复原文，不能继续沿用旧隐藏。
+        await clearHideState();
+        throw error;
+    }
+
     scheduleLexicalWarmup();
-    await sendAnchorStatsToFrame();
-    await sendVectorStatsToFrame();
     return rollback;
 }
 
@@ -3927,6 +3942,10 @@ async function handleMessageDeleted(scheduledChatId) {
         },
         () => handleMessageDeletedNow(scheduledChatId),
     );
+    await finishSummaryContentChange(rollback);
+}
+
+async function finishSummaryContentChange(rollback, { resetHide = true } = {}) {
     if (!rollback) return;
     // deactivate 内部会 waitForVectorWrites，必须留在写任务之外，否则自等死锁。
     if (rollback.status === 'failed') {
@@ -3935,42 +3954,53 @@ async function handleMessageDeleted(scheduledChatId) {
         await executeSlashCommand('/echo severity=error 剧情总结无法安全回滚，已停止使用旧总结；请导出当前总结，修正后重新导入，或清空总结数据');
         return;
     }
-    applyHideStateDebounced({ reset: rollback.status === 'rolled_back' });
+    // 删除或 swipe 的事件返回后，宿主就可能开始组装请求，必须等待恢复完成。
+    // 即使 L2 无需回滚，原文变更也可能缩小 L1 隐藏边界。
+    await applyHideState({ reset: resetHide });
     notifyStorySummaryChatState();
-}
-
-async function handleMessageSwipedNow(scheduledChatId) {
-    if (!isStorySummaryEnabledForCurrentChat()) return;
-    if (isChatStale(scheduledChatId)) return;
-    const { chat, chatId } = getContext();
-    const lastFloor = (chat?.length || 1) - 1;
-
-    await syncOnMessageSwiped(chatId, lastFloor);
-
-    // L0 同步：清理 swipe 前该楼的 atoms / index / vectors
-    deleteStateAtomsFromFloor(lastFloor);
-    deleteL0IndexFromFloor(lastFloor);
-    if (chatId) {
-        await deleteStateVectorsFromFloor(chatId, lastFloor);
-    }
-
-    removeDocumentsByFloor(lastFloor);
-
-    initButtonsForAll();
-    applyHideStateDebounced();
     await sendAnchorStatsToFrame();
     await sendVectorStatsToFrame();
 }
 
-async function handleMessageSwiped(scheduledChatId) {
-    return runVectorWriteTask(
+async function handleMessageSwipedNow(scheduledChatId, messageId) {
+    if (!isStorySummaryEnabledForCurrentChat()) return null;
+    if (isChatStale(scheduledChatId)) return null;
+    const { chat, chatId } = getContext();
+    if (!Number.isInteger(messageId) || messageId < 0 || messageId >= (chat?.length || 0)) return null;
+
+    const rollback = await rollbackSummaryIfNeeded({ changedFromFloor: messageId });
+    if (rollback.status === 'rolled_back') invalidateLexicalIndex();
+    else removeDocumentsByFloor(messageId);
+
+    try {
+        await syncOnMessageSwiped(chatId, messageId);
+        // L0 同步：清理 swipe 前该楼及之后依赖旧正文的派生数据。
+        deleteStateAtomsFromFloor(messageId);
+        deleteL0IndexFromFloor(messageId);
+        await deleteStateVectorsFromFloor(chatId, messageId);
+    } catch (error) {
+        await clearHideState();
+        throw error;
+    }
+
+    scheduleLexicalWarmup();
+    return rollback;
+}
+
+async function handleMessageSwiped(scheduledChatId, messageId) {
+    const rollback = await runVectorWriteTask(
         {
             chatId: scheduledChatId,
             kind: 'message-swipe-sync',
             scope: VECTOR_WRITE_SCOPES.CONSISTENCY,
         },
-        () => handleMessageSwipedNow(scheduledChatId),
+        () => handleMessageSwipedNow(scheduledChatId, messageId),
     );
+    initButtonsForAll();
+    await finishSummaryContentChange(rollback, {
+        resetHide: rollback?.status === 'rolled_back'
+            || (!!getVectorConfig()?.enabled && getHideUiSettings().useVectorBoundary),
+    });
 }
 
 async function handleMessageReceived(scheduledChatId, targetMesId = null) {
@@ -4052,7 +4082,7 @@ async function handleMessageUpdated(scheduledChatId, messageId) {
         scheduleAutoL0Backfill(AUTO_L0_BACKFILL_DELAY_MS, scheduledChatId);
     }
     initButtonsForAll();
-    applyHideStateDebounced({ reset: false });
+    applyHideStateDebounced();
     notifyStorySummaryChatState();
 }
 
@@ -4541,7 +4571,7 @@ async function registerEvents() {
     events.on(event_types.MESSAGE_DELETED, () => runContentChangeSync(handleMessageDeleted));
     events.on(event_types.MESSAGE_RECEIVED, (data) => notifyStorySummaryAfterAi(data, "message_received"));
     events.on(event_types.MESSAGE_SENT, () => scheduleWithChatGuard(handleMessageSent, 150));
-    events.on(event_types.MESSAGE_SWIPED, () => runContentChangeSync(handleMessageSwiped));
+    events.on(event_types.MESSAGE_SWIPED, (messageId) => runContentChangeSync(handleMessageSwiped, messageId));
     // 只绑 MESSAGE_EDITED。宿主真实编辑（script.js messageEditDone、/messageupdate 等）
     // 一定先发 MESSAGE_EDITED 再发 MESSAGE_UPDATED；而"打开编辑器又取消"只发 MESSAGE_UPDATED
     // （script.js closeMessageEditor）。绑 MESSAGE_UPDATED 会让取消编辑也裁掉后续 L0/L1。

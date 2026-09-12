@@ -3,6 +3,7 @@ import { EXT_ID } from "../../../core/constants.js";
 import { xbLog } from "../../../core/debug-core.js";
 import { CommonSettingStorage } from "../../../core/server-storage.js";
 import { EVENT_MEMORY_ROLES } from "./events.js";
+import { DEFAULT_SUMMARY_DELAY_FLOORS, normalizeSummaryDelayFloors } from './summary-delay.js';
 
 const MODULE_ID = "summaryConfig";
 const SUMMARY_CONFIG_KEY = "storySummaryPanelConfig";
@@ -76,13 +77,13 @@ Summary Specialist:
 
 export const DEFAULT_MEMORY_PROMPT_TEMPLATE = `以上是还留在眼前的对话
 以下是脑海里的记忆：
-• [定了的事] 这些是不会变的
+• [定了的事] 已确立的事实，以后续明确发生的变化为准
 • [其他人的事] 别人的经历，当前角色可能不知晓
 • 其余部分是过往经历的回忆碎片
 
-请内化这些记忆：
+请内化这些记忆：剧情中已确立的事实与关系发展，优先于初始设定中的旧状态。
 {$剧情记忆}
-这些记忆是真实的，请自然地记住它们。`;
+这些记忆是真实的，请自然地记住它们，并结合当前剧情理解事件距今多久。`;
 
 export const DEFAULT_SUMMARY_ASSISTANT_DOC_PROMPT = `
 Summary Specialist:
@@ -99,6 +100,7 @@ These roles are different uses of memory, not importance levels. Choose the main
 
 [Event Summary Style]
 - summary 不是剧情概括，而是高召回的回忆卡片
+- timeLabel 和 summary 的时间优先用原文日期或明确事件定位，沿用已有时间基准；不单独写“今天、昨天、明晚”等相对时间，不编造日期或间隔。
 - 必须优先保留原词：正式人名、原文称呼/昵称/别称、地点、关键物件、动作、情绪态度、关系变化、约定/承诺/交换条件、秘密或羞辱/暧昧/冲突钩子
 - 信息无法全部容纳时，严格按此顺序压缩或删除：气氛描写 → 次要反应 → 心理描写 → 动作过程；必须先删完前一类，才可压缩后一类
 - 与本事件直接相关的具名实体（人名、地点、具名物件）、辨识性特征和15字以内的关键原话属于最后保留层；仅在上述四类都已不足以继续压缩时才考虑舍弃；无关名词不要强行塞入
@@ -112,7 +114,8 @@ These roles are different uses of memory, not importance levels. Choose the main
   3. 她揭示了一个秘密，对方受到打击。
 - 合格：
   1. 苏晚在黑鹭酒馆当众把欠条拍到顾衡胸口，骂他拿她母亲的旧宅做赌注，顾衡想抓她手腕被她甩开，周围赌客起哄，两人彻底撕破脸。 (#120-123)
-  2. 周柠在旅馆浴室门口盯着林雨锁骨上的咬痕，逼问昨晚和谁在一起，林雨一边整理湿透的白衬衫一边嘴硬否认，最后答应明晚还去旧码头见她。 (#88-91)
+  2. 原文明确当前为6月12日，追问“昨晚”的去向并约定“明晚”见面：
+     6月12日，周柠在旅馆浴室门口盯着林雨锁骨上的咬痕，追问6月11日晚和谁在一起，林雨一边整理湿透的白衬衫一边嘴硬否认，最后答应6月13日晚还去旧码头见她。 (#88-91)
 
 [Relationship Trend Scale]
 破裂 ← 厌恶 ← 反感 ← 陌生 → 投缘 → 亲密 → 交融
@@ -221,7 +224,7 @@ Before generating, observe the USER and analyze carefully:
     {
       "id": "evt-{$nextEventId}起始，依次递增",
       "title": "地点·事件标题",
-      "timeLabel": "时间线标签(如：开场、第二天晚上)",
+      "timeLabel": "事件发生时间（如：6月12日、搬入新家的第二晚）",
       "summary": "回忆卡片。优先写成1句；信息确实过多时可写2句。必须保留正式人名、原文称呼/昵称、地点、物件、具体动作和可召回钩子，末尾标注楼层(#X-Y)",
       "participants": ["参与角色名，不要使用人称代词或别名，只用正式人名"],
       "memoryRole": "${EVENT_MEMORY_ROLES.join('|')}",
@@ -281,7 +284,7 @@ All checks passed. Beginning incremental extraction...
 export const DEFAULT_SUMMARY_USER_CONFIRM_PROMPT = `怎么截断了！重新完整生成，只输出JSON，不要任何其他内容，3000字以内
 </Chat_History>`;
 
-export const DEFAULT_SUMMARY_ASSISTANT_PREFILL_PROMPT = '下面重新生成完整JSON。';
+export const DEFAULT_SUMMARY_USER_GENERATE_PROMPT = '下面重新生成完整JSON。';
 export const BUILTIN_SUMMARY_PROMPTS = Object.freeze({
     summarySystemPrompt: DEFAULT_SUMMARY_SYSTEM_PROMPT,
     summaryAssistantDocPrompt: DEFAULT_SUMMARY_ASSISTANT_DOC_PROMPT,
@@ -291,7 +294,7 @@ export const BUILTIN_SUMMARY_PROMPTS = Object.freeze({
     summaryUserJsonFormatPrompt: DEFAULT_SUMMARY_USER_JSON_FORMAT_PROMPT,
     summaryAssistantCheckPrompt: DEFAULT_SUMMARY_ASSISTANT_CHECK_PROMPT,
     summaryUserConfirmPrompt: DEFAULT_SUMMARY_USER_CONFIRM_PROMPT,
-    summaryAssistantPrefillPrompt: DEFAULT_SUMMARY_ASSISTANT_PREFILL_PROMPT,
+    summaryUserGeneratePrompt: DEFAULT_SUMMARY_USER_GENERATE_PROMPT,
 });
 const DEFAULT_VECTOR_PROVIDER = "siliconflow";
 const DEFAULT_L0_URL = "https://api.siliconflow.cn/v1";
@@ -425,7 +428,7 @@ function createDefaultSummaryPanelConfig() {
         trigger: {
             enabled: false,
             interval: 20,
-            delayFloors: 0,
+            delayFloors: DEFAULT_SUMMARY_DELAY_FLOORS,
             timing: "before_user",
             role: "system",
             useStream: true,
@@ -516,8 +519,7 @@ function normalizeSummaryPanelConfig(rawConfig = null) {
         result.trigger.timing = defaults.trigger.timing;
     }
     if (result.trigger.useStream === undefined) result.trigger.useStream = true;
-    const delayFloors = Number.parseInt(result.trigger.delayFloors, 10);
-    result.trigger.delayFloors = Number.isFinite(delayFloors) ? Math.max(0, Math.min(30, delayFloors)) : 0;
+    result.trigger.delayFloors = normalizeSummaryDelayFloors(result.trigger.delayFloors);
     result.ui.hideSummarized = !!result.ui.hideSummarized;
     result.ui.keepVisibleCount = clampKeepVisibleCount(result.ui.keepVisibleCount);
     result.ui.useVectorBoundary = result.ui.useVectorBoundary !== false;
