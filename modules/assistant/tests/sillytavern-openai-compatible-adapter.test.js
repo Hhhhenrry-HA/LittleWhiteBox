@@ -1604,6 +1604,38 @@ test('host clients keep request identity isolated per instance', async () => {
     ]);
 });
 
+test('hosted OpenAI-compatible DSML uses the same safe finalization in both transports', async () => {
+    for (const streaming of [false, true]) {
+        const complete = 'Ready.\n<｜｜DSML｜｜ calls><｜｜DSML｜｜ invoke name="PlanList"></｜｜DSML｜｜ invoke></｜｜DSML｜｜ calls>';
+        let content = complete;
+        const hostClient = createHostChatCompletionsClient({
+            requestHeadersProvider: () => ({}),
+            fetch: async () => streaming
+                ? createSseResponse([...content].map(char => ({ choices: [{ delta: { content: char } }] })))
+                : createJsonResponse({ choices: [{ message: { role: 'assistant', content } }] }),
+        });
+        const adapter = new SillyTavernOpenAICompatibleAdapter({ model: 'deepseek-v3.2', toolMode: 'tagged-json' }, hostClient);
+        const progress = [];
+        const task = {
+            messages: [{ role: 'user', content: 'list' }],
+            tools: [{ type: 'function', function: { name: 'PlanList', parameters: { type: 'object' } } }],
+            captureRawAssistantMessage: true,
+            ...(streaming ? { onStreamProgress: snapshot => progress.push(snapshot) } : {}),
+        };
+        const result = await adapter.chat(task);
+        assert.equal(result.text, 'Ready.');
+        assert.deepEqual(result.toolCalls.map(call => call.name), ['PlanList']);
+        assert.equal(progress.some(snapshot => snapshot.text.includes('DSML')), false);
+        content = complete.replace('</｜｜DSML｜｜ invoke>', '');
+        await assert.rejects(() => adapter.chat(task), error => {
+            assert.equal(error.code, 'DSML_TOOL_CALL_INVALID');
+            assert.equal(error.rawAssistantMessage.content, content);
+            assert.ok(error.requestInspection);
+            return true;
+        });
+    }
+});
+
 test('injected Host Clients isolate concurrent streaming and non-streaming chats', async () => {
     const requests = [];
     const createClient = (owner) => createHostChatCompletionsClient({

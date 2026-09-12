@@ -23,7 +23,7 @@ import {
     buildReplayableAssistantMessage,
     buildTaggedMessages,
     captureRawAssistantMessage,
-    extractTaggedToolCalls,
+    extractResponseTaggedToolCalls,
     extractThinkTaggedContent,
     extractThoughtsFromMessage,
     flattenTextContent,
@@ -44,13 +44,13 @@ function emitStreamProgress(task, payload, effectiveReasoning) {
     });
 }
 
-function cleanTextForToolMode(content, standardToolCalls = []) {
+function cleanTextForToolMode(content, standardToolCalls = [], streaming = false) {
     const thinkTagged = extractThinkTaggedContent(content);
     return {
         thinkTagged,
         cleanedText: standardToolCalls.length
             ? thinkTagged.cleaned
-            : stripTaggedToolCallsForDisplay(thinkTagged.cleaned),
+            : stripTaggedToolCallsForDisplay(thinkTagged.cleaned, { streaming }),
     };
 }
 
@@ -175,6 +175,7 @@ export class SillyTavernOpenAICompatibleAdapter {
             const { thinkTagged, cleanedText } = cleanTextForToolMode(
                 getStreamedSnapshotText(assistantSnapshot),
                 standardToolCalls,
+                true,
             );
             const progressToolCalls = standardToolCalls.length
                 ? standardToolCalls
@@ -201,7 +202,7 @@ export class SillyTavernOpenAICompatibleAdapter {
         );
         const thoughts = extractThoughtsFromMessage(assistantSnapshot, {});
         thinkTagged.thoughts.forEach((item) => thoughts.push(item));
-        const taggedToolCalls = standardToolCalls.length ? [] : extractTaggedToolCalls(thinkTagged.cleaned);
+        const taggedToolCalls = standardToolCalls.length ? [] : extractResponseTaggedToolCalls(task, thinkTagged.cleaned, assistantSnapshot);
 
         return {
             text: cleanedText,
@@ -228,7 +229,7 @@ export class SillyTavernOpenAICompatibleAdapter {
         const contentText = flattenTextContent(message.content);
         const { thinkTagged, cleanedText } = cleanTextForToolMode(contentText, standardToolCalls);
         thinkTagged.thoughts.forEach((item) => thoughts.push(item));
-        const taggedToolCalls = standardToolCalls.length ? [] : extractTaggedToolCalls(thinkTagged.cleaned);
+        const taggedToolCalls = standardToolCalls.length ? [] : extractResponseTaggedToolCalls(task, thinkTagged.cleaned, message);
         const replayableMessage = buildReplayableAssistantMessage(message, choice);
 
         return {

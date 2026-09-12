@@ -7525,6 +7525,49 @@ test('Book agent replays repaired tagged-json Write content after executing malf
     assert.notDeepEqual(taggedPayload.arguments, {});
 });
 
+test('Book agent leaves the book unchanged when a DSML Write response is structurally incomplete', async () => {
+    await resetDb();
+    const book = await createBook('DSML 写入安全测试');
+    const originalFiles = await listBookFiles(book.id);
+    const state = {
+        config: {}, book, books: [book], files: originalFiles,
+        selectedPath: 'book/outline.md', readerPath: '', viewMode: 'studio',
+        editorContent: '', savedContent: '', messages: [], toolTrace: [],
+        historySummary: '', archivedTurnCount: 0, isBusy: false, activeController: null,
+        status: '就绪', toast: '',
+    };
+    const config = { provider: 'openai-compatible', model: 'deepseek-v3.2', apiKey: 'test-key', toolMode: 'tagged-json' };
+    const adapter = new openAICompatibleAdapterModule.OpenAICompatibleAdapter(config);
+    let requests = 0;
+    adapter.client.chat.completions.create = async () => {
+        requests += 1;
+        return {
+            async *[Symbol.asyncIterator]() {
+                yield { choices: [{ delta: { role: 'assistant', content:
+                    '<｜DSML｜invoke name="Write">' +
+                    '<｜DSML｜parameter name="filePath" string="true">book/outline.md</｜DSML｜parameter>' +
+                    '<｜DSML｜parameter name="content" string="true">unfinished</｜DSML｜invoke>',
+                } }] };
+            },
+        };
+    };
+    const runner = createEbookAgentRunner({
+        state,
+        async refreshBooksAndFiles() { state.files = await listBookFiles(book.id); },
+        render() {}, showToast() {}, persistConversation() {},
+        isEditorDirty: () => false,
+        getActiveProviderConfig: () => config,
+        createAdapter: () => adapter,
+    });
+    await runner.runAgent('写入大纲。');
+    assert.equal(requests, 1);
+    assert.deepEqual(await listBookFiles(book.id), originalFiles);
+    assert.equal(state.messages.some(message => message.role === 'tool'), false);
+    assert.equal(state.messages.at(-1).error, true);
+    assert.match(state.messages.at(-1).content, /DSML/);
+    assert.equal(state.isBusy, false);
+});
+
 test('Book agent reports invalid tool arguments without executing Edit', async () => {
     await resetDb();
     const book = await createBook('工具参数坏 JSON 测试');

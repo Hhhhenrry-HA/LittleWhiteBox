@@ -1,16 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import {
     OpenAICompatibleAdapter,
     buildNativeMessages,
     buildTaggedMessages,
+    buildTaggedToolCallDraft,
     extractTaggedToolCalls,
     stripTaggedToolCallsForDisplay,
 } from '../../agent-core/adapters/openai-compatible.js';
 import { OpenAIResponsesAdapter } from '../../agent-core/adapters/openai-responses.js';
 import { redactRequestSecrets } from '../../agent-core/adapters/request-inspection.js';
 import { resolveRuntimeReasoning } from '../../agent-core/reasoning-capabilities.js';
+import { buildProviderMessagesFromHistory } from '../../agent-core/runtime/protocol.js';
 
 test('raw assistant diagnostics are opt-in and preserve missing native arguments without changing replay', async () => {
     const adapter = new OpenAICompatibleAdapter({ apiKey: 'test-key', model: 'compat-test' });
@@ -165,6 +168,140 @@ test('openai-compatible adapter hides incomplete tagged tool blocks from display
         stripTaggedToolCallsForDisplay('前置说明\n<tool_call>{"name":"Read","arguments":{}}</tool_call>\n这段不该进入下一轮'),
         '前置说明',
     );
+});
+
+// DeepSeek V3.2 DSML 明文（官方 encoding_dsv32.py 格式）：string="true" 取原文，"false" 按 JSON 解析。
+const DSML_LEAK = [
+    '我先查一下。',
+    '',
+    '<｜DSML｜function_calls>',
+    '<｜DSML｜invoke name="Grep">',
+    '<｜DSML｜parameter name="pattern" string="true">preset-|preset |CompletionPreset</｜DSML｜parameter>',
+    '<｜DSML｜parameter name="path" string="true">references/stscript-reference.md</｜DSML｜parameter>',
+    '<｜DSML｜parameter name="contextLines" string="false">2</｜DSML｜parameter>',
+    '<｜DSML｜parameter name="useRegex" string="false">true</｜DSML｜parameter>',
+    '</｜DSML｜invoke>',
+    '<｜DSML｜invoke name="Read">',
+    '<｜DSML｜parameter name="filePath" string="true">book/state.md</｜DSML｜parameter>',
+    '<｜DSML｜parameter name="ranges" string="false">[{"start":1,"end":40}]</｜DSML｜parameter>',
+    '</｜DSML｜invoke>',
+    '</｜DSML｜function_calls>',
+].join('\n');
+
+test('tagged-json parses leaked DeepSeek DSML tool calls like <tool_call> blocks', () => {
+    const calls = extractTaggedToolCalls(DSML_LEAK);
+    assert.deepEqual(calls.map((call) => [call.id, call.name, JSON.parse(call.arguments)]), [
+        ['tool-call-1', 'Grep', {
+            pattern: 'preset-|preset |CompletionPreset',
+            path: 'references/stscript-reference.md',
+            contextLines: 2,
+            useRegex: true,
+        }],
+        ['tool-call-2', 'Read', { filePath: 'book/state.md', ranges: [{ start: 1, end: 40 }] }],
+    ]);
+    assert.equal(stripTaggedToolCallsForDisplay(DSML_LEAK), '我先查一下。');
+    assert.deepEqual(buildTaggedToolCallDraft(DSML_LEAK.slice(0, DSML_LEAK.indexOf('">') + 2)).map((call) => call.name), ['Grep']);
+    assert.throws(() => extractTaggedToolCalls(DSML_LEAK.slice(0, DSML_LEAK.indexOf('</｜DSML｜invoke>'))), {
+        code: 'DSML_TOOL_CALL_INVALID',
+    });
+});
+
+test('tagged-json accepts half-width DSML bars from token-rewriting relays', () => {
+    const calls = extractTaggedToolCalls(DSML_LEAK.replaceAll('｜', '|'));
+    assert.deepEqual(calls.map((call) => call.name), ['Grep', 'Read']);
+});
+
+function dsmlParameter(name, value, string = 'true') {
+    return `<｜DSML｜parameter name="${name}" string="${string}">${value}</｜DSML｜parameter>`;
+}
+
+function dsmlInvoke(name, body = '') {
+    return `<｜DSML｜invoke name="${name}">\n${body}\n</｜DSML｜invoke>`;
+}
+
+test('DSML rejects the whole response when parameter or call boundaries are incomplete', () => {
+    const path = dsmlParameter('filePath', 'book/notes/test.md');
+    const invalidBodies = [
+        `${path}<｜DSML｜parameter name="content" string="true">unfinished`,
+        `${path}<｜DSML｜parameter name="content" string="true">unfinished${dsmlParameter('other', 'value')}`,
+        `${path}<｜DSML｜parameter name="content">missing string attribute</｜DSML｜parameter>`,
+        `${path}${dsmlParameter('filePath', 'book/notes/other.md')}`,
+        `${path}unexpected text`,
+    ];
+    const invalidResponses = [
+        ...invalidBodies.map(body => dsmlInvoke('Write', body)),
+        `<｜DSML｜function_calls>${dsmlInvoke('Write', path)}`,
+        `<｜DSML｜function_calls>${dsmlInvoke('Write', path)}</｜DSML｜calls>`,
+        `${dsmlInvoke('PlanList')}<｜DSML`,
+        `${dsmlInvoke('PlanList')}<｜｜D`,
+    ];
+    for (const text of invalidResponses) {
+        // No earlier call is released if a later DSML call is malformed.
+        assert.throws(() => extractTaggedToolCalls(`${dsmlInvoke('PlanList')}\n${text}`), {
+            code: 'DSML_TOOL_CALL_INVALID',
+        });
+    }
+});
+
+test('DSML string values are opaque to invoke and tagged-json scanning', () => {
+    const content = [
+        'Literal closing token: </｜DSML｜invoke>',
+        dsmlInvoke('PlanList'),
+        dsmlInvoke('PlanList'),
+        '<tool_call>{"name":"Delete","arguments":{"path":"book/notes/example.md"}}</tool_call>',
+        '<think>literal file text</think>',
+        'Quotes: "hello"; backslashes: C:\\notes\\file.md',
+    ].join('\n');
+    const calls = extractTaggedToolCalls(dsmlInvoke('Write', [
+        dsmlParameter('filePath', 'book/notes/test.md'),
+        dsmlParameter('content', content),
+    ].join('\n')));
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].name, 'Write');
+    assert.deepEqual(JSON.parse(calls[0].arguments), { filePath: 'book/notes/test.md', content });
+});
+
+test('mixed text tool protocols preserve source order and do not collide with explicit ids', () => {
+    const calls = extractTaggedToolCalls([
+        dsmlInvoke('Write', dsmlParameter('filePath', 'book/notes/test.md') + dsmlParameter('content', 'hello')),
+        '<Tool_Call>{"id":"tool-call-1","name":"Read","arguments":{"filePath":"book/notes/test.md"}}</Tool_Call>',
+        dsmlInvoke('PlanList'),
+    ].join('\n'));
+    assert.deepEqual(calls.map(call => call.name), ['Write', 'Read', 'PlanList']);
+    assert.equal(calls[1].id, 'tool-call-1');
+    assert.equal(new Set(calls.map(call => call.id)).size, 3);
+    assert.equal(buildTaggedToolCallDraft('<tool_call>{"name":"Read","arguments":{}}</tool_call>\n' + dsmlInvoke('PlanList'))[0].name, 'Read');
+});
+
+test('DSML preserves typed JSON and rejects invalid non-string values instead of coercing them', () => {
+    const calls = extractTaggedToolCalls(dsmlInvoke('Example', [
+        dsmlParameter('count', '3', 'false'),
+        dsmlParameter('enabled', 'true', 'false'),
+        dsmlParameter('items', '[1,{"text":"hello"}]', 'false'),
+        dsmlParameter('__proto__', '{"safe":true}', 'false'),
+        dsmlParameter('literal', '  null  '),
+    ].join('\n')));
+    assert.deepEqual(JSON.parse(calls[0].arguments), JSON.parse('{"count":3,"enabled":true,"items":[1,{"text":"hello"}],"__proto__":{"safe":true},"literal":"  null  "}'));
+    for (const value of ['tru', '{"missing":', '', 'undefined']) {
+        assert.throws(() => extractTaggedToolCalls(dsmlInvoke('Grep', dsmlParameter('useRegex', value, 'false'))), {
+            code: 'DSML_TOOL_CALL_INVALID',
+        });
+    }
+});
+
+test('DSML recognizes reported marker spelling but rejects the original unclosed response', () => {
+    const original = readFileSync(new URL('./fixtures/deepseek-dsml-unclosed.txt', import.meta.url), 'utf8');
+    assert.equal(stripTaggedToolCallsForDisplay(original), '我先查文档，确认命令与参数细节。');
+    assert.equal(buildTaggedToolCallDraft(original)[0].name, 'Grep');
+    assert.throws(() => extractTaggedToolCalls(original), { code: 'DSML_TOOL_CALL_INVALID' });
+    // Separate complete examples verify the spelling, not an invented repair of the fixture.
+    for (const marker of ['｜｜DSML｜｜ ', '||DSML|| ', '｜dsml｜']) {
+        const complete = DSML_LEAK.replaceAll('｜DSML｜', marker).replaceAll('function_calls', 'calls');
+        assert.deepEqual(extractTaggedToolCalls(complete).map(call => call.name), ['Grep', 'Read']);
+    }
+    const hybrid = '<tool_call>{"name":"submit_scene_plan","arguments":{"images":[]}}' +
+        '</｜｜DSML｜｜ parameter>\n</｜｜DSML｜｜ invoke>\n</｜｜DSML｜｜ calls>';
+    assert.throws(() => extractTaggedToolCalls(hybrid), { code: 'DSML_TOOL_CALL_INVALID' });
 });
 
 test('openai-compatible adapter sanitizes malformed replay tool calls before sending', () => {
@@ -771,6 +908,58 @@ test('openai-compatible adapter repairs malformed tagged-json string arguments',
         filePath: 'book/notes/a.md',
         content: '第一行\n第二行',
     });
+});
+
+test('tagged-json preserves unrecoverable arguments in both object and string envelopes', () => {
+    const rawArguments = '{"prelude":{"note":"title: SUMMER, content: OPEN, mode: cinematic"}},"frames":[{"caption":"test"}]}';
+    const payloads = [
+        `{"name":"SubmitPlan","arguments":${rawArguments}}`,
+        JSON.stringify({ name: 'SubmitPlan', arguments: rawArguments }),
+    ];
+    for (const payload of payloads) {
+        const calls = extractTaggedToolCalls(`<tool_call>${payload}</tool_call>`);
+        assert.equal(calls.length, 1);
+        assert.equal(calls[0].name, 'SubmitPlan');
+        assert.equal(calls[0].arguments, rawArguments);
+        assert.throws(() => JSON.parse(calls[0].arguments), SyntaxError);
+    }
+});
+
+test('tagged-json preserves valid JSON values for tool-layer validation', () => {
+    for (const rawArguments of ['[ { "path": "book/state.md" } ]', 'null', 'false', '0', '"text"']) {
+        const calls = extractTaggedToolCalls(`<tool_call>${JSON.stringify({
+            name: 'Read', arguments: rawArguments,
+        })}</tool_call>`);
+        assert.equal(calls.length, 1);
+        assert.equal(calls[0].arguments, rawArguments);
+    }
+});
+
+test('tagged-json correction replay preserves invalid argument text inside a valid envelope', () => {
+    const rawArguments = '{"prelude":{"note":"intro"}},\n"frames":[{"caption":"test"}]}';
+    const messages = [{
+        role: 'assistant',
+        content: '',
+        toolCalls: [rawArguments, '', '{ "frames": [] }', '{}'].map((args, index) => ({
+            id: `call-${index}`,
+            name: 'SubmitPlan',
+            arguments: args,
+        })),
+    }, {
+        role: 'tool', tool_call_id: 'call-0', content: '{"ok":false,"error":"invalid_json"}',
+    }];
+    const original = structuredClone(messages);
+    const replay = buildTaggedMessages({ messages: buildProviderMessagesFromHistory(messages) });
+    const assistant = replay.find(message => message.role === 'assistant');
+    // The tagged envelope is the external protocol; inspect parsed values, not formatting.
+    const payloads = [...assistant.content.matchAll(/<tool_call>([\s\S]*?)<\/tool_call>/g)]
+        .map(match => JSON.parse(match[1]));
+    assert.deepEqual(payloads.map(payload => payload.arguments), [rawArguments, '', { frames: [] }, {}]);
+    const calls = extractTaggedToolCalls(assistant.content);
+    assert.equal(calls[0].arguments, rawArguments);
+    assert.equal(calls[1].arguments, '');
+    assert.deepEqual(JSON.parse(calls[2].arguments), { frames: [] });
+    assert.deepEqual(messages, original);
 });
 
 test('openai-compatible adapter keeps incomplete tagged-json blocks out of tool calls', () => {
@@ -1824,6 +2013,145 @@ test('openai-compatible tagged-json streaming hides raw tool JSON and emits tool
     assert.equal(result.rawAssistantMessage.content,
         '我先查一下。\n<tool_call>{"name":"Read","arguments":{"path":"memory/state.md"}}</tool_call>');
     assert.equal(result.providerPayload.openaiCompatibleMessage.content, '我先查一下。');
+});
+
+test('tagged-json streaming treats leaked DSML like <tool_call>: hidden text, draft progress, replayable call', async () => {
+    const adapter = new OpenAICompatibleAdapter({
+        apiKey: 'test-key',
+        baseUrl: 'https://example.com/openai-compatible',
+        model: 'deepseek-v3.2',
+        toolMode: 'tagged-json',
+    });
+    const splitAt = DSML_LEAK.indexOf('<｜DSML｜parameter');
+    const chunks = [
+        DSML_LEAK.slice(0, splitAt),
+        DSML_LEAK.slice(splitAt),
+    ].map((content, index) => ({
+        model: 'deepseek-v3.2',
+        choices: [{ index: 0, delta: { ...(index === 0 ? { role: 'assistant' } : {}), content } }],
+    }));
+    const stream = {
+        async *[Symbol.asyncIterator]() {
+            for (const chunk of chunks) yield chunk;
+        },
+        finalChatCompletion: async () => ({
+            choices: [{ message: { role: 'assistant', content: DSML_LEAK } }],
+        }),
+    };
+    adapter.client.chat.completions.create = async () => stream;
+
+    const progress = [];
+    const result = await adapter.chat({
+        messages: [{ role: 'user', content: '查预设' }],
+        tools: [{ function: { name: 'Grep', description: 'Search.', parameters: { type: 'object', properties: {} } } }],
+        onStreamProgress: (snapshot) => progress.push(snapshot),
+    });
+
+    assert.equal(progress.some((snapshot) => String(snapshot.text || '').includes('DSML')), false);
+    assert.equal(progress.some((snapshot) => snapshot.toolCallDraft === true && snapshot.toolCalls?.[0]?.name === 'Grep'), true);
+    assert.equal(result.text, '我先查一下。');
+    assert.deepEqual(result.toolCalls.map((call) => call.name), ['Grep', 'Read']);
+    assert.equal(result.providerPayload.openaiCompatibleMessage.content, '我先查一下。');
+
+    const replayed = buildTaggedMessages({
+        messages: buildProviderMessagesFromHistory([
+            { role: 'user', content: '查预设' },
+            { role: 'assistant', content: result.text, toolCalls: result.toolCalls, providerPayload: result.providerPayload },
+        ]),
+    });
+    const assistant = replayed.find((message) => message.role === 'assistant');
+    assert.equal(assistant.content.includes('DSML'), false);
+    assert.deepEqual(extractTaggedToolCalls(assistant.content).map((call) => call.name), ['Grep', 'Read']);
+});
+
+test('tagged-json streaming preserves malformed arguments after assembling response chunks', async () => {
+    const adapter = new OpenAICompatibleAdapter({
+        apiKey: 'test-key', model: 'compat-test', toolMode: 'tagged-json',
+    });
+    const rawArguments = '{"prelude":{"note":"intro"}},"frames":[{"caption":"test"}]}';
+    const content = `<tool_call>{"name":"SubmitPlan","arguments":${rawArguments}}</tool_call>`;
+    adapter.client.chat.completions.create = async () => ({
+        async *[Symbol.asyncIterator]() {
+            for (const fragment of [content.slice(0, 70), content.slice(70)]) {
+                yield { choices: [{ delta: { content: fragment } }] };
+            }
+        },
+        finalChatCompletion: async () => ({
+            choices: [{ message: { role: 'assistant', content } }],
+        }),
+    });
+    const result = await adapter.chat({
+        messages: [{ role: 'user', content: 'Plan a scene.' }],
+        tools: [{ function: { name: 'SubmitPlan', parameters: { type: 'object' } } }],
+        captureRawAssistantMessage: true,
+        onStreamProgress() {},
+    });
+    assert.equal(result.toolCalls.length, 1);
+    assert.equal(result.toolCalls[0].arguments, rawArguments);
+    assert.equal(result.rawAssistantMessage.content, content);
+    assert.equal(result.text, '');
+});
+
+test('DSML finalization is safe across non-stream, tagged stream, and native stream transports', async (t) => {
+    for (const transport of ['non-stream', 'tagged-stream', 'native-stream']) {
+        await t.test(transport, async () => {
+            const fileContent = '<think>literal</think>\n</｜DSML｜invoke>\n' +
+                '<tool_call>{"name":"PlanList","arguments":{}}</tool_call>';
+            const complete = '<think>planning</think>Ready.\n' + dsmlInvoke('Write',
+                dsmlParameter('filePath', 'book/notes/test.md') + dsmlParameter('content', fileContent));
+            let content = complete;
+            const adapter = new OpenAICompatibleAdapter({
+                apiKey: 'test-key', model: 'deepseek-v3.2',
+                toolMode: transport === 'native-stream' ? 'native' : 'tagged-json',
+            });
+            const response = () => ({ choices: [{ message: { role: 'assistant', content }, finish_reason: 'stop' }] });
+            const events = () => [...content].map(char => ({ choices: [{ delta: { role: 'assistant', content: char } }] }));
+            adapter.client.chat.completions.create = async () => transport === 'non-stream' ? response() : {
+                async *[Symbol.asyncIterator]() {
+                    yield* events();
+                },
+            };
+            const originalFetch = globalThis.fetch;
+            if (transport === 'native-stream') globalThis.fetch = async () => createSseResponse(events());
+            const progress = [];
+            const task = {
+                messages: [{ role: 'user', content: 'write' }],
+                tools: [{ type: 'function', function: { name: 'Write', parameters: { type: 'object' } } }],
+                ...(transport !== 'non-stream' ? { onStreamProgress: snapshot => progress.push(snapshot) } : {}),
+            };
+            try {
+                const result = await adapter.chat(task);
+                assert.equal(result.text, 'Ready.');
+                assert.equal(result.toolCalls.length, 1);
+                assert.equal(JSON.parse(result.toolCalls[0].arguments).content, fileContent);
+                assert.equal(progress.some(snapshot => snapshot.text.includes('DSML')), false);
+                const replay = buildTaggedMessages({ messages: buildProviderMessagesFromHistory([{
+                    role: 'assistant', content: result.text, toolCalls: result.toolCalls, providerPayload: result.providerPayload,
+                }]) });
+                const assistant = replay.find(message => message.role === 'assistant');
+                assert.deepEqual(extractTaggedToolCalls(assistant.content), result.toolCalls);
+                // Replay is itself a possible provider response; embedded <think> must survive it too.
+                content = assistant.content;
+                assert.deepEqual((await adapter.chat(task)).toolCalls, result.toolCalls);
+
+                content = dsmlInvoke('Write', dsmlParameter('filePath', 'book/notes/test.md') +
+                    '<｜DSML｜parameter name="content" string="true">unfinished');
+                for (const captureRawAssistantMessage of [false, true]) {
+                    await assert.rejects(() => adapter.chat({ ...task, captureRawAssistantMessage }), error => {
+                        assert.equal(error.code, 'DSML_TOOL_CALL_INVALID');
+                        assert.ok(error.requestInspection);
+                        assert.equal(Object.hasOwn(error, 'rawAssistantMessage'), captureRawAssistantMessage);
+                        if (captureRawAssistantMessage) assert.equal(error.rawAssistantMessage.content, content);
+                        return true;
+                    });
+                }
+                content = complete;
+                assert.deepEqual((await adapter.chat(task)).toolCalls, result.toolCalls);
+            } finally {
+                globalThis.fetch = originalFetch;
+            }
+        });
+    }
 });
 
 test('openai-compatible adapter accepts CRLF-delimited SSE events in native streaming mode', async () => {

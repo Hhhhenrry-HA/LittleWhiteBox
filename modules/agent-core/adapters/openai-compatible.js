@@ -14,12 +14,18 @@ import {
     findLooseKeyMatch,
     repairLooseToolArguments,
 } from '../runtime/loose-tool-arguments.js';
+import {
+    findPartialTextToolStart,
+    findTextToolStart,
+    scanTextToolBlocks,
+} from './text-tool-protocol.js';
 
-function safeParseArguments(text) {
+function parseArgumentsForTaggedReplay(text) {
     try {
-        return JSON.parse(text || '{}');
+        return JSON.parse(text);
     } catch {
-        return {};
+        // JSON.stringify will escape the failed call's original text in the replay envelope.
+        return text;
     }
 }
 
@@ -41,7 +47,7 @@ function cloneJson(value) {
     }
 }
 
-// Opt-in, request-local diagnostics. Never put unparsed content in replay payloads.
+// Opt-in, request-local diagnostics. Replay uses normalized tool calls, not this full snapshot.
 // Streaming callers receive the assembled assistant message, not individual SSE frames.
 export function captureRawAssistantMessage(task, message) {
     return task.captureRawAssistantMessage === true
@@ -51,6 +57,10 @@ export function captureRawAssistantMessage(task, message) {
 
 function isPlainObject(value) {
     return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function hasTaggedToolCallStart(text = '') {
+    return !!findTextToolStart(String(text || ''));
 }
 
 function stringifyToolArguments(value) {
@@ -64,11 +74,14 @@ function stringifyToolArguments(value) {
 }
 
 function normalizeTaggedToolArguments(argumentsValue, toolName = '') {
-    if (argumentsValue && typeof argumentsValue === 'object' && !Array.isArray(argumentsValue)) {
-        return JSON.stringify(argumentsValue);
+    const text = stringifyToolArguments(argumentsValue);
+    try {
+        JSON.parse(text);
+        return text;
+    } catch {
+        // Keep unrecoverable text for tool-layer validation and corrective replay.
+        return repairLooseToolArguments(text, toolName) || text;
     }
-    const text = typeof argumentsValue === 'string' ? argumentsValue : stringifyToolArguments(argumentsValue);
-    return repairLooseToolArguments(text, toolName) || JSON.stringify(safeParseArguments(text));
 }
 
 function extractLooseArgumentsTextFromToolPayload(payloadText = '') {
@@ -87,12 +100,12 @@ function extractLooseArgumentsTextFromToolPayload(payloadText = '') {
     return source.slice(start).replace(/\}\s*$/, '').trimEnd();
 }
 
-function parseLooseTaggedToolPayload(payloadText = '', index = 0) {
+function parseLooseTaggedToolPayload(payloadText = '') {
     const source = String(payloadText || '').trim();
     const name = extractLooseField(source, 'name', ['id', 'arguments'])
         || extractLooseField(source, 'toolName', ['id', 'arguments'])
         || '';
-    const id = extractLooseField(source, 'id', ['name', 'toolName', 'arguments']) || `tool-call-${index + 1}`;
+    const id = extractLooseField(source, 'id', ['name', 'toolName', 'arguments']);
     const argumentsText = extractLooseArgumentsTextFromToolPayload(source);
     if (!name || !argumentsText) return null;
     return {
@@ -165,7 +178,7 @@ const warnedCorruptedSignedHistoryMessages = new WeakSet();
 function sanitizeOpenAICompatibleMessage(message) {
     if (!isPlainObject(message)) return null;
     const cloned = cloneJson(message) || {};
-    if (typeof cloned.content === 'string' && /<tool_call\b/i.test(cloned.content)) {
+    if (typeof cloned.content === 'string' && hasTaggedToolCallStart(cloned.content)) {
         cloned.content = stripTaggedToolCallsForDisplay(extractThinkTaggedContent(cloned.content).cleaned);
     }
     if (Array.isArray(cloned.tool_calls)) {
@@ -202,27 +215,38 @@ export function flattenTextContent(content) {
 
 export function extractThinkTaggedContent(text = '') {
     const thoughts = [];
-    const cleaned = String(text || '').replace(/<think>([\s\S]*?)<\/think>/gi, (_, inner) => {
-        pushThought(thoughts, '思考块', inner);
-        return '';
-    }).trim();
+    const source = String(text || '');
+    let cursor = 0;
+    let cleaned = '';
+    for (const match of source.matchAll(/<think>([\s\S]*?)<\/think>/gi)) {
+        const toolStart = findTextToolStart(source, cursor);
+        if (toolStart && toolStart.index < match.index) break;
+        cleaned += source.slice(cursor, match.index);
+        pushThought(thoughts, '思考块', match[1]);
+        cursor = match.index + match[0].length;
+    }
+    cleaned = (cleaned + source.slice(cursor)).trim();
     return {
         cleaned,
         thoughts,
     };
 }
 
-export function stripTaggedToolCallsForDisplay(text = '') {
+export function stripTaggedToolCallsForDisplay(text = '', { streaming = false } = {}) {
     const source = String(text || '');
-    const firstToolTag = source.search(/<tool_call\b/i);
+    const firstToolTag = findTextToolStart(source)?.index ?? (streaming ? findPartialTextToolStart(source) : -1);
     if (firstToolTag < 0) return source.trim();
     return source.slice(0, firstToolTag).trim();
 }
 
 export function buildTaggedToolCallDraft(text = '') {
     const source = String(text || '');
-    if (!/<tool_call\b/i.test(source)) return [];
-    const nameMatch = source.match(/["']?name["']?\s*:\s*["']([^"']+)/i);
+    if (!hasTaggedToolCallStart(source)) return [];
+    const start = findTextToolStart(source);
+    const body = source.slice(start.index);
+    const nameMatch = /^<tool_call/i.test(start[0])
+        ? body.match(/["']?name["']?\s*:\s*["']([^"']+)/i)
+        : body.match(/<[｜|]+DSML[｜|]+\s*invoke\s+name="([^"]+)"/i);
     return [{
         id: 'tagged-json-draft',
         name: nameMatch?.[1] || '工具调用',
@@ -300,29 +324,46 @@ export function extractThoughtsFromMessage(message = {}, choice = {}) {
 }
 
 export function extractTaggedToolCalls(content = '') {
-    const patterns = [
-        /<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/g,
-    ];
+    const source = String(content || '');
     const results = [];
 
-    patterns.forEach((pattern) => {
-        const matches = [...content.matchAll(pattern)];
-        matches.forEach((match, index) => {
-            try {
-                const parsed = JSON.parse(match[1]);
-                results.push({
-                    id: parsed.id || `tool-call-${index + 1}`,
-                    name: String(parsed.name || ''),
-                    arguments: normalizeTaggedToolArguments(parsed.arguments, parsed.name),
-                });
-            } catch {
-                const repaired = parseLooseTaggedToolPayload(match[1], index);
-                if (repaired) results.push(repaired);
-            }
-        });
+    scanTextToolBlocks(source).forEach((block) => {
+        if (block.calls) {
+            results.push(...block.calls);
+            return;
+        }
+        try {
+            const parsed = JSON.parse(block.payload);
+            results.push({
+                id: parsed.id,
+                name: String(parsed.name || ''),
+                arguments: normalizeTaggedToolArguments(parsed.arguments, parsed.name),
+            });
+        } catch {
+            const repaired = parseLooseTaggedToolPayload(block.payload);
+            if (repaired) results.push(repaired);
+        }
     });
+    const calls = results.filter((item) => item.name);
+    const usedIds = new Set(calls.filter(item => item.id).map(item => String(item.id)));
+    return calls.map((call, index) => {
+        if (call.id) return call;
+        let number = index + 1;
+        while (usedIds.has(`tool-call-${number}`)) number += 1;
+        const id = `tool-call-${number}`;
+        usedIds.add(id);
+        return { ...call, id };
+    });
+}
 
-    return results.filter((item) => item.name);
+export function extractResponseTaggedToolCalls(task, content, message, requestInspection) {
+    try {
+        return extractTaggedToolCalls(content);
+    } catch (error) {
+        Object.assign(error, captureRawAssistantMessage(task, message));
+        if (requestInspection) error.requestInspection = requestInspection;
+        throw error;
+    }
 }
 
 function normalizeOpenAICompatibleMessage(message) {
@@ -667,7 +708,7 @@ export function buildTaggedMessages(task, model = '') {
                     return `<tool_call>${JSON.stringify({
                         id: toolId,
                         name: toolName,
-                        arguments: safeParseArguments(toolCall.function?.arguments || '{}'),
+                        arguments: parseArgumentsForTaggedReplay(toolCall.function.arguments),
                     })}</tool_call>`;
                 }).join('\n');
 
@@ -1076,7 +1117,7 @@ export class OpenAICompatibleAdapter {
                 : buildTaggedToolCallDraft(thinkTagged.cleaned);
             const cleanedText = standardToolCalls.length
                 ? thinkTagged.cleaned
-                : stripTaggedToolCallsForDisplay(thinkTagged.cleaned);
+                : stripTaggedToolCallsForDisplay(thinkTagged.cleaned, { streaming: true });
             emitStreamProgress(task, {
                 text: cleanedText,
                 thoughts: visibleThoughts(
@@ -1094,7 +1135,7 @@ export class OpenAICompatibleAdapter {
         const thinkTagged = extractThinkTaggedContent(getStreamedSnapshotText(assistantSnapshot));
         const thoughts = extractThoughtsFromMessage(assistantSnapshot, {});
         thinkTagged.thoughts.forEach((item) => thoughts.push(item));
-        const taggedToolCalls = standardToolCalls.length ? [] : extractTaggedToolCalls(thinkTagged.cleaned);
+        const taggedToolCalls = standardToolCalls.length ? [] : extractResponseTaggedToolCalls(task, thinkTagged.cleaned, assistantSnapshot);
         const toolCalls = [...standardToolCalls, ...taggedToolCalls];
         const cleanedText = standardToolCalls.length
             ? thinkTagged.cleaned
@@ -1167,7 +1208,7 @@ export class OpenAICompatibleAdapter {
                     : buildTaggedToolCallDraft(thinkTagged.cleaned);
                 const cleanedText = standardToolCalls.length
                     ? thinkTagged.cleaned
-                    : stripTaggedToolCallsForDisplay(thinkTagged.cleaned);
+                    : stripTaggedToolCallsForDisplay(thinkTagged.cleaned, { streaming: true });
                 emitStreamProgress(task, {
                     text: cleanedText,
                     thoughts: visibleThoughts(
@@ -1194,7 +1235,7 @@ export class OpenAICompatibleAdapter {
             const thinkTagged = extractThinkTaggedContent(getStreamedSnapshotText(replayableFinalMessage));
             const thoughts = extractThoughtsFromMessage(replayableFinalMessage, finalChoice || {});
             thinkTagged.thoughts.forEach((item) => thoughts.push(item));
-            const taggedToolCalls = standardToolCalls.length ? [] : extractTaggedToolCalls(thinkTagged.cleaned);
+            const taggedToolCalls = standardToolCalls.length ? [] : extractResponseTaggedToolCalls(task, thinkTagged.cleaned, finalMessage, requestInspection);
             const toolCalls = [...standardToolCalls, ...taggedToolCalls];
             const cleanedText = standardToolCalls.length
                 ? thinkTagged.cleaned
@@ -1225,7 +1266,7 @@ export class OpenAICompatibleAdapter {
         const contentText = flattenTextContent(message.content);
         const thinkTagged = extractThinkTaggedContent(contentText);
         thinkTagged.thoughts.forEach((item) => thoughts.push(item));
-        const taggedToolCalls = standardToolCalls.length ? [] : extractTaggedToolCalls(thinkTagged.cleaned);
+        const taggedToolCalls = standardToolCalls.length ? [] : extractResponseTaggedToolCalls(task, thinkTagged.cleaned, message, requestInspection);
         const toolCalls = [...standardToolCalls, ...taggedToolCalls];
         const cleanedText = standardToolCalls.length
             ? thinkTagged.cleaned
