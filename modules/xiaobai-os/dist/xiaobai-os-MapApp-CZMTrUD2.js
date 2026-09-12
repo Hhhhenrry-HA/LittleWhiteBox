@@ -1,11 +1,11 @@
 /* eslint-disable */
-import { D as he, G as p, H as K, I as ve, J as b, K as Q, M as Te, P as fe, R as ie, T as _e, W as Be, _ as qe, b as Y, c as ke, f as $, g as o, h as k, j as Z, k as r, l as re, m as G, o as He, p as s, q as Me, s as ze, u as A, v as N, w as Ke, y as C, z as Ce } from "./xiaobai-os-runtime-dom.esm-bundler-DGqntx6-.js";
-import { n as Le } from "./xiaobai-os-app-navigation-D5qZ5Ulq.js";
-import { t as Se } from "./xiaobai-os-AppDialog-ycKLGrLE.js";
+import { A as r, B as _e, E as Ce, F as he, G as Te, J as ke, K as p, L as ve, M as Z, N as Be, O as fe, T as qe, U as K, Y as b, _ as He, b as Y, c as Me, f as $, g as o, h as k, l as re, m as G, o as ze, p as s, q as D, s as Ke, u as A, v as N, y as C, z as ie } from "./xiaobai-os-runtime-dom.esm-bundler-ASdQr4iS.js";
+import { n as Le } from "./xiaobai-os-app-navigation-DrBJz_Kq.js";
+import { t as Se } from "./xiaobai-os-AppDialog-CV8GB57a.js";
 var Ne = { class: "map-viewport" }, Ve = ["viewBox", "aria-label"], Ze = {
   class: "map-viewport-controls",
   "aria-label": "地图缩放"
-}, De = /* @__PURE__ */ Y({
+}, Qe = /* @__PURE__ */ Y({
   __name: "MapViewport",
   props: {
     viewBox: {},
@@ -17,7 +17,7 @@ var Ne = { class: "map-viewport" }, Ve = ["viewBox", "aria-label"], Ze = {
   setup(e) {
     const n = e, l = K(null), t = K([...n.viewBox]), u = K([0, 0]), c = $(() => u.value[0] && u.value[1] ? Math.max(t.value[2] / u.value[0], t.value[3] / u.value[1]) : 1);
     let v;
-    he(() => {
+    fe(() => {
       v = new ResizeObserver((m) => {
         const S = m[0].contentRect;
         u.value = [S.width, S.height];
@@ -25,7 +25,7 @@ var Ne = { class: "map-viewport" }, Ve = ["viewBox", "aria-label"], Ze = {
     });
     const i = /* @__PURE__ */ new Map();
     let f = null, d = [0, 0], a = 0, y = null, x = !1, R = !1, B = null;
-    const D = $(() => t.value.join(" "));
+    const Q = $(() => t.value.join(" "));
     function q() {
       t.value = [...n.viewBox];
     }
@@ -39,12 +39,12 @@ var Ne = { class: "map-viewport" }, Ve = ["viewBox", "aria-label"], Ze = {
       return [t.value[0] + t.value[2] / 2 + (m - I.left - I.width / 2) * H, t.value[1] + t.value[3] / 2 + (S - I.top - I.height / 2) * H];
     }
     function g(m, S) {
-      const I = Math.max(1, n.viewBox[2]), H = Math.min(I * 3, Math.max(Math.min(I * 0.24, 240), t.value[2] * m)), W = H / t.value[2], X = S || [t.value[0] + t.value[2] / 2, t.value[1] + t.value[3] / 2];
+      const I = Math.max(1, n.viewBox[2]), H = Math.min(I * 3, Math.max(Math.min(I * 0.24, 240), t.value[2] * m)), U = H / t.value[2], F = S || [t.value[0] + t.value[2] / 2, t.value[1] + t.value[3] / 2];
       t.value = [
-        X[0] - (X[0] - t.value[0]) * W,
-        X[1] - (X[1] - t.value[1]) * W,
+        F[0] - (F[0] - t.value[0]) * U,
+        F[1] - (F[1] - t.value[1]) * U,
         H,
-        t.value[3] * W
+        t.value[3] * U
       ];
     }
     function V() {
@@ -91,13 +91,13 @@ var Ne = { class: "map-viewport" }, Ve = ["viewBox", "aria-label"], Ze = {
     function _(m) {
       R && (m.preventDefault(), m.stopPropagation());
     }
-    return ve(() => n.resetKey, q, { immediate: !0 }), ve(() => n.focusSequence, V, { flush: "post" }), _e(() => {
+    return ve(() => n.resetKey, q, { immediate: !0 }), ve(() => n.focusSequence, V, { flush: "post" }), Ce(() => {
       v?.disconnect(), B && clearTimeout(B);
     }), (m, S) => (r(), o("div", Ne, [(r(), o("svg", {
       ref_key: "svg",
       ref: l,
       class: "map-viewport-svg",
-      viewBox: D.value,
+      viewBox: Q.value,
       preserveAspectRatio: "xMidYMid meet",
       role: "group",
       "aria-label": e.label,
@@ -107,7 +107,7 @@ var Ne = { class: "map-viewport" }, Ve = ["viewBox", "aria-label"], Ze = {
       onPointerup: O,
       onPointercancel: O,
       onClickCapture: _
-    }, [Te(m.$slots, "default", { unitScale: c.value })], 40, Ve)), s("div", Ze, [
+    }, [Be(m.$slots, "default", { unitScale: c.value })], 40, Ve)), s("div", Ze, [
       s("button", {
         type: "button",
         "aria-label": "放大地图",
@@ -125,7 +125,7 @@ var Ne = { class: "map-viewport" }, Ve = ["viewBox", "aria-label"], Ze = {
       }, "全图")
     ])]));
   }
-}), je = De, Qe = {
+}), je = Qe, De = {
   class: "map-icon",
   viewBox: "0 0 24 24",
   fill: "none",
@@ -157,7 +157,7 @@ var Ne = { class: "map-viewport" }, Ve = ["viewBox", "aria-label"], Ze = {
       water: "M2 7c4-5 6 5 10 0s6 5 10 0M2 13c4-5 6 5 10 0s6 5 10 0M2 19c4-5 6 5 10 0s6 5 10 0",
       compass: "M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0m-6-3-2 5-5 2 2-5 5-2Z"
     };
-    return (l, t) => (r(), o("svg", Qe, [s("path", { d: n[e.name] || n.pin }, null, 8, Ye)]));
+    return (l, t) => (r(), o("svg", De, [s("path", { d: n[e.name] || n.pin }, null, 8, Ye)]));
   }
 }), j = Ge;
 function ye(e, n) {
@@ -174,7 +174,7 @@ function we(e) {
 function oe(e, n, l) {
   return ye(e, n).find((t) => (t.parent || "") === l)?.key || "";
 }
-function Xe(e, n) {
+function Fe(e, n) {
   return e.links.flatMap((l) => {
     if (l.from !== n && l.to !== n) return [];
     const t = e.locations.find((u) => u.key === (l.from === n ? l.to : l.from));
@@ -185,7 +185,7 @@ function Xe(e, n) {
     }] : [];
   });
 }
-function Fe(e, n) {
+function Xe(e, n) {
   const l = e.locations.filter((d) => (d.parent || "") === n).sort((d, a) => d.key.localeCompare(a.key, "en")), t = l.filter((d) => d.position).map((d) => ({
     location: d,
     x: d.position[0],
@@ -231,10 +231,10 @@ function Fe(e, n) {
     ]
   };
 }
-var We = {
+var Ue = {
   class: "map-landscapes",
   "aria-hidden": "true"
-}, Ue = ["transform"], Je = {
+}, We = ["transform"], Je = {
   class: "map-world-roads",
   "aria-hidden": "true"
 }, et = ["d"], tt = ["d", "marker-end"], at = ["x", "y"], nt = [
@@ -265,7 +265,7 @@ var We = {
   },
   emits: ["select"],
   setup(e) {
-    const n = e, l = $(() => Fe(n.atlas, n.region)), t = $(() => oe(n.atlas, n.currentLocationKey, n.region)), u = $(() => l.value.nodes.find((i) => i.location.key === n.focusKey)), c = "map-arrow-" + fe();
+    const n = e, l = $(() => Xe(n.atlas, n.region)), t = $(() => oe(n.atlas, n.currentLocationKey, n.region)), u = $(() => l.value.nodes.find((i) => i.location.key === n.focusKey)), c = "map-arrow-" + he();
     function v(i, f) {
       return i === "water" ? "water" : i === "forest" ? "tree" : i === "mountain" ? "mountain" : ["world", "region"].includes(f) ? "globe" : f === "outdoor" ? "compass" : "building";
     }
@@ -289,17 +289,17 @@ var We = {
           d: "M1 1l8 4-8 4z",
           fill: "var(--map-road-ink)"
         }, null, -1)])])]),
-        s("g", We, [(r(!0), o(A, null, Z(l.value.nodes, (a) => (r(), o("g", {
+        s("g", Ue, [(r(!0), o(A, null, Z(l.value.nodes, (a) => (r(), o("g", {
           key: a.location.key,
           transform: `translate(${a.x} ${a.y})`,
-          class: Q(`is-${a.location.terrain || "urban"}`)
+          class: D(`is-${a.location.terrain || "urban"}`)
         }, [...f[1] || (f[1] = [s("path", { d: "M-108-20Q-100-100-32-94T87-56Q127-13 99 48T21 99Q-57 113-90 65T-108-20Z" }, null, -1), s("path", {
           class: "map-contour",
           d: "M-133-22Q-124-126-39-116T110-70Q156-17 124 60T26 123Q-71 139-112 81T-133-22Z"
-        }, null, -1)])], 10, Ue))), 128))]),
+        }, null, -1)])], 10, We))), 128))]),
         s("g", Je, [(r(!0), o(A, null, Z(l.value.routes, (a) => (r(), o("g", {
           key: a.link.id,
-          class: Q({
+          class: D({
             "is-path": a.link.kind === "path",
             "is-portal": a.link.kind === "portal"
           })
@@ -321,7 +321,7 @@ var We = {
         ], 2))), 128))]),
         (r(!0), o(A, null, Z(l.value.nodes, (a) => (r(), o("g", {
           key: a.location.key,
-          class: Q(["map-place", {
+          class: D(["map-place", {
             "is-selected": a.location.key === e.selectedLocationKey,
             "is-current": a.location.key === t.value,
             "is-unvisited": a.location.status !== "visited"
@@ -331,7 +331,7 @@ var We = {
           tabindex: "0",
           "aria-label": `查看${a.location.name}`,
           onClick: re((y) => i.$emit("select", a.location.key), ["stop"]),
-          onKeydown: [ke(re((y) => i.$emit("select", a.location.key), ["stop"]), ["enter"]), ke(re((y) => i.$emit("select", a.location.key), ["stop", "prevent"]), ["space"])]
+          onKeydown: [Me(re((y) => i.$emit("select", a.location.key), ["stop"]), ["enter"]), Me(re((y) => i.$emit("select", a.location.key), ["stop", "prevent"]), ["space"])]
         }, [
           f[2] || (f[2] = s("circle", {
             class: "map-pin-halo",
@@ -379,7 +379,7 @@ async function ct() {
   }
   document.fonts.add(await ae);
 }
-var Fn = Object.freeze([
+var Xn = Object.freeze([
   "wall",
   "road",
   "water",
@@ -395,14 +395,14 @@ var Fn = Object.freeze([
   "magic",
   "secret",
   "light"
-]), Wn = Object.freeze([
+]), Un = Object.freeze([
   "rect",
   "circle",
   "path",
   "curve",
   "icon",
   "label"
-]), Un = Object.freeze([
+]), Wn = Object.freeze([
   "door",
   "stairs",
   "elevator",
@@ -716,7 +716,7 @@ var ht = ["id"], ft = ["stop-color", "stop-opacity"], yt = ["stop-color", "stop-
   "bridge",
   "tree",
   "rock"
-]), U = (e) => Number(e.toFixed(3)).toString(), ue = (e) => e.geometry.points || [];
+]), W = (e) => Number(e.toFixed(3)).toString(), ue = (e) => e.geometry.points || [];
 function me(e) {
   return ue(e).length >= 3 && (e.closed ?? zt.has(e.category));
 }
@@ -746,11 +746,11 @@ function Lt(e) {
   const n = ue(e);
   if (n.length < 2) return "";
   const l = me(e);
-  if (e.shape === "path") return `M ${n.map(([c, v]) => `${U(c)} ${U(v)}`).join(" L ")}${l ? " Z" : ""}`;
-  const t = [`M ${n[0].map(U).join(" ")}`], u = n.length;
+  if (e.shape === "path") return `M ${n.map(([c, v]) => `${W(c)} ${W(v)}`).join(" L ")}${l ? " Z" : ""}`;
+  const t = [`M ${n[0].map(W).join(" ")}`], u = n.length;
   for (let c = 0; c < u - (l ? 0 : 1); c += 1) {
     const [v, i] = Oe(n, l, c), f = n[(c + 1) % u];
-    t.push(`C ${v.map(U).join(" ")}, ${i.map(U).join(" ")}, ${f.map(U).join(" ")}`);
+    t.push(`C ${v.map(W).join(" ")}, ${i.map(W).join(" ")}, ${f.map(W).join(" ")}`);
   }
   return t.join(" ") + (l ? " Z" : "");
 }
@@ -799,15 +799,15 @@ function $e(e, n = 1) {
     for (; y < d.length - 1 && a > d[y]; )
       a -= d[y], y += 1;
     const x = v[y], R = v[(y + 1) % v.length], B = d[y] ? a / d[y] : 0.5;
-    let D = x[0] + (R[0] - x[0]) * B, q = x[1] + (R[1] - x[1]) * B, T = R[0] - x[0], w = R[1] - x[1];
+    let Q = x[0] + (R[0] - x[0]) * B, q = x[1] + (R[1] - x[1]) * B, T = R[0] - x[0], w = R[1] - x[1];
     if (e.shape === "curve") {
       const [z, P] = Oe(v, i, y), O = 1 - B;
-      D = O ** 3 * x[0] + 3 * O ** 2 * B * z[0] + 3 * O * B ** 2 * P[0] + B ** 3 * R[0], q = O ** 3 * x[1] + 3 * O ** 2 * B * z[1] + 3 * O * B ** 2 * P[1] + B ** 3 * R[1], T = 3 * O ** 2 * (z[0] - x[0]) + 6 * O * B * (P[0] - z[0]) + 3 * B ** 2 * (R[0] - P[0]), w = 3 * O ** 2 * (z[1] - x[1]) + 6 * O * B * (P[1] - z[1]) + 3 * B ** 2 * (R[1] - P[1]);
+      Q = O ** 3 * x[0] + 3 * O ** 2 * B * z[0] + 3 * O * B ** 2 * P[0] + B ** 3 * R[0], q = O ** 3 * x[1] + 3 * O ** 2 * B * z[1] + 3 * O * B ** 2 * P[1] + B ** 3 * R[1], T = 3 * O ** 2 * (z[0] - x[0]) + 6 * O * B * (P[0] - z[0]) + 3 * B ** 2 * (R[0] - P[0]), w = 3 * O ** 2 * (z[1] - x[1]) + 6 * O * B * (P[1] - z[1]) + 3 * B ** 2 * (R[1] - P[1]);
     }
     const g = Math.hypot(T, w);
-    if (!g) return [D, q - 13 * n];
+    if (!g) return [Q, q - 13 * n];
     let V = -w / g, L = T / g;
-    return (L > 0 || L === 0 && V < 0) && (V = -V, L = -L), [D + V * 13 * n, q + L * 13 * n];
+    return (L > 0 || L === 0 && V < 0) && (V = -V, L = -L), [Q + V * 13 * n, q + L * 13 * n];
   }
   const u = (e.rotation || 0) * Math.PI / 180, c = e.shape === "circle" ? l.height / 2 : (Math.abs(Math.sin(u)) * l.width + Math.abs(Math.cos(u)) * l.height) / 2;
   return [t[0], t[1] + c + 13 * n];
@@ -833,12 +833,12 @@ function Zt(e) {
   }
   return l;
 }
-var Dt = [
+var Qt = [
   "x",
   "y",
   "width",
   "height"
-], Qt = {
+], Dt = {
   key: 0,
   cx: "50",
   cy: "50",
@@ -847,13 +847,13 @@ var Dt = [
   key: 1,
   width: "100",
   height: "100"
-}, Gt = ["clip-path", "fill"], Xt = {
+}, Gt = ["clip-path", "fill"], Ft = {
   key: 0,
   cx: "50",
   cy: "50",
   r: "49",
   class: "scene-object-edge"
-}, Ft = {
+}, Xt = {
   key: 1,
   x: "1",
   y: "1",
@@ -861,7 +861,7 @@ var Dt = [
   height: "98",
   rx: "2",
   class: "scene-object-edge"
-}, Wt = ["fill"], Ut = ["fill"], Jt = ["d"], ea = {
+}, Ut = ["fill"], Wt = ["fill"], Jt = ["d"], ea = {
   key: 0,
   d: "M9 78H91",
   class: "scene-object-seam"
@@ -873,7 +873,7 @@ var Dt = [
     unitScale: {}
   },
   setup(e) {
-    const n = e, l = $(() => ee(n.element)), t = $(() => Math.min(l.value.width, l.value.height) / n.unitScale >= 12), u = $(() => n.element.shape === "circle"), c = $(() => n.element.material), v = $(() => pt(c.value, n.prefix)), i = $(() => Ae(c.value, n.prefix)), f = `scene-object-${fe()}`;
+    const n = e, l = $(() => ee(n.element)), t = $(() => Math.min(l.value.width, l.value.height) / n.unitScale >= 12), u = $(() => n.element.shape === "circle"), c = $(() => n.element.material), v = $(() => pt(c.value, n.prefix)), i = $(() => Ae(c.value, n.prefix)), f = `scene-object-${he()}`;
     return (d, a) => (r(), o("svg", {
       x: l.value.x,
       y: l.value.y,
@@ -882,17 +882,17 @@ var Dt = [
       viewBox: "0 0 100 100",
       preserveAspectRatio: "none",
       class: "scene-object"
-    }, [s("defs", null, [s("clipPath", { id: f }, [u.value ? (r(), o("circle", Qt)) : (r(), o("rect", Yt))])]), s("g", {
+    }, [s("defs", null, [s("clipPath", { id: f }, [u.value ? (r(), o("circle", Dt)) : (r(), o("rect", Yt))])]), s("g", {
       "clip-path": `url(#${f})`,
       fill: v.value
-    }, [u.value ? (r(), o("circle", Xt)) : (r(), o("rect", Ft)), t.value ? (r(), o(A, { key: 2 }, [u.value ? (r(), o("circle", {
+    }, [u.value ? (r(), o("circle", Ft)) : (r(), o("rect", Xt)), t.value ? (r(), o(A, { key: 2 }, [u.value ? (r(), o("circle", {
       key: 0,
       cx: "50",
       cy: "50",
       r: "44",
       fill: i.value,
       class: "scene-object-inset"
-    }, null, 8, Wt)) : (r(), o("rect", {
+    }, null, 8, Ut)) : (r(), o("rect", {
       key: 1,
       x: "5",
       y: "5",
@@ -901,7 +901,7 @@ var Dt = [
       rx: "2",
       fill: i.value,
       class: "scene-object-inset"
-    }, null, 8, Ut)), e.element.icon === "table" || e.element.icon === "counter" ? (r(), o(A, { key: 2 }, [s("path", {
+    }, null, 8, Wt)), e.element.icon === "table" || e.element.icon === "counter" ? (r(), o(A, { key: 2 }, [s("path", {
       d: u.value ? "M18 36A35 35 0 0 1 72 22" : "M8 13V8H92",
       class: "scene-object-shine"
     }, null, 8, Jt), e.element.icon === "counter" ? (r(), o("path", ea)) : k("", !0)], 64)) : e.element.icon === "chair" ? (r(), o(A, { key: 3 }, [
@@ -996,13 +996,13 @@ var Dt = [
     }, null, -1)), a[13] || (a[13] = s("path", {
       d: "M11 7V93M89 7V93",
       class: "scene-object-shine"
-    }, null, -1))], 64)) : e.element.icon === "tree" ? (r(), o(A, { key: 8 }, [a[14] || (a[14] = qe('<circle cx="34" cy="32" r="24" class="scene-object-inset"></circle><circle cx="69" cy="36" r="24" class="scene-object-inset"></circle><circle cx="30" cy="62" r="23" class="scene-object-inset"></circle><circle cx="64" cy="67" r="25" class="scene-object-inset"></circle><circle cx="49" cy="48" r="26" class="scene-object-inset"></circle><path d="M21 24q10-10 22-4M36 41q8-9 22-6M64 56q8-1 13 5" class="scene-object-shine"></path>', 6))], 64)) : e.element.icon === "rock" ? (r(), o(A, { key: 9 }, [a[15] || (a[15] = s("path", {
+    }, null, -1))], 64)) : e.element.icon === "tree" ? (r(), o(A, { key: 8 }, [a[14] || (a[14] = He('<circle cx="34" cy="32" r="24" class="scene-object-inset"></circle><circle cx="69" cy="36" r="24" class="scene-object-inset"></circle><circle cx="30" cy="62" r="23" class="scene-object-inset"></circle><circle cx="64" cy="67" r="25" class="scene-object-inset"></circle><circle cx="49" cy="48" r="26" class="scene-object-inset"></circle><path d="M21 24q10-10 22-4M36 41q8-9 22-6M64 56q8-1 13 5" class="scene-object-shine"></path>', 6))], 64)) : e.element.icon === "rock" ? (r(), o(A, { key: 9 }, [a[15] || (a[15] = s("path", {
       d: "M8 38 33 12 76 18 93 57 71 88 25 86ZM33 12 41 44 8 38M41 44 76 18M41 44 71 88M41 44 93 57",
       class: "scene-object-seam"
     }, null, -1)), a[16] || (a[16] = s("path", {
       d: "M12 38 33 17 72 22",
       class: "scene-object-shine"
-    }, null, -1))], 64)) : k("", !0)], 64)) : k("", !0)], 8, Gt)], 8, Dt));
+    }, null, -1))], 64)) : k("", !0)], 64)) : k("", !0)], 8, Gt)], 8, Qt));
   }
 }), na = aa, sa = Object.freeze({
   wall: {
@@ -1313,14 +1313,14 @@ var fa = ["data-element", "opacity"], ya = ["transform"], ma = ["d"], ba = ["d",
   props: { scene: {} },
   setup(e) {
     const n = e, l = K(!1);
-    he(() => {
+    fe(() => {
       ct().then(() => {
         l.value = !0;
       }).catch(() => {
         l.value = !1;
       });
     });
-    const t = `xiaobai-map-scene-${fe()}`, u = $(() => ca[n.scene.mood || "neutral"]), c = $(() => Zt(n.scene.elements)), v = $(() => ha(n.scene.elements).map((i, f) => ({
+    const t = `xiaobai-map-scene-${he()}`, u = $(() => ca[n.scene.mood || "neutral"]), c = $(() => Zt(n.scene.elements)), v = $(() => ha(n.scene.elements).map((i, f) => ({
       element: i,
       bounds: ee(i),
       path: Lt(i),
@@ -1332,7 +1332,7 @@ var fa = ["data-element", "opacity"], ya = ["transform"], ma = ["d"], ba = ["d",
     })));
     return (i, f) => (r(), G(je, {
       class: "map-scene-viewport",
-      style: Me({ "--scene-glow": u.value.glow }),
+      style: ke({ "--scene-glow": u.value.glow }),
       "view-box": e.scene.viewBox,
       "reset-key": e.scene.key,
       label: `${e.scene.name} 场景地图`
@@ -1341,7 +1341,7 @@ var fa = ["data-element", "opacity"], ya = ["transform"], ma = ["d"], ba = ["d",
         C(Ht, { prefix: t }),
         (r(!0), o(A, null, Z(v.value, (a) => (r(), o("g", {
           key: a.element.id,
-          class: Q(["map-scene-element", [`is-${a.element.category}`, `is-${a.element.certainty || "confirmed"}`]]),
+          class: D(["map-scene-element", [`is-${a.element.category}`, `is-${a.element.certainty || "confirmed"}`]]),
           "data-element": a.element.id,
           opacity: a.presentation.opacity
         }, [s("g", { transform: a.transform }, [
@@ -1424,10 +1424,10 @@ var fa = ["data-element", "opacity"], ya = ["transform"], ma = ["d"], ba = ["d",
         ], 8, ya)], 10, fa))), 128)),
         s("g", {
           class: "scene-labels",
-          style: Me({ "--scene-unit-scale": d })
+          style: ke({ "--scene-unit-scale": d })
         }, [(r(!0), o(A, null, Z(v.value, (a) => (r(), o(A, { key: a.element.id }, [a.element.label ? (r(), o("text", {
           key: 0,
-          class: Q(["map-scene-label", { "is-primary": a.element.shape === "label" }]),
+          class: D(["map-scene-label", { "is-primary": a.element.shape === "label" }]),
           x: p($e)(a.element, d)[0],
           y: p($e)(a.element, d)[1]
         }, b(a.element.label), 11, Ea)) : k("", !0)], 64))), 128))], 4)
@@ -1444,7 +1444,7 @@ var fa = ["data-element", "opacity"], ya = ["transform"], ma = ["d"], ba = ["d",
   key: 0,
   class: "map-setting-note",
   role: "status"
-}, Da = ["disabled"], Qa = /* @__PURE__ */ Y({
+}, Qa = ["disabled"], Da = /* @__PURE__ */ Y({
   __name: "MapSettings",
   props: {
     autoMaintenance: { type: Boolean },
@@ -1481,7 +1481,7 @@ var fa = ["data-element", "opacity"], ya = ["transform"], ma = ["d"], ba = ["d",
         }, [C(j, { name: "close" })])]),
         e.status || e.notice || e.maintenanceMessage ? (r(), o("section", {
           key: 0,
-          class: Q(["map-settings-feedback", { "is-error": e.notice ? e.noticeError : e.maintenanceError }]),
+          class: D(["map-settings-feedback", { "is-error": e.notice ? e.noticeError : e.maintenanceError }]),
           role: "status"
         }, [s("strong", null, b(e.notice ? e.notice === e.maintenanceMessage ? "最近一次更新" : "操作提示" : e.status || "最近一次更新"), 1), e.notice || e.maintenanceMessage ? (r(), o("p", Ra, b(e.notice || e.maintenanceMessage), 1)) : k("", !0)], 2)) : k("", !0),
         s("div", Ta, [
@@ -1524,17 +1524,17 @@ var fa = ["data-element", "opacity"], ya = ["transform"], ma = ["d"], ba = ["d",
             class: "map-sync-button",
             disabled: e.busy || e.refreshDisabled,
             onClick: l[4] || (l[4] = (t) => n.$emit("refresh"))
-          }, [C(j, { name: "refresh" }), l[12] || (l[12] = N("同步已保存的地图", -1))], 8, Da),
+          }, [C(j, { name: "refresh" }), l[12] || (l[12] = N("同步已保存的地图", -1))], 8, Qa),
           l[13] || (l[13] = s("p", { class: "map-setting-note" }, "同步只读取保存结果，不会重新生成地图。绘制或更新开始后，可以离开此页面。", -1))
         ])
       ]),
       _: 1
     }));
   }
-}), Ya = Qa, Ga = { class: "map-search-input" }, Xa = {
+}), Ya = Da, Ga = { class: "map-search-input" }, Fa = {
   class: "map-search-filters",
   "aria-label": "地点筛选"
-}, Fa = ["aria-pressed", "onClick"], Wa = { class: "map-search-results" }, Ua = ["onClick"], Ja = { class: "map-result-icon" }, en = { key: 0 }, tn = {
+}, Xa = ["aria-pressed", "onClick"], Ua = { class: "map-search-results" }, Wa = ["onClick"], Ja = { class: "map-result-icon" }, en = { key: 0 }, tn = {
   key: 0,
   class: "map-search-empty"
 }, an = /* @__PURE__ */ Y({
@@ -1555,19 +1555,19 @@ var fa = ["data-element", "opacity"], ya = ["transform"], ma = ["d"], ba = ["d",
       default: ie(() => [
         s("header", Ga, [
           C(j, { name: "search" }),
-          Ce(s("input", {
+          _e(s("input", {
             "onUpdate:modelValue": v[0] || (v[0] = (i) => l.value = i),
             type: "search",
             "aria-label": "搜索地点",
             placeholder: "想去哪里？",
             autofocus: ""
-          }, null, 512), [[He, l.value]]),
+          }, null, 512), [[ze, l.value]]),
           s("button", {
             type: "button",
             onClick: v[1] || (v[1] = (i) => c.$emit("close"))
           }, "取消")
         ]),
-        s("nav", Xa, [(r(), o(A, null, Z([
+        s("nav", Fa, [(r(), o(A, null, Z([
           {
             id: "all",
             name: "全部地点"
@@ -1585,8 +1585,8 @@ var fa = ["data-element", "opacity"], ya = ["transform"], ma = ["d"], ba = ["d",
           type: "button",
           "aria-pressed": t.value === i.id,
           onClick: (f) => t.value = i.id
-        }, b(i.name), 9, Fa)), 64))]),
-        s("div", Wa, [
+        }, b(i.name), 9, Xa)), 64))]),
+        s("div", Ua, [
           s("small", null, b(u.value.length) + " 个地点", 1),
           (r(!0), o(A, null, Z(u.value, (i) => (r(), o("button", {
             key: i.key,
@@ -1601,7 +1601,7 @@ var fa = ["data-element", "opacity"], ya = ["transform"], ma = ["d"], ba = ["d",
               i.brief ? (r(), o("p", en, b(i.brief), 1)) : k("", !0)
             ]),
             C(j, { name: "next" })
-          ], 8, Ua))), 128)),
+          ], 8, Wa))), 128)),
           u.value.length ? k("", !0) : (r(), o("div", tn, [
             C(j, { name: "search" }),
             v[3] || (v[3] = s("h3", null, "还没有找到这个地点", -1)),
@@ -1644,7 +1644,7 @@ var fa = ["data-element", "opacity"], ya = ["transform"], ma = ["d"], ba = ["d",
     "select"
   ],
   setup(e) {
-    const n = e, l = $(() => ye(n.map.atlas, n.location.key).slice(0, -1)), t = $(() => n.map.atlas.locations.filter((i) => i.parent === n.location.key)), u = $(() => n.map.atlas.actors.filter((i) => i.locationKey === n.location.key)), c = $(() => Xe(n.map.atlas, n.location.key)), v = $(() => n.location.sceneKey ? n.map.scenes[n.location.sceneKey] : void 0);
+    const n = e, l = $(() => ye(n.map.atlas, n.location.key).slice(0, -1)), t = $(() => n.map.atlas.locations.filter((i) => i.parent === n.location.key)), u = $(() => n.map.atlas.actors.filter((i) => i.locationKey === n.location.key)), c = $(() => Fe(n.map.atlas, n.location.key)), v = $(() => n.location.sceneKey ? n.map.scenes[n.location.sceneKey] : void 0);
     return (i, f) => (r(), o("section", sn, [
       f[7] || (f[7] = s("div", {
         class: "map-sheet-grip",
@@ -1694,7 +1694,7 @@ function xe(e) {
   return e.maintenanceStatus === "maintaining" || e.maintenanceStatus === "rebuilding";
 }
 function bn(e) {
-  const n = K(structuredClone(Be(e.initialState))), l = K(null), t = K(""), u = K(!1);
+  const n = K(structuredClone(Te(e.initialState))), l = K(null), t = K(""), u = K(!1);
   let c = !1, v = 0, i = 0, f = () => {
   };
   const d = $(() => n.value.status === "unconfirmed" || n.value.writeState === "unconfirmed"), a = $(() => l.value !== null || ["loading", "saving"].includes(n.value.status) || ["maintaining", "rebuilding"].includes(n.value.maintenanceStatus || "")), y = $(() => a.value ? "正在更新地图，请稍候" : d.value ? "请先核实上一次保存结果" : n.value.status === "conflict" ? "保存的版本不一致，请先处理保存问题" : n.value.status !== "ready" ? n.value.message || "地图暂时不可更新" : n.value.chatIdentity ? "" : "请先打开一个聊天"), x = $(() => n.value.maintenanceStatus === "rebuilding" || l.value === "rebuild" ? "正在绘制世界…" : n.value.maintenanceStatus === "maintaining" || l.value === "maintain" ? "正在更新地图…" : l.value === "confirm" ? "正在核实保存…" : a.value ? "正在同步…" : ""), R = $(() => n.value.message || t.value), B = $(() => n.value.message ? [
@@ -1703,7 +1703,7 @@ function bn(e) {
     "conflict",
     "unconfirmed"
   ].includes(n.value.status) : u.value);
-  function D(w) {
+  function Q(w) {
     const g = xe(n.value);
     n.value = structuredClone(w), xe(w) ? (t.value = "", u.value = !1) : g && (t.value = w.maintenanceMessage || "", u.value = w.maintenanceStatus === "error");
   }
@@ -1722,22 +1722,22 @@ function bn(e) {
       }, 35e3);
       if (!c || L !== v || n.value.chatIdentity !== P) return;
       const _ = J(O) ? O.result : void 0, m = J(_) && J(_.state) ? _.state : _;
-      z === i && J(m) && m.chatIdentity === P && D(m), (g === "maintain" || g === "rebuild") && J(_) && typeof _.message == "string" && _.message && (t.value = _.message), g === "refresh" && n.value.status === "ready" && (t.value = "已同步保存的地图。"), g === "settings" && (t.value = n.value.autoMaintenance ? "自动更新已开启。" : "自动更新已关闭。"), g === "confirm" && n.value.status === "ready" && (t.value = "保存已确认。"), g === "adopt" && J(_) && _.adoption === "adopted" && (t.value = "已恢复当前聊天中保存的 OS 数据。");
+      z === i && J(m) && m.chatIdentity === P && Q(m), (g === "maintain" || g === "rebuild") && J(_) && typeof _.message == "string" && _.message && (t.value = _.message), g === "refresh" && n.value.status === "ready" && (t.value = "已同步保存的地图。"), g === "settings" && (t.value = n.value.autoMaintenance ? "自动更新已开启。" : "自动更新已关闭。"), g === "confirm" && n.value.status === "ready" && (t.value = "保存已确认。"), g === "adopt" && J(_) && _.adoption === "adopted" && (t.value = "已恢复当前聊天中保存的 OS 数据。");
     } catch (O) {
       c && L === v && n.value.chatIdentity === P && (t.value = q(O, g), u.value = !0);
     } finally {
       c && L === v && (l.value = null);
     }
   }
-  return he(() => {
+  return fe(() => {
     c = !0, f = e.bridge.subscribe((w) => {
       if (w.type === "map/state") {
         const g = w.payload.state;
         if (g.chatIdentity !== n.value.chatIdentity) return;
-        i += 1, D(g);
+        i += 1, Q(g);
       } else w.type === "map/error" && (i += 1, u.value = !0, t.value = w.payload.message || "地图暂时无法读取，请重新打开。");
     });
-  }), _e(() => {
+  }), Ce(() => {
     c = !1, v += 1, f();
   }), {
     state: n,
@@ -1805,27 +1805,27 @@ var gn = { class: "map-top" }, kn = { class: "map-search-bar" }, Mn = ["disabled
 }, Vn = {
   key: 3,
   class: "map-region-card"
-}, Zn = { class: "map-region-icon" }, Dn = {
+}, Zn = { class: "map-region-icon" }, Qn = {
   key: 4,
   class: "map-scene-caption"
-}, Qn = /* @__PURE__ */ Y({
+}, Dn = /* @__PURE__ */ Y({
   __name: "MapApp",
   props: {
     bridge: {},
     initialState: {}
   },
   setup(e) {
-    const { state: n, activeRequest: l, busy: t, disabledReason: u, requiresConfirmation: c, status: v, notice: i, isError: f, dismissNotice: d, refresh: a, confirmSave: y, adopt: x, setAuto: R, update: B, rebuild: D } = bn(e), q = K(n.value.map ? we(n.value.map.atlas) : ""), T = K(""), w = K(null), g = $(() => w.value !== null), V = K(""), L = K(0), z = K(!1), P = K(!1), O = K(!1), _ = $(() => n.value.map?.atlas), m = $(() => _.value?.actors.find((E) => E.actorKey === "player")?.locationKey || ""), S = $(() => _.value?.locations.find((E) => E.key === m.value)), I = $(() => _.value?.locations.find((E) => E.key === T.value)), H = $(() => _.value?.locations.find((E) => E.key === (w.value || m.value))), W = $(() => g.value && H.value?.sceneKey ? n.value.map?.scenes[H.value.sceneKey] : void 0), X = $(() => _.value?.locations.find((E) => E.key === q.value)), ce = $(() => _.value?.locations.filter((E) => (E.parent || "") === q.value) || []), be = $(() => ce.value.filter((E) => E.status !== "visited").length), Pe = $(() => _.value ? ye(_.value, q.value) : []);
+    const { state: n, activeRequest: l, busy: t, disabledReason: u, requiresConfirmation: c, status: v, notice: i, isError: f, dismissNotice: d, refresh: a, confirmSave: y, adopt: x, setAuto: R, update: B, rebuild: Q } = bn(e), q = K(n.value.map ? we(n.value.map.atlas) : ""), T = K(""), w = K(null), g = $(() => w.value !== null), V = K(""), L = K(0), z = K(!1), P = K(!1), O = K(!1), _ = $(() => n.value.map?.atlas), m = $(() => _.value?.actors.find((E) => E.actorKey === "player")?.locationKey || ""), S = $(() => _.value?.locations.find((E) => E.key === m.value)), I = $(() => _.value?.locations.find((E) => E.key === T.value)), H = $(() => _.value?.locations.find((E) => E.key === (w.value || m.value))), U = $(() => g.value && H.value?.sceneKey ? n.value.map?.scenes[H.value.sceneKey] : void 0), F = $(() => _.value?.locations.find((E) => E.key === q.value)), ce = $(() => _.value?.locations.filter((E) => (E.parent || "") === q.value) || []), be = $(() => ce.value.filter((E) => E.status !== "visited").length), Pe = $(() => _.value ? ye(_.value, q.value) : []);
     ve(() => n.value, (E, h) => {
       const M = E.chatIdentity !== h.chatIdentity;
-      (!h.map || M || q.value && !E.map?.atlas.locations.some((F) => F.key === q.value)) && (q.value = E.map ? we(E.map.atlas) : ""), (M || !E.map?.atlas.locations.some((F) => F.key === T.value)) && (T.value = ""), (M || w.value && !E.map?.atlas.locations.some((F) => F.key === w.value)) && (w.value = null), M && (z.value = !1, P.value = !1);
+      (!h.map || M || q.value && !E.map?.atlas.locations.some((X) => X.key === q.value)) && (q.value = E.map ? we(E.map.atlas) : ""), (M || !E.map?.atlas.locations.some((X) => X.key === T.value)) && (T.value = ""), (M || w.value && !E.map?.atlas.locations.some((X) => X.key === w.value)) && (w.value = null), M && (z.value = !1, P.value = !1);
     });
     function te(E) {
       q.value = E, T.value = "", w.value = null, O.value = !1;
     }
     async function le(E, h = !1) {
-      const M = _.value?.locations.find((F) => F.key === E);
-      M && (w.value = null, T.value = E, P.value = !1, O.value = !1, h && (q.value = M.parent || ""), await Ke(), V.value = _.value ? oe(_.value, E, q.value) : E, L.value += 1);
+      const M = _.value?.locations.find((X) => X.key === E);
+      M && (w.value = null, T.value = E, P.value = !1, O.value = !1, h && (q.value = M.parent || ""), await qe(), V.value = _.value ? oe(_.value, E, q.value) : E, L.value += 1);
     }
     async function Re() {
       S.value && await le(S.value.key, !0);
@@ -1836,7 +1836,7 @@ var gn = { class: "map-top" }, kn = { class: "map-search-bar" }, Mn = ["disabled
     function ge() {
       w.value = null, O.value = !1;
     }
-    return Le(() => O.value ? (O.value = !1, !0) : g.value ? (ge(), !0) : T.value ? (T.value = "", !0) : q.value ? (te(X.value?.parent || ""), !0) : !1), (E, h) => (r(), o("main", { class: Q(["map-app", {
+    return Le(() => O.value ? (O.value = !1, !0) : g.value ? (ge(), !0) : T.value ? (T.value = "", !0) : q.value ? (te(F.value?.parent || ""), !0) : !1), (E, h) => (r(), o("main", { class: D(["map-app", {
       "has-view-switch": _.value?.locations.length,
       "is-scene-view": g.value
     }]) }, [
@@ -1871,12 +1871,12 @@ var gn = { class: "map-top" }, kn = { class: "map-search-bar" }, Mn = ["disabled
           onClick: h[3] || (h[3] = (M) => te(""))
         }, [C(j, { name: "globe" }), h[24] || (h[24] = N("世界", -1))]), (r(!0), o(A, null, Z(Pe.value, (M) => (r(), o(A, { key: M.key }, [C(j, { name: "next" }), s("button", {
           type: "button",
-          onClick: (F) => te(M.key)
+          onClick: (X) => te(M.key)
         }, b(M.name), 9, Sn)], 64))), 128))])) : k("", !0),
         p(v) ? (r(), o("div", jn, [h[25] || (h[25] = s("span", null, null, -1)), N(b(p(v)), 1)])) : k("", !0),
         p(i) || p(c) || p(n).status === "conflict" ? (r(), o("aside", {
           key: 3,
-          class: Q(["map-notice", { "is-error": p(f) }]),
+          class: D(["map-notice", { "is-error": p(f) }]),
           role: "status"
         }, [s("p", null, b(p(i) || (p(c) ? "保存结果尚未确认。" : "保存的版本不一致。")), 1), p(c) ? (r(), o("button", {
           key: 0,
@@ -1900,8 +1900,8 @@ var gn = { class: "map-top" }, kn = { class: "map-search-bar" }, Mn = ["disabled
           onClick: h[7] || (h[7] = (...M) => p(d) && p(d)(...M))
         }, [C(j, { name: "close" })]))], 2)) : k("", !0)
       ]),
-      s("div", { class: Q(["map-canvas", { "has-detail": I.value && !g.value }]) }, [p(n).map && _.value?.locations.length ? (r(), o(A, { key: 0 }, [
-        Ce(C(ut, {
+      s("div", { class: D(["map-canvas", { "has-detail": I.value && !g.value }]) }, [p(n).map && _.value?.locations.length ? (r(), o(A, { key: 0 }, [
+        _e(C(ut, {
           atlas: p(n).map.atlas,
           region: q.value,
           "current-location-key": m.value,
@@ -1916,10 +1916,10 @@ var gn = { class: "map-top" }, kn = { class: "map-search-bar" }, Mn = ["disabled
           "selected-location-key",
           "focus-key",
           "focus-sequence"
-        ]), [[ze, !g.value]]),
-        g.value ? (r(), o(A, { key: 0 }, [W.value?.status === "active" ? (r(), G(Ia, {
+        ]), [[Ke, !g.value]]),
+        g.value ? (r(), o(A, { key: 0 }, [U.value?.status === "active" ? (r(), G(Ia, {
           key: 0,
-          scene: W.value
+          scene: U.value
         }, null, 8, ["scene"])) : (r(), o("div", In, [
           C(j, { name: "layers" }),
           s("h2", null, b(H.value ? "这里的布局还没画出来" : "还不知道你在哪里"), 1),
@@ -1939,7 +1939,7 @@ var gn = { class: "map-top" }, kn = { class: "map-search-bar" }, Mn = ["disabled
           s("button", {
             type: "button",
             class: "map-secondary-button",
-            onClick: h[10] || (h[10] = (M) => te(X.value?.parent || ""))
+            onClick: h[10] || (h[10] = (M) => te(F.value?.parent || ""))
           }, "查看上级区域")
         ])) : k("", !0)
       ], 64)) : (r(), o("div", Bn, [
@@ -1956,13 +1956,13 @@ var gn = { class: "map-top" }, kn = { class: "map-search-bar" }, Mn = ["disabled
           type: "button",
           class: "map-primary-button",
           disabled: !!p(u),
-          onClick: h[11] || (h[11] = (...M) => p(D) && p(D)(...M))
+          onClick: h[11] || (h[11] = (...M) => p(Q) && p(Q)(...M))
         }, b(p(t) ? p(v) || "正在准备…" : "绘制世界地图"), 9, Hn)) : k("", !0),
         p(u) && !p(t) ? (r(), o("p", zn, b(p(u)), 1)) : k("", !0)
       ]))], 2),
       _.value?.locations.length ? (r(), o("div", {
         key: 0,
-        class: Q(["map-floating-tools", { "has-detail": I.value && !g.value }])
+        class: D(["map-floating-tools", { "has-detail": I.value && !g.value }])
       }, [g.value && w.value ? (r(), o("button", {
         key: 0,
         type: "button",
@@ -2009,14 +2009,14 @@ var gn = { class: "map-top" }, kn = { class: "map-search-bar" }, Mn = ["disabled
         "current-key"
       ])) : _.value?.locations.length && !g.value ? (r(), o("footer", Vn, [
         s("span", Zn, [C(j, { name: "compass" })]),
-        s("div", null, [s("h1", null, b(X.value?.name || "世界地图"), 1), s("p", null, b(ce.value.length) + " 个地点 · " + b(be.value ? be.value + " 处还没去过" : "看看熟悉的地方有什么变化"), 1)]),
+        s("div", null, [s("h1", null, b(F.value?.name || "世界地图"), 1), s("p", null, b(ce.value.length) + " 个地点 · " + b(be.value ? be.value + " 处还没去过" : "看看熟悉的地方有什么变化"), 1)]),
         s("button", {
           type: "button",
           class: "map-round-button",
           "aria-label": "浏览全部地点",
           onClick: h[18] || (h[18] = (M) => P.value = !0)
         }, [C(j, { name: "next" })])
-      ])) : g.value && _.value?.locations.length ? (r(), o("footer", Dn, [C(j, { name: "layers" }), s("span", null, [s("strong", null, b(H.value?.name || "当前位置待确认"), 1), s("small", null, b(w.value ? "正在查看场景图 · 不会移动人物" : "当前位置的场景图"), 1)])])) : k("", !0),
+      ])) : g.value && _.value?.locations.length ? (r(), o("footer", Qn, [C(j, { name: "layers" }), s("span", null, [s("strong", null, b(H.value?.name || "当前位置待确认"), 1), s("small", null, b(w.value ? "正在查看场景图 · 不会移动人物" : "当前位置的场景图"), 1)])])) : k("", !0),
       P.value && _.value ? (r(), G(nn, {
         key: 5,
         atlas: _.value,
@@ -2039,7 +2039,7 @@ var gn = { class: "map-top" }, kn = { class: "map-search-bar" }, Mn = ["disabled
         onClose: h[21] || (h[21] = (M) => z.value = !1),
         onSetAuto: p(R),
         onUpdate: p(B),
-        onRebuild: p(D),
+        onRebuild: p(Q),
         onRefresh: p(a)
       }, null, 8, [
         "auto-maintenance",
@@ -2060,7 +2060,7 @@ var gn = { class: "map-top" }, kn = { class: "map-search-bar" }, Mn = ["disabled
       ])) : k("", !0)
     ], 2));
   }
-}), as = Qn;
+}), as = Dn;
 export {
   as as default
 };

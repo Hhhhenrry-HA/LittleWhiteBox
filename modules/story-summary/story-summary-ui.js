@@ -972,6 +972,8 @@ import { DEFAULT_SUMMARY_DELAY_FLOORS, normalizeSummaryDelayFloors } from './dat
             btnClear.classList.remove('hidden');
             btnCancel.classList.add('hidden');
             anchorGenerating = false;
+            btnCancel.disabled = false;
+            btnCancel.textContent = '取消';
         } else {
             anchorGenerating = true;
             progress.classList.remove('hidden');
@@ -983,21 +985,52 @@ import { DEFAULT_SUMMARY_DELAY_FLOORS, normalizeSummaryDelayFloors } from './dat
             progress.querySelector('.progress-inner').style.width = percent + '%';
             progress.querySelector('.progress-text').textContent = message || `${current}/${total}`;
         }
+        syncMemoryActionButtons();
+    }
+
+    function syncMemoryActionButtons() {
+        const busy = anchorGenerating || vectorGenerating;
+        for (const id of ['btn-anchor-generate', 'btn-anchor-clear', 'btn-repair-vectors', 'btn-gen-vectors', 'btn-clear-vectors']) {
+            $(id).disabled = busy;
+        }
+    }
+
+    function updateVectorProgress({ current, total, phase, message }) {
+        const progress = $('vector-gen-progress');
+        vectorGenerating = current >= 0;
+        progress.classList.toggle('hidden', !vectorGenerating);
+        for (const id of ['btn-repair-vectors', 'btn-gen-vectors', 'btn-clear-vectors']) {
+            $(id).classList.toggle('hidden', vectorGenerating);
+        }
+        const cancel = $('btn-cancel-vectors');
+        cancel.classList.toggle('hidden', !vectorGenerating);
+        if (!vectorGenerating) {
+            cancel.disabled = false;
+            cancel.textContent = '取消';
+        } else {
+            progress.querySelector('.progress-inner').style.width = (total > 0 ? Math.round(current / total * 100) : 0) + '%';
+            progress.querySelector('.progress-text').textContent = message || `${phase || ''}: ${current}/${total}`;
+        }
+        syncMemoryActionButtons();
     }
 
     function initAnchorUI() {
         $('btn-anchor-generate').onclick = () => {
-            if (anchorGenerating) return;
+            if (anchorGenerating || vectorGenerating) return;
+            updateAnchorProgress(0, 0, '检查锚点缺漏...');
             postMsg('ANCHOR_GENERATE');
         };
 
         $('btn-anchor-clear').onclick = async () => {
+            if (anchorGenerating || vectorGenerating) return;
             if (await showConfirm('清空锚点', '清空所有记忆锚点？（L0 向量也会一并清除）')) {
                 postMsg('ANCHOR_CLEAR');
             }
         };
 
         $('btn-anchor-cancel').onclick = () => {
+            $('btn-anchor-cancel').disabled = true;
+            $('btn-anchor-cancel').textContent = '停止中...';
             postMsg('ANCHOR_CANCEL');
         };
     }
@@ -1052,17 +1085,29 @@ import { DEFAULT_SUMMARY_DELAY_FLOORS, normalizeSummaryDelayFloors } from './dat
         $('btn-add-filter-rule').onclick = addFilterRule;
 
         $('btn-gen-vectors').onclick = () => {
-            if (vectorGenerating) return;
+            if (vectorGenerating || anchorGenerating) return;
+            updateVectorProgress({ current: 0, total: 0, message: '准备重建向量...' });
             postMsg('VECTOR_GENERATE', { config: getVectorConfig() });
         };
 
+        $('btn-repair-vectors').onclick = () => {
+            if (vectorGenerating || anchorGenerating) return;
+            updateVectorProgress({ current: 0, total: 0, message: '检查向量缺漏...' });
+            postMsg('VECTOR_REPAIR', { config: getVectorConfig() });
+        };
+
         $('btn-clear-vectors').onclick = async () => {
+            if (vectorGenerating || anchorGenerating) return;
             if (await showConfirm('清空向量', '确定清空所有向量数据？')) {
                 postMsg('VECTOR_CLEAR');
             }
         };
 
-        $('btn-cancel-vectors').onclick = () => postMsg('VECTOR_CANCEL_GENERATE');
+        $('btn-cancel-vectors').onclick = () => {
+            $('btn-cancel-vectors').disabled = true;
+            $('btn-cancel-vectors').textContent = '停止中...';
+            postMsg('VECTOR_CANCEL_GENERATE');
+        };
 
         $('btn-export-vectors').onclick = () => {
             $('btn-export-vectors').disabled = true;
@@ -2452,32 +2497,9 @@ import { DEFAULT_SUMMARY_DELAY_FLOORS, normalizeSummaryDelayFloors } from './dat
                 updateAnchorProgress(d.current, d.total, d.message);
                 break;
 
-            case 'VECTOR_GEN_PROGRESS': {
-                const progress = $('vector-gen-progress');
-                const btnGen = $('btn-gen-vectors');
-                const btnCancel = $('btn-cancel-vectors');
-                const btnClear = $('btn-clear-vectors');
-
-                if (d.current < 0) {
-                    progress.classList.add('hidden');
-                    btnGen.classList.remove('hidden');
-                    btnCancel.classList.add('hidden');
-                    btnClear.classList.remove('hidden');
-                    vectorGenerating = false;
-                } else {
-                    vectorGenerating = true;
-                    progress.classList.remove('hidden');
-                    btnGen.classList.add('hidden');
-                    btnCancel.classList.remove('hidden');
-                    btnClear.classList.add('hidden');
-
-                    const percent = d.total > 0 ? Math.round(d.current / d.total * 100) : 0;
-                    progress.querySelector('.progress-inner').style.width = percent + '%';
-                    const displayText = d.message || `${d.phase || ''}: ${d.current}/${d.total}`;
-                    progress.querySelector('.progress-text').textContent = displayText;
-                }
+            case 'VECTOR_GEN_PROGRESS':
+                updateVectorProgress(d);
                 break;
-            }
 
             case 'VECTOR_EXPORT_RESULT':
                 $('btn-export-vectors').disabled = false;
@@ -2501,7 +2523,7 @@ import { DEFAULT_SUMMARY_DELAY_FLOORS, normalizeSummaryDelayFloors } from './dat
                 $('btn-import-summary').disabled = false;
                 if (d.success) {
                     const c = d.counts || {};
-                    $('summary-io-status').textContent = `导入成功: ${c.events || 0} 条事件, ${c.facts || 0} 条世界状态，已覆盖当前总结资料并清空向量/锚点，请点击“完整重建”。`;
+                    $('summary-io-status').textContent = `导入成功: ${c.events || 0} 条事件, ${c.facts || 0} 条世界状态。向量与锚点已清空，请先生成锚点，再补齐向量。`;
                     postMsg('REQUEST_VECTOR_STATS');
                     postMsg('REQUEST_ANCHOR_STATS');
                 } else {

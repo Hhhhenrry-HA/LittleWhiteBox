@@ -34,6 +34,7 @@ defineExpose({ sent() {bottom = true; void stick();} });
     <section class="messages-conversation">
         <header class="messages-thread-header"><button class="messages-icon-button" aria-label="返回信息" @click="$emit('back')"><MessageIcon name="back" /></button><ContactAvatar :identity="contact.id" :name="contact.name" small /><div><h2>{{ contact.name }}</h2></div><button class="messages-icon-button" aria-label="联系人详情" @click="$emit('details')"><MessageIcon name="more" /></button></header>
         <div ref="scroller" class="messages-thread-scroll" @scroll="scroll">
+            <p class="messages-subtle messages-context-hint">对话参考角色设定、世界书、近期剧情及可用总结。</p>
             <button v-if="page.hasMore" class="messages-older" :disabled="loading" @click="more">{{ loading ? '读取中…' : '查看更早的消息' }}</button>
             <p v-if="loading && !page.messages.length" class="messages-thread-start">正在读取消息…</p>
             <template v-for="(message, index) in page.messages" :key="message.id">

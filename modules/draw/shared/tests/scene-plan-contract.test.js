@@ -365,6 +365,7 @@ test('scene planner errors expose stable failure categories', () => {
         ['MODEL_MISSING', ScenePlannerErrorCategory.AGENT_CONFIG],
         ['HOST_REQUEST_HEADERS_LOAD_FAILED', ScenePlannerErrorCategory.AGENT_CONFIG],
         ['TOOL_CALL_MISSING', ScenePlannerErrorCategory.TOOL_PROTOCOL],
+        ['TAGGED_TOOL_CALL_INVALID', ScenePlannerErrorCategory.TOOL_PROTOCOL],
         ['TOOL_ARGUMENTS_SCHEMA_INVALID', ScenePlannerErrorCategory.SCHEMA],
         ['REQUEST_TIMEOUT', ScenePlannerErrorCategory.TIMEOUT],
         ['REQUEST_ABORTED', ScenePlannerErrorCategory.ABORTED],

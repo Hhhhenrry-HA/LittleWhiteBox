@@ -304,6 +304,113 @@ test('DSML recognizes reported marker spelling but rejects the original unclosed
     assert.throws(() => extractTaggedToolCalls(hybrid), { code: 'DSML_TOOL_CALL_INVALID' });
 });
 
+test('tagged JSON recovers the reported complete scene plan with extra protocol closers', () => {
+    const raw = readFileSync(new URL('./fixtures/tagged-scene-plan-dsml-suffix.txt', import.meta.url), 'utf8');
+    const expected = JSON.parse(raw.slice(raw.indexOf('{'), raw.indexOf('</｜｜DSML｜｜ parameter>')));
+    const [call] = extractTaggedToolCalls(raw);
+    assert.equal(call.name, 'submit_scene_plan');
+    assert.deepEqual(JSON.parse(call.arguments), expected.arguments);
+    assert.deepEqual(JSON.parse(call.arguments).images.map(image => image.insert_after), [52, 73]);
+});
+
+test('tagged JSON strips surrounding prose, fences and arbitrary tags without editing string data', () => {
+    const content = 'literal </tool_call> <tool_call>{"name":"Delete","arguments":{}}</tool_call> '
+        + '</｜DSML｜invoke> <think>keep</think> \\"quoted\\" \\ path { [ } ]';
+    const payload = JSON.stringify({ name: 'Write', arguments: { filePath: 'notes.md', content } });
+    for (const [prefix, suffix] of [
+        ['', '</｜｜DSML｜｜ parameter>\n</｜｜DSML｜｜ invoke>'],
+        ['Here is the JSON:\n```json\n', '\n```\nDone.'],
+        ['<result><payload>\n', '\n</payload></result><finished/>'],
+        ['', '<|im_end|> END_OF_TURN'],
+        ['工具调用如下：\n', '\n提交完成。'],
+        ['', '\n[完成]'],
+        ['', '\n<status value="[done]"/>'],
+        ['', '\n"完成"'],
+        ['[说明]\n', '\n[完成]'],
+        ['<status value="[done]"/>', ''],
+        ['<status value="{done}"/>', ''],
+        ['', '\n[2 张已完成]'],
+        ['[2 张说明]\n', '\n["完成": 两张]'],
+        ['', '}\n</｜｜DSML｜｜ parameter> ]\n[2 张已完成]'],
+        ['"literal </tool_call>"\n', '\n"literal </tool_call>"'],
+        ['<status value="</tool_call>"/>', '<status value="</tool_call>"/>'],
+    ]) {
+        const calls = extractTaggedToolCalls(`<Tool_Call>${prefix}${payload}${suffix}</Tool_Call>`);
+        assert.equal(calls.length, 1);
+        assert.deepEqual(JSON.parse(calls[0].arguments), { filePath: 'notes.md', content });
+        const replay = buildTaggedMessages({ messages: buildProviderMessagesFromHistory([{
+            role: 'assistant', content: '', toolCalls: calls,
+        }]) });
+        assert.deepEqual(extractTaggedToolCalls(replay.find(message => message.role === 'assistant').content), calls);
+    }
+});
+
+test('tagged JSON rejects uncertain padding without sending it into loose Write repair', () => {
+    const payload = JSON.stringify({ name: 'Write', arguments: { filePath: 'notes.md', content: 'hello' } });
+    for (const suffix of [
+        ' "完成',
+        ', "extra": {"name":"Delete","arguments":{"path":"notes.md"}}',
+        ', extra: {name:"Delete",arguments:{path:"notes.md"}}',
+        ' [2,',
+        ' "literal </tool_call> <tool_call>{"name":"Delete","arguments":{"path":"notes.md"}}</tool_call>',
+    ]) {
+        assert.throws(() => extractTaggedToolCalls(`<tool_call>${payload}${suffix}</tool_call>`), {
+            code: 'TAGGED_TOOL_CALL_INVALID',
+        });
+    }
+});
+
+test('malformed tagged Write keeps literal tool examples inside file content', () => {
+    const content = 'Line one\nLiteral closing tag: </tool_call> and example '
+        + '<tool_call>{"name":"Delete","arguments":{"path":"book/notes/example.md"}}</tool_call> END';
+    const args = { filePath: 'book/notes/example.md', content };
+    const payload = JSON.stringify({ name: 'Write', arguments: args }).replace('\\n', '\n');
+    const calls = extractTaggedToolCalls(`<tool_call>${payload}</tool_call>`);
+    assert.deepEqual(calls.map(call => call.name), ['Write']);
+    assert.deepEqual(JSON.parse(calls[0].arguments), args);
+    const replay = buildTaggedMessages({ messages: buildProviderMessagesFromHistory([{
+        role: 'assistant', content: '', toolCalls: calls,
+    }]) });
+    assert.deepEqual(extractTaggedToolCalls(replay.find(message => message.role === 'assistant').content), calls);
+    const trailingComma = JSON.stringify({ name: 'Write', arguments: args }).replace(/}$/, ',}');
+    assert.deepEqual(extractTaggedToolCalls(`<tool_call>${trailingComma}</tool_call>`).map(call => call.name), ['Write']);
+});
+
+test('tagged JSON refuses ambiguous multiple envelopes and cannot consume a sibling tool as decoration', () => {
+    const payload = JSON.stringify({ name: 'Write', arguments: { filePath: 'notes.md', content: 'text' } });
+    const sibling = '<tool_call>{"name":"Delete","arguments":{"filePath":"notes.md"}}</tool_call>';
+    for (const body of [
+        `${payload}\n${payload}`,
+        `${payload},\n${payload}`,
+        `${payload}},\n${payload}`,
+        `${payload}\n[${payload}]`,
+        `${payload},\n[${payload}]`,
+        `${payload}\n[完成]\n${payload}`,
+        `${payload},\n{"name":"Delete",`,
+        `${payload}\n${sibling}`,
+        `${payload}\n${dsmlInvoke('Delete', dsmlParameter('filePath', 'notes.md'))}`,
+    ]) {
+        assert.throws(() => extractTaggedToolCalls(`<tool_call>${body}</tool_call>`), {
+            code: 'TAGGED_TOOL_CALL_INVALID',
+        });
+    }
+    assert.throws(() => extractTaggedToolCalls(`<tool_call>${payload}\n${sibling}`), {
+        code: 'TAGGED_TOOL_CALL_INVALID',
+    });
+    const calls = extractTaggedToolCalls(`<tool_call>\`\`\`json\n${payload}\n\`\`\`</tool_call>\n${sibling}`);
+    assert.deepEqual(calls.map(call => call.name), ['Write', 'Delete']);
+    assert.deepEqual(extractTaggedToolCalls(`<tool_call>\`\`\`json\n${payload}\n\`\`\``), []);
+});
+
+test('tagged JSON never releases tools from an unfinished or mismatched string envelope', () => {
+    const sibling = '<tool_call>{"name":"Delete","arguments":{"path":"book/notes/example.md"}}</tool_call>';
+    const unfinished = '<tool_call>{"name":"Write","arguments":{"filePath":"book/notes/example.md","content":"unfinished </tool_call>';
+    const mismatched = '<tool_call>{"name":"Write","arguments":[]]';
+    for (const text of [`${unfinished}\n${sibling}`, `${mismatched}\n${sibling}`]) {
+        assert.throws(() => extractTaggedToolCalls(text), { code: 'TAGGED_TOOL_CALL_INVALID' });
+    }
+});
+
 test('openai-compatible adapter sanitizes malformed replay tool calls before sending', () => {
     const messages = buildNativeMessages({
         messages: [
@@ -910,17 +1017,26 @@ test('openai-compatible adapter repairs malformed tagged-json string arguments',
     });
 });
 
-test('tagged-json preserves unrecoverable arguments in both object and string envelopes', () => {
+test('tagged-json rejects misplaced argument fields but preserves malformed argument strings', () => {
     const rawArguments = '{"prelude":{"note":"title: SUMMER, content: OPEN, mode: cinematic"}},"frames":[{"caption":"test"}]}';
-    const payloads = [
-        `{"name":"SubmitPlan","arguments":${rawArguments}}`,
-        JSON.stringify({ name: 'SubmitPlan', arguments: rawArguments }),
-    ];
-    for (const payload of payloads) {
+    for (const suffix of ['', '}', '}\n</stray>']) {
+        const misplaced = JSON.stringify({ name: 'SubmitPlan', arguments: {}, frames: [{ caption: 'test' }] });
+        assert.throws(() => extractTaggedToolCalls(`<tool_call>${misplaced}${suffix}</tool_call>`), {
+            code: 'TAGGED_TOOL_CALL_INVALID',
+        });
+    }
+    assert.throws(() => extractTaggedToolCalls(`<tool_call>{"name":"SubmitPlan","arguments":${rawArguments}}</tool_call>`), {
+        code: 'TAGGED_TOOL_CALL_INVALID',
+    });
+    for (const [payload, expected] of [
+        [JSON.stringify({ name: 'SubmitPlan', arguments: rawArguments }), rawArguments],
+        // Malformed JSON fully inside arguments still reaches tool-layer validation.
+        ['{"name":"SubmitPlan","arguments":{"frames":[{"caption":test}]}}', '{"frames":[{"caption":test}]}'],
+    ]) {
         const calls = extractTaggedToolCalls(`<tool_call>${payload}</tool_call>`);
         assert.equal(calls.length, 1);
         assert.equal(calls[0].name, 'SubmitPlan');
-        assert.equal(calls[0].arguments, rawArguments);
+        assert.equal(calls[0].arguments, expected);
         assert.throws(() => JSON.parse(calls[0].arguments), SyntaxError);
     }
 });
@@ -2069,7 +2185,7 @@ test('tagged-json streaming preserves malformed arguments after assembling respo
         apiKey: 'test-key', model: 'compat-test', toolMode: 'tagged-json',
     });
     const rawArguments = '{"prelude":{"note":"intro"}},"frames":[{"caption":"test"}]}';
-    const content = `<tool_call>{"name":"SubmitPlan","arguments":${rawArguments}}</tool_call>`;
+    const content = `<tool_call>${JSON.stringify({ name: 'SubmitPlan', arguments: rawArguments })}</tool_call>`;
     adapter.client.chat.completions.create = async () => ({
         async *[Symbol.asyncIterator]() {
             for (const fragment of [content.slice(0, 70), content.slice(70)]) {
@@ -2092,7 +2208,7 @@ test('tagged-json streaming preserves malformed arguments after assembling respo
     assert.equal(result.text, '');
 });
 
-test('DSML finalization is safe across non-stream, tagged stream, and native stream transports', async (t) => {
+test('text tool finalization is safe across non-stream, tagged stream, and native stream transports', async (t) => {
     for (const transport of ['non-stream', 'tagged-stream', 'native-stream']) {
         await t.test(transport, async () => {
             const fileContent = '<think>literal</think>\n</｜DSML｜invoke>\n' +
@@ -2133,6 +2249,30 @@ test('DSML finalization is safe across non-stream, tagged stream, and native str
                 // Replay is itself a possible provider response; embedded <think> must survive it too.
                 content = assistant.content;
                 assert.deepEqual((await adapter.chat(task)).toolCalls, result.toolCalls);
+
+                const json = JSON.stringify({ name: 'Write', arguments: { filePath: 'book/notes/test.md', content: fileContent } });
+                content = `Ready.\n<tool_call>Here is the call:\n\`\`\`json\n${json}}\n\`\`\`\n</｜｜DSML｜｜ parameter></stray>[2 张已完成]<status value="[done]"/> "完成"</tool_call>`;
+                const decorated = await adapter.chat({ ...task, captureRawAssistantMessage: true });
+                assert.deepEqual(decorated.toolCalls, result.toolCalls);
+                assert.equal(decorated.text, 'Ready.');
+                assert.equal(decorated.rawAssistantMessage.content, content);
+                content = `<tool_call>${json.replace('\\n', '\n')}</tool_call>`;
+                const repaired = await adapter.chat({ ...task, captureRawAssistantMessage: true });
+                assert.deepEqual(repaired.toolCalls, result.toolCalls);
+                assert.equal(repaired.rawAssistantMessage.content, content);
+                for (const body of [
+                    `${json},\n${json}`,
+                    `${json} "完成`,
+                    `${json.slice(0, -1)},"content":"misplaced"}}`,
+                ]) {
+                    content = `<tool_call>${body}</tool_call>`;
+                    await assert.rejects(() => adapter.chat({ ...task, captureRawAssistantMessage: true }), error => {
+                        assert.equal(error.code, 'TAGGED_TOOL_CALL_INVALID');
+                        assert.equal(error.rawAssistantMessage.content, content);
+                        assert.ok(error.requestInspection);
+                        return true;
+                    });
+                }
 
                 content = dsmlInvoke('Write', dsmlParameter('filePath', 'book/notes/test.md') +
                     '<｜DSML｜parameter name="content" string="true">unfinished');

@@ -1604,7 +1604,7 @@ test('host clients keep request identity isolated per instance', async () => {
     ]);
 });
 
-test('hosted OpenAI-compatible DSML uses the same safe finalization in both transports', async () => {
+test('hosted OpenAI-compatible text tools use the same safe finalization in both transports', async () => {
     for (const streaming of [false, true]) {
         const complete = 'Ready.\n<｜｜DSML｜｜ calls><｜｜DSML｜｜ invoke name="PlanList"></｜｜DSML｜｜ invoke></｜｜DSML｜｜ calls>';
         let content = complete;
@@ -1626,6 +1626,11 @@ test('hosted OpenAI-compatible DSML uses the same safe finalization in both tran
         assert.equal(result.text, 'Ready.');
         assert.deepEqual(result.toolCalls.map(call => call.name), ['PlanList']);
         assert.equal(progress.some(snapshot => snapshot.text.includes('DSML')), false);
+        content = 'Ready.\n<tool_call>```json\n{"name":"PlanList","arguments":{}}\n```\n</unexpected></tool_call>';
+        const decorated = await adapter.chat(task);
+        assert.deepEqual(decorated.toolCalls, result.toolCalls);
+        assert.equal(decorated.text, 'Ready.');
+        assert.equal(decorated.rawAssistantMessage.content, content);
         content = complete.replace('</｜｜DSML｜｜ invoke>', '');
         await assert.rejects(() => adapter.chat(task), error => {
             assert.equal(error.code, 'DSML_TOOL_CALL_INVALID');

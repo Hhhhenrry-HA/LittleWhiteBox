@@ -319,6 +319,61 @@ test('backend dispatches repaired complete plans and keeps incomplete or invalid
     }
 });
 
+test('backend dispatches a decorated tagged plan once and retains ambiguous-call diagnostics without dispatch', async (t) => {
+    const agentCore = require('../draw-runs/vendor/agent-core-node.cjs');
+    t.mock.method(console, 'log', () => {});
+    const payload = JSON.stringify({ name: 'submit_scene_plan', arguments: {
+        images: [{ insert_after: 1, scene: 'book cover, title: SUMMER', characters: [] }],
+    } });
+    const cases = [
+        { body: `\`\`\`json\n${payload}\n\`\`\`\n</unexpected>[完成]<status value="[done]"/> "完成"` },
+        { body: `${payload}}\n</｜｜DSML｜｜ parameter> ]\n[2 张已完成]` },
+        { body: `${payload},\n${payload}`, ambiguous: true },
+        { body: `${payload} "完成`, ambiguous: true },
+        { body: `${payload.slice(0, -1)},"images":[]}}`, ambiguous: true },
+    ];
+    for (const [index, { body, ambiguous }] of cases.entries()) {
+        const content = `<tool_call>${body}</tool_call>`;
+        let calls = 0;
+        const { manager, imageJobService } = createManager({
+            runtime: drawRuntime,
+            managerOptions: {
+                agentCore: {
+                    createAgentAdapter(config) {
+                        const adapter = agentCore.createAgentAdapter(config);
+                        adapter.client.chat.completions.create = async () => {
+                            calls += 1;
+                            return { choices: [{ message: { role: 'assistant', content }, finish_reason: 'stop' }] };
+                        };
+                        return adapter;
+                    },
+                },
+            },
+        });
+        t.after(() => manager.close());
+        const envelope = createEnvelope(`run-tagged-decoration-${index}`);
+        envelope.agent.providerConfig.toolMode = 'tagged-json';
+        manager.create('alice', envelope, {});
+        const terminal = await waitFor(() => {
+            const run = manager.get('alice', envelope.runId);
+            return ['dispatched', 'failed'].includes(run?.state) ? run : null;
+        });
+        assert.equal(calls, 1);
+        assert.deepEqual(terminal.progress.validationFailures, []);
+        if (ambiguous) {
+            assert.equal(terminal.state, 'failed');
+            assert.equal(terminal.error.code, 'TAGGED_TOOL_CALL_INVALID');
+            assert.equal(terminal.progress.attempts[0].rawAssistantMessage.content, content);
+            assert.equal(imageJobService.jobs.size, 0);
+        } else {
+            assert.equal(terminal.state, 'dispatched');
+            const job = imageJobService.get('alice', terminal.childJobId);
+            assert.equal(job.body.items.length, 1);
+            assert.equal(job.body.items[0].request.payload.prompt, 'book cover, title: SUMMER');
+        }
+    }
+});
+
 test('backend DSML failures retain protocol classification and deliver redacted originals to F12 once', async (t) => {
     const agentCore = require('../draw-runs/vendor/agent-core-node.cjs');
     const { logDrawRunPlannerDiagnostics } = await import('../../../modules/draw/shared/draw-run-debug.js');

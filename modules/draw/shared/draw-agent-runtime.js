@@ -333,7 +333,7 @@ function mapProviderError(error, abortScope, upstreamSignal) {
     if (error?.name === 'AbortError' || error?.code === 'ABORT_ERR') {
         return new ScenePlannerError('场景规划已取消。', 'REQUEST_ABORTED', null, { cause: error });
     }
-    if (error?.code === 'DSML_TOOL_CALL_INVALID') {
+    if (error?.code === 'DSML_TOOL_CALL_INVALID' || error?.code === 'TAGGED_TOOL_CALL_INVALID') {
         return new ScenePlannerError(error.message, error.code, { offset: error.offset }, { cause: error });
     }
     const timeoutText = `${error?.name || ''} ${error?.code || ''} ${error?.message || ''}`;

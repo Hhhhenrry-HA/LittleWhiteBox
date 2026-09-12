@@ -15,6 +15,7 @@ import { createMessagesRuntime, syncCurrentMessages } from '../apps/messages/hos
 import { createMessagesController } from '../apps/messages/host/controller.js';
 import { createMessageImages } from '../apps/messages/host/image-attachments.js';
 import { parseOutgoingMessage } from '../apps/messages/application/image-upload.js';
+import { createSettingsRepository } from '../host/settings-repository.js';
 
 const clone = structuredClone;
 async function harness() {
@@ -34,6 +35,9 @@ async function harness() {
         },
     });
     const service = createMessagesService(coordinator.createScopedStore(MESSAGES_PARTITION), coordinator);
+    const preferences = {};
+    const settings = createSettingsRepository({ getExtensionSettings: () => preferences, saveSettings() {} });
+    await settings.prepare();
     const chat = {
         identity: () => h.identity, messages: () => h.messages,
         finalizedThrough: () => h.finalizedThrough ?? -1,
@@ -57,6 +61,8 @@ async function harness() {
         return path;
     }, async path => h.images.has(path) ? new Response(h.images.get(path)) : new Response(null, { status: 404 }));
     const deps = { service, timeline, images, context: { capture: async () => ({ ...normalizePromptContext({}), people: [] }) },
+        getSettings: () => settings.read().apps.messages,
+        async saveSettings(value) {await settings.setMessagesCapabilities(value);}, subscribeSettings: settings.subscribe,
         agent: { loadConfig: async () => ({}), openSession: async () => ({ providerConfig: { model: 'fixture' }, run: async request => {
             h.requests.push(request);
             h.apiCalls++; if (h.response) {return h.response();}
@@ -86,6 +92,45 @@ async function controllerHarness(h) {
     activate(); await command('refresh');
     return { controller, runtime, activate, command, idle: () => runtime.active ? new Promise(resolve => waiters.push(resolve)) : Promise.resolve() };
 }
+
+test('saved capabilities select the advertised reply formats for sending and retrying without changing history or uploaded images', async () => {
+    const h = await harness(); const c = await controllerHarness(h);
+    const examples = request => {
+        // Execute the JSON examples actually sent in the external reply
+        // protocol through compilation and storage, without checking source text.
+        return [...request.systemPrompt.matchAll(/\{"type":"(?:text|image|voice)"[^{}\n]*\}/gu)].map(([json]) => JSON.parse(json));
+    };
+    const respond = () => {
+        const replies = examples(h.requests.at(-1));
+        return { text: JSON.stringify(replies.length ? { replies } : { summary: '双方通过私人通讯分享了花店照片。' }) };
+    };
+    h.response = respond;
+    for (const [imagePrompt, voicePrompt] of [[false, false], [true, false], [false, true], [true, true], [false, false]]) {
+        const settings = { imagePrompt, voicePrompt };
+        const before = clone(h.service.current()); const writes = h.writes;
+        const saved = await c.command('settings', { settings });
+        assert.deepEqual(saved.settings, settings);
+        assert.deepEqual(c.activate().settings, settings);
+        assert.deepEqual(h.service.current(), before); assert.equal(h.writes, writes);
+        const id = `input:capability-${h.apiCalls}`;
+        await c.command('send', { contactId: '甲', actionId: id.slice(6), payload: photo }); await c.idle();
+        const request = h.requests.at(-1);
+        const declared = examples(request);
+        assert.deepEqual(declared.map(item => item.type), ['text', ...(imagePrompt ? ['image'] : []), ...(voicePrompt ? ['voice'] : [])]);
+        assert.deepEqual(h.service.current().messages.filter(m => m.replyTo === id).map(m => m.payload), declared);
+        assert.ok(request.messages.some(m => Array.isArray(m.content) && m.content.some(part => part.type === 'image_url')));
+    }
+    await assert.rejects(c.command('settings', { settings: { imagePrompt: true, voicePrompt: 'yes' } }));
+    assert.deepEqual(c.activate().settings, { imagePrompt: false, voicePrompt: false });
+    h.response = async () => {throw new Error('offline');};
+    await c.command('send', { contactId: '乙', actionId: 'retry-settings', payload: { type: 'text', text: '在吗？' } }); await c.idle();
+    await c.command('settings', { settings: { imagePrompt: false, voicePrompt: true } });
+    h.response = respond;
+    await c.command('retry', { contactId: '乙', messageId: 'input:retry-settings' }); await c.idle();
+    assert.deepEqual(examples(h.requests.at(-1)).map(item => item.type), ['text', 'voice']);
+    assert.equal(h.service.current().messages.filter(m => m.id === 'input:retry-settings').length, 1);
+    await c.runtime.stop(); c.controller.deactivate();
+});
 
 test('unconfirmed input remains visible across APP reentry; confirmation and retry preserve its identity', async () => {
     const h = await harness(); const c = await controllerHarness(h);

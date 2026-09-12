@@ -10,11 +10,13 @@ import { buildReplyPrompt } from '../prompt/reply-prompt.js';
 import { buildSummaryPrompt, summaryBatch } from '../prompt/thread-summary.js';
 import { uploadedImageReference, type OutgoingMessage } from './image-upload.js';
 import type { MessageImages } from '../host/image-attachments.js';
+import type { MessagesSettings } from '../types.js';
 
 export interface SendDependencies {
     service: MessagesService; timeline: MessagesTimeline; context: MessagesContext;
     agent: Pick<XiaobaiOsAgentGateway, 'loadConfig' | 'openSession'>;
     images: MessageImages;
+    getSettings(): MessagesSettings;
     playerName(): string; id(): string;
 }
 
@@ -105,7 +107,7 @@ export async function sendPrivateMessage(deps: SendDependencies, input: {
         assertCurrent();
         const recent = history.filter(message => message.seq > (contact.summary?.throughSeq ?? 0));
         const images = await loadImages([...recent, incoming!]);
-        const prompt = buildReplyPrompt({ contact, context: background, incoming: incoming!, history: recent, images });
+        const prompt = buildReplyPrompt({ contact, context: background, incoming: incoming!, history: recent, images, settings: deps.getSettings() });
         const response = await session.run({ ...prompt, tools: [], signal: input.signal });
         assertCurrent();
         const replies = compileReplies(response);

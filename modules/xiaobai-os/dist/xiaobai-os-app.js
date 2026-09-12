@@ -1,6 +1,6 @@
 /* eslint-disable */
-import { A as ge, B as ce, D as pe, E as be, G, H as y, I as we, J as q, K as J, L as ye, M as de, N as ke, R as te, T as fe, U as oe, b as V, d as xe, f as ae, g as S, h as K, j as Ae, k, l as ie, m as W, n as Oe, p as c, q as ne, r as _e, t as Se, u as ue, v as Ee, w as ve, y as Y } from "./xiaobai-os-runtime-dom.esm-bundler-DGqntx6-.js";
-import { t as Pe } from "./xiaobai-os-app-navigation-D5qZ5Ulq.js";
+import { A as k, D as ge, E as pe, J as ne, K as j, L as be, M as we, N as de, O as fe, P as ye, R as ke, T as ve, U as y, V as ce, W as oe, Y as V, b as K, d as xe, f as ae, g as S, h as q, j as Ae, l as ie, m as W, n as Oe, p as c, q as J, r as _e, t as Se, u as ue, v as Ee, y as Y, z as te } from "./xiaobai-os-runtime-dom.esm-bundler-ASdQr4iS.js";
+import { t as Pe } from "./xiaobai-os-app-navigation-DrBJz_Kq.js";
 import { n as Re, t as re } from "./xiaobai-os-frame-bridge-8-bd80In.js";
 var se = [
   "messages",
@@ -54,11 +54,11 @@ var se = [
   id: "world",
   name: "世界",
   accent: "#1388f5"
-}), Ge = Object.freeze({
+}), je = Object.freeze({
   id: "learning",
   name: "语伴",
   accent: "#2467ed"
-}), je = [
+}), Ge = [
   {
     ...Ie,
     icon: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='12'%20y1='0'%20x2='76'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%2325dccc'/%3e%3cstop%20offset='1'%20stop-color='%2300a9c4'/%3e%3c/linearGradient%3e%3cclipPath%20id='tile'%3e%3crect%20width='88'%20height='88'%20rx='22'/%3e%3c/clipPath%3e%3c/defs%3e%3cg%20clip-path='url(%23tile)'%3e%3crect%20width='88'%20height='88'%20fill='url(%23bg)'/%3e%3crect%20x='24'%20y='24'%20width='40'%20height='40'%20rx='11'%20stroke='%23fff'%20stroke-width='4'/%3e%3cpath%20d='M34%2016v8m10-8v8m10-8v8M34%2064v8m10-8v8m10-8v8M16%2034h8m-8%2010h8m-8%2010h8m40-20h8m-8%2010h8m-8%2010h8'%20stroke='%23fff'%20stroke-width='3.5'%20stroke-linecap='round'/%3e%3cpath%20d='m39%2036-8%208%208%208m10-16%208%208-8%208'%20stroke='%23fff'%20stroke-width='3.5'%20stroke-linecap='round'%20stroke-linejoin='round'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href
@@ -100,15 +100,15 @@ var se = [
     icon: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='12'%20y1='0'%20x2='76'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%239d72ff'/%3e%3cstop%20offset='1'%20stop-color='%236b3eec'/%3e%3c/linearGradient%3e%3cclipPath%20id='tile'%3e%3crect%20width='88'%20height='88'%20rx='22'/%3e%3c/clipPath%3e%3c/defs%3e%3cg%20clip-path='url(%23tile)'%3e%3crect%20width='88'%20height='88'%20fill='url(%23bg)'/%3e%3crect%20x='22'%20y='15'%20width='48'%20height='61'%20rx='9'%20fill='%23fff'/%3e%3cpath%20d='m17%2033%205%205%209-11m-14%2028%205%205%209-11'%20stroke='%23caffdc'%20stroke-width='4.5'%20stroke-linecap='round'%20stroke-linejoin='round'/%3e%3cpath%20d='M39%2032h19M39%2040h12M39%2053h19M39%2061h12'%20stroke='%238658ec'%20stroke-width='3.5'%20stroke-linecap='round'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href
   },
   {
-    ...Ge,
+    ...je,
     icon: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='12'%20y1='0'%20x2='76'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%234099ff'/%3e%3cstop%20offset='1'%20stop-color='%232260f1'/%3e%3c/linearGradient%3e%3cclipPath%20id='tile'%3e%3crect%20width='88'%20height='88'%20rx='22'/%3e%3c/clipPath%3e%3c/defs%3e%3cg%20clip-path='url(%23tile)'%3e%3crect%20width='88'%20height='88'%20fill='url(%23bg)'/%3e%3cpath%20d='M23%2017h32a9%209%200%200%201%209%209v25a9%209%200%200%201-9%209H37L23%2070V60a9%209%200%200%201-9-9V26a9%209%200%200%201%209-9Z'%20fill='%23fff'/%3e%3cpath%20d='m27%2048%2010-23%2010%2023m-17-7h14'%20stroke='%232773f5'%20stroke-width='3.5'%20stroke-linecap='round'%20stroke-linejoin='round'/%3e%3crect%20x='48'%20y='48'%20width='29'%20height='29'%20rx='9'%20fill='%2390ecff'/%3e%3cpath%20d='M54%2058h17m-9-4v4m5%200c-1%208-6%2011-12%2014m2-12c2%205%207%2010%2013%2012'%20stroke='%231952aa'%20stroke-width='2'%20stroke-linecap='round'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href
   }
-], Fe = Object.freeze(se.map((t) => {
-  const i = je.find((e) => e.id === t);
+], ze = Object.freeze(se.map((t) => {
+  const i = Ge.find((e) => e.id === t);
   if (!i) throw new Error(`missing_shell_app:${t}`);
   return Object.freeze(i);
 }));
-function ze(t) {
+function Fe(t) {
   let i = null, e = null;
   return Object.freeze({
     load() {
@@ -125,21 +125,21 @@ function ze(t) {
   });
 }
 var Xe = Object.freeze({
-  "agent-api": () => import("./xiaobai-os-AgentApiApp-B_BaB0lC.js"),
-  "fourth-wall": () => import("./xiaobai-os-FourthWallApp-DrDo89dm.js"),
-  wallet: () => import("./xiaobai-os-WalletApp-C-IADmxx.js"),
-  shop: () => import("./xiaobai-os-ShopApp-l-TYWvyv.js"),
-  bank: () => import("./xiaobai-os-BankApp-DeIvGxzR.js"),
-  game: () => import("./xiaobai-os-GameApp-D8c6JF8B.js"),
-  map: () => import("./xiaobai-os-MapApp-Dy7FUaQr.js"),
-  messages: () => import("./xiaobai-os-MessagesApp-CDlL4iII.js"),
-  tasks: () => import("./xiaobai-os-TasksApp-DDY7Zw8d.js"),
-  world: () => import("./xiaobai-os-WorldApp-C0sxAt63.js"),
-  learning: () => import("./xiaobai-os-LearningApp-D06rbK-X.js")
-}), he = Object.freeze(Fe.map((t) => {
+  "agent-api": () => import("./xiaobai-os-AgentApiApp-CVGVf_I4.js"),
+  "fourth-wall": () => import("./xiaobai-os-FourthWallApp-CC0atSFc.js"),
+  wallet: () => import("./xiaobai-os-WalletApp-B55NE98t.js"),
+  shop: () => import("./xiaobai-os-ShopApp-RJKkc6zB.js"),
+  bank: () => import("./xiaobai-os-BankApp-gBj_a8Hr.js"),
+  game: () => import("./xiaobai-os-GameApp-g4KaPl-X.js"),
+  map: () => import("./xiaobai-os-MapApp-CZMTrUD2.js"),
+  messages: () => import("./xiaobai-os-MessagesApp-fdgXtpjD.js"),
+  tasks: () => import("./xiaobai-os-TasksApp-Cv6HCSGa.js"),
+  world: () => import("./xiaobai-os-WorldApp-Cl7p0DOk.js"),
+  learning: () => import("./xiaobai-os-LearningApp-DNNkL4n4.js")
+}), he = Object.freeze(ze.map((t) => {
   const i = Xe[t.id];
   if (!i) throw new Error(`missing_shell_app:${t.id}`);
-  const e = ze(i);
+  const e = Fe(i);
   return Object.freeze({
     ...t,
     load: e.load,
@@ -161,16 +161,16 @@ function Ne() {
     }
   };
 }
-var qe = /* @__PURE__ */ V({
+var Ve = /* @__PURE__ */ K({
   __name: "AppNavigationScope",
   props: { owner: {} },
   setup(t, { expose: i }) {
     const e = t, o = y(null), b = oe([]), E = Ne();
-    return ge(Pe, {
+    return Ae(Pe, {
       root: o,
       layers: b,
       stack: E
-    }), ye((d) => {
+    }), ke((d) => {
       const r = b.value.at(-1);
       if (!r || !o.value?.contains(r)) return;
       const m = /* @__PURE__ */ new Set();
@@ -202,14 +202,14 @@ var qe = /* @__PURE__ */ V({
       tabindex: "-1"
     }, [de(d.$slots, "default")], 512));
   }
-}), Ke = qe, Ve = /* @__PURE__ */ V({
+}), qe = Ve, Ke = /* @__PURE__ */ K({
   __name: "AppBoundary",
   emits: ["failed"],
   setup(t, { emit: i }) {
     const e = i;
-    return be((o) => (e("failed", o), !1)), (o, b) => de(o.$slots, "default");
+    return ge((o) => (e("failed", o), !1)), (o, b) => de(o.$slots, "default");
   }
-}), Ze = Ve;
+}), Ze = Ke;
 function Ye(t) {
   if (!Array.isArray(t)) return [];
   const i = new Set(se);
@@ -282,13 +282,13 @@ function Je(t) {
       width: D.width,
       offsetX: s - D.left,
       offsetY: R - D.top
-    }, window.addEventListener("pointermove", v), window.addEventListener("pointerup", f), window.addEventListener("pointercancel", j), window.addEventListener("blur", _), t.editing.value ? r() : o = setTimeout(r, 420);
+    }, window.addEventListener("pointermove", v), window.addEventListener("pointerup", f), window.addEventListener("pointercancel", G), window.addEventListener("blur", _), t.editing.value ? r() : o = setTimeout(r, 420);
   }
   function u(n, s) {
     e && (e.x = n, e.y = s, !i.value && Math.hypot(n - e.startX, s - e.startY) > 8 && (e.touchId !== null ? x(!0) : r()));
   }
   function x(n) {
-    clearTimeout(o), cancelAnimationFrame(b), !n && i.value && E(), window.removeEventListener("pointermove", v), window.removeEventListener("pointerup", f), window.removeEventListener("pointercancel", j), window.removeEventListener("blur", _), e?.pointerId !== null && e?.pointerId !== void 0 && t.root.value?.hasPointerCapture(e.pointerId) && t.root.value.releasePointerCapture(e.pointerId);
+    clearTimeout(o), cancelAnimationFrame(b), !n && i.value && E(), window.removeEventListener("pointermove", v), window.removeEventListener("pointerup", f), window.removeEventListener("pointercancel", G), window.removeEventListener("blur", _), e?.pointerId !== null && e?.pointerId !== void 0 && t.root.value?.hasPointerCapture(e.pointerId) && t.root.value.releasePointerCapture(e.pointerId);
     const s = !!i.value;
     e = null, i.value = null, s && t.finish(n);
   }
@@ -301,7 +301,7 @@ function Je(t) {
   function f(n) {
     e?.pointerId === n.pointerId && x(!1);
   }
-  function j(n) {
+  function G(n) {
     e?.pointerId === n.pointerId && x(!0);
   }
   function $(n) {
@@ -312,11 +312,11 @@ function Je(t) {
     const s = n.changedTouches[0];
     m(n.target, s.clientX, s.clientY, null, s.identifier), i.value && n.cancelable && n.preventDefault();
   }
-  function F(n) {
+  function z(n) {
     const s = [...n.touches].find((R) => R.identifier === e?.touchId);
     s && (i.value && n.cancelable && n.preventDefault(), u(s.clientX, s.clientY));
   }
-  function z(n) {
+  function F(n) {
     [...n.changedTouches].some((s) => s.identifier === e?.touchId) && (i.value && n.cancelable && n.preventDefault(), x(!1));
   }
   function _() {
@@ -326,10 +326,10 @@ function Je(t) {
     document.hidden && _();
   }
   let P = null;
-  return pe(() => {
-    P = t.root.value, P?.addEventListener("touchstart", $, { passive: !1 }), P?.addEventListener("touchmove", F, { passive: !1 }), P?.addEventListener("touchend", z, { passive: !1 }), P?.addEventListener("touchcancel", _), document.addEventListener("visibilitychange", w);
-  }), fe(() => {
-    _(), P?.removeEventListener("touchstart", $), P?.removeEventListener("touchmove", F), P?.removeEventListener("touchend", z), P?.removeEventListener("touchcancel", _), document.removeEventListener("visibilitychange", w);
+  return fe(() => {
+    P = t.root.value, P?.addEventListener("touchstart", $, { passive: !1 }), P?.addEventListener("touchmove", z, { passive: !1 }), P?.addEventListener("touchend", F, { passive: !1 }), P?.addEventListener("touchcancel", _), document.addEventListener("visibilitychange", w);
+  }), pe(() => {
+    _(), P?.removeEventListener("touchstart", $), P?.removeEventListener("touchmove", z), P?.removeEventListener("touchend", F), P?.removeEventListener("touchcancel", _), document.removeEventListener("visibilitychange", w);
   }), {
     floating: i,
     pointerDown: A,
@@ -354,7 +354,7 @@ var Qe = {
 }, st = ["src"], ct = { class: "xiaobai-os-app-name" }, ut = {
   class: "xiaobai-os-sort-announcement",
   role: "status"
-}, pt = { class: "xiaobai-os-app-icon" }, dt = ["src"], ft = { class: "xiaobai-os-app-name" }, vt = /* @__PURE__ */ V({
+}, pt = { class: "xiaobai-os-app-icon" }, dt = ["src"], ft = { class: "xiaobai-os-app-name" }, vt = /* @__PURE__ */ K({
   __name: "XiaobaiOsHome",
   props: {
     apps: {},
@@ -365,14 +365,14 @@ var Qe = {
   setup(t, { expose: i, emit: e }) {
     const o = t, b = e, E = y(null), d = y(!1), r = y([]), m = y(!1), u = y(""), x = y(""), A = y("");
     let v = [], f = null;
-    const j = ae(() => d.value ? le(o.apps, r.value) : o.apps);
+    const G = ae(() => d.value ? le(o.apps, r.value) : o.apps);
     function $(l) {
       ve(() => E.value?.querySelector(`[data-app-id="${l}"]`)?.focus({ preventScroll: !0 }));
     }
-    function F(l) {
+    function z(l) {
       d.value || (r.value = o.apps.map((g) => g.id)), d.value = !0, A.value = l;
     }
-    function z(l, g) {
+    function F(l, g) {
       const p = r.value.indexOf(l);
       if (p < 0 || p === g) return;
       const C = [...r.value];
@@ -393,9 +393,9 @@ var Qe = {
       editing: d,
       disabled: () => m.value || !!u.value,
       start(l) {
-        F(l), v = [...r.value];
+        z(l), v = [...r.value];
       },
-      move: z,
+      move: F,
       finish(l) {
         l ? r.value = v : r.value.some((g, p) => g !== v[p]) && _([...r.value]), $(A.value);
       }
@@ -423,7 +423,7 @@ var Qe = {
       const g = l.target instanceof Element ? l.target.closest("[data-app-id]") : null, p = g?.dataset.appId;
       if (!p || m.value || u.value) return;
       if (l.key === " " || l.key === "F2") {
-        l.preventDefault(), d.value && l.key === " " ? R() : (F(p), x.value = "整理应用，使用方向键移动，空格键完成");
+        l.preventDefault(), d.value && l.key === " " ? R() : (z(p), x.value = "整理应用，使用方向键移动，空格键完成");
         return;
       }
       if (!d.value) return;
@@ -436,18 +436,18 @@ var Qe = {
       if (N === void 0) return;
       l.preventDefault();
       const H = r.value.indexOf(p), Q = Math.max(0, Math.min(r.value.length - 1, H + N));
-      Q !== H && (z(p, Q), A.value = p, $(p), _([...r.value]));
+      Q !== H && (F(p, Q), A.value = p, $(p), _([...r.value]));
     }
     function D(l) {
       l.key === " " && l.target instanceof Element && l.target.closest("[data-app-id]") && l.preventDefault();
     }
-    return we(() => o.apps.map((l) => l.id).sort().join(","), () => {
+    return be(() => o.apps.map((l) => l.id).sort().join(","), () => {
       n(), r.value = o.apps.map((l) => l.id);
     }), (l, g) => (k(), S("main", {
       ref_key: "root",
       ref: E,
       class: J(["xiaobai-os-home", { "is-editing": d.value }]),
-      onPointerdown: g[1] || (g[1] = (...p) => G(P) && G(P)(...p)),
+      onPointerdown: g[1] || (g[1] = (...p) => j(P) && j(P)(...p)),
       onKeydown: L,
       onKeyup: D,
       onContextmenu: g[2] || (g[2] = ie(() => {
@@ -461,7 +461,7 @@ var Qe = {
         src: t.characterAvatar,
         alt: "",
         draggable: "false"
-      }, null, 8, et)) : K("", !0), g[4] || (g[4] = c("div", { class: "xiaobai-os-home-wash" }, null, -1))]),
+      }, null, 8, et)) : q("", !0), g[4] || (g[4] = c("div", { class: "xiaobai-os-home-wash" }, null, -1))]),
       c("div", tt, [d.value ? (k(), S(ue, { key: 0 }, [c("button", {
         type: "button",
         disabled: m.value || !!u.value,
@@ -471,22 +471,22 @@ var Qe = {
         type: "button",
         disabled: m.value,
         onClick: R
-      }, "完成", 8, it)], 64)) : K("", !0)]),
-      u.value ? (k(), S("div", rt, [c("span", null, q(u.value), 1), c("button", {
+      }, "完成", 8, it)], 64)) : q("", !0)]),
+      u.value ? (k(), S("div", rt, [c("span", null, V(u.value), 1), c("button", {
         type: "button",
         disabled: m.value,
-        onClick: g[0] || (g[0] = (p) => _(G(f)))
-      }, "重试", 8, nt)])) : K("", !0),
+        onClick: g[0] || (g[0] = (p) => _(j(f)))
+      }, "重试", 8, nt)])) : q("", !0),
       Y(Oe, {
         tag: "section",
         name: "xiaobai-os-sort",
         class: "xiaobai-os-app-grid",
         "aria-label": "应用"
       }, {
-        default: te(() => [(k(!0), S(ue, null, Ae(j.value, (p) => (k(), S("button", {
+        default: te(() => [(k(!0), S(ue, null, we(G.value, (p) => (k(), S("button", {
           key: p.id,
           type: "button",
-          class: J(["xiaobai-os-app-tile", { "is-lifted": G(w)?.id === p.id }]),
+          class: J(["xiaobai-os-app-tile", { "is-lifted": j(w)?.id === p.id }]),
           "data-app-id": p.id,
           "aria-label": p.name,
           "aria-keyshortcuts": d.value ? "ArrowUp ArrowDown ArrowLeft ArrowRight Space" : "F2 Space",
@@ -498,30 +498,30 @@ var Qe = {
           width: "64",
           height: "64",
           draggable: "false"
-        }, null, 8, st)]), c("span", ct, q(p.name), 1)], 14, lt))), 128))]),
+        }, null, 8, st)]), c("span", ct, V(p.name), 1)], 14, lt))), 128))]),
         _: 1
       }),
-      c("span", ut, q(x.value), 1),
-      (k(), W(xe, { to: "body" }, [G(w) && s.value ? (k(), S("div", {
+      c("span", ut, V(x.value), 1),
+      (k(), W(xe, { to: "body" }, [j(w) && s.value ? (k(), S("div", {
         key: 0,
         class: "xiaobai-os-dragged-app xiaobai-os-app-tile",
         "aria-hidden": "true",
         style: ne({
-          left: `${G(w).x}px`,
-          top: `${G(w).y}px`,
-          width: `${G(w).width}px`
+          left: `${j(w).x}px`,
+          top: `${j(w).y}px`,
+          width: `${j(w).width}px`
         })
       }, [c("span", pt, [c("img", {
         src: s.value.icon,
         alt: "",
         draggable: "false"
-      }, null, 8, dt)]), c("span", ft, q(s.value.name), 1)], 4)) : K("", !0)]))
+      }, null, 8, dt)]), c("span", ft, V(s.value.name), 1)], 4)) : q("", !0)]))
     ], 34));
   }
 }), ht = vt, mt = ["disabled"], gt = {
   key: 0,
   "aria-hidden": "true"
-}, bt = /* @__PURE__ */ V({
+}, bt = /* @__PURE__ */ K({
   __name: "XiaobaiOsNavigation",
   props: {
     isHome: { type: Boolean },
@@ -557,7 +557,7 @@ var Qe = {
       }, [e[5] || (e[5] = c("svg", {
         viewBox: "0 0 24 24",
         "aria-hidden": "true"
-      }, [c("path", { d: "m4.5 11 7.5-6 7.5 6v8h-5v-5h-5v5h-5z" })], -1)), t.isHome ? (k(), S("i", gt)) : K("", !0)]),
+      }, [c("path", { d: "m4.5 11 7.5-6 7.5 6v8h-5v-5h-5v5h-5z" })], -1)), t.isHome ? (k(), S("i", gt)) : q("", !0)]),
       c("button", {
         type: "button",
         class: "xiaobai-os-nav-button xiaobai-os-close-button",
@@ -569,7 +569,7 @@ var Qe = {
       }, [c("path", { d: "m7 9.5 5 5 5-5" })])], -1)])])
     ], 2));
   }
-}), wt = bt, yt = /* @__PURE__ */ V({
+}), wt = bt, yt = /* @__PURE__ */ K({
   __name: "XiaobaiOsSystemBar",
   props: { isHome: { type: Boolean } },
   setup(t) {
@@ -586,7 +586,7 @@ var Qe = {
   key: "loading",
   class: "xiaobai-os-app-loading",
   role: "status"
-}, Et = /* @__PURE__ */ V({
+}, Et = /* @__PURE__ */ K({
   __name: "XiaobaiOsDevice",
   props: {
     apps: {},
@@ -643,31 +643,31 @@ var Qe = {
             class: "xiaobai-os-app-failure-mark",
             "aria-hidden": "true"
           }, "!", -1)),
-          c("h1", null, q(t.activeApp?.name) + "暂时无法打开", 1),
-          c("p", null, q(t.appFailure.message), 1),
+          c("h1", null, V(t.activeApp?.name) + "暂时无法打开", 1),
+          c("p", null, V(t.appFailure.message), 1),
           c("div", _t, [t.appFailure.retryable ? (k(), S("button", {
             key: 0,
             type: "button",
             onClick: r[1] || (r[1] = (m) => d.$emit("retry"))
-          }, "重试")) : K("", !0), c("button", {
+          }, "重试")) : q("", !0), c("button", {
             type: "button",
             onClick: r[2] || (r[2] = (m) => d.$emit("reload"))
           }, "重新载入 OS")])
-        ])) : t.appLoading ? (k(), S("div", St, [r[8] || (r[8] = c("span", { "aria-hidden": "true" }, null, -1)), Ee(" 正在打开" + q(t.activeApp?.name), 1)])) : t.activeApp && t.activeComponent ? (k(), W(Ke, {
+        ])) : t.appLoading ? (k(), S("div", St, [r[8] || (r[8] = c("span", { "aria-hidden": "true" }, null, -1)), Ee(" 正在打开" + V(t.activeApp?.name), 1)])) : t.activeApp && t.activeComponent ? (k(), W(qe, {
           key: `app:${t.activeApp.id}:${t.appRenderKey}`,
           ref_key: "navigation",
           ref: E,
           owner: `${t.activeApp.id}:${t.appRenderKey}`
         }, {
           default: te(() => [Y(Ze, { onFailed: r[3] || (r[3] = (m) => d.$emit("renderFailed", m)) }, {
-            default: te(() => [(k(), W(ke(t.activeComponent), {
+            default: te(() => [(k(), W(ye(t.activeComponent), {
               bridge: t.bridge,
               "initial-state": t.activeState
             }, null, 8, ["bridge", "initial-state"]))]),
             _: 1
           })]),
           _: 1
-        }, 8, ["owner"])) : K("", !0)]),
+        }, 8, ["owner"])) : q("", !0)]),
         _: 1
       })], 4),
       Y(wt, {
@@ -687,11 +687,11 @@ var Qe = {
   key: 1,
   class: "xiaobai-os-loading",
   role: "status"
-}, Lt = /* @__PURE__ */ V({
+}, Lt = /* @__PURE__ */ K({
   __name: "App",
   setup(t) {
-    const i = Re(), e = y(null), o = y(null), b = y(!1), E = y("light"), d = y(/* @__PURE__ */ new Set()), r = y([]), m = y(""), u = y(null), x = oe(null), A = y(null), v = y(!1), f = y(null), j = y(0), $ = y("");
-    let F = null, z = () => {
+    const i = Re(), e = y(null), o = y(null), b = y(!1), E = y("light"), d = y(/* @__PURE__ */ new Set()), r = y([]), m = y(""), u = y(null), x = oe(null), A = y(null), v = y(!1), f = y(null), G = y(0), $ = y("");
+    let z = null, F = () => {
     }, _ = 0, w = null;
     const P = ae(() => le(he, r.value).filter((a) => d.value.has(a.id)));
     async function n(a) {
@@ -739,7 +739,7 @@ var Qe = {
     }
     async function L(a) {
       const h = ++_;
-      j.value += 1;
+      G.value += 1;
       const O = { appId: a.id };
       w = O, u.value = a, x.value = null, A.value = null, v.value = !0, f.value = null, i.clearAppSession(), $.value = "";
       const I = i.request("app/activate", { appId: a.id }), B = a.load(), [Z, ee] = await Promise.allSettled([I, B]);
@@ -779,7 +779,7 @@ var Qe = {
       const a = u.value, h = f.value;
       if (!(!a || !h)) {
         if (h.phase === "ui-render") {
-          f.value = null, j.value += 1;
+          f.value = null, G.value += 1;
           return;
         }
         if (h.phase === "ui-load" && i.getAppSession()?.appId === a.id) {
@@ -857,10 +857,10 @@ var Qe = {
       const O = h[0], I = h[h.length - 1];
       a.shiftKey && document.activeElement === O ? (a.preventDefault(), I.focus()) : !a.shiftKey && document.activeElement === I && (a.preventDefault(), O.focus());
     }
-    return pe(async () => {
-      F = document.activeElement instanceof HTMLElement ? document.activeElement : null, z = i.subscribe(X), i.start(), window.addEventListener("error", g), window.addEventListener("unhandledrejection", p), await ve(), e.value?.focus();
-    }), fe(() => {
-      _ += 1, w = null, window.removeEventListener("error", g), window.removeEventListener("unhandledrejection", p), z(), i.dispose(), F?.focus();
+    return fe(async () => {
+      z = document.activeElement instanceof HTMLElement ? document.activeElement : null, F = i.subscribe(X), i.start(), window.addEventListener("error", g), window.addEventListener("unhandledrejection", p), await ve(), e.value?.focus();
+    }), pe(() => {
+      _ += 1, w = null, window.removeEventListener("error", g), window.removeEventListener("unhandledrejection", p), F(), i.dispose(), z?.focus();
     }), (a, h) => (k(), S("main", {
       ref_key: "root",
       ref: e,
@@ -871,7 +871,7 @@ var Qe = {
       tabindex: "-1",
       onKeydown: Q,
       onClick: ie(H, ["self"])
-    }, [$.value ? (k(), S("div", Rt, q($.value), 1)) : K("", !0), b.value ? (k(), W(Pt, {
+    }, [$.value ? (k(), S("div", Rt, V($.value), 1)) : q("", !0), b.value ? (k(), W(Pt, {
       key: 2,
       ref_key: "device",
       ref: o,
@@ -881,8 +881,8 @@ var Qe = {
       "active-state": A.value,
       "app-failure": f.value,
       "app-loading": v.value,
-      "app-render-key": j.value,
-      bridge: G(i),
+      "app-render-key": G.value,
+      bridge: j(i),
       "character-avatar": m.value,
       "save-app-order": n,
       onOpenApp: L,

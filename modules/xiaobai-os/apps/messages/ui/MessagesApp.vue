@@ -3,9 +3,10 @@ import { computed, onUnmounted, reactive, ref } from 'vue';
 import AppDialog from '../../../shell/app-src/components/AppDialog.vue';
 import { useAppBack } from '../../../shell/app-src/navigation/app-navigation.js';
 import type { XiaobaiOsAppProps } from '../../../shell/app-contract.js';
-import type { MessageSendFailure, MessagesClientState, PendingOutgoingMessage, ThreadPage } from '../types.js';
+import type { MessageSendFailure, MessagesClientState, MessagesSettings as Settings, PendingOutgoingMessage, ThreadPage } from '../types.js';
 import type { OutgoingMessage } from '../application/image-upload.js';
 import ContactList from './ContactList.vue';
+import MessagesSettings from './MessagesSettings.vue';
 import Conversation from './Conversation.vue';
 import MessageIcon from './MessageIcon.vue';
 import ContactAvatar from './ContactAvatar.vue';
@@ -19,9 +20,10 @@ const selected = ref(''); const page = ref<ThreadPage>({ contactId: '', messages
 const loading = ref(false); const working = ref(false); const error = ref('');
 const threadError = ref('');
 const conversation = ref<InstanceType<typeof Conversation> | null>(null);
-const dialogOpen = ref(false); const mode = ref<'add' | 'detail' | 'delete' | 'delete-image' | 'sync' | 'recover' | 'adopt'>('add');
+const dialogOpen = ref(false); const mode = ref<'add' | 'detail' | 'delete' | 'delete-image' | 'sync' | 'recover' | 'adopt' | 'settings'>('add');
 const imageToDelete = ref('');
 const name = ref(''); const note = ref(''); const personSearch = ref('');
+const peopleStatus = ref<'loading' | 'ready' | 'failed'>('ready');
 const contactAction = ref(createMessageId());
 let alive = true; let threadRequest = 0;
 const drafts = reactive(new Map<string, MessageDraft>());
@@ -125,10 +127,22 @@ function discard(messageId: string) {
     });
 }
 function operation(type: string) {void run(async () => apply(await request(type)));}
+function saveSettings(settings: Settings) {void run(async () => {apply(await request('messages/settings', { settings })); close();});}
 function sync() {void run(async () => {apply(await request('messages/sync')); close();});}
 function open(next: typeof mode.value) {
     mode.value = next; error.value = ''; name.value = ''; note.value = contact.value?.note ?? ''; personSearch.value = '';
     contactAction.value = createMessageId(); dialogOpen.value = true;
+    if (next === 'add') {void refreshPeople();}
+}
+async function refreshPeople() {
+    const action = contactAction.value;
+    const current = () => alive && dialogOpen.value && mode.value === 'add' && contactAction.value === action;
+    peopleStatus.value = 'loading';
+    try {
+        const next = await request<MessagesClientState>('messages/refresh');
+        if (!current()) {return;}
+        apply(next); peopleStatus.value = 'ready';
+    } catch {if (current()) {peopleStatus.value = 'failed';}}
 }
 function close() {dialogOpen.value = false;}
 function backDialog() {
@@ -138,7 +152,7 @@ function backDialog() {
     else { close(); }
 }
 function add(personName = name.value) {
-    if (!personName.trim() || disabled.value) {return;}
+    if (!personName.trim() || disabled.value || peopleStatus.value === 'loading') {return;}
     void run(async () => {
         const result = await request<{ contactId: string; state: MessagesClientState }>('messages/contact/add', { actionId: contactAction.value, name: personName.trim(), note: note.value.trim() });
         apply(result.state); close(); select(result.contactId);
@@ -187,14 +201,23 @@ onUnmounted(() => {alive = false; threadRequest++; unsubscribe();});
         <p v-if="error || state.error" class="messages-error" role="alert">{{ error || state.error }}</p>
         <div v-if="threadError" class="messages-banner" role="alert"><span>{{ threadError }}</span><button :disabled="loading" @click="readThread()">重试读取</button></div>
         <Conversation v-if="contact" :key="contact.id" ref="conversation" v-model:draft="draft" :contact="contact" :page="page" :bridge="bridge" :chat-identity="state.chatIdentity" :disabled="disabled" :send-disabled="disabled || !!outgoing" :busy="state.busy" :outgoing="pendingBubble" :send-failure="state.sendFailure" :send-error="sendError" :working="working" :pending-save="needsSave" :retry-disabled="working || !!state.busy || state.generationActive || state.fileState === 'conflict'" :loading="loading" :load-more="() => readThread(true)" :media="state.media" :waiting-for="waitingFor" @back="back" @details="open('detail')" @send="send" @retry="retry" @discard="discard" @delete-image="confirmImageDelete" />
-        <ContactList v-show="!contact" :contacts="state.contacts" :busy-contact-id="state.busy?.contactId ?? ''" :drafts="drafts" @select="select" @add="open('add')" />
+        <ContactList v-show="!contact" :contacts="state.contacts" :busy-contact-id="state.busy?.contactId ?? ''" :drafts="drafts" @select="select" @add="open('add')" @settings="open('settings')" />
         <AppDialog v-if="dialogOpen" class="messages-dialog" aria-labelledby="messages-dialog-title" :busy="working" @close="backDialog">
-            <header><ContactAvatar v-if="mode === 'detail' && contact" :identity="contact.id" :name="contact.name" small /><h2 id="messages-dialog-title">{{ mode === 'add' ? '新的对话' : mode === 'detail' ? contact?.name : mode === 'delete' ? '删除联系人？' : mode === 'delete-image' ? '删除这条图片消息？' : mode === 'sync' ? '消息还未写入主聊天' : mode === 'adopt' ? '采用服务器版本？' : '在当前位置补记？' }}</h2><button class="messages-icon-button" aria-label="关闭" :disabled="working" @click="close"><MessageIcon name="close" /></button></header>
+            <header><ContactAvatar v-if="mode === 'detail' && contact" :identity="contact.id" :name="contact.name" small /><h2 id="messages-dialog-title">{{ mode === 'settings' ? '信息设置' : mode === 'add' ? '新的对话' : mode === 'detail' ? contact?.name : mode === 'delete' ? '删除联系人？' : mode === 'delete-image' ? '删除这条图片消息？' : mode === 'sync' ? '消息还未写入主聊天' : mode === 'adopt' ? '采用服务器版本？' : '在当前位置补记？' }}</h2><button class="messages-icon-button" aria-label="关闭" :disabled="working" @click="close"><MessageIcon name="close" /></button></header>
             <p v-if="error" class="messages-error" role="alert">{{ error }}</p>
-            <template v-if="mode === 'add'">
-                <label class="messages-search"><MessageIcon name="search" /><input v-model="personSearch" placeholder="查找已知人物" aria-label="查找已知人物"></label>
-                <div class="messages-known-list"><button v-for="person in people" :key="person.name" :disabled="disabled" @click="add(person.name)"><ContactAvatar :identity="person.name" :name="person.name" small /><span>{{ person.name }}<small v-if="person.aliases.length">{{ person.aliases.join('、') }}</small></span><MessageIcon name="plus" /></button><p v-if="!people.length" class="messages-subtle">没有更多已知人物，可以在下面补充。</p></div>
-                <details class="messages-manual"><summary>想联系的人不在这里？</summary><form @submit.prevent="add()"><label>姓名<input v-model="name" maxlength="120" required placeholder="对方的姓名"></label><label>身份说明（可选）<textarea v-model="note" maxlength="600" rows="2" placeholder="例如：住在隔壁的花店老板" /></label><button class="messages-primary" :disabled="disabled || !name.trim()">添加并聊天</button></form></details>
+            <MessagesSettings v-if="mode === 'settings'" :settings="state.settings" :busy="working || !!state.busy" @save="saveSettings" />
+            <template v-else-if="mode === 'add'">
+                <label class="messages-search"><MessageIcon name="search" /><input v-model="personSearch" placeholder="查找已知人物" aria-label="查找已知人物" aria-describedby="messages-people-source"></label>
+                <div id="messages-people-source" class="messages-subtle messages-people-source">候选来自当前聊天的总结人物资料，需开启总结；未列出的人可手动添加。</div>
+                <div class="messages-known-list" :aria-busy="peopleStatus === 'loading'">
+                    <p v-if="peopleStatus === 'loading'" class="messages-subtle" role="status">正在读取已知人物…</p>
+                    <div v-else-if="peopleStatus === 'failed'"><p class="messages-subtle" role="alert">已知人物暂时无法读取，可以重试或手动添加。</p><button class="messages-secondary" :disabled="working" @click="refreshPeople">重新读取</button></div>
+                    <template v-else>
+                        <button v-for="person in people" :key="person.name" :disabled="disabled" @click="add(person.name)"><ContactAvatar :identity="person.name" :name="person.name" small /><span>{{ person.name }}<small v-if="person.aliases.length">{{ person.aliases.join('、') }}</small></span><MessageIcon name="plus" /></button>
+                        <p v-if="!people.length" class="messages-subtle">{{ personSearch ? '没有匹配的人物，可以在下面手动添加。' : '暂无可添加的已知人物，可以在下面手动添加。' }}</p>
+                    </template>
+                </div>
+                <details class="messages-manual"><summary>想联系的人不在这里？</summary><form @submit.prevent="add()"><label>姓名<input v-model="name" maxlength="120" required placeholder="对方的姓名"></label><label>身份说明（可选）<textarea v-model="note" maxlength="600" rows="2" placeholder="例如：住在隔壁的花店老板" /></label><button class="messages-primary" :disabled="disabled || peopleStatus === 'loading' || !name.trim()">添加并聊天</button></form></details>
             </template>
             <form v-else-if="mode === 'detail'" @submit.prevent="saveNote"><label>身份说明 / 备注<textarea v-model="note" maxlength="600" rows="3" placeholder="帮助辨认这位联系人" /></label><button class="messages-primary" :disabled="disabled">保存备注</button><button type="button" class="messages-danger" :disabled="disabled" @click="mode = 'delete'">删除联系人与通讯记录</button></form>
             <template v-else-if="mode === 'delete'"><p>会删除信息 APP 内与 {{ contact?.name }} 的全部通讯和摘要，不能恢复。主聊天中的「私人信息」楼层不会删除，其他联系人不受影响。</p><button class="messages-danger" :disabled="disabled" @click="remove">确认删除</button><button class="messages-secondary" @click="mode = 'detail'">保留联系人</button></template>

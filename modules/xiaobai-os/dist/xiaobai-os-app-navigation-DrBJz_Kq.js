@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { I as l, w as f, x as v } from "./xiaobai-os-runtime-dom.esm-bundler-DGqntx6-.js";
+import { L as l, S as f, T as v } from "./xiaobai-os-runtime-dom.esm-bundler-ASdQr4iS.js";
 var d = /* @__PURE__ */ Symbol("app-navigation");
 function s(e) {
   return e.isConnected && !e.matches(":disabled") && !e.closest("[inert]") && e.getClientRects().length > 0 && getComputedStyle(e).visibility !== "hidden";
@@ -17,7 +17,7 @@ function m(e) {
 function i(e, o = null) {
   const t = e?.root.value;
   queueMicrotask(() => {
-    f(() => {
+    v(() => {
       if (t && (!t.isConnected || e?.root.value !== t)) return;
       const n = document.activeElement;
       if (n instanceof HTMLElement && n !== document.body && s(n)) return;
@@ -27,7 +27,7 @@ function i(e, o = null) {
   });
 }
 function y(e, o = () => !0) {
-  const t = v(d, null), n = (c = null) => {
+  const t = f(d, null), n = (c = null) => {
     const u = e();
     return u && i(t, c), u;
   };
@@ -44,13 +44,13 @@ function y(e, o = () => !0) {
   }), () => t ? t.stack.back() : n();
 }
 function E(e, o) {
-  const t = v(d, null);
+  const t = f(d, null);
   y(() => (o(), !0), () => !!e.value), l(e, async (n, c, u) => {
     if (!n) return;
     const r = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     t && (t.layers.value = [...t.layers.value, n]), u(() => {
       t && (t.layers.value = t.layers.value.filter((a) => a !== n)), i(t, r);
-    }), await f(), !(!n.isConnected || t && t.layers.value.at(-1) !== n) && m(n);
+    }), await v(), !(!n.isConnected || t && t.layers.value.at(-1) !== n) && m(n);
   }, { flush: "post" });
 }
 export {

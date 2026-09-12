@@ -10,11 +10,14 @@ import type { MessagesTimeline } from '../application/timeline.js';
 import type { MessagesContext } from './context-adapter.js';
 import type { MessagesMedia } from './media-adapter.js';
 import { syncCurrentMessages, type createMessagesRuntime } from './runtime.js';
-import type { MessagesClientState, ThreadPage } from '../types.js';
+import type { MessagesClientState, MessagesSettings, ThreadPage } from '../types.js';
 
 export interface MessagesControllerDependencies {
     service: MessagesService; timeline: MessagesTimeline; context: MessagesContext; media: MessagesMedia;
     runtime: ReturnType<typeof createMessagesRuntime>;
+    getSettings(): MessagesSettings;
+    saveSettings(settings: MessagesSettings): Promise<void>;
+    subscribeSettings(listener: () => void): () => void;
     identity(): string; isGenerating(): boolean;
     subscribeGeneration(listener: (active: boolean) => void): () => void;
     subscribeChat(listener: () => void): () => void;
@@ -33,6 +36,7 @@ export function createMessagesController(deps: MessagesControllerDependencies): 
         const latest = new Map(domain.messages.map(message => [message.contactId, message]));
         return {
             chatIdentity: deps.identity(),
+            settings: deps.getSettings(),
             contacts: domain.contacts.map(({ summary: _summary, ...contact }) => {
                 const last = latest.get(contact.id);
                 return { ...contact, preview: last ? (last.sender === 'user' ? '我：' : '') + (last.payload.type === 'image' ? '［图片］' : last.payload.type === 'voice' ? '［语音］' : '') + payloadText(last.payload).slice(0, 100) : '还没有消息', lastSeq: last?.seq ?? 0, lastAt: last?.createdAt ?? null, lastMessageId: last?.id ?? null };
@@ -73,6 +77,15 @@ export function createMessagesController(deps: MessagesControllerDependencies): 
             switch (message.type) {
                 case 'messages/refresh':
                     await service.refresh(); return state();
+                case 'messages/settings':
+                    return await exclusive(async () => {
+                        const settings = payload.settings;
+                        if (!record(settings) || typeof settings.imagePrompt !== 'boolean' || typeof settings.voicePrompt !== 'boolean') {
+                            throw new Error('messages_invalid_settings');
+                        }
+                        await deps.saveSettings({ imagePrompt: settings.imagePrompt, voicePrompt: settings.voicePrompt });
+                        return state();
+                    });
                 case 'messages/thread': {
                     const before = payload.before === undefined ? Infinity : Number(payload.before);
                     if (before !== Infinity && (!Number.isSafeInteger(before) || before < 1)) {throw new Error('messages_invalid_page');}
@@ -156,7 +169,8 @@ export function createMessagesController(deps: MessagesControllerDependencies): 
                 : code === 'messages_busy' ? '上一项操作还没完成，请稍候。'
                     : code.startsWith('messages_invalid') ? '请检查输入内容和长度。'
                         : code === 'messages_projection_closed' ? '原记录已被修改、删除，或故事已继续。可以展开下方说明，在当前位置补记。'
-                            : '操作未完成，已保存的消息会保留，请稍后重试。';
+                            : message.type === 'messages/settings' ? '能力设置未能确认保存，请重试。'
+                                : '操作未完成，已保存的消息会保留，请稍后重试。';
             localError = userMessage; emit(); throw new Error(userMessage);
         }
     }
@@ -173,7 +187,7 @@ export function createMessagesController(deps: MessagesControllerDependencies): 
         handleChatChanged() {chatBoundary++; runtime.reset(); timeline.reset(); localError = ''; deactivate();},
         startBackground() {
             if (cleanups.length) {return;}
-            cleanups = [service.subscribe(emit), service.subscribeFile(emit),
+            cleanups = [service.subscribe(emit), service.subscribeFile(emit), deps.subscribeSettings(emit),
                 deps.subscribeGeneration(active => {if (active) {runtime.cancel();} emit();}),
                 deps.subscribeChat(() => {
                     runtime.cancel();

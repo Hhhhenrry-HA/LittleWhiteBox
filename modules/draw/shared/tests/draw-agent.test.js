@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { normalizeAgentSettings } from '../../../agent-core/config.js';
 import { OpenAICompatibleAdapter } from '../../../agent-core/adapters/openai-compatible.js';
@@ -264,11 +265,11 @@ test('scene planner corrects schema failures with canonical provider history in 
     assert.ok(progress.some(item => item.phase === 'correction' && item.current === 2 && item.total === 3));
 });
 
-test('scene planner receives and replays malformed tagged JSON before model correction', async () => {
+test('scene planner receives and replays a malformed argument string before model correction', async () => {
     resetDrawAgentRuntimeForTests();
     const settings = buildSettings('correction-model');
     settings.presets.主预设.modelConfigs['openai-compatible'].toolMode = 'tagged-json';
-    // Redacted reported response: arguments closes before images, with an extra final brace.
+    // Redacted reported arguments, transported as a string with unambiguous boundaries.
     const rawArguments = '{"mindful_prelude":{"user_insight":"A door opens.","visual_plan":"title: SUMMER"}},"images":[{"index":1,"insert_after":1,"scene":"opening door, indoor","characters":[]}]}';
     const responses = [rawArguments, buildValidScenePlanResult().toolCalls[0].arguments];
     const requests = [];
@@ -288,7 +289,7 @@ test('scene planner receives and replays malformed tagged JSON before model corr
                             choices: [{
                                 message: {
                                     role: 'assistant',
-                                    content: `<tool_call>{"name":"submit_scene_plan","arguments":${responses[requests.length - 1]}}</tool_call>`,
+                                    content: `<tool_call>${JSON.stringify({ name: 'submit_scene_plan', arguments: responses[requests.length - 1] })}</tool_call>`,
                                 },
                                 finish_reason: 'stop',
                             }],
@@ -357,7 +358,11 @@ test('scene planner repairs native and tagged argument shells once, retaining or
             assert.equal(diagnostic.correctionCount, 0);
             assert.equal(diagnostic.attemptCount, 1);
             assert.deepEqual(diagnostic.validationFailures, []);
-            if (rawArguments === valid) assert.equal(Object.hasOwn(diagnostic, 'argumentRepair'), false);
+            // Tagged outer closers are stripped before argument validation; native extras and
+            // missing argument closers still use the domain repair and retain its diagnostics.
+            if (rawArguments === valid || (toolMode === 'tagged-json' && rawArguments === valid + '}]')) {
+                assert.equal(Object.hasOwn(diagnostic, 'argumentRepair'), false);
+            }
             else {
                 assert.equal(diagnostic.argumentRepair.originalArguments, rawArguments);
                 assert.equal(diagnostic.argumentRepair.attempt, 1);
@@ -365,8 +370,43 @@ test('scene planner repairs native and tagged argument shells once, retaining or
         }
     }
     const repairs = logs.filter(log => log.event === 'scene_planner_tool_arguments_repaired');
-    assert.equal(repairs.length, 4);
+    assert.equal(repairs.length, 3);
     assert.ok(repairs.every(log => log.originalArguments !== valid));
+});
+
+test('scene planner accepts the reported decorated two-image plan in one request', async (t) => {
+    resetDrawAgentRuntimeForTests();
+    t.mock.method(console, 'log', () => {});
+    const raw = readFileSync(new URL('../../../assistant/tests/fixtures/tagged-scene-plan-dsml-suffix.txt', import.meta.url), 'utf8');
+    const expected = JSON.parse(raw.slice(raw.indexOf('{'), raw.indexOf('</｜｜DSML｜｜ parameter>'))).arguments.images;
+    const settings = buildSettings('decorated-plan-model');
+    settings.presets.主预设.modelConfigs['openai-compatible'].toolMode = 'tagged-json';
+    let calls = 0;
+    const tasks = await generateAndParseScenePlan({
+        messageText: '方灵抬头。\n'.repeat(73), maxImages: 2,
+        presentCharacters: [{ name: '方灵' }],
+        expansionOptions: { runtime: { substituteParams: text => text } },
+        agentOptions: {
+            dependencies: { getAgentSettings: async () => settings },
+            loadAgentCore: async () => ({
+                createAgentAdapter: config => {
+                    const adapter = new OpenAICompatibleAdapter(config);
+                    adapter.client.chat.completions.create = async () => {
+                        calls += 1;
+                        assert.equal(calls, 1);
+                        return { choices: [{ message: { role: 'assistant', content: raw }, finish_reason: 'stop' }] };
+                    };
+                    return adapter;
+                },
+            }),
+        },
+    });
+    assert.equal(calls, 1);
+    assert.deepEqual(tasks.map(task => task.placement.insertAfter), [52, 73]);
+    assert.deepEqual(tasks.map(task => task.scene), expected.map(image => image.scene));
+    assert.deepEqual(tasks.map(task => task.chars[0].action), expected.map(image => image.characters[0].action));
+    assert.equal(getLastDrawAgentDiagnostic().correctionCount, 0);
+    assert.deepEqual(getLastDrawAgentDiagnostic().validationFailures, []);
 });
 
 test('scene planner reports DSML protocol failures with the full redacted response without retrying', async (t) => {

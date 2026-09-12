@@ -46,7 +46,7 @@ test('historical branch trims later additions to the same floor, future contacts
     assert.deepEqual(unsyncedIds(result), []);
     assert.deepEqual(h.source, before);
     const prompt = buildReplyPrompt({ contact: result.contacts[0], context: { ...normalizePromptContext({}), people: [] },
-        history: result.messages, incoming: { ...result.messages[0], payload: { type: 'text', text: '现在呢？' } } });
+        history: result.messages, incoming: { ...result.messages[0], payload: { type: 'text', text: '现在呢？' } }, settings: { imagePrompt: false, voicePrompt: false } });
     assert.match(JSON.stringify(prompt), /过去约定/); assert.doesNotMatch(JSON.stringify(prompt), /未来/);
 });
 

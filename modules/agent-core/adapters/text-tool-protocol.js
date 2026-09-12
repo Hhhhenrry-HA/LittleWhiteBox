@@ -10,6 +10,7 @@ const GROUP_CLOSE = /<\/[｜|]+DSML[｜|]+\s*(function_calls|calls)\s*>/iy;
 const PARAMETER_OPEN = /<[｜|]+DSML[｜|]+\s*parameter\s+name="([^"]+)"\s+string="(true|false)"\s*>/iy;
 const PARAMETER_BOUNDARY = /<(\/?)[｜|]+DSML[｜|]+\s*parameter\b/gi;
 const PARAMETER_CLOSE = /<\/[｜|]+DSML[｜|]+\s*parameter\s*>/iy;
+const DECORATION_TAG = /<[^<>"']*(?:"[^"]*"[^<>"']*|'[^']*'[^<>"']*)*>/y;
 
 function matchAt(pattern, text, index) {
     pattern.lastIndex = index;
@@ -28,6 +29,13 @@ function skipWhitespace(text, index) {
 function failDsml(index, reason) {
     const error = new SyntaxError(`DSML 工具调用格式无效：${reason}（位置 ${index}）。本轮工具未执行。`);
     error.code = 'DSML_TOOL_CALL_INVALID';
+    error.offset = index;
+    throw error;
+}
+
+function failTaggedJson(index, reason) {
+    const error = new SyntaxError(`JSON 工具调用格式无效：${reason}（位置 ${index}）。本轮工具未执行。`);
+    error.code = 'TAGGED_TOOL_CALL_INVALID';
     error.offset = index;
     throw error;
 }
@@ -92,46 +100,170 @@ function readDsmlBlock(text, start) {
     failDsml(cursor, '调用组未闭合');
 }
 
-function findJsonEnvelopeEnd(text, start) {
-    const first = skipWhitespace(text, start);
-    if (text[first] !== '{') return -1;
-    let depth = 0;
+function scanJsonStructure(text, start) {
+    const stack = [];
     let quoted = false;
-    for (let index = first; index < text.length; index += 1) {
+    let nested = false;
+    for (let index = start; index < text.length; index += 1) {
         const char = text[index];
         if (quoted) {
             if (char === '\\') index += 1;
             else if (char === '"') quoted = false;
         } else if (char === '"') quoted = true;
-        else if (char === '{' || char === '[') depth += 1;
+        else if (char === '{' || char === '[') {
+            if (stack.length) nested = true;
+            stack.push(char === '{' ? '}' : ']');
+        }
         else if (char === '}' || char === ']') {
-            depth -= 1;
-            if (depth === 0) return index + 1;
-        } else if (char === '<') return -1;
+            if (stack.pop() !== char) return { end: -1, boundary: index, mismatched: true };
+            if (!stack.length) return { end: index + 1, boundary: index + 1, nested };
+        } else if (char === '<') return { end: -1, boundary: index };
+    }
+    return { end: -1, boundary: text.length };
+}
+
+function isBracketedAnnotation(text, start, structure) {
+    if (text[start] !== '[' || structure.end < 0 || structure.nested) return false;
+    try {
+        JSON.parse(text.slice(start, structure.end));
+        return false;
+    } catch {
+        // Flat bracketed prose, e.g. [2 张已完成], is padding. A JSON array or nested structure is not.
+        return true;
+    }
+}
+
+// Compatibility: model prose, code fences and foreign tags around a complete tagged JSON call.
+// Remove when supported endpoints emit only the requested JSON inside tool_call tags.
+function findJsonEnvelope(text, start) {
+    let cursor = start;
+    let token;
+    while ((token = matchAt(/["<{[]/g, text, cursor))) {
+        cursor = token.index;
+        if (token[0] === '"') {
+            const end = findQuotedTextEnd(text, cursor);
+            if (end < 0) failTaggedJson(start, 'JSON 前的说明文字引号未闭合');
+            cursor = end;
+            continue;
+        }
+        if (token[0] === '<') {
+            if (matchAt(/<\/tool_call>/iy, text, cursor)) return null;
+            const tag = matchAt(DECORATION_TAG, text, cursor);
+            cursor += tag?.[0].length || 1;
+            continue;
+        }
+        const structure = scanJsonStructure(text, cursor);
+        if (isBracketedAnnotation(text, cursor, structure)) {
+            cursor = structure.end; // A complete annotation such as [说明], never its inner text.
+            continue;
+        }
+        // String boundaries do not depend on JSON validity: loose Write may contain raw newlines.
+        // Never search inside this structure for another envelope, even when JSON.parse rejects it.
+        return { start: cursor, ...structure };
+    }
+    return null;
+}
+
+function findQuotedTextEnd(text, start) {
+    for (let index = start + 1; index < text.length; index += 1) {
+        if (text[index] === '\\') index += 1;
+        else if (text[index] === '"') return index + 1;
     }
     return -1;
+}
+
+function assertJsonDecoration(text, toolStart) {
+    for (let cursor = 0; cursor < text.length;) {
+        const char = text[cursor];
+        // Tags and quoted annotations are opaque; brackets in their text are not JSON roots.
+        const tag = char === '<' ? matchAt(DECORATION_TAG, text, cursor) : null;
+        if (tag) {
+            cursor += tag[0].length;
+        } else if (char === '"') {
+            const end = findQuotedTextEnd(text, cursor);
+            if (end < 0) failTaggedJson(toolStart, 'JSON 外的说明文字引号未闭合');
+            const next = skipWhitespace(text, end);
+            if (text[next] === ':') failTaggedJson(toolStart, '完整 JSON 外出现字段，不能作为杂文剥离');
+            cursor = end;
+        } else if (char === '{' || char === '[') {
+            const structure = scanJsonStructure(text, cursor);
+            if (!isBracketedAnnotation(text, cursor, structure)) {
+                failTaggedJson(toolStart, '同一工具块中存在多个 JSON 结构');
+            }
+            cursor = structure.end;
+        } else {
+            // Extra closers are outside an already complete envelope; they cannot change its fields.
+            cursor += 1;
+        }
+    }
+}
+
+function findJsonToolClosing(text, start, toolStart) {
+    let cursor = start;
+    let token;
+    while ((token = matchAt(/["<]/g, text, cursor))) {
+        cursor = token.index;
+        if (token[0] === '"') {
+            const end = findQuotedTextEnd(text, cursor);
+            if (end < 0) failTaggedJson(toolStart, 'JSON 外的说明文字引号未闭合');
+            cursor = end;
+        } else {
+            const closing = matchAt(/<\/tool_call>/iy, text, cursor);
+            if (closing) return closing;
+            const tag = matchAt(DECORATION_TAG, text, cursor);
+            cursor += tag?.[0].length || 1;
+        }
+    }
+    return null;
+}
+
+function assertJsonToolEnvelope(payload, toolStart) {
+    let parsed;
+    try {
+        parsed = JSON.parse(payload);
+    } catch {
+        return; // Existing argument repair owns malformed JSON inside the envelope.
+    }
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+        && Object.keys(parsed).some(key => !['id', 'name', 'arguments'].includes(key))) {
+        // An early arguments closer can move real parameters to the envelope root.
+        // Stripping its extra final closer must never silently discard those fields.
+        failTaggedJson(toolStart, '工具封装中存在 id、name、arguments 之外的字段，无法确定参数边界');
+    }
 }
 
 function readJsonBlock(text, start) {
     const opening = matchAt(/<tool_call>/iy, text, start);
     if (!opening) return null;
     const payloadStart = start + opening[0].length;
-    // Prefer a complete JSON envelope so literal closing tags inside strings survive replay.
-    // Malformed JSON still uses the existing first-closing-tag boundary and loose repair.
-    const jsonEnd = findJsonEnvelopeEnd(text, payloadStart);
-    let closing = jsonEnd < 0 ? null : matchAt(/\s*<\/tool_call>/iy, text, jsonEnd);
-    let payloadEnd = jsonEnd;
+    const envelope = findJsonEnvelope(text, payloadStart);
+    if (envelope?.mismatched) failTaggedJson(start, 'JSON 括号不匹配，无法确定调用边界');
+    // Even malformed JSON shields literal tool tags inside strings. An unfinished string cannot
+    // fall back to its first literal closing tag and release embedded examples as real calls.
+    const closing = findJsonToolClosing(text, envelope?.boundary ?? payloadStart, start);
     if (!closing) {
-        closing = matchAt(/<\/tool_call>/gi, text, payloadStart);
-        payloadEnd = closing?.index;
-    }
-    if (!closing) {
+        if (envelope && matchAt(/<\/tool_call>/gi, text, envelope.start)) {
+            failTaggedJson(start, '未找到 JSON 字符串之外的 tool_call 结束标签');
+        }
         if (/<\/[｜|]+DSML[｜|]+/i.test(text.slice(payloadStart))) {
             failDsml(start, 'tool_call 开头与 DSML 结尾混用，无法确定调用边界');
         }
         return null;
     }
-    return { end: closing.index + closing[0].length, payload: text.slice(payloadStart, payloadEnd) };
+    let payload = text.slice(payloadStart, closing.index);
+    const prefix = text.slice(payloadStart, envelope?.start ?? payloadStart);
+    const suffix = text.slice(envelope?.boundary ?? payloadStart, closing.index);
+    const nestedTool = /<tool_call\b|<[｜|]+DSML[｜|]+\s*(?:invoke|function_calls|calls)\b/i;
+    if (nestedTool.test(prefix) || nestedTool.test(suffix)) {
+        failTaggedJson(start, '同一工具块中出现另一条工具调用，不能作为杂文剥离');
+    }
+    if (envelope?.end >= 0) {
+        assertJsonDecoration(prefix, start);
+        assertJsonDecoration(suffix, start);
+        payload = text.slice(envelope.start, envelope.end);
+        assertJsonToolEnvelope(payload, start);
+    }
+    return { end: closing.index + closing[0].length, payload };
 }
 
 // Consume each block before looking for the next one: values cannot create extra calls.

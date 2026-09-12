@@ -2,6 +2,8 @@ import type { MessageContact, PrivateMessage } from '../../domains/messages/type
 import type { XiaobaiOsFileState } from '../../kernel/contracts.js';
 import type { OutgoingMessage } from './application/image-upload.js';
 
+export interface MessagesSettings { imagePrompt: boolean; voicePrompt: boolean }
+
 /** In-flight input only; never serialized into the messages partition. */
 export interface PendingOutgoingMessage {
     contactId: string; messageId: string; payload: OutgoingMessage; createdAt: number;
@@ -20,6 +22,7 @@ export interface ThreadPage {
 }
 export interface MessagesClientState {
     chatIdentity: string;
+    settings: MessagesSettings;
     contacts: ContactView[];
     knownPeople: { name: string; aliases: string[] }[];
     fileState: XiaobaiOsFileState;
