@@ -1,0 +1,92 @@
+[
+  {
+    "file": "table.glb",
+    "originalFile": "furniture/Models/GLTF format/table.glb",
+    "sourceSha256": "ff1a94498d023957f4bc3ff6f55a7a82977d336dbf01a573b3364f03afe5ff61",
+    "sha256": "07cd3bfb1f6884b7476a2e6222f735bbd0e7ff9b29c59f210d9a06fe9f1ba5e8",
+    "bytes": 12476,
+    "triangles": 120,
+    "batches": 1,
+    "geometryBytes": 11520,
+    "size": [
+      0.841487944,
+      0.326733977,
+      0.447373331
+    ]
+  },
+  {
+    "file": "chairRounded.glb",
+    "originalFile": "furniture/Models/GLTF format/chairRounded.glb",
+    "sourceSha256": "53f4933ec547179c499f04dbda1231cf44b83ec82c7f4ab981cdf680aee5c973",
+    "sha256": "f62c6c7e655f8360971bd859c14c150a1f77355f14b5379b29cdd6d1fb97db4c",
+    "bytes": 27844,
+    "triangles": 280,
+    "batches": 1,
+    "geometryBytes": 26880,
+    "size": [
+      0.2,
+      0.454999983,
+      0.2
+    ]
+  },
+  {
+    "file": "bedSingle.glb",
+    "originalFile": "furniture/Models/GLTF format/bedSingle.glb",
+    "sourceSha256": "ca00c63f9a12da3138d902b2f5f18e0360fb6e8a5ac42ccb4bc3f185724b65d1",
+    "sha256": "b89c28f9ad8e77ddbc8fd9bcfb8a8f87157a7c8971dd20ee0718b6f585629c89",
+    "bytes": 22864,
+    "triangles": 214,
+    "batches": 3,
+    "geometryBytes": 20544,
+    "size": [
+      0.571000033326942,
+      0.37499999999996686,
+      1.125
+    ]
+  },
+  {
+    "file": "bookcaseOpenLow.glb",
+    "originalFile": "furniture/Models/GLTF format/bookcaseOpenLow.glb",
+    "sourceSha256": "6d4d625faf977a2dbf155f1313cd32c6310e463114a1cd4c08cb9f80a5fb1d75",
+    "sha256": "c67a8d18cd802afb82d74a73d0c0dc85a7188facbfb5ede13909b9bc6cc33226",
+    "bytes": 18596,
+    "triangles": 184,
+    "batches": 1,
+    "geometryBytes": 17664,
+    "size": [
+      0.4,
+      0.4,
+      0.25
+    ]
+  },
+  {
+    "file": "tree_oak.glb",
+    "originalFile": "nature/Models/GLTF format/tree_oak.glb",
+    "sourceSha256": "d7fd8773674928c50c11b66d12c636d49bdcc15a8b1c7fbb98e6f63a3439a3f3",
+    "sha256": "adb24a59f159f214971fefe7e51539d7a938a8a3908b0d756c25e914d0bce681",
+    "bytes": 20500,
+    "triangles": 196,
+    "batches": 2,
+    "geometryBytes": 18816,
+    "size": [
+      0.6405540110000001,
+      1.22623992,
+      0.739648
+    ]
+  },
+  {
+    "file": "stone_largeE.glb",
+    "originalFile": "nature/Models/GLTF format/stone_largeE.glb",
+    "sourceSha256": "392cf28f85aa4b7b7c5e12b1a3b87fe2b3a7c5ec1797d5d1d0d58edca6da9de8",
+    "sha256": "07185b2e5f8ce40fc14e8c29db249fa607da56651abcf22f93f8c02f4d7512af",
+    "bytes": 7116,
+    "triangles": 64,
+    "batches": 1,
+    "geometryBytes": 6144,
+    "size": [
+      1.0954588,
+      0.29224798100000027,
+      0.919871092
+    ]
+  }
+]

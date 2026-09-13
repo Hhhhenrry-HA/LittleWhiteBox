@@ -1019,7 +1019,7 @@ var ss = Object.freeze([
     return re(async () => {
       p = !0;
       try {
-        const { createThreeRuntime: d } = await import("./xiaobai-os-three-runtime-CdoPl4jQ.js");
+        const { createThreeRuntime: d } = await import("./xiaobai-os-three-runtime-D1ck7gEA.js");
         if (!p) return;
         r = d(v.value, k.value, { fallback: (t) => a("fallback", t) }), r.setScene(i.scene), r.walls(i.lowWalls), r.labels(i.showLabels), m.value = !1, Pe().then(() => {
           p && r?.symbols(!0);

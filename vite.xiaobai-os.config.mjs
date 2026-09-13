@@ -90,6 +90,14 @@ export default defineConfig(({ mode }) => {
             'process.env.NODE_ENV': JSON.stringify('production'),
             global: 'globalThis',
         },
+        experimental: {
+            renderBuiltUrl(filename, { hostType }) {
+                // Map models live beside the lazy UI chunk, not at SillyTavern's web root.
+                if (hostType === 'js' && filename.startsWith('map-assets/')) {
+                    return { runtime: `new URL(${JSON.stringify(filename)}, import.meta.url).href` };
+                }
+            },
+        },
         build: {
             emptyOutDir: buildShell,
             outDir: outputDirectory,
@@ -113,6 +121,8 @@ export default defineConfig(({ mode }) => {
                 output: {
                     manualChunks: undefined,
                     chunkFileNames: 'xiaobai-os-[name]-[hash].js',
+                    assetFileNames: asset => asset.names.some(name => name.endsWith('.glb'))
+                        ? 'map-assets/[name]-[hash][extname]' : '[name][extname]',
                     paths: buildHost
                         ? (id) => {
                             if (!path.isAbsolute(id)) return id;

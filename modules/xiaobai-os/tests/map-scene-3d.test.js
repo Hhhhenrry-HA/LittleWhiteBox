@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { Box3, Matrix4, Vector3 } from 'three';
+import { Box3, BoxGeometry, Matrix4, Vector3 } from 'three';
 import { resolveInitialMapView } from '../apps/map/ui/map-view.js';
 import { sceneElementOutline } from '../apps/map/ui/scene-geometry.js';
 import { isSceneMarker, sceneTemplate } from '../apps/map/ui/three/scene3d-presentation.js';
@@ -8,6 +8,8 @@ import { elementFootprint, sceneFrame, wallSegments, footprintGeometry } from '.
 import { createSceneModel } from '../apps/map/ui/three/scene3d-model.js';
 import { createSceneMaterials } from '../apps/map/ui/three/scene3d-materials.js';
 import { Scene3DResources } from '../apps/map/ui/three/scene3d-resources.js';
+import { createSceneAssetSession } from '../apps/map/ui/three/scene3d-assets.js';
+import { sceneAssetKind } from '../apps/map/ui/three/scene3d-asset-fit.js';
 import { SCENE_MATERIAL_COLORS } from '../apps/map/ui/scene-materials.js';
 import { compileSceneIntent } from '../apps/map/maintenance/scene-intent-compiler.js';
 import { createEmptyMapDomain } from '../domains/map/state.js';
@@ -184,6 +186,19 @@ test('all current material tokens and certainty states render without changing s
         }
     }
     resources.dispose();
+});
+
+test('pilot assets only opt in for compatible sized elements and late loads are disposed', async () => {
+    assert.equal(sceneAssetKind(rectangle('table')), 'table');
+    assert.equal(sceneAssetKind({ ...rectangle('table'), shape: 'circle' }), undefined);
+    assert.equal(sceneAssetKind({ ...rectangle('shelf'), geometry: { x: 0, y: 0, width: 180, height: 30 } }), 'shelf');
+    let release;
+    let disposed = 0;
+    const asset = { parts: [{ geometry: new BoxGeometry(1, 1, 1), role: 'main' }], size: new Vector3(1, 1, 1), radius: 1, dispose: () => {disposed += 1;} };
+    const session = createSceneAssetSession(() => new Promise(resolve => {release = () => resolve(asset);}), () => {}, () => {});
+    session.sync(['table']); session.sync([]); release(); await new Promise(resolve => setTimeout(resolve, 0));
+    assert.equal(disposed, 1);
+    session.dispose();
 });
 
 for (const input of sceneMapInputs) {

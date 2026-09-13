@@ -3,11 +3,15 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { MapScene } from '../../../../domains/map/types.js';
 import { createSceneModel } from './scene3d-model.js';
 import { createSceneLabels } from './scene3d-labels.js';
+import { createSceneAssetSession, decodeSceneAsset } from './scene3d-assets.js';
+import { SCENE_ASSET_URLS } from './scene3d-asset-catalog.js';
+import { sceneAssetKind } from './scene3d-asset-fit.js';
 
 export function createThreeRuntime(host: HTMLElement, labelHost: HTMLElement, options: { fallback: (reason: string) => void }) {
     let renderer: WebGLRenderer | undefined;
     let controls: OrbitControls | undefined;
     let model: ReturnType<typeof createSceneModel> | undefined;
+    let assets: ReturnType<typeof createSceneAssetSession> | undefined;
     let labels: ReturnType<typeof createSceneLabels> | undefined;
     let resizeObserver: ResizeObserver | undefined;
     let visibilityObserver: IntersectionObserver | undefined;
@@ -36,7 +40,7 @@ export function createThreeRuntime(host: HTMLElement, labelHost: HTMLElement, op
         if (disposed) {return;}
         disposed = true; cancelFrame(); abort.abort();
         resizeObserver?.disconnect(); visibilityObserver?.disconnect(); themeObserver?.disconnect();
-        controls?.dispose(); labels?.dispose(); model?.dispose(); key.shadow.dispose();
+        controls?.dispose(); labels?.dispose(); model?.dispose(); assets?.dispose(); key.shadow.dispose();
         renderer?.dispose(); renderer?.forceContextLoss(); renderer?.domElement.remove();
         scene.clear();
     }
@@ -119,13 +123,23 @@ export function createThreeRuntime(host: HTMLElement, labelHost: HTMLElement, op
         if (disposed || failed) {return;}
         try {
             const reset = data?.key !== next.key;
-            const candidate = createSceneModel(next, dark);
+            if (reset) {
+                model?.dispose(); model = undefined; assets?.dispose();
+                assets = createSceneAssetSession(async (kind, signal) => {
+                    const response = await fetch(SCENE_ASSET_URLS[kind], { signal });
+                    if (!response.ok) {throw new Error(`HTTP ${response.status}`);}
+                    return decodeSceneAsset(await response.arrayBuffer());
+                }, () => {if (data) {setScene(data);}}, (kind, error) => console.warn(`[Map 3D] ${kind}: keeping procedural shape`, error));
+            }
+            const candidate = createSceneModel(next, dark, assets);
             labels?.dispose(); model?.dispose();
             data = next; model = candidate; scene.add(model.group); model.updateWalls(lowWalls);
             labels = createSceneLabels(labelHost, next, model.anchors);
             labels.symbols(symbolsReady);
             lightScene();
             if (reset) {fit();}
+            // Release obsolete prototypes only after removing their old instances.
+            assets?.sync(next.elements.flatMap(element => {const kind = sceneAssetKind(element); return kind ? [kind] : [];}));
             invalidate();
         } catch {fail('这个场景暂时无法立体显示，已切换二维。');}
     }

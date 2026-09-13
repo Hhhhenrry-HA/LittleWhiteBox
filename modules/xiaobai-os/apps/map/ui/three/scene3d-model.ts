@@ -7,6 +7,8 @@ import { elementFootprint, footprintGeometry, outlineGeometry, ribbonGeometry, s
 import { createSceneMaterials } from './scene3d-materials.js';
 import { Scene3DResources } from './scene3d-resources.js';
 import { createTemplates } from './scene3d-templates.js';
+import { fitSceneAsset, sceneAssetKind } from './scene3d-asset-fit.js';
+import type { SceneAsset, SceneAssetKind } from './scene3d-assets.js';
 
 function inside(point: Vector2, polygon: Vector2[]): boolean {
     let result = false;
@@ -17,7 +19,7 @@ function inside(point: Vector2, polygon: Vector2[]): boolean {
     return result;
 }
 
-export function createSceneModel(data: MapScene, dark: boolean) {
+export function createSceneModel(data: MapScene, dark: boolean, assets?: { get(kind: SceneAssetKind): SceneAsset | undefined }) {
     const resources = new Scene3DResources();
     const group = new Group();
     try {
@@ -53,7 +55,9 @@ export function createSceneModel(data: MapScene, dark: boolean) {
                 });
                 walls.push(mesh);
             } else if (model) {
-                height = template(parent, element, model, fp.width, fp.depth);
+                const kind = sceneAssetKind(element), asset = kind && assets?.get(kind);
+                height = kind && asset ? fitSceneAsset(parent, element, kind, asset, fp.width, fp.depth, resources, materials)
+                    : template(parent, element, model, fp.width, fp.depth);
             } else if (isAreaElement(element)) {
                 height = footprintOnly ? .20 : .015;
                 const mesh = new Mesh(resources.own(footprintGeometry(fp.points, height)), materials.mesh(element));
