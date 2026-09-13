@@ -1,0 +1,108 @@
+import { Box3, BoxGeometry, Group, InstancedMesh, Line, Matrix4, Mesh, SphereGeometry, Vector2, Vector3 } from 'three';
+import type { MapScene } from '../../../../domains/map/types.js';
+import { forestCanopies, isAreaElement, sceneElementLabelPoint } from '../scene-geometry.js';
+import { sortedSceneElements } from '../map-presentation.js';
+import { isSceneMarker, sceneTemplate } from './scene3d-presentation.js';
+import { elementFootprint, footprintGeometry, outlineGeometry, ribbonGeometry, sceneFrame, wallSegments } from './scene3d-geometry.js';
+import { createSceneMaterials } from './scene3d-materials.js';
+import { Scene3DResources } from './scene3d-resources.js';
+import { createTemplates } from './scene3d-templates.js';
+
+function inside(point: Vector2, polygon: Vector2[]): boolean {
+    let result = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        const a = polygon[i], b = polygon[j];
+        if ((a.y > point.y) !== (b.y > point.y) && point.x < (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x) {result = !result;}
+    }
+    return result;
+}
+
+export function createSceneModel(data: MapScene, dark: boolean) {
+    const resources = new Scene3DResources();
+    const group = new Group();
+    try {
+        const frame = sceneFrame(data);
+        const materials = createSceneMaterials(resources, dark);
+        const template = createTemplates(resources, materials);
+        const cube = resources.own(new BoxGeometry(1, 1, 1));
+        const crownShape = resources.own(new SphereGeometry(.5, 8, 6));
+        const crowns = forestCanopies(data.elements);
+        const anchors = new Map<string, Vector3>();
+        const walls: InstancedMesh[] = [];
+        for (const [index, element] of sortedSceneElements(data.elements).entries()) {
+            const fp = elementFootprint(element, frame.scale);
+            const parent = new Group();
+            // Separate layered surfaces enough to avoid depth fighting at overview scale.
+            parent.position.copy(frame.point(...fp.center, index * .002));
+            parent.rotation.y = fp.rotation;
+            group.add(parent);
+            let height = .015;
+            const model = sceneTemplate(element);
+            const footprintOnly = !model && !isSceneMarker(element) && isAreaElement(element) && ['furniture', 'decoration'].includes(element.category);
+            if (element.shape === 'icon' || element.shape === 'label') {
+                height = .08;
+            } else if (element.category === 'wall') {
+                height = 1.1;
+                const segments = wallSegments(fp.points, fp.closed);
+                const mesh = resources.own(new InstancedMesh(cube, materials.mesh(element, .12), segments.length));
+                mesh.castShadow = mesh.receiveShadow = true;
+                parent.add(mesh);
+                segments.forEach((segment, index) => {
+                    const matrix = new Matrix4().makeRotationY(segment.rotation).scale(new Vector3(segment.length, height, .08)).setPosition(segment.x, height / 2, segment.z);
+                    mesh.setMatrixAt(index, matrix);
+                });
+                walls.push(mesh);
+            } else if (model) {
+                height = template(parent, element, model, fp.width, fp.depth);
+            } else if (isAreaElement(element)) {
+                height = footprintOnly ? .20 : .015;
+                const mesh = new Mesh(resources.own(footprintGeometry(fp.points, height)), materials.mesh(element));
+                mesh.castShadow = height > .1;
+                mesh.receiveShadow = true;
+                parent.add(mesh);
+            } else if (element.category === 'road' || element.category === 'water') {
+                const mesh = new Mesh(resources.own(ribbonGeometry(fp.points, fp.closed, element.category === 'road' ? .16 : .08).translate(0, height, 0)), materials.mesh(element));
+                mesh.receiveShadow = true;
+                parent.add(mesh);
+            }
+            if (fp.points.length && !model) {
+                const line = new Line(resources.own(outlineGeometry(fp.points, fp.closed, element.category === 'wall' ? .012 : height + .004)), materials.line(element));
+                line.computeLineDistances();
+                parent.add(line);
+            }
+            const decoration = (crowns.get(element.id) || []).flatMap(crown => {
+                const center = new Vector2((crown.x - fp.center[0]) / frame.scale, (crown.y - fp.center[1]) / frame.scale);
+                const radius = crown.size / frame.scale / 2;
+                if (!Array.from({ length: 8 }, (_, i) => new Vector2(center.x + radius * Math.cos(i * Math.PI / 4), center.y + radius * Math.sin(i * Math.PI / 4))).every(p => inside(p, fp.points))) {return [];}
+                return [{ center, radius }];
+            });
+            if (decoration.length) {
+                const trees = new InstancedMesh(crownShape, materials.mesh(element, -.13), decoration.length);
+                decoration.forEach(({ center, radius }, i) => trees.setMatrixAt(i, new Matrix4().makeScale(radius * 2, radius * 1.4, radius * 2).setPosition(center.x, radius * .7 + height, center.y)));
+                trees.castShadow = trees.receiveShadow = true;
+                resources.own(trees);
+                parent.add(trees);
+            }
+            if (isSceneMarker(element)) {
+                anchors.set(element.id, frame.point(...fp.center, parent.position.y + .025));
+            } else if (model || footprintOnly) {
+                anchors.set(element.id, frame.point(...fp.center, parent.position.y + height + .10));
+            } else {
+                anchors.set(element.id, frame.point(...sceneElementLabelPoint(element, 0), parent.position.y + .10));
+            }
+        }
+        const bounds = new Box3().setFromObject(group);
+        for (const anchor of anchors.values()) {bounds.expandByPoint(anchor);}
+        return {
+            group, anchors, bounds,
+            updateWalls(low: boolean) {
+                // A viewing aid, not an inferred room interior or camera-facing wall.
+                // Only height changes; every authored segment and entrance stays intact.
+                for (const mesh of walls) {mesh.scale.y = low ? .20 / 1.1 : 1;}
+            },
+            dispose() {group.removeFromParent(); resources.dispose(); group.clear();},
+        };
+    } catch (error) {
+        resources.dispose(); group.clear(); throw error;
+    }
+}

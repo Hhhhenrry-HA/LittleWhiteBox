@@ -36,6 +36,35 @@ function curveControls(points: Array<[number, number]>, closed: boolean, index: 
     ];
 }
 
+/** Sample the same bounded cubic curves used by SVG, without parsing SVG or changing map facts. */
+export function sceneElementOutline(element: MapElement): { points: Array<[number, number]>; closed: boolean } {
+    if (element.shape === 'rect') {
+        const { x, y, width, height } = element.geometry as RectGeometry;
+        return { points: [[x, y], [x + width, y], [x + width, y + height], [x, y + height]], closed: true };
+    }
+    if (element.shape === 'circle') {
+        const { x, y, radius } = element.geometry as CircleGeometry;
+        return { points: Array.from({ length: 64 }, (_, i) => [x + radius * Math.cos(i * Math.PI / 32), y + radius * Math.sin(i * Math.PI / 32)]), closed: true };
+    }
+    if (element.shape !== 'path' && element.shape !== 'curve') {return { points: [], closed: false };}
+    const points = pointsOf(element);
+    const closed = closesPath(element);
+    const rounded = (point: [number, number]): [number, number] => point.map(value => Number(numberText(value))) as [number, number];
+    if (element.shape === 'path' || points.length < 2) {return { points: points.map(rounded), closed };}
+    const sampled: Array<[number, number]> = [rounded(points[0])];
+    for (let index = 0; index < points.length - (closed ? 0 : 1); index += 1) {
+        const start = rounded(points[index]);
+        const end = rounded(points[(index + 1) % points.length]);
+        const [first, second] = curveControls(points, closed, index).map(rounded);
+        for (let step = 1; step <= 12; step += 1) {
+            const t = step / 12, u = 1 - t;
+            sampled.push([0, 1].map(axis => u ** 3 * start[axis] + 3 * u ** 2 * t * first[axis] + 3 * u * t ** 2 * second[axis] + t ** 3 * end[axis]) as [number, number]);
+        }
+    }
+    if (closed) {sampled.pop();}
+    return { points: sampled, closed };
+}
+
 /** Actual geometry only: no outline expansion, door cutting or inferred connections. */
 export function sceneElementPath(element: MapElement): string {
     if (element.shape === 'rect') {
