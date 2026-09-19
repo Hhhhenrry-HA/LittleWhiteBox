@@ -1,8 +1,10 @@
 import { prepareActionCheck } from './prepare-action-check.js';
-import { referencedActionChecks, isCheckContinuationPoint, parseDiceRecords, type DiceMessageRecords } from '../domain/check-records.js';
+import { MAX_ACTION_CHECKS, referencedActionChecks, isCheckContinuationPoint, parseDiceRecords, type DiceMessageRecords } from '../domain/check-records.js';
 import { parseActionCheck } from '../protocol/request.js';
+import type { ActionCheckRule } from '../types.js';
+import { COC7_MAX_NET_DICE } from '../domain/coc7-request.js';
 
-export interface ActionCheckTarget { body: string; records: unknown; generatedFrom: number }
+export interface ActionCheckTarget { body: string; records: unknown; generatedFrom: number; rule: ActionCheckRule }
 export interface DiceCandidate { body: string; records: DiceMessageRecords }
 
 type Phase = { kind: 'waiting' | 'settling' }
@@ -26,8 +28,11 @@ export interface DiceSessionPort<T extends ActionCheckTarget> {
 }
 
 const errors: Record<string, string> = {
-    dice_check_limit: '本条回复已检定 8 次，不再继续掷骰。',
+    dice_check_limit: `本条回复已检定 ${MAX_ACTION_CHECKS} 次，不再继续掷骰。`,
+    dice_request_value_invalid: 'CoC 检定缺少有效的技能或属性数值，未掷骰。请补全数值后重新生成。',
+    dice_request_net_dice_unsupported: `本次奖惩骰超出支持范围（相抵后最多 ${COC7_MAX_NET_DICE} 颗），未掷骰。`,
 };
+const invalidRequest = '这次检定信息不完整或格式无效，未掷骰。';
 
 /** One ephemeral chain. Rendering, reload and retry never enter the random source. */
 export function createActionCheckSession<T extends ActionCheckTarget>(port: DiceSessionPort<T>) {
@@ -44,11 +49,11 @@ export function createActionCheckSession<T extends ActionCheckTarget>(port: Dice
     }
 
     function pendingPhase(target: T, preparationError = ''): Phase | null {
-        const parsed = parseActionCheck(target.body, target.generatedFrom);
+        const parsed = parseActionCheck(target.body, target.generatedFrom, target.rule);
         if (parsed.kind === 'none') { return null; }
         if (preparationError) { return { kind: 'invalid', error: preparationError }; }
         return parsed.kind === 'request' ? { kind: 'waiting' }
-            : { kind: 'invalid', error: '这次检定信息不完整，未掷骰。' };
+            : { kind: 'invalid', error: errors[parsed.error] ?? invalidRequest };
     }
 
     function accept(target: T, preparationError = ''): void {
@@ -74,10 +79,10 @@ export function createActionCheckSession<T extends ActionCheckTarget>(port: Dice
                 if (phase.kind === 'continue-error') { candidate = phase.candidate; }
                 else {
                     const prepared = prepareActionCheck({ body: current.target.body, records: current.target.records,
-                        generatedFrom: current.target.generatedFrom, id: port.id(), random: port.random });
+                        generatedFrom: current.target.generatedFrom, rule: current.target.rule, id: port.id(), random: port.random });
                     if (prepared.kind === 'none') { run = null; return; }
                     if (prepared.kind === 'invalid') {
-                        current.phase = { kind: 'invalid', error: errors[prepared.error] ?? '这次检定信息不完整，未掷骰。' };
+                        current.phase = { kind: 'invalid', error: errors[prepared.error] ?? invalidRequest };
                         return;
                     }
                     candidate = prepared;

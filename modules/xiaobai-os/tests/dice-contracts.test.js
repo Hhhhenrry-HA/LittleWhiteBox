@@ -128,7 +128,7 @@ test('invalid requests and the persisted eight-check limit consume no randomness
     assert.equal(calls, drawsBeforeLimit);
     assert.deepEqual(prepareActionCheck({ body: block(), generatedFrom: 0, records, id: 'ninth', random }), denied);
     assert.equal(calls, drawsBeforeLimit, 'deleting every marker does not reset used checks');
-    assert.deepEqual(projectActionCheckResults(records.checks), records.checks.map(record => ({ ...request, roll: record.roll, dc: record.dc, outcome: record.outcome })));
+    assert.deepEqual(projectActionCheckResults(records.checks), records.checks.map(record => ({ rule: 'd20', ...request, roll: record.roll, dc: record.dc, outcome: record.outcome })));
 });
 
 test('unsupported message record versions are rejected', () => {
@@ -155,7 +155,7 @@ test('upstream records convert at parsing without changing outcomes, IDs, source
     const before = structuredClone(upstreamMessage);
     const parsed = parseDiceRecords(upstreamMessage.extra.xiaobaiOsDice);
     const expected = { schemaVersion: 2, checks: upstreamMessage.extra.xiaobaiOsDice.checks.map(({ id, request, roll, dc, outcome }) =>
-        ({ id, request, roll, dc, outcome })) };
+        ({ rule: 'd20', id, request, roll, dc, outcome })) };
     assert.deepEqual(parsed, expected);
     assert.deepEqual(parseDiceRecords(parsed), expected);
     assert.deepEqual(upstreamMessage, before);

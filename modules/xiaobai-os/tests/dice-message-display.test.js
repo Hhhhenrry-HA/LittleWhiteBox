@@ -53,7 +53,7 @@ function setup(t, runtime, enabled = () => true) {
 }
 
 test('card redraws leave scrolling to the host, even when a temporary layout appears at the bottom', t => {
-    const record = { id: 'one', request: { character: 'Test', action: 'Climb', stat: 'Ability', difficulty: 'hard' },
+    const record = { rule: 'd20', id: 'one', request: { character: 'Test', action: 'Climb', stat: 'Ability', difficulty: 'hard' },
         dc: 12, roll: 14, outcome: 'success' };
     const records = { schemaVersion: DICE_RECORDS_SCHEMA_VERSION, checks: [record] };
     const message = { mes: 'Before [dice:one]', extra: { xiaobaiOsDice: records }, swipe_id: 0 };
@@ -85,6 +85,22 @@ test('card redraws leave scrolling to the host, even when a temporary layout app
     display.refresh(); display.stop(); render();
     assert.equal(content.textContent, message.mes, 'stopping restores the marker');
     assert.deepEqual(writes, []);
+});
+
+test('reloaded CoC history mounts both sides with checks disabled and keeps its recorded verdict', t => {
+    const request = { kind: 'melee_dodge', action: 'Break past the guard', character: 'Mira', stat: 'Brawl', value: 20,
+        opponent: { character: 'Guard', stat: 'Dodge', value: 40 } };
+    const prepared = prepareActionCheck({ body: `<xb_action_check>${JSON.stringify(request)}</xb_action_check>`, rule: 'coc7',
+        generatedFrom: 0, id: 'coc', random: () => 0.1 });
+    source.chat = JSON.parse(JSON.stringify([{ mes: prepared.body + '\nNext sentence.', extra: { xiaobaiOsDice: prepared.records } }]));
+    const { content } = setup(t, { view: () => null, cancel() {}, retry: () => assert.fail('historical cards do not resume') }, () => false);
+    const card = content.querySelector('[data-dice-record="coc"]');
+    assert.ok(card);
+    assert.equal(card.dataset.rule, 'coc7');
+    assert.equal(card.dataset.verdict, prepared.records.checks[0].result.verdict);
+    assert.equal(card.querySelectorAll('[data-side]').length, 2);
+    assert.equal(card.querySelector('button'), null);
+    assert.equal(card.querySelector('svg'), null, 'percentiles are not painted on a D20');
 });
 
 test('cards, continuation status and recovery follow retained markers, not their old positions or stored order', async t => {

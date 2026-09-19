@@ -132,6 +132,8 @@ const compiled = await build({
 const { createDiceGenerationAdapter, captureDiceChat, waitForDiceHost, host } = await import(`data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`);
 
 const call = 'Attempt.\n\n<xb_action_check>{"action":"Climb","stat":"Agility","difficulty":"hard"}</xb_action_check>';
+const cocCall = '<xb_action_check>' + JSON.stringify({ kind: 'opposed', character: 'Mira', action: 'Force the door', stat: 'STR', value: 20,
+    opponent: { character: 'Guard', stat: 'STR', value: 40, bonus: 1 } }) + '</xb_action_check>';
 const message = mes => ({ name: 'Mira', mes, extra: {} });
 function setup(t, group = false, reveal = async () => {}) {
     t.mock.method(console, 'error', () => {});
@@ -151,7 +153,9 @@ function setup(t, group = false, reveal = async () => {}) {
     host.reset({ key: group ? 'group:g:chat' : 'character:mira.png:chat', chatId: 'chat', chat: [message('Old reply')],
         characterId: 0, characterName: 'Mira', avatar: 'mira.png', ...(group ? { groupId: 'g' } : {}) });
     host.frequency = 'standard';
-    const adapter = createDiceGenerationAdapter(() => host.enabled, () => host.frequency, () => {}, reveal);
+    host.rule = 'd20';
+    host.busyViews = [];
+    const adapter = createDiceGenerationAdapter(() => host.enabled, () => host.frequency, () => host.busyViews.push(adapter.isBusy()), reveal, () => host.rule);
     adapter.start();
     t.after(() => adapter.stop());
     return adapter;
@@ -243,6 +247,82 @@ test('each generation uses the current frequency, including continuations with a
     await begin();
     await host.intercept('normal');
     assert.equal(host.prompts.get('xiaobai_os_dice'), '');
+});
+
+test('CoC opposition applies both sides once and retries a failed continuation without rolling or revealing again', async t => {
+    let reveals = 0;
+    const adapter = setup(t, false, async () => { reveals++; });
+    host.rule = 'coc7';
+    const samples = [0.5, 0.1, 0, 0.6, 0.8];
+    let draws = 0;
+    t.mock.method(Math, 'random', () => { assert.ok(draws < samples.length); return samples[draws++]; });
+    host.source.chat = [{ ...message(cocCall), swipe_id: 1, swipes: ['Inactive', cocCall],
+        swipe_info: [{ extra: { foreign: 1 } }, { extra: { foreign: 2 } }] }];
+    await begin(); await host.intercept('normal');
+    await host.saveNative();
+    host.reply = async () => { throw new Error('provider unavailable'); };
+    await received(); await received(); await settled(adapter);
+    assert.equal(adapter.view().phase.kind, 'continue-error');
+    assert.equal(draws, 5);
+    assert.equal(reveals, 1);
+    const current = host.source.chat[0];
+    const records = structuredClone(current.extra.xiaobaiOsDice);
+    assert.equal(records.checks.length, 1);
+    assert.equal(records.checks[0].rule, 'coc7');
+    assert.equal(records.checks[0].result.verdict, 'actor_wins');
+    assert.equal(current.swipes[1], current.mes);
+    assert.deepEqual(current.swipe_info[1].extra.xiaobaiOsDice, records);
+    assert.deepEqual(current.swipe_info[0], { extra: { foreign: 1 } });
+    assert.equal(current.swipes[0], 'Inactive');
+    host.rule = 'd20'; adapter.cancel();
+    host.reply = async () => { current.mes += '\nThe door opens.'; await host.emit('MESSAGE_RECEIVED', 0, 'appendFinal'); };
+    await adapter.retry(0);
+    assert.equal(draws, 5);
+    assert.equal(reveals, 1);
+    assert.equal(host.nativeSaves.length, 2, 'only the native pre-check and completed continuation saves');
+    assert.deepEqual(parseDiceRecords(host.nativeSaves.at(-1)[0].extra.xiaobaiOsDice), records);
+    assert.equal(host.requests.length, 2);
+    assert.deepEqual(JSON.parse(host.requests.at(-1).prompt.split('\n').at(-1)), projectActionCheckResults(records.checks));
+    assert.equal(adapter.isBusy(), false);
+});
+
+test('native stream UI ending before MESSAGE_RECEIVED still resolves CoC; failures without a message release the selector', async t => {
+    const adapter = setup(t);
+    host.rule = 'coc7';
+    host.source.chat = [message(cocCall)];
+    await begin(); host.lock(); await host.intercept('normal');
+    assert.equal(adapter.isBusy(), true);
+    assert.equal(host.busyViews.at(-1), true, 'the settings page receives native generation occupancy');
+    host.unlock(); // ST 1.18 finalizeIntermediaryMessage unlocks before emitting the reply.
+    await received(); await settled(adapter);
+    assert.equal(host.source.chat[0].extra.xiaobaiOsDice.checks[0].rule, 'coc7');
+    assert.equal(adapter.isBusy(), false);
+    await begin(); host.lock(); await host.intercept('normal');
+    host.unlock(); // A provider error without MESSAGE_RECEIVED must not leave a persistent UI lock.
+    assert.equal(adapter.isBusy(), false);
+});
+
+test('a captured CoC generation cannot roll after rule selection changes, including during reveal', async t => {
+    const revealing = Promise.withResolvers();
+    const adapter = setup(t, false, () => revealing.promise);
+    host.source.chat = [message(cocCall)];
+    host.rule = 'coc7';
+    await begin(); await host.intercept('normal');
+    host.rule = 'd20';
+    await received();
+    assert.equal(host.source.chat[0].extra.xiaobaiOsDice, undefined);
+    assert.equal(host.requests.length, 0);
+    host.rule = 'coc7';
+    await begin(); await host.intercept('normal');
+    await received(); await setImmediate();
+    assert.equal(adapter.view().phase.kind, 'revealing');
+    const retained = structuredClone(host.source.chat[0]);
+    host.rule = 'd20';
+    adapter.cancel();
+    revealing.resolve(); await settled(adapter);
+    assert.deepEqual(host.source.chat[0], retained);
+    assert.equal(host.requests.length, 0);
+    assert.equal(adapter.view(), null);
 });
 
 test('final requests hide Dice markers without changing source messages, non-text parts or result data', async t => {

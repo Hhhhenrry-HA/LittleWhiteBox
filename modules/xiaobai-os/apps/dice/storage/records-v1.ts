@@ -65,7 +65,7 @@ export function upgradeDiceRecordsV1(value: unknown): unknown {
         }
         ids.add(record.id);
         previousOffset = record.offset;
-        return { id: record.id, request: readRequestV1(record.request), roll: record.roll, dc: record.dc, outcome: record.outcome };
+        return { rule: 'd20', id: record.id, request: readRequestV1(record.request), roll: record.roll, dc: record.dc, outcome: record.outcome };
     });
     return { schemaVersion: 2, checks };
 }

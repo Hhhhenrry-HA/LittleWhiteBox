@@ -11,11 +11,15 @@ async function harness(ensureDisplay = async () => {}) {
     await settings.prepare();
     let identity = 'chat-a';
     const cancelled = [];
-    const controller = createDiceController(settings, () => identity, ensureDisplay, feature => cancelled.push(feature));
+    let busy = false;
+    const pushes = [];
+    const controller = createDiceController(settings, () => identity, ensureDisplay, feature => cancelled.push(feature), () => busy);
     controller.startBackground();
-    const activate = () => controller.activate({ isCurrent: () => true, post() {} });
+    const activate = () => controller.activate({ isCurrent: () => true, post: (_type, payload) => pushes.push(payload.state) });
     await activate();
-    return { root, settings, controller, cancelled, activate,
+    return { root, settings, controller, cancelled, activate, pushes,
+        setBusy: value => { busy = value; controller.refresh(); },
+        rule: rule => controller.handleMessage({ type: 'dice/set-rule', payload: { chatIdentity: identity, rule } }),
         save: action => { persist = action; },
         switchChat: key => { identity = key; },
         toggle: (feature, enabled) => controller.handleMessage({ type: 'dice/set-feature', payload: { chatIdentity: identity, feature, enabled } }),
@@ -36,11 +40,38 @@ test('both Dice switches persist across chats and repository reload, independent
     assert.equal(displayChecks, 1, 'encounter preferences do not prepare the action regex');
     assert.deepEqual(h.cancelled, ['encountersEnabled']);
     const reopened = createSettingsRepository({ getExtensionSettings: () => structuredClone(h.root), saveSettings() {} });
-    assert.deepEqual((await reopened.prepare()).apps.dice, { actionChecksEnabled: true, actionCheckFrequency: 'standard', encountersEnabled: false });
+    assert.deepEqual((await reopened.prepare()).apps.dice, { actionChecksEnabled: true, actionCheckFrequency: 'standard', actionCheckRule: 'd20', encountersEnabled: false });
     h.switchChat('chat-a');
     state = await h.activate();
     assert.equal(state.actionChecksEnabled, true);
     assert.equal(state.encountersEnabled, false);
+});
+
+test('rule changes persist only after confirmation, cancel old work, and are blocked while busy', async t => {
+    t.mock.method(console, 'error', () => {});
+    const h = await harness();
+    assert.equal((await h.activate()).actionCheckRule, 'd20');
+    h.setBusy(true);
+    assert.equal(h.pushes.at(-1).checkBusy, true);
+    await assert.rejects(h.rule('coc7'));
+    assert.equal(h.settings.read().apps.dice.actionCheckRule, 'd20');
+    h.setBusy(false);
+    h.save(() => false);
+    await assert.rejects(h.rule('coc7'));
+    assert.deepEqual(h.cancelled, []);
+    const saving = Promise.withResolvers();
+    const entered = Promise.withResolvers();
+    h.save(() => { entered.resolve(); return saving.promise; });
+    const operation = h.rule('coc7');
+    await entered.promise;
+    assert.equal(h.settings.read().apps.dice.actionCheckRule, 'd20');
+    saving.resolve();
+    assert.equal((await operation).actionCheckRule, 'coc7');
+    assert.deepEqual(h.cancelled, ['actionChecksEnabled']);
+    const reopened = createSettingsRepository({ getExtensionSettings: () => structuredClone(h.root), saveSettings() {} });
+    assert.equal((await reopened.prepare()).apps.dice.actionCheckRule, 'coc7');
+    await assert.rejects(h.rule('unknown'));
+    assert.throws(() => h.settings.setDiceActionCheckRule('unknown'));
 });
 
 test('action-check frequency defaults to standard and survives toggles, chats and settings reload', async () => {
@@ -59,7 +90,7 @@ test('action-check frequency defaults to standard and survives toggles, chats an
     const reloadedRoot = structuredClone(h.root);
     const reopened = createSettingsRepository({ getExtensionSettings: () => reloadedRoot, saveSettings() {} });
     assert.deepEqual((await reopened.prepare()).apps.dice,
-        { actionChecksEnabled: true, actionCheckFrequency: 'active', encountersEnabled: false });
+        { actionChecksEnabled: true, actionCheckFrequency: 'active', actionCheckRule: 'd20', encountersEnabled: false });
     await h.controller.disable();
     assert.equal(h.settings.read().apps.dice.actionCheckFrequency, 'active', 'disabling Dice preserves the chosen frequency');
 });
@@ -94,7 +125,7 @@ test('upstream light preferences become standard once at load, with rollback on 
     assert.deepEqual(h.root, original, 'failed upgrades preserve the complete installed settings');
     saved = true;
     const upgraded = await reopened.prepare();
-    const expected = { ...original.xiaobaiOs.apps.dice, actionCheckFrequency: 'standard' };
+    const expected = { ...original.xiaobaiOs.apps.dice, actionCheckFrequency: 'standard', actionCheckRule: 'd20' };
     assert.deepEqual(upgraded.apps.dice, expected);
     assert.deepEqual(h.root, { ...original, xiaobaiOs: { ...original.xiaobaiOs,
         apps: { ...original.xiaobaiOs.apps, dice: expected } } });

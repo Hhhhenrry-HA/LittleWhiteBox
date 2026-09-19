@@ -2,7 +2,7 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import type { XiaobaiOsAppProps } from '../../../shell/app-contract.js';
 import { HostRequestError } from '../../../shell/app-src/frame-bridge.js';
-import type { ActionCheckFrequency, DiceClientState } from '../types.js';
+import type { ActionCheckFrequency, ActionCheckRule, DiceClientState } from '../types.js';
 const props = defineProps<XiaobaiOsAppProps>();
 const state = ref(props.initialState as DiceClientState);
 const busy = ref(false);
@@ -10,6 +10,10 @@ const error = ref('');
 const frequencyChoices: Record<ActionCheckFrequency, { label: string; description: string }> = {
     standard: { label: '标准', description: '有风险或阻力，且成败会改变后续的行动才检定。' },
     active: { label: '积极', description: '日常小目标，以及效果、耗时和代价的不确定性也可检定。' },
+};
+const ruleChoices: Record<ActionCheckRule, { label: string; description: string }> = {
+    d20: { label: '通用 D20', description: '不需要人物数值，由情境决定难度。' },
+    coc7: { label: 'CoC 第七版', description: '使用已知的 CoC 技能、属性数值，支持奖惩骰与双方对抗。' },
 };
 let unsubscribe = () => {};
 let mounted = false;
@@ -53,7 +57,20 @@ async function send(type: string, payload: Record<string, unknown>) {
                 </button>
             </div>
             <p class="dice-intro">当你尝试不确定的事——说服陌生人、翻越高墙、破译符文——由骰子裁决，而非 AI。一次真随机掷骰仲裁结果，故事顺从命运。</p>
-            <fieldset v-if="state.actionChecksEnabled" class="dice-frequency" :disabled="busy" aria-describedby="dice-frequency-description">
+            <fieldset v-if="state.actionChecksEnabled" class="dice-frequency" :disabled="busy || state.checkBusy" aria-describedby="dice-rule-description">
+                <legend>检定规则</legend>
+                <div class="dice-frequency-options">
+                    <button
+                        v-for="(choice, rule) in ruleChoices" :key="rule" type="button" class="dice-frequency-option"
+                        :aria-pressed="state.actionCheckRule === rule"
+                        @click="state.actionCheckRule !== rule && send('dice/set-rule', { rule })"
+                    >
+                        {{ choice.label }}
+                    </button>
+                </div>
+                <p id="dice-rule-description" aria-live="polite">{{ ruleChoices[state.actionCheckRule].description }}</p>
+            </fieldset>
+            <fieldset v-if="state.actionChecksEnabled && state.actionCheckRule === 'd20'" class="dice-frequency" :disabled="busy" aria-describedby="dice-frequency-description">
                 <legend>检定频率</legend>
                 <div class="dice-frequency-options">
                     <button

@@ -12,7 +12,7 @@ export function checkDisplayProjection(message: DiceHostMessage, checks: readonl
     const display = typeof message.extra?.display_text === 'string' ? message.extra.display_text : message.mes;
     const last = referencedActionChecks(message.mes, checks).at(-1);
     if (display === message.mes || !last || !isCheckContinuationPoint(message.mes, last)) { return display; }
-    const request = parseActionCheck(display);
+    const request = parseActionCheck(display, 0, last.rule);
     return request.kind === 'request' && jsonValuesEqual(request.request, last.request)
         ? request.body + checkMarker(last.id) + display.slice(request.end) : display;
 }

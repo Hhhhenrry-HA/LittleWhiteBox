@@ -6,7 +6,7 @@ import { createModuleEvents, event_types } from '../../../../../core/event-manag
 import { registerGenerateInterceptor, unregisterGenerateInterceptor, GENERATE_INTERCEPTOR_ORDER } from '../../../../../shared/common/generate-interceptor.js';
 import { setSillyTavernPrompt } from '../../../host/sillytavern-runtime-adapters.js';
 import { buildActionCheckPrompt } from '../protocol/prompt.js';
-import type { ActionCheckFrequency } from '../types.js';
+import type { ActionCheckFrequency, ActionCheckRule } from '../types.js';
 import { parseDiceRecords } from '../domain/check-records.js';
 import { createActionCheckSession } from '../application/action-check-session.js';
 import { applyDiceCandidate, captureDiceTarget, clearNewDiceSwipe, isDiceTargetCurrent, readDiceRecords, type DiceCandidate, type DiceTarget } from './message-records.js';
@@ -21,10 +21,11 @@ interface Observation {
     stage: 'preparing' | 'receiving';
     previousStream: ReturnType<typeof diceHostContext>['streamingProcessor'];
     error?: string;
+    rule: ActionCheckRule;
 }
 
 export function createDiceGenerationAdapter(enabled: () => boolean, frequency: () => ActionCheckFrequency, changed: () => void,
-    reveal: (target: DiceTarget, candidate: DiceCandidate, signal: AbortSignal) => Promise<void>) {
+    reveal: (target: DiceTarget, candidate: DiceCandidate, signal: AbortSignal) => Promise<void>, rule: () => ActionCheckRule) {
     let observation: Observation | null = null;
     let intention: { target: DiceTarget; candidate: DiceCandidate; signal: AbortSignal;
         settled: Promise<void>; received: boolean; error?: string } | null = null;
@@ -33,7 +34,8 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
     let replacement: AbortController | null = null;
     let unsubscribe: (() => void) | null = null;
     const clearPrompt = () => setSillyTavernPrompt(KEY, '');
-    const currentTarget = (target: DiceTarget) => isDiceTargetCurrent(captureDiceChat(), target) && !isDiceMessageBeingEdited(target.index);
+    const currentTarget = (target: DiceTarget) => target.rule === rule()
+        && isDiceTargetCurrent(captureDiceChat(), target) && !isDiceMessageBeingEdited(target.index);
     const session = createActionCheckSession({
         enabled, current: currentTarget,
         same: (left, right) => left.message === right.message && left.swipe === right.swipe,
@@ -96,7 +98,7 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
                 const stream = diceHostContext().streamingProcessor;
                 // Generate resolves even when its stream fails. Partial output is not a completed reply.
                 if (stream && stream !== previousStream && stream.isStopped) { return null; }
-                return captureDiceTarget(source, target.index, candidate.body.length);
+                return captureDiceTarget(source, target.index, candidate.body.length, target.rule);
             } finally {
                 signal.removeEventListener('abort', cancel);
                 if (intention === own) { intention = null; clearPrompt(); }
@@ -188,6 +190,7 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
         };
         eventSource.makeFirst(event_types.GENERATION_STARTED, started);
         const ended = () => {
+            queueMicrotask(changed);
             const own = controls;
             if (!own || own.signal.aborted) { return; }
             own.nativePending = false;
@@ -209,17 +212,21 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
             if (type === 'swipe' && last) { clearNewDiceSwipe(last); }
             if (!enabled() || !MAIN_TYPES.includes(type) || intention) { return; }
             observation = { source, type, from: type === 'continue' ? last?.mes.length ?? 0 : 0,
+                rule: rule(),
                 initialBody: type === 'continue' ? last?.mes ?? '' : '', signal: options.signal, stage: 'preparing',
                 previousStream: diceHostContext().streamingProcessor };
+            changed();
         });
         registerGenerateInterceptor(KEY, async (_chat: unknown, _size: unknown, abort: (immediate: boolean) => void, type: string) => {
+            // Native send flags are set after AFTER_COMMANDS, before prompt assembly.
+            changed();
             if (replacement?.signal.aborted) { replacement = null; clearPrompt(); abort(true); return; }
             if (is_group_generating && wrapperSignal?.aborted) { abort(true); return; }
             const own = intention;
             const observed = observation;
             const current = () => own ? intention === own && !own.signal.aborted
                 && currentTarget(own.target)
-                : !observed || observation === observed && !observed.signal?.aborted
+                : !observed || observation === observed && observed.rule === rule() && !observed.signal?.aborted
                     && captureDiceChat()?.chat === observed.source.chat && captureDiceChat()?.key === observed.source.key;
             if (!current()) { clearPrompt(); abort(true); return; }
             if (!enabled() || !MAIN_TYPES.includes(String(type || ''))) { clearPrompt(); return; }
@@ -232,7 +239,7 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
                 const saved = type === 'continue' && last ? readDiceRecords(last) : undefined;
                 const records = own?.candidate.records.checks ?? (saved === undefined ? [] : parseDiceRecords(saved).checks);
                 if (!enabled()) { clearPrompt(); return; }
-                setSillyTavernPrompt(KEY, buildActionCheckPrompt(last?.mes ?? '', records, frequency()));
+                setSillyTavernPrompt(KEY, buildActionCheckPrompt(last?.mes ?? '', records, frequency(), own?.target.rule ?? observed?.rule ?? rule()));
             } catch (error) {
                 clearPrompt();
                 console.error('[LittleWhiteBox] Dice check preparation failed', error);
@@ -255,20 +262,21 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
             if (intention || observation?.stage !== 'receiving' || !MAIN_TYPES.includes(type) && type !== 'appendFinal') { return; }
             const observed = observation;
             observation = null;
+            changed();
             const stream = diceHostContext().streamingProcessor;
             // ST also emits MESSAGE_RECEIVED on a failed normal stream. Ignore only that call's
             // processor, not a stale failure left behind before a subsequent non-streaming reply.
             if (stream && stream !== observed.previousStream && stream.isStopped) { return; }
             const source = captureDiceChat();
-            if (!source || source.key !== observed.source.key || source.chat !== observed.source.chat || observed.signal?.aborted) { return; }
-            const target = captureDiceTarget(source, index, observed.from);
+            if (!source || source.key !== observed.source.key || source.chat !== observed.source.chat || observed.signal?.aborted || observed.rule !== rule()) { return; }
+            const target = captureDiceTarget(source, index, observed.from, observed.rule);
             if (!target || !target.body.startsWith(observed.initialBody)) { return; }
             session.accept(target, observed.error);
             if (!source.groupId) { void session.drain().catch(error => console.error('[LittleWhiteBox] Dice check failed', error)); }
         };
         eventSource.makeFirst(event_types.MESSAGE_RECEIVED, received);
         events.on(event_types.GROUP_MEMBER_DRAFTED, groupBoundary);
-        events.on(event_types.GROUP_WRAPPER_FINISHED, async () => { await groupBoundary(); wrapperSignal = undefined; });
+        events.on(event_types.GROUP_WRAPPER_FINISHED, async () => { await groupBoundary(); wrapperSignal = undefined; changed(); });
         const stopped = () => {
             const phase = session.view()?.phase.kind;
             // Internal wrapper stop must not discard the same-roll recovery candidate.
@@ -300,11 +308,11 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
     function stop(): void {
         cancel(); unsubscribe?.(); unsubscribe = null; wrapperSignal = undefined;
     }
-    return { start, stop, cancel, view: session.view,
+    return { start, stop, cancel, view: session.view, isBusy: () => isGenerating() || !!controls || !!intention,
         async retry(index: number) {
             if (isGenerating()) { throw new Error('请等待酒馆生成结束。'); }
             const source = captureDiceChat();
-            const target = source && captureDiceTarget(source, index, 0);
+            const target = source && captureDiceTarget(source, index, 0, rule());
             if (!target) { throw new Error('回复已不存在。'); }
             await session.retry(target);
         },

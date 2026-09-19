@@ -1,15 +1,20 @@
 import { parseActionCheckRequest, type ActionCheckRequest, type ActionCheckResult } from './action-check.js';
 import { checkMarker, checkMarkerIds } from './check-marker.js';
 import { upgradeDiceRecordsV1 } from '../storage/records-v1.js';
+import { parseCoc7Request, type Coc7Request } from './coc7-request.js';
+import { parseCoc7Result, type Coc7Result } from './coc7.js';
 
 export const MAX_ACTION_CHECKS = 8;
 export const DICE_MESSAGE_KEY = 'xiaobaiOsDice';
 export const DICE_RECORDS_SCHEMA_VERSION = 2;
 
-export interface ActionCheckRecord extends ActionCheckResult {
+export interface D20CheckRecord extends ActionCheckResult {
+    rule: 'd20';
     id: string;
     request: ActionCheckRequest;
 }
+export interface Coc7CheckRecord { rule: 'coc7'; id: string; request: Coc7Request; result: Coc7Result }
+export type ActionCheckRecord = D20CheckRecord | Coc7CheckRecord;
 export interface DiceMessageRecords { schemaVersion: typeof DICE_RECORDS_SCHEMA_VERSION; checks: ActionCheckRecord[] }
 
 export function parseDiceRecords(value: unknown): DiceMessageRecords {
@@ -22,15 +27,21 @@ export function parseDiceRecords(value: unknown): DiceMessageRecords {
     const checks = input.checks.map((item: unknown) => {
         if (!item || typeof item !== 'object' || Array.isArray(item)) { throw new TypeError('dice_record_invalid'); }
         const record = item as ActionCheckRecord;
-        const keys = ['id', 'request', 'roll', 'dc', 'outcome'];
+        const keys = record.rule === 'coc7' ? ['rule', 'id', 'request', 'result'] : ['rule', 'id', 'request', 'roll', 'dc', 'outcome'];
         if (Object.keys(record).length !== keys.length || keys.some(key => !Object.hasOwn(record, key))
-            || typeof record.id !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(record.id) || ids.has(record.id)
-            || !Number.isInteger(record.roll) || record.roll < 1 || record.roll > 20
+            || typeof record.id !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(record.id) || ids.has(record.id)) {
+            throw new TypeError('dice_record_invalid');
+        }
+        ids.add(record.id);
+        if (record.rule === 'coc7') {
+            const request = parseCoc7Request(record.request);
+            return { ...record, request, result: parseCoc7Result(record.result, request) };
+        }
+        if (record.rule !== 'd20' || !Number.isInteger(record.roll) || record.roll < 1 || record.roll > 20
             || !Number.isInteger(record.dc) || record.dc < 1
             || !['critical_failure', 'failure', 'success', 'critical_success'].includes(record.outcome)) {
             throw new TypeError('dice_record_invalid');
         }
-        ids.add(record.id);
         // Historical outcomes are stored facts, not recalculated from today's difficulty table.
         return { ...record, request: parseActionCheckRequest(record.request) };
     });

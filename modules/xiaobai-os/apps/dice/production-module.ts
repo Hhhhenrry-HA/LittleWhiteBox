@@ -23,8 +23,9 @@ export function createProductionDiceModule(settings: XiaobaiOsSettingsRepository
         async install(context) {
             let running = false;
             const enabled = () => running && !!captureDiceChat() && settings.read()!.apps.dice.actionChecksEnabled;
-            const generation = createDiceGenerationAdapter(enabled, () => settings.read()!.apps.dice.actionCheckFrequency, () => display.refresh(),
-                (target, candidate, signal) => display.reveal(target, candidate, signal));
+            const generation = createDiceGenerationAdapter(enabled, () => settings.read()!.apps.dice.actionCheckFrequency,
+                () => { display.refresh(); controller.refresh(); },
+                (target, candidate, signal) => display.reveal(target, candidate, signal), () => settings.read()!.apps.dice.actionCheckRule);
             const display = createDiceMessageDisplay(generation, enabled);
             const encountersEnabled = () => running && !!captureDiceChat() && settings.read()!.apps.dice.encountersEnabled;
             const encounters = createEncounterRuntime({ enabled: encountersEnabled, references, isAuxiliaryMessage,
@@ -32,7 +33,7 @@ export function createProductionDiceModule(settings: XiaobaiOsSettingsRepository
             const encounterDisplay = createEncounterDisplay(encounters);
             context.execution.addCleanup(settings.subscribe(display.refresh));
             const controller = createDiceController(settings, () => captureDiceChat()?.key ?? '', ensureDiceDisplayRule,
-                feature => feature === 'actionChecksEnabled' ? generation.cancel() : encounters.cancel());
+                feature => feature === 'actionChecksEnabled' ? generation.cancel() : encounters.cancel(), generation.isBusy);
             cleanup = async () => {
                 if (isGenerating() || isChatSaving) { throw new Error('请等回复和保存结束，再清理 Dice 数据。'); }
                 const source = captureDiceChat();

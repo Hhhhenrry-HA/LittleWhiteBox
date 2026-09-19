@@ -29,7 +29,7 @@ const compiled = await build({
             export const saveSillyTavernChat = guard => host.save(guard);
             export const createDiceGenerationAdapter = (_enabled, frequency) => {
                 host.frequency = frequency;
-                return { start() {}, stop() {}, cancel() { host.cancelled = true; } };
+                return { start() {}, stop() {}, isBusy: () => host.busy, cancel() { host.cancelled = true; } };
             };
             export const createEncounterRuntime = () => ({ start() {}, stop() {}, cancel() {} });
             export const createEncounterDisplay = () => ({ start() {}, stop() {}, refresh() {} });

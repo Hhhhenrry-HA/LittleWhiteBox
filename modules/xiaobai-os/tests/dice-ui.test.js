@@ -30,7 +30,7 @@ test('Dice switches accept confirmed settings, keep newer preference pushes and 
     });
     // eslint-disable-next-line no-unsanitized/method -- Compiled repository Vue component, not user content.
     const { default: DiceApp } = await import(`data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`);
-    let state = { chatIdentity: 'chat-a', actionChecksEnabled: false, actionCheckFrequency: 'standard', encountersEnabled: false };
+    let state = { chatIdentity: 'chat-a', actionChecksEnabled: false, actionCheckFrequency: 'standard', actionCheckRule: 'd20', checkBusy: false, encountersEnabled: false };
     const listeners = new Set();
     let calls = 0;
     let release;
@@ -39,6 +39,10 @@ test('Dice switches accept confirmed settings, keep newer preference pushes and 
         subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); },
         async request(type, payload) {
             assert.equal(payload.chatIdentity, 'chat-a');
+            if (type === 'dice/set-rule') {
+                state = { ...state, actionCheckRule: payload.rule };
+                return { ok: true, result: state };
+            }
             if (type === 'dice/set-frequency') {
                 if (failFrequency) { throw new Error('save failed'); }
                 state = { ...state, actionCheckFrequency: payload.frequency };
@@ -55,7 +59,7 @@ test('Dice switches accept confirmed settings, keep newer preference pushes and 
     app.mount(dom.document.getElementById('app'));
     t.after(() => app.unmount());
     const button = dom.document.querySelector('[role="switch"]');
-    const choices = () => [...dom.document.querySelectorAll('button[aria-pressed]')];
+    const choices = () => [...dom.document.querySelectorAll('[aria-describedby="dice-frequency-description"] button[aria-pressed]')];
     assert.equal(choices().length, 0, 'frequency choices stay hidden until action checks are enabled');
     for (const expected of ['true', 'false']) {
         button.click();
@@ -100,6 +104,20 @@ test('Dice switches accept confirmed settings, keep newer preference pushes and 
     assert.equal(state.actionCheckFrequency, 'standard');
     assert.equal(dom.document.querySelector('.dice-recovery'), null);
     assert.equal(encounterButton.getAttribute('aria-checked'), 'true', 'frequency changes do not affect encounters');
+    const rules = () => [...dom.document.querySelectorAll('[aria-describedby="dice-rule-description"] button')];
+    rules()[1].click();
+    await Promise.resolve(); await nextTick();
+    assert.equal(state.actionCheckRule, 'coc7');
+    assert.equal(choices().length, 0, 'CoC does not expose D20 frequency');
+    assert.deepEqual(rules().map(choice => choice.getAttribute('aria-pressed')), ['false', 'true']);
+    for (const listener of listeners) listener({ type: 'dice/state', payload: { state: { ...state, checkBusy: true } } });
+    await nextTick();
+    assert.equal(dom.document.querySelector('[aria-describedby="dice-rule-description"]').hasAttribute('disabled'), true);
+    for (const listener of listeners) listener({ type: 'dice/state', payload: { state } });
+    await nextTick();
+    rules()[0].click();
+    await Promise.resolve(); await nextTick();
+    assert.equal(choices()[0].getAttribute('aria-pressed'), 'true', 'returning to D20 retains its frequency');
     app.unmount();
     assert.equal(listeners.size, 0);
 });
