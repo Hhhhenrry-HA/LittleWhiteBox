@@ -4,10 +4,10 @@ import { parseCoc7Request, type Coc7Request } from '../domain/coc7-request.js';
 import type { ActionCheckRule } from '../types.js';
 
 export const ACTION_CHECK_FIELDS = Object.freeze({
-    action: { ...ACTION_CHECK_REQUEST_FIELDS.action, description: 'The specific action or outcome being attempted.' },
-    stat: { ...ACTION_CHECK_REQUEST_FIELDS.stat, description: 'The relevant ability, such as Agility.' },
-    character: { ...ACTION_CHECK_REQUEST_FIELDS.character, description: 'The acting character, if ambiguous.' },
-    stakes: { ...ACTION_CHECK_REQUEST_FIELDS.stakes, description: 'What success and failure each mean for this attempt, and which established facts remain unchanged.' },
+    action: { ...ACTION_CHECK_REQUEST_FIELDS.action, description: 'The attempt and objective.' },
+    stat: { ...ACTION_CHECK_REQUEST_FIELDS.stat, description: 'The ability used.' },
+    character: { ...ACTION_CHECK_REQUEST_FIELDS.character, description: 'Acting character, if ambiguous.' },
+    stakes: { ...ACTION_CHECK_REQUEST_FIELDS.stakes, description: 'What success and failure each mean.' },
 });
 
 export type ActionCheckParseResult = { kind: 'none' }

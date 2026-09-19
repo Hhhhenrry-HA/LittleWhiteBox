@@ -6,7 +6,7 @@ import { parseDiceRecords, referencedActionChecks, isCheckContinuationPoint } fr
 import { prepareActionCheck } from '../apps/dice/application/prepare-action-check.ts';
 import { parseActionCheck, ACTION_CHECK_EXAMPLE, ACTION_CHECK_FIELDS } from '../apps/dice/protocol/request.ts';
 import { ACTION_CHECK_OPEN, ACTION_CHECK_DISPLAY_PATTERN } from '../apps/dice/protocol/markup.ts';
-import { projectActionCheckResults, serializeActionCheckResults } from '../apps/dice/protocol/prompt.ts';
+import { buildActionCheckPrompt, projectActionCheckResults, serializeActionCheckResults } from '../apps/dice/protocol/prompt.ts';
 import { repairDiceDisplayRules, DICE_DISPLAY_RULE } from '../apps/dice/host/display-rule.ts';
 
 const request = { action: '攀上墙壁', stat: '敏捷', difficulty: 'hard' };
@@ -56,6 +56,12 @@ test('invalid targets, rolls and random samples cannot produce check results', (
 
 test('the real prompt example and JSON string tags are parsed as a single request', () => {
     assert.equal(parseActionCheck(ACTION_CHECK_EXAMPLE).kind, 'request');
+    for (const frequency of ['standard', 'active']) {
+        const prompt = buildActionCheckPrompt('', [], frequency);
+        const prepared = prepareActionCheck({ body: prompt, generatedFrom: 0, id: 'example', random: () => 0.3 });
+        assert.equal(prepared.kind, 'candidate');
+        assert.deepEqual(prepared.records.checks[0].request, parseActionCheck(ACTION_CHECK_EXAMPLE).request);
+    }
     const input = { ...request, action: 'say </xb_action_check> or <xb_action_check>', character: '  Mira  ' };
     const parsed = parseActionCheck(`尝试。\n\n${block(input)}\n`);
     assert.equal(parsed.kind, 'request');

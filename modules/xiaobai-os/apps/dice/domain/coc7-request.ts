@@ -7,9 +7,9 @@ export interface Coc7Request { action: string; stat: Coc7Stat; difficulty: Coc7D
 
 // Parser and model description share the complete field set and constraints.
 export const COC7_REQUEST_FIELDS = {
-    action: { type: 'string', maxLength: ACTION_CHECK_REQUEST_FIELDS.action.maxLength, description: 'The specific attempt and its objective.' },
-    stat: { type: 'enum', values: COC7_STAT_IDS, description: 'The ID of the applicable player capability from the available list.' },
-    difficulty: { type: 'enum', values: Object.keys(COC7_DIFFICULTIES), description: 'Required success degree: regular, hard (half), or extreme (one fifth).' },
+    action: { type: 'string', maxLength: ACTION_CHECK_REQUEST_FIELDS.action.maxLength, description: 'The attempt and objective.' },
+    stat: { type: 'enum', values: COC7_STAT_IDS, description: 'Capability ID from the list below.' },
+    difficulty: { type: 'enum', values: Object.keys(COC7_DIFFICULTIES), description: 'Required success degree.' },
 } as const;
 
 export function parseCoc7Request(value: unknown): Coc7Request {

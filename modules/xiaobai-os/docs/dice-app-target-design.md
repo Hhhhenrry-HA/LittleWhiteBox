@@ -229,6 +229,8 @@ apps/dice/
 
 字段限制只在契约说明中定义，领域块不重复抄 schema。规则文本不进入持久化消息记录；记录保存数据，运行时产生 Prompt。注入文字作为资料安全处理，不把行动文本当宿主宏、HTML 或新的系统指令执行。
 
+行动检定提示词按共用叙事边界、当前规则的触发条件与裁定说明、请求契约、已有结果资料组装。D20 标准／积极只替换触发条件，难度语义与 DC 区间合并在字段说明中，区间由裁定常量生成；自然 1／20 的临界规则保留。非空、长度与可选字段省略要求不因压缩而删除，解析器仍拒绝非法请求，不静默截断。CoC 的能力表和结果说明见 [CoC 设计第 4.2 节](./dice-coc7-design.md#42-提示词的职责顺序)。
+
 通过现有生成拦截分发器和自有的扩展提示词键接入，Dice 自有说明使用 SYSTEM／IN_CHAT、D1、`scan=false`，不替换全局 Generate，也不覆盖其他 APP 的注入。世界已有背景保留其 D4，总结保留其自有配置；不为 Dice 搬动或重写来源 Prompt。当前位置依据：`host/sillytavern-runtime-adapters.ts:21`、`host/production-composition.ts:160`；旧遭遇同样采用 D1。
 
 随机遭遇沿用小白酒馆的实际逻辑位置：普通新回合中，在发给模型的最新用户消息之前插入隐藏的 system 要求，块内先是本档固定基础句，再是弱参考句。它与可见 UI 在用户正文下方的位置不同，不向真实聊天新增消息。依据：`modules/tavern/app-src/runtime/run-once.ts:221`、`modules/tavern/shared/message-assembler.ts:2011`、`modules/tavern/tests/run-turn.test.ts:485`。continue 仍用原生 D1，实际锚点遵循宿主续写／预填充组装，不保证紧邻末尾 AI 正文；Chat Completion 的 `continue_prefill` 会在深度注入前移出待续写消息（SillyTavern `public/scripts/openai.js:1311`、`:1325`）。同深度的 system 内容可由宿主合并，不照搬旧运行时的私有排序数值；具体参数、顺序示意与出站验收见随机遭遇施工方案第 5.4 节。

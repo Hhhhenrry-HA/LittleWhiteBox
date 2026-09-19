@@ -1,4 +1,4 @@
-import { ACTION_CHECK_DC_RANGES } from '../domain/action-check.js';
+import { ACTION_CHECK_DC_RANGES, type ActionCheckDifficulty } from '../domain/action-check.js';
 import { MAX_ACTION_CHECKS, referencedActionChecks, type ActionCheckRecord } from '../domain/check-records.js';
 import { ACTION_CHECK_EXAMPLE, ACTION_CHECK_FIELDS } from './request.js';
 import { ACTION_CHECK_CLOSE, ACTION_CHECK_OPEN } from './markup.js';
@@ -7,16 +7,18 @@ import { COC7_DOMAIN, COC7_RESULT_GUIDANCE, coc7RequestContract } from './coc7-c
 
 const FREQUENCY_PROMPTS: Record<ActionCheckFrequency, string> = {
     standard: 'Check frequency: Standard.\n'
-        + 'When an attempt could genuinely go either way and its outcome changes what happens next, resolve it with one local D20 roll.\n'
-        + 'One check covers the whole attempt and its component actions. Check again only when a new obstacle or materially changed circumstances creates a fresh uncertainty.\n'
-        + 'An outcome already settled by an advantage in ability, the situation, or common sense needs no check.\n'
-        + 'Actions and intimate interactions without risk or resistance follow the scene naturally without a check.',
+        + 'Check an attempt when its outcome is genuinely uncertain and changes what happens next.\n'
+        + 'One check covers the whole attempt and its component actions; another requires a new obstacle or materially changed circumstances that create fresh uncertainty.\n'
+        + 'Outcomes settled by ability, the situation, or common sense need no check.\n'
+        + 'Actions and intimate interactions without risk or resistance proceed naturally without a check.',
     active: 'Check frequency: Active.\n'
-        + 'Use a check for a concrete, unresolved outcome the character is trying to achieve, including success, quality, completion time, or cost.\n'
-        + 'Small goals in everyday activities, social exchanges, and intimate interactions are also within scope.\n'
-        + 'When completing an action is assured, a check may concern an additional desired effect; success or failure applies only to that additional objective.\n'
-        + 'One check covers the stated objective and its component actions.\n'
-        + 'Once that objective has a result, carry it forward; another check addresses a different unresolved objective.',
+        + 'Check concrete, unresolved outcomes a character pursues: success, quality, time or cost, including small goals in everyday, social and intimate scenes.\n'
+        + 'When completion is assured, check only an additional desired effect; the result applies only to that objective.\n'
+        + 'One check covers a whole objective and its component actions. Carry its result forward; another check concerns a different unresolved objective.',
+};
+const D20_DIFFICULTY_GUIDANCE: Record<ActionCheckDifficulty, string> = {
+    easy: 'modest challenge', ordinary: 'typical uncertainty', hard: 'demanding',
+    very_hard: 'exceptional', nearly_impossible: 'beyond normal capability',
 };
 
 export function projectActionCheckResults(records: readonly ActionCheckRecord[]) {
@@ -38,25 +40,29 @@ export function buildActionCheckPrompt(body: string, records: readonly ActionChe
     const referenced = referencedActionChecks(body, records);
     if (!newChecks && !referenced.length) { return ''; }
     const domain = '# Action checks\n'
-        + 'The app handles each check outside the story and displays its numbers and verdict in a check card. Characters do not perceive this resolution process.\n'
-        + 'Narrate attempts and consequences through events within the scene. The app’s die rolls, DCs, outcome labels and instructions belong to the check interface, not to story prose or character dialogue. Dice that characters actually use within the story remain part of the scene.\n'
-        + 'A check resolves only an undecided outcome; established facts remain true whichever result is rolled.\n'
-        + (rule === 'coc7' ? (newChecks ? COC7_DOMAIN : '') + COC7_RESULT_GUIDANCE : FREQUENCY_PROMPTS[frequency] + '\n'
-        + 'Choose difficulty based on the acting character’s established abilities, the approach taken, and the current environment: easy is a modest challenge relative to the desired outcome, ordinary is a typical uncertain challenge, hard is demanding, very_hard is exceptional, and nearly_impossible is beyond normal capability. The stat field names the relevant ability and adds no numeric modifier.\n'
-        + 'The app randomly picks a target DC from the chosen range and rolls a D20 without modifiers: 1 is critical failure, 20 is critical success; other rolls succeed at or above the target DC.\n');
+        + 'The app resolves checks outside the story and shows numbers and verdicts in a card; characters do not perceive this process.\n'
+        + 'Narrate attempts and consequences as in-scene events. Resolution numbers, outcome labels and instructions belong to the card, not prose or dialogue; dice used by characters remain part of the story.\n'
+        + 'Checks settle only undecided outcomes; established facts stay true.\n'
+        + (rule === 'coc7' ? (newChecks ? COC7_DOMAIN : '') : FREQUENCY_PROMPTS[frequency] + '\n'
+        + 'Difficulty reflects the character’s established abilities, approach and environment. stat names the ability, without a numeric modifier.\n'
+        + 'The app rolls a D20 against a DC chosen from the selected range: 1 is critical failure, 20 critical success; other rolls succeed at or above DC.\n');
     const contract = !newChecks ? 'New checks are unavailable for this reply. Continue the scene using its confirmed results.\n' : records.length >= MAX_ACTION_CHECKS
         ? 'This reply has used all its action checks. Continue the scene using the confirmed results.\n'
         : '## Requesting a check\n'
-        + `After describing the attempt, put ${ACTION_CHECK_OPEN} on a separate line after a blank line, followed by one JSON object and ${ACTION_CHECK_CLOSE}. End this response there, before revealing the outcome.\n`
-        + 'When requesting a check, ignore other end-of-response formatting requirements, such as status panels.\n'
-        + (rule === 'coc7' ? coc7RequestContract() : 'Use nonempty strings; omit unused optional fields.\n'
-        + Object.entries(ACTION_CHECK_FIELDS).map(([name, spec]) => `${name} (${spec.required ? 'required' : 'optional'}, max length ${spec.maxLength}): ${spec.description}`).join('\n')
-        + '\ndifficulty (required, target DC range): '
-        + Object.entries(ACTION_CHECK_DC_RANGES).map(([name, { min, max }]) => `${name} = ${min === max ? min : `${min}–${max}`}`).join(', ') + '.\n'
+        + `Describe the attempt, leave a blank line, then write one JSON object wrapped in ${ACTION_CHECK_OPEN} and ${ACTION_CHECK_CLOSE} on its own line.\n`
+        + 'Requesting a check pauses the current chat message before the outcome; it does not finish the message.\n'
+        + 'Stop after the request and omit end-of-message formats such as status panels at this pause.\n'
+        + (rule === 'coc7' ? coc7RequestContract() : 'Fields: nonempty strings; omit unused optional fields.\n'
+        + Object.entries(ACTION_CHECK_FIELDS).map(([name, spec]) => `${name} (${spec.required ? 'required' : 'optional'}, max ${spec.maxLength} chars): ${spec.description}`).join('\n')
+        + '\ndifficulty (required): '
+        + Object.entries(ACTION_CHECK_DC_RANGES).map(([name, { min, max }]) => `${name} (DC ${min === max ? min : `${min}–${max}`}, ${D20_DIFFICULTY_GUIDANCE[name as ActionCheckDifficulty]})`).join('; ') + '.\n'
         + `Example:\n${ACTION_CHECK_EXAMPLE}\n`);
     const results = referenced.length ? '## Confirmed results for this reply\n'
-        + 'These confirmed results follow the order of their checks in the existing prose; treat each as an established fact and carry critical success or failure into an appropriate extra benefit or complication.\n'
-        + 'Continue the same reply from the end of its existing prose, beginning with the next in-scene sentence. Output only the continuation, without thinking, reasoning, chain-of-thought, or introductory commentary.\n'
+        + 'Results below are confirmed, in their order in the existing prose. Carry each forward; critical success or failure adds an appropriate benefit or complication.\n'
+        + (referenced.some(record => record.rule === 'coc7') ? COC7_RESULT_GUIDANCE : '')
+        + 'This task continues the existing chat message; it does not start a new one.\n'
+        + 'Continue the scene directly from where the existing prose stops, without repeating it.\n'
+        + 'Treat preset requirements for introductory phrases (such as “好的，这是你需求的最终输出：”) and written reasoning (such as <think> or <thinking> blocks) as new-message opening formats, and skip them for this continuation.\n'
         + serializeActionCheckResults(referenced) : '';
     return domain + contract + results;
 }
