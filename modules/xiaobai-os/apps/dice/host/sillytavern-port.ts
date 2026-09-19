@@ -1,8 +1,7 @@
 import { extension_settings, getContext } from '../../../../../../../../extensions.js';
-import { getRequestHeaders, isChatSaving } from '../../../../../../../../../script.js';
+import { isChatSaving } from '../../../../../../../../../script.js';
 import { isGenerating } from '../../../host/sillytavern-generation-state.js';
 import { getScriptsByType, saveScriptsByType, SCRIPT_TYPES } from '../../../../../../../../extensions/regex/engine.js';
-import { saveSillyTavernChat } from '../../../host/sillytavern-chat-save.js';
 import { repairDiceDisplayRules } from './display-rule.js';
 import { showDiceDisplayRule } from './managed-rule-display.js';
 import { isDiceTargetCurrent, type DiceChat, type DiceHostMessage, type DiceTarget } from './message-records.js';
@@ -40,24 +39,6 @@ export async function ensureDiceDisplayRule(): Promise<void> {
     if (repaired) { await saveScriptsByType(repaired as ReturnType<typeof getScriptsByType>, SCRIPT_TYPES.GLOBAL); }
     showDiceDisplayRule(document);
 }
-
-export async function readDiceChat(source: DiceChat): Promise<unknown[]> {
-    const body = source.groupId ? { id: source.chatId }
-        : { ch_name: source.characterName, file_name: source.chatId, avatar_url: source.avatar };
-    const controller = new AbortController();
-    const timer = globalThis.setTimeout(() => controller.abort(), 15_000);
-    try {
-        const response = await fetch(source.groupId ? '/api/chats/group/get' : '/api/chats/get', {
-            method: 'POST', headers: getRequestHeaders(), cache: 'no-store', body: JSON.stringify(body), signal: controller.signal,
-        });
-        if (!response.ok) { throw new Error(`读取聊天失败（${response.status}）`); }
-        const data: unknown = await response.json();
-        if (!Array.isArray(data) || !data[0] || !Object.hasOwn(data[0], 'chat_metadata')) { throw new Error('聊天读取格式无效。'); }
-        return data.slice(1);
-    } finally { globalThis.clearTimeout(timer); }
-}
-
-export const diceSavePort = { capture: captureDiceChat, save: saveSillyTavernChat, read: readDiceChat };
 
 export async function waitForDiceHost(target: DiceTarget, signal: AbortSignal, inGroup: boolean,
     generationPending: () => boolean = isGenerating): Promise<void> {

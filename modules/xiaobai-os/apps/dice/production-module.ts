@@ -38,7 +38,6 @@ export function createProductionDiceModule(settings: XiaobaiOsSettingsRepository
                 const source = captureDiceChat();
                 if (!source) { throw new Error('请先打开要清理的聊天。'); }
                 await controller.disable();
-                await generation.settled();
                 const current = () => captureDiceChat()?.chat === source.chat && captureDiceChat()?.key === source.key;
                 if (!current()) { throw new Error('聊天已切换。'); }
                 if (source.chat.some((_message, index) => isDiceMessageBeingEdited(index))) { throw new Error('请先结束消息编辑，再清理 Dice 数据。'); }
@@ -54,7 +53,7 @@ export function createProductionDiceModule(settings: XiaobaiOsSettingsRepository
             // Preferences are global; generation still requires a current chat.
             const background = {
                 startBackground() { running = true; generation.start(); display.start(); encounters.start(); encounterDisplay.start(); },
-                async stopBackground() { running = false; display.stop(); encounterDisplay.stop(); encounters.stop(); await generation.stop(); },
+                stopBackground() { running = false; display.stop(); encounterDisplay.stop(); encounters.stop(); generation.stop(); },
                 handleChatChanged() { generation.cancel(); encounters.cancel(); display.refresh(); encounterDisplay.refresh(); },
                 cancelAll() { generation.cancel(); encounters.cancel(); },
             };

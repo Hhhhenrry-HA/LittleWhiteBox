@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 import { createDiceController } from '../apps/dice/host/controller.ts';
 import { createSettingsRepository } from '../host/settings-repository.ts';
 
@@ -46,7 +47,7 @@ test('action-check frequency defaults to standard and survives toggles, chats an
     const h = await harness();
     assert.equal((await h.activate()).actionCheckFrequency, 'standard');
     await h.toggle('actionChecksEnabled', true);
-    for (const frequency of ['light', 'standard', 'active']) {
+    for (const frequency of ['standard', 'active']) {
         assert.equal((await h.frequency(frequency)).actionCheckFrequency, frequency);
     }
     assert.deepEqual(h.cancelled, [], 'changing frequency does not cancel checks');
@@ -67,18 +68,39 @@ test('invalid or failed frequency saves preserve the confirmed choice and do not
     t.mock.method(console, 'error', () => {});
     const h = await harness();
     await h.toggle('actionChecksEnabled', true);
-    await h.frequency('light');
-    for (const frequency of ['unknown', true, null, undefined]) {
-        await assert.rejects(h.frequency(frequency), /检定频率无效/);
+    for (const frequency of ['light', 'unknown', true, null, undefined]) {
+        await assert.rejects(h.frequency(frequency));
+        assert.throws(() => h.settings.setDiceActionCheckFrequency(frequency));
     }
-    assert.throws(() => h.settings.setDiceActionCheckFrequency('unknown'), /invalid Dice action-check frequency/);
     h.save(() => false);
     await assert.rejects(h.frequency('active'), /设置未能保存/);
-    assert.equal(h.settings.read().apps.dice.actionCheckFrequency, 'light');
-    assert.equal(h.root.xiaobaiOs.apps.dice.actionCheckFrequency, 'light');
+    assert.equal(h.settings.read().apps.dice.actionCheckFrequency, 'standard');
+    assert.equal(h.root.xiaobaiOs.apps.dice.actionCheckFrequency, 'standard');
     assert.deepEqual(h.cancelled, []);
     h.save(() => {});
     assert.equal((await h.frequency('active')).actionCheckFrequency, 'active');
+});
+
+test('upstream light preferences become standard once at load, with rollback on failed persistence', async () => {
+    const h = await harness();
+    // Dice-owned object produced by the upstream 32a314b8 settings normalizer before removing light.
+    h.root.xiaobaiOs.apps.dice = JSON.parse(readFileSync(new URL('./fixtures/dice-settings-32a314b8.json', import.meta.url), 'utf8'));
+    const original = structuredClone(h.root);
+    let saves = 0;
+    let saved = false;
+    const adapter = { getExtensionSettings: () => h.root, saveSettings() { saves++; return saved; } };
+    const reopened = createSettingsRepository(adapter);
+    await assert.rejects(reopened.prepare());
+    assert.deepEqual(h.root, original, 'failed upgrades preserve the complete installed settings');
+    saved = true;
+    const upgraded = await reopened.prepare();
+    const expected = { ...original.xiaobaiOs.apps.dice, actionCheckFrequency: 'standard' };
+    assert.deepEqual(upgraded.apps.dice, expected);
+    assert.deepEqual(h.root, { ...original, xiaobaiOs: { ...original.xiaobaiOs,
+        apps: { ...original.xiaobaiOs.apps, dice: expected } } });
+    assert.equal(saves, 2);
+    assert.deepEqual((await createSettingsRepository(adapter).prepare()).apps.dice, expected);
+    assert.equal(saves, 2, 'current settings do not require another conversion or save');
 });
 
 test('frequency only becomes effective after saving, even when its page closes during the save', async () => {

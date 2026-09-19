@@ -1,11 +1,10 @@
 import { updateMessageBlock } from '../../../../../../../../../script.js';
 import { isGenerating } from '../../../host/sillytavern-generation-state.js';
 import { createModuleEvents, event_types } from '../../../../../core/event-manager.js';
-import { isCheckContinuationPoint, parseDiceRecords } from '../domain/check-records.js';
-import { checkMarkerIds } from '../domain/check-marker.js';
+import { isCheckContinuationPoint, parseDiceRecords, referencedActionChecks } from '../domain/check-records.js';
 import { createCheckCard, diceSpan as span, type CheckCard } from '../ui/check-card.js';
 import { revealCheckCard } from '../ui/reveal.js';
-import type { DiceCandidate, DiceHostMessage, DiceTarget } from './message-records.js';
+import { readDiceRecords, type DiceCandidate, type DiceHostMessage, type DiceTarget } from './message-records.js';
 import { captureDiceChat } from './sillytavern-port.js';
 import type { createDiceGenerationAdapter } from './generation-adapter.js';
 import { DICE_CARD_CSS } from './card-style.js';
@@ -64,8 +63,10 @@ export function createDiceMessageDisplay(runtime: Runtime, enabled: () => boolea
                 const message = source?.chat[index];
                 const content = root.querySelector<HTMLElement>('.mes_text');
                 if (!content) { continue; }
-                const value = message && runtime.readConfirmed(message);
+                const value = message && readDiceRecords(message);
                 const phase = active && active.target.message === message && active.target.swipe === (message?.swipe_id ?? 0) ? active.phase : null;
+                const continuing = phase?.kind === 'continuing' || phase?.kind === 'continue-error'
+                    ? referencedActionChecks(phase.candidate.body, phase.candidate.records.checks).at(-1) : undefined;
                 const editing = !!root.querySelector('.edit_textarea');
                 if (editing) {
                     if (phase) { runtime.cancel(); }
@@ -75,7 +76,6 @@ export function createDiceMessageDisplay(runtime: Runtime, enabled: () => boolea
                     content.querySelectorAll(OWN).forEach(node => node.remove()); continue;
                 }
                 const wanted = new Set<HTMLElement>();
-                const markerIds = checkMarkerIds(message.mes);
                 const placements = new Map<string, HTMLElement>();
                 let cached = cards.get(message);
                 if (!cached || cached.swipe !== (message.swipe_id ?? 0)) {
@@ -88,9 +88,9 @@ export function createDiceMessageDisplay(runtime: Runtime, enabled: () => boolea
                     try {
                         const records = parseDiceRecords(value);
                         projection = checkDisplayProjection(message, records.checks);
-                        for (const record of records.checks) {
-                            if (!markerIds.has(record.id)) { continue; }
-                            const pending = phase && (phase.kind === 'saving' || phase.kind === 'revealing')
+                        const referenced = referencedActionChecks(message.mes, records.checks);
+                        for (const record of referenced) {
+                            const pending = phase?.kind === 'revealing'
                                 && phase.candidate.records.checks.at(-1)?.id === record.id;
                             const signature = JSON.stringify(record);
                             let entry = cached.entries.get(record.id);
@@ -103,13 +103,13 @@ export function createDiceMessageDisplay(runtime: Runtime, enabled: () => boolea
                             if (!pending && view.element.dataset.state === 'rolling') { view.settle(); }
                             const node = view.element;
                             placements.set(record.id, node);
-                            const failedContinuation = phase?.kind === 'continue-error' && phase.candidate.records.checks.at(-1)?.id === record.id;
+                            const failedContinuation = phase?.kind === 'continue-error' && continuing?.id === record.id;
                             const waitingForText = phase?.kind === 'continuing'
-                                && phase.candidate.records.checks.at(-1)?.id === record.id
+                                && continuing?.id === record.id
                                 && message.mes === phase.candidate.body;
                             const error = failedContinuation ? phase.error : waitingForText ? '正在续写…' : '';
                             let retry = '';
-                            if (enabled() && (failedContinuation || source?.chat.at(-1) === message && record === records.checks.at(-1)
+                            if (enabled() && (failedContinuation || source?.chat.at(-1) === message && record === referenced.at(-1)
                                 && isCheckContinuationPoint(message.mes, record) && !active)) {
                                 retry = '沿用骰点续写';
                             }
@@ -122,7 +122,7 @@ export function createDiceMessageDisplay(runtime: Runtime, enabled: () => boolea
                     }
                 }
                 let mounted = mountCheckCards(content, placements);
-                if (mounted.size < placements.size && (!isGenerating() || phase?.kind === 'saving' || phase?.kind === 'revealing')) {
+                if (mounted.size < placements.size && (!isGenerating() || phase?.kind === 'revealing')) {
                     const sourceSignature = JSON.stringify([message.mes, projection, message.swipe_id ?? 0]);
                     if (failedSync.get(content) !== sourceSignature) {
                         // The display regex hid the former request, or native translation still projects it.
@@ -136,12 +136,12 @@ export function createDiceMessageDisplay(runtime: Runtime, enabled: () => boolea
                 for (const node of mounted) { wanted.add(node); }
                 for (const id of cached.entries.keys()) { if (!kept.has(id)) { cached.entries.delete(id); } }
                 if (phase && !errorPlaced) {
-                    if (phase.kind === 'waiting' || phase.kind === 'settling' || phase.kind === 'saving') {
+                    if (phase.kind === 'waiting' || phase.kind === 'settling') {
                         const pending = content.querySelector<HTMLElement>('.xb-dice-pending')
                             ?? span('xb-dice-card xb-dice-pending');
                         pending.setAttribute('role', 'status');
                         pending.setAttribute('aria-live', 'polite');
-                        const label = phase.kind === 'saving' ? '正在保存骰点…' : '正在准备检定…';
+                        const label = '正在准备检定…';
                         if (pending.textContent !== label) { pending.textContent = label; }
                         wanted.add(pending);
                         if (!pending.isConnected) { content.append(pending); }
@@ -150,8 +150,8 @@ export function createDiceMessageDisplay(runtime: Runtime, enabled: () => boolea
                         const notice = span('xb-dice-card xb-dice-notice', '');
                         notice.setAttribute('role', 'status');
                         notice.append(span('xb-dice-note', phase.error));
-                        if (enabled() && (phase.kind === 'save-error' || phase.kind === 'continue-error')) {
-                            notice.append(retryButton(index, phase.kind === 'save-error' ? '检查保存' : '沿用骰点续写'));
+                        if (enabled() && phase.kind === 'continue-error') {
+                            notice.append(retryButton(index, '沿用骰点续写'));
                         }
                         wanted.add(notice); content.append(notice);
                     }

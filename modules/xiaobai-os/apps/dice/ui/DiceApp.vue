@@ -8,9 +8,8 @@ const state = ref(props.initialState as DiceClientState);
 const busy = ref(false);
 const error = ref('');
 const frequencyChoices: Record<ActionCheckFrequency, { label: string; description: string }> = {
-    light: { label: '轻量', description: '模型会更克制地使用骰子。' },
-    standard: { label: '标准', description: '模型会在合适的时候使用骰子。' },
-    active: { label: '活跃', description: '模型将更活跃地使用骰子参与剧情。' },
+    standard: { label: '标准', description: '有风险或阻力，且成败会改变后续的行动才检定。' },
+    active: { label: '积极', description: '日常小目标，以及效果、耗时和代价的不确定性也可检定。' },
 };
 let unsubscribe = () => {};
 let mounted = false;
@@ -105,7 +104,7 @@ p { margin:14px 0; }
 .dice-intro { margin-top:24px; }
 .dice-frequency { min-width:0; margin:20px 0 0; padding:0; border:0; }
 .dice-frequency legend { margin-bottom:8px; padding:0; font-size:13px; }
-.dice-frequency-options { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px; padding:4px; border-radius:12px; background:color-mix(in srgb,currentColor 7%,transparent); }
+.dice-frequency-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px; padding:4px; border-radius:12px; background:color-mix(in srgb,currentColor 7%,transparent); }
 .dice-frequency-option { min-width:0; min-height:44px; padding:8px; border:0; border-radius:8px; background:transparent; color:inherit; font:inherit; line-height:1.4; text-align:center; cursor:pointer; }
 .dice-frequency-option[aria-pressed="true"] { background:#7062d9; color:white; font-weight:600; }
 .dice-frequency-option:focus-visible { outline:2px solid #8577f0; outline-offset:2px; }

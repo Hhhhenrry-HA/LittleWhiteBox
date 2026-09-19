@@ -7,12 +7,11 @@ import { registerGenerateInterceptor, unregisterGenerateInterceptor, GENERATE_IN
 import { setSillyTavernPrompt } from '../../../host/sillytavern-runtime-adapters.js';
 import { buildActionCheckPrompt } from '../protocol/prompt.js';
 import type { ActionCheckFrequency } from '../types.js';
-import { hasValidCheckAnchor, parseDiceRecords } from '../domain/check-records.js';
+import { parseDiceRecords } from '../domain/check-records.js';
 import { createActionCheckSession } from '../application/action-check-session.js';
-import { captureDiceTarget, clearNewDiceSwipe, isDiceTargetCurrent, type DiceCandidate, type DiceTarget } from './message-records.js';
-import { createDiceMessageSave } from './message-save.js';
+import { applyDiceCandidate, captureDiceTarget, clearNewDiceSwipe, isDiceTargetCurrent, readDiceRecords, type DiceCandidate, type DiceTarget } from './message-records.js';
 import { filterDiceGenerationData, type DiceGenerationData } from './request-filter.js';
-import { captureDiceChat, diceHostContext, diceSavePort, ensureDiceDisplayRule, isDiceMessageBeingEdited, waitForDiceHost } from './sillytavern-port.js';
+import { captureDiceChat, diceHostContext, ensureDiceDisplayRule, isDiceMessageBeingEdited, waitForDiceHost } from './sillytavern-port.js';
 
 const KEY = 'xiaobai_os_dice';
 const MAIN_TYPES = ['', 'normal', 'regenerate', 'swipe', 'continue'];
@@ -26,7 +25,6 @@ interface Observation {
 
 export function createDiceGenerationAdapter(enabled: () => boolean, frequency: () => ActionCheckFrequency, changed: () => void,
     reveal: (target: DiceTarget, candidate: DiceCandidate, signal: AbortSignal) => Promise<void>) {
-    const saver = createDiceMessageSave(diceSavePort);
     let observation: Observation | null = null;
     let intention: { target: DiceTarget; candidate: DiceCandidate; signal: AbortSignal;
         settled: Promise<void>; received: boolean; error?: string } | null = null;
@@ -41,7 +39,7 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
         same: (left, right) => left.message === right.message && left.swipe === right.swipe,
         ready: (target, signal, inGroup) => waitForDiceHost(target, signal, inGroup,
             () => controls?.signal === signal ? controls.nativePending : isGenerating()),
-        save: saver.commit, changed,
+        apply: (target, candidate) => applyDiceCandidate(captureDiceChat(), target, candidate), changed,
         busy(value, signal) { setPostprocessBusy(value, signal); },
         id: uuidv4,
         reveal,
@@ -144,7 +142,7 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
         try {
             await session.drain(Boolean(is_group_generating));
             const result = session.view();
-            if (result && ['save-error', 'continue-error', 'invalid'].includes(result.phase.kind) && is_group_generating) {
+            if (result && ['continue-error', 'invalid'].includes(result.phase.kind) && is_group_generating) {
                 // Abort the native wrapper, not a second queue. The interceptor below blocks its next drafted call.
                 stopGeneration();
             }
@@ -231,14 +229,10 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
                 // The host can yield during preparation. Stop this request before it can target another floor.
                 if (!current()) { clearPrompt(); abort(true); return; }
                 const last = diceHostContext().chat.at(-1);
-                const saved = type === 'continue' && last ? saver.readConfirmed(last) : undefined;
+                const saved = type === 'continue' && last ? readDiceRecords(last) : undefined;
                 const records = own?.candidate.records.checks ?? (saved === undefined ? [] : parseDiceRecords(saved).checks);
-                if (last && records.some(record => !hasValidCheckAnchor(last.mes, record))) {
-                    // An ordinary user continuation is still allowed, without treating the edited action as equivalent.
-                    clearPrompt(); return;
-                }
                 if (!enabled()) { clearPrompt(); return; }
-                setSillyTavernPrompt(KEY, buildActionCheckPrompt(records, frequency()));
+                setSillyTavernPrompt(KEY, buildActionCheckPrompt(last?.mes ?? '', records, frequency()));
             } catch (error) {
                 clearPrompt();
                 console.error('[LittleWhiteBox] Dice check preparation failed', error);
@@ -278,7 +272,7 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
         const stopped = () => {
             const phase = session.view()?.phase.kind;
             // Internal wrapper stop must not discard the same-roll recovery candidate.
-            if (controls || (phase !== 'save-error' && phase !== 'continue-error' && phase !== 'invalid')) { cancel(); }
+            if (controls || (phase !== 'continue-error' && phase !== 'invalid')) { cancel(); }
             clearPrompt();
         };
         eventSource.makeFirst(event_types.GENERATION_STOPPED, stopped);
@@ -303,12 +297,10 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
         };
     }
 
-    async function stop(): Promise<void> {
+    function stop(): void {
         cancel(); unsubscribe?.(); unsubscribe = null; wrapperSignal = undefined;
-        // Re-enabling the OS must not interpret a still-staged, unconfirmed write as persisted history.
-        await saver.settled();
     }
-    return { start, stop, cancel, settled: saver.settled, view: session.view, readConfirmed: saver.readConfirmed,
+    return { start, stop, cancel, view: session.view,
         async retry(index: number) {
             if (isGenerating()) { throw new Error('请等待酒馆生成结束。'); }
             const source = captureDiceChat();

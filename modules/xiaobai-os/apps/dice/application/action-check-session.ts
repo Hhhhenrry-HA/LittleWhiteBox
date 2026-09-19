@@ -1,14 +1,13 @@
 import { prepareActionCheck } from './prepare-action-check.js';
-import { hasValidCheckAnchor, isCheckContinuationPoint, parseDiceRecords, type DiceMessageRecords } from '../domain/check-records.js';
+import { referencedActionChecks, isCheckContinuationPoint, parseDiceRecords, type DiceMessageRecords } from '../domain/check-records.js';
 import { parseActionCheck } from '../protocol/request.js';
 
 export interface ActionCheckTarget { body: string; records: unknown; generatedFrom: number }
 export interface DiceCandidate { body: string; records: DiceMessageRecords }
-export type DiceSaveResult = { status: 'confirmed' } | { status: 'failed' | 'unconfirmed' | 'conflict'; error: string };
 
 type Phase = { kind: 'waiting' | 'settling' }
-    | { kind: 'saving' | 'revealing' | 'continuing'; candidate: DiceCandidate }
-    | { kind: 'save-error' | 'continue-error'; candidate: DiceCandidate; error: string }
+    | { kind: 'revealing' | 'continuing'; candidate: DiceCandidate }
+    | { kind: 'continue-error'; candidate: DiceCandidate; error: string }
     | { kind: 'invalid'; error: string };
 interface Run<T> { controller: AbortController; target: T; phase: Phase }
 export interface DiceSessionPort<T extends ActionCheckTarget> {
@@ -16,7 +15,7 @@ export interface DiceSessionPort<T extends ActionCheckTarget> {
     current(target: T): boolean;
     same(left: T, right: T): boolean;
     ready(target: T, signal: AbortSignal, inGroup: boolean): Promise<void>;
-    save(target: T, candidate: DiceCandidate, signal: AbortSignal, retry: boolean): Promise<DiceSaveResult>;
+    apply(target: T, candidate: DiceCandidate): void;
     reveal(target: T, candidate: DiceCandidate, signal: AbortSignal): Promise<void>;
     /** Null means the host did not complete the continuation; its own UI owns provider errors. */
     continue(target: T, candidate: DiceCandidate, signal: AbortSignal): Promise<T | null>;
@@ -28,7 +27,6 @@ export interface DiceSessionPort<T extends ActionCheckTarget> {
 
 const errors: Record<string, string> = {
     dice_check_limit: '本条回复已检定 8 次，不再继续掷骰。',
-    dice_body_changed: '原文已修改，本次不再掷骰。',
 };
 
 /** One ephemeral chain. Rendering, reload and retry never enter the random source. */
@@ -73,7 +71,7 @@ export function createActionCheckSession<T extends ActionCheckTarget>(port: Dice
                 if (!port.current(current.target)) { cancel(); return; }
                 const phase = current.phase;
                 let candidate: DiceCandidate;
-                if (phase.kind === 'save-error' || phase.kind === 'continue-error') { candidate = phase.candidate; }
+                if (phase.kind === 'continue-error') { candidate = phase.candidate; }
                 else {
                     const prepared = prepareActionCheck({ body: current.target.body, records: current.target.records,
                         generatedFrom: current.target.generatedFrom, id: port.id(), random: port.random });
@@ -85,16 +83,7 @@ export function createActionCheckSession<T extends ActionCheckTarget>(port: Dice
                     candidate = prepared;
                 }
                 if (phase.kind !== 'continue-error') {
-                    current.phase = { kind: 'saving', candidate };
-                    publish();
-                    const saved = await port.save(current.target, candidate, current.controller.signal, recovery);
-                    if (!owns(current)) { return; }
-                    if (saved.status !== 'confirmed') {
-                        console.error('[LittleWhiteBox] Dice result save not confirmed', saved);
-                        current.phase = saved.status === 'conflict' ? { kind: 'invalid', error: saved.error }
-                            : { kind: 'save-error', candidate, error: '骰点还未确认保存，暂不续写。' };
-                        return;
-                    }
+                    port.apply(current.target, candidate);
                     current.target = { ...current.target, body: candidate.body, records: candidate.records };
                 }
                 if (!port.current(current.target)) { cancel(); return; }
@@ -131,7 +120,7 @@ export function createActionCheckSession<T extends ActionCheckTarget>(port: Dice
                     ? { kind: 'continue-error', candidate: phase.candidate, error: '骰点已保留，暂时无法自动续写。' }
                     : { kind: 'invalid', error: '回复已有变化，请用酒馆的「继续」接着写。' };
             } else if (!port.current(current.target)) { cancel(); }
-            else if (phase.kind === 'save-error' || phase.kind === 'continue-error') {
+            else if (phase.kind === 'continue-error') {
                 // A failed readiness wait does not invalidate the retained roll or its retry route.
                 current.phase = { ...phase, error: '暂时无法继续检定，请稍后重试。' };
             } else { current.phase = { kind: 'invalid', error: '本次未完成行动检定。' }; }
@@ -153,17 +142,17 @@ export function createActionCheckSession<T extends ActionCheckTarget>(port: Dice
         if (!port.enabled()) { throw new Error('请先开启行动检定。'); }
         const current = run;
         if (current && port.same(current.target, target)
-            && (current.phase.kind === 'save-error' || current.phase.kind === 'continue-error')) {
+            && current.phase.kind === 'continue-error') {
             if (!port.current(current.target)) { cancel(); throw new Error('原回复已变更。'); }
             const replacement: Run<T> = { ...current, controller: new AbortController() };
             run = replacement;
             await execute(replacement, false, true);
             return;
         }
-        if (current && ['saving', 'revealing', 'continuing', 'waiting', 'settling'].includes(current.phase.kind)) { return; }
+        if (current && ['revealing', 'continuing', 'waiting', 'settling'].includes(current.phase.kind)) { return; }
         const records = parseDiceRecords(target.records);
-        const last = records.checks.at(-1);
-        if (!last || !isCheckContinuationPoint(target.body, last) || records.checks.some(record => !hasValidCheckAnchor(target.body, record))) {
+        const last = referencedActionChecks(target.body, records.checks).at(-1);
+        if (!last || !isCheckContinuationPoint(target.body, last)) {
             throw new Error('回复已有变化，请用酒馆的「继续」接着写。');
         }
         cancel();

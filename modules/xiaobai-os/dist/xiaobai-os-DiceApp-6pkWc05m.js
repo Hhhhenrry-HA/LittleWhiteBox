@@ -22,17 +22,13 @@ var A = { class: "dice-app" }, B = {
   },
   setup(p) {
     const d = p, t = _(d.initialState), i = _(!1), l = _(""), k = {
-      light: {
-        label: "轻量",
-        description: "模型会更克制地使用骰子。"
-      },
       standard: {
         label: "标准",
-        description: "模型会在合适的时候使用骰子。"
+        description: "有风险或阻力，且成败会改变后续的行动才检定。"
       },
       active: {
-        label: "活跃",
-        description: "模型将更活跃地使用骰子参与剧情。"
+        label: "积极",
+        description: "日常小目标，以及效果、耗时和代价的不确定性也可检定。"
       }
     };
     let C = () => {
@@ -130,7 +126,7 @@ var A = { class: "dice-app" }, B = {
   const t = p.__vccOpts || p;
   for (const [i, l] of d) t[i] = l;
   return t;
-}, G = /* @__PURE__ */ T(R, [["__scopeId", "data-v-21aed558"]]);
+}, G = /* @__PURE__ */ T(R, [["__scopeId", "data-v-349ecec0"]]);
 export {
   G as default
 };

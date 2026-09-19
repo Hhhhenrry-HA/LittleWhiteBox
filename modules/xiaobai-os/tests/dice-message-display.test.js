@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import { Buffer } from 'node:buffer';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parseHTML } from 'linkedom';
 import { build } from 'esbuild';
-import { createActionCheckRecord } from '../apps/dice/domain/check-records.ts';
+import { DICE_RECORDS_SCHEMA_VERSION, parseDiceRecords } from '../apps/dice/domain/check-records.ts';
+import { prepareActionCheck } from '../apps/dice/application/prepare-action-check.ts';
 
 // Exercise the real display; only native chat/event access is replaced.
 const compiled = await build({
@@ -28,7 +30,7 @@ const compiled = await build({
 // eslint-disable-next-line no-unsanitized/method -- Repository component with isolated native I/O.
 const { createDiceMessageDisplay, source } = await import(`data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`);
 
-test('card redraws leave scrolling to the host, even when a temporary layout appears at the bottom', t => {
+function setup(t, runtime, enabled = () => true) {
     const { document, window } = parseHTML('<html><head></head><body><div id="chat"><div class="mes" mesid="0"><div class="mes_text"></div></div></div></body></html>');
     const previous = new Map(), frames = new Map();
     let frameId = 0, display;
@@ -44,6 +46,22 @@ test('card redraws leave scrolling to the host, even when a temporary layout app
     const render = () => { const work = [...frames.values()]; frames.clear(); for (const fn of work) fn(); };
     const chat = document.getElementById('chat');
     const content = document.querySelector('.mes_text');
+    display = createDiceMessageDisplay(runtime, enabled);
+    content.textContent = source.chat[0].mes;
+    display.start(); render();
+    return { chat, content, display, render };
+}
+
+test('card redraws leave scrolling to the host, even when a temporary layout appears at the bottom', t => {
+    const record = { id: 'one', request: { character: 'Test', action: 'Climb', stat: 'Ability', difficulty: 'hard' },
+        dc: 12, roll: 14, outcome: 'success' };
+    const records = { schemaVersion: DICE_RECORDS_SCHEMA_VERSION, checks: [record] };
+    const message = { mes: 'Before [dice:one]', extra: { xiaobaiOsDice: records }, swipe_id: 0 };
+    source.chat = [message];
+    const target = { message, swipe: 0, index: 0, source };
+    const candidate = { body: message.mes, records };
+    let active = { target, phase: { kind: 'continuing', candidate } };
+    const { chat, content, display, render } = setup(t, { view: () => active, cancel() {}, retry: async () => {} });
     const writes = [];
     let scrollTop = 500;
     // This checks scroll ownership, not browser layout/anchoring (covered in browser verification).
@@ -51,21 +69,10 @@ test('card redraws leave scrolling to the host, even when a temporary layout app
         scrollHeight: { get: () => 1000 }, clientHeight: { get: () => 500 },
         scrollTop: { get: () => scrollTop, set: value => { writes.push(value); scrollTop = value; } },
     });
-    const record = createActionCheckRecord('Before ', 'one', { character: 'Test', action: 'Climb', stat: 'Ability', difficulty: 'hard' },
-        { dc: 12, roll: 14, outcome: 'success' });
-    const records = { schemaVersion: 1, checks: [record] };
-    const message = { mes: 'Before [dice:one]', extra: { xiaobaiOsDice: records }, swipe_id: 0 };
-    source.chat = [message];
-    const target = { message, swipe: 0, index: 0, source };
-    const candidate = { body: message.mes, records };
-    let active = { target, phase: { kind: 'continuing', candidate } };
-    display = createDiceMessageDisplay({ view: () => active, readConfirmed: () => records, cancel() {}, retry: async () => {} }, () => true);
-    content.textContent = message.mes;
-    display.start(); render();
     const card = content.querySelector('[data-dice-record="one"]');
     assert.ok(card);
     for (const gap of [0, 10, 80, 400]) {
-        for (const kind of ['saving', 'revealing', 'continuing', 'continue-error', null]) {
+        for (const kind of ['revealing', 'continuing', 'continue-error', null]) {
             scrollTop = 500 - gap;
             active = kind ? { target, phase: { kind, candidate, error: kind === 'continue-error' ? 'Retry' : '' } } : null;
             content.textContent = message.mes;
@@ -78,4 +85,68 @@ test('card redraws leave scrolling to the host, even when a temporary layout app
     display.refresh(); display.stop(); render();
     assert.equal(content.textContent, message.mes, 'stopping restores the marker');
     assert.deepEqual(writes, []);
+});
+
+test('cards, continuation status and recovery follow retained markers, not their old positions or stored order', async t => {
+    const message = JSON.parse(readFileSync(new URL('./fixtures/dice-message-a32c28d0.json', import.meta.url), 'utf8'));
+    source.chat = [message];
+    const raw = structuredClone(message.extra.xiaobaiOsDice);
+    let active = null;
+    const retries = [];
+    const { content, display, render } = setup(t, { view: () => active,
+        cancel() {}, retry: async index => { retries.push(index); } });
+    const wall = content.querySelector('[data-dice-record="wall"]');
+    const door = content.querySelector('[data-dice-record="door"]');
+    for (const [body, ids, recovery] of [
+        ['Rewritten. [dice:wall] New transition. [dice:door]', ['wall', 'door'], 'door'],
+        ['Reordered. [dice:door] Moved. [dice:wall]', ['door', 'wall'], 'wall'],
+        ['Removed door. [dice:wall]', ['wall'], 'wall'],
+        ['[dice:wall] User already continued.', ['wall'], null],
+        ['No references.', [], null],
+        ['Restored. [dice:wall]', ['wall'], 'wall'],
+    ]) {
+        message.mes = body; content.textContent = body;
+        display.refresh(); render();
+        assert.deepEqual([...content.querySelectorAll('[data-dice-record]')].map(node => node.dataset.diceRecord), ids);
+        assert.deepEqual([...content.querySelectorAll('button')].map(node => node.closest('[data-dice-record]').dataset.diceRecord), recovery ? [recovery] : []);
+        if (ids.length === 2) {
+            assert.equal(content.querySelector('[data-dice-record="wall"]'), wall);
+            assert.equal(content.querySelector('[data-dice-record="door"]'), door);
+        }
+    }
+    content.querySelector('button').click(); await Promise.resolve();
+    assert.deepEqual(retries, [0]);
+    const candidate = { body: message.mes, records: parseDiceRecords(raw) };
+    const target = { message, swipe: 0, index: 0, source };
+    for (const kind of ['continuing', 'continue-error']) {
+        active = { target, phase: { kind, candidate, error: '' } };
+        display.refresh(); render();
+        const card = content.querySelector('[data-dice-record="wall"]');
+        assert.equal(card.querySelector('.xb-dice-status').hidden, false);
+        assert.equal(!!card.querySelector('button'), kind === 'continue-error');
+        assert.equal(content.querySelector('[data-dice-record="door"]'), null);
+    }
+    assert.deepEqual(message.extra.xiaobaiOsDice, raw);
+});
+
+test('a serialized current message renders the same static card on reload with new checks disabled', t => {
+    const candidate = prepareActionCheck({ body: 'Attempt.\n\n<xb_action_check>{"action":"Climb","stat":"Agility","difficulty":"hard"}</xb_action_check>',
+        generatedFrom: 0, id: 'reloaded', random: () => .3 });
+    const message = JSON.parse(JSON.stringify({ mes: candidate.body + '\nAfterward.', extra: { xiaobaiOsDice: candidate.records } }));
+    source.chat = [message];
+    const before = structuredClone(message);
+    t.mock.method(Math, 'random', () => assert.fail('display must never reroll'));
+    const { content, display, render } = setup(t, { view: () => null, cancel() {},
+        retry: async () => assert.fail('display must never start generation') }, () => false);
+    for (let repaint = 0; repaint < 2; repaint++) {
+        content.textContent = message.mes; display.refresh(); render();
+        const card = content.querySelector('[data-dice-record="reloaded"]');
+        assert.ok(card);
+        assert.equal(card.dataset.state, 'settled');
+        assert.equal(card.dataset.outcome, candidate.records.checks[0].outcome);
+        assert.deepEqual([...card.querySelectorAll('.xb-dice-score-value')].map(node => Number(node.textContent)),
+            [candidate.records.checks[0].roll, candidate.records.checks[0].dc]);
+        assert.equal(card.querySelector('button'), null);
+    }
+    assert.deepEqual(message, before);
 });

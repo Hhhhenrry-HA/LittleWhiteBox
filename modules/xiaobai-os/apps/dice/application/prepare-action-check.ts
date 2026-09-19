@@ -1,5 +1,5 @@
 import { rollActionCheck } from '../domain/action-check.js';
-import { createActionCheckRecord, hasValidCheckAnchor, MAX_ACTION_CHECKS, parseDiceRecords, type DiceMessageRecords } from '../domain/check-records.js';
+import { DICE_RECORDS_SCHEMA_VERSION, MAX_ACTION_CHECKS, parseDiceRecords, type DiceMessageRecords } from '../domain/check-records.js';
 import { parseActionCheck } from '../protocol/request.js';
 import { checkMarker } from '../domain/check-marker.js';
 
@@ -12,15 +12,13 @@ export function prepareActionCheck(input: {
 }): PreparedActionCheck {
     const parsed = parseActionCheck(input.body, input.generatedFrom);
     if (parsed.kind !== 'request') { return parsed; }
-    const records = input.records === undefined ? { schemaVersion: 1 as const, checks: [] } : parseDiceRecords(input.records);
+    const records: DiceMessageRecords = input.records === undefined
+        ? { schemaVersion: DICE_RECORDS_SCHEMA_VERSION, checks: [] } : parseDiceRecords(input.records);
     if (records.checks.length >= MAX_ACTION_CHECKS) { return { kind: 'invalid', error: 'dice_check_limit' }; }
-    if (records.checks.some(record => !hasValidCheckAnchor(parsed.body, record))) {
-        return { kind: 'invalid', error: 'dice_body_changed' };
-    }
     const marker = checkMarker(input.id);
     if (records.checks.some(record => record.id === input.id)) { throw new TypeError('dice_record_id_invalid'); }
     const result = rollActionCheck(parsed.request.difficulty, input.random);
-    const record = createActionCheckRecord(parsed.body, input.id, parsed.request, result);
+    const record = { id: input.id, request: parsed.request, ...result };
     return { kind: 'candidate', body: parsed.body + marker + input.body.slice(parsed.end),
-        records: { schemaVersion: 1, checks: [...records.checks, record] } };
+        records: { ...records, checks: [...records.checks, record] } };
 }

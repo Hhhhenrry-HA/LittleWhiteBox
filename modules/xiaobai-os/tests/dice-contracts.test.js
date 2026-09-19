@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 import { resolveActionCheck, rollActionCheck } from '../apps/dice/domain/action-check.ts';
-import { parseDiceRecords, hasValidCheckAnchor } from '../apps/dice/domain/check-records.ts';
+import { parseDiceRecords, referencedActionChecks, isCheckContinuationPoint } from '../apps/dice/domain/check-records.ts';
 import { prepareActionCheck } from '../apps/dice/application/prepare-action-check.ts';
 import { parseActionCheck, ACTION_CHECK_EXAMPLE, ACTION_CHECK_FIELDS } from '../apps/dice/protocol/request.ts';
 import { ACTION_CHECK_OPEN, ACTION_CHECK_DISPLAY_PATTERN } from '../apps/dice/protocol/markup.ts';
@@ -103,7 +104,7 @@ test('display filtering begins at the complete opening tag, preserving all short
     }
 });
 
-test('invalid requests and the persisted eight-check limit consume no randomness; valid appended checks retain anchors', () => {
+test('invalid requests and the persisted eight-check limit consume no randomness, even after deleting markers', () => {
     let calls = 0;
     const random = () => { calls++; return 0.3; };
     assert.equal(prepareActionCheck({ body: block({ ...request, dc: 1 }), generatedFrom: 0, id: 'invalid', random }).kind, 'invalid');
@@ -120,34 +121,87 @@ test('invalid requests and the persisted eight-check limit consume no randomness
     const drawsBeforeLimit = calls;
     assert.ok(drawsBeforeLimit > 0);
     assert.equal(records.checks.length, 8);
-    assert.ok(records.checks.every(record => record.roll === 7 && record.dc === 12 && hasValidCheckAnchor(body, record)));
+    assert.ok(records.checks.every(record => record.roll === 7 && record.dc === 12));
+    assert.deepEqual(referencedActionChecks(body, records.checks), records.checks);
     const denied = prepareActionCheck({ body: body + '\n\n' + block(), generatedFrom: body.length, records, id: 'ninth', random });
     assert.deepEqual(denied, { kind: 'invalid', error: 'dice_check_limit' });
     assert.equal(calls, drawsBeforeLimit);
-    assert.equal(hasValidCheckAnchor('changed' + body, records.checks[0]), false);
-    assert.equal(hasValidCheckAnchor(body + '\n后文', records.checks[0]), true);
+    assert.deepEqual(prepareActionCheck({ body: block(), generatedFrom: 0, records, id: 'ninth', random }), denied);
+    assert.equal(calls, drawsBeforeLimit, 'deleting every marker does not reset used checks');
     assert.deepEqual(projectActionCheckResults(records.checks), records.checks.map(record => ({ ...request, roll: record.roll, dc: record.dc, outcome: record.outcome })));
 });
 
-test('unsupported message records are rejected without a legacy fallback', () => {
+test('unsupported message record versions are rejected', () => {
     assert.throws(() => parseDiceRecords({ schemaVersion: 99, checks: [] }));
 });
 
-test('malformed saved records and edited prefixes cannot produce another die roll', () => {
+test('malformed saved records cannot produce another die roll', () => {
     const saved = prepareActionCheck({ body: '🪜踏上墙壁。\n\n' + block(), generatedFrom: 0, id: 'saved', random: () => 0.3 });
     assert.equal(saved.body, '🪜踏上墙壁。\n\n[dice:saved]');
     for (const records of [
         { ...saved.records, extra: true },
         { ...saved.records, checks: [...saved.records.checks, ...saved.records.checks] },
         { ...saved.records, checks: [{ ...saved.records.checks[0], roll: 0 }] },
-        { ...saved.records, checks: [{ ...saved.records.checks[0], prefixDigest: 'bad' }] },
+        { ...saved.records, checks: [{ ...saved.records.checks[0], unexpected: true }] },
     ]) {
         assert.throws(() => prepareActionCheck({ body: saved.body + '\n\n' + block(), generatedFrom: saved.body.length,
             records, id: 'next', random: () => assert.fail('invalid history must not roll') }));
     }
-    assert.deepEqual(prepareActionCheck({ body: '改写前文。\n\n' + block(), generatedFrom: 0,
-        records: saved.records, id: 'next', random: () => assert.fail('edited history must not roll') }),
-    { kind: 'invalid', error: 'dice_body_changed' });
+});
+
+// Created with the unchanged upstream a32c28d0 prepare/stage functions before the v2 change.
+const upstreamMessage = JSON.parse(readFileSync(new URL('./fixtures/dice-message-a32c28d0.json', import.meta.url), 'utf8'));
+test('upstream records convert at parsing without changing outcomes, IDs, source messages or current records', () => {
+    const before = structuredClone(upstreamMessage);
+    const parsed = parseDiceRecords(upstreamMessage.extra.xiaobaiOsDice);
+    const expected = { schemaVersion: 2, checks: upstreamMessage.extra.xiaobaiOsDice.checks.map(({ id, request, roll, dc, outcome }) =>
+        ({ id, request, roll, dc, outcome })) };
+    assert.deepEqual(parsed, expected);
+    assert.deepEqual(parseDiceRecords(parsed), expected);
+    assert.deepEqual(upstreamMessage, before);
+    const historical = structuredClone(upstreamMessage.extra.xiaobaiOsDice);
+    historical.checks[0].dc = 99;
+    historical.checks[0].outcome = 'success';
+    assert.equal(parseDiceRecords(historical).checks[0].outcome, 'success', 'stored verdicts are not recalculated');
+    for (const change of [value => { value.checks[0].prefixDigest = 'bad'; },
+        value => { value.checks[0].request.difficulty = ['hard']; },
+        value => { value.checks[1].offset = 0; }, value => { value.checks[0].request.extra = true; }]) {
+        const invalid = structuredClone(upstreamMessage.extra.xiaobaiOsDice);
+        change(invalid);
+        assert.throws(() => parseDiceRecords(invalid));
+    }
+});
+
+test('markers select saved results in text order independently of prose edits, without duplicating or inventing results', () => {
+    const records = parseDiceRecords(upstreamMessage.extra.xiaobaiOsDice);
+    const before = structuredClone(records);
+    const [wall, door] = records.checks;
+    for (const [body, expected] of [
+        ['Reworded. [dice:wall] More edits. [dice:door]', [wall, door]],
+        ['Moved: [dice:door] before [dice:wall]', [door, wall]],
+        ['Only this one remains. [dice:wall]', [wall]],
+        ['[dice:unknown] [dice:door] [dice:door]', [door]],
+        ['Everything removed.', []],
+    ]) assert.deepEqual(referencedActionChecks(body, records.checks), expected);
+    assert.equal(isCheckContinuationPoint('Reworded. [dice:door] Then [dice:wall]\n', wall), true);
+    for (const body of ['[dice:wall] After.', 'No marker.', '[dice:wall][dice:wall]']) {
+        assert.equal(isCheckContinuationPoint(body, wall), false);
+    }
+    assert.deepEqual(records, before);
+});
+
+test('new attempts after editing or deleting references preserve all prior results and draw only for the new check', () => {
+    const history = upstreamMessage.extra.xiaobaiOsDice;
+    const before = structuredClone(history);
+    for (const prefix of ['Edited. [dice:wall] [dice:door]', 'Moved. [dice:door] [dice:wall]', 'No markers remain.']) {
+        let draws = 0;
+        const next = prepareActionCheck({ body: prefix + '\n\n' + block(), generatedFrom: prefix.length, records: history,
+            id: 'next', random: () => { draws++; return 0.3; } });
+        assert.equal(next.kind, 'candidate');
+        assert.equal(draws, 2);
+        assert.deepEqual(next.records.checks.slice(0, 2), parseDiceRecords(history).checks);
+        assert.deepEqual(history, before);
+    }
 });
 
 test('result data round-trips macro-like action text without emitting executable host macros', () => {
@@ -175,6 +229,6 @@ test('executing a check replaces only its request, preserving surrounding prose 
     const saved = prepareActionCheck({ body: raw, generatedFrom: 0, id: 'fixed', random: () => .3 });
     assert.equal(saved.kind, 'candidate');
     assert.equal(saved.body, before + '[dice:fixed]' + after);
-    assert.ok(hasValidCheckAnchor(saved.body, saved.records.checks[0]));
-    assert.equal(hasValidCheckAnchor(before + after, saved.records.checks[0]), false);
+    assert.deepEqual(referencedActionChecks(saved.body, saved.records.checks), saved.records.checks);
+    assert.deepEqual(referencedActionChecks(before + after, saved.records.checks), []);
 });

@@ -76,27 +76,29 @@ test('Dice switches accept confirmed settings, keep newer preference pushes and 
     await Promise.resolve(); await nextTick();
     assert.equal(encounterButton.getAttribute('aria-checked'), 'true');
     assert.equal(button.getAttribute('aria-checked'), 'true', 'enabling encounters leaves action checks unchanged');
-    assert.deepEqual(choices().map(choice => choice.textContent), ['轻量', '标准', '活跃']);
-    assert.deepEqual(choices().map(choice => choice.getAttribute('aria-pressed')), ['false', 'true', 'false']);
-    choices()[2].click();
+    assert.equal(choices().length, 2);
+    assert.deepEqual(choices().map(choice => choice.getAttribute('aria-pressed')), ['true', 'false']);
+    choices()[1].click();
     await Promise.resolve(); await nextTick();
-    assert.deepEqual(choices().map(choice => choice.getAttribute('aria-pressed')), ['false', 'false', 'true']);
-    assert.equal(dom.document.getElementById('dice-frequency-description').textContent, '模型将更活跃地使用骰子参与剧情。');
+    assert.deepEqual(choices().map(choice => choice.getAttribute('aria-pressed')), ['false', 'true']);
+    assert.equal(state.actionCheckFrequency, 'active');
     for (const expected of ['false', 'true']) {
         button.click();
         await Promise.resolve(); await nextTick();
         assert.equal(button.getAttribute('aria-checked'), expected);
     }
-    assert.equal(choices()[2].getAttribute('aria-pressed'), 'true', 'turning checks off and on retains the selected frequency');
+    assert.equal(choices()[1].getAttribute('aria-pressed'), 'true', 'turning checks off and on retains the selected frequency');
     failFrequency = true;
     choices()[0].click();
     await Promise.resolve(); await nextTick();
-    assert.equal(choices()[2].getAttribute('aria-pressed'), 'true', 'failed saves keep the confirmed selection');
-    assert.equal(dom.document.querySelector('.dice-recovery').textContent.trim(), '操作未完成，请稍后重试。');
+    assert.equal(choices()[1].getAttribute('aria-pressed'), 'true', 'failed saves keep the confirmed selection');
+    assert.ok(dom.document.querySelector('.dice-recovery[aria-live="polite"]'));
     failFrequency = false;
     choices()[0].click();
     await Promise.resolve(); await nextTick();
     assert.equal(choices()[0].getAttribute('aria-pressed'), 'true', 'a failed choice can be retried');
+    assert.equal(state.actionCheckFrequency, 'standard');
+    assert.equal(dom.document.querySelector('.dice-recovery'), null);
     assert.equal(encounterButton.getAttribute('aria-checked'), 'true', 'frequency changes do not affect encounters');
     app.unmount();
     assert.equal(listeners.size, 0);
