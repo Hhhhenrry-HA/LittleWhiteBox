@@ -58,7 +58,7 @@ export function createWorldMaintenanceSession(world: WorldService, mode: Mainten
                         ? 'An earlier failed edit still needs a valid correction before this publication can be saved.'
                         : scope === 'overview'
                             ? 'An earlier failed batch included overview. Resubmit the desired or unchanged overview in WorldEdit.'
-                            : `An earlier failed batch included article ID ${scope.slice(5)}. Resolve it in WorldEdit with a complete upsert (unchanged values keep the article) or remove (deletes it if present).`,
+                            : `An earlier failed batch included article ID ${scope.slice(5)}. Resolve it in WorldEdit with a complete upsert within the writing limits or remove (deletes it if present).`,
                 }));
             } else { for (const scope of scopes) { failures.add(scope); } }
             return result;

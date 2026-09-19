@@ -112,7 +112,7 @@ var be = { class: "world-toolbar" }, ye = { class: "world-tools" }, me = ["disab
   key: 0,
   class: "world-news-list",
   "aria-label": "各处见闻"
-}, Ie = ["data-article-id", "onClick"], Ne = { class: "world-item-text" }, qe = { class: "world-item-summary" }, Be = {
+}, Ie = ["data-article-id", "onClick"], Ne = { class: "world-item-text" }, qe = { class: "world-item-preview" }, Be = {
   key: 1,
   class: "world-empty"
 }, Ae = ["disabled"], Me = /* @__PURE__ */ O({
@@ -238,7 +238,7 @@ var be = { class: "world-toolbar" }, ye = { class: "world-tools" }, me = ["disab
         type: "button",
         "data-article-id": o.id,
         onClick: (Te) => B(o)
-      }, [a("span", Ne, [a("h2", null, k(o.title), 1), a("span", qe, k(o.summary), 1)])], 8, Ie)]))), 128))])) : (r(), s("section", Be, [
+      }, [a("span", Ne, [a("h2", null, k(o.title), 1), a("span", qe, k(o.body), 1)])], 8, Ie)]))), 128))])) : (r(), s("section", Be, [
         a("h2", null, k(t(n) ? "正在更新新闻" : t(e).settings.subscribed ? "已开启自动新闻" : "暂无新闻"), 1),
         a("button", {
           type: "button",

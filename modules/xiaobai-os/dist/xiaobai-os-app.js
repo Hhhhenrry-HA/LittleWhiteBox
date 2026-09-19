@@ -145,7 +145,7 @@ var Ve = Object.freeze({
   map: () => import("./xiaobai-os-MapApp-Dx-s1Y79.js"),
   messages: () => import("./xiaobai-os-MessagesApp-rNnWs23d.js"),
   tasks: () => import("./xiaobai-os-TasksApp-DBMo6l5_.js"),
-  world: () => import("./xiaobai-os-WorldApp-CJNOGVi8.js"),
+  world: () => import("./xiaobai-os-WorldApp-VKrkGMwP.js"),
   learning: () => import("./xiaobai-os-LearningApp-5PylT_kw.js")
 }), he = Object.freeze(Fe.map((t) => {
   const i = Ve[t.id];
