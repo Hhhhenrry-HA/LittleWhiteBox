@@ -125,7 +125,6 @@ import {
 import {
     buildIncrementalChunks,
     getChunkBuildStatus,
-    chunkMessage,
     syncOnMessageDeleted,
     syncOnMessageSwiped,
 } from "./vector/pipeline/chunk-builder.js";
@@ -152,6 +151,9 @@ import {
 } from "./vector/storage/state-store.js";
 
 // vector io
+import { chunkMessage } from './vector/pipeline/chunk-text.js';
+import { buildRAggregateText } from './vector/pipeline/state-vector-input.js';
+import { inputDigest } from './vector/utils/vector-input-digest.js';
 import { exportVectors, importVectors, backupToServer, restoreFromServer, fetchManifest, deleteServerBackup, isDeleteUnsupportedError, getBackupFilename } from "./vector/storage/vector-io.js";
 import {
     clearRecallRuntime,
@@ -528,19 +530,6 @@ let backupManagerCleanup = null;
 
 const EXT_PROMPT_KEY = "LittleWhiteBox_StorySummary";
 const MIN_INJECTION_DEPTH = 2;
-const R_AGG_MAX_CHARS = 256;
-
-function buildRAggregateText(atom) {
-    const uniq = new Set();
-    for (const edge of (atom?.edges || [])) {
-        const r = String(edge?.r || "").trim();
-        if (!r) continue;
-        uniq.add(r);
-    }
-    const joined = [...uniq].join(" ; ");
-    if (!joined) return String(atom?.semantic || "").trim();
-    return joined.length > R_AGG_MAX_CHARS ? joined.slice(0, R_AGG_MAX_CHARS) : joined;
-}
 
 function formatSafeFailure(code, httpStatus = null) {
     const safeCode = String(code || 'unknown').replace(/[^a-z0-9_:-]/gi, '').slice(0, 80) || 'unknown';
@@ -976,6 +965,8 @@ async function generateVectorsNow(vectorCfg, targetChatId, writeSession) {
                     floor: a.floor,
                     vector: semVectors[j],
                     rVector: rVectors[j] || semVectors[j],
+                    sourceHash: inputDigest('state', semTexts[j]),
+                    relationHash: inputDigest('relation', rTexts[j]),
                 }));
                 if (isCancelled()) return;
                 await saveStateVectors(chatId, items, fingerprint);
@@ -1022,6 +1013,7 @@ async function generateVectorsNow(vectorCfg, targetChatId, writeSession) {
                 const items = batch.map((c, j) => ({
                     chunkId: c.chunkId,
                     vector: vectors[j],
+                    sourceHash: inputDigest('chunk', texts[j]),
                 }));
                 if (isCancelled()) return;
                 await saveChunkVectors(chatId, items, fingerprint);
@@ -1034,7 +1026,7 @@ async function generateVectorsNow(vectorCfg, targetChatId, writeSession) {
         if (isCancelled() || !isTargetActive()) return;
 
         const l2Pairs = sourceEvents
-            .map((e) => ({ id: e.id, text: `${e.title || ""} ${e.summary || ""}`.trim() }))
+            .map((e) => ({ id: e.id, text: buildEventVectorText(e) }))
             .filter((p) => p.text);
 
         if (!l2Pairs.length) {
@@ -1056,6 +1048,7 @@ async function generateVectorsNow(vectorCfg, targetChatId, writeSession) {
                 const items = batch.map((p, idx) => ({
                     eventId: p.id,
                     vector: vectors[idx],
+                    sourceHash: inputDigest('event', texts[idx]),
                 }));
                 if (isCancelled()) return;
                 await saveEventVectorsToDb(chatId, items, fingerprint);
@@ -1574,6 +1567,7 @@ async function autoVectorizeMissingEventsNow(store, execution, writeSession) {
             const items = batch.map((p, idx) => ({
                 eventId: p.id,
                 vector: vectors[idx],
+                sourceHash: inputDigest('event', texts[idx]),
             }));
 
             if (!isVectorWriteSessionCurrent(writeSession)) return;
@@ -1641,7 +1635,7 @@ async function repairMissingEventVectorsNow(targetChatId, writeSession, onProgre
             const items = batch
                 .map((pair, index) => ({ pair, vector: vectors[index] }))
                 .filter(item => currentEvents.get(item.pair.id) === item.pair.text)
-                .map(item => ({ eventId: item.pair.id, vector: item.vector }));
+                .map(item => ({ eventId: item.pair.id, vector: item.vector, sourceHash: inputDigest('event', item.pair.text) }));
             if (items.length > 0) {
                 if (!isVectorWriteSessionCurrent(writeSession)) {
                     return { success: false, repaired, code: 'vector_config_changed' };
@@ -1776,7 +1770,7 @@ async function syncEventVectorsOnEditWrite(changedIds, syncToken, targetChatId, 
                     const items = batch
                         .map((pair, index) => ({ pair, vector: vectors[index] }))
                         .filter(item => currentEventTexts.get(item.pair.id) === item.pair.text)
-                        .map(item => ({ eventId: item.pair.id, vector: item.vector }));
+                        .map(item => ({ eventId: item.pair.id, vector: item.vector, sourceHash: inputDigest('event', item.pair.text) }));
                     if (items.length > 0) {
                         if (!isVectorWriteSessionCurrent(writeSession)) return;
                         await saveEventVectorsToDb(chatId, items, fingerprint);
@@ -3176,6 +3170,7 @@ async function handleFrameMessage(event) {
                         size: result.size,
                         chunkCount: result.chunkCount,
                         eventCount: result.eventCount,
+                        stateVectorCount: result.stateVectorCount,
                     });
                 } catch (e) {
                     postToFrame({ type: "VECTOR_EXPORT_RESULT", success: false, error: e.message });
@@ -3282,8 +3277,8 @@ async function handleFrameMessage(event) {
                             success: true,
                             chunkCount: result.chunkCount,
                             eventCount: result.eventCount,
+                            stateVectorCount: result.stateVectorCount,
                             warnings: result.warnings,
-                            fingerprintMismatch: result.fingerprintMismatch,
                         });
                         await sendVectorStatsToFrame();
                     } catch (e) {
@@ -3306,6 +3301,7 @@ async function handleFrameMessage(event) {
                         size: result.size,
                         chunkCount: result.chunkCount,
                         eventCount: result.eventCount,
+                        stateVectorCount: result.stateVectorCount,
                     });
                 } catch (e) {
                     postToFrame({ type: "VECTOR_BACKUP_RESULT", success: false, error: e.message });
@@ -3345,8 +3341,8 @@ async function handleFrameMessage(event) {
                         success: true,
                         chunkCount: result.chunkCount,
                         eventCount: result.eventCount,
+                        stateVectorCount: result.stateVectorCount,
                         warnings: result.warnings,
-                        fingerprintMismatch: result.fingerprintMismatch,
                     });
                     await sendVectorStatsToFrame();
                 } catch (e) {
