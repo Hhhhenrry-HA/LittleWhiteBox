@@ -7,6 +7,7 @@ import { registerGenerateInterceptor, unregisterGenerateInterceptor, GENERATE_IN
 import { setSillyTavernPrompt } from '../../../host/sillytavern-runtime-adapters.js';
 import { buildActionCheckPrompt } from '../protocol/prompt.js';
 import type { ActionCheckFrequency, ActionCheckRule } from '../types.js';
+import { readCoc7Sheet, type Coc7Sheet } from '../domain/coc7-sheet.js';
 import { parseDiceRecords } from '../domain/check-records.js';
 import { createActionCheckSession } from '../application/action-check-session.js';
 import { applyDiceCandidate, captureDiceTarget, clearNewDiceSwipe, isDiceTargetCurrent, readDiceRecords, type DiceCandidate, type DiceTarget } from './message-records.js';
@@ -22,10 +23,12 @@ interface Observation {
     previousStream: ReturnType<typeof diceHostContext>['streamingProcessor'];
     error?: string;
     rule: ActionCheckRule;
+    coc7Sheet: Coc7Sheet | null;
 }
 
 export function createDiceGenerationAdapter(enabled: () => boolean, frequency: () => ActionCheckFrequency, changed: () => void,
-    reveal: (target: DiceTarget, candidate: DiceCandidate, signal: AbortSignal) => Promise<void>, rule: () => ActionCheckRule) {
+    reveal: (target: DiceTarget, candidate: DiceCandidate, signal: AbortSignal) => Promise<void>, rule: () => ActionCheckRule,
+    sheet: () => unknown = () => null) {
     let observation: Observation | null = null;
     let intention: { target: DiceTarget; candidate: DiceCandidate; signal: AbortSignal;
         settled: Promise<void>; received: boolean; error?: string } | null = null;
@@ -34,8 +37,8 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
     let replacement: AbortController | null = null;
     let unsubscribe: (() => void) | null = null;
     const clearPrompt = () => setSillyTavernPrompt(KEY, '');
-    const currentTarget = (target: DiceTarget) => target.rule === rule()
-        && isDiceTargetCurrent(captureDiceChat(), target) && !isDiceMessageBeingEdited(target.index);
+    const currentTarget = (target: DiceTarget) => isDiceTargetCurrent(captureDiceChat(), target) && !isDiceMessageBeingEdited(target.index);
+    const captureSheet = () => { const value = readCoc7Sheet(sheet()); return value.kind === 'ready' ? value.sheet : null; };
     const session = createActionCheckSession({
         enabled, current: currentTarget,
         same: (left, right) => left.message === right.message && left.swipe === right.swipe,
@@ -98,7 +101,7 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
                 const stream = diceHostContext().streamingProcessor;
                 // Generate resolves even when its stream fails. Partial output is not a completed reply.
                 if (stream && stream !== previousStream && stream.isStopped) { return null; }
-                return captureDiceTarget(source, target.index, candidate.body.length, target.rule);
+                return captureDiceTarget(source, target.index, candidate.body.length, target.rule, target.coc7Sheet);
             } finally {
                 signal.removeEventListener('abort', cancel);
                 if (intention === own) { intention = null; clearPrompt(); }
@@ -212,7 +215,7 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
             if (type === 'swipe' && last) { clearNewDiceSwipe(last); }
             if (!enabled() || !MAIN_TYPES.includes(type) || intention) { return; }
             observation = { source, type, from: type === 'continue' ? last?.mes.length ?? 0 : 0,
-                rule: rule(),
+                rule: rule(), coc7Sheet: captureSheet(),
                 initialBody: type === 'continue' ? last?.mes ?? '' : '', signal: options.signal, stage: 'preparing',
                 previousStream: diceHostContext().streamingProcessor };
             changed();
@@ -226,7 +229,7 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
             const observed = observation;
             const current = () => own ? intention === own && !own.signal.aborted
                 && currentTarget(own.target)
-                : !observed || observation === observed && observed.rule === rule() && !observed.signal?.aborted
+                : !observed || observation === observed && !observed.signal?.aborted
                     && captureDiceChat()?.chat === observed.source.chat && captureDiceChat()?.key === observed.source.key;
             if (!current()) { clearPrompt(); abort(true); return; }
             if (!enabled() || !MAIN_TYPES.includes(String(type || ''))) { clearPrompt(); return; }
@@ -239,7 +242,9 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
                 const saved = type === 'continue' && last ? readDiceRecords(last) : undefined;
                 const records = own?.candidate.records.checks ?? (saved === undefined ? [] : parseDiceRecords(saved).checks);
                 if (!enabled()) { clearPrompt(); return; }
-                setSillyTavernPrompt(KEY, buildActionCheckPrompt(last?.mes ?? '', records, frequency(), own?.target.rule ?? observed?.rule ?? rule()));
+                const activeRule = own?.target.rule ?? observed?.rule ?? rule();
+                const activeSheet = own ? own.target.coc7Sheet : observed ? observed.coc7Sheet : captureSheet();
+                setSillyTavernPrompt(KEY, buildActionCheckPrompt(last?.mes ?? '', records, frequency(), activeRule, !!activeSheet));
             } catch (error) {
                 clearPrompt();
                 console.error('[LittleWhiteBox] Dice check preparation failed', error);
@@ -268,8 +273,8 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
             // processor, not a stale failure left behind before a subsequent non-streaming reply.
             if (stream && stream !== observed.previousStream && stream.isStopped) { return; }
             const source = captureDiceChat();
-            if (!source || source.key !== observed.source.key || source.chat !== observed.source.chat || observed.signal?.aborted || observed.rule !== rule()) { return; }
-            const target = captureDiceTarget(source, index, observed.from, observed.rule);
+            if (!source || source.key !== observed.source.key || source.chat !== observed.source.chat || observed.signal?.aborted) { return; }
+            const target = captureDiceTarget(source, index, observed.from, observed.rule, observed.coc7Sheet);
             if (!target || !target.body.startsWith(observed.initialBody)) { return; }
             session.accept(target, observed.error);
             if (!source.groupId) { void session.drain().catch(error => console.error('[LittleWhiteBox] Dice check failed', error)); }
@@ -312,7 +317,10 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
         async retry(index: number) {
             if (isGenerating()) { throw new Error('请等待酒馆生成结束。'); }
             const source = captureDiceChat();
-            const target = source && captureDiceTarget(source, index, 0, rule());
+            const pending = session.view();
+            const retained = pending?.phase.kind === 'continue-error' && pending.target.index === index && currentTarget(pending.target)
+                ? pending.target : null;
+            const target = retained ?? (source && captureDiceTarget(source, index, 0, rule(), captureSheet()));
             if (!target) { throw new Error('回复已不存在。'); }
             await session.retry(target);
         },

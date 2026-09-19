@@ -3,7 +3,7 @@ import { MAX_ACTION_CHECKS, referencedActionChecks, type ActionCheckRecord } fro
 import { ACTION_CHECK_EXAMPLE, ACTION_CHECK_FIELDS } from './request.js';
 import { ACTION_CHECK_CLOSE, ACTION_CHECK_OPEN } from './markup.js';
 import type { ActionCheckFrequency, ActionCheckRule } from '../types.js';
-import { COC7_DOMAIN, coc7RequestContract } from './coc7-contract.js';
+import { COC7_DOMAIN, COC7_RESULT_GUIDANCE, coc7RequestContract } from './coc7-contract.js';
 
 const FREQUENCY_PROMPTS: Record<ActionCheckFrequency, string> = {
     standard: 'Check frequency: Standard.\n'
@@ -33,15 +33,18 @@ export function serializeActionCheckResults(records: readonly ActionCheckRecord[
         token => token.replaceAll('{{', '\\u007b\\u007b').replaceAll('}}', '\\u007d\\u007d'));
 }
 
-export function buildActionCheckPrompt(body: string, records: readonly ActionCheckRecord[] = [], frequency: ActionCheckFrequency = 'standard', rule: ActionCheckRule = 'd20'): string {
+export function buildActionCheckPrompt(body: string, records: readonly ActionCheckRecord[] = [], frequency: ActionCheckFrequency = 'standard', rule: ActionCheckRule = 'd20', coc7Ready = false): string {
+    const newChecks = rule !== 'coc7' || coc7Ready;
+    const referenced = referencedActionChecks(body, records);
+    if (!newChecks && !referenced.length) { return ''; }
     const domain = '# Action checks\n'
         + 'The app handles each check outside the story and displays its numbers and verdict in a check card. Characters do not perceive this resolution process.\n'
         + 'Narrate attempts and consequences through events within the scene. The app’s die rolls, DCs, outcome labels and instructions belong to the check interface, not to story prose or character dialogue. Dice that characters actually use within the story remain part of the scene.\n'
         + 'A check resolves only an undecided outcome; established facts remain true whichever result is rolled.\n'
-        + (rule === 'coc7' ? COC7_DOMAIN : FREQUENCY_PROMPTS[frequency] + '\n'
+        + (rule === 'coc7' ? (newChecks ? COC7_DOMAIN : '') + COC7_RESULT_GUIDANCE : FREQUENCY_PROMPTS[frequency] + '\n'
         + 'Choose difficulty based on the acting character’s established abilities, the approach taken, and the current environment: easy is a modest challenge relative to the desired outcome, ordinary is a typical uncertain challenge, hard is demanding, very_hard is exceptional, and nearly_impossible is beyond normal capability. The stat field names the relevant ability and adds no numeric modifier.\n'
         + 'The app randomly picks a target DC from the chosen range and rolls a D20 without modifiers: 1 is critical failure, 20 is critical success; other rolls succeed at or above the target DC.\n');
-    const contract = records.length >= MAX_ACTION_CHECKS
+    const contract = !newChecks ? 'New checks are unavailable for this reply. Continue the scene using its confirmed results.\n' : records.length >= MAX_ACTION_CHECKS
         ? 'This reply has used all its action checks. Continue the scene using the confirmed results.\n'
         : '## Requesting a check\n'
         + `After describing the attempt, put ${ACTION_CHECK_OPEN} on a separate line after a blank line, followed by one JSON object and ${ACTION_CHECK_CLOSE}. End this response there, before revealing the outcome.\n`
@@ -51,7 +54,6 @@ export function buildActionCheckPrompt(body: string, records: readonly ActionChe
         + '\ndifficulty (required, target DC range): '
         + Object.entries(ACTION_CHECK_DC_RANGES).map(([name, { min, max }]) => `${name} = ${min === max ? min : `${min}–${max}`}`).join(', ') + '.\n'
         + `Example:\n${ACTION_CHECK_EXAMPLE}\n`);
-    const referenced = referencedActionChecks(body, records);
     const results = referenced.length ? '## Confirmed results for this reply\n'
         + 'These confirmed results follow the order of their checks in the existing prose; treat each as an established fact and carry critical success or failure into an appropriate extra benefit or complication.\n'
         + 'Continue the same reply from the end of its existing prose, beginning with the next in-scene sentence. Output only the continuation, without thinking, reasoning, chain-of-thought, or introductory commentary.\n'

@@ -1,7 +1,7 @@
 /* eslint-disable */
-import { C as K, E as Q, J as Y, K as k, M as E, V as L, Y as _, c as C, gt as s, h as y, j as D, k as n, l as h, m as p, mt as W, o as w, p as x, r as S, s as e, u as r } from "./xiaobai-os-runtime-core.esm-bundler-x_Eikhco.js";
-import { t as P } from "./xiaobai-os-AppDialog-BtiJ8z-w.js";
-var X = {
+import { E as J, F as E, J as K, K as k, M as n, P as D, Q as s, V as L, X as W, Y as _, b as y, f as w, g as r, h, k as P, m as C, p as e, u as S, v as x, y as p } from "./xiaobai-os-runtime-dom.esm-bundler-BcM9c-Z9.js";
+import { t as X } from "./xiaobai-os-AppDialog-CI-E933W.js";
+var Y = {
   class: "wallet-icon",
   viewBox: "0 0 24 24",
   fill: "none",
@@ -30,7 +30,7 @@ var X = {
       next: "m9 5 7 7-7 7",
       close: "m6 6 12 12M6 18 18 6"
     };
-    return (a, l) => (n(), r("svg", X, [e("path", { d: i[t.name] || i.receipt }, null, 8, ee)]));
+    return (a, l) => (n(), r("svg", Y, [e("path", { d: i[t.name] || i.receipt }, null, 8, ee)]));
   }
 }), b = te, ae = { class: "wallet-ui-header" }, le = { class: "wallet-brand" }, ne = ["disabled"], se = /* @__PURE__ */ y({
   __name: "WalletAppHeader",
@@ -128,15 +128,15 @@ var X = {
     ]));
   }
 }), ke = $e;
-function Z(t) {
+function F(t) {
   return `${t.direction === "income" ? "+" : t.direction === "expense" ? "−" : ""}${t.amount.toLocaleString("zh-CN")}`;
 }
-var z = {
+var Z = {
   income: "收入",
   expense: "支出",
   transfer: "系统划转"
 };
-function F(t) {
+function z(t) {
   return {
     economy: "gift",
     bank: "bank",
@@ -163,9 +163,9 @@ var Me = {
       class: W(["wallet-row", `is-${t.transaction.direction}`]),
       onClick: l[0] || (l[0] = (c) => a.$emit("open", t.transaction))
     }, [
-      e("span", Me, [p(b, { name: _(F)(t.transaction) }, null, 8, ["name"])]),
+      e("span", Me, [p(b, { name: _(z)(t.transaction) }, null, 8, ["name"])]),
       e("span", Ce, [e("strong", null, s(t.transaction.title), 1), e("small", null, s(t.transaction.source) + " · " + s(_(i).format(t.transaction.createdAt)), 1)]),
-      e("span", We, [e("strong", null, s(_(Z)(t.transaction)), 1), e("small", null, s(_(z)[t.transaction.direction]), 1)])
+      e("span", We, [e("strong", null, s(_(F)(t.transaction)), 1), e("small", null, s(_(Z)[t.transaction.direction]), 1)])
     ], 2)]));
   }
 }), Se = Te, xe = {
@@ -267,10 +267,10 @@ var Me = {
       ], 64))
     ]));
   }
-}), qe = He, Ze = { class: "wallet-row-mark" }, ze = {
+}), qe = He, Fe = { class: "wallet-row-mark" }, Ze = {
   key: 0,
   class: "wallet-receipt-note"
-}, Fe = {
+}, ze = {
   key: 0,
   class: "wallet-ledger-caption"
 }, Re = /* @__PURE__ */ y({
@@ -283,7 +283,7 @@ var Me = {
       timeStyle: "short",
       hour12: !1
     });
-    return (a, l) => (n(), C(P, {
+    return (a, l) => (n(), C(X, {
       class: "wallet-receipt",
       "aria-label": "账单详情",
       onClose: l[1] || (l[1] = (c) => a.$emit("close"))
@@ -297,34 +297,34 @@ var Me = {
           onClick: l[0] || (l[0] = (c) => a.$emit("close"))
         }, [p(b, { name: "close" })])]),
         e("div", { class: W(["wallet-receipt-hero", `is-${t.transaction.direction}`]) }, [
-          e("span", Ze, [p(b, { name: _(F)(t.transaction) }, null, 8, ["name"])]),
+          e("span", Fe, [p(b, { name: _(z)(t.transaction) }, null, 8, ["name"])]),
           e("h2", null, s(t.transaction.title), 1),
-          e("strong", null, [x(s(_(Z)(t.transaction)), 1), l[3] || (l[3] = e("small", null, "小白币", -1))]),
-          e("span", null, s(_(z)[t.transaction.direction]), 1)
+          e("strong", null, [x(s(_(F)(t.transaction)), 1), l[3] || (l[3] = e("small", null, "小白币", -1))]),
+          e("span", null, s(_(Z)[t.transaction.direction]), 1)
         ], 2),
         e("dl", null, [
           e("div", null, [l[4] || (l[4] = e("dt", null, "来自", -1)), e("dd", null, s(t.transaction.source), 1)]),
           e("div", null, [l[5] || (l[5] = e("dt", null, "发生时间", -1)), e("dd", null, s(_(i).format(t.transaction.createdAt)), 1)]),
           e("div", null, [l[6] || (l[6] = e("dt", null, "账目序号", -1)), e("dd", null, "#" + s(t.transaction.sequence), 1)]),
-          t.transaction.note ? (n(), r("div", ze, [l[7] || (l[7] = e("dt", null, "备注", -1)), e("dd", null, s(t.transaction.note), 1)])) : h("", !0)
+          t.transaction.note ? (n(), r("div", Ze, [l[7] || (l[7] = e("dt", null, "备注", -1)), e("dd", null, s(t.transaction.note), 1)])) : h("", !0)
         ]),
-        t.transaction.direction === "transfer" ? (n(), r("p", Fe, "这笔资金在系统账户之间流转，不是你的收入或支出。")) : h("", !0),
+        t.transaction.direction === "transfer" ? (n(), r("p", ze, "这笔资金在系统账户之间流转，不是你的收入或支出。")) : h("", !0),
         l[8] || (l[8] = e("footer", null, "小白 OS · 当前聊天账本", -1))
       ]),
       _: 1
     }));
   }
-}), Oe = Re, Ue = { class: "wallet-ui-app wallet-app" }, je = { class: "wallet-ui-scroll" }, Ge = ["disabled"], Je = ["disabled"], Ke = {
+}), Oe = Re, Ue = { class: "wallet-ui-app wallet-app" }, Qe = { class: "wallet-ui-scroll" }, je = ["disabled"], Ge = ["disabled"], Je = {
   class: "wallet-ledger",
   "aria-labelledby": "wallet-ledger-title"
-}, Qe = { class: "wallet-ui-section-title" }, q = 35e3, Ye = /* @__PURE__ */ y({
+}, Ke = { class: "wallet-ui-section-title" }, q = 35e3, Pe = /* @__PURE__ */ y({
   __name: "WalletApp",
   props: {
     bridge: {},
     initialState: {}
   },
   setup(t) {
-    const i = t, a = k(structuredClone(Y(i.initialState))), l = k(!1), c = k(!1), f = k(""), g = k(""), v = k(null);
+    const i = t, a = k(structuredClone(K(i.initialState))), l = k(!1), c = k(!1), f = k(""), g = k(""), v = k(null);
     let m = () => {
     }, u = 0;
     const M = w(() => a.value.status === "unconfirmed"), T = w(() => l.value || a.value.status === "loading" || a.value.status === "saving"), I = w(() => T.value || M.value || a.value.status === "conflict"), R = w(() => !!(a.value.message || f.value)), O = w(() => f.value || a.value.status === "conflict" || a.value.status === "blocked" ? "danger" : M.value ? "warning" : "info"), U = w(() => a.value.status === "conflict" ? "账本有变化" : a.value.status === "blocked" ? "钱包暂时无法读取" : "保存情况");
@@ -351,7 +351,7 @@ var Me = {
         o === u && (l.value = !1);
       }
     }
-    async function j() {
+    async function Q() {
       if (T.value) return;
       const o = ++u;
       l.value = !0, f.value = "";
@@ -364,7 +364,7 @@ var Me = {
         o === u && (l.value = !1);
       }
     }
-    async function G() {
+    async function j() {
       const o = a.value.nextCursor;
       if (!o || c.value || T.value) return;
       const d = u;
@@ -375,19 +375,19 @@ var Me = {
           beforeSequence: o
         });
         if (d !== u) return;
-        const J = new Set(a.value.transactions.map((A) => A.id));
-        a.value.transactions.push(...$.result.transactions.filter((A) => !J.has(A.id))), a.value.nextCursor = $.result.nextCursor, a.value.hasMore = $.result.hasMore;
+        const G = new Set(a.value.transactions.map((A) => A.id));
+        a.value.transactions.push(...$.result.transactions.filter((A) => !G.has(A.id))), a.value.nextCursor = $.result.nextCursor, a.value.hasMore = $.result.hasMore;
       } catch {
         d === u && (g.value = "更多流水暂时无法读取，请稍后重试。");
       } finally {
         d === u && (c.value = !1);
       }
     }
-    return Q(() => {
+    return P(() => {
       m = i.bridge.subscribe((o) => {
         o.type === "wallet/state" && (u += 1, V(o.payload.state)), o.type === "wallet/error" && (f.value = B(o.payload?.message || ""));
       });
-    }), K(() => {
+    }), J(() => {
       u += 1, m();
     }), (o, d) => (n(), r("main", Ue, [
       p(re, {
@@ -395,7 +395,7 @@ var Me = {
         disabled: I.value,
         onRefresh: H
       }, null, 8, ["refreshing", "disabled"]),
-      e("div", je, [
+      e("div", Qe, [
         p(me, {
           balance: a.value.balance,
           currency: a.value.currency,
@@ -417,27 +417,27 @@ var Me = {
             type: "button",
             class: "wallet-ui-text-button",
             disabled: l.value,
-            onClick: j
-          }, s(l.value ? "正在检查…" : "检查保存"), 9, Ge)) : a.value.status === "blocked" || f.value ? (n(), r("button", {
+            onClick: Q
+          }, s(l.value ? "正在检查…" : "检查保存"), 9, je)) : a.value.status === "blocked" || f.value ? (n(), r("button", {
             key: 1,
             type: "button",
             class: "wallet-ui-text-button",
             disabled: I.value,
             onClick: H
-          }, s(l.value ? "正在读取…" : "重新加载"), 9, Je)) : h("", !0)]),
+          }, s(l.value ? "正在读取…" : "重新加载"), 9, Ge)) : h("", !0)]),
           _: 1
         }, 8, [
           "tone",
           "title",
           "message"
         ])) : h("", !0),
-        e("section", Ke, [e("div", Qe, [d[2] || (d[2] = e("h2", { id: "wallet-ledger-title" }, "收支账单", -1)), e("small", null, "共 " + s(a.value.transactionCount) + " 笔", 1)]), p(qe, {
+        e("section", Je, [e("div", Ke, [d[2] || (d[2] = e("h2", { id: "wallet-ledger-title" }, "收支账单", -1)), e("small", null, "共 " + s(a.value.transactionCount) + " 笔", 1)]), p(qe, {
           transactions: a.value.transactions,
           "has-more": a.value.hasMore,
           "loading-more": c.value,
           loading: a.value.status === "loading",
           error: g.value,
-          onLoadMore: G,
+          onLoadMore: j,
           onOpen: d[0] || (d[0] = ($) => v.value = $)
         }, null, 8, [
           "transactions",
@@ -454,7 +454,7 @@ var Me = {
       }, null, 8, ["transaction"])) : h("", !0)
     ]));
   }
-}), et = Ye;
+}), et = Pe;
 export {
   et as default
 };

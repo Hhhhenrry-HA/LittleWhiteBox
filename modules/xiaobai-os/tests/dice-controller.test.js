@@ -3,23 +3,22 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { createDiceController } from '../apps/dice/host/controller.ts';
 import { createSettingsRepository } from '../host/settings-repository.ts';
+import { generateCoc7Sheet, editCoc7Stat } from '../apps/dice/domain/coc7-sheet.ts';
 
-async function harness(ensureDisplay = async () => {}) {
-    const root = {};
+async function harness(ensureDisplay = async () => {}, root = {}) {
     let persist = () => {};
     const settings = createSettingsRepository({ getExtensionSettings: () => root, saveSettings: () => persist() });
     await settings.prepare();
     let identity = 'chat-a';
     const cancelled = [];
-    let busy = false;
     const pushes = [];
-    const controller = createDiceController(settings, () => identity, ensureDisplay, feature => cancelled.push(feature), () => busy);
+    const controller = createDiceController(settings, () => identity, ensureDisplay, feature => cancelled.push(feature));
     controller.startBackground();
     const activate = () => controller.activate({ isCurrent: () => true, post: (_type, payload) => pushes.push(payload.state) });
     await activate();
     return { root, settings, controller, cancelled, activate, pushes,
-        setBusy: value => { busy = value; controller.refresh(); },
         rule: rule => controller.handleMessage({ type: 'dice/set-rule', payload: { chatIdentity: identity, rule } }),
+        sheet: sheet => controller.handleMessage({ type: 'dice/set-coc7-sheet', payload: { chatIdentity: identity, sheet } }),
         save: action => { persist = action; },
         switchChat: key => { identity = key; },
         toggle: (feature, enabled) => controller.handleMessage({ type: 'dice/set-feature', payload: { chatIdentity: identity, feature, enabled } }),
@@ -40,22 +39,19 @@ test('both Dice switches persist across chats and repository reload, independent
     assert.equal(displayChecks, 1, 'encounter preferences do not prepare the action regex');
     assert.deepEqual(h.cancelled, ['encountersEnabled']);
     const reopened = createSettingsRepository({ getExtensionSettings: () => structuredClone(h.root), saveSettings() {} });
-    assert.deepEqual((await reopened.prepare()).apps.dice, { actionChecksEnabled: true, actionCheckFrequency: 'standard', actionCheckRule: 'd20', encountersEnabled: false });
+    assert.deepEqual((await reopened.prepare()).apps.dice, { actionChecksEnabled: true, actionCheckFrequency: 'standard', actionCheckRule: 'd20', encountersEnabled: false, coc7Sheet: null });
     h.switchChat('chat-a');
     state = await h.activate();
     assert.equal(state.actionChecksEnabled, true);
     assert.equal(state.encountersEnabled, false);
 });
 
-test('rule changes persist only after confirmation, cancel old work, and are blocked while busy', async t => {
+test('rule changes persist only after confirmation and leave the active reply snapshot alone', async t => {
     t.mock.method(console, 'error', () => {});
     const h = await harness();
     assert.equal((await h.activate()).actionCheckRule, 'd20');
-    h.setBusy(true);
-    assert.equal(h.pushes.at(-1).checkBusy, true);
-    await assert.rejects(h.rule('coc7'));
+    await h.rule('d20');
     assert.equal(h.settings.read().apps.dice.actionCheckRule, 'd20');
-    h.setBusy(false);
     h.save(() => false);
     await assert.rejects(h.rule('coc7'));
     assert.deepEqual(h.cancelled, []);
@@ -67,7 +63,7 @@ test('rule changes persist only after confirmation, cancel old work, and are blo
     assert.equal(h.settings.read().apps.dice.actionCheckRule, 'd20');
     saving.resolve();
     assert.equal((await operation).actionCheckRule, 'coc7');
-    assert.deepEqual(h.cancelled, ['actionChecksEnabled']);
+    assert.deepEqual(h.cancelled, []);
     const reopened = createSettingsRepository({ getExtensionSettings: () => structuredClone(h.root), saveSettings() {} });
     assert.equal((await reopened.prepare()).apps.dice.actionCheckRule, 'coc7');
     await assert.rejects(h.rule('unknown'));
@@ -90,7 +86,7 @@ test('action-check frequency defaults to standard and survives toggles, chats an
     const reloadedRoot = structuredClone(h.root);
     const reopened = createSettingsRepository({ getExtensionSettings: () => reloadedRoot, saveSettings() {} });
     assert.deepEqual((await reopened.prepare()).apps.dice,
-        { actionChecksEnabled: true, actionCheckFrequency: 'active', actionCheckRule: 'd20', encountersEnabled: false });
+        { actionChecksEnabled: true, actionCheckFrequency: 'active', actionCheckRule: 'd20', encountersEnabled: false, coc7Sheet: null });
     await h.controller.disable();
     assert.equal(h.settings.read().apps.dice.actionCheckFrequency, 'active', 'disabling Dice preserves the chosen frequency');
 });
@@ -125,13 +121,69 @@ test('upstream light preferences become standard once at load, with rollback on 
     assert.deepEqual(h.root, original, 'failed upgrades preserve the complete installed settings');
     saved = true;
     const upgraded = await reopened.prepare();
-    const expected = { ...original.xiaobaiOs.apps.dice, actionCheckFrequency: 'standard', actionCheckRule: 'd20' };
+    const expected = { ...original.xiaobaiOs.apps.dice, actionCheckFrequency: 'standard', actionCheckRule: 'd20', coc7Sheet: null };
     assert.deepEqual(upgraded.apps.dice, expected);
     assert.deepEqual(h.root, { ...original, xiaobaiOs: { ...original.xiaobaiOs,
         apps: { ...original.xiaobaiOs.apps, dice: expected } } });
     assert.equal(saves, 2);
     assert.deepEqual((await createSettingsRepository(adapter).prepare()).apps.dice, expected);
     assert.equal(saves, 2, 'current settings do not require another conversion or save');
+});
+
+test('one committed sheet survives chats and reload; failed saves and clear preserve the prior facts', async t => {
+    t.mock.method(console, 'error', () => {});
+    const h = await harness();
+    const original = generateCoc7Sheet(() => 0.5);
+    await h.sheet(original);
+    h.switchChat('another-card');
+    assert.deepEqual((await h.activate()).coc7Sheet, { kind: 'ready', sheet: original });
+    await h.rule('coc7'); await h.rule('d20');
+    const changed = editCoc7Stat(original, 'STR', 80);
+    h.save(() => false);
+    await assert.rejects(h.sheet(changed));
+    await assert.rejects(h.sheet(null));
+    assert.deepEqual(h.settings.read().apps.dice.coc7Sheet, original);
+    assert.deepEqual(h.root.xiaobaiOs.apps.dice.coc7Sheet, original);
+    h.save(() => {});
+    await h.sheet(changed);
+    assert.deepEqual(h.cancelled, []);
+    const reopened = createSettingsRepository({ getExtensionSettings: () => h.root, saveSettings() {} });
+    assert.deepEqual((await reopened.prepare()).apps.dice.coc7Sheet, changed);
+    await assert.rejects(h.sheet({ ...changed, luck: '50' }));
+    assert.deepEqual(h.settings.read().apps.dice.coc7Sheet, changed);
+    await h.sheet(null);
+    assert.equal(h.settings.read().apps.dice.coc7Sheet, null);
+});
+
+// Recovery is a settings/controller contract: a broken sheet must not block OS initialization or repair.
+test('damaged sheets stay intact across OS initialization and unrelated writes, with explicit recoverable clear or replacement', async t => {
+    t.mock.method(console, 'error', () => {});
+    const complete = generateCoc7Sheet(() => 0.5);
+    const missing = structuredClone(complete);
+    delete missing.attributes.STR;
+    for (const damaged of [missing, { ...complete, luck: '50' }]) {
+        for (const replacement of [null, complete]) {
+            const h = await harness(undefined, { xiaobaiOs: { enabled: true, apps: { dice: { coc7Sheet: damaged } } } });
+            assert.deepEqual((await h.activate()).coc7Sheet, { kind: 'invalid' });
+            assert.deepEqual(h.root.xiaobaiOs.apps.dice.coc7Sheet, damaged);
+            await h.settings.setEnabled(false);
+            await h.settings.setMapAutoMaintenance(true);
+            await h.rule('d20');
+            await h.toggle('encountersEnabled', true);
+            assert.deepEqual(h.root.xiaobaiOs.apps.dice.coc7Sheet, damaged, 'unrelated saves preserve the original raw data');
+            h.save(() => false);
+            await assert.rejects(h.sheet(replacement));
+            assert.deepEqual(h.settings.read().apps.dice.coc7Sheet, damaged);
+            assert.deepEqual(h.root.xiaobaiOs.apps.dice.coc7Sheet, damaged);
+            assert.deepEqual((await h.activate()).coc7Sheet, { kind: 'invalid' });
+            h.save(() => {});
+            const repaired = await h.sheet(replacement);
+            assert.deepEqual(repaired.coc7Sheet, replacement === null ? { kind: 'empty' } : { kind: 'ready', sheet: complete });
+            const reopened = createSettingsRepository({ getExtensionSettings: () => h.root, saveSettings() {} });
+            assert.deepEqual((await reopened.prepare()).apps.dice.coc7Sheet, replacement);
+            h.controller.stopBackground();
+        }
+    }
 });
 
 test('frequency only becomes effective after saving, even when its page closes during the save', async () => {

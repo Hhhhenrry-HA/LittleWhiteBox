@@ -1,9 +1,8 @@
 /* eslint-disable */
-import { C as Oe, E as Fe, G as Ke, H as F, J as me, K as T, M as ze, S as Ge, V as ge, Y as S, c as M, gt as r, h as D, j as E, k as i, l as y, m, mt as J, o as B, p as b, r as I, s as e, u as d } from "./xiaobai-os-runtime-core.esm-bundler-x_Eikhco.js";
-import { l as Je, o as K } from "./xiaobai-os-runtime-dom.esm-bundler-DWFjb9Vy.js";
-import { n as Qe } from "./xiaobai-os-app-navigation-BcQEoInO.js";
-import { t as Ye } from "./xiaobai-os-AppDialog-BtiJ8z-w.js";
-var We = {
+import { E as Oe, F as Fe, G as Ke, H as F, J as me, K as R, M as i, P as E, Q as r, T as ze, V as ge, X as G, Y as S, b as D, f as B, g as d, h as y, k as Qe, l as Ge, m as M, o as K, p as e, u as I, v as b, y as m } from "./xiaobai-os-runtime-dom.esm-bundler-BcM9c-Z9.js";
+import { n as Je } from "./xiaobai-os-app-navigation-sg-40eOk.js";
+import { t as Xe } from "./xiaobai-os-AppDialog-CI-E933W.js";
+var Ye = {
   class: "tasks-icon",
   viewBox: "0 0 24 24",
   fill: "none",
@@ -12,7 +11,7 @@ var We = {
   "stroke-linecap": "round",
   "stroke-linejoin": "round",
   "aria-hidden": "true"
-}, Xe = ["d"], _e = /* @__PURE__ */ D({
+}, We = ["d"], _e = /* @__PURE__ */ D({
   __name: "TaskIcon",
   props: { name: {} },
   setup(t) {
@@ -32,7 +31,7 @@ var We = {
       clock: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4v5l3 2",
       close: "m6 6 12 12M6 18 18 6"
     };
-    return (a, s) => (i(), d("svg", We, [e("path", { d: o[t.name] }, null, 8, Xe)]));
+    return (a, s) => (i(), d("svg", Ye, [e("path", { d: o[t.name] }, null, 8, We)]));
   }
 }), g = _e, fe = {
   recruiting: "招募中",
@@ -126,15 +125,15 @@ var at = { class: "tasks-page tasks-detail-page" }, st = {
       e("section", pt, [s[14] || (s[14] = e("h3", null, "进展记录", -1)), e("ol", null, [(i(!0), d(I, null, E(t.detail.timeline, (c) => (i(), d("li", { key: c.eventId }, [s[13] || (s[13] = e("i", null, null, -1)), e("div", null, [e("small", null, r(o(c.createdAt)), 1), e("p", null, r(c.summary), 1)])]))), 128))])])
     ], 64)) : (i(), d("div", Ct, [...s[15] || (s[15] = [e("h3", null, "这份委托暂时无法读取", -1), e("p", null, "请返回后重试。", -1)])]))]));
   }
-}), wt = It, Rt = { class: "tasks-page tasks-publish-page" }, Tt = ["disabled"], Bt = { class: "tasks-form-group" }, Mt = { class: "tasks-form-extra" }, St = { class: "tasks-form-group" }, At = { class: "tasks-reward-editor" }, xt = { class: "tasks-amount-input" }, Dt = ["max"], qt = { class: "tasks-reward-presets" }, Lt = [
+}), Tt = It, wt = { class: "tasks-page tasks-publish-page" }, Rt = ["disabled"], Bt = { class: "tasks-form-group" }, Mt = { class: "tasks-form-extra" }, St = { class: "tasks-form-group" }, At = { class: "tasks-reward-editor" }, xt = { class: "tasks-amount-input" }, Dt = ["max"], qt = { class: "tasks-reward-presets" }, Lt = [
   "aria-pressed",
   "disabled",
   "onClick"
-], Vt = {
+], Pt = {
   key: 0,
   class: "tasks-error-text",
   role: "status"
-}, Pt = { class: "tasks-hint" }, Nt = {
+}, Vt = { class: "tasks-hint" }, Nt = {
   key: 0,
   class: "tasks-hint"
 }, Et = ["disabled"], jt = /* @__PURE__ */ D({
@@ -164,9 +163,9 @@ var at = { class: "tasks-page tasks-detail-page" }, st = {
         reward: Number(s.reward)
       });
     }
-    return ($, u) => (i(), d("section", Rt, [e("form", {
+    return ($, u) => (i(), d("section", wt, [e("form", {
       class: "tasks-publish-form",
-      onSubmit: Je(c, ["prevent"])
+      onSubmit: Ge(c, ["prevent"])
     }, [
       e("fieldset", { disabled: t.busy }, [
         u[15] || (u[15] = e("legend", { class: "tasks-sr-only" }, "委托内容", -1)),
@@ -228,13 +227,13 @@ var at = { class: "tasks-page tasks-detail-page" }, st = {
             type: "button",
             "aria-pressed": Number(s.reward) === k,
             disabled: k > t.balance,
-            onClick: (Q) => s.reward = k
+            onClick: (J) => s.reward = k
           }, "¤ " + r(k), 9, Lt)), 64))]),
           e("p", null, [u[14] || (u[14] = b("可用余额 ", -1)), e("strong", null, "¤ " + r(S(N)(t.balance)), 1)]),
-          Number(s.reward) > t.balance ? (i(), d("p", Vt, "报酬超出可用余额，请调整金额。")) : y("", !0)
+          Number(s.reward) > t.balance ? (i(), d("p", Pt, "报酬超出可用余额，请调整金额。")) : y("", !0)
         ])
-      ], 8, Tt),
-      e("p", Pt, [m(g, { name: "ticket" }), u[16] || (u[16] = b("发布时托管报酬；招募中或执行中均可取消，全额退还托管报酬。", -1))]),
+      ], 8, Rt),
+      e("p", Vt, [m(g, { name: "ticket" }), u[16] || (u[16] = b("发布时托管报酬；招募中或执行中均可取消，全额退还托管报酬。", -1))]),
       t.disabledReason ? (i(), d("p", Nt, r(t.disabledReason), 1)) : y("", !0),
       e("button", {
         type: "submit",
@@ -243,7 +242,7 @@ var at = { class: "tasks-page tasks-detail-page" }, st = {
       }, [b(r(t.busy ? "正在发布…" : "预览并发布"), 1), m(g, { name: "next" })], 8, Et)
     ], 32)]));
   }
-}), Ht = jt, Ut = ["data-navigation-id"], Zt = { class: "tasks-record-top" }, Ot = ["data-status"], Ft = { class: "tasks-reward" }, Kt = { class: "tasks-record-title" }, zt = { class: "tasks-record-summary" }, Gt = { class: "tasks-record-foot" }, Jt = /* @__PURE__ */ D({
+}), Ht = jt, Ut = ["data-navigation-id"], Zt = { class: "tasks-record-top" }, Ot = ["data-status"], Ft = { class: "tasks-reward" }, Kt = { class: "tasks-record-title" }, zt = { class: "tasks-record-summary" }, Qt = { class: "tasks-record-foot" }, Gt = /* @__PURE__ */ D({
   __name: "TaskRecordCard",
   props: { task: {} },
   emits: ["open"],
@@ -260,10 +259,10 @@ var at = { class: "tasks-page tasks-detail-page" }, st = {
       }, [a[1] || (a[1] = e("i", null, null, -1)), b(r(S(fe)[t.task.status]), 1)], 8, Ot), e("span", Ft, [a[2] || (a[2] = e("small", null, "¤", -1)), b(" " + r(S(N)(t.task.reward)), 1)])]),
       e("strong", Kt, r(t.task.title), 1),
       e("span", zt, r(t.task.resultSummary || t.task.progressSummary || (t.task.status === "recruiting" ? "委托已发布，等待你选择执行者。" : "任务已开始，等待新的进展。")), 1),
-      e("span", Gt, [e("span", null, [m(g, { name: t.task.source === "received" ? "pin" : "people" }, null, 8, ["name"]), b(r(t.task.source === "received" ? t.task.location : t.task.assignee?.displayName || `${t.task.candidates.length} 位候选人`), 1)]), m(g, { name: "next" })])
+      e("span", Qt, [e("span", null, [m(g, { name: t.task.source === "received" ? "pin" : "people" }, null, 8, ["name"]), b(r(t.task.source === "received" ? t.task.location : t.task.assignee?.displayName || `${t.task.candidates.length} 位候选人`), 1)]), m(g, { name: "next" })])
     ], 8, Ut));
   }
-}), se = Jt, Qt = { class: "tasks-page" }, Yt = { class: "tasks-section-heading" }, Wt = { key: 0 }, Xt = {
+}), se = Gt, Jt = { class: "tasks-page" }, Xt = { class: "tasks-section-heading" }, Yt = { key: 0 }, Wt = {
   key: 0,
   class: "tasks-empty"
 }, _t = {
@@ -274,11 +273,11 @@ var at = { class: "tasks-page tasks-detail-page" }, st = {
   props: { records: {} },
   emits: ["detail", "discover"],
   setup(t) {
-    return (o, a) => (i(), d("section", Qt, [e("header", Yt, [a[1] || (a[1] = e("h2", null, "我接的", -1)), t.records.length ? (i(), d("small", Wt, r(t.records.length) + " 项", 1)) : y("", !0)]), t.records.length ? (i(), d("div", _t, [(i(!0), d(I, null, E(t.records, (s) => (i(), M(se, {
+    return (o, a) => (i(), d("section", Jt, [e("header", Xt, [a[1] || (a[1] = e("h2", null, "我接的", -1)), t.records.length ? (i(), d("small", Yt, r(t.records.length) + " 项", 1)) : y("", !0)]), t.records.length ? (i(), d("div", _t, [(i(!0), d(I, null, E(t.records, (s) => (i(), M(se, {
       key: s.taskId,
       task: s,
       onOpen: (c) => o.$emit("detail", s.taskId)
-    }, null, 8, ["task", "onOpen"]))), 128))])) : (i(), d("div", Xt, [
+    }, null, 8, ["task", "onOpen"]))), 128))])) : (i(), d("div", Wt, [
       m(g, { name: "compass" }),
       a[2] || (a[2] = e("h3", null, "暂无进行中的委托", -1)),
       e("button", {
@@ -319,7 +318,7 @@ var at = { class: "tasks-page tasks-detail-page" }, st = {
         onClick: a[0] || (a[0] = (s) => o.$emit("refresh"))
       }, [m(g, {
         name: "refresh",
-        class: J({ "is-spinning": t.busy })
+        class: G({ "is-spinning": t.busy })
       }, null, 8, ["class"]), b(r(t.busy ? "获取中…" : "换一批"), 1)], 8, la)) : y("", !0)]),
       t.disabledReason ? (i(), d("p", na, r(t.disabledReason), 1)) : y("", !0),
       !t.board || !t.board.listings.length ? (i(), d("div", ia, [
@@ -341,7 +340,7 @@ var at = { class: "tasks-page tasks-detail-page" }, st = {
         key: s.listingId,
         "data-navigation-id": `listing:${s.listingId}`,
         type: "button",
-        class: J(["tasks-ticket", { "is-accepted": s.accepted }]),
+        class: G(["tasks-ticket", { "is-accepted": s.accepted }]),
         onClick: (c) => o.$emit("detail", t.board.boardId, s.listingId)
       }, [
         e("span", oa, [
@@ -369,10 +368,10 @@ var at = { class: "tasks-page tasks-detail-page" }, st = {
 }), pa = $a, Ca = { class: "tasks-page" }, Ia = {
   class: "tasks-filter",
   "aria-label": "记录来源"
-}, wa = ["aria-pressed", "onClick"], Ra = {
+}, Ta = ["aria-pressed", "onClick"], wa = {
   key: 0,
   class: "tasks-empty"
-}, Ta = {
+}, Ra = {
   key: 1,
   class: "tasks-record-list"
 }, Ba = ["disabled"], Ma = /* @__PURE__ */ D({
@@ -409,12 +408,12 @@ var at = { class: "tasks-page tasks-detail-page" }, st = {
         type: "button",
         "aria-pressed": t.source === $.id,
         onClick: (u) => s.$emit("filter", $.id)
-      }, r($.label), 9, wa)), 64))]),
-      a.value.length ? (i(), d("div", Ta, [(i(!0), d(I, null, E(a.value, ($) => (i(), M(se, {
+      }, r($.label), 9, Ta)), 64))]),
+      a.value.length ? (i(), d("div", Ra, [(i(!0), d(I, null, E(a.value, ($) => (i(), M(se, {
         key: $.taskId,
         task: $,
         onOpen: (u) => s.$emit("detail", $.taskId)
-      }, null, 8, ["task", "onOpen"]))), 128))])) : (i(), d("div", Ra, [m(g, { name: "archive" }), e("h3", null, r(t.history.hasMore ? "已加载的记录中暂无匹配项" : "暂无记录"), 1)])),
+      }, null, 8, ["task", "onOpen"]))), 128))])) : (i(), d("div", wa, [m(g, { name: "archive" }), e("h3", null, r(t.history.hasMore ? "已加载的记录中暂无匹配项" : "暂无记录"), 1)])),
       t.history.hasMore ? (i(), d("button", {
         key: 2,
         type: "button",
@@ -430,10 +429,10 @@ var at = { class: "tasks-page tasks-detail-page" }, st = {
 }, La = {
   key: 1,
   class: "tasks-empty"
-}, Va = {
+}, Pa = {
   key: 2,
   class: "tasks-record-list"
-}, Pa = /* @__PURE__ */ D({
+}, Va = /* @__PURE__ */ D({
   __name: "TasksPublished",
   props: {
     records: {},
@@ -454,7 +453,7 @@ var at = { class: "tasks-page tasks-detail-page" }, st = {
         onClick: a[0] || (a[0] = (s) => o.$emit("publish"))
       }, [m(g, { name: "plus" }), a[2] || (a[2] = b("发布委托", -1))], 8, Da)]),
       t.disabledReason ? (i(), d("p", qa, r(t.disabledReason), 1)) : y("", !0),
-      t.records.length ? (i(), d("div", Va, [(i(!0), d(I, null, E(t.records, (s) => (i(), M(se, {
+      t.records.length ? (i(), d("div", Pa, [(i(!0), d(I, null, E(t.records, (s) => (i(), M(se, {
         key: s.taskId,
         task: s,
         onOpen: (c) => o.$emit("open", s)
@@ -466,14 +465,14 @@ var at = { class: "tasks-page tasks-detail-page" }, st = {
       }, [a[5] || (a[5] = b("已结束的委托", -1)), m(g, { name: "next" })])
     ]));
   }
-}), Na = Pa, Ea = { class: "tasks-page tasks-settings-page" }, ja = { class: "tasks-setting-card" }, Ha = { class: "tasks-setting-row" }, Ua = { class: "tasks-switch" }, Za = ["checked", "disabled"], Oa = { class: "tasks-setting-card" }, Fa = ["disabled"], Ka = {
+}), Na = Va, Ea = { class: "tasks-page tasks-settings-page" }, ja = { class: "tasks-setting-card" }, Ha = { class: "tasks-setting-row" }, Ua = { class: "tasks-switch" }, Za = ["checked", "disabled"], Oa = { class: "tasks-setting-card" }, Fa = ["disabled"], Ka = {
   key: 0,
   class: "tasks-hint"
 }, za = {
   key: 0,
   class: "tasks-maintenance-message",
   role: "status"
-}, Ga = /* @__PURE__ */ D({
+}, Qa = /* @__PURE__ */ D({
   __name: "TasksSettings",
   props: {
     autoMaintenance: { type: Boolean },
@@ -500,7 +499,7 @@ var at = { class: "tasks-page tasks-detail-page" }, st = {
           onClick: a[1] || (a[1] = (s) => o.$emit("maintain"))
         }, [m(g, {
           name: "refresh",
-          class: J({ "is-spinning": t.maintenanceBusy })
+          class: G({ "is-spinning": t.maintenanceBusy })
         }, null, 8, ["class"]), b(r(t.maintenanceBusy ? "正在更新…" : "更新任务进展"), 1)], 8, Fa),
         a[5] || (a[5] = e("p", null, "根据当前剧情检查任务，将调用模型。", -1)),
         t.disabledReason ? (i(), d("p", Ka, r(t.disabledReason), 1)) : y("", !0)
@@ -508,8 +507,8 @@ var at = { class: "tasks-page tasks-detail-page" }, st = {
       t.maintenanceMessage ? (i(), d("p", za, r(t.maintenanceMessage), 1)) : y("", !0)
     ]));
   }
-}), Ja = Ga;
-function Qa(t, o, a, s) {
+}), Ga = Qa;
+function Ja(t, o, a, s) {
   if (s !== a.stateVersion || t.nextCursor !== a.cursor) return null;
   const c = new Set(t.items.map(($) => $.taskId));
   return {
@@ -518,7 +517,7 @@ function Qa(t, o, a, s) {
     hasMore: o.hasMore
   };
 }
-var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = { class: "tasks-contract-heading" }, _a = { class: "tasks-grade" }, es = { class: "tasks-eyebrow" }, ts = { class: "tasks-contract-reward" }, as = { class: "tasks-seal" }, ss = { class: "tasks-facts" }, ls = { key: 0 }, ns = { class: "is-risk" }, is = { class: "tasks-tags" }, rs = { class: "tasks-action-dock" }, us = {
+var Xa = { class: "tasks-page" }, Ya = { class: "tasks-contract-sheet" }, Wa = { class: "tasks-contract-heading" }, _a = { class: "tasks-grade" }, es = { class: "tasks-eyebrow" }, ts = { class: "tasks-contract-reward" }, as = { class: "tasks-seal" }, ss = { class: "tasks-facts" }, ls = { key: 0 }, ns = { class: "is-risk" }, is = { class: "tasks-tags" }, rs = { class: "tasks-action-dock" }, us = {
   key: 0,
   class: "tasks-hint"
 }, ds = ["disabled"], os = {
@@ -533,9 +532,9 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
   },
   emits: ["accept"],
   setup(t) {
-    return (o, a) => (i(), d("section", Ya, [t.listing ? (i(), d(I, { key: 0 }, [
-      e("article", Wa, [
-        e("header", Xa, [
+    return (o, a) => (i(), d("section", Xa, [t.listing ? (i(), d(I, { key: 0 }, [
+      e("article", Ya, [
+        e("header", Wa, [
           e("span", _a, r(t.listing.grade), 1),
           e("span", es, "任务终端 · " + r(t.listing.posture), 1),
           e("h2", null, r(t.listing.title), 1),
@@ -599,7 +598,7 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
       }, [e("span", null, "委托给 " + r(s.name), 1), m(g, { name: "next" })], 8, gs)
     ]))), 128))])) : (i(), d("div", fs, [m(g, { name: "people" }), a[2] || (a[2] = e("h3", null, "暂无应征者", -1))]));
   }
-}), $s = hs, ps = { class: "tasks-page" }, Cs = { class: "tasks-recruit-heading" }, Is = { class: "tasks-reward" }, ws = { class: "tasks-section-heading" }, Rs = ["disabled"], Ts = ["role"], Bs = {
+}), $s = hs, ps = { class: "tasks-page" }, Cs = { class: "tasks-recruit-heading" }, Is = { class: "tasks-reward" }, Ts = { class: "tasks-section-heading" }, ws = ["disabled"], Rs = ["role"], Bs = {
   key: 0,
   class: "tasks-hint"
 }, Ms = { class: "tasks-withdraw" }, Ss = ["disabled"], As = {
@@ -634,19 +633,19 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
         onClick: a[0] || (a[0] = (s) => o.$emit("detail", t.task.taskId))
       }, [a[5] || (a[5] = b("查看委托内容", -1)), m(g, { name: "next" })])])
     ]), t.task.status === "recruiting" ? (i(), d(I, { key: 0 }, [
-      e("header", ws, [e("h3", null, [a[7] || (a[7] = b("选择执行者 ", -1)), e("small", null, r(t.task.candidates.length), 1)]), e("button", {
+      e("header", Ts, [e("h3", null, [a[7] || (a[7] = b("选择执行者 ", -1)), e("small", null, r(t.task.candidates.length), 1)]), e("button", {
         type: "button",
         class: "tasks-text-button",
         disabled: t.busy || t.recruiting || !!t.generationDisabledReason,
         onClick: a[1] || (a[1] = (s) => o.$emit("recruit", t.task))
       }, [m(g, {
         name: "refresh",
-        class: J({ "is-spinning": t.recruiting })
-      }, null, 8, ["class"]), b(r(t.recruiting ? "招募中…" : t.task.candidates.length ? "重新招募" : "开始招募"), 1)], 8, Rs)]),
+        class: G({ "is-spinning": t.recruiting })
+      }, null, 8, ["class"]), b(r(t.recruiting ? "招募中…" : t.task.candidates.length ? "重新招募" : "开始招募"), 1)], 8, ws)]),
       e("p", {
         class: "tasks-hint",
         role: t.recruiting ? "status" : void 0
-      }, r(t.recruiting ? "正在招募，可离开页面等待。" : "招募将调用模型"), 9, Ts),
+      }, r(t.recruiting ? "正在招募，可离开页面等待。" : "招募将调用模型"), 9, Rs),
       t.disabledReason || t.generationDisabledReason ? (i(), d("p", Bs, r(t.disabledReason || t.generationDisabledReason), 1)) : y("", !0),
       m($s, {
         task: t.task,
@@ -674,7 +673,7 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
       }, "查看任务进展")
     ]))], 64)) : (i(), d("div", xs, [...a[8] || (a[8] = [e("h3", null, "委托状态已更新", -1), e("p", null, "请返回“我发布”查看最新进展或已结束记录。", -1)])]))]));
   }
-}), qs = Ds, Ls = { id: "tasks-confirm-title" }, Vs = { class: "tasks-dialog-copy" }, Ps = {
+}), qs = Ds, Ls = { id: "tasks-confirm-title" }, Ps = { class: "tasks-dialog-copy" }, Vs = {
   key: 0,
   class: "tasks-dialog-error",
   role: "alert"
@@ -693,7 +692,7 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
   emits: ["close", "confirm"],
   setup(t, { emit: o }) {
     const a = o;
-    return (s, c) => (i(), M(Ye, {
+    return (s, c) => (i(), M(Xe, {
       class: "tasks-dialog",
       "aria-label": t.title,
       busy: t.busy,
@@ -701,8 +700,8 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
     }, {
       default: ge(() => [
         e("h2", Ls, r(t.title), 1),
-        e("div", Vs, [ze(s.$slots, "default")]),
-        t.error ? (i(), d("p", Ps, r(t.error), 1)) : y("", !0),
+        e("div", Ps, [Fe(s.$slots, "default")]),
+        t.error ? (i(), d("p", Vs, r(t.error), 1)) : y("", !0),
         t.disabledReason && !t.busy ? (i(), d("p", Ns, r(t.disabledReason), 1)) : y("", !0),
         e("footer", null, [e("button", {
           type: "button",
@@ -726,15 +725,15 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
 }, Ks = {
   class: "tasks-notices",
   "aria-live": "polite"
-}, zs = ["disabled"], Gs = ["disabled"], Js = ["disabled"], Qs = {
+}, zs = ["disabled"], Qs = ["disabled"], Gs = ["disabled"], Js = {
   key: 1,
   class: "tasks-notice",
   role: "status"
-}, Ys = {
+}, Xs = {
   key: 0,
   class: "tasks-nav",
   "aria-label": "任务主导航"
-}, Ws = ["aria-current"], Xs = ["aria-current"], _s = ["aria-current"], el = { key: 0 }, tl = ["aria-current"], al = { class: "tasks-confirm-name" }, sl = { class: "tasks-confirm-amount" }, ll = { class: "tasks-confirm-name" }, nl = {
+}, Ys = ["aria-current"], Ws = ["aria-current"], _s = ["aria-current"], el = { key: 0 }, tl = ["aria-current"], al = { class: "tasks-confirm-name" }, sl = { class: "tasks-confirm-amount" }, ll = { class: "tasks-confirm-name" }, nl = {
   key: 0,
   class: "tasks-confirm-amount"
 }, il = { class: "tasks-confirm-name" }, rl = 35e3, ul = /* @__PURE__ */ D({
@@ -783,7 +782,7 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
     function $(l) {
       return c(l) ? l.result : null;
     }
-    const u = T(s(o.initialState)), k = T("board"), Q = {}, Y = T(null), f = T(null), W = B(() => f.value?.kind === "cancel" && f.value.task.source === "received"), U = T(null), le = T(""), ee = T("all"), z = T(null), ne = {}, ie = B(() => tt(u.value)), he = B(() => ie.value.received), re = B(() => ie.value.published), $e = B(() => [...re.value, ...u.value.history.items].find((l) => l.taskId === le.value) ?? null), pe = B(() => u.value.board?.boardId === U.value?.boardId ? u.value.board?.listings.find((l) => l.listingId === U.value?.listingId) ?? null : null), te = B(() => [
+    const u = R(s(o.initialState)), k = R("board"), J = {}, X = R(null), f = R(null), Y = B(() => f.value?.kind === "cancel" && f.value.task.source === "received"), U = R(null), le = R(""), ee = R("all"), z = R(null), ne = {}, ie = B(() => tt(u.value)), he = B(() => ie.value.received), re = B(() => ie.value.published), $e = B(() => [...re.value, ...u.value.history.items].find((l) => l.taskId === le.value) ?? null), pe = B(() => u.value.board?.boardId === U.value?.boardId ? u.value.board?.listings.find((l) => l.listingId === U.value?.listingId) ?? null : null), te = B(() => [
       "board",
       "active",
       "published",
@@ -800,29 +799,29 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
       recruit: "招募执行者"
     })[k.value]);
     let Z = 0;
-    const ue = B(() => u.value.generation.state === "running" && u.value.generation.kind === "board"), de = B(() => u.value.generation.state === "running" && u.value.generation.kind === "candidates" ? u.value.generation.taskId ?? "" : ""), A = T(!1), X = T(!1), w = T(!1), ae = T(!1), _ = T(!1), h = T(""), j = T("");
-    let R = 0, x = !1, oe = () => {
+    const ue = B(() => u.value.generation.state === "running" && u.value.generation.kind === "board"), de = B(() => u.value.generation.state === "running" && u.value.generation.kind === "candidates" ? u.value.generation.taskId ?? "" : ""), A = R(!1), W = R(!1), T = R(!1), ae = R(!1), _ = R(!1), h = R(""), j = R("");
+    let w = 0, x = !1, oe = () => {
     };
     const ve = B(() => u.value.status === "unconfirmed"), L = B(() => A.value ? "正在处理上一项任务操作" : u.value.status === "loading" ? "正在加载任务" : u.value.status === "saving" ? "任务与资金正在保存" : u.value.status === "unconfirmed" ? "请先检查上一次是否保存成功" : u.value.status === "conflict" ? "请先使用已保存版本" : u.value.status === "blocked" ? u.value.message || "任务暂时不可用" : u.value.generationActive ? "正在生成内容，请稍后" : ""), O = B(() => L.value || (u.value.maintenance.state === "running" ? "正在更新任务" : "")), Ie = B(() => u.value.maintenance.message);
     function ke(l) {
       if (!l || typeof l.chatIdentity != "string") return;
       u.value = structuredClone(l), h.value = "";
-      const n = Y.value?.task;
+      const n = X.value?.task;
       if (k.value === "detail" && n) {
         const v = [
           ...l.active,
           ...l.recruiting,
           ...l.history.items
         ].find((C) => C.taskId === n.taskId);
-        v && v.eventId !== n.eventId && G(v.taskId, !0);
+        v && v.eventId !== n.eventId && Q(v.taskId, !0);
       }
     }
-    function we(l) {
+    function Te(l) {
       if (!c(l)) return null;
       const n = c(l.state) ? l.state : l;
       return typeof n.chatIdentity == "string" ? n : null;
     }
-    function V(l) {
+    function P(l) {
       const n = l instanceof Error ? l.message : String(l);
       return n === "tasks_insufficient_funds" ? "小白币余额不足，任务没有发布。" : n === "tasks_state_changed" || n === "tasks_listing_already_accepted" ? "任务有变化，请查看最新进展后再试。" : n === "tasks_terminal" ? "该任务已经结束，不能再次操作。" : n === "tasks_publish_invalid" || n === "tasks_request_invalid" ? "任务内容不完整或超出允许范围。" : n === "tasks_write_blocked" || n === "tasks_generation_active" ? "当前有生成或保存正在进行，请稍后重试。" : n === "tasks_chat_changed" ? "聊天已经切换，请重新打开任务。" : n === "host_request_timeout" ? "暂时没收到结果，请稍后查看，不要重复操作。" : "任务操作未完成，请稍后重试。";
     }
@@ -832,37 +831,37 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
         ...n
       }, v));
     }
-    function P(l, n) {
-      if (R !== n) return;
-      const v = we(l);
+    function V(l, n) {
+      if (w !== n) return;
+      const v = Te(l);
       v?.chatIdentity === u.value.chatIdentity && ke(v);
     }
     function H(l) {
       j.value = l, h.value = "";
     }
-    async function Re() {
+    async function we() {
       if (ue.value || O.value) return;
       h.value = "";
-      const l = R;
+      const l = w;
       try {
         const n = await q("tasks/refresh");
         if (!x) return;
-        P(n, l);
+        V(n, l);
       } catch (n) {
-        x && (h.value = V(n));
+        x && (h.value = P(n));
       }
     }
-    async function Te(l, n) {
+    async function Re(l, n) {
       if (L.value) return;
       A.value = !0;
-      const v = R;
+      const v = w;
       try {
-        P(await q("tasks/board/accept", {
+        V(await q("tasks/board/accept", {
           boardId: l,
           listingId: n
         }), v), x && k.value === "listing" && p("active"), H("任务已接取，报酬已进入托管。");
       } catch (C) {
-        h.value = V(C);
+        h.value = P(C);
       } finally {
         A.value = !1;
       }
@@ -870,7 +869,7 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
     async function Be(l) {
       if (de.value || O.value) return;
       h.value = "";
-      const n = R;
+      const n = w;
       try {
         const v = await q("tasks/candidates/refresh", {
           taskId: l.taskId,
@@ -878,24 +877,24 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
           expectedEventId: l.eventId
         });
         if (!x) return;
-        P(v, n);
+        V(v, n);
       } catch (v) {
-        x && (h.value = V(v));
+        x && (h.value = P(v));
       }
     }
     async function Me(l, n) {
       if (L.value) return;
       A.value = !0;
-      const v = R;
+      const v = w;
       try {
-        P(await q("tasks/candidates/assign", {
+        V(await q("tasks/candidates/assign", {
           taskId: l.taskId,
           expectedTaskRevision: l.taskRevision,
           expectedEventId: l.eventId,
           candidateId: n
         }), v), f.value = null, x && p("published"), H("已选好执行者，委托开始了。");
       } catch (C) {
-        h.value = V(C);
+        h.value = P(C);
       } finally {
         A.value = !1;
       }
@@ -903,15 +902,15 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
     async function Se(l) {
       if (L.value) return;
       A.value = !0;
-      const n = R;
+      const n = w;
       try {
-        P(await q("tasks/cancel", {
+        V(await q("tasks/cancel", {
           taskId: l.taskId,
           expectedTaskRevision: l.taskRevision,
           expectedEventId: l.eventId
         }), n), f.value = null, x && p(l.source === "received" ? "active" : "published"), H(l.source === "received" ? "已放弃任务，不会扣除小白币。" : "委托已取消，托管报酬已退回钱包。");
       } catch (v) {
-        h.value = V(v);
+        h.value = P(v);
       } finally {
         A.value = !1;
       }
@@ -926,45 +925,45 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
       const l = f.value?.kind === "publish" ? f.value.form : null;
       if (!l || L.value) return;
       A.value = !0;
-      const n = R;
+      const n = w;
       try {
-        P(await q("tasks/publish", { form: me(l) }), n), f.value = null, p("published"), H("任务已发布，报酬已锁入托管。");
+        V(await q("tasks/publish", { form: me(l) }), n), f.value = null, p("published"), H("任务已发布，报酬已锁入托管。");
       } catch (v) {
-        h.value = V(v);
+        h.value = P(v);
       } finally {
         A.value = !1;
       }
     }
     async function De(l) {
-      if (X.value) return;
-      X.value = !0;
-      const n = R;
+      if (W.value) return;
+      W.value = !0;
+      const n = w;
       try {
-        P(await q("tasks/settings/update", { autoMaintenance: l }), n), H(l ? "已开启任务进展自动更新。" : "已关闭任务进展自动更新。");
+        V(await q("tasks/settings/update", { autoMaintenance: l }), n), H(l ? "已开启任务进展自动更新。" : "已关闭任务进展自动更新。");
       } catch (v) {
-        h.value = V(v);
+        h.value = P(v);
       } finally {
-        X.value = !1;
+        W.value = !1;
       }
     }
     async function qe() {
       if (u.value.maintenance.state === "running" || O.value) return;
-      const l = R;
+      const l = w;
       try {
-        P(await q("tasks/maintenance/run"), l);
+        V(await q("tasks/maintenance/run"), l);
       } catch (n) {
-        h.value = V(n);
+        h.value = P(n);
       }
     }
-    async function G(l, n = !1) {
-      n || (p("detail"), Y.value = null, ae.value = !0);
+    async function Q(l, n = !1) {
+      n || (p("detail"), X.value = null, ae.value = !0);
       const v = ++Z;
       try {
         const C = await q("tasks/detail/read", { taskId: l });
         if (!x || v !== Z) return;
-        c(C) && c(C.task) && Array.isArray(C.timeline) && (Y.value = structuredClone(C));
+        c(C) && c(C.task) && Array.isArray(C.timeline) && (X.value = structuredClone(C));
       } catch (C) {
-        x && v === Z && (h.value = V(C));
+        x && v === Z && (h.value = P(C));
       } finally {
         x && v === Z && (ae.value = !1);
       }
@@ -975,60 +974,60 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
       _.value = !0;
       const n = {
         cursor: l,
-        stateVersion: R
+        stateVersion: w
       };
       try {
         const v = await q("tasks/history/load-more", { cursor: l });
         if (x && c(v) && Array.isArray(v.items)) {
-          const C = v, ye = Qa(u.value.history, C, n, R);
+          const C = v, ye = Ja(u.value.history, C, n, w);
           ye && (u.value.history = ye);
         }
       } catch (v) {
-        h.value = V(v);
+        h.value = P(v);
       } finally {
         _.value = !1;
       }
     }
-    async function Ve() {
-      if (w.value) return;
-      w.value = !0, h.value = "", j.value = "";
-      const l = R;
+    async function Pe() {
+      if (T.value) return;
+      T.value = !0, h.value = "", j.value = "";
+      const l = w;
       try {
         const n = await q("tasks/save/confirm");
-        P(n, l), c(n) && n.confirmation === "confirmed" && H("已确认保存成功。");
+        V(n, l), c(n) && n.confirmation === "confirmed" && H("已确认保存成功。");
       } catch (n) {
-        h.value = V(n);
+        h.value = P(n);
       } finally {
-        w.value = !1;
+        T.value = !1;
       }
     }
-    async function Pe() {
-      if (w.value) return;
-      w.value = !0, h.value = "", j.value = "";
-      const l = R;
+    async function Ve() {
+      if (T.value) return;
+      T.value = !0, h.value = "", j.value = "";
+      const l = w;
       try {
         const n = await q("tasks/save/adopt-server");
-        P(n, l), c(n) && n.adoption === "adopted" && H("已使用保存的任务和账目。");
+        V(n, l), c(n) && n.adoption === "adopted" && H("已使用保存的任务和账目。");
       } catch (n) {
-        h.value = V(n);
+        h.value = P(n);
       } finally {
-        w.value = !1;
+        T.value = !1;
       }
     }
     async function Ne() {
-      if (w.value) return;
-      w.value = !0, h.value = "", j.value = "";
-      const l = R;
+      if (T.value) return;
+      T.value = !0, h.value = "", j.value = "";
+      const l = w;
       try {
-        P(await q("tasks/read"), l);
+        V(await q("tasks/read"), l);
       } catch {
         h.value = "任务暂时加载不了，请检查连接后重试。";
       } finally {
-        w.value = !1;
+        T.value = !1;
       }
     }
     function p(l, n = !1) {
-      j.value = "", l !== k.value && !n && (Q[l] = [
+      j.value = "", l !== k.value && !n && (J[l] = [
         "board",
         "active",
         "published",
@@ -1036,13 +1035,13 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
       ].includes(l) ? "board" : k.value), ne[k.value] = {
         scrollTop: z.value?.scrollTop ?? 0,
         focusKey: document.activeElement instanceof HTMLElement ? document.activeElement.dataset.navigationId ?? "" : ""
-      }, Z += 1, k.value = l, Ge(() => {
+      }, Z += 1, k.value = l, ze(() => {
         if (!x || k.value !== l) return;
         const v = n ? ne[l] : void 0;
         z.value?.scrollTo(0, v?.scrollTop ?? 0), ((v?.focusKey ? Array.from(z.value?.closest("main")?.querySelectorAll("button[data-navigation-id]") ?? []).find((C) => C.dataset.navigationId === v.focusKey) : void 0) ?? z.value)?.focus({ preventScroll: !0 });
       });
     }
-    const ce = Qe(() => k.value === "board" ? !1 : (p(Q[k.value] ?? "board", !0), !0));
+    const ce = Je(() => k.value === "board" ? !1 : (p(J[k.value] ?? "board", !0), !0));
     function Ee(l, n) {
       U.value = {
         boardId: l,
@@ -1050,10 +1049,10 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
       }, p("listing");
     }
     function je(l) {
-      l.status === "recruiting" ? (le.value = l.taskId, p("recruit")) : G(l.taskId);
+      l.status === "recruiting" ? (le.value = l.taskId, p("recruit")) : Q(l.taskId);
     }
     function He() {
-      ee.value = "published", p("history"), Q.history = "published";
+      ee.value = "published", p("history"), J.history = "published";
     }
     function be(l) {
       h.value = "", f.value = {
@@ -1072,11 +1071,11 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
       const l = f.value;
       l && (l.kind === "publish" ? xe() : l.kind === "cancel" ? Se(l.task) : Me(l.task, l.candidateId));
     }
-    return Fe(() => {
+    return Qe(() => {
       x = !0, oe = o.bridge.subscribe((l) => {
         if (l.type === "tasks/state") {
           const n = l.payload?.state;
-          n && (R += 1, ke(n));
+          n && (w += 1, ke(n));
         }
         l.type === "tasks/error" && (h.value = "任务状态暂时无法读取，请重新打开。");
       }), o.bridge.post("tasks/activate", { chatIdentity: u.value.chatIdentity });
@@ -1104,7 +1103,7 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
       ]),
       e("div", Ks, [u.value.message || h.value && !f.value || j.value ? (i(), d("aside", {
         key: 0,
-        class: J(["tasks-notice", {
+        class: G(["tasks-notice", {
           "is-error": !!h.value || u.value.status === "conflict" || u.value.status === "blocked",
           "is-warning": ve.value
         }]),
@@ -1112,19 +1111,19 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
       }, [e("div", null, [e("p", null, r(u.value.message || (f.value ? "" : h.value) || j.value), 1), ve.value ? (i(), d("button", {
         key: 0,
         type: "button",
-        disabled: w.value,
-        onClick: Ve
-      }, r(w.value ? "正在检查…" : "检查保存"), 9, zs)) : u.value.status === "conflict" ? (i(), d("button", {
+        disabled: T.value,
+        onClick: Pe
+      }, r(T.value ? "正在检查…" : "检查保存"), 9, zs)) : u.value.status === "conflict" ? (i(), d("button", {
         key: 1,
         type: "button",
-        disabled: w.value,
-        onClick: Pe
-      }, r(w.value ? "正在加载…" : "使用已保存版本"), 9, Gs)) : u.value.status === "blocked" ? (i(), d("button", {
+        disabled: T.value,
+        onClick: Ve
+      }, r(T.value ? "正在加载…" : "使用已保存版本"), 9, Qs)) : u.value.status === "blocked" ? (i(), d("button", {
         key: 2,
         type: "button",
-        disabled: w.value,
+        disabled: T.value,
         onClick: Ne
-      }, r(w.value ? "正在读取…" : "重新加载"), 9, Js)) : y("", !0)]), u.value.message ? y("", !0) : (i(), d("button", {
+      }, r(T.value ? "正在读取…" : "重新加载"), 9, Gs)) : y("", !0)]), u.value.message ? y("", !0) : (i(), d("button", {
         key: 0,
         type: "button",
         class: "tasks-icon-button",
@@ -1132,7 +1131,7 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
         onClick: n[2] || (n[2] = (v) => {
           h.value = "", j.value = "";
         })
-      }, [m(g, { name: "close" })]))], 2)) : y("", !0), u.value.generation.message && !u.value.message ? (i(), d("aside", Qs, [e("p", null, r(u.value.generation.message), 1)])) : y("", !0)]),
+      }, [m(g, { name: "close" })]))], 2)) : y("", !0), u.value.generation.message && !u.value.message ? (i(), d("aside", Js, [e("p", null, r(u.value.generation.message), 1)])) : y("", !0)]),
       e("div", {
         ref_key: "content",
         ref: z,
@@ -1143,7 +1142,7 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
         board: u.value.board,
         busy: ue.value,
         "disabled-reason": O.value,
-        onRefresh: Re,
+        onRefresh: we,
         onDetail: Ee
       }, null, 8, [
         "board",
@@ -1152,7 +1151,7 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
       ])) : k.value === "active" ? (i(), M(ta, {
         key: 1,
         records: he.value,
-        onDetail: G,
+        onDetail: Q,
         onDiscover: n[3] || (n[3] = (v) => p("board"))
       }, null, 8, ["records"])) : k.value === "published" ? (i(), M(Na, {
         key: 2,
@@ -1167,16 +1166,16 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
         loading: _.value,
         source: ee.value,
         onFilter: n[5] || (n[5] = (v) => ee.value = v),
-        onDetail: G,
+        onDetail: Q,
         onLoadMore: Le
       }, null, 8, [
         "history",
         "loading",
         "source"
-      ])) : k.value === "settings" ? (i(), M(Ja, {
+      ])) : k.value === "settings" ? (i(), M(Ga, {
         key: 4,
         "auto-maintenance": u.value.settings.autoMaintenance,
-        "settings-busy": X.value,
+        "settings-busy": W.value,
         "maintenance-busy": u.value.maintenance.state === "running",
         "maintenance-message": Ie.value,
         "disabled-reason": O.value,
@@ -1203,7 +1202,7 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
         listing: pe.value,
         busy: A.value,
         "disabled-reason": L.value,
-        onAccept: n[6] || (n[6] = (v) => U.value && Te(U.value.boardId, U.value.listingId))
+        onAccept: n[6] || (n[6] = (v) => U.value && Re(U.value.boardId, U.value.listingId))
       }, null, 8, [
         "listing",
         "busy",
@@ -1218,16 +1217,16 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
         onRecruit: Be,
         onAssign: Ue,
         onCancel: be,
-        onDetail: G
+        onDetail: Q
       }, null, 8, [
         "task",
         "busy",
         "recruiting",
         "disabled-reason",
         "generation-disabled-reason"
-      ])) : (i(), M(wt, {
+      ])) : (i(), M(Tt, {
         key: 8,
-        detail: Y.value,
+        detail: X.value,
         loading: ae.value,
         busy: A.value,
         "disabled-reason": L.value,
@@ -1238,19 +1237,19 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
         "busy",
         "disabled-reason"
       ]))], 512),
-      te.value ? (i(), d("nav", Ys, [
+      te.value ? (i(), d("nav", Xs, [
         e("button", {
           type: "button",
           "aria-label": "发现委托",
           "aria-current": k.value === "board" ? "page" : void 0,
           onClick: n[7] || (n[7] = (v) => p("board"))
-        }, [e("span", null, [m(g, { name: "compass" })]), n[12] || (n[12] = b("发现", -1))], 8, Ws),
+        }, [e("span", null, [m(g, { name: "compass" })]), n[12] || (n[12] = b("发现", -1))], 8, Ys),
         e("button", {
           type: "button",
           "aria-label": "我接的",
           "aria-current": k.value === "active" ? "page" : void 0,
           onClick: n[8] || (n[8] = (v) => p("active"))
-        }, [e("span", null, [m(g, { name: "ticket" })]), n[13] || (n[13] = b("我接的", -1))], 8, Xs),
+        }, [e("span", null, [m(g, { name: "ticket" })]), n[13] || (n[13] = b("我接的", -1))], 8, Ws),
         e("button", {
           type: "button",
           "aria-label": "我发布",
@@ -1266,8 +1265,8 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
       ])) : y("", !0),
       f.value ? (i(), M(Us, {
         key: 1,
-        title: f.value.kind === "publish" ? "确认发布" : f.value.kind === "cancel" ? W.value ? "放弃任务？" : "取消委托？" : "确认执行者",
-        "confirm-label": f.value.kind === "publish" ? "托管并发布" : f.value.kind === "cancel" ? W.value ? "确认放弃" : "取消并退款" : "确认委托",
+        title: f.value.kind === "publish" ? "确认发布" : f.value.kind === "cancel" ? Y.value ? "放弃任务？" : "取消委托？" : "确认执行者",
+        "confirm-label": f.value.kind === "publish" ? "托管并发布" : f.value.kind === "cancel" ? Y.value ? "确认放弃" : "取消并退款" : "确认委托",
         busy: A.value,
         "disabled-reason": L.value,
         error: h.value,
@@ -1282,8 +1281,8 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
           n[16] || (n[16] = e("p", null, "报酬将从钱包托管。发布后可招募执行者；任务结束前，你可以取消并全额退回报酬。", -1))
         ], 64)) : f.value.kind === "cancel" ? (i(), d(I, { key: 1 }, [
           e("p", ll, r(f.value.task.title), 1),
-          W.value ? y("", !0) : (i(), d("strong", nl, "¤ " + r(S(N)(f.value.task.reward)), 1)),
-          e("p", null, r(W.value ? "放弃后不再获得任务报酬，也不会扣除你的小白币。" : "取消后，托管报酬将全额退回你的钱包。"), 1),
+          Y.value ? y("", !0) : (i(), d("strong", nl, "¤ " + r(S(N)(f.value.task.reward)), 1)),
+          e("p", null, r(Y.value ? "放弃后不再获得任务报酬，也不会扣除你的小白币。" : "取消后，托管报酬将全额退回你的钱包。"), 1),
           n[17] || (n[17] = e("p", null, "任务将移入记录，不再参与后续剧情提醒与进展更新。此操作无法撤销。", -1))
         ], 64)) : (i(), d(I, { key: 2 }, [e("p", il, r(f.value.task.candidates.find((v) => v.candidateId === (f.value?.kind === "assign" ? f.value.candidateId : ""))?.name), 1), e("p", null, "确认后开始执行“" + r(f.value.task.title) + "”。完成后，托管报酬将支付给执行者。", 1)], 64))]),
         _: 1
@@ -1296,7 +1295,7 @@ var Ya = { class: "tasks-page" }, Wa = { class: "tasks-contract-sheet" }, Xa = {
       ])) : y("", !0)
     ]));
   }
-}), cl = ul;
+}), kl = ul;
 export {
-  cl as default
+  kl as default
 };

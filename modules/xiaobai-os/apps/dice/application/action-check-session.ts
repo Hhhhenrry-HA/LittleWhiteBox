@@ -2,9 +2,9 @@ import { prepareActionCheck } from './prepare-action-check.js';
 import { MAX_ACTION_CHECKS, referencedActionChecks, isCheckContinuationPoint, parseDiceRecords, type DiceMessageRecords } from '../domain/check-records.js';
 import { parseActionCheck } from '../protocol/request.js';
 import type { ActionCheckRule } from '../types.js';
-import { COC7_MAX_NET_DICE } from '../domain/coc7-request.js';
+import { COC7_SHEET_ERRORS, type Coc7Sheet } from '../domain/coc7-sheet.js';
 
-export interface ActionCheckTarget { body: string; records: unknown; generatedFrom: number; rule: ActionCheckRule }
+export interface ActionCheckTarget { body: string; records: unknown; generatedFrom: number; rule: ActionCheckRule; coc7Sheet?: Coc7Sheet | null }
 export interface DiceCandidate { body: string; records: DiceMessageRecords }
 
 type Phase = { kind: 'waiting' | 'settling' }
@@ -29,8 +29,8 @@ export interface DiceSessionPort<T extends ActionCheckTarget> {
 
 const errors: Record<string, string> = {
     dice_check_limit: `本条回复已检定 ${MAX_ACTION_CHECKS} 次，不再继续掷骰。`,
-    dice_request_value_invalid: 'CoC 检定缺少有效的技能或属性数值，未掷骰。请补全数值后重新生成。',
-    dice_request_net_dice_unsupported: `本次奖惩骰超出支持范围（相抵后最多 ${COC7_MAX_NET_DICE} 颗），未掷骰。`,
+    [COC7_SHEET_ERRORS.missing]: '请先在 Dice 的「我的属性」中一键生成面板，未掷骰。',
+    [COC7_SHEET_ERRORS.invalid]: '玩家属性无效，未掷骰。请检查 Dice 的「我的属性」。',
 };
 const invalidRequest = '这次检定信息不完整或格式无效，未掷骰。';
 
@@ -79,7 +79,7 @@ export function createActionCheckSession<T extends ActionCheckTarget>(port: Dice
                 if (phase.kind === 'continue-error') { candidate = phase.candidate; }
                 else {
                     const prepared = prepareActionCheck({ body: current.target.body, records: current.target.records,
-                        generatedFrom: current.target.generatedFrom, rule: current.target.rule, id: port.id(), random: port.random });
+                        generatedFrom: current.target.generatedFrom, rule: current.target.rule, coc7Sheet: current.target.coc7Sheet, id: port.id(), random: port.random });
                     if (prepared.kind === 'none') { run = null; return; }
                     if (prepared.kind === 'invalid') {
                         current.phase = { kind: 'invalid', error: errors[prepared.error] ?? invalidRequest };

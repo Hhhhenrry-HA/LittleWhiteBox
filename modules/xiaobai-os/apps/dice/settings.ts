@@ -18,5 +18,7 @@ export function normalizeDiceSettings(value: unknown): DiceSettings {
         actionCheckFrequency: isActionCheckFrequency(input.actionCheckFrequency) ? input.actionCheckFrequency : 'standard',
         actionCheckRule: isActionCheckRule(input.actionCheckRule) ? input.actionCheckRule : 'd20',
         encountersEnabled: typeof input.encountersEnabled === 'boolean' ? input.encountersEnabled : false,
+        // This boundary normalizes settings, not sheet content. Dice owns validation and recovery.
+        coc7Sheet: input.coc7Sheet === undefined ? null : input.coc7Sheet,
     };
 }

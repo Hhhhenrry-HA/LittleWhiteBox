@@ -35,7 +35,7 @@ export function parseDiceRecords(value: unknown): DiceMessageRecords {
         ids.add(record.id);
         if (record.rule === 'coc7') {
             const request = parseCoc7Request(record.request);
-            return { ...record, request, result: parseCoc7Result(record.result, request) };
+            return { ...record, request, result: parseCoc7Result(record.result) };
         }
         if (record.rule !== 'd20' || !Number.isInteger(record.roll) || record.roll < 1 || record.roll > 20
             || !Number.isInteger(record.dc) || record.dc < 1

@@ -43,15 +43,11 @@ export const DICE_CARD_CSS = `
 .xb-dice-card .xb-dice-coc7-heading .xb-dice-outcome { font-size: 1.35em; }
 .xb-dice-card .xb-dice-coc7-heading .xb-dice-system { font-size: .7em; letter-spacing: .04em; }
 .xb-dice-card .xb-dice-participant { display: grid; grid-template-columns: 3.6em minmax(0, 1fr); align-items: center; gap: .5em .8em; padding: .65em 0; }
-.xb-dice-card .xb-dice-participant + .xb-dice-participant { border-top: 1px solid color-mix(in srgb, currentColor 12%, transparent); }
 .xb-dice-card .xb-dice-percentile { display: grid; place-items: center; aspect-ratio: 1; border: 1px solid color-mix(in srgb, currentColor 24%, transparent); border-radius: .5em; font-size: 1.5em; font-weight: 700; font-variant-numeric: tabular-nums; }
 .xb-dice-card .xb-dice-participant-detail { display: grid; gap: .18em; min-width: 0; }
 .xb-dice-card .xb-dice-participant-name { font-size: .85em; font-weight: 650; }
 .xb-dice-card .xb-dice-basis { font-size: .75em; opacity: .75; }
 .xb-dice-card .xb-dice-level { font-size: .85em; }
-.xb-dice-card .xb-dice-faces { grid-column: 1 / -1; margin: 0; padding: 0; border: 0; background: none; font-size: .78em; }
-.xb-dice-card .xb-dice-faces summary { display: list-item; cursor: pointer; min-height: 40px; align-content: center; }
-.xb-dice-card .xb-dice-faces-detail { display: block; padding-bottom: .5em; }
 .xb-dice-card[data-rule="coc7"][data-state="rolling"] .xb-dice-rolling-label { display: block; padding: 1.5em 0; }
 .xb-dice-notice { display: flex; flex-wrap: wrap; gap: .7em; font-size: .9em; }
 .xb-dice-pending { display: flex; align-items: center; gap: .7em; font-size: .9em; }

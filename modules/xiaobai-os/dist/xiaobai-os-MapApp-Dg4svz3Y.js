@@ -1,8 +1,7 @@
 /* eslint-disable */
-import { C as me, E as ue, H as ye, I as fe, J as Re, K as q, M as Ee, S as Le, V as ce, Y as d, c as N, f as Te, gt as h, h as T, ht as oe, j as E, k as l, l as f, m as $, mt as O, o as w, p as R, r as B, s as t, u as o, z as te } from "./xiaobai-os-runtime-core.esm-bundler-x_Eikhco.js";
-import { c as Me, l as ie, o as ze, s as Se } from "./xiaobai-os-runtime-dom.esm-bundler-DWFjb9Vy.js";
-import { n as Qe } from "./xiaobai-os-app-navigation-BcQEoInO.js";
-import { t as je } from "./xiaobai-os-AppDialog-BtiJ8z-w.js";
+import { E as me, F as Re, H as ye, J as Le, K as q, L as fe, M as l, P as L, Q as h, T as Ee, V as ue, X as O, Y as d, Z as oe, _ as Te, b as T, c as Me, f as w, g as o, h as f, k as ce, l as ie, m as N, o as Qe, p as t, s as Se, u as B, v as R, y as $, z as te } from "./xiaobai-os-runtime-dom.esm-bundler-BcM9c-Z9.js";
+import { n as ze } from "./xiaobai-os-app-navigation-sg-40eOk.js";
+import { t as je } from "./xiaobai-os-AppDialog-CI-E933W.js";
 import { a as Oe, b as De, c as Ze, d as Ue, f as Be, g as Ne, h as We, i as He, l as Ye, n as Xe, o as Fe, p as $e, r as qe, s as Ge, u as we, v as se, x as Je, y as et } from "./xiaobai-os-map-presentation-DmLs9dcB.js";
 var tt = { class: "map-viewport" }, at = ["viewBox", "aria-label"], lt = {
   class: "map-viewport-controls",
@@ -19,16 +18,16 @@ var tt = { class: "map-viewport" }, at = ["viewBox", "aria-label"], lt = {
   setup(s) {
     const n = s, i = q(null), a = q([...n.viewBox]), v = q([0, 0]), k = w(() => v.value[0] && v.value[1] ? Math.max(a.value[2] / v.value[0], a.value[3] / v.value[1]) : 1);
     let m;
-    ue(() => {
+    ce(() => {
       m = new ResizeObserver((y) => {
         const M = y[0].contentRect;
         v.value = [M.width, M.height];
       }), i.value && m.observe(i.value);
     });
     const r = /* @__PURE__ */ new Map();
-    let p = null, c = [0, 0], e = 0, g = null, V = !1, L = !1, z = null;
+    let p = null, c = [0, 0], e = 0, g = null, V = !1, E = !1, Q = null;
     const Y = w(() => a.value.join(" "));
-    function I() {
+    function A() {
       a.value = [...n.viewBox];
     }
     function P() {
@@ -59,12 +58,12 @@ var tt = { class: "map-viewport" }, at = ["viewBox", "aria-label"], lt = {
         M
       ];
     }
-    function Q() {
+    function z() {
       const y = [...r.values()];
       y.length === 1 && (p = y[0], c = [a.value[0], a.value[1]]), y.length === 2 && (e = Math.hypot(y[1][0] - y[0][0], y[1][1] - y[0][1]), g = [(y[0][0] + y[1][0]) / 2, (y[0][1] + y[1][1]) / 2], V = !0);
     }
     function Z(y) {
-      y.button !== 0 || r.size >= 2 || (r.size || (V = !1), r.set(y.pointerId, [y.clientX, y.clientY]), y.target.setPointerCapture(y.pointerId), Q());
+      y.button !== 0 || r.size >= 2 || (r.size || (V = !1), r.set(y.pointerId, [y.clientX, y.clientY]), y.target.setPointerCapture(y.pointerId), z());
     }
     function K(y) {
       if (!r.has(y.pointerId)) return;
@@ -86,15 +85,15 @@ var tt = { class: "map-viewport" }, at = ["viewBox", "aria-label"], lt = {
     function U(y) {
       if (!r.delete(y.pointerId)) return;
       const M = y.target;
-      M.hasPointerCapture(y.pointerId) && M.releasePointerCapture(y.pointerId), Q(), r.size || (p = null, g = null), V && (L = !0, z && clearTimeout(z), z = setTimeout(() => {
-        L = !1;
+      M.hasPointerCapture(y.pointerId) && M.releasePointerCapture(y.pointerId), z(), r.size || (p = null, g = null), V && (E = !0, Q && clearTimeout(Q), Q = setTimeout(() => {
+        E = !1;
       }, 0));
     }
-    function A(y) {
-      L && (y.preventDefault(), y.stopPropagation());
+    function I(y) {
+      E && (y.preventDefault(), y.stopPropagation());
     }
-    return te(() => n.resetKey, I, { immediate: !0 }), te(() => n.focusSequence, D, { flush: "post" }), me(() => {
-      m?.disconnect(), z && clearTimeout(z);
+    return te(() => n.resetKey, A, { immediate: !0 }), te(() => n.focusSequence, D, { flush: "post" }), me(() => {
+      m?.disconnect(), Q && clearTimeout(Q);
     }), (y, M) => (l(), o("div", tt, [(l(), o("svg", {
       ref_key: "svg",
       ref: i,
@@ -108,8 +107,8 @@ var tt = { class: "map-viewport" }, at = ["viewBox", "aria-label"], lt = {
       onPointermove: K,
       onPointerup: U,
       onPointercancel: U,
-      onClickCapture: A
-    }, [Ee(y.$slots, "default", { unitScale: k.value })], 40, at)), t("div", lt, [
+      onClickCapture: I
+    }, [Re(y.$slots, "default", { unitScale: k.value })], 40, at)), t("div", lt, [
       t("button", {
         type: "button",
         "aria-label": "放大地图",
@@ -123,7 +122,7 @@ var tt = { class: "map-viewport" }, at = ["viewBox", "aria-label"], lt = {
       t("button", {
         type: "button",
         class: "map-fit",
-        onClick: I
+        onClick: A
       }, "全图")
     ])]));
   }
@@ -198,8 +197,8 @@ function ut(s, n) {
   for (const c of i.filter((e) => !e.position)) {
     let e, g;
     do {
-      const V = v * 2.3999632297, L = 155 * Math.sqrt(v++);
-      e = Math.round(500 + Math.cos(V) * L), g = Math.round(420 + Math.sin(V) * L);
+      const V = v * 2.3999632297, E = 155 * Math.sqrt(v++);
+      e = Math.round(500 + Math.cos(V) * E), g = Math.round(420 + Math.sin(V) * E);
     } while (a.some((V) => Math.hypot(V.x - e, V.y - g) < 160));
     a.push({
       location: c,
@@ -212,14 +211,14 @@ function ut(s, n) {
   const k = new Map(a.map((c) => [c.location.key, c])), m = s.links.flatMap((c) => {
     const e = k.get(re(s, c.from, n)), g = k.get(re(s, c.to, n));
     if (!e || !g || e === g) return [];
-    const V = (e.x + g.x) / 2, L = (e.y + g.y) / 2;
+    const V = (e.x + g.x) / 2, E = (e.y + g.y) / 2;
     return [{
       link: c,
       from: e,
       to: g,
       x: V,
-      y: L,
-      path: `M ${e.x} ${e.y} Q ${V + (g.y - e.y) * 0.12} ${L - (g.x - e.x) * 0.12} ${g.x} ${g.y}`
+      y: E,
+      path: `M ${e.x} ${e.y} Q ${V + (g.y - e.y) * 0.12} ${E - (g.x - e.x) * 0.12} ${g.x} ${g.y}`
     }];
   }), r = a.length ? Math.min(...a.map((c) => c.x)) - 140 : 0, p = a.length ? Math.min(...a.map((c) => c.y)) - 150 : 0;
   return {
@@ -278,7 +277,7 @@ var ct = {
       "focus-point": v.value ? [v.value.x, v.value.y] : void 0,
       "focus-sequence": s.focusSequence
     }, {
-      default: ce(({ unitScale: c }) => [
+      default: ue(({ unitScale: c }) => [
         t("defs", null, [t("marker", {
           id: k,
           viewBox: "0 0 10 10",
@@ -291,7 +290,7 @@ var ct = {
           d: "M1 1l8 4-8 4z",
           fill: "var(--map-road-ink)"
         }, null, -1)])])]),
-        t("g", ct, [(l(!0), o(B, null, E(i.value.nodes, (e) => (l(), o("g", {
+        t("g", ct, [(l(!0), o(B, null, L(i.value.nodes, (e) => (l(), o("g", {
           key: e.location.key,
           transform: `translate(${e.x} ${e.y})`,
           class: O(`is-${e.location.terrain || "urban"}`)
@@ -299,7 +298,7 @@ var ct = {
           class: "map-contour",
           d: "M-133-22Q-124-126-39-116T110-70Q156-17 124 60T26 123Q-71 139-112 81T-133-22Z"
         }, null, -1)])], 10, dt))), 128))]),
-        t("g", vt, [(l(!0), o(B, null, E(i.value.routes, (e) => (l(), o("g", {
+        t("g", vt, [(l(!0), o(B, null, L(i.value.routes, (e) => (l(), o("g", {
           key: e.link.id,
           class: O({
             "is-path": e.link.kind === "path",
@@ -321,7 +320,7 @@ var ct = {
             y: e.y - 14
           }, h(e.link.label), 9, yt)) : f("", !0)
         ], 2))), 128))]),
-        (l(!0), o(B, null, E(i.value.nodes, (e) => (l(), o("g", {
+        (l(!0), o(B, null, L(i.value.nodes, (e) => (l(), o("g", {
           key: e.location.key,
           class: O(["map-place", {
             "is-selected": e.location.key === s.selectedLocationKey,
@@ -407,32 +406,32 @@ var wt = ["id"], xt = ["stop-color", "stop-opacity"], _t = ["stop-color", "stop-
   d: "M5 32 37 0M12 32 44 0",
   stroke: "var(--scene-highlight)",
   "stroke-width": "2.2"
-}, It = {
+}, At = {
   key: 6,
   d: "M8 15l-2-4m2 4 3-3M36 26l-1-4m1 4 3-3"
-}, At = {
+}, It = {
   key: 7,
   d: "M5 8h1m20-2h2m-12 17h2m23-6h1m-5 12h2",
   "stroke-linecap": "round"
 }, Rt = {
   key: 8,
   d: "M0 0H48V32H0M0 5H48M0 27H48M5 5v1m38-1v1m-38 20v1m38-1v1"
-}, Et = {
+}, Lt = {
   key: 9,
   d: "M0 5H48M0 13H48M0 21H48M0 29H48M4 0v32m8-32v32m8-32v32m8-32v32m8-32v32m8-32v32",
   opacity: ".55"
-}, Lt = {
+}, Et = {
   key: 10,
   d: "m24 5 8 11-8 11-8-11ZM24 10v12M20 16h8"
 }, Tt = {
   key: 11,
   d: "M7 8q12-5 16 6t20 7M4 27l6-3"
-}, zt = {
+}, Qt = {
   key: 12,
   d: "M5 19q5-3 11-1M29 8q6-2 12 1",
   stroke: "var(--scene-highlight)",
   "stroke-width": "1.4"
-}, Qt = {
+}, zt = {
   key: 0,
   d: "M0 1H48",
   stroke: "var(--scene-highlight)",
@@ -443,7 +442,7 @@ var wt = ["id"], xt = ["stop-color", "stop-opacity"], _t = ["stop-color", "stop-
   props: { prefix: {} },
   setup(s) {
     return (n, i) => (l(), o("defs", null, [
-      (l(!0), o(B, null, E(d(Je), (a) => (l(), o(B, { key: a }, [t("linearGradient", {
+      (l(!0), o(B, null, L(d(Je), (a) => (l(), o(B, { key: a }, [t("linearGradient", {
         id: `${s.prefix}-face-${a}`,
         x1: "0",
         y1: "0",
@@ -481,13 +480,13 @@ var wt = ["id"], xt = ["stop-color", "stop-opacity"], _t = ["stop-color", "stop-
         t("g", Bt, [a === "wood" ? (l(), o(B, { key: 0 }, [i[0] || (i[0] = t("path", { d: "M0 0H48M0 16H48M19 0V16M37 16V32" }, null, -1)), i[1] || (i[1] = t("path", {
           d: "M3 7Q12 4 26 8T47 7M2 26q10-4 25 0t23-1",
           opacity: ".5"
-        }, null, -1))], 64)) : a === "stone" ? (l(), o("path", Ht)) : a === "tile" ? (l(), o("path", qt)) : a === "marble" ? (l(), o("path", Kt)) : a === "water" ? (l(), o("path", Pt)) : a === "glass" ? (l(), o("path", Vt)) : a === "grass" || a === "forest" ? (l(), o("path", It)) : a === "dirt" || a === "sand" ? (l(), o("path", At)) : a === "metal" ? (l(), o("path", Rt)) : [
+        }, null, -1))], 64)) : a === "stone" ? (l(), o("path", Ht)) : a === "tile" ? (l(), o("path", qt)) : a === "marble" ? (l(), o("path", Kt)) : a === "water" ? (l(), o("path", Pt)) : a === "glass" ? (l(), o("path", Vt)) : a === "grass" || a === "forest" ? (l(), o("path", At)) : a === "dirt" || a === "sand" ? (l(), o("path", It)) : a === "metal" ? (l(), o("path", Rt)) : [
           "carpet",
           "fabric",
           "bed-sheet",
           "tatami"
-        ].includes(a) ? (l(), o("path", Et)) : a === "rune" ? (l(), o("path", Lt)) : a === "blood" ? (l(), o("path", Tt)) : a === "snow" ? (l(), o("path", zt)) : f("", !0)]),
-        a === "wood" || a === "stone" || a === "metal" ? (l(), o("path", Qt)) : f("", !0)
+        ].includes(a) ? (l(), o("path", Lt)) : a === "rune" ? (l(), o("path", Et)) : a === "blood" ? (l(), o("path", Tt)) : a === "snow" ? (l(), o("path", Qt)) : f("", !0)]),
+        a === "wood" || a === "stone" || a === "metal" ? (l(), o("path", zt)) : f("", !0)
       ], 8, St)], 64))), 128)),
       t("radialGradient", {
         id: `${s.prefix}-crown-face`,
@@ -508,7 +507,7 @@ var wt = ["id"], xt = ["stop-color", "stop-opacity"], _t = ["stop-color", "stop-
           "stop-color": "var(--scene-leaf-dark)"
         }, null, -1)
       ])], 8, Ot),
-      (l(), o(B, null, E(3, (a) => t("symbol", {
+      (l(), o(B, null, L(3, (a) => t("symbol", {
         id: `${s.prefix}-crown-${a - 1}`,
         key: a,
         viewBox: "0 0 100 100"
@@ -686,7 +685,7 @@ var wt = ["id"], xt = ["stop-color", "stop-opacity"], _t = ["stop-color", "stop-
         rx: "7",
         class: "scene-object-inset"
       }, null, -1)),
-      (l(), o(B, null, E(3, (g) => t("rect", {
+      (l(), o(B, null, L(3, (g) => t("rect", {
         key: g,
         x: 15 + (g - 1) * 24,
         y: "32",
@@ -760,7 +759,7 @@ var wt = ["id"], xt = ["stop-color", "stop-opacity"], _t = ["stop-color", "stop-
   props: { scene: {} },
   setup(s) {
     const n = s, i = q(!1);
-    ue(() => {
+    ce(() => {
       Pe().then(() => {
         i.value = !0;
       }).catch(() => {
@@ -785,9 +784,9 @@ var wt = ["id"], xt = ["stop-color", "stop-opacity"], _t = ["stop-color", "stop-
       "reset-key": s.scene.key,
       label: `${s.scene.name} 场景地图`
     }, {
-      default: ce(({ unitScale: c }) => [
+      default: ue(({ unitScale: c }) => [
         $(Nt, { prefix: a }),
-        (l(!0), o(B, null, E(m.value, (e) => (l(), o("g", {
+        (l(!0), o(B, null, L(m.value, (e) => (l(), o("g", {
           key: e.element.id,
           class: O(["map-scene-element", [`is-${e.element.category}`, `is-${e.element.certainty || "confirmed"}`]]),
           "data-element": e.element.id,
@@ -862,7 +861,7 @@ var wt = ["id"], xt = ["stop-color", "stop-opacity"], _t = ["stop-color", "stop-
             "clip-path": `url(#${e.clipId})`,
             class: "scene-forest-decoration",
             "aria-hidden": "true"
-          }, [(l(!0), o(B, null, E(k.value.get(e.element.id), (g, V) => (l(), o("use", {
+          }, [(l(!0), o(B, null, L(k.value.get(e.element.id), (g, V) => (l(), o("use", {
             key: V,
             href: `#${a}-crown-${g.variant}`,
             x: g.x - g.size / 2,
@@ -885,7 +884,7 @@ var wt = ["id"], xt = ["stop-color", "stop-opacity"], _t = ["stop-color", "stop-
         t("g", {
           class: "scene-labels",
           style: oe({ "--scene-unit-scale": c })
-        }, [(l(!0), o(B, null, E(m.value, (e) => (l(), o(B, { key: e.element.id }, [e.element.label ? (l(), o("text", {
+        }, [(l(!0), o(B, null, L(m.value, (e) => (l(), o(B, { key: e.element.id }, [e.element.label ? (l(), o("text", {
           key: 0,
           class: O(["map-scene-label", { "is-primary": e.element.shape === "label" }]),
           x: d($e)(e.element, c)[0],
@@ -918,7 +917,7 @@ var wt = ["id"], xt = ["stop-color", "stop-opacity"], _t = ["stop-color", "stop-
   setup(s, { emit: n }) {
     const i = s, a = n, v = q(null), k = q(null), m = q(!0);
     let r, p = !1;
-    return ue(async () => {
+    return ce(async () => {
       p = !0;
       try {
         const { createThreeRuntime: c } = await import("./xiaobai-os-three-runtime-DAiv4929.js");
@@ -968,7 +967,7 @@ var wt = ["id"], xt = ["stop-color", "stop-opacity"], _t = ["stop-color", "stop-
   class: "map-render-switch",
   role: "group",
   "aria-label": "场景显示方式"
-}, Pa = ["aria-pressed"], Va = ["aria-pressed", "disabled"], Ia = ["aria-pressed"], Aa = ["aria-pressed"], Ra = { class: "map-scene-stage" }, Ea = /* @__PURE__ */ T({
+}, Pa = ["aria-pressed"], Va = ["aria-pressed", "disabled"], Aa = ["aria-pressed"], Ia = ["aria-pressed"], Ra = { class: "map-scene-stage" }, La = /* @__PURE__ */ T({
   __name: "MapSceneView",
   props: {
     scene: {},
@@ -997,13 +996,13 @@ var wt = ["id"], xt = ["stop-color", "stop-opacity"], _t = ["stop-color", "stop-
         type: "button",
         "aria-pressed": a.value,
         onClick: m[2] || (m[2] = (r) => a.value = !a.value)
-      }, "低墙", 8, Ia)) : f("", !0),
+      }, "低墙", 8, Aa)) : f("", !0),
       s.mode === "3d" ? (l(), o("button", {
         key: 1,
         type: "button",
         "aria-pressed": v.value,
         onClick: m[3] || (m[3] = (r) => v.value = !v.value)
-      }, "名称", 8, Aa)) : f("", !0)
+      }, "名称", 8, Ia)) : f("", !0)
     ]), t("div", Ra, [ye($(_a, { scene: s.scene }, null, 8, ["scene"]), [[Se, s.mode === "2d"]]), s.mode === "3d" ? (l(), N(Ba, {
       key: 0,
       scene: s.scene,
@@ -1016,12 +1015,12 @@ var wt = ["id"], xt = ["stop-color", "stop-opacity"], _t = ["stop-color", "stop-
       "show-labels"
     ])) : f("", !0)])], 8, Ha));
   }
-}), La = Ea;
+}), Ea = La;
 function _e(s) {
   const n = s?.atlas.actors.find((a) => a.actorKey === "player"), i = s?.atlas.locations.find((a) => a.key === n?.locationKey);
   return i?.sceneKey && s?.scenes[i.sceneKey]?.status === "active" ? "scene" : "world";
 }
-var Ta = { class: "map-dialog-header" }, za = { key: 0 }, Qa = { class: "map-settings-content" }, Oa = { class: "map-auto-setting" }, Da = ["aria-checked", "disabled"], Za = { class: "map-settings-section" }, Ua = ["disabled"], Na = { key: 0 }, Wa = { class: "map-settings-section" }, Ya = { key: 0 }, Xa = ["disabled"], Fa = {
+var Ta = { class: "map-dialog-header" }, Qa = { key: 0 }, za = { class: "map-settings-content" }, Oa = { class: "map-auto-setting" }, Da = ["aria-checked", "disabled"], Za = { class: "map-settings-section" }, Ua = ["disabled"], Na = { key: 0 }, Wa = { class: "map-settings-section" }, Ya = { key: 0 }, Xa = ["disabled"], Fa = {
   key: 0,
   class: "map-setting-note",
   role: "status"
@@ -1053,7 +1052,7 @@ var Ta = { class: "map-dialog-header" }, za = { key: 0 }, Qa = { class: "map-set
       "aria-labelledby": "map-settings-title",
       onClose: i[5] || (i[5] = (a) => n.$emit("close"))
     }, {
-      default: ce(() => [
+      default: ue(() => [
         t("header", Ta, [i[6] || (i[6] = t("div", null, [t("small", null, "让地图跟上你的故事"), t("h2", { id: "map-settings-title" }, "地图设置")], -1)), t("button", {
           type: "button",
           class: "map-round-button",
@@ -1064,8 +1063,8 @@ var Ta = { class: "map-dialog-header" }, za = { key: 0 }, Qa = { class: "map-set
           key: 0,
           class: O(["map-settings-feedback", { "is-error": s.notice ? s.noticeError : s.maintenanceError }]),
           role: "status"
-        }, [t("strong", null, h(s.notice ? s.notice === s.maintenanceMessage ? "最近一次更新" : "操作提示" : s.status || "最近一次更新"), 1), s.notice || s.maintenanceMessage ? (l(), o("p", za, h(s.notice || s.maintenanceMessage), 1)) : f("", !0)], 2)) : f("", !0),
-        t("div", Qa, [
+        }, [t("strong", null, h(s.notice ? s.notice === s.maintenanceMessage ? "最近一次更新" : "操作提示" : s.status || "最近一次更新"), 1), s.notice || s.maintenanceMessage ? (l(), o("p", Qa, h(s.notice || s.maintenanceMessage), 1)) : f("", !0)], 2)) : f("", !0),
+        t("div", za, [
           t("section", Oa, [i[8] || (i[8] = t("div", null, [t("h3", null, "随对话自动更新"), t("p", null, "你发送下一条消息时，根据上一轮对话更新地图。适用于所有普通聊天。")], -1)), t("button", {
             type: "button",
             class: "map-switch",
@@ -1133,7 +1132,7 @@ var Ta = { class: "map-dialog-header" }, za = { key: 0 }, Qa = { class: "map-set
       "aria-label": "查找地点",
       onClose: m[2] || (m[2] = (r) => k.$emit("close"))
     }, {
-      default: ce(() => [
+      default: ue(() => [
         t("header", tl, [
           $(j, { name: "search" }),
           ye(t("input", {
@@ -1142,13 +1141,13 @@ var Ta = { class: "map-dialog-header" }, za = { key: 0 }, Qa = { class: "map-set
             "aria-label": "搜索地点",
             placeholder: "想去哪里？",
             autofocus: ""
-          }, null, 512), [[ze, i.value]]),
+          }, null, 512), [[Qe, i.value]]),
           t("button", {
             type: "button",
             onClick: m[1] || (m[1] = (r) => k.$emit("close"))
           }, "取消")
         ]),
-        t("nav", al, [(l(), o(B, null, E([
+        t("nav", al, [(l(), o(B, null, L([
           {
             id: "all",
             name: "全部地点"
@@ -1169,7 +1168,7 @@ var Ta = { class: "map-dialog-header" }, za = { key: 0 }, Qa = { class: "map-set
         }, h(r.name), 9, ll)), 64))]),
         t("div", sl, [
           t("small", null, h(v.value.length) + " 个地点", 1),
-          (l(!0), o(B, null, E(v.value, (r) => (l(), o("button", {
+          (l(!0), o(B, null, L(v.value, (r) => (l(), o("button", {
             key: r.key,
             type: "button",
             class: "map-search-result",
@@ -1252,8 +1251,8 @@ var Ta = { class: "map-dialog-header" }, za = { key: 0 }, Qa = { class: "map-set
           class: "map-secondary-button",
           onClick: p[2] || (p[2] = (c) => r.$emit("scene"))
         }, [$(j, { name: "layers" }), p[3] || (p[3] = R("查看场景图", -1))])) : f("", !0)])) : f("", !0),
-        v.value.length ? (l(), o("section", bl, [p[4] || (p[4] = t("h3", null, "记录在这里的人物", -1)), t("p", kl, [(l(!0), o(B, null, E(v.value, (c) => (l(), o("span", { key: c.actorKey }, [$(j, { name: "person" }), R(h(c.displayName), 1)]))), 128))])])) : f("", !0),
-        k.value.length ? (l(), o("section", gl, [p[5] || (p[5] = t("h3", null, "相连的地方", -1)), (l(!0), o(B, null, E(k.value, (c) => (l(), o("button", {
+        v.value.length ? (l(), o("section", bl, [p[4] || (p[4] = t("h3", null, "记录在这里的人物", -1)), t("p", kl, [(l(!0), o(B, null, L(v.value, (c) => (l(), o("span", { key: c.actorKey }, [$(j, { name: "person" }), R(h(c.displayName), 1)]))), 128))])])) : f("", !0),
+        k.value.length ? (l(), o("section", gl, [p[5] || (p[5] = t("h3", null, "相连的地方", -1)), (l(!0), o(B, null, L(k.value, (c) => (l(), o("button", {
           key: c.link.id,
           type: "button",
           class: "map-connection",
@@ -1275,10 +1274,10 @@ function Ce(s) {
   return s.maintenanceStatus === "maintaining" || s.maintenanceStatus === "rebuilding";
 }
 function xl(s) {
-  const n = q(structuredClone(Re(s.initialState))), i = q(null), a = q(""), v = q(!1);
+  const n = q(structuredClone(Le(s.initialState))), i = q(null), a = q(""), v = q(!1);
   let k = !1, m = 0, r = 0, p = () => {
   };
-  const c = w(() => n.value.status === "unconfirmed" || n.value.writeState === "unconfirmed"), e = w(() => i.value !== null || ["loading", "saving"].includes(n.value.status) || ["maintaining", "rebuilding"].includes(n.value.maintenanceStatus || "")), g = w(() => e.value ? "正在更新地图，请稍候" : c.value ? "请先检查上一次是否保存成功" : n.value.status === "conflict" ? "存档有变化，请先选择要保留的版本" : n.value.status !== "ready" ? n.value.message || "地图暂时不可更新" : n.value.chatIdentity ? "" : "请先打开一个聊天"), V = w(() => n.value.maintenanceStatus === "rebuilding" || i.value === "rebuild" ? "正在绘制世界…" : n.value.maintenanceStatus === "maintaining" || i.value === "maintain" ? "正在更新地图…" : i.value === "confirm" ? "正在检查保存…" : e.value ? "请稍候…" : ""), L = w(() => n.value.message || a.value), z = w(() => n.value.message ? [
+  const c = w(() => n.value.status === "unconfirmed" || n.value.writeState === "unconfirmed"), e = w(() => i.value !== null || ["loading", "saving"].includes(n.value.status) || ["maintaining", "rebuilding"].includes(n.value.maintenanceStatus || "")), g = w(() => e.value ? "正在更新地图，请稍候" : c.value ? "请先检查上一次是否保存成功" : n.value.status === "conflict" ? "存档有变化，请先选择要保留的版本" : n.value.status !== "ready" ? n.value.message || "地图暂时不可更新" : n.value.chatIdentity ? "" : "请先打开一个聊天"), V = w(() => n.value.maintenanceStatus === "rebuilding" || i.value === "rebuild" ? "正在绘制世界…" : n.value.maintenanceStatus === "maintaining" || i.value === "maintain" ? "正在更新地图…" : i.value === "confirm" ? "正在检查保存…" : e.value ? "请稍候…" : ""), E = w(() => n.value.message || a.value), Q = w(() => n.value.message ? [
     "blocked",
     "error",
     "conflict",
@@ -1288,29 +1287,29 @@ function xl(s) {
     const H = Ce(n.value);
     n.value = structuredClone(C), Ce(C) ? (a.value = "", v.value = !1) : H && (a.value = C.maintenanceMessage || "", v.value = C.maintenanceStatus === "error");
   }
-  function I(C, H) {
+  function A(C, H) {
     const D = C instanceof Error ? C.message : String(C);
     return D.includes("聊天已切换") ? "聊天已切换，请重新打开地图。" : D === "host_request_timeout" ? "暂时没收到结果，地图可能还在更新。请稍后查看，不要再次更新。" : H === "confirm" ? "仍无法确认保存结果，请稍后再试。" : H === "adopt" ? "已保存版本暂时加载不了，当前修改还在，请稍后重试。" : H === "settings" ? "设置未能保存，请重试。" : "地图操作未完成，请稍后重试。";
   }
   async function P(C, H, D = {}) {
     if (i.value) return;
-    const Q = ++m, Z = r, K = n.value.chatIdentity;
+    const z = ++m, Z = r, K = n.value.chatIdentity;
     i.value = H, a.value = "", v.value = !1;
     try {
       const U = await s.bridge.request(C, {
         chatIdentity: K,
         ...D
       }, 35e3);
-      if (!k || Q !== m || n.value.chatIdentity !== K) return;
-      const A = ee(U) ? U.result : void 0, y = ee(A) && ee(A.state) ? A.state : A;
-      Z === r && ee(y) && y.chatIdentity === K && Y(y), (H === "maintain" || H === "rebuild") && ee(A) && typeof A.message == "string" && A.message && (a.value = A.message), H === "refresh" && n.value.status === "ready" && (a.value = "已加载保存的地图。"), H === "settings" && (a.value = n.value.autoMaintenance ? "自动更新已开启。" : "自动更新已关闭。"), H === "confirm" && n.value.status === "ready" && (a.value = "已确认保存成功。"), H === "adopt" && ee(A) && A.adoption === "adopted" && (a.value = "已使用当前聊天里保存的 OS 存档。");
+      if (!k || z !== m || n.value.chatIdentity !== K) return;
+      const I = ee(U) ? U.result : void 0, y = ee(I) && ee(I.state) ? I.state : I;
+      Z === r && ee(y) && y.chatIdentity === K && Y(y), (H === "maintain" || H === "rebuild") && ee(I) && typeof I.message == "string" && I.message && (a.value = I.message), H === "refresh" && n.value.status === "ready" && (a.value = "已加载保存的地图。"), H === "settings" && (a.value = n.value.autoMaintenance ? "自动更新已开启。" : "自动更新已关闭。"), H === "confirm" && n.value.status === "ready" && (a.value = "已确认保存成功。"), H === "adopt" && ee(I) && I.adoption === "adopted" && (a.value = "已使用当前聊天里保存的 OS 存档。");
     } catch (U) {
-      k && Q === m && n.value.chatIdentity === K && (a.value = I(U, H), v.value = !0);
+      k && z === m && n.value.chatIdentity === K && (a.value = A(U, H), v.value = !0);
     } finally {
-      k && Q === m && (i.value = null);
+      k && z === m && (i.value = null);
     }
   }
-  return ue(() => {
+  return ce(() => {
     k = !0, p = s.bridge.subscribe((C) => {
       if (C.type === "map/state") {
         const H = C.payload.state;
@@ -1327,8 +1326,8 @@ function xl(s) {
     disabledReason: g,
     requiresConfirmation: c,
     status: V,
-    notice: L,
-    isError: z,
+    notice: E,
+    isError: Q,
     dismissNotice: () => {
       a.value = "", v.value = !1;
     },
@@ -1362,19 +1361,19 @@ var _l = { class: "map-top" }, Cl = { class: "map-search-bar" }, Sl = ["disabled
 }, ql = ["aria-pressed"], Kl = ["aria-pressed"], Pl = {
   key: 0,
   class: "map-scene-tools"
-}, Vl = ["aria-expanded"], Il = {
+}, Vl = ["aria-expanded"], Al = {
   key: 1,
   class: "map-region-trail",
   "aria-label": "当前查看区域"
-}, Al = ["onClick"], Rl = {
+}, Il = ["onClick"], Rl = {
   key: 2,
   class: "map-progress",
   role: "status"
-}, El = {
+}, Ll = {
   key: 3,
   class: "map-notice",
   role: "status"
-}, Ll = ["disabled"], Tl = ["disabled"], zl = ["disabled"], Ql = {
+}, El = ["disabled"], Tl = ["disabled"], Ql = ["disabled"], zl = {
   key: 1,
   class: "map-empty"
 }, Ol = ["disabled"], Dl = {
@@ -1405,21 +1404,21 @@ var _l = { class: "map-top" }, Cl = { class: "map-search-bar" }, Sl = ["disabled
     initialState: {}
   },
   setup(s) {
-    const { state: n, activeRequest: i, busy: a, disabledReason: v, requiresConfirmation: k, status: m, notice: r, isError: p, dismissNotice: c, refresh: e, confirmSave: g, adopt: V, setAuto: L, update: z, rebuild: Y } = xl(s), I = q(n.value.map ? xe(n.value.map.atlas) : ""), P = q(""), C = q(_e(n.value.map) === "scene" ? "" : null), H = q("3d"), D = q(!1), Q = q("");
+    const { state: n, activeRequest: i, busy: a, disabledReason: v, requiresConfirmation: k, status: m, notice: r, isError: p, dismissNotice: c, refresh: e, confirmSave: g, adopt: V, setAuto: E, update: Q, rebuild: Y } = xl(s), A = q(n.value.map ? xe(n.value.map.atlas) : ""), P = q(""), C = q(_e(n.value.map) === "scene" ? "" : null), H = q("3d"), D = q(!1), z = q("");
     let Z = !1;
-    const K = w(() => C.value !== null), U = q(""), A = q(0), y = q(!1), M = q(!1), x = q(!1), S = w(() => n.value.map?.atlas), W = w(() => S.value?.actors.find((_) => _.actorKey === "player")?.locationKey || ""), X = w(() => S.value?.locations.find((_) => _.key === W.value)), G = w(() => S.value?.locations.find((_) => _.key === P.value)), J = w(() => S.value?.locations.find((_) => _.key === (C.value || W.value))), be = w(() => K.value && J.value?.sceneKey ? n.value.map?.scenes[J.value.sceneKey] : void 0), de = w(() => S.value?.locations.find((_) => _.key === I.value)), ve = w(() => S.value?.locations.filter((_) => (_.parent || "") === I.value) || []), ke = w(() => ve.value.filter((_) => _.status !== "visited").length), Ve = w(() => S.value ? he(S.value, I.value) : []);
+    const K = w(() => C.value !== null), U = q(""), I = q(0), y = q(!1), M = q(!1), x = q(!1), S = w(() => n.value.map?.atlas), W = w(() => S.value?.actors.find((_) => _.actorKey === "player")?.locationKey || ""), X = w(() => S.value?.locations.find((_) => _.key === W.value)), G = w(() => S.value?.locations.find((_) => _.key === P.value)), J = w(() => S.value?.locations.find((_) => _.key === (C.value || W.value))), be = w(() => K.value && J.value?.sceneKey ? n.value.map?.scenes[J.value.sceneKey] : void 0), de = w(() => S.value?.locations.find((_) => _.key === A.value)), ve = w(() => S.value?.locations.filter((_) => (_.parent || "") === A.value) || []), ke = w(() => ve.value.filter((_) => _.status !== "visited").length), Ve = w(() => S.value ? he(S.value, A.value) : []);
     te(() => n.value, (_, u) => {
       const b = _.chatIdentity !== u.chatIdentity;
-      (!u.map || b || I.value && !_.map?.atlas.locations.some((F) => F.key === I.value)) && (I.value = _.map ? xe(_.map.atlas) : ""), (b || !_.map?.atlas.locations.some((F) => F.key === P.value)) && (P.value = ""), b && (Z = !1), (b || !u.map?.atlas.locations.length && _.map?.atlas.locations.length && !Z || C.value && !_.map?.atlas.locations.some((F) => F.key === C.value)) && (C.value = _e(_.map) === "scene" ? "" : null), b && (y.value = !1, M.value = !1);
+      (!u.map || b || A.value && !_.map?.atlas.locations.some((F) => F.key === A.value)) && (A.value = _.map ? xe(_.map.atlas) : ""), (b || !_.map?.atlas.locations.some((F) => F.key === P.value)) && (P.value = ""), b && (Z = !1), (b || !u.map?.atlas.locations.length && _.map?.atlas.locations.length && !Z || C.value && !_.map?.atlas.locations.some((F) => F.key === C.value)) && (C.value = _e(_.map) === "scene" ? "" : null), b && (y.value = !1, M.value = !1);
     });
     function ae(_) {
-      Z = !0, I.value = _, P.value = "", C.value = null, x.value = !1;
+      Z = !0, A.value = _, P.value = "", C.value = null, x.value = !1;
     }
     async function ne(_, u = !1) {
       const b = S.value?.locations.find((F) => F.key === _);
-      b && (Z = !0, C.value = null, P.value = _, M.value = !1, x.value = !1, u && (I.value = b.parent || ""), await Le(), U.value = S.value ? re(S.value, _, I.value) : _, A.value += 1);
+      b && (Z = !0, C.value = null, P.value = _, M.value = !1, x.value = !1, u && (A.value = b.parent || ""), await Ee(), U.value = S.value ? re(S.value, _, A.value) : _, I.value += 1);
     }
-    async function Ie() {
+    async function Ae() {
       X.value && await ne(X.value.key, !0);
     }
     function pe(_ = "") {
@@ -1428,10 +1427,10 @@ var _l = { class: "map-top" }, Cl = { class: "map-search-bar" }, Sl = ["disabled
     function ge() {
       Z = !0, C.value = null, x.value = !1;
     }
-    function Ae(_) {
-      D.value || (D.value = !0, H.value = "2d", Q.value = _);
+    function Ie(_) {
+      D.value || (D.value = !0, H.value = "2d", z.value = _);
     }
-    return Qe(() => x.value ? (x.value = !1, !0) : K.value ? (ge(), !0) : P.value ? (P.value = "", !0) : I.value ? (ae(de.value?.parent || ""), !0) : !1), (_, u) => (l(), o("main", { class: O(["map-app", {
+    return ze(() => x.value ? (x.value = !1, !0) : K.value ? (ge(), !0) : P.value ? (P.value = "", !0) : A.value ? (ae(de.value?.parent || ""), !0) : !1), (_, u) => (l(), o("main", { class: O(["map-app", {
       "has-view-switch": S.value?.locations.length,
       "is-scene-view": K.value
     }]) }, [
@@ -1473,19 +1472,19 @@ var _l = { class: "map-top" }, Cl = { class: "map-search-bar" }, Sl = ["disabled
           "aria-label": "地图图例",
           onClick: u[4] || (u[4] = (b) => x.value = !x.value)
         }, [$(j, { name: "layers" })], 8, Vl)])) : f("", !0)])) : f("", !0),
-        S.value?.locations.length && !K.value ? (l(), o("nav", Il, [t("button", {
+        S.value?.locations.length && !K.value ? (l(), o("nav", Al, [t("button", {
           type: "button",
           onClick: u[5] || (u[5] = (b) => ae(""))
-        }, [$(j, { name: "globe" }), u[27] || (u[27] = R("世界", -1))]), (l(!0), o(B, null, E(Ve.value, (b) => (l(), o(B, { key: b.key }, [$(j, { name: "next" }), t("button", {
+        }, [$(j, { name: "globe" }), u[27] || (u[27] = R("世界", -1))]), (l(!0), o(B, null, L(Ve.value, (b) => (l(), o(B, { key: b.key }, [$(j, { name: "next" }), t("button", {
           type: "button",
           onClick: (F) => ae(b.key)
-        }, h(b.name), 9, Al)], 64))), 128))])) : f("", !0),
+        }, h(b.name), 9, Il)], 64))), 128))])) : f("", !0),
         d(m) ? (l(), o("div", Rl, [u[28] || (u[28] = t("span", null, null, -1)), R(h(d(m)), 1)])) : f("", !0),
-        Q.value ? (l(), o("aside", El, [t("p", null, h(Q.value), 1), t("button", {
+        z.value ? (l(), o("aside", Ll, [t("p", null, h(z.value), 1), t("button", {
           type: "button",
           class: "map-notice-close",
           "aria-label": "关闭三维提示",
-          onClick: u[6] || (u[6] = (b) => Q.value = "")
+          onClick: u[6] || (u[6] = (b) => z.value = "")
         }, [$(j, { name: "close" })])])) : f("", !0),
         d(r) || d(k) || d(n).status === "conflict" ? (l(), o("aside", {
           key: 4,
@@ -1496,7 +1495,7 @@ var _l = { class: "map-top" }, Cl = { class: "map-search-bar" }, Sl = ["disabled
           type: "button",
           disabled: d(a),
           onClick: u[7] || (u[7] = (...b) => d(g) && d(g)(...b))
-        }, "检查保存", 8, Ll)) : d(n).status === "conflict" ? (l(), o(B, { key: 1 }, [u[29] || (u[29] = t("small", null, "恢复会放弃尚未保存的更改，并使用当前聊天已保存的 OS 数据（不只是地图）。", -1)), t("button", {
+        }, "检查保存", 8, El)) : d(n).status === "conflict" ? (l(), o(B, { key: 1 }, [u[29] || (u[29] = t("small", null, "恢复会放弃尚未保存的更改，并使用当前聊天已保存的 OS 数据（不只是地图）。", -1)), t("button", {
           type: "button",
           disabled: d(a),
           onClick: u[8] || (u[8] = (...b) => d(V) && d(V)(...b))
@@ -1505,7 +1504,7 @@ var _l = { class: "map-top" }, Cl = { class: "map-search-bar" }, Sl = ["disabled
           type: "button",
           disabled: d(a),
           onClick: u[9] || (u[9] = (...b) => d(e) && d(e)(...b))
-        }, "重新加载", 8, zl)) : (l(), o("button", {
+        }, "重新加载", 8, Ql)) : (l(), o("button", {
           key: 3,
           type: "button",
           class: "map-notice-close",
@@ -1516,11 +1515,11 @@ var _l = { class: "map-top" }, Cl = { class: "map-search-bar" }, Sl = ["disabled
       t("div", { class: O(["map-canvas", { "has-detail": G.value && !K.value }]) }, [d(n).map && S.value?.locations.length ? (l(), o(B, { key: 0 }, [
         ye($($t, {
           atlas: d(n).map.atlas,
-          region: I.value,
+          region: A.value,
           "current-location-key": W.value,
           "selected-location-key": P.value,
           "focus-key": U.value,
-          "focus-sequence": A.value,
+          "focus-sequence": I.value,
           onSelect: u[11] || (u[11] = (b) => ne(b))
         }, null, 8, [
           "atlas",
@@ -1530,18 +1529,18 @@ var _l = { class: "map-top" }, Cl = { class: "map-search-bar" }, Sl = ["disabled
           "focus-key",
           "focus-sequence"
         ]), [[Se, !K.value]]),
-        K.value ? (l(), o(B, { key: 0 }, [be.value?.status === "active" ? (l(), N(La, {
+        K.value ? (l(), o(B, { key: 0 }, [be.value?.status === "active" ? (l(), N(Ea, {
           key: 0,
           mode: H.value,
           "onUpdate:mode": u[12] || (u[12] = (b) => H.value = b),
           scene: be.value,
           "three-unavailable": D.value,
-          onFallback: Ae
+          onFallback: Ie
         }, null, 8, [
           "mode",
           "scene",
           "three-unavailable"
-        ])) : (l(), o("div", Ql, [
+        ])) : (l(), o("div", zl, [
           $(j, { name: "layers" }),
           t("h2", null, h(J.value ? "这里的布局还没画出来" : "还不知道你在哪里"), 1),
           t("p", null, h(J.value ? "更新地图后，会结合设定与剧情补齐这里的普通布局。" : "更新地图后，会根据剧情确认你所在的地方。"), 1),
@@ -1549,7 +1548,7 @@ var _l = { class: "map-top" }, Cl = { class: "map-search-bar" }, Sl = ["disabled
             type: "button",
             class: "map-secondary-button",
             disabled: !!d(v),
-            onClick: u[13] || (u[13] = (...b) => d(z) && d(z)(...b))
+            onClick: u[13] || (u[13] = (...b) => d(Q) && d(Q)(...b))
           }, h(d(a) ? "正在更新…" : "更新地图"), 9, Ol),
           d(v) && !d(a) ? (l(), o("p", Dl, h(d(v)), 1)) : f("", !0)
         ]))], 64)) : f("", !0),
@@ -1589,7 +1588,7 @@ var _l = { class: "map-top" }, Cl = { class: "map-search-bar" }, Sl = ["disabled
         class: "map-round-button",
         disabled: !X.value,
         "aria-label": "回到我的位置",
-        onClick: Ie
+        onClick: Ae
       }, [$(j, { name: "locate" })], 8, Xl), t("button", {
         type: "button",
         class: "map-round-button",
@@ -1651,8 +1650,8 @@ var _l = { class: "map-top" }, Cl = { class: "map-search-bar" }, Sl = ["disabled
         notice: d(r),
         "notice-error": d(p),
         onClose: u[24] || (u[24] = (b) => y.value = !1),
-        onSetAuto: d(L),
-        onUpdate: d(z),
+        onSetAuto: d(E),
+        onUpdate: d(Q),
         onRebuild: d(Y),
         onRefresh: d(e)
       }, null, 8, [
@@ -1674,7 +1673,7 @@ var _l = { class: "map-top" }, Cl = { class: "map-search-bar" }, Sl = ["disabled
       ])) : f("", !0)
     ], 2));
   }
-}), rs = as;
+}), is = as;
 export {
-  rs as default
+  is as default
 };

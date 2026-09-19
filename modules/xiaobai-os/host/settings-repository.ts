@@ -4,6 +4,7 @@ import type { TasksSettings } from '../apps/tasks/types.js';
 import type { MessagesSettings } from '../apps/messages/types.js';
 import type { ActionCheckFrequency, ActionCheckRule, DiceFeature, DiceSettings } from '../apps/dice/types.js';
 import { isActionCheckFrequency, isActionCheckRule } from '../apps/dice/settings.js';
+import { parseCoc7Sheet, type Coc7Sheet } from '../apps/dice/domain/coc7-sheet.js';
 import type { WorldSettings } from '../apps/world/types.js';
 import type { XiaobaiOsSettings as XiaobaiOsSettingsRoot } from '../types.js';
 import { jsonValuesEqual } from './json-values-equal.js';
@@ -57,6 +58,7 @@ export interface XiaobaiOsSettingsRepository {
     setDiceFeature: (feature: DiceFeature, enabled: boolean) => Promise<XiaobaiOsSettings>;
     setDiceActionCheckFrequency: (frequency: ActionCheckFrequency) => Promise<XiaobaiOsSettings>;
     setDiceActionCheckRule: (rule: ActionCheckRule) => Promise<XiaobaiOsSettings>;
+    setDiceCoc7Sheet: (sheet: Coc7Sheet | null) => Promise<XiaobaiOsSettings>;
     setWorldPreference: (key: keyof WorldSettings, enabled: boolean) => Promise<XiaobaiOsSettings>;
     mutateFourthWall: (
         action: (current: FourthWallGlobalSettings) => FourthWallGlobalSettings,
@@ -295,6 +297,14 @@ export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): Xia
         });
     }
 
+    function setDiceCoc7Sheet(sheet: Coc7Sheet | null): Promise<XiaobaiOsSettings> {
+        const validated = sheet === null ? null : parseCoc7Sheet(sheet);
+        return mutate(next => {
+            next.apps.dice.coc7Sheet = validated;
+            return next;
+        });
+    }
+
     function setDiceActionCheckFrequency(frequency: ActionCheckFrequency): Promise<XiaobaiOsSettings> {
         if (!isActionCheckFrequency(frequency)) { throw new TypeError('invalid Dice action-check frequency'); }
         return mutate(next => {
@@ -355,6 +365,7 @@ export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): Xia
         setDiceFeature,
         setDiceActionCheckFrequency,
         setDiceActionCheckRule,
+        setDiceCoc7Sheet,
         setWorldPreference,
         mutateFourthWall,
         subscribe,

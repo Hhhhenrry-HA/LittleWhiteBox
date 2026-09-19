@@ -3,17 +3,20 @@ import { onBeforeUnmount, onMounted, ref } from 'vue';
 import type { XiaobaiOsAppProps } from '../../../shell/app-contract.js';
 import { HostRequestError } from '../../../shell/app-src/frame-bridge.js';
 import type { ActionCheckFrequency, ActionCheckRule, DiceClientState } from '../types.js';
+import Coc7Sheet from './Coc7Sheet.vue';
+import { COC7_UI } from './coc7-copy.js';
 const props = defineProps<XiaobaiOsAppProps>();
 const state = ref(props.initialState as DiceClientState);
 const busy = ref(false);
 const error = ref('');
+const continuationNotice = '使用不支持预填充的模型时，请关闭「续写预填充」，并保留预设「实用提示词」里的「继续推进」内容（不能为空）。';
 const frequencyChoices: Record<ActionCheckFrequency, { label: string; description: string }> = {
     standard: { label: '标准', description: '有风险或阻力，且成败会改变后续的行动才检定。' },
     active: { label: '积极', description: '日常小目标，以及效果、耗时和代价的不确定性也可检定。' },
 };
 const ruleChoices: Record<ActionCheckRule, { label: string; description: string }> = {
     d20: { label: '通用 D20', description: '不需要人物数值，由情境决定难度。' },
-    coc7: { label: 'CoC 第七版', description: '使用已知的 CoC 技能、属性数值，支持奖惩骰与双方对抗。' },
+    coc7: { label: 'CoC 第七版', description: COC7_UI.description },
 };
 let unsubscribe = () => {};
 let mounted = false;
@@ -28,17 +31,19 @@ onMounted(() => {
     });
 });
 onBeforeUnmount(() => { mounted = false; unsubscribe(); });
-async function send(type: string, payload: Record<string, unknown>) {
-    if (busy.value) { return; }
+async function send(type: string, payload: Record<string, unknown>, reportError = true) {
+    if (busy.value) { return false; }
     busy.value = true; error.value = '';
     const identity = state.value.chatIdentity;
     const version = pushed;
     try {
         const response = await props.bridge.request(type, { chatIdentity: identity, ...payload }) as { result: DiceClientState };
         if (mounted && version === pushed && response.result.chatIdentity === identity) { state.value = response.result; }
+        return mounted && response.result.chatIdentity === identity;
     } catch (cause) {
-        if (mounted) { error.value = cause instanceof HostRequestError && cause.code === 'app_request_failed'
+        if (mounted && reportError) { error.value = cause instanceof HostRequestError && cause.code === 'app_request_failed'
             ? cause.message : '操作未完成，请稍后重试。'; }
+        return false;
     }
     finally { if (mounted) { busy.value = false; } }
 }
@@ -57,7 +62,7 @@ async function send(type: string, payload: Record<string, unknown>) {
                 </button>
             </div>
             <p class="dice-intro">当你尝试不确定的事——说服陌生人、翻越高墙、破译符文——由骰子裁决，而非 AI。一次真随机掷骰仲裁结果，故事顺从命运。</p>
-            <fieldset v-if="state.actionChecksEnabled" class="dice-frequency" :disabled="busy || state.checkBusy" aria-describedby="dice-rule-description">
+            <fieldset v-if="state.actionChecksEnabled" class="dice-frequency" :disabled="busy" aria-describedby="dice-rule-description">
                 <legend>检定规则</legend>
                 <div class="dice-frequency-options">
                     <button
@@ -83,8 +88,14 @@ async function send(type: string, payload: Record<string, unknown>) {
                 </div>
                 <p id="dice-frequency-description" aria-live="polite">{{ frequencyChoices[state.actionCheckFrequency].description }}</p>
             </fieldset>
+            <Coc7Sheet
+                v-if="state.coc7Sheet.kind === 'invalid' || state.actionChecksEnabled && state.actionCheckRule === 'coc7'"
+                :sheet="state.coc7Sheet.kind === 'ready' ? state.coc7Sheet.sheet : null" :invalid="state.coc7Sheet.kind === 'invalid'"
+                :busy="busy" :save="sheet => send('dice/set-coc7-sheet', { sheet }, false)"
+            />
             <aside class="dice-notice">
                 <p>请勿开启酒馆的「自动续写」。</p>
+                <p>{{ continuationNotice }}</p>
                 <p>酒馆 1.14 / 1.15：行动检定的自动续写会发送输入框中尚未发送的文字。</p>
                 <p>功能开启期间，会自动创建「小白 OS · 行动检定显示」全局正则。</p>
             </aside>

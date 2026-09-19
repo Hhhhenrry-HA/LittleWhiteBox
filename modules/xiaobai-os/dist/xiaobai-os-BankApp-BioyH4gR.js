@@ -1,8 +1,7 @@
 /* eslint-disable */
-import { C as te, E as le, H as se, J as ie, K as C, V as oe, Y as ue, c as N, gt as l, h as M, j as R, k as s, l as c, m as g, mt as I, o as w, p as q, r as B, s as e, u as i } from "./xiaobai-os-runtime-core.esm-bundler-x_Eikhco.js";
-import { l as re, o as de } from "./xiaobai-os-runtime-dom.esm-bundler-DWFjb9Vy.js";
-import { n as ve } from "./xiaobai-os-app-navigation-BcQEoInO.js";
-import { t as be } from "./xiaobai-os-AppDialog-BtiJ8z-w.js";
+import { E as te, H as le, J as se, K as C, M as s, P as R, Q as l, V as ie, X as I, Y as oe, b as M, f as w, g as i, h as c, k as ue, l as re, m as N, o as de, p as e, u as B, v as q, y as g } from "./xiaobai-os-runtime-dom.esm-bundler-BcM9c-Z9.js";
+import { n as ve } from "./xiaobai-os-app-navigation-sg-40eOk.js";
+import { t as be } from "./xiaobai-os-AppDialog-CI-E933W.js";
 var ke = class extends Error {
   code;
   constructor(a, u = "") {
@@ -12,25 +11,25 @@ var ke = class extends Error {
 function D(a, u = "") {
   throw new ke(a, u);
 }
-var X = 1e4;
-function J(a, u = "amount") {
+var G = 1e4;
+function Y(a, u = "amount") {
   return (typeof a != "number" || !Number.isSafeInteger(a) || a <= 0) && D("bank_amount_invalid", u), a;
 }
 function ce(a, u = "payout") {
   return (typeof a != "number" || !Number.isSafeInteger(a) || a < 0) && D("bank_amount_invalid", u), a > 5e4 && D("bank_amount_overflow", u), a;
 }
-function Y(a, u) {
+function Q(a, u) {
   return (typeof a != "number" || !Number.isSafeInteger(a) || a <= 0) && D("bank_amount_invalid", u), a;
 }
 function me(a, u, n) {
-  const t = J(a), v = Y(u, "numerator"), f = Y(n, "denominator");
+  const t = Y(a), v = Q(u, "numerator"), f = Q(n, "denominator");
   return t > Math.floor(Number.MAX_SAFE_INTEGER / v) && D("bank_amount_overflow"), ce(Math.floor(t * v / f));
 }
 function pe(a, u) {
-  const n = J(a, "principal");
+  const n = Y(a, "principal");
   (typeof u != "number" || !Number.isSafeInteger(u)) && D("bank_amount_invalid", "bps");
-  const t = X + u;
-  return (!Number.isSafeInteger(t) || t < 0) && D("bank_amount_invalid", "bps"), t === 0 ? 0 : me(n, t, X);
+  const t = G + u;
+  return (!Number.isSafeInteger(t) || t < 0) && D("bank_amount_invalid", "bps"), t === 0 ? 0 : me(n, t, G);
 }
 var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-dialog-field" }, he = { class: "bank-amount-input" }, $e = ["disabled"], we = {
   id: "bank-amount-help",
@@ -53,11 +52,11 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
   key: 6,
   class: "bank-inline-error",
   role: "status"
-}, xe = {
+}, Pe = {
   key: 7,
   class: "bank-inline-error",
   role: "alert"
-}, Pe = { class: "bank-dialog-actions" }, ze = ["disabled"], Ee = ["disabled"], Ve = /* @__PURE__ */ M({
+}, xe = { class: "bank-dialog-actions" }, ze = ["disabled"], Ee = ["disabled"], Ve = /* @__PURE__ */ M({
   __name: "BankActionDialog",
   props: {
     mode: {},
@@ -71,7 +70,7 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
   },
   emits: ["cancel", "confirm"],
   setup(a, { emit: u }) {
-    const n = a, t = u, v = C(n.product ? String(n.product.minAmount) : ""), f = w(() => n.mode === "deposit-open" ? "存入定期" : n.mode === "fund-open" ? "申购理财" : "提前支取"), m = w(() => /^\d+$/.test(v.value.trim()) ? Number(v.value) : 0), h = w(() => n.mode === "withdraw" ? "" : !n.product || !Number.isSafeInteger(m.value) || m.value <= 0 ? "请输入正整数金额" : m.value < n.product.minAmount || m.value > n.product.maxAmount ? `金额须在 ${n.product.minAmount.toLocaleString("zh-CN")} 至 ${n.product.maxAmount.toLocaleString("zh-CN")} 之间` : m.value > n.balance ? "可用余额不足" : ""), _ = w(() => n.mode === "deposit-open" ? n.product : null), $ = w(() => n.mode === "fund-open" ? n.product : null), A = w(() => _.value && !h.value ? pe(m.value, _.value.interestBps) : null), x = w(() => {
+    const n = a, t = u, v = C(n.product ? String(n.product.minAmount) : ""), f = w(() => n.mode === "deposit-open" ? "存入定期" : n.mode === "fund-open" ? "申购理财" : "提前支取"), m = w(() => /^\d+$/.test(v.value.trim()) ? Number(v.value) : 0), h = w(() => n.mode === "withdraw" ? "" : !n.product || !Number.isSafeInteger(m.value) || m.value <= 0 ? "请输入正整数金额" : m.value < n.product.minAmount || m.value > n.product.maxAmount ? `金额须在 ${n.product.minAmount.toLocaleString("zh-CN")} 至 ${n.product.maxAmount.toLocaleString("zh-CN")} 之间` : m.value > n.balance ? "可用余额不足" : ""), _ = w(() => n.mode === "deposit-open" ? n.product : null), $ = w(() => n.mode === "fund-open" ? n.product : null), A = w(() => _.value && !h.value ? pe(m.value, _.value.interestBps) : null), P = w(() => {
       const b = n.product;
       return b ? [.../* @__PURE__ */ new Set([
         b.minAmount,
@@ -88,11 +87,11 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
       busy: a.busy,
       onClose: r[2] || (r[2] = (p) => t("cancel"))
     }, {
-      default: oe(() => [e("form", { onSubmit: re(U, ["prevent"]) }, [
+      default: ie(() => [e("form", { onSubmit: re(U, ["prevent"]) }, [
         e("h2", null, l(f.value), 1),
         e("div", fe, [e("strong", null, l(a.position?.name || a.product?.name), 1), a.product ? (s(), i("span", ge, l(a.product.lockRounds) + " 回合", 1)) : c("", !0)]),
         a.mode !== "withdraw" ? (s(), i(B, { key: 0 }, [
-          e("label", ye, [e("span", null, l(a.mode === "deposit-open" ? "存入金额" : "申购金额"), 1), e("span", he, [r[3] || (r[3] = e("i", null, "¤", -1)), se(e("input", {
+          e("label", ye, [e("span", null, l(a.mode === "deposit-open" ? "存入金额" : "申购金额"), 1), e("span", he, [r[3] || (r[3] = e("i", null, "¤", -1)), le(e("input", {
             "onUpdate:modelValue": r[0] || (r[0] = (p) => v.value = p),
             disabled: a.busy,
             type: "text",
@@ -101,7 +100,7 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
             "aria-describedby": "bank-amount-help"
           }, null, 8, $e), [[de, v.value]])])]),
           e("small", we, "钱包可用 ¤ " + l(a.balance.toLocaleString("zh-CN")) + " · " + l(a.product?.amountLabel), 1),
-          e("div", _e, [(s(!0), i(B, null, R(x.value, (p) => (s(), i("button", {
+          e("div", _e, [(s(!0), i(B, null, R(P.value, (p) => (s(), i("button", {
             key: p,
             type: "button",
             disabled: a.busy,
@@ -123,8 +122,8 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
         ], 64)) : c("", !0),
         a.claimableCount ? (s(), i("p", Re, "另有 " + l(a.claimableCount) + " 笔到期资产，将随本次操作一并兑付至钱包。", 1)) : c("", !0),
         a.disabledReason && !a.busy ? (s(), i("p", De, l(a.disabledReason), 1)) : c("", !0),
-        a.error ? (s(), i("p", xe, l(a.error), 1)) : c("", !0),
-        e("footer", Pe, [e("button", {
+        a.error ? (s(), i("p", Pe, l(a.error), 1)) : c("", !0),
+        e("footer", xe, [e("button", {
           type: "button",
           class: "bank-secondary-button",
           disabled: a.busy,
@@ -146,10 +145,10 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
   "aria-label",
   "disabled",
   "onClick"
-], Ze = { class: "bank-product-terms" }, je = {
+], Ze = { class: "bank-product-terms" }, Ke = {
   key: 0,
   class: "bank-product-hint"
-}, Ke = /* @__PURE__ */ M({
+}, Xe = /* @__PURE__ */ M({
   __name: "BankDeposits",
   props: {
     products: {},
@@ -173,15 +172,15 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
           onClick: (v) => u.$emit("open", t)
         }, "存入", 8, We)]),
         e("dl", Ze, [e("div", null, [n[1] || (n[1] = e("dt", null, "存入范围", -1)), e("dd", null, l(t.amountLabel), 1)]), e("div", null, [n[2] || (n[2] = e("dt", null, "提前支取", -1)), e("dd", null, "本金 " + l(t.earlyPenaltyLabel) + "，无利息", 1)])]),
-        a.balance < t.minAmount ? (s(), i("p", je, "钱包余额不足最低存入金额")) : c("", !0)
+        a.balance < t.minAmount ? (s(), i("p", Ke, "钱包余额不足最低存入金额")) : c("", !0)
       ]))), 128))]),
       n[4] || (n[4] = e("p", { class: "bank-footnote" }, "每完成一条剧情回复，推进一回合。", -1))
     ]));
   }
-}), Ge = Ke, Xe = {
+}), je = Xe, Ge = {
   class: "bank-page",
   "aria-labelledby": "bank-funds-title"
-}, Ye = { class: "bank-product-grid" }, Je = ["data-risk"], Qe = { class: "bank-fund-description" }, en = { class: "bank-product-offer" }, nn = { class: "bank-return-range" }, an = [
+}, Qe = { class: "bank-product-grid" }, Ye = ["data-risk"], Je = { class: "bank-fund-description" }, en = { class: "bank-product-offer" }, nn = { class: "bank-return-range" }, an = [
   "aria-label",
   "disabled",
   "onClick"
@@ -197,15 +196,15 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
   },
   emits: ["open"],
   setup(a) {
-    return (u, n) => (s(), i("section", Xe, [
+    return (u, n) => (s(), i("section", Ge, [
       n[3] || (n[3] = e("header", { class: "bank-page-heading" }, [e("h2", { id: "bank-funds-title" }, "浮动理财"), e("p", null, "可能损失本金，到期前不可退出。")], -1)),
-      e("div", Ye, [(s(!0), i(B, null, R(a.products, (t) => (s(), i("article", {
+      e("div", Qe, [(s(!0), i(B, null, R(a.products, (t) => (s(), i("article", {
         key: t.id,
         class: "bank-product-card bank-fund-card",
         "data-risk": t.riskLevel
       }, [
         e("header", null, [e("h3", null, l(t.name), 1), e("span", { class: I(["bank-risk-badge", `is-${t.riskLevel}`]) }, l(t.riskLabel), 3)]),
-        e("p", Qe, l(t.description), 1),
+        e("p", Je, l(t.description), 1),
         e("div", en, [e("div", nn, [e("strong", null, l(t.returnLabel), 1), n[0] || (n[0] = e("span", null, "整期收益区间 · 非年化", -1))]), e("button", {
           type: "button",
           class: "bank-primary-button",
@@ -215,7 +214,7 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
         }, "申购", 8, an)]),
         e("dl", tn, [e("div", null, [n[1] || (n[1] = e("dt", null, "申购范围", -1)), e("dd", null, l(t.amountLabel), 1)]), e("div", null, [n[2] || (n[2] = e("dt", null, "锁定期限", -1)), e("dd", null, l(t.lockRounds) + " 回合", 1)])]),
         a.balance < t.minAmount ? (s(), i("p", ln, "钱包余额不足最低申购金额")) : c("", !0)
-      ], 8, Je))), 128))]),
+      ], 8, Ye))), 128))]),
       n[4] || (n[4] = e("p", { class: "bank-footnote" }, "以上为合同区间，实际收益到期揭晓。", -1))
     ]));
   }
@@ -351,7 +350,7 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
 }, Rn = {
   key: 1,
   class: "bank-record-list"
-}, Dn = { class: "bank-product-mark" }, xn = { class: "bank-record-main" }, Pn = { class: "bank-record-detail" }, zn = {
+}, Dn = { class: "bank-product-mark" }, Pn = { class: "bank-record-main" }, xn = { class: "bank-record-detail" }, zn = {
   key: 2,
   class: "bank-inline-error",
   role: "alert"
@@ -381,17 +380,17 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
         class: "bank-record-row"
       }, [e("summary", null, [
         e("span", Dn, [g(y, { kind: v.kind }, null, 8, ["kind"])]),
-        e("span", xn, [e("strong", null, l(v.productName), 1), e("small", null, l(v.resultLabel), 1)]),
+        e("span", Pn, [e("strong", null, l(v.productName), 1), e("small", null, l(v.resultLabel), 1)]),
         e("span", { class: I(["bank-record-net", {
           "is-negative": v.net < 0,
           "is-flat": v.net === 0
         }]) }, [e("strong", null, l(v.net > 0 ? "+" : "") + l(v.net.toLocaleString("zh-CN")), 1), e("small", null, l(v.net < 0 ? "净损失" : v.net > 0 ? "净收益" : "持平"), 1)], 2),
         g(y, { kind: "next" })
-      ]), e("dl", Pn, [
+      ]), e("dl", xn, [
         e("div", null, [t[3] || (t[3] = e("dt", null, "投入本金", -1)), e("dd", null, "¤ " + l(v.amountIn.toLocaleString("zh-CN")), 1)]),
         e("div", null, [t[4] || (t[4] = e("dt", null, "实际到账", -1)), e("dd", null, "¤ " + l(v.payout.toLocaleString("zh-CN")), 1)]),
         e("div", null, [t[5] || (t[5] = e("dt", null, "结算回合", -1)), e("dd", null, l(v.turnLabel), 1)]),
-        e("div", null, [t[6] || (t[6] = e("dt", null, "发生时间", -1)), e("dd", null, l(ue(u).format(v.createdAt)), 1)])
+        e("div", null, [t[6] || (t[6] = e("dt", null, "发生时间", -1)), e("dd", null, l(oe(u).format(v.createdAt)), 1)])
       ])]))), 128))])) : (s(), i("div", In, [g(y, { kind: "records" }), t[2] || (t[2] = e("h3", null, "暂无兑付记录", -1))])),
       a.error ? (s(), i("p", zn, l(a.error), 1)) : c("", !0),
       a.hasMore ? (s(), i("button", {
@@ -406,7 +405,7 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
 }), Tn = Vn, qn = {
   class: "bank-vault bank-page",
   "aria-labelledby": "bank-vault-title"
-}, Un = { class: "bank-assets" }, Fn = ["disabled"], Hn = { class: "bank-vault-portals" }, On = { class: "bank-portal-mark" }, Wn = { class: "bank-portal-mark" }, Zn = { class: "bank-timing" }, jn = /* @__PURE__ */ M({
+}, Un = { class: "bank-assets" }, Fn = ["disabled"], Hn = { class: "bank-vault-portals" }, On = { class: "bank-portal-mark" }, Wn = { class: "bank-portal-mark" }, Zn = { class: "bank-timing" }, Kn = /* @__PURE__ */ M({
   __name: "BankVault",
   props: {
     lockedAmount: {},
@@ -465,10 +464,10 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
       e("details", Zn, [n[11] || (n[11] = e("summary", null, "计期与兑付", -1)), e("p", null, "当前第 " + l(a.currentTurn) + " 回合。每完成一条剧情回复推进一回合。到期资产可手动领取，也会随下一次银行交易一并结算至钱包。", 1)])
     ]));
   }
-}), Kn = jn, Gn = { class: "bank-app" }, Xn = { class: "bank-header" }, Yn = {
+}), Xn = Kn, jn = { class: "bank-app" }, Gn = { class: "bank-header" }, Qn = {
   class: "bank-header-balance",
   "aria-label": "钱包可用余额"
-}, Jn = ["disabled"], Qn = {
+}, Yn = ["disabled"], Jn = {
   key: 0,
   class: "bank-notice-area"
 }, ea = ["disabled"], na = ["disabled"], aa = {
@@ -489,10 +488,10 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
     initialState: {}
   },
   setup(a) {
-    const u = a, n = C(structuredClone(ie(u.initialState))), t = C("vault"), v = C(null), f = C(null), m = C(!1), h = C(!1), _ = C(!1), $ = C(""), A = C(""), x = C("");
+    const u = a, n = C(structuredClone(se(u.initialState))), t = C("vault"), v = C(null), f = C(null), m = C(!1), h = C(!1), _ = C(!1), $ = C(""), A = C(""), P = C("");
     let S = null, U = () => {
     }, b = 0;
-    ve(() => f.value ? (K(), !0) : t.value !== "vault" ? (V("vault"), !0) : !1);
+    ve(() => f.value ? (X(), !0) : t.value !== "vault" ? (V("vault"), !0) : !1);
     const r = w(() => n.value.status === "unconfirmed"), p = w(() => h.value ? "正在处理上一项银行操作" : m.value ? "正在刷新银行记录" : n.value.status !== "ready" ? n.value.message || "暂时不能交易" : n.value.generationActive ? "故事正在继续，请等回复结束" : ""), F = w(() => m.value || h.value || r.value), W = w(() => $.value || n.value.message || (n.value.status !== "loading" && !f.value ? p.value : ""));
     function O() {
       return typeof globalThis.crypto?.randomUUID == "function" ? `bank-ui:${globalThis.crypto.randomUUID()}` : `bank-ui:${Date.now()}:${Math.random().toString(36).slice(2, 10)}`;
@@ -501,9 +500,9 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
       return { chatIdentity: n.value.chatIdentity };
     }
     function E(d) {
-      n.value = structuredClone(d), m.value = !1, _.value = !1, $.value = "", x.value = "", d.claimableCount === 0 && (S = null);
+      n.value = structuredClone(d), m.value = !1, _.value = !1, $.value = "", P.value = "", d.claimableCount === 0 && (S = null);
     }
-    function P(d) {
+    function x(d) {
       const o = d instanceof Error ? d.message : String(d);
       return o.includes("economy_insufficient_funds") || o.includes("cannot be overdrawn") ? "小白币不足，这次交易未完成。" : o.includes("bank_amount_out_of_range") ? "金额不在该产品允许范围内。" : o.includes("bank_amount_invalid") ? "金额必须是正整数。" : o.includes("bank_revision_conflict") || o.includes("bank_event_id_conflict") ? "银行记录已有变化，请关闭确认框，刷新后再试。" : o.includes("bank_position_missing") || o.includes("bank_position_state_changed") ? "这笔资产已有变化，请刷新银行记录。" : o.includes("bank_no_due_positions") ? "当前没有可领取的到期资产。" : o === "host_request_timeout" ? "暂时没收到保存结果，请保留当前页面并重试。" : "银行操作未完成，请稍后重试。";
     }
@@ -515,12 +514,12 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
         const o = await u.bridge.request("bank/refresh", z(), T);
         d === b && E(o.result);
       } catch (o) {
-        d === b && ($.value = P(o));
+        d === b && ($.value = x(o));
       } finally {
         d === b && (m.value = !1);
       }
     }
-    async function Q() {
+    async function J() {
       if (m.value || h.value) return;
       const d = ++b;
       m.value = !0, $.value = "";
@@ -528,7 +527,7 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
         const o = await u.bridge.request("bank/confirm-save", z(), T);
         d === b && E(o.result.state);
       } catch (o) {
-        d === b && ($.value = P(o));
+        d === b && ($.value = x(o));
       } finally {
         d === b && (m.value = !1);
       }
@@ -536,7 +535,7 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
     function V(d) {
       t.value = d, v.value?.scrollTo(0, 0);
     }
-    function j(d, o) {
+    function K(d, o) {
       p.value || (A.value = "", f.value = {
         mode: o,
         product: d,
@@ -550,7 +549,7 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
         actionId: O()
       });
     }
-    function K() {
+    function X() {
       h.value || (f.value = null, A.value = "");
     }
     async function ne(d) {
@@ -574,12 +573,12 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
         if (k !== b || f.value !== o) return;
         E(L.result), f.value = null, V("positions");
       } catch (L) {
-        k === b && f.value === o && (A.value = P(L));
+        k === b && f.value === o && (A.value = x(L));
       } finally {
         k === b && (h.value = !1);
       }
     }
-    async function G() {
+    async function j() {
       if (p.value || n.value.claimableCount === 0) return;
       const d = b;
       S ||= O();
@@ -595,7 +594,7 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
         if (d !== b) return;
         S = null, E(k.result);
       } catch (k) {
-        d === b && ($.value = P(k));
+        d === b && ($.value = x(k));
       } finally {
         d === b && (h.value = !1);
       }
@@ -603,7 +602,7 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
     async function ae() {
       if (!n.value.activityPage.hasMore || _.value || h.value) return;
       const d = b, o = n.value.activities.length;
-      _.value = !0, x.value = "";
+      _.value = !0, P.value = "";
       try {
         const k = await u.bridge.request("bank/records/load-more", {
           ...z(),
@@ -613,21 +612,21 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
         const H = new Set(n.value.activities.map((L) => L.id));
         n.value.activities.push(...k.result.activities.filter((L) => !H.has(L.id))), n.value.activityPage = k.result.activityPage;
       } catch (k) {
-        d === b && (x.value = P(k));
+        d === b && (P.value = x(k));
       } finally {
         d === b && (_.value = !1);
       }
     }
-    return le(() => {
+    return ue(() => {
       U = u.bridge.subscribe((d) => {
-        d.type === "bank/state" && (h.value || (b += 1), E(d.payload.state)), d.type === "bank/error" && ($.value = P(d.payload?.message || ""));
+        d.type === "bank/state" && (h.value || (b += 1), E(d.payload.state)), d.type === "bank/error" && ($.value = x(d.payload?.message || ""));
       });
     }), te(() => {
       b += 1, U(), f.value = null, S = null;
-    }), (d, o) => (s(), i("main", Gn, [
-      e("header", Xn, [
+    }), (d, o) => (s(), i("main", jn, [
+      e("header", Gn, [
         o[3] || (o[3] = e("h1", null, "银行", -1)),
-        e("div", Yn, [e("strong", null, "¤ " + l(n.value.status === "loading" ? "—" : n.value.balance.toLocaleString("zh-CN")), 1)]),
+        e("div", Qn, [e("strong", null, "¤ " + l(n.value.status === "loading" ? "—" : n.value.balance.toLocaleString("zh-CN")), 1)]),
         e("button", {
           type: "button",
           class: "bank-icon-button",
@@ -637,16 +636,16 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
         }, [g(y, {
           kind: "refresh",
           class: I({ "is-spinning": m.value })
-        }, null, 8, ["class"])], 8, Jn)
+        }, null, 8, ["class"])], 8, Yn)
       ]),
-      W.value ? (s(), i("div", Qn, [e("aside", {
+      W.value ? (s(), i("div", Jn, [e("aside", {
         class: I(["bank-notice", { "is-error": !!$.value || n.value.status === "blocked" || n.value.status === "conflict" }]),
         role: "status"
       }, [e("p", null, l(W.value), 1), r.value ? (s(), i("button", {
         key: 0,
         type: "button",
         disabled: m.value || h.value,
-        onClick: Q
+        onClick: J
       }, l(m.value ? "正在检查…" : "检查保存"), 9, ea)) : n.value.status === "blocked" || n.value.status === "conflict" ? (s(), i("button", {
         key: 1,
         type: "button",
@@ -660,7 +659,7 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
       }, [n.value.status === "loading" ? (s(), i("div", aa, [g(y, {
         kind: "refresh",
         class: "is-spinning"
-      }), o[4] || (o[4] = e("h3", null, "正在读取资产…", -1))])) : t.value === "vault" ? (s(), N(Kn, {
+      }), o[4] || (o[4] = e("h3", null, "正在读取资产…", -1))])) : t.value === "vault" ? (s(), N(Xn, {
         key: 1,
         "locked-amount": n.value.lockedAmount,
         "current-turn": n.value.currentTurn,
@@ -669,7 +668,7 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
         "claimable-count": n.value.claimableCount,
         "write-disabled-reason": p.value,
         onNavigate: V,
-        onSettle: G
+        onSettle: j
       }, null, 8, [
         "locked-amount",
         "current-turn",
@@ -677,12 +676,12 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
         "fund-count",
         "claimable-count",
         "write-disabled-reason"
-      ])) : t.value === "deposits" ? (s(), N(Ge, {
+      ])) : t.value === "deposits" ? (s(), N(je, {
         key: 2,
         products: n.value.products.deposits,
         balance: n.value.balance,
         "write-disabled-reason": p.value,
-        onOpen: o[0] || (o[0] = (k) => j(k, "deposit-open"))
+        onOpen: o[0] || (o[0] = (k) => K(k, "deposit-open"))
       }, null, 8, [
         "products",
         "balance",
@@ -692,7 +691,7 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
         products: n.value.products.funds,
         balance: n.value.balance,
         "write-disabled-reason": p.value,
-        onOpen: o[1] || (o[1] = (k) => j(k, "fund-open"))
+        onOpen: o[1] || (o[1] = (k) => K(k, "fund-open"))
       }, null, 8, [
         "products",
         "balance",
@@ -704,7 +703,7 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
         "claimable-count": n.value.claimableCount,
         "write-disabled-reason": p.value,
         onWithdraw: ee,
-        onSettle: G,
+        onSettle: j,
         onBrowse: o[2] || (o[2] = (k) => V("deposits"))
       }, null, 8, [
         "deposits",
@@ -717,7 +716,7 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
         total: n.value.activityPage.total,
         "has-more": n.value.activityPage.hasMore,
         "loading-more": _.value,
-        error: x.value,
+        error: P.value,
         onLoadMore: ae
       }, null, 8, [
         "activities",
@@ -769,7 +768,7 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
         error: A.value,
         "claimable-count": n.value.claimableCount,
         "disabled-reason": p.value,
-        onCancel: K,
+        onCancel: X,
         onConfirm: ne
       }, null, 8, [
         "mode",
@@ -783,7 +782,7 @@ var fe = { class: "bank-dialog-subject" }, ge = { key: 0 }, ye = { class: "bank-
       ])) : c("", !0)
     ]));
   }
-}), va = ia;
+}), da = ia;
 export {
-  va as default
+  da as default
 };

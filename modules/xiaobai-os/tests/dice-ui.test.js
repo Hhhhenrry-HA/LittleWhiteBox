@@ -6,12 +6,13 @@ import { fileURLToPath } from 'node:url';
 import { parseHTML } from 'linkedom';
 import { parse, compileScript } from 'vue/compiler-sfc';
 import { build } from 'esbuild';
+import { readCoc7Sheet } from '../apps/dice/domain/coc7-sheet.ts';
 
 // Mount the actual SFC. Only the bridge is replaced, returning the host's public {ok,result} envelope.
 test('Dice switches accept confirmed settings, keep newer preference pushes and unsubscribe on exit', async t => {
     const dom = parseHTML('<html><body><div id="app"></div></body></html>');
     const previous = new Map();
-    for (const key of ['window', 'document', 'Node', 'Element', 'HTMLElement', 'SVGElement']) {
+    for (const key of ['window', 'document', 'Document', 'Node', 'Element', 'HTMLElement', 'SVGElement']) {
         previous.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
         Object.defineProperty(globalThis, key, { value: dom.window[key], configurable: true });
     }
@@ -26,19 +27,31 @@ test('Dice switches accept confirmed settings, keep newer preference pushes and 
         bundle: true, write: false, format: 'esm', platform: 'node', logLevel: 'silent',
         plugins: [{ name: 'shared-vue-runtime', setup(builder) {
             builder.onResolve({ filter: /^vue$/ }, () => ({ path: import.meta.resolve('vue'), external: true }));
+            builder.onLoad({ filter: /\.vue$/ }, args => {
+                const { descriptor } = parse(readFileSync(args.path, 'utf8'), { filename: args.path });
+                return { contents: compileScript(descriptor, { id: 'dice-child', inlineTemplate: true }).content, loader: 'ts' };
+            });
         } }],
     });
     // eslint-disable-next-line no-unsanitized/method -- Compiled repository Vue component, not user content.
     const { default: DiceApp } = await import(`data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`);
-    let state = { chatIdentity: 'chat-a', actionChecksEnabled: false, actionCheckFrequency: 'standard', actionCheckRule: 'd20', checkBusy: false, encountersEnabled: false };
+    let state = { chatIdentity: 'chat-a', actionChecksEnabled: false, actionCheckFrequency: 'standard', actionCheckRule: 'd20', encountersEnabled: false, coc7Sheet: { kind: 'empty' } };
     const listeners = new Set();
     let calls = 0;
     let release;
     let failFrequency = false;
+    let failSheet = false;
+    const sheets = [];
     const bridge = {
         subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); },
         async request(type, payload) {
             assert.equal(payload.chatIdentity, 'chat-a');
+            if (type === 'dice/set-coc7-sheet') {
+                sheets.push(structuredClone(payload.sheet));
+                if (failSheet) { throw new Error('save failed'); }
+                state = { ...state, coc7Sheet: readCoc7Sheet(payload.sheet) };
+                return { ok: true, result: state };
+            }
             if (type === 'dice/set-rule') {
                 state = { ...state, actionCheckRule: payload.rule };
                 return { ok: true, result: state };
@@ -110,14 +123,69 @@ test('Dice switches accept confirmed settings, keep newer preference pushes and 
     assert.equal(state.actionCheckRule, 'coc7');
     assert.equal(choices().length, 0, 'CoC does not expose D20 frequency');
     assert.deepEqual(rules().map(choice => choice.getAttribute('aria-pressed')), ['false', 'true']);
-    for (const listener of listeners) listener({ type: 'dice/state', payload: { state: { ...state, checkBusy: true } } });
-    await nextTick();
-    assert.equal(dom.document.querySelector('[aria-describedby="dice-rule-description"]').hasAttribute('disabled'), true);
-    for (const listener of listeners) listener({ type: 'dice/state', payload: { state } });
-    await nextTick();
+    const flush = async () => { for (let n = 0; n < 6; n++) { await Promise.resolve(); await nextTick(); } };
+    const action = id => dom.document.querySelector('[data-sheet-action="' + id + '"]');
+    failSheet = true;
+    action('generate').click(); await flush();
+    assert.deepEqual(state.coc7Sheet, { kind: 'empty' });
+    assert.ok(action('save'), 'failed initialization retains its draft');
+    const original = sheets[0];
+    failSheet = false;
+    action('save').click(); await flush();
+    assert.deepEqual(sheets[1], original, 'save retries do not rerandomize');
+    assert.deepEqual(state.coc7Sheet, { kind: 'ready', sheet: original });
+    dom.document.querySelector('[data-stat="STR"]').click(); await flush();
+    let input = dom.document.querySelector('#coc-stat-value');
+    input.value = '80'; input.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    action('save').click(); await flush();
+    assert.equal(state.coc7Sheet.sheet.attributes.STR, 80);
+    // The input owns Escape. A bubbled Escape would make the OS shell navigate away and unmount the draft.
+    let escaped = 0;
+    dom.document.getElementById('app').addEventListener('keydown', event => { if (event.key === 'Escape') { escaped++; } });
+    dom.document.querySelector('[data-stat="STR"]').click(); await flush();
+    input = dom.document.querySelector('#coc-stat-value');
+    input.value = '85'; input.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    dom.document.querySelector('[data-stat="CON"]').click(); await flush();
+    input = dom.document.querySelector('#coc-stat-value');
+    input.value = '99'; input.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    const escape = new dom.window.Event('keydown', { bubbles: true, cancelable: true });
+    Object.defineProperty(escape, 'key', { value: 'Escape' });
+    input.dispatchEvent(escape); await flush();
+    assert.equal(escaped, 0);
+    assert.equal(escape.defaultPrevented, true);
+    assert.equal(dom.document.querySelector('#coc-stat-value'), null);
+    action('save').click(); await flush();
+    assert.equal(state.coc7Sheet.sheet.attributes.STR, 85, 'earlier edits in the same draft survive Escape');
+    assert.equal(state.coc7Sheet.sheet.attributes.CON, original.attributes.CON, 'Escape discards only the active input');
+    dom.document.querySelector('[data-stat="STR"]').click(); await flush();
+    action('reroll').click(); await flush();
+    action('cancel').click(); await flush();
+    assert.equal(state.coc7Sheet.sheet.attributes.STR, 85, 'cancelling a reroll preserves saved values');
+    action('clear').click(); await flush();
+    action('confirm-clear').click(); await flush();
+    assert.deepEqual(state.coc7Sheet, { kind: 'empty' });
+    assert.ok(action('generate'));
     rules()[0].click();
     await Promise.resolve(); await nextTick();
     assert.equal(choices()[0].getAttribute('aria-pressed'), 'true', 'returning to D20 retains its frequency');
+    state = { ...state, actionChecksEnabled: false, coc7Sheet: { kind: 'invalid' } };
+    for (const listener of listeners) { listener({ type: 'dice/state', payload: { state } }); }
+    await flush();
+    assert.ok(dom.document.querySelector('[data-sheet-state="invalid"] [role="alert"]'));
+    assert.ok(action('replace'), 'recovery remains accessible with checks off and D20 selected');
+    const beforeReplace = sheets.length;
+    action('replace').click(); await flush();
+    assert.equal(sheets.length, beforeReplace, 'a replacement is only a draft until saved');
+    action('cancel').click(); await flush();
+    assert.deepEqual(state.coc7Sheet, { kind: 'invalid' });
+    failSheet = true;
+    action('clear').click(); await flush();
+    action('confirm-clear').click(); await flush();
+    assert.deepEqual(state.coc7Sheet, { kind: 'invalid' });
+    assert.ok(dom.document.querySelector('[role="alert"]'));
+    failSheet = false;
+    action('confirm-clear').click(); await flush();
+    assert.deepEqual(state.coc7Sheet, { kind: 'empty' });
     app.unmount();
     assert.equal(listeners.size, 0);
 });

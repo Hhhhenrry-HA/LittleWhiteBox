@@ -87,18 +87,17 @@ test('card redraws leave scrolling to the host, even when a temporary layout app
     assert.deepEqual(writes, []);
 });
 
-test('reloaded CoC history mounts both sides with checks disabled and keeps its recorded verdict', t => {
-    const request = { kind: 'melee_dodge', action: 'Break past the guard', character: 'Mira', stat: 'Brawl', value: 20,
-        opponent: { character: 'Guard', stat: 'Dodge', value: 40 } };
+test('reloaded CoC history mounts with checks disabled and keeps its recorded verdict', t => {
+    const request = { action: 'Break past the guard', stat: 'brawl', difficulty: 'hard' };
     const prepared = prepareActionCheck({ body: `<xb_action_check>${JSON.stringify(request)}</xb_action_check>`, rule: 'coc7',
-        generatedFrom: 0, id: 'coc', random: () => 0.1 });
+        generatedFrom: 0, id: 'coc', coc7Sheet: generateCoc7Sheet(() => 0.5), random: () => 0.1 });
     source.chat = JSON.parse(JSON.stringify([{ mes: prepared.body + '\nNext sentence.', extra: { xiaobaiOsDice: prepared.records } }]));
     const { content } = setup(t, { view: () => null, cancel() {}, retry: () => assert.fail('historical cards do not resume') }, () => false);
     const card = content.querySelector('[data-dice-record="coc"]');
     assert.ok(card);
     assert.equal(card.dataset.rule, 'coc7');
     assert.equal(card.dataset.verdict, prepared.records.checks[0].result.verdict);
-    assert.equal(card.querySelectorAll('[data-side]').length, 2);
+    assert.equal(card.querySelectorAll('.xb-dice-percentile').length, 1);
     assert.equal(card.querySelector('button'), null);
     assert.equal(card.querySelector('svg'), null, 'percentiles are not painted on a D20');
 });
@@ -166,3 +165,4 @@ test('a serialized current message renders the same static card on reload with n
     }
     assert.deepEqual(message, before);
 });
+import { generateCoc7Sheet } from '../apps/dice/domain/coc7-sheet.ts';

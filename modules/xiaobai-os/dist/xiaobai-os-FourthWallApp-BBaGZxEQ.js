@@ -1,10 +1,9 @@
 /* eslint-disable */
 import { n as $e } from "./xiaobai-os-message-markdown-p_WvGylV.js";
-import { C as le, E as ne, G as J, H as D, J as R, K as M, S as se, V as _, Y as re, c as H, gt as S, h as O, ht as Ce, j as oe, k as c, l as B, m as Z, mt as ee, o as P, p as U, r as G, s as e, u as h, v as Q, z as L } from "./xiaobai-os-runtime-core.esm-bundler-x_Eikhco.js";
-import { i as j, l as Ie, o as z } from "./xiaobai-os-runtime-dom.esm-bundler-DWFjb9Vy.js";
-import { n as ie, r as ue } from "./xiaobai-os-app-navigation-BcQEoInO.js";
-import { t as de } from "./xiaobai-os-AppDialog-BtiJ8z-w.js";
-import { t as Y } from "./xiaobai-os-context-tokens-W3T8vx4V.js";
+import { E as le, G as Q, H as D, J as P, K as M, M as c, P as ne, Q as S, T as se, V as _, X as ee, Y as re, Z as Ce, b as O, f as R, g as h, h as B, i as G, k as oe, l as Ie, m as H, o as z, p as e, u as j, v as U, x as Z, y as Y, z as L } from "./xiaobai-os-runtime-dom.esm-bundler-BcM9c-Z9.js";
+import { n as ie, r as ue } from "./xiaobai-os-app-navigation-sg-40eOk.js";
+import { t as de } from "./xiaobai-os-AppDialog-CI-E933W.js";
+import { t as J } from "./xiaobai-os-context-tokens-W3T8vx4V.js";
 var xe = { class: "fourth-wall-context" }, Se = ["aria-label", "aria-expanded"], Ae = {
   key: 0,
   class: "fourth-wall-context-popover",
@@ -20,7 +19,7 @@ var xe = { class: "fourth-wall-context" }, Se = ["aria-label", "aria-expanded"],
   setup(s, { emit: T }) {
     const n = s, i = T, u = M(!1);
     ie(() => (u.value = !1, !0), () => u.value);
-    const v = P(() => Math.min(1, n.stats.usedTokens / n.stats.limit)), o = (a) => `${(a / 1e3).toFixed(1)}k`, m = {
+    const v = R(() => Math.min(1, n.stats.usedTokens / n.stats.limit)), o = (a) => `${(a / 1e3).toFixed(1)}k`, m = {
       counting: "计算中",
       summarizing: "总结中",
       saving: "保存中",
@@ -121,7 +120,7 @@ var xe = { class: "fourth-wall-context" }, Se = ["aria-label", "aria-expanded"],
       _: 1
     }, 8, ["busy"]));
   }
-}), Re = Ne, ve = O({
+}), Pe = Ne, ve = O({
   name: "FourthWallContent",
   props: { content: {
     type: Object,
@@ -137,12 +136,12 @@ var xe = { class: "fourth-wall-context" }, Se = ["aria-label", "aria-expanded"],
           index: i.index
         }) ?? v.raw;
       }
-      const u = Q(i.tag, i.attrs, i.children.map(n));
-      return i.tag === "table" ? Q("div", { class: "fourth-wall-table-scroll" }, [u]) : u;
+      const u = Z(i.tag, i.attrs, i.children.map(n));
+      return i.tag === "table" ? Z("div", { class: "fourth-wall-table-scroll" }, [u]) : u;
     }
-    return () => Q("div", { class: "fourth-wall-markdown" }, s.content.nodes.map(n));
+    return () => Z("div", { class: "fourth-wall-markdown" }, s.content.nodes.map(n));
   }
-}), Pe = /* @__PURE__ */ new Set([
+}), Re = /* @__PURE__ */ new Set([
   "p",
   "br",
   "em",
@@ -231,7 +230,7 @@ function me(s, T = globalThis.document) {
       "pre",
       "a"
     ].includes(q)));
-    if (!Pe.has(q)) return E;
+    if (!Re.has(q)) return E;
     const F = {};
     if (q === "a") {
       const W = o(x.getAttribute("href") || "").trim();
@@ -255,13 +254,13 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
   key: 1,
   class: "fourth-wall-avatar is-placeholder",
   "aria-hidden": "true"
-}, je = { class: "fourth-wall-message-stack" }, Ge = {
+}, Ge = { class: "fourth-wall-message-stack" }, je = {
   key: 0,
   class: "fourth-wall-thinking"
-}, Ke = { class: "fourth-wall-bubble" }, Xe = ["data-image-index"], Je = ["src", "alt"], Qe = ["onClick"], Ye = {
+}, Ke = { class: "fourth-wall-bubble" }, Xe = ["data-image-index"], Qe = ["src", "alt"], Ze = ["onClick"], Je = {
   key: 2,
   class: "fourth-wall-image-unavailable"
-}, Ze = ["disabled", "onClick"], _e = ["onClick"], et = { "aria-hidden": "true" }, tt = { key: 0 }, at = { class: "fourth-wall-message-actions" }, st = ["disabled"], lt = ["disabled"], nt = ["disabled"], rt = { key: 1 }, ot = /* @__PURE__ */ O({
+}, Ye = ["disabled", "onClick"], _e = ["onClick"], et = { "aria-hidden": "true" }, tt = { key: 0 }, at = { class: "fourth-wall-message-actions" }, st = ["disabled"], lt = ["disabled"], nt = ["disabled"], rt = { key: 1 }, ot = /* @__PURE__ */ O({
   __name: "FourthWallMessage",
   props: {
     message: {},
@@ -283,17 +282,17 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
     "editCancel"
   ],
   setup(s, { emit: T }) {
-    const n = s, i = T, u = P(() => n.editDraft !== void 0);
+    const n = s, i = T, u = R(() => n.editDraft !== void 0);
     ie(() => (i("editCancel"), !0), () => u.value);
-    const v = P({
+    const v = R({
       get: () => n.editDraft || "",
       set: (f) => i("draft", f)
     }), o = M(null);
     let m = null;
-    const a = J({}), r = /* @__PURE__ */ new Set();
+    const a = Q({}), r = /* @__PURE__ */ new Set();
     let l = () => {
     };
-    const p = P(() => me(n.message.content)), x = P(() => n.message.ts ? new Intl.DateTimeFormat("zh-CN", {
+    const p = R(() => me(n.message.content)), x = R(() => n.message.ts ? new Intl.DateTimeFormat("zh-CN", {
       hour: "2-digit",
       minute: "2-digit"
     }).format(n.message.ts) : "");
@@ -429,7 +428,7 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
     function A() {
       m?.disconnect(), o.value?.querySelectorAll("[data-image-index]").forEach((f) => m?.observe(f));
     }
-    return ne(() => {
+    return oe(() => {
       l = n.bridge.subscribe((f) => {
         if (f.type === "fourth-wall/image-progress") {
           const g = f.payload, b = Object.keys(a).map(Number).find((C) => a[C]?.requestId === g.mediaRequestId);
@@ -464,8 +463,8 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
       class: "fourth-wall-avatar",
       src: s.message.role === "user" ? s.userAvatar : s.characterAvatar,
       alt: ""
-    }, null, 8, He)) : (c(), h("span", Le)), e("div", je, [
-      s.message.thinking ? (c(), h("details", Ge, [g[3] || (g[3] = e("summary", null, "思考过程", -1)), e("div", null, S(s.message.thinking), 1)])) : B("", !0),
+    }, null, 8, He)) : (c(), h("span", Le)), e("div", Ge, [
+      s.message.thinking ? (c(), h("details", je, [g[3] || (g[3] = e("summary", null, "思考过程", -1)), e("div", null, S(s.message.thinking), 1)])) : B("", !0),
       e("div", Ke, [u.value ? D((c(), h("textarea", {
         key: 0,
         "onUpdate:modelValue": g[0] || (g[0] = (b) => v.value = b),
@@ -483,16 +482,16 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
           key: 0,
           src: a[C].source,
           alt: b.value
-        }, null, 8, Je)) : a[C]?.status === "error" ? (c(), h("button", {
+        }, null, 8, Qe)) : a[C]?.status === "error" ? (c(), h("button", {
           key: 1,
           type: "button",
           onClick: (V) => W(b, C)
-        }, [U(S(b.raw), 1), e("small", null, S(a[C].message) + "，点此重试", 1)], 8, Qe)) : a[C]?.status === "unavailable" ? (c(), h("span", Ye, [U(S(b.raw), 1), e("small", null, S(a[C].message), 1)])) : (c(), h("button", {
+        }, [U(S(b.raw), 1), e("small", null, S(a[C].message) + "，点此重试", 1)], 8, Ze)) : a[C]?.status === "unavailable" ? (c(), h("span", Je, [U(S(b.raw), 1), e("small", null, S(a[C].message), 1)])) : (c(), h("button", {
           key: 3,
           type: "button",
           disabled: a[C]?.status === "loading",
           onClick: (V) => W(b, C)
-        }, [U(S(b.raw), 1), e("small", null, S(a[C]?.message || "生成图片"), 1)], 8, Ze))], 8, Xe)) : (c(), h("button", {
+        }, [U(S(b.raw), 1), e("small", null, S(a[C]?.message || "生成图片"), 1)], 8, Ye))], 8, Xe)) : (c(), h("button", {
           key: 1,
           class: "fourth-wall-voice",
           type: "button",
@@ -503,14 +502,14 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
           a[C]?.message ? (c(), h("small", tt, S(a[C].message), 1)) : B("", !0)
         ], 8, _e))]),
         _: 1
-      }, 8, ["content"])), e("div", at, [u.value ? (c(), h(G, { key: 0 }, [e("button", {
+      }, 8, ["content"])), e("div", at, [u.value ? (c(), h(j, { key: 0 }, [e("button", {
         type: "button",
         disabled: !s.editable,
         onClick: w
       }, "保存", 8, st), e("button", {
         type: "button",
         onClick: g[1] || (g[1] = (b) => i("editCancel"))
-      }, "取消")], 64)) : (c(), h(G, { key: 1 }, [e("button", {
+      }, "取消")], 64)) : (c(), h(j, { key: 1 }, [e("button", {
         type: "button",
         disabled: !s.editable,
         onClick: I
@@ -559,7 +558,7 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
     "error"
   ],
   setup(s, { emit: T }) {
-    const n = s, i = T, u = M(null), v = M(n.page), o = P(() => me(n.generation.text || "")), m = M(!1), a = M(!0), r = M(null);
+    const n = s, i = T, u = M(null), v = M(n.page), o = R(() => me(n.generation.text || "")), m = M(!1), a = M(!0), r = M(null);
     let l = 0;
     const p = {
       counting: "正在计算上下文…",
@@ -661,7 +660,7 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
         e("strong", null, "越过故事边界", -1),
         e("p", null, "这里是你与角色扮演者的皮下私聊。", -1)
       ])])) : B("", !0),
-      (c(!0), h(G, null, oe(v.value.messages, (w, $) => (c(), H(it, {
+      (c(!0), h(j, null, ne(v.value.messages, (w, $) => (c(), H(it, {
         key: w.ts + "-" + (v.value.start + $),
         message: w,
         "message-index": v.value.start + $,
@@ -707,7 +706,7 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
       }, null, 8, ft)) : (c(), h("span", gt)), e("div", bt, [s.generation.thinking ? (c(), h("details", ct, [I[7] || (I[7] = e("summary", null, "思考中", -1)), e("div", null, S(s.generation.thinking), 1)])) : B("", !0), e("div", yt, [s.generation.text ? (c(), H(re(ve), {
         key: 0,
         content: o.value
-      }, null, 8, ["content"])) : (c(), h(G, { key: 1 }, [U(S(s.generation.status === "error" ? s.generation.message : p[s.generation.phase || "replying"]), 1)], 64)), s.generation.unsaved ? (c(), h("small", pt, "未保存")) : B("", !0)])])])) : B("", !0),
+      }, null, 8, ["content"])) : (c(), h(j, { key: 1 }, [U(S(s.generation.status === "error" ? s.generation.message : p[s.generation.phase || "replying"]), 1)], 64)), s.generation.unsaved ? (c(), h("small", pt, "未保存")) : B("", !0)])])])) : B("", !0),
       a.value ? B("", !0) : (c(), h("button", {
         key: 4,
         type: "button",
@@ -730,10 +729,10 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
     "restore"
   ],
   setup(s, { emit: T }) {
-    const n = s, i = T, u = J(structuredClone(R(n.templates))), v = M(null);
+    const n = s, i = T, u = Q(structuredClone(P(n.templates))), v = M(null);
     ue(v, () => i("close"));
     function o() {
-      i("save", structuredClone(R(u)));
+      i("save", structuredClone(P(u)));
     }
     return (m, a) => (c(), h("div", {
       ref_key: "layer",
@@ -805,7 +804,7 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
         value: s.activeSessionId,
         disabled: s.disabled,
         onChange: m[0] || (m[0] = (a) => n("switch", a.target.value))
-      }, [(c(!0), h(G, null, oe(s.sessions, (a) => (c(), h("option", {
+      }, [(c(!0), h(j, null, ne(s.sessions, (a) => (c(), h("option", {
         key: a.id,
         value: a.id
       }, S(a.name), 9, Mt))), 128))], 40, Tt),
@@ -830,7 +829,7 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
       }, " 删 ", 8, Ft)
     ])]));
   }
-}), Wt = Bt, Vt = { class: "fourth-wall-settings-scroll" }, Dt = { class: "fourth-wall-settings-section" }, Ut = { class: "is-toggle" }, Nt = { class: "is-toggle" }, Rt = ["disabled"], Pt = { class: "fourth-wall-settings-section" }, zt = { class: "is-toggle" }, Ot = { class: "is-toggle" }, Ht = { class: "is-toggle" }, Lt = { key: 0 }, jt = ["disabled"], Gt = { class: "fourth-wall-settings-section is-actions" }, Kt = /* @__PURE__ */ O({
+}), Wt = Bt, Vt = { class: "fourth-wall-settings-scroll" }, Dt = { class: "fourth-wall-settings-section" }, Ut = { class: "is-toggle" }, Nt = { class: "is-toggle" }, Pt = ["disabled"], Rt = { class: "fourth-wall-settings-section" }, zt = { class: "is-toggle" }, Ot = { class: "is-toggle" }, Ht = { class: "is-toggle" }, Lt = { key: 0 }, Gt = ["disabled"], jt = { class: "fourth-wall-settings-section is-actions" }, Kt = /* @__PURE__ */ O({
   __name: "FourthWallSettings",
   props: {
     chat: {},
@@ -848,17 +847,17 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
     "openPrompts"
   ],
   setup(s, { emit: T }) {
-    const n = s, i = T, u = J(structuredClone(R(n.chat.settings))), v = M(null);
+    const n = s, i = T, u = Q(structuredClone(P(n.chat.settings))), v = M(null);
     ue(v, () => i("close"));
-    const o = J(structuredClone(R(n.global)));
+    const o = Q(structuredClone(P(n.global)));
     function m() {
-      i("updateChat", structuredClone(R(u)));
+      i("updateChat", structuredClone(P(u)));
     }
     function a() {
       i("updateGlobal", {
-        image: structuredClone(R(o.image)),
-        voice: structuredClone(R(o.voice)),
-        commentary: structuredClone(R(o.commentary))
+        image: structuredClone(P(o.image)),
+        voice: structuredClone(P(o.voice)),
+        commentary: structuredClone(P(o.commentary))
       });
     }
     return (r, l) => (c(), h("aside", {
@@ -870,7 +869,7 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
       type: "button",
       onClick: l[0] || (l[0] = (p) => i("close"))
     }, "关闭")]), e("div", Vt, [
-      Z(Wt, {
+      Y(Wt, {
         sessions: s.chat.sessions,
         "active-session-id": s.chat.activeSessionId,
         disabled: s.busy,
@@ -899,32 +898,32 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
         e("label", Ut, [l[15] || (l[15] = e("span", null, "流式生成", -1)), D(e("input", {
           "onUpdate:modelValue": l[6] || (l[6] = (p) => u.stream = p),
           type: "checkbox"
-        }, null, 512), [[j, u.stream]])]),
+        }, null, 512), [[G, u.stream]])]),
         e("label", Nt, [l[16] || (l[16] = e("span", null, "禁用助手预填充", -1)), D(e("input", {
           "onUpdate:modelValue": l[7] || (l[7] = (p) => u.disableAssistantPrefill = p),
           type: "checkbox"
-        }, null, 512), [[j, u.disableAssistantPrefill]])]),
+        }, null, 512), [[G, u.disableAssistantPrefill]])]),
         e("button", {
           type: "button",
           class: "is-primary",
           disabled: s.busy,
           onClick: m
-        }, "保存上下文设置", 8, Rt)
+        }, "保存上下文设置", 8, Pt)
       ]),
-      e("section", Pt, [
+      e("section", Rt, [
         l[21] || (l[21] = e("h3", null, "回复方式", -1)),
         e("label", zt, [l[18] || (l[18] = e("span", null, "允许对方发图片", -1)), D(e("input", {
           "onUpdate:modelValue": l[8] || (l[8] = (p) => o.image.enablePrompt = p),
           type: "checkbox"
-        }, null, 512), [[j, o.image.enablePrompt]])]),
+        }, null, 512), [[G, o.image.enablePrompt]])]),
         e("label", Ot, [l[19] || (l[19] = e("span", null, "允许对方发语音", -1)), D(e("input", {
           "onUpdate:modelValue": l[9] || (l[9] = (p) => o.voice.enabled = p),
           type: "checkbox"
-        }, null, 512), [[j, o.voice.enabled]])]),
+        }, null, 512), [[G, o.voice.enabled]])]),
         e("label", Ht, [l[20] || (l[20] = e("span", null, "实时吐槽", -1)), D(e("input", {
           "onUpdate:modelValue": l[10] || (l[10] = (p) => o.commentary.enabled = p),
           type: "checkbox"
-        }, null, 512), [[j, o.commentary.enabled]])]),
+        }, null, 512), [[G, o.commentary.enabled]])]),
         o.commentary.enabled ? (c(), h("label", Lt, [U(" 吐槽概率 " + S(o.commentary.probability) + "% ", 1), D(e("input", {
           "onUpdate:modelValue": l[11] || (l[11] = (p) => o.commentary.probability = p),
           type: "range",
@@ -941,15 +940,15 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
           class: "is-primary",
           disabled: s.busy,
           onClick: a
-        }, "保存设置", 8, jt)
+        }, "保存设置", 8, Gt)
       ]),
-      e("section", Gt, [e("button", {
+      e("section", jt, [e("button", {
         type: "button",
         onClick: l[12] || (l[12] = (p) => i("openPrompts"))
       }, "提示词模板")])
     ])], 512));
   }
-}), Xt = Kt, Jt = { class: "fourth-wall-app" }, Qt = { class: "fourth-wall-header" }, Yt = { class: "fourth-wall-heading" }, Zt = { class: "fourth-wall-header-actions" }, _t = ["disabled"], ea = ["disabled"], ta = {
+}), Xt = Kt, Qt = { class: "fourth-wall-app" }, Zt = { class: "fourth-wall-header" }, Jt = { class: "fourth-wall-heading" }, Yt = { class: "fourth-wall-header-actions" }, _t = ["disabled"], ea = ["disabled"], ta = {
   key: 0,
   class: "fourth-wall-error",
   role: "alert"
@@ -964,7 +963,7 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
     initialState: {}
   },
   setup(s) {
-    const T = s, n = M(structuredClone(R(T.initialState))), i = M(""), u = M(!1), v = M(!1), o = M(!1), m = M(""), a = M(!1), r = M(!1), l = M(!1), p = M(!1), x = M(""), q = M(0), E = M(!1), F = M(0);
+    const T = s, n = M(structuredClone(P(T.initialState))), i = M(""), u = M(!1), v = M(!1), o = M(!1), m = M(""), a = M(!1), r = M(!1), l = M(!1), p = M(!1), x = M(""), q = M(0), E = M(!1), F = M(0);
     let W;
     const d = M({
       status: "idle",
@@ -976,14 +975,14 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
     });
     let I = () => {
     };
-    const w = P(() => n.value.chat.sessions.find((y) => y.id === n.value.chat.activeSessionId)), $ = P(() => d.value.status === "started" || d.value.status === "progress"), A = P(() => ({
+    const w = R(() => n.value.chat.sessions.find((y) => y.id === n.value.chat.activeSessionId)), $ = R(() => d.value.status === "started" || d.value.status === "progress"), A = R(() => ({
       ...n.value.context,
       usedTokens: n.value.context.usedTokens + F.value,
       promptTokens: n.value.context.promptTokens + F.value
     }));
     L(() => [i.value, d.value.text], () => {
       W || (W = setTimeout(() => {
-        F.value = Y(i.value) + Y(d.value.text), W = void 0;
+        F.value = J(i.value) + J(d.value.text), W = void 0;
       }, 200));
     }), L(() => w.value.id, () => {
       p.value = !1, r.value = !1, E.value = !1, i.value = "", d.value = {
@@ -1144,13 +1143,13 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
         patch: y
       });
     }
-    return ne(() => {
+    return oe(() => {
       I = T.bridge.subscribe((y) => {
         if (y.type === "fourth-wall/state" && (n.value = structuredClone(y.payload.state)), y.type !== "fourth-wall/generation") return;
         const t = y.payload;
         if (!(t.sessionId && t.sessionId !== w.value.id)) {
           if (t.status === "complete" || t.status === "cancelled") {
-            t.status === "cancelled" && (t.message && (m.value = t.message), K(t.inputDraft)), F.value = Y(i.value), d.value = {
+            t.status === "cancelled" && (t.message && (m.value = t.message), K(t.inputDraft)), F.value = J(i.value), d.value = {
               status: "idle",
               sessionId: "",
               text: "",
@@ -1192,9 +1191,9 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
       });
     }), le(() => {
       I(), clearTimeout(W);
-    }), (y, t) => (c(), h("main", Jt, [
-      e("header", Qt, [e("div", Yt, [t[23] || (t[23] = e("span", null, "IV", -1)), e("div", null, [t[22] || (t[22] = e("strong", null, "四次元壁", -1)), e("small", null, S(w.value.name), 1)])]), e("div", Zt, [
-        Z(Fe, {
+    }), (y, t) => (c(), h("main", Qt, [
+      e("header", Zt, [e("div", Jt, [t[23] || (t[23] = e("span", null, "IV", -1)), e("div", null, [t[22] || (t[22] = e("strong", null, "四次元壁", -1)), e("small", null, S(w.value.name), 1)])]), e("div", Yt, [
+        Y(Fe, {
           stats: A.value,
           busy: $.value,
           phase: d.value.phase,
@@ -1245,7 +1244,7 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
           onClick: t[3] || (t[3] = (k) => m.value = "")
         }, "×")
       ])) : B("", !0),
-      Z(wt, {
+      Y(wt, {
         page: n.value.history,
         busy: o.value || $.value,
         "session-id": w.value.id,
@@ -1334,7 +1333,7 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
           b("fourth-wall/restore-prompts", f()), v.value = !1;
         })
       }, null, 8, ["templates"])) : B("", !0),
-      p.value ? (c(), H(Re, {
+      p.value ? (c(), H(Pe, {
         key: 3,
         content: x.value,
         busy: o.value,
@@ -1359,7 +1358,7 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
           e("label", oa, [D(e("input", {
             "onUpdate:modelValue": t[19] || (t[19] = (k) => l.value = k),
             type: "checkbox"
-          }, null, 512), [[j, l.value]]), t[26] || (t[26] = U("同时清空皮下记忆", -1))]),
+          }, null, 512), [[G, l.value]]), t[26] || (t[26] = U("同时清空皮下记忆", -1))]),
           m.value ? (c(), h("p", ia, S(m.value), 1)) : B("", !0),
           e("footer", null, [e("button", {
             type: "button",
@@ -1376,7 +1375,7 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
       }, 8, ["busy"])) : B("", !0)
     ]));
   }
-}), pa = va;
+}), ya = va;
 export {
-  pa as default
+  ya as default
 };

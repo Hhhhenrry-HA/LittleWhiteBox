@@ -4,6 +4,7 @@ import type { DiceCandidate } from '../application/action-check-session.js';
 export type { DiceCandidate } from '../application/action-check-session.js';
 import { jsonValuesEqual } from '../../../host/json-values-equal.js';
 import type { ActionCheckRule } from '../types.js';
+import type { Coc7Sheet } from '../domain/coc7-sheet.js';
 
 export interface DiceHostMessage {
     mes: string;
@@ -36,17 +37,18 @@ export interface DiceTarget {
     records: unknown;
     generatedFrom: number;
     rule: ActionCheckRule;
+    coc7Sheet?: Coc7Sheet | null;
 }
 
 export function readDiceRecords(message: DiceHostMessage): unknown {
     return message.extra?.[DICE_MESSAGE_KEY];
 }
 
-export function captureDiceTarget(source: DiceChat, index: number, generatedFrom: number, rule: ActionCheckRule = 'd20'): DiceTarget | null {
+export function captureDiceTarget(source: DiceChat, index: number, generatedFrom: number, rule: ActionCheckRule = 'd20', coc7Sheet: Coc7Sheet | null = null): DiceTarget | null {
     const message = source.chat[index];
     if (!message || message.is_user || message.is_system || typeof message.mes !== 'string') { return null; }
     return { source, message, index, swipe: message.swipe_id ?? 0, body: message.mes,
-        records: structuredClone(readDiceRecords(message)), generatedFrom, rule };
+        records: structuredClone(readDiceRecords(message)), generatedFrom, rule, coc7Sheet };
 }
 
 export function isDiceTargetCurrent(source: DiceChat | null, target: DiceTarget, body = target.body): boolean {
