@@ -344,6 +344,11 @@ import { DEFAULT_SUMMARY_DELAY_FLOORS, normalizeSummaryDelayFloors } from './dat
     let summaryModelFetchTimeoutId = null;
     let timelineHasRenderedEvents = false;
     let currentTimelineChatId = '';
+    const TL_PAGE_SIZE = 20;
+    const TL_PAGING_KEY = 'xb-tl-paging';
+    const TL_PAGE_KEY = 'xb-tl-page';
+    let tlPagingEnabled = false;
+    let tlCurrentPage = -1;
     let settingsSaveTimeoutId = null;
     let currentChatSummaryEnabled = true;
     let currentChatSummaryPending = true;
@@ -1436,18 +1441,35 @@ import { DEFAULT_SUMMARY_DELAY_FLOORS, normalizeSummaryDelayFloors } from './dat
         };
     }
 
-    function renderTimeline(ev, options = {}) {
-        const scrollState = getTimelineScrollState();
-        summaryData.events = ev || [];
-        const c = $('timeline-list');
-        if (!ev?.length) {
-            setHtml(c, '<div class="empty">暂无事件记录</div>');
-            timelineHasRenderedEvents = false;
-            return;
+    function tlTotalPages() {
+        return Math.max(1, Math.ceil((summaryData.events || []).length / TL_PAGE_SIZE));
+    }
+
+    function clampTlPage(page) {
+        return Math.min(Math.max(0, page | 0), tlTotalPages() - 1);
+    }
+
+    function tlLoadPage() {
+        try {
+            const v = JSON.parse(localStorage.getItem(TL_PAGE_KEY))?.[currentTimelineChatId];
+            return Number.isFinite(v) ? v : -1;
+        } catch {
+            return -1;
         }
-        setHtml(c, ev.map(e => {
-            const participants = (e.participants || e.characters || []).map(h).join('、');
-            return `<div class="tl-item">
+    }
+
+    function tlSavePage() {
+        if (!currentTimelineChatId) return;
+        try {
+            const m = JSON.parse(localStorage.getItem(TL_PAGE_KEY)) || {};
+            m[currentTimelineChatId] = tlCurrentPage;
+            localStorage.setItem(TL_PAGE_KEY, JSON.stringify(m));
+        } catch { /* ignore */ }
+    }
+
+    function tlItemHtml(e) {
+        const participants = (e.participants || e.characters || []).map(h).join('、');
+        return `<div class="tl-item">
                 <div class="tl-dot"></div>
                 <div class="tl-head">
                     <div class="tl-title">${h(e.title || '')}</div>
@@ -1459,9 +1481,58 @@ import { DEFAULT_SUMMARY_DELAY_FLOORS, normalizeSummaryDelayFloors } from './dat
                     <span class="imp">${h(e.memoryRole || '未标注')}</span>
                 </div>
             </div>`;
-        }).join(''));
-        restoreTimelineScroll(scrollState, options.scrollMode || 'auto');
+    }
+
+    function updateTlPager(visible) {
+        const pager = $('tl-pager');
+        if (!pager) return;
+        pager.classList.toggle('hidden', !visible);
+        if (!visible) return;
+        const total = tlTotalPages();
+        let html = '';
+        for (let i = 0; i < total; i++) {
+            html += `<button class="tl-pg-btn${i === tlCurrentPage ? ' cur' : ''}" data-page="${i}">${i + 1}</button>`;
+        }
+        const strip = $('tl-pg-strip');
+        setHtml(strip, html);
+        const cur = strip.querySelector('.tl-pg-btn.cur');
+        if (cur) strip.scrollLeft = cur.offsetLeft - (strip.clientWidth - cur.offsetWidth) / 2;
+        const num = $('tl-pg-num');
+        num.max = total;
+        if (document.activeElement !== num) num.value = tlCurrentPage + 1;
+        const atStart = tlCurrentPage <= 0;
+        const atEnd = tlCurrentPage >= total - 1;
+        $('tl-pg-first').disabled = atStart;
+        $('tl-pg-prev').disabled = atStart;
+        $('tl-pg-next').disabled = atEnd;
+        $('tl-pg-last').disabled = atEnd;
+    }
+
+    function renderTimeline(ev, options = {}) {
+        const scrollState = getTimelineScrollState();
+        summaryData.events = ev || [];
+        const c = $('timeline-list');
+        if (!ev?.length) {
+            setHtml(c, '<div class="empty">暂无事件记录</div>');
+            tlCurrentPage = -1;
+            timelineHasRenderedEvents = false;
+            updateTlPager(false);
+            return;
+        }
+        if (tlPagingEnabled) {
+            tlCurrentPage = options.page != null
+                ? clampTlPage(options.page)
+                : (tlCurrentPage < 0 || tlCurrentPage > tlTotalPages() - 1 ? tlTotalPages() - 1 : tlCurrentPage);
+            if (options.page != null) tlSavePage();
+            const start = tlCurrentPage * TL_PAGE_SIZE;
+            setHtml(c, summaryData.events.slice(start, start + TL_PAGE_SIZE).map(tlItemHtml).join(''));
+            c.scrollTop = 0;
+        } else {
+            setHtml(c, summaryData.events.map(tlItemHtml).join(''));
+            restoreTimelineScroll(scrollState, options.scrollMode || 'auto');
+        }
         timelineHasRenderedEvents = true;
+        updateTlPager(tlPagingEnabled);
     }
 
     function getCharName(c) {
@@ -2434,6 +2505,7 @@ import { DEFAULT_SUMMARY_DELAY_FLOORS, normalizeSummaryDelayFloors } from './dat
                     if (nextChatId !== currentTimelineChatId) {
                         currentTimelineChatId = nextChatId;
                         timelineHasRenderedEvents = false;
+                        tlCurrentPage = tlLoadPage();
                     }
                     if (p.keywords) renderKeywords(p.keywords);
                     if (p.events) renderTimeline(p.events);
@@ -2833,6 +2905,47 @@ import { DEFAULT_SUMMARY_DELAY_FLOORS, normalizeSummaryDelayFloors } from './dat
         }
 
 
+        // Timeline pager
+        const tlPagingToggle = $('tl-paging-toggle');
+        tlPagingToggle.classList.toggle('on', tlPagingEnabled);
+        tlPagingToggle.onclick = () => {
+            tlPagingEnabled = !tlPagingEnabled;
+            localStorage.setItem(TL_PAGING_KEY, tlPagingEnabled ? '1' : '0');
+            tlPagingToggle.classList.toggle('on', tlPagingEnabled);
+            renderTimeline(summaryData.events);
+        };
+        $('tl-pg-first').onclick = () => renderTimeline(summaryData.events, { page: 0 });
+        $('tl-pg-prev').onclick = () => renderTimeline(summaryData.events, { page: tlCurrentPage - 1 });
+        $('tl-pg-next').onclick = () => renderTimeline(summaryData.events, { page: tlCurrentPage + 1 });
+        $('tl-pg-last').onclick = () => renderTimeline(summaryData.events, { page: tlTotalPages() - 1 });
+        const tlPgStrip = $('tl-pg-strip');
+        tlPgStrip.addEventListener('click', (e) => {
+            const btn = e.target.closest('.tl-pg-btn');
+            if (btn) renderTimeline(summaryData.events, { page: parseInt(btn.dataset.page, 10) });
+        });
+        tlPgStrip.addEventListener('wheel', (e) => {
+            if (tlPgStrip.scrollWidth <= tlPgStrip.clientWidth) return;
+            if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+            e.preventDefault();
+            tlPgStrip.scrollLeft += e.deltaY;
+        }, { passive: false });
+        const tlPgNum = $('tl-pg-num');
+        const tlPgJump = () => {
+            const v = parseInt(tlPgNum.value, 10);
+            if (Number.isNaN(v)) {
+                tlPgNum.value = tlCurrentPage + 1;
+                return;
+            }
+            renderTimeline(summaryData.events, { page: v - 1 });
+        };
+        tlPgNum.addEventListener('change', tlPgJump);
+        tlPgNum.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                tlPgJump();
+                tlPgNum.blur();
+            }
+        });
+
         // Resize
         window.onresize = () => {
             relationChart?.resize();
@@ -2849,6 +2962,7 @@ import { DEFAULT_SUMMARY_DELAY_FLOORS, normalizeSummaryDelayFloors } from './dat
 
     function init() {
         loadConfig();
+        tlPagingEnabled = localStorage.getItem(TL_PAGING_KEY) === '1';
 
         // Initial state
         $('stat-events').textContent = '—';
