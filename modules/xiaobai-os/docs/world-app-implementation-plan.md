@@ -83,7 +83,7 @@ apps/world/
 | --- | --- |
 | 共享说明 | `capabilities/maintenance/provider-tool-loop.ts`：身份、背景资料、跨领域流程和唯一收尾，World 不重复 |
 | 领域判断 | `apps/world/maintenance/prompt.ts`：镜头外新闻、具体看点、新闻维护闭环（见产品设计第 6 节）、公开消息与传闻／私密知识边界 |
-| 工具契约 | `apps/world/maintenance/tool-contract.ts`、`domains/world/edit.ts`：原子批次、返回形状、顺序、失败修正和字段语义 |
+| 工具契约 | `apps/world/tools/tool-contract.ts`、`domains/world/edit.ts`：原子批次、返回形状、顺序、失败修正和字段语义 |
 | 初始资料 | `maintenance/session.ts`、`apps/world/prompt-data.ts`：复用纯数据投影，包装完整或省略正文的资料说明并控制预算 |
 | 主剧情资料 | `apps/world/host/story-projection.ts`：已确认概况与新闻标题、正文，镜头外背景定位，安全格式化并选择放得下的完整文章 |
 

@@ -1,4 +1,7 @@
 import { getRequestHeaders } from '../../../../../../../script.js';
+import { saveBase64AsFile } from '../../../../../../utils.js';
+import { createAdministratorModule } from '../apps/administrator/module.js';
+import { createAdministratorImages } from '../apps/administrator/storage/images.js';
 import { extensionFolderPath } from '../../../core/constants.js';
 import { createAgentApiModule } from '../apps/agent-api/module.js';
 import { createProductionBankModule } from '../apps/bank/production-module.js';
@@ -23,6 +26,7 @@ import { createWorldContextCapabilityRegistration, WORLD_CONTEXT_CAPABILITY } fr
 import { copyWorldBranch } from '../apps/world/host/branch-copy.js';
 import { createFourthWallUpstreamImport } from '../apps/fourth-wall/upgrade/upstream-import.js';
 import { createAgentCapabilityRegistration } from '../capabilities/agent/index.js';
+import { createManagementCapabilityRegistration } from '../capabilities/management/index.js';
 import { createEconomyCapabilityRegistrations } from '../capabilities/economy/index.js';
 import {
     createMaintenanceCapabilityRegistration,
@@ -80,11 +84,14 @@ export function createProductionBootstrap(
         const surface = getSillyTavernChatSurface();
         return capture && surface ? { identityKey: capture.identityKey, messages: surface.messages as ChatMessage[] } : null;
     });
+    const administratorImages = createAdministratorImages({ upload: saveBase64AsFile, headers: getRequestHeaders });
     const bindingManager = createChatBindingManager({ metadata, references, storage, index,
-        prepareClonedPartitions(capture, source, partitions) {
+        async prepareClonedPartitions(capture, source, partitions, ids) {
             copyMessagesBranch(capture, source, partitions);
             copyWorldBranch(capture, source, partitions);
+            if (partitions.administrator !== undefined) { partitions.administrator = await administratorImages.clonePartition(ids.source, ids.target, partitions.administrator); }
         },
+        cleanupAttachments: administratorImages.clear,
     });
     const bindingEvents = createChatBindingEventAdapter();
     const mainGeneration = createSillyTavernMainGenerationRuntime();
@@ -94,6 +101,7 @@ export function createProductionBootstrap(
 
     const capabilities = [
         createAgentCapabilityRegistration(),
+        createManagementCapabilityRegistration(),
         ...createEconomyCapabilityRegistrations(),
         createMapContextCapabilityRegistration(),
         createWorldContextCapabilityRegistration(),
@@ -114,6 +122,7 @@ export function createProductionBootstrap(
     ];
 
     const modules = [
+        createAdministratorModule({ images: administratorImages, capture: getSillyTavernChatSurface }),
         createProductionDiceModule(settings, async identityKey => {
             const summary = await import('../../story-summary/story-summary.js') as { isStorySummaryEnabledForCurrentChat(): boolean };
             return { world: composition.capabilities.require(WORLD_CONTEXT_CAPABILITY).isStoryBackgroundEnabled(identityKey),
@@ -139,6 +148,7 @@ export function createProductionBootstrap(
         createProductionGameModule({ getChatIdentity: getSillyTavernChatIdentity, mainGeneration }),
         createProductionMapModule({
             settings,
+            getPlayerDisplayName: () => getSillyTavernChatSurface()?.playerName ?? '玩家',
             getChatIdentity: getSillyTavernChatIdentity,
             setPrompt: value => setSillyTavernPrompt('xiaobai_os_map_context', value, 3),
             subscribePrompt: subscribeMapPromptEvents,

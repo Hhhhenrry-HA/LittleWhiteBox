@@ -11,13 +11,13 @@ import { readFileSync } from 'node:fs';
 const call = '<xb_action_check>{"action":"Climb","stat":"Agility","difficulty":"hard"}</xb_action_check>';
 test('a pending native translation projects the confirmed marker without changing either stored text', () => {
     const candidate = prepareActionCheck({ body: 'Before.\n\n' + call, generatedFrom: 0, id: 'one', random: () => .3 });
-    const message = { mes: candidate.body, extra: { display_text: '译文。\n\n' + call + '\n' } };
+    const message = { mes: candidate.body, extra: { display_text: '译文。\n\n' + call + '\n</fictional_scenarios>' } };
     const original = structuredClone(message);
-    assert.equal(checkDisplayProjection(message, candidate.records.checks), '译文。\n\n[dice:one]\n');
+    assert.equal(checkDisplayProjection(message, candidate.records.checks), '译文。\n\n[dice:one]');
     assert.deepEqual(message, original);
     assert.equal(checkDisplayProjection(message, []), message.extra.display_text);
     message.mes = 'Edited prose, same retained result. [dice:one]';
-    assert.equal(checkDisplayProjection(message, candidate.records.checks), '译文。\n\n[dice:one]\n');
+    assert.equal(checkDisplayProjection(message, candidate.records.checks), '译文。\n\n[dice:one]');
     message.mes += '\nAfter.';
     assert.equal(checkDisplayProjection(message, candidate.records.checks), message.extra.display_text, 'stale translations do not reposition historical cards');
     message.extra.display_text = '译文。\n\n[dice:one]\n后文。';

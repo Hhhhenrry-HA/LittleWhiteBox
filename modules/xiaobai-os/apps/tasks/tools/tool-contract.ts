@@ -32,6 +32,7 @@ function tool(
     summaryName: 'progressSummary' | 'resultSummary',
     summaryDescription: string,
     maximum: number,
+    saveDescription: string,
 ): MaintenanceFunctionDeclaration {
     return Object.freeze({
         type: 'function' as const,
@@ -39,8 +40,7 @@ function tool(
             name,
             description: [
                 description,
-                'Changes remain pending until the app saves them after this run.',
-                'Returns ok, status (updated/unchanged/failed), changed, applied/skipped task reports, warnings and an optional recovery hint.',
+                saveDescription,
             ].join('\n'),
             parameters: {
                 type: 'object',
@@ -60,26 +60,30 @@ function tool(
     });
 }
 
-export const TASK_MAINTENANCE_TOOLS: readonly MaintenanceFunctionDeclaration[] = Object.freeze([
+export function taskTools(saveDescription: string): readonly MaintenanceFunctionDeclaration[] { return Object.freeze([
     tool(
         TASK_MAINTENANCE_TOOL_NAMES.PROGRESS,
         'Record changed facts for a task that remains active.',
         'progressSummary',
         'Replaces the previous summary with cumulative confirmed facts relevant to objective. Record what happened, without inferred conditions, remaining-work analysis or advice.',
         MAX_TASK_PROGRESS_SUMMARY_LENGTH,
+        saveDescription,
     ),
     tool(
         TASK_MAINTENANCE_TOOL_NAMES.COMPLETE,
         'Complete an active task. The app settles its existing reward when the change is saved.',
         'resultSummary',
-        'The observed result that satisfied objective, without follow-up story.',
+        'The result that satisfied objective, or the explicit management instruction for this correction.',
         MAX_TASK_RESULT_SUMMARY_LENGTH,
+        saveDescription,
     ),
     tool(
         TASK_MAINTENANCE_TOOL_NAMES.FAIL,
         'Fail an active task. The app refunds its existing escrow when the change is saved.',
         'resultSummary',
-        'The observed result establishing irreversible failure or expiry of objective, without follow-up story.',
+        'The result establishing irreversible failure or expiry of objective, or the explicit management instruction for this correction.',
         MAX_TASK_RESULT_SUMMARY_LENGTH,
+        saveDescription,
     ),
-]);
+]); }
+export const TASK_MAINTENANCE_TOOLS = taskTools('Changes remain pending until the app saves them after this run. Returns ok, status (updated/unchanged/failed), changed, applied/skipped task reports, warnings and an optional recovery hint.');

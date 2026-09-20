@@ -23,7 +23,7 @@ export interface MapService {
     readCurrent(): MapServiceView;
     refreshCurrent(): Promise<MapServiceView>;
     replaceCurrent(candidate: unknown, options: MapMutationOptions): Promise<MapServiceView>;
-    confirmPending(): Promise<PendingCommitRecoveryResult>;
+    confirmPending(guard?: () => boolean): Promise<PendingCommitRecoveryResult>;
     adoptServerState(): Promise<PendingCommitRecoveryResult>;
     getWriteState(): XiaobaiOsFileState;
     subscribe(listener: () => void): () => void;
@@ -110,7 +110,7 @@ export function createMapService(
         readCurrent: () => buildView(),
         refreshCurrent,
         replaceCurrent,
-        confirmPending: () => files.retryPending(),
+        confirmPending: (guard?: () => boolean) => files.retryPending({ beforeRetry: guard }),
         adoptServerState: () => files.adoptServerState(),
         getWriteState: () => files.getFileState(),
         subscribe(listener: () => void) {

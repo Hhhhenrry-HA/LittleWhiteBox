@@ -7,6 +7,7 @@ import type {
     PartitionRegistration,
     PartitionSnapshot,
     PendingCommitRecoveryResult,
+    PendingCommitRecoveryOptions,
     ScopedChatStore,
     ScopedTransaction,
     ScopedTransactionResult,
@@ -66,7 +67,7 @@ export interface TransactionCoordinator {
     refresh(): Promise<void>;
     installResolvedEnvelope(envelope: XiaobaiOsSidecarV1 | null): Promise<void>;
     invalidateCurrent(): void;
-    retryPending(): Promise<PendingCommitRecoveryResult>;
+    retryPending(options?: PendingCommitRecoveryOptions): Promise<PendingCommitRecoveryResult>;
     adoptServerState(): Promise<PendingCommitRecoveryResult>;
     getFileState(): XiaobaiOsFileState;
     hasPendingCommit(partitionKey?: string): boolean;
@@ -82,6 +83,7 @@ interface PendingCommit {
     stage: 'replace' | 'reference';
     observed: XiaobaiOsSidecarV1 | null;
     retainFailedCandidate: boolean;
+    commitGuard?: () => boolean | Promise<boolean>;
 }
 
 class KernelOperationError extends Error {
@@ -298,6 +300,7 @@ export function createTransactionCoordinator(options: TransactionCoordinatorOpti
     }
 
     function publishPartition(key: string, identityKey: string, envelope: XiaobaiOsSidecarV1 | null): void {
+        if (!partitionListeners.get(key)?.size) { return; }
         const registration = partitions.get<unknown>(key);
         if (!registration) { return; }
         let snapshot: PartitionSnapshot<unknown>;
@@ -440,6 +443,11 @@ export function createTransactionCoordinator(options: TransactionCoordinatorOpti
                 capture.identityKey,
                 envelopes.get(capture.identityKey) ?? null,
             );
+        }
+
+        function peekBinding() {
+            const capture = chatReferences.capture();
+            return capture ? { identityKey: capture.identityKey, osId: envelopes.get(capture.identityKey)?.osId ?? null } : null;
         }
 
         async function read(): Promise<PartitionSnapshot<T>> {
@@ -597,6 +605,8 @@ export function createTransactionCoordinator(options: TransactionCoordinatorOpti
                     stage: 'replace',
                     observed: null,
                     retainFailedCandidate: transactionOptions.retainFailedCandidate === true,
+                    commitGuard: async () => !transactionOptions.signal?.aborted
+                        && (!transactionOptions.commitGuard || await transactionOptions.commitGuard()),
                 };
                 setState(requested.identityKey, 'saving');
                 let replaceResult: StorageReplaceResult;
@@ -660,7 +670,7 @@ export function createTransactionCoordinator(options: TransactionCoordinatorOpti
             };
         }
 
-        return Object.freeze({ peekCurrent, read, transact, subscribe });
+        return Object.freeze({ peekBinding, peekCurrent, read, transact, subscribe });
     }
 
     async function refresh(): Promise<void> {
@@ -736,13 +746,14 @@ export function createTransactionCoordinator(options: TransactionCoordinatorOpti
         }
     }
 
-    async function retryPending(): Promise<PendingCommitRecoveryResult> {
+    async function retryPending(recovery: PendingCommitRecoveryOptions = {}): Promise<PendingCommitRecoveryResult> {
         const requested = requireCapture();
         return await enqueue(async () => {
             const entry = pending.get(requested.identityKey);
             if (!entry) { return { status: 'none' }; }
             await assertCurrent(entry.capture);
             if (entry.stage === 'reference') {
+                if (recovery.readOnly) { return { status: 'unconfirmed' }; }
                 const installed = await installInitialReference(entry);
                 if (installed === 'confirmed') { return { status: 'confirmed' }; }
                 if (installed === 'unconfirmed') { return { status: 'unconfirmed' }; }
@@ -770,6 +781,11 @@ export function createTransactionCoordinator(options: TransactionCoordinatorOpti
                 setState(entry.capture.identityKey, 'conflict', frozenFailure('conflict'));
                 return { status: 'conflict' };
             }
+            if (recovery.readOnly) { return { status: 'unconfirmed' }; }
+            if (entry.commitGuard && !await entry.commitGuard() || recovery.beforeRetry && !await recovery.beforeRetry()) {
+                return { status: 'failed', error: writeFailure('commit_guard_rejected', 'The pending write requires fresh evidence before retrying', false) };
+            }
+            await assertCurrent(entry.capture);
             setState(entry.capture.identityKey, 'saving');
             let result: StorageReplaceResult;
             try {
@@ -807,6 +823,13 @@ export function createTransactionCoordinator(options: TransactionCoordinatorOpti
                 return { status: 'conflict', error: failure };
             }
             if (!observed) {
+                if (entry.expected === null && !entry.capture.reference && entry.stage === 'replace'
+                    && !chatReferences.capture()?.reference) {
+                    installEnvelope(entry.capture, null);
+                    pending.delete(entry.capture.identityKey);
+                    setState(entry.capture.identityKey, 'ready');
+                    return { status: 'adopted' };
+                }
                 const failure = writeFailure('storage_missing', 'No server sidecar is available to adopt', true);
                 setState(entry.capture.identityKey, 'conflict', failure);
                 return { status: 'conflict', error: failure };

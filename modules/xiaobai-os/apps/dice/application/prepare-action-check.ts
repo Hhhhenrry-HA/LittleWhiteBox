@@ -30,6 +30,6 @@ export function prepareActionCheck(input: {
     const record: ActionCheckRecord = parsed.rule === 'coc7'
         ? { id: input.id, rule: parsed.rule, request: { ...parsed.request, stat: COC7_CAPABILITIES[parsed.request.stat].label }, result: rollCoc7(value, parsed.request.difficulty, input.random) }
         : { id: input.id, rule: parsed.rule, request: parsed.request, ...rollActionCheck(parsed.request.difficulty, input.random) };
-    return { kind: 'candidate', body: parsed.body + marker + input.body.slice(parsed.end),
+    return { kind: 'candidate', body: parsed.body + marker,
         records: { ...records, checks: [...records.checks, record] } };
 }

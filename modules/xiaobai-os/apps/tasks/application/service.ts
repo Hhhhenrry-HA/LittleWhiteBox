@@ -109,7 +109,7 @@ export interface TasksService {
     replaceBoard: (input: ReplaceBoardRequest, guard: CommitGuard) => Promise<TasksActionResult>;
     commitMaintenance: (input: MaintenanceCommitRequest, guard: CommitGuard) => Promise<TasksActionResult>;
     getWriteState: () => XiaobaiOsFileState;
-    confirmPending: () => Promise<PendingCommitRecoveryResult>;
+    confirmPending: (guard?: () => boolean) => Promise<PendingCommitRecoveryResult>;
     adoptServerState: () => Promise<PendingCommitRecoveryResult>;
     subscribe: (listener: () => void) => () => void;
     dispose: () => void;
@@ -267,7 +267,7 @@ export function createTasksService(
         ...localActions,
         commitMaintenance: createTaskMaintenanceCommit(context),
         getWriteState: () => files.getFileState(),
-        confirmPending: () => files.retryPending(),
+        confirmPending: (guard?: () => boolean) => files.retryPending({ beforeRetry: guard }),
         adoptServerState: () => files.adoptServerState(),
         subscribe(listener: () => void) {
             listeners.add(listener);

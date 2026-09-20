@@ -4,6 +4,7 @@ import {
     type EconomyReadCapability,
 } from '../../capabilities/economy/index.js';
 import { AGENT_CAPABILITY, type AgentCapability } from '../../capabilities/agent/index.js';
+import { MANAGEMENT_CAPABILITY, type ManagementRegistry } from '../../capabilities/management/index.js';
 import {
     MAINTENANCE_CAPABILITY,
     type MaintenanceCapability,
@@ -31,6 +32,7 @@ export interface TasksModuleInstallContext {
     economy: EconomyReadCapability;
     agent: AgentCapability;
     maintenance: MaintenanceCapability;
+    management: ManagementRegistry;
     mapContext: MapContextCapability;
     worldContext: WorldContextCapability;
     execution: AppInstallContext['execution'];
@@ -54,6 +56,7 @@ export function createTasksModule(dependencies: TasksModuleDependencies): Xiaoba
             ECONOMY_TRANSACTION_CAPABILITY,
             AGENT_CAPABILITY,
             MAINTENANCE_CAPABILITY,
+            MANAGEMENT_CAPABILITY,
             MAP_CONTEXT_CAPABILITY,
             WORLD_CONTEXT_CAPABILITY,
         ],
@@ -79,6 +82,7 @@ export function createTasksModule(dependencies: TasksModuleDependencies): Xiaoba
                     economy,
                     agent: context.useCapability(AGENT_CAPABILITY),
                     maintenance: context.useCapability(MAINTENANCE_CAPABILITY),
+                    management: context.useCapability(MANAGEMENT_CAPABILITY),
                     mapContext: context.useCapability(MAP_CONTEXT_CAPABILITY),
                     worldContext: context.useCapability(WORLD_CONTEXT_CAPABILITY),
                     execution: context.execution,

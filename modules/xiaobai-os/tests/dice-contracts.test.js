@@ -8,6 +8,7 @@ import { parseActionCheck, ACTION_CHECK_EXAMPLE, ACTION_CHECK_FIELDS } from '../
 import { ACTION_CHECK_OPEN, ACTION_CHECK_DISPLAY_PATTERN } from '../apps/dice/protocol/markup.ts';
 import { buildActionCheckPrompt, projectActionCheckResults, serializeActionCheckResults } from '../apps/dice/protocol/prompt.ts';
 import { repairDiceDisplayRules, DICE_DISPLAY_RULE } from '../apps/dice/host/display-rule.ts';
+import { generateCoc7Sheet } from '../apps/dice/domain/coc7-creation.ts';
 
 const request = { action: '攀上墙壁', stat: '敏捷', difficulty: 'hard' };
 const block = (data = request) => `<xb_action_check>${JSON.stringify(data)}</xb_action_check>`;
@@ -62,15 +63,15 @@ test('the real prompt example and JSON string tags are parsed as a single reques
         assert.equal(prepared.kind, 'candidate');
         assert.deepEqual(prepared.records.checks[0].request, parseActionCheck(ACTION_CHECK_EXAMPLE).request);
     }
-    const input = { ...request, action: 'say </xb_action_check> or <xb_action_check>', character: '  Mira  ' };
-    const parsed = parseActionCheck(`尝试。\n\n${block(input)}\n`);
+    const input = { ...request, action: 'say "</xb_action_check>" or \\<xb_action_check>', character: '  Mira\\  ' };
+    const parsed = parseActionCheck(`尝试。\n\n  ${block(input)}\n</fictional_scenarios>`);
     assert.equal(parsed.kind, 'request');
     assert.equal(parsed.body, '尝试。\n\n');
-    assert.deepEqual(parsed.request, { ...input, character: 'Mira' });
+    assert.deepEqual(parsed.request, { ...input, character: 'Mira\\' });
 });
 
-test('rejects unknown fields, wrong types, null, whitespace, oversized input and ambiguous/truncated JSON', () => {
-    const invalid = [null, [], 123, { ...request, dc: 12 }, { ...request, difficulty: 15 },
+test('rejects wrong types, null, whitespace, oversized input and ambiguous/truncated JSON', () => {
+    const invalid = [null, [], 123, { ...request, difficulty: 15 },
         { ...request, difficulty: 'toString' }, { ...request, stat: '  ' }, { ...request, character: null },
         { ...request, stakes: '' }, { ...request, action: 0 }];
     for (const [field, spec] of Object.entries(ACTION_CHECK_FIELDS)) {
@@ -79,8 +80,53 @@ test('rejects unknown fields, wrong types, null, whitespace, oversized input and
     }
     invalid.push({ ...request, stat: '😀'.repeat(61) });
     for (const value of invalid) { assert.equal(parseActionCheck(block(value)).kind, 'invalid', JSON.stringify(value)); }
-    for (const body of [block() + '后文', block() + '\n\n' + block(), '<xb_action_check>{', '<xb_action_check>']) {
+    for (const body of [block() + '\n\n' + block(), '<xb_action_check>{', '<xb_action_check>',
+        '<xb_action_check>{"action":"unfinished</xb_action_check>\n</fictional_scenarios>',
+        '<xb_action_check>{bad}</xb_action_check>\n</fictional_scenarios>']) {
         assert.equal(parseActionCheck(body).kind, 'invalid');
+    }
+});
+
+test('D20 ignores extra model keys without changing its known fields, roll or stored record contract', () => {
+    const input = { ...request, character: 'Mira', stakes: 'Reach the balcony' };
+    const extra = { ...input, dc: 1, roll: 20, outcome: 'critical_success', metadata: { arbitrary: true } };
+    const parsed = parseActionCheck(block(extra));
+    assert.equal(parsed.kind, 'request');
+    assert.deepEqual(parsed.request, input);
+    const prepare = data => prepareActionCheck({ body: block(data), generatedFrom: 0, id: 'extra', random: () => 0.3 });
+    const candidate = prepare(extra);
+    assert.deepEqual(candidate, prepare(input));
+    const damaged = structuredClone(candidate.records);
+    damaged.checks[0].request.metadata = extra.metadata;
+    assert.throws(() => parseDiceRecords(damaged), 'ignoring model extras does not relax persisted records');
+});
+
+test('preset suffixes do not block a valid check or survive the confirmed continuation boundary', () => {
+    const before = '<fictional_scenarios>\n尝试推门。\n\n';
+    const playerRequest = { action: '以蛮力推挤并试图撼动被黑色荆棘缠绕的冷铁封闭之门', stat: '力量', character: '蓝袖',
+        stakes: '成功则强行撼动门扉撕开一道荆棘缝隙，失败则被反震击退并被荆棘刺伤双手', difficulty: 'hard' };
+    for (const rule of ['d20', 'coc7']) {
+        const input = rule === 'd20' ? playerRequest : { action: playerRequest.action, stat: 'body', difficulty: 'hard' };
+        for (const suffix of ['\n</fictional_scenarios>', '\n后文\n</fictional_scenarios>\n</xb_action_check>', '\r\n \t']) {
+            const body = before + block(input) + suffix;
+            const parsed = parseActionCheck(body, before.length, rule);
+            assert.equal(parsed.kind, 'request');
+            assert.deepEqual(parsed.request, input);
+            assert.equal(body.slice(parsed.end), suffix);
+            let draws = 0;
+            const prepared = prepareActionCheck({ body, generatedFrom: before.length, rule, id: 'suffix',
+                coc7Sheet: generateCoc7Sheet(() => 0.5), random: () => { draws++; return 0.3; } });
+            assert.equal(prepared.kind, 'candidate');
+            assert.equal(draws, 2);
+            assert.equal(prepared.body, before + '[dice:suffix]');
+            assert.equal(prepared.records.checks.length, 1);
+            assert.equal(isCheckContinuationPoint(prepared.body, prepared.records.checks[0]), true);
+        }
+        const malformed = { body: before + block({ ...input, difficulty: 'unknown' }) + '\n</fictional_scenarios>',
+            generatedFrom: before.length, rule, id: 'invalid', random: () => assert.fail('invalid request must not roll') };
+        const original = malformed.body;
+        assert.equal(prepareActionCheck(malformed).kind, 'invalid');
+        assert.equal(malformed.body, original);
     }
 });
 
@@ -113,7 +159,7 @@ test('display filtering begins at the complete opening tag, preserving all short
 test('invalid requests and the persisted eight-check limit consume no randomness, even after deleting markers', () => {
     let calls = 0;
     const random = () => { calls++; return 0.3; };
-    assert.equal(prepareActionCheck({ body: block({ ...request, dc: 1 }), generatedFrom: 0, id: 'invalid', random }).kind, 'invalid');
+    assert.equal(prepareActionCheck({ body: block({ ...request, difficulty: 'unknown', dc: 1 }), generatedFrom: 0, id: 'invalid', random }).kind, 'invalid');
     assert.equal(calls, 0);
     let records;
     let body = '';
@@ -232,13 +278,13 @@ test('managed rule checks are no-ops when valid, repair only their own ID and pr
     assert.deepEqual(repairDiceDisplayRules([{ ...DICE_DISPLAY_RULE, disabled: true }, other]), replacement);
 });
 
-test('executing a check replaces only its request, preserving surrounding prose and whitespace byte for byte', () => {
+test('executing a check preserves all preceding prose and whitespace while discarding the request tail', () => {
     const before = '【1】起身。  \n\n<details><summary>状态</summary>【8】仍在这里。</details>\n\n';
     const after = '\r\n \t';
     const raw = before + block() + after;
     const saved = prepareActionCheck({ body: raw, generatedFrom: 0, id: 'fixed', random: () => .3 });
     assert.equal(saved.kind, 'candidate');
-    assert.equal(saved.body, before + '[dice:fixed]' + after);
+    assert.equal(saved.body, before + '[dice:fixed]');
     assert.deepEqual(referencedActionChecks(saved.body, saved.records.checks), saved.records.checks);
     assert.deepEqual(referencedActionChecks(before + after, saved.records.checks), []);
 });

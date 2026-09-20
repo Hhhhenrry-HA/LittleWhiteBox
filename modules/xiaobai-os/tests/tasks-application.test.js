@@ -9,6 +9,7 @@ import {
 } from '../capabilities/economy/index.js';
 import { AGENT_CAPABILITY } from '../capabilities/agent/index.js';
 import { MAINTENANCE_CAPABILITY } from '../capabilities/maintenance/index.js';
+import { MANAGEMENT_CAPABILITY } from '../capabilities/management/index.js';
 import { MAP_CONTEXT_CAPABILITY } from '../apps/map/context-capability.js';
 import { WORLD_CONTEXT_CAPABILITY } from '../apps/world/context-capability.js';
 import { createTaskIdFactory } from '../apps/tasks/application/ids.js';
@@ -367,6 +368,7 @@ test('Tasks module owns a strict partition and declares its runtime capabilities
         ECONOMY_TRANSACTION_CAPABILITY.id,
         AGENT_CAPABILITY.id,
         MAINTENANCE_CAPABILITY.id,
+        MANAGEMENT_CAPABILITY.id,
         MAP_CONTEXT_CAPABILITY.id,
         WORLD_CONTEXT_CAPABILITY.id,
     ]);

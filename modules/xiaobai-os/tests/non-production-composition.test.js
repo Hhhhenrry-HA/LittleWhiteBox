@@ -12,6 +12,7 @@ import { createWalletModule } from '../apps/wallet/module.js';
 import { AGENT_CAPABILITY } from '../capabilities/agent/index.js';
 import { createEconomyCapabilityRegistrations } from '../capabilities/economy/index.js';
 import { MAINTENANCE_CAPABILITY } from '../capabilities/maintenance/index.js';
+import { createManagementCapabilityRegistration, MANAGEMENT_CAPABILITY } from '../capabilities/management/index.js';
 import { createKernelComposition } from '../host/kernel-composition.js';
 import { createCapabilityRegistry } from '../kernel/capability-registry.js';
 
@@ -92,6 +93,7 @@ test('the non-production composition installs D1 modules through declared capabi
         capabilities: [
             ...createEconomyCapabilityRegistrations(),
             createMapContextCapabilityRegistration(),
+            createManagementCapabilityRegistration(),
             {
                 token: AGENT_CAPABILITY,
                 ownerId: 'agent',
@@ -118,6 +120,7 @@ test('the non-production composition installs D1 modules through declared capabi
     assert.deepEqual(mapModule.capabilities.map(token => token.id), [
         'agent.shared',
         'maintenance.runner',
+        MANAGEMENT_CAPABILITY.id,
         MAP_CONTEXT_CAPABILITY.id,
     ]);
     assert.deepEqual(fourthWallModule.capabilities.map(token => token.id), ['agent.shared']);

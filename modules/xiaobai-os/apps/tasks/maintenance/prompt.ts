@@ -1,6 +1,7 @@
 import type { TaskRecord } from '../../../domains/tasks/types.js';
 import { safePromptJson } from '../../../host/safe-prompt-json.js';
-import { TASK_MAINTENANCE_TOOL_NAMES as TOOLS } from './tool-contract.js';
+import { TASK_MAINTENANCE_TOOL_NAMES as TOOLS } from '../tools/tool-contract.js';
+import { TASK_OBJECTIVE_POLICY } from '../tools/objective-policy.js';
 
 export interface TaskMaintenanceView {
     readonly taskId: string;
@@ -30,12 +31,12 @@ export const TASK_MAINTENANCE_PROMPT = [
     '',
     '## Evidence',
     'Use the supplied RP and confirmed facts retained in progressSummary for both player and world assignees. Supplied RP takes precedence over conflicting summaries; inferred conditions in old summaries are not facts.',
-    'Narrated actions and results are evidence; a character’s unsupported claim alone is not. Setting, capabilities, risks and elapsed reply counts do not establish that an action happened.',
+    'Setting, capabilities, risks and elapsed reply counts do not establish that an action happened.',
     '',
     '## Decide from the objective',
-    'Judge objective as written, regardless of the method used. Other task fields and prior progress notes do not add completion conditions.',
+    TASK_OBJECTIVE_POLICY,
     `If the facts satisfy objective, call ${TOOLS.COMPLETE} immediately.`,
-    `Otherwise, call ${TOOLS.FAIL} only for an established irreversible failure or expiry; an unfinished objective is not itself a failure.`,
+    `Otherwise, call ${TOOLS.FAIL} when the failure criterion above is established.`,
     `Otherwise, call ${TOOLS.PROGRESS} only when objective-related facts changed; leave the task unchanged when they did not.`,
     '',
     '## Tool calls',

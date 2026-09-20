@@ -258,7 +258,8 @@ test('CoC checks apply once and retry a failed continuation without rolling or r
     const samples = [0.5, 0.1];
     let draws = 0;
     t.mock.method(Math, 'random', () => { assert.ok(draws < samples.length); return samples[draws++]; });
-    host.source.chat = [{ ...message(cocCall), swipe_id: 1, swipes: ['Inactive', cocCall],
+    const original = cocCall + '\n</fictional_scenarios>';
+    host.source.chat = [{ ...message(original), swipe_id: 1, swipes: ['Inactive', original],
         swipe_info: [{ extra: { foreign: 1 } }, { extra: { foreign: 2 } }] }];
     await begin(); await host.intercept('normal');
     await host.saveNative();
@@ -269,6 +270,7 @@ test('CoC checks apply once and retry a failed continuation without rolling or r
     assert.equal(reveals, 1);
     const current = host.source.chat[0];
     const records = structuredClone(current.extra.xiaobaiOsDice);
+    assert.equal(current.mes, `[dice:${records.checks[0].id}]`, 'continuation starts at the saved result, without the preset suffix');
     assert.equal(records.checks.length, 1);
     assert.equal(records.checks[0].rule, 'coc7');
     assert.equal(records.checks[0].result.verdict, 'achieved');
@@ -465,7 +467,7 @@ test('ordinary prose, examples and invalid requests never acquire post-processin
     const block = call.slice(call.indexOf('<xb_action_check>'));
     const bodies = ['Plain reply.', '```json\n' + block + '\n```', '~~~\n' + block + '\n~~~',
         '`' + block + '`', '> ' + block, '> Example:\n' + block, '    ' + block,
-        block.slice(0, -4), block.replace('hard', 'unknown'), block + '\nAfterward.', block + '\n' + block];
+        block.slice(0, -4), block.replace('hard', 'unknown'), '<xb_action_check>{bad}</xb_action_check>\n</fictional_scenarios>', block + '\n' + block];
     for (const body of bodies) {
         await begin(); await host.intercept('normal');
         host.lock();

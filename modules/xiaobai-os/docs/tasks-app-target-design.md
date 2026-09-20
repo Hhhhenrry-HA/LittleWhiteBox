@@ -613,7 +613,7 @@ Prompt 验证保护 system/data 隔离与工具协议，不对单词、段落位
 
 ### 8.3 工具契约
 
-工具名、参数 schema、摘要字段说明及其上限由 [maintenance/tool-contract.ts](../apps/tasks/maintenance/tool-contract.ts) 唯一定义；参数编译以 [command-compiler.ts](../apps/tasks/maintenance/command-compiler.ts) 为准，不在文档复制可漂移的 schema 或工具文案。
+工具名、参数 schema、摘要字段说明及其上限由 [tools/tool-contract.ts](../apps/tasks/tools/tool-contract.ts) 唯一定义；参数编译以 [command-compiler.ts](../apps/tasks/tools/command-compiler.ts) 为准，后台维护与管理员共用，不在文档复制可漂移的 schema 或工具文案。
 
 工具只提交进展、完成、失败三类意图。说明区分工具暂存成功与应用保存成功，字段说明定义累计事实摘要及终结证据；目标与证据判据引用第 8.2 节，不在每个工具再写一遍。
 

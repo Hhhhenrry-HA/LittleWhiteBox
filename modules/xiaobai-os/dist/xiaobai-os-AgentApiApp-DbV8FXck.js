@@ -1,6 +1,6 @@
 /* eslint-disable */
 import { E as Ot, G as Ut, H as It, J as at, K as ye, M as Ne, Q as qe, T as $t, X as _t, b as Dt, f as we, g as Oe, h as Rt, k as Bt, p as w, s as Lt } from "./xiaobai-os-runtime-dom.esm-bundler-BcM9c-Z9.js";
-import { a as Kt, i as xe, n as jt, o as ce, r as ut, t as Ft } from "./xiaobai-os-reasoning-capabilities-Cq77AmeZ.js";
+import { a as ce, i as xe, n as Kt, o as jt, r as ut, t as Ft } from "./xiaobai-os-reasoning-capabilities-jekAYzl_.js";
 var Ht = "https://api.tavily.com";
 function zt(t = "") {
   return String(t || "").trim();
@@ -264,7 +264,7 @@ async function aa(t, a) {
 var de = "openai", bt = "claude", vt = "makersuite", sa = "/api/backends/chat-completions/status", na = "/api/backends/chat-completions/generate", yt = Object.freeze({
   [bt]: "https://api.anthropic.com/v1",
   [vt]: "https://generativelanguage.googleapis.com"
-}), me = Kt;
+}), me = jt;
 function ra(t) {
   return String(t || "").trim().replace(/\/+$/, "");
 }
@@ -1124,7 +1124,7 @@ function Ba(t = {}) {
       model: k,
       reasoning: C
     }), M = G.reasoningMode, E = G.reasoningEffort, Y = G.reasoningBudgetTokens, H = e.querySelector(`${c}-mode`), te = e.querySelector(`${c}-capability`), ae = e.querySelector(`${c}-effort-wrap`), se = e.querySelector(`${c}-effort`), ne = e.querySelector(`${c}-budget-wrap`), Q = e.querySelector(`${c}-budget`);
-    H && (K(H, jt(P)), H.value = M), te && (te.textContent = P.unsupportedReason || `能力配置：${P.profileId}`), se && (K(se, Ft(P)), se.value = E), ae && (ae.style.display = M === "on" && P.intensity.kind === "effort" ? "" : "none"), Q && P.intensity.kind === "budget" && (Q.min = P.intensity.allowAuto ? "-1" : String(P.intensity.min), Q.max = String(P.intensity.max), Q.value = String(Y)), ne && (ne.style.display = M === "on" && P.intensity.kind === "budget" ? "" : "none");
+    H && (K(H, Kt(P)), H.value = M), te && (te.textContent = P.unsupportedReason || `能力配置：${P.profileId}`), se && (K(se, Ft(P)), se.value = E), ae && (ae.style.display = M === "on" && P.intensity.kind === "effort" ? "" : "none"), Q && P.intensity.kind === "budget" && (Q.min = P.intensity.allowAuto ? "-1" : String(P.intensity.min), Q.max = String(P.intensity.max), Q.value = String(Y)), ne && (ne.style.display = M === "on" && P.intensity.kind === "budget" ? "" : "none");
   }
   function F(e) {
     const r = e.querySelector("#xb-assistant-runtime");

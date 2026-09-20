@@ -1,8 +1,8 @@
 /* eslint-disable */
-import { A as ge, C as ie, D as Xe, E as Je, G as Me, H as K, K as h, M as l, P as oe, Q as p, R as Se, T as we, U as Qe, V as Be, X as J, Y as We, Z as me, b as O, c as Ae, f as D, g as n, h as C, i as he, j as _e, k as ea, l as le, m as Q, o as se, p as e, s as aa, u as R, v as W, y as E, z as ce } from "./xiaobai-os-runtime-dom.esm-bundler-BcM9c-Z9.js";
+import { A as ge, C as ie, D as Xe, E as Je, G as Me, H as K, K as h, M as l, P as oe, Q as p, R as Se, T as we, U as Qe, V as Be, X as J, Y as We, Z as me, b as O, c as Ae, f as D, g as n, h as C, i as he, j as _e, k as ea, l as le, m as Q, o as se, p as e, s as aa, u as R, v as W, y as x, z as ce } from "./xiaobai-os-runtime-dom.esm-bundler-BcM9c-Z9.js";
 import { n as xe } from "./xiaobai-os-app-navigation-sg-40eOk.js";
+import { t as sa } from "./xiaobai-os-context-tokens-bfmDTbG3.js";
 import { t as Ee } from "./xiaobai-os-AppDialog-CI-E933W.js";
-import { t as sa } from "./xiaobai-os-context-tokens-W3T8vx4V.js";
 var ta = {
   viewBox: "0 0 24 24",
   fill: "none",
@@ -99,12 +99,12 @@ var ta = {
         title: "设置",
         "aria-label": "设置",
         onClick: i[0] || (i[0] = (r) => c.$emit("settings"))
-      }, [E(T, { name: "settings" })]), e("button", {
+      }, [x(T, { name: "settings" })]), e("button", {
         class: "messages-icon-button messages-add-contact",
         "aria-label": "添加联系人",
         onClick: i[1] || (i[1] = (r) => c.$emit("add"))
-      }, [E(T, { name: "plus" })])])]),
-      e("label", da, [E(T, { name: "search" }), K(e("input", {
+      }, [x(T, { name: "plus" })])])]),
+      e("label", da, [x(T, { name: "search" }), K(e("input", {
         "onUpdate:modelValue": i[2] || (i[2] = (r) => s.value = r),
         type: "search",
         placeholder: "搜索联系人",
@@ -114,16 +114,16 @@ var ta = {
         key: r.id,
         class: "messages-contact-row",
         onClick: (S) => c.$emit("select", r.id)
-      }, [E(ue, {
+      }, [x(ue, {
         identity: r.id,
         name: r.name
       }, null, 8, ["identity", "name"]), e("span", ya, [e("span", ba, [e("strong", null, p(r.name), 1), e("time", null, p(o(r.lastAt)), 1)]), a.busyContactId === r.id ? (l(), n("span", fa, "正在等待回复…")) : a.drafts.get(r.id)?.text.trim() || a.drafts.get(r.id)?.image ? (l(), n("span", pa, [i[7] || (i[7] = e("em", null, "草稿", -1)), W(" " + p(a.drafts.get(r.id)?.image ? "［图片］" : "") + p(a.drafts.get(r.id)?.text), 1)])) : (l(), n("span", ka, p(r.preview), 1))])], 8, ca))), 128))])) : (l(), n("div", va, [
-        E(T, { name: "message" }),
+        x(T, { name: "message" }),
         i[6] || (i[6] = e("h2", null, "暂无联系人", -1)),
         e("button", {
           class: "messages-primary",
           onClick: i[3] || (i[3] = (r) => c.$emit("add"))
-        }, [i[5] || (i[5] = W("添加联系人", -1)), E(T, { name: "plus" })])
+        }, [i[5] || (i[5] = W("添加联系人", -1)), x(T, { name: "plus" })])
       ]))
     ]));
   }
@@ -180,7 +180,7 @@ var ta = {
   },
   emits: ["resize"],
   setup(a, { emit: k }) {
-    const s = a, b = k, o = h(null), c = h(!1), i = h(""), r = h(""), S = h(""), w = h(""), x = h(!1), A = h(!1), f = D(() => s.message.payload.type === "image" ? s.message.payload.attachment : void 0), I = D(() => s.message.payload.type === "image" ? s.message.payload.description : ""), v = D(() => f.value?.path || i.value);
+    const s = a, b = k, o = h(null), c = h(!1), i = h(""), r = h(""), S = h(""), w = h(""), E = h(!1), A = h(!1), f = D(() => s.message.payload.type === "image" ? s.message.payload.attachment : void 0), I = D(() => s.message.payload.type === "image" ? s.message.payload.description : ""), v = D(() => f.value?.path || i.value);
     let $ = null;
     function d() {
       const B = w.value;
@@ -192,7 +192,7 @@ var ta = {
     async function g() {
       if (w.value) return;
       if (v.value) {
-        x.value = !1;
+        E.value = !1;
         return;
       }
       if (!s.available) return;
@@ -206,7 +206,7 @@ var ta = {
         }, 18e4);
         if (w.value !== B) return;
         if (!y.data) throw new Error("画图暂不可用，请开启画图后重试。");
-        i.value = y.data, x.value = !1;
+        i.value = y.data, E.value = !1;
       } catch (y) {
         if (w.value !== B) return;
         const q = y instanceof Error ? y.message : "";
@@ -242,7 +242,7 @@ var ta = {
       ref_key: "root",
       ref: o
     }, [
-      v.value && !x.value ? (l(), n("button", {
+      v.value && !E.value ? (l(), n("button", {
         key: 0,
         class: "messages-image-open",
         "aria-label": "放大图片",
@@ -251,21 +251,21 @@ var ta = {
         src: v.value,
         alt: I.value || f.value?.name || "图片",
         onLoad: y[0] || (y[0] = (q) => b("resize")),
-        onError: y[1] || (y[1] = (q) => x.value = !0)
-      }, null, 40, Sa)])) : x.value ? (l(), n("button", {
+        onError: y[1] || (y[1] = (q) => E.value = !0)
+      }, null, 40, Sa)])) : E.value ? (l(), n("button", {
         key: 1,
         class: "messages-image-placeholder",
         onClick: g
       }, [
-        E(T, { name: "image" }),
+        x(T, { name: "image" }),
         y[5] || (y[5] = e("span", null, "图片暂时无法显示", -1)),
         y[6] || (y[6] = e("small", null, "点击重新加载", -1))
-      ])) : w.value ? (l(), n("div", Ba, [E(T, { name: "image" }), e("span", null, p(S.value), 1)])) : a.available ? (l(), n("button", {
+      ])) : w.value ? (l(), n("div", Ba, [x(T, { name: "image" }), e("span", null, p(S.value), 1)])) : a.available ? (l(), n("button", {
         key: 3,
         class: "messages-image-placeholder",
         onClick: g
-      }, [E(T, { name: "image" }), e("span", null, p(r.value ? "重试加载图片" : "图片"), 1)])) : (l(), n("div", Aa, [
-        E(T, { name: "image" }),
+      }, [x(T, { name: "image" }), e("span", null, p(r.value ? "重试加载图片" : "图片"), 1)])) : (l(), n("div", Aa, [
+        x(T, { name: "image" }),
         y[7] || (y[7] = e("span", null, "图片描述", -1)),
         y[8] || (y[8] = e("small", null, "开启画图后自动加载", -1))
       ])),
@@ -280,7 +280,7 @@ var ta = {
         default: Be(() => [e("button", {
           "aria-label": "关闭图片",
           onClick: y[3] || (y[3] = (q) => A.value = !1)
-        }, [E(T, { name: "close" })]), v.value ? (l(), n("img", {
+        }, [x(T, { name: "close" })]), v.value ? (l(), n("img", {
           key: 0,
           src: v.value,
           alt: I.value || f.value?.name || "图片"
@@ -331,7 +331,7 @@ var ta = {
       "generating",
       "queued"
     ].includes(i.value)), w = h(!1);
-    let x = !0;
+    let E = !0;
     const A = (v) => s.bridge.request(v, {
       chatIdentity: s.chatIdentity,
       messageId: s.message.id
@@ -342,11 +342,11 @@ var ta = {
       const v = S.value;
       if (!(!v && !s.media.voice))
         try {
-          v ? (w.value = !0, await A("messages/voice/stop"), x && (i.value = "")) : (i.value = "loading", await A("messages/voice/play"));
+          v ? (w.value = !0, await A("messages/voice/stop"), E && (i.value = "")) : (i.value = "loading", await A("messages/voice/play"));
         } catch {
-          x && (v || (i.value = ""), c.value = v ? "未能确认停止，请再点一次停止。" : "语音暂时无法播放，原文仍可查看。");
+          E && (v || (i.value = ""), c.value = v ? "未能确认停止，请再点一次停止。" : "语音暂时无法播放，原文仍可查看。");
         } finally {
-          x && (w.value = !1);
+          E && (w.value = !1);
         }
     }
     const I = s.bridge.subscribe((v) => {
@@ -355,7 +355,7 @@ var ta = {
       $.messageId === s.message.id ? i.value = $.status : $.status === "playing" && (i.value = ""), $.messageId === s.message.id && $.status === "error" && (c.value = "播放失败，点击可以重试。");
     });
     return ge(() => {
-      x = !1, I(), S.value && A("messages/voice/stop").catch(() => {
+      E = !1, I(), S.value && A("messages/voice/stop").catch(() => {
       });
     }), (v, $) => (l(), n("article", {
       class: J(["messages-bubble-row", {
@@ -396,7 +396,7 @@ var ta = {
         "aria-label": S.value ? "停止播放" : "播放语音",
         onClick: f
       }, [
-        E(T, { name: S.value ? "stop" : "play" }, null, 8, ["name"]),
+        x(T, { name: S.value ? "stop" : "play" }, null, 8, ["name"]),
         e("span", { class: J(["messages-wave", { playing: i.value === "playing" }]) }, [(l(), n(R, null, oe(16, (d) => e("i", {
           key: d,
           style: me({
@@ -479,7 +479,7 @@ var ja = {
       }
     }), i = h(null), r = h(!1), S = h("");
     let w = !0;
-    async function x(v) {
+    async function E(v) {
       const $ = v.target, d = $.files?.[0];
       if ($.value = "", !(!d || s.sending || r.value)) {
         r.value = !0, S.value = "";
@@ -530,7 +530,7 @@ var ja = {
         accept: "image/png,image/jpeg,image/webp,image/gif",
         hidden: "",
         "aria-label": "选择图片文件",
-        onChange: x
+        onChange: E
       }, null, 544),
       o.value.image ? (l(), n("div", ja, [
         e("img", {
@@ -544,7 +544,7 @@ var ja = {
           "aria-label": "移除图片",
           disabled: a.sending || r.value,
           onClick: A
-        }, [E(T, { name: "close" })], 8, Xa)
+        }, [x(T, { name: "close" })], 8, Xa)
       ])) : C("", !0),
       o.value.image ? (l(), n("p", Ja, "图片将随消息发送，需要当前模型支持看图。")) : C("", !0),
       r.value || S.value ? (l(), n("p", Qa, p(r.value ? "正在读取图片…" : S.value), 1)) : C("", !0),
@@ -556,7 +556,7 @@ var ja = {
           "aria-label": "选择图片",
           disabled: a.sending || r.value,
           onClick: $[0] || ($[0] = (d) => i.value?.click())
-        }, [E(T, { name: "plus" })], 8, es),
+        }, [x(T, { name: "plus" })], 8, es),
         K(e("textarea", {
           "onUpdate:modelValue": $[1] || ($[1] = (d) => c.value = d),
           rows: "1",
@@ -571,7 +571,7 @@ var ja = {
           type: "submit",
           disabled: a.disabled || r.value || !c.value.trim() && !o.value.image,
           "aria-label": "发送"
-        }, [E(T, { name: "send" })], 8, ss)
+        }, [x(T, { name: "send" })], 8, ss)
       ])
     ], 32));
   }
@@ -653,19 +653,19 @@ var ms = ["aria-label", "aria-expanded"], cs = {
         $ && (b.value = !1);
       }
     }, { immediate: !0 });
-    const r = D(() => sa(gs(k.draft.text))), S = D(() => (i.value?.imageTokens ?? 0) + (k.draft.image ? Ce : 0)), w = D(() => (i.value?.usedTokens ?? 0) + r.value + (k.draft.image ? Ce : 0)), x = D(() => Math.min(1, w.value / ds)), A = (f) => `${(f / 1e3).toFixed(1)}k`;
+    const r = D(() => sa(gs(k.draft.text))), S = D(() => (i.value?.imageTokens ?? 0) + (k.draft.image ? Ce : 0)), w = D(() => (i.value?.usedTokens ?? 0) + r.value + (k.draft.image ? Ce : 0)), E = D(() => Math.min(1, w.value / ds)), A = (f) => `${(f / 1e3).toFixed(1)}k`;
     return (f, I) => (l(), n("div", {
       class: "messages-context",
       onKeydown: I[3] || (I[3] = Ae(le((v) => s.value = !1, ["stop"]), ["esc"]))
     }, [e("button", {
       type: "button",
       class: J(["messages-context-ring", { "is-warning": w.value >= We(vs) }]),
-      style: me({ "--context-fill": `${i.value ? x.value * 360 : 0}deg` }),
+      style: me({ "--context-fill": `${i.value ? E.value * 360 : 0}deg` }),
       "aria-label": i.value ? `上下文：约 ${A(w.value)} / 158k` : "上下文用量",
       "aria-expanded": s.value,
       title: "上下文",
       onClick: I[0] || (I[0] = (v) => s.value = !s.value)
-    }, [e("span", null, p(b.value ? "…" : o.value || !i.value ? "—" : Math.round(x.value * 100)), 1)], 14, ms), s.value ? (l(), n("section", cs, [
+    }, [e("span", null, p(b.value ? "…" : o.value || !i.value ? "—" : ""), 1)], 14, ms), s.value ? (l(), n("section", cs, [
       e("header", null, [I[4] || (I[4] = e("strong", null, "上下文", -1)), e("button", {
         type: "button",
         "aria-label": "关闭上下文用量",
@@ -753,11 +753,11 @@ var ms = ["aria-label", "aria-expanded"], cs = {
       return [b.sendFailure, b.sendError].find((g) => g?.contactId === b.contact.id && g.messageId === d)?.message;
     }
     const w = h(null);
-    let x = !0, A = !1, f = null;
+    let E = !0, A = !1, f = null;
     Xe(() => {
       f = null;
       const d = w.value;
-      if (!d || x && !A && !b.page.hasNewer) return;
+      if (!d || E && !A && !b.page.hasNewer) return;
       const g = new Set(b.page.messages.map((B) => B.id)), M = [...d.querySelectorAll("[data-message-id]")].find((B) => g.has(B.dataset.messageId) && B.getBoundingClientRect().bottom > d.getBoundingClientRect().top);
       M && (f = {
         id: M.dataset.messageId,
@@ -769,14 +769,14 @@ var ms = ["aria-label", "aria-expanded"], cs = {
         if (f) {
           const g = [...d.querySelectorAll("[data-message-id]")].find((M) => M.dataset.messageId === f.id);
           g && (d.scrollTop += g.getBoundingClientRect().top - d.getBoundingClientRect().top - f.offset), f = null;
-        } else x && !A && !b.page.hasNewer && (d.scrollTop = d.scrollHeight);
+        } else E && !A && !b.page.hasNewer && (d.scrollTop = d.scrollHeight);
     });
     function I() {
       const d = w.value;
-      d && (x = d.scrollHeight - d.clientHeight - d.scrollTop < 70);
+      d && (E = d.scrollHeight - d.clientHeight - d.scrollTop < 70);
     }
     async function v() {
-      await we(), x && !A && !b.page.hasNewer && w.value && (w.value.scrollTop = w.value.scrollHeight);
+      await we(), E && !A && !b.page.hasNewer && w.value && (w.value.scrollTop = w.value.scrollHeight);
     }
     ce(() => [
       b.page.messages.at(-1)?.id,
@@ -796,21 +796,21 @@ var ms = ["aria-label", "aria-expanded"], cs = {
       }
     }
     return k({ sent() {
-      x = !0, v();
+      E = !0, v();
     } }), (d, g) => (l(), n("section", $s, [
       e("header", ws, [
         e("button", {
           class: "messages-icon-button",
           "aria-label": "返回信息",
           onClick: g[0] || (g[0] = (M) => d.$emit("back"))
-        }, [E(T, { name: "back" })]),
-        E(ue, {
+        }, [x(T, { name: "back" })]),
+        x(ue, {
           identity: a.contact.id,
           name: a.contact.name,
           small: ""
         }, null, 8, ["identity", "name"]),
         e("div", hs, [e("h2", null, p(a.contact.name), 1)]),
-        E(ks, {
+        x(ks, {
           bridge: a.bridge,
           state: a.contextState,
           "contact-id": a.contact.id,
@@ -825,7 +825,7 @@ var ms = ["aria-label", "aria-expanded"], cs = {
           class: "messages-icon-button",
           "aria-label": "联系人详情",
           onClick: g[1] || (g[1] = (M) => d.$emit("details"))
-        }, [E(T, { name: "more" })])
+        }, [x(T, { name: "more" })])
       ]),
       e("div", {
         ref_key: "scroller",
@@ -850,7 +850,7 @@ var ms = ["aria-label", "aria-expanded"], cs = {
             hour: "2-digit",
             minute: "2-digit"
           })), 1)) : C("", !0),
-          E(Oa, {
+          x(Oa, {
             message: M,
             bridge: a.bridge,
             "chat-identity": a.chatIdentity,
@@ -891,7 +891,7 @@ var ms = ["aria-label", "aria-expanded"], cs = {
           src: a.outgoing.payload.upload.dataUrl,
           alt: a.outgoing.payload.upload.name,
           onLoad: v
-        }, null, 40, As), a.outgoing.payload.description ? (l(), n("p", xs, p(a.outgoing.payload.description), 1)) : C("", !0)], 64))], 2)]), E(Ie, {
+        }, null, 40, As), a.outgoing.payload.description ? (l(), n("p", xs, p(a.outgoing.payload.description), 1)) : C("", !0)], 64))], 2)]), x(Ie, {
           sending: a.working || a.busy?.messageId === a.outgoing.messageId,
           error: S(a.outgoing.messageId) || "发送未完成",
           "pending-save": a.pendingSave,
@@ -915,10 +915,10 @@ var ms = ["aria-label", "aria-expanded"], cs = {
         key: 0,
         class: "messages-latest",
         onClick: g[8] || (g[8] = (M) => {
-          Qe(x) ? x.value = !0 : x = !0, d.$emit("latest");
+          Qe(E) ? E.value = !0 : E = !0, d.$emit("latest");
         })
       }, "回到最新消息")) : C("", !0),
-      E(ls, {
+      x(ls, {
         draft: s.value,
         "onUpdate:draft": g[9] || (g[9] = (M) => s.value = M),
         disabled: a.sendDisabled,
@@ -990,7 +990,7 @@ var qs = { class: "messages-app" }, Ls = {
       retryMessageId: null,
       revision: "",
       permissions: {}
-    }), o = h(""), c = h(b()), i = h(!1), r = h(!1), S = h(""), w = h(""), x = h(null), A = h(!1), f = h("add"), I = h(""), v = h(""), $ = D(() => f.value === "delete" ? z.value?.deleteReason ?? "" : c.value.permissions[I.value]?.reason ?? ""), d = h(""), g = h(""), M = h(""), B = h("ready"), y = h(ve());
+    }), o = h(""), c = h(b()), i = h(!1), r = h(!1), S = h(""), w = h(""), E = h(null), A = h(!1), f = h("add"), I = h(""), v = h(""), $ = D(() => f.value === "delete" ? z.value?.deleteReason ?? "" : c.value.permissions[I.value]?.reason ?? ""), d = h(""), g = h(""), M = h(""), B = h("ready"), y = h(ve());
     let q = !0, _ = 0;
     const ee = Me(/* @__PURE__ */ new Map()), ye = D({
       get: () => ee.get(o.value) ?? Ts(),
@@ -1082,7 +1082,7 @@ var qs = { class: "messages-app" }, Ls = {
       L.value = t, Z.value = null, ee.delete(t.contactId), c.value = {
         ...c.value,
         hasNewer: !1
-      }, j(!1, !0), x.value?.sent(), pe(t.contactId, t.messageId, t);
+      }, j(!1, !0), E.value?.sent(), pe(t.contactId, t.messageId, t);
     }
     async function pe(u, t, m) {
       if (!r.value) {
@@ -1241,7 +1241,7 @@ var qs = { class: "messages-app" }, Ls = {
       z.value ? (l(), Q(Rs, {
         key: z.value.id,
         ref_key: "conversation",
-        ref: x,
+        ref: E,
         draft: ye.value,
         "onUpdate:draft": t[4] || (t[4] = (m) => ye.value = m),
         "context-state": s.value,
@@ -1291,7 +1291,7 @@ var qs = { class: "messages-app" }, Ls = {
         "media",
         "waiting-for"
       ])) : C("", !0),
-      K(E(wa, {
+      K(x(wa, {
         contacts: s.value.contacts,
         "busy-contact-id": s.value.busy?.contactId ?? "",
         drafts: ee,
@@ -1324,7 +1324,7 @@ var qs = { class: "messages-app" }, Ls = {
               "aria-label": "关闭",
               disabled: r.value,
               onClick: V
-            }, [E(T, { name: "close" })], 8, Ks)
+            }, [x(T, { name: "close" })], 8, Ks)
           ]),
           S.value ? (l(), n("p", js, p(S.value), 1)) : C("", !0),
           f.value === "settings" ? (l(), Q(Ma, {
@@ -1333,7 +1333,7 @@ var qs = { class: "messages-app" }, Ls = {
             busy: r.value || !!s.value.busy,
             onSave: Ne
           }, null, 8, ["settings", "busy"])) : f.value === "add" ? (l(), n(R, { key: 2 }, [
-            e("label", Ys, [E(T, { name: "search" }), K(e("input", {
+            e("label", Ys, [x(T, { name: "search" }), K(e("input", {
               "onUpdate:modelValue": t[9] || (t[9] = (m) => M.value = m),
               placeholder: "查找已知人物",
               "aria-label": "查找已知人物",
@@ -1358,13 +1358,13 @@ var qs = { class: "messages-app" }, Ls = {
               disabled: N.value,
               onClick: (F) => $e(m.name)
             }, [
-              E(ue, {
+              x(ue, {
                 identity: m.name,
                 name: m.name,
                 small: ""
               }, null, 8, ["identity", "name"]),
               e("span", null, [W(p(m.name), 1), m.aliases.length ? (l(), n("small", et, p(m.aliases.join("、")), 1)) : C("", !0)]),
-              E(T, { name: "plus" })
+              x(T, { name: "plus" })
             ], 8, _s))), 128)), be.value.length ? C("", !0) : (l(), n("p", at, p(M.value ? "没有匹配的人物，可以在下面手动添加。" : "暂无可添加的已知人物，可以在下面手动添加。"), 1))], 64))], 8, Xs),
             e("details", st, [t[20] || (t[20] = e("summary", null, "想联系的人不在这里？", -1)), e("form", { onSubmit: t[12] || (t[12] = le((m) => $e(), ["prevent"])) }, [
               e("label", null, [t[18] || (t[18] = W("姓名", -1)), K(e("input", {

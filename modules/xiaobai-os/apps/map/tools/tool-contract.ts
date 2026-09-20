@@ -37,7 +37,7 @@ const mood = ['neutral', 'warm', 'cold', 'dark', 'mystic', 'danger', 'calm'];
 
 const objectGuidance = MAP_OBJECT_GROUPS.map(group => `${group.name}: ${group.icons.join(', ')}. ${group.hint}`.trim()).join('\n');
 
-const EDIT_RESULT_SHAPE = 'Returns {ok, status, changed, applied[], skipped[], warnings[]}. status is updated, unchanged (nothing needed to change; this is success, not a failure to retry), partial or failed. Each skipped item carries collection, index, id, reason and a hint; fix only those and keep the applied ones. warnings list values that were ignored or normalized.';
+const EDIT_ITEM_REPORTS = 'applied and skipped identify edits by collection, index and id; skipped includes reasons and recovery hints. warnings contains additional edit notices.';
 
 const coordinatePair = {
     type: 'array',
@@ -59,7 +59,7 @@ function nullableEnum(values: readonly string[], description: string) {
     return { anyOf: [{ type: 'string', enum: [...values], description }, { type: 'null' }] };
 }
 
-export const MAP_MAINTENANCE_TOOLS: readonly MaintenanceFunctionDeclaration[] = Object.freeze([
+export function mapTools(saveDescription: string): readonly MaintenanceFunctionDeclaration[] { return Object.freeze([
     {
         type: 'function',
         function: {
@@ -95,7 +95,8 @@ export const MAP_MAINTENANCE_TOOLS: readonly MaintenanceFunctionDeclaration[] = 
                 'Upsert locations, links and world-level actor positions, or remove them. Location keys are stable identities. Scene links are created by MapSceneEdit and are not accepted here.',
                 'Omit a link id for the stable endpoint/kind-derived id. Bidirectional defaults true.',
                 'Removal is for explicit correction or destruction, never merely because an actor left a place.',
-                EDIT_RESULT_SHAPE,
+                saveDescription,
+                EDIT_ITEM_REPORTS,
             ].join('\n'),
             parameters: {
                 type: 'object',
@@ -117,7 +118,7 @@ export const MAP_MAINTENANCE_TOOLS: readonly MaintenanceFunctionDeclaration[] = 
                                     description: 'Existing or same-call parent location key. Use null to move the location to the Atlas root.',
                                 },
                                 brief: { type: 'string', maxLength: MAX_MAP_BRIEF_LENGTH, description: 'Short in-world description: what distinguishes this place and why someone might visit. Do not invent events that already happened.' },
-                                position: { ...coordinatePair, type: ['array', 'null'], description: 'Use null to clear. Stable [x,y] map position inside the parent region (root places share the world plane). North is smaller y. Use roughly 0..1000 with 160+ separation; follow authored directions, otherwise establish plausible geography. Preserve existing positions.' },
+                                position: { ...coordinatePair, type: ['array', 'null'], description: 'Stable [x,y] position inside the parent region; root places share the world plane. North is smaller y. Use roughly 0..1000 with 160+ separation, following authored directions or the requested correction. Omit to preserve an existing position; null clears it.' },
                                 terrain: nullableEnum(['urban', 'plain', 'forest', 'water', 'mountain', 'desert', 'snow'], 'Use null to clear. Landscape of this place, used on the world map. Match the setting.'),
                             },
                             required: ['key', 'name'], additionalProperties: false,
@@ -196,7 +197,8 @@ export const MAP_MAINTENANCE_TOOLS: readonly MaintenanceFunctionDeclaration[] = 
                 'Existing elements are patched by id: omitted fields are preserved and null clears optional fields. Category and actor identity are stable. A supplied geo replaces the whole geometry. To move a rect keep its size and change its center; to rotate or change material send no geo.',
                 `New elements need cat and complete valid geo. Elements you do not send are untouched. Use remove for explicit element deletion. A scene holds at most ${MAX_SCENE_ELEMENTS} elements.`,
                 'Give one shape and the geo it needs: rect={center,size}; circle={at,radius}; path={points}; curve={curve}; icon={at}; label={at}+label.',
-                EDIT_RESULT_SHAPE,
+                saveDescription,
+                EDIT_ITEM_REPORTS,
             ].join('\n'),
             parameters: {
                 type: 'object',
@@ -232,7 +234,7 @@ export const MAP_MAINTENANCE_TOOLS: readonly MaintenanceFunctionDeclaration[] = 
                                 id: { type: 'string', maxLength: MAX_MAP_ID_LENGTH, description: 'Stable element identity inside this scene.' },
                                 cat: { type: 'string', enum: [...MAP_ELEMENT_CATEGORIES], description: 'What the element is. Required for a new id. An existing id keeps its stored category; use another id for a different entity.' },
                                 kind: nullableEnum(MAP_ELEMENT_KINDS, 'Optional semantic role, such as a door or the player. Use null to clear it.'),
-                                shape: { type: 'string', enum: [...MAP_ELEMENT_SHAPES], description: 'Optional. Inferred from geo when omitted; a shape that does not match its geo is corrected to the inferred one.' },
+                                shape: { type: 'string', enum: [...MAP_ELEMENT_SHAPES], description: 'Shape matching the supplied geo; inferred from geo when omitted.' },
                                 geo: {
                                     type: 'object',
                                     description: 'Geometry for the chosen shape. Send only the keys that shape needs.',
@@ -274,4 +276,6 @@ export const MAP_MAINTENANCE_TOOLS: readonly MaintenanceFunctionDeclaration[] = 
             },
         },
     },
-]);
+]); }
+
+export const MAP_MAINTENANCE_TOOLS = mapTools('Edits update the draft; the app saves after the run. Returns {ok,status,changed,applied,skipped,warnings,hint?,data?}. status is updated, unchanged (already matches; success), partial or failed.');

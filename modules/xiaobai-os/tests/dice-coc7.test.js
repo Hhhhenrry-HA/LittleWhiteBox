@@ -124,8 +124,7 @@ test('single-check thresholds, degree and achievement remain distinct; stored fa
 });
 
 test('requests accept only capability IDs and difficulty; all invalid input is rejected before sampling', () => {
-    const invalid = [{ ...skill, value: 65 }, { ...skill, kind: 'skill' }, { ...skill, opponent: {} },
-        { ...skill, bonus: 1 }, { ...skill, penalty: 1 }, { ...skill, character: 'Mira' }, { ...skill, stakes: 'risk' },
+    const invalid = [
         { ...skill, stat: 'Athletics' }, { ...skill, stat: '运动' }, { ...skill, stat: 'hpMax' }, { ...skill, stat: '__proto__' },
         { ...skill, difficulty: 'ordinary' }, { ...skill, difficulty: undefined }, { ...skill, action: '' }];
     for (const request of invalid) {
@@ -139,6 +138,27 @@ test('requests accept only capability IDs and difficulty; all invalid input is r
     const prepared = prepare();
     assert.equal(prepared.records.checks[0].result.value, 60);
     assert.deepEqual(parseDiceRecords(prepared.records), prepared.records);
+});
+
+test('D100 ignores model extras but still rejects wrong or missing capability values without rolling', () => {
+    const extra = { ...skill, character: 'Mira', stakes: { arbitrary: true }, value: 99, kind: 'skill', opponent: {},
+        bonus: 2, penalty: 1, roll: 1, result: { verdict: 'achieved' } };
+    const original = structuredClone(extra);
+    const parsed = parseActionCheck(tagged(extra), 0, 'coc7');
+    assert.equal(parsed.kind, 'request');
+    assert.deepEqual(parsed.request, skill);
+    const candidate = prepare(extra);
+    assert.deepEqual(candidate, prepare(skill), 'extras affect neither the sheet lookup nor the recorded outcome');
+    assert.deepEqual(extra, original);
+    const missing = { ...extra }; delete missing.stat;
+    for (const invalid of [missing, { ...extra, stat: '魄力' }, { ...extra, difficulty: 'unknown' }, { ...extra, action: null }]) {
+        const before = structuredClone(invalid);
+        assert.equal(prepare(invalid, { random: () => assert.fail('bad known fields must not roll') }).kind, 'invalid');
+        assert.deepEqual(invalid, before);
+    }
+    const damaged = structuredClone(candidate.records);
+    damaged.checks[0].request.character = extra.character;
+    assert.throws(() => parseDiceRecords(damaged), 'stored result requests still have a closed shape');
 });
 
 test('model capabilities include both independent attributes and skills, never values; the injected example really executes', () => {

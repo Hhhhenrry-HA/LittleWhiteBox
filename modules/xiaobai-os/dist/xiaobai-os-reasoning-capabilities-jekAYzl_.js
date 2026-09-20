@@ -1,5 +1,10 @@
 /* eslint-disable */
-var C = Object.freeze([
+var m = null;
+async function C() {
+  if (!m) throw new Error("宿主请求头未注册，无法调用酒馆后端。");
+  return await m();
+}
+var P = Object.freeze([
   Object.freeze({
     value: "inherit",
     label: "跟随模型默认"
@@ -38,11 +43,6 @@ function E(e = "") {
 function T(e = "") {
   const t = E(e);
   return t.includes("deepseek") ? "deepseek" : t.includes("kimi") || t.includes("moonshot") ? "kimi" : t.includes("gemini") ? "gemini" : t.includes("claude") ? "claude" : /(?:^|[/_.-])gpt(?:\d|[/_.-]|$)/.test(t) || /(?:^|[/_.-])o\d+(?:[/_.-]|$)/.test(t) ? "openai" : "";
-}
-var m = null;
-async function P() {
-  if (!m) throw new Error("宿主请求头未注册，无法调用酒馆后端。");
-  return await m();
 }
 var I = Object.freeze({
   minimal: "最小",
@@ -278,10 +278,10 @@ function G(e = {}, t = {}) {
   };
 }
 export {
-  P as a,
+  v as a,
   G as i,
   j as n,
-  v as o,
+  C as o,
   z as r,
   x as t
 };

@@ -28,7 +28,8 @@ export interface ChatBindingManagerOptions {
     storage: XiaobaiOsStoragePort;
     index: SidecarIndex;
     createId?: () => string;
-    prepareClonedPartitions?: (capture: ChatMetadataCapture, source: XiaobaiOsChatBindingV1, partitions: Record<string, unknown>) => void;
+    prepareClonedPartitions?: (capture: ChatMetadataCapture, source: XiaobaiOsChatBindingV1, partitions: Record<string, unknown>, ids: { source: string; target: string }) => void | Promise<void>;
+    cleanupAttachments?: (osId: string) => Promise<void>;
 }
 
 export interface ChatBindingManager {
@@ -116,6 +117,7 @@ export function createChatBindingManager(options: ChatBindingManagerOptions): Ch
         pending.delete(entry.capture.identityKey);
         try {
             await storage.delete(entry.candidate.osId);
+            await options.cleanupAttachments?.(entry.candidate.osId);
         } catch {
             rememberBestEffort(entry.candidate.osId, entry.capture.binding);
         }
@@ -165,7 +167,10 @@ export function createChatBindingManager(options: ChatBindingManagerOptions): Ch
             referenceAttempted: false,
         };
         const written = await storage.replace({ expected: null, candidate });
-        if (written.status === 'failed') { return { status: 'failed', error: written.error }; }
+        if (written.status === 'failed') {
+            await options.cleanupAttachments?.(candidate.osId);
+            return { status: 'failed', error: written.error };
+        }
         if (written.status === 'unconfirmed' || written.status === 'conflict') {
             if (written.status === 'unconfirmed') { pending.set(capture.identityKey, entry); }
             return written.status === 'conflict'
@@ -188,6 +193,7 @@ export function createChatBindingManager(options: ChatBindingManagerOptions): Ch
         }
         try {
             await storage.delete(candidate.osId);
+            await options.cleanupAttachments?.(candidate.osId);
         } catch {
             rememberBestEffort(candidate.osId, capture.binding);
         }
@@ -199,10 +205,11 @@ export function createChatBindingManager(options: ChatBindingManagerOptions): Ch
         source: XiaobaiOsSidecarV1,
     ): Promise<ChatBindingResolution> {
         const partitions = cloneJsonValue(source.partitions);
-        options.prepareClonedPartitions?.(capture, source.binding, partitions);
+        const osId = createId();
+        await options.prepareClonedPartitions?.(capture, source.binding, partitions, { source: source.osId, target: osId });
         const candidate: XiaobaiOsSidecarV1 = {
             formatVersion: 1,
-            osId: createId(),
+            osId,
             binding: { ...capture.binding },
             revision: 0,
             commitId: createId(),
@@ -368,9 +375,11 @@ export function createChatBindingManager(options: ChatBindingManagerOptions): Ch
         const [osId] = matches;
         try {
             await storage.delete(osId);
+            await options.cleanupAttachments?.(osId);
             await index.forget(osId);
             return 'deleted';
-        } catch {
+        } catch (error) {
+            console.error('[LittleWhiteBox] Chat data cleanup failed', error);
             return 'retained';
         }
     }

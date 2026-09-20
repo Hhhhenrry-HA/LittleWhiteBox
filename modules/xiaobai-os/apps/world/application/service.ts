@@ -61,7 +61,7 @@ export function createWorldService(
                 return { ...current, ...replacement };
             }, guard);
         },
-        confirmPending: files.retryPending,
+        confirmPending: (guard?: () => boolean) => files.retryPending({ beforeRetry: guard }),
         adoptServerState: files.adoptServerState,
         subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; },
         dispose() { unsubscribeStore(); unsubscribeFile(); listeners.clear(); },

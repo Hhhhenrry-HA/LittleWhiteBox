@@ -109,6 +109,8 @@ export type ScopedTransactionResult<T, R> =
     | { status: 'conflict'; preparedResult: R };
 
 export interface ScopedChatStore<T> {
+    /** Binding metadata only; does not parse or copy a partition's potentially large content. */
+    peekBinding(): { identityKey: string; osId: string | null } | null;
     peekCurrent(): PartitionSnapshot<T> | null;
     read(): Promise<PartitionSnapshot<T>>;
     transact<R>(
@@ -154,8 +156,15 @@ export interface PendingCommitRecoveryResult {
     error?: KernelWriteFailure;
 }
 
+export interface PendingCommitRecoveryOptions {
+    /** Inspect the submitted commit without dispatching its candidate again. */
+    readOnly?: boolean;
+    /** Read-back may confirm an already submitted write; only a new dispatch needs fresh evidence. */
+    beforeRetry?: () => boolean | Promise<boolean>;
+}
+
 export interface XiaobaiOsFileControls {
-    retryPending(): Promise<PendingCommitRecoveryResult>;
+    retryPending(options?: PendingCommitRecoveryOptions): Promise<PendingCommitRecoveryResult>;
     adoptServerState(): Promise<PendingCommitRecoveryResult>;
     getFileState(): XiaobaiOsFileState;
     /** Whether the active chat has a prepared candidate, optionally scoped to its owning partition. */
