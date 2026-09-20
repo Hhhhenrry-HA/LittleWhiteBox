@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { applyDiceCandidate, captureDiceTarget, clearNewDiceSwipe, clearDiceMessageData, readDiceRecords, isDiceTargetCurrent } from '../apps/dice/host/message-records.ts';
 import { createActionCheckSession } from '../apps/dice/application/action-check-session.ts';
 import { prepareActionCheck } from '../apps/dice/application/prepare-action-check.ts';
+import { DICE_RECORDS_SCHEMA_VERSION } from '../apps/dice/domain/check-records.ts';
 
 const call = '<xb_action_check>{"action":"Climb","stat":"Agility","difficulty":"hard"}</xb_action_check>';
 function fixture() {
@@ -38,7 +39,7 @@ test('applying a check after editing upstream prose upgrades only the active swi
     assert.equal(samples, 2);
     assert.deepEqual(target.records, original.extra.xiaobaiOsDice, 'captured upstream data is not rewritten');
     assert.deepEqual(message.extra.xiaobaiOsDice, candidate.records);
-    assert.equal(message.extra.xiaobaiOsDice.schemaVersion, 2);
+    assert.equal(message.extra.xiaobaiOsDice.schemaVersion, DICE_RECORDS_SCHEMA_VERSION);
     assert.equal(message.extra.xiaobaiOsDice.checks.length, 3, 'deleting a reference does not delete saved history');
     assert.deepEqual(message.swipe_info[0].extra.xiaobaiOsDice, candidate.records);
     assert.deepEqual(message.swipe_info[1], original.swipe_info[1]);
@@ -69,7 +70,7 @@ test('stale chat, message, swipe, body or record snapshots cannot be overwritten
         source => { source.chat[0] = structuredClone(source.chat[0]); return source; },
         source => { source.chat[0].swipe_id = 0; return source; },
         source => { source.chat[0].mes = 'Edited body'; return source; },
-        source => { source.chat[0].extra.xiaobaiOsDice = { schemaVersion: 2, checks: [] }; return source; },
+        source => { source.chat[0].extra.xiaobaiOsDice = { schemaVersion: DICE_RECORDS_SCHEMA_VERSION, checks: [] }; return source; },
     ]) {
         const { source, target, candidate } = fixture();
         const current = change(source);

@@ -42,7 +42,7 @@ function readRequestV1(value: unknown): RequestV1 {
         ...(result.stakes === undefined ? {} : { stakes: result.stakes }) };
 }
 
-export function upgradeDiceRecordsV1(value: unknown): unknown {
+export function readDiceChecksV1(value: unknown) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) { throw new TypeError('dice_records_invalid'); }
     const input = value as Record<string, unknown>;
     if (input.schemaVersion !== 1 || Object.keys(input).length !== 2 || !Array.isArray(input.checks) || input.checks.length > 8) {
@@ -67,5 +67,5 @@ export function upgradeDiceRecordsV1(value: unknown): unknown {
         previousOffset = record.offset;
         return { rule: 'd20', id: record.id, request: readRequestV1(record.request), roll: record.roll, dc: record.dc, outcome: record.outcome };
     });
-    return { schemaVersion: 2, checks };
+    return checks;
 }

@@ -16,7 +16,7 @@ const frequencyChoices: Record<ActionCheckFrequency, { label: string; descriptio
 };
 const ruleChoices: Record<ActionCheckRule, { label: string; description: string }> = {
     d20: { label: '通用 D20', description: '不需要人物数值，由情境决定难度。' },
-    coc7: { label: 'CoC 第七版', description: COC7_UI.description },
+    coc7: { label: COC7_UI.rule, description: COC7_UI.description },
 };
 let unsubscribe = () => {};
 let mounted = false;

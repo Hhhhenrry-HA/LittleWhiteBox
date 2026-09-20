@@ -3,6 +3,7 @@ import { DICE_RECORDS_SCHEMA_VERSION, MAX_ACTION_CHECKS, parseDiceRecords, type 
 import { parseActionCheck } from '../protocol/request.js';
 import { checkMarker } from '../domain/check-marker.js';
 import { rollCoc7 } from '../domain/coc7.js';
+import { COC7_CAPABILITIES } from '../domain/coc7-catalog.js';
 import type { ActionCheckRule } from '../types.js';
 import { coc7StatValue, parseCoc7Sheet, COC7_SHEET_ERRORS, type Coc7Sheet } from '../domain/coc7-sheet.js';
 
@@ -27,7 +28,7 @@ export function prepareActionCheck(input: {
     const marker = checkMarker(input.id);
     if (records.checks.some(record => record.id === input.id)) { throw new TypeError('dice_record_id_invalid'); }
     const record: ActionCheckRecord = parsed.rule === 'coc7'
-        ? { id: input.id, rule: parsed.rule, request: parsed.request, result: rollCoc7(value, parsed.request.difficulty, input.random) }
+        ? { id: input.id, rule: parsed.rule, request: { ...parsed.request, stat: COC7_CAPABILITIES[parsed.request.stat].label }, result: rollCoc7(value, parsed.request.difficulty, input.random) }
         : { id: input.id, rule: parsed.rule, request: parsed.request, ...rollActionCheck(parsed.request.difficulty, input.random) };
     return { kind: 'candidate', body: parsed.body + marker + input.body.slice(parsed.end),
         records: { ...records, checks: [...records.checks, record] } };

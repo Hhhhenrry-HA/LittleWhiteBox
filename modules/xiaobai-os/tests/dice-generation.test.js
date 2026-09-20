@@ -9,7 +9,7 @@ import { prepareActionCheck } from '../apps/dice/application/prepare-action-chec
 import { captureDiceTarget } from '../apps/dice/host/message-records.ts';
 import { buildActionCheckPrompt, projectActionCheckResults } from '../apps/dice/protocol/prompt.ts';
 import { parseDiceRecords } from '../apps/dice/domain/check-records.ts';
-import { generateCoc7Sheet } from '../apps/dice/domain/coc7-sheet.ts';
+import { generateCoc7Sheet } from '../apps/dice/domain/coc7-creation.ts';
 
 // These regressions live at the native event/API boundary, which the session's continuation stub cannot cover.
 // Run the actual adapter, readiness barrier, session and protocol; replace native I/O only.
@@ -133,7 +133,7 @@ const compiled = await build({
 const { createDiceGenerationAdapter, captureDiceChat, waitForDiceHost, host } = await import(`data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`);
 
 const call = 'Attempt.\n\n<xb_action_check>{"action":"Climb","stat":"Agility","difficulty":"hard"}</xb_action_check>';
-const cocCall = '<xb_action_check>' + JSON.stringify({ action: 'Force the door', stat: 'STR', difficulty: 'regular' }) + '</xb_action_check>';
+const cocCall = '<xb_action_check>' + JSON.stringify({ action: 'Force the door', stat: 'body', difficulty: 'regular' }) + '</xb_action_check>';
 const message = mes => ({ name: 'Mira', mes, extra: {} });
 function setup(t, group = false, reveal = async () => {}) {
     t.mock.method(console, 'error', () => {});
@@ -322,10 +322,10 @@ test('native stream UI ending before MESSAGE_RECEIVED still resolves CoC; failur
 test('the reply snapshot survives edits and rule changes; next replies capture the new configuration', async t => {
     const adapter = setup(t);
     host.rule = 'coc7';
-    host.sheet.attributes.STR = 20;
+    Object.assign(host.sheet.attributes, { body: 40, will: 60, appearance: 50 });
     host.source.chat = [message(cocCall)];
     await begin(); await host.intercept('normal');
-    host.sheet.attributes.STR = 80;
+    Object.assign(host.sheet.attributes, { body: 80, will: 20, appearance: 50 });
     host.rule = 'd20';
     let continuations = 0;
     host.reply = async () => {
@@ -334,7 +334,7 @@ test('the reply snapshot survives edits and rule changes; next replies capture t
     };
     await received(); await settled(adapter);
     const records = host.source.chat[0].extra.xiaobaiOsDice.checks;
-    assert.deepEqual(records.map(record => [record.rule, record.result.value]), [['coc7',20],['coc7',20]]);
+    assert.deepEqual(records.map(record => [record.rule, record.result.value]), [['coc7',40],['coc7',40]]);
     host.rule = 'coc7';
     host.source.chat = [message(cocCall)];
     await begin(); await host.intercept('normal');
@@ -921,6 +921,102 @@ test('a failed incoming stream never rolls, and its residual processor cannot re
     await settled(adapter);
     assert.equal(host.requests.length, 1);
     assert.equal(host.source.chat.at(-1).extra.xiaobaiOsDice.checks.length, 1);
+});
+
+// Host waiting is a recoverable condition, not an invalid model request. These
+// exercise the real readiness timer and adapter rather than a session-only stub.
+test('readiness reports simultaneous blockers and elapsed time, then pauses without rolling and retries once', async t => {
+    const adapter = setup(t);
+    t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
+    await begin(); await host.intercept('normal');
+    const target = message(call); host.source.chat.push(target);
+    host.stream = { isStopped: false }; host.saving(true);
+    await received();
+    assert.deepEqual(adapter.view().wait, { blockers: ['stream', 'save'], elapsedSeconds: 0 });
+    t.mock.timers.tick(1000); await setImmediate();
+    assert.deepEqual(adapter.view().wait, { blockers: ['stream', 'save'], elapsedSeconds: 1 });
+    host.stream = null;
+    t.mock.timers.tick(40); await setImmediate();
+    assert.deepEqual(adapter.view().wait.blockers, ['save']);
+    t.mock.timers.tick(19000); await setImmediate();
+    assert.equal(adapter.view().phase.kind, 'wait-error');
+    assert.equal(adapter.view().wait.elapsedSeconds, 20);
+    assert.equal(host.busy, false);
+    assert.equal(target.mes, call);
+    assert.equal(target.extra.xiaobaiOsDice, undefined);
+    assert.equal(host.ids, 0);
+    assert.equal(host.requests.length, 0);
+
+    const first = adapter.retry(1);
+    await assert.rejects(adapter.retry(1)); // Native busy state also guards repeated UI clicks.
+    assert.equal(adapter.view().phase.kind, 'settling');
+    host.saving(false);
+    t.mock.timers.tick(40); await first;
+    assert.equal(target.extra.xiaobaiOsDice.checks.length, 1);
+    assert.equal(host.requests.length, 1);
+    assert.equal(host.ids, 1);
+    assert.equal(adapter.view(), null);
+});
+
+test('reload offers explicit recovery of only the latest unrolled request and never rolls by displaying it', async t => {
+    const adapter = setup(t);
+    host.source.chat = [message(call), message(call)];
+    assert.equal(adapter.canRetryRequest(0), false);
+    assert.equal(adapter.canRetryRequest(1), true);
+    assert.equal(host.ids, 0);
+    assert.equal(host.requests.length, 0);
+    host.busy = true;
+    assert.equal(adapter.canRetryRequest(1), false);
+    host.busy = false;
+    await adapter.retry(1);
+    assert.equal(host.source.chat[0].mes, call);
+    assert.equal(host.source.chat[1].extra.xiaobaiOsDice.checks.length, 1);
+    assert.equal(host.requests.length, 1);
+    assert.equal(adapter.canRetryRequest(1), false);
+});
+
+test('pausing Dice releases only its own controls while a native generation is still pending', async t => {
+    const adapter = setup(t);
+    t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
+    await begin(); await host.intercept('normal');
+    host.source.chat.push(message(call));
+    host.lock();
+    await received();
+    assert.deepEqual(adapter.view().wait.blockers, ['generation']);
+    t.mock.timers.tick(20000); await setImmediate();
+    assert.equal(adapter.view().phase.kind, 'wait-error');
+    assert.equal(host.busy, true, 'native generation still owns the send controls');
+    assert.equal(host.ids, 0);
+    host.unlock();
+    await adapter.retry(1);
+    assert.equal(host.requests.length, 1);
+    assert.equal(host.busy, false);
+});
+
+test('retrying a saved result reports host waiting and cannot start a second continuation while waiting', async t => {
+    const adapter = setup(t);
+    t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
+    await begin(); await host.intercept('normal');
+    const target = message(call); host.source.chat.push(target);
+    host.reply = async () => {};
+    await received(); await settled(adapter);
+    const saved = structuredClone(target.extra.xiaobaiOsDice);
+    const ids = host.ids;
+    host.saving(true);
+    const retry = adapter.retry(1);
+    assert.equal(adapter.view().phase.kind, 'settling');
+    assert.deepEqual(adapter.view().phase.candidate.records, saved);
+    await assert.rejects(adapter.retry(1));
+    t.mock.timers.tick(20000); await retry;
+    assert.equal(adapter.view().phase.kind, 'continue-error');
+    assert.deepEqual(adapter.view().wait, { blockers: ['save'], elapsedSeconds: 20 });
+    assert.equal(host.ids, ids);
+    assert.equal(host.requests.length, 1);
+    host.saving(false);
+    await adapter.retry(1);
+    assert.equal(host.ids, ids);
+    assert.equal(host.requests.length, 2);
+    assert.deepEqual(target.extra.xiaobaiOsDice, saved);
 });
 
 for (const partial of [false, true]) {

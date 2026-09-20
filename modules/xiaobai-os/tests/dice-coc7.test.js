@@ -1,41 +1,105 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readFileSync } from 'node:fs';
 import { parseCoc7Request } from '../apps/dice/domain/coc7-request.ts';
-import { COC7_CAPABILITIES, COC7_SKILL_IDS } from '../apps/dice/domain/coc7-catalog.ts';
-import { generateCoc7Sheet, parseCoc7Sheet, editCoc7Stat, coc7StatValue, coc7Derived, COC7_TRAINING_BONUSES } from '../apps/dice/domain/coc7-sheet.ts';
+import { COC7_CAPABILITIES, COC7_ATTRIBUTE_IDS, COC7_SKILL_IDS } from '../apps/dice/domain/coc7-catalog.ts';
+import { parseCoc7Sheet, readCoc7Sheet, coc7StatValue, coc7RemainingPoints, coc7PointBudget, COC7_POINTS, COC7_POINT_GROUPS } from '../apps/dice/domain/coc7-sheet.ts';
+import { emptyCoc7Draft, generateCoc7Sheet, adjustCoc7Stat, canAdjustCoc7Stat } from '../apps/dice/domain/coc7-creation.ts';
 import { coc7Level, rollCoc7 } from '../apps/dice/domain/coc7.ts';
 import { prepareActionCheck } from '../apps/dice/application/prepare-action-check.ts';
 import { parseDiceRecords, MAX_ACTION_CHECKS } from '../apps/dice/domain/check-records.ts';
 import { parseActionCheck } from '../apps/dice/protocol/request.ts';
 import { COC7_EXAMPLE, coc7CapabilityProjection } from '../apps/dice/protocol/coc7-contract.ts';
 import { buildActionCheckPrompt, projectActionCheckResults, serializeActionCheckResults } from '../apps/dice/protocol/prompt.ts';
-import { retireCoc7TestRecords } from '../apps/dice/storage/retire-coc7-test-records.ts';
 
-const skill = { action: 'Climb the wet wall', stat: 'climb', difficulty: 'hard' };
+const skill = { action: 'Climb the wet wall', stat: 'athletics', difficulty: 'hard' };
 const tagged = request => '<xb_action_check>' + JSON.stringify(request) + '</xb_action_check>';
 const sequence = (...digits) => { let index = 0; return () => { assert.ok(index < digits.length); return (digits[index++] + 0.1) / 10; }; };
-const sheet = () => editCoc7Stat(generateCoc7Sheet(() => 0.5), 'climb', 65);
+const sheet = () => parseCoc7Sheet({
+    attributes: { body: 50, will: 50, appearance: 50 },
+    skills: { ...Object.fromEntries(COC7_SKILL_IDS.map(id => [id, 50])), athletics: 60, melee: 40 },
+});
 const prepare = (request = skill, extra = {}) => prepareActionCheck({ body: tagged(request), rule: 'coc7', generatedFrom: 0, id: 'coc', coc7Sheet: sheet(), random: () => 0.3, ...extra });
 
-test('quick initialization is complete, selects distinct skills and keeps derived bases live', () => {
-    const low = generateCoc7Sheet(() => 0);
-    assert.deepEqual(low.attributes, { STR: 15, CON: 15, SIZ: 40, DEX: 15, APP: 15, INT: 40, POW: 15, EDU: 40 });
-    assert.equal(low.luck, 15);
-    assert.deepEqual(Object.values(low.training).filter(Boolean).sort((a,b) => b-a), [...COC7_TRAINING_BONUSES]);
-    assert.deepEqual(Object.keys(low.training), COC7_SKILL_IDS);
-    assert.deepEqual(coc7Derived(low), { hpMax: 5, mpMax: 3, sanInitial: 15 });
-    const trained = editCoc7Stat(low, 'dodge', 27);
-    assert.equal(trained.training.dodge, 20);
-    const changed = editCoc7Stat(trained, 'DEX', 40);
-    assert.equal(coc7StatValue(changed, 'dodge'), 40);
-    assert.equal(coc7StatValue(trained, 'dodge'), 27);
-    assert.throws(() => editCoc7Stat(changed, 'dodge', 19));
-    assert.deepEqual(parseCoc7Sheet(JSON.parse(JSON.stringify(changed))), changed);
-    for (const invalid of [{}, { ...low, luck: '50' }, { ...low, attributes: { ...low.attributes, STR: 0 } },
-        { ...low, training: { ...low.training, climb: -1 } }, { ...low, extra: 1 },
-        { ...low, attributes: { ...low.attributes, CON: Number.MAX_SAFE_INTEGER } }]) assert.throws(() => parseCoc7Sheet(invalid));
-    assert.throws(() => generateCoc7Sheet(() => 1));
+test('random creation and persistence preserve separate budgets, bounds and capability coverage', () => {
+    assert.equal(COC7_ATTRIBUTE_IDS.length, 3);
+    assert.equal(COC7_SKILL_IDS.length, 10);
+    for (const random of [() => 0, () => 0.5, () => 0.999999, Math.random]) {
+        for (let i = 0; i < 20; i++) {
+            const created = generateCoc7Sheet(random);
+            for (const group of Object.keys(COC7_POINT_GROUPS)) {
+                assert.equal(coc7RemainingPoints(created, group), 0);
+                assert.deepEqual(Object.keys(created[group]), COC7_POINT_GROUPS[group].ids);
+                assert.ok(Object.values(created[group]).every(n => n >= COC7_POINTS.min && n <= COC7_POINTS.max && n % COC7_POINTS.step === 0));
+            }
+            const encoded = JSON.parse(JSON.stringify(created));
+            const parsed = parseCoc7Sheet(encoded);
+            assert.deepEqual(parsed, created);
+            parsed.attributes.body = 999;
+            parsed.skills.athletics = 999;
+            assert.deepEqual(encoded, created, 'the persisted boundary returns detached data');
+        }
+    }
+    for (const value of [1, -0.1, NaN, Infinity]) assert.throws(() => generateCoc7Sheet(() => value));
+});
+
+test('manual point allocation needs no randomization, cannot overspend and keeps pools independent', () => {
+    const empty = emptyCoc7Draft();
+    assert.equal(readCoc7Sheet(empty).kind, 'invalid');
+    assert.ok(Object.values({ ...empty.attributes, ...empty.skills }).every(n => n === COC7_POINTS.min));
+    let draft = empty;
+    for (const id of Object.keys(COC7_CAPABILITIES)) {
+        while (coc7StatValue(draft, id) < 50) draft = adjustCoc7Stat(draft, id, 1);
+    }
+    assert.deepEqual(parseCoc7Sheet(draft), draft);
+    assert.equal(canAdjustCoc7Stat(draft, 'body', 1), false);
+    draft = adjustCoc7Stat(draft, 'athletics', -1);
+    assert.equal(canAdjustCoc7Stat(draft, 'body', 1), false, 'skill points cannot pay for attributes');
+    assert.equal(canAdjustCoc7Stat(draft, 'concealment', 1), true);
+    draft = adjustCoc7Stat(draft, 'concealment', 1);
+    assert.equal(readCoc7Sheet(draft).kind, 'ready');
+    assert.equal(coc7StatValue(draft, 'concealment'), 55);
+    assert.throws(() => adjustCoc7Stat(empty, 'body', -1));
+    let strong = empty;
+    while (canAdjustCoc7Stat(strong, 'body', 1)) strong = adjustCoc7Stat(strong, 'body', 1);
+    assert.equal(strong.attributes.body, COC7_POINTS.max);
+    while (canAdjustCoc7Stat(strong, 'will', 1)) strong = adjustCoc7Stat(strong, 'will', 1);
+    assert.equal(strong.attributes.will, 50);
+    assert.equal(canAdjustCoc7Stat(strong, 'appearance', 1), false);
+    assert.throws(() => adjustCoc7Stat(strong, 'body', 1));
+    assert.throws(() => adjustCoc7Stat(empty, 'unknown', 1));
+    assert.throws(() => adjustCoc7Stat(empty, 'body', 2));
+    assert.equal(empty.attributes.body, COC7_POINTS.min, 'draft edits are immutable');
+});
+
+test('attributes and skills are independent values with no derived bonus or resource fields', () => {
+    const before = sheet();
+    const after = parseCoc7Sheet({ ...before, attributes: { body: 80, will: 20, appearance: 50 } });
+    for (const id of COC7_SKILL_IDS) assert.equal(coc7StatValue(after, id), coc7StatValue(before, id));
+    assert.equal(coc7StatValue(after, 'body'), 80);
+    assert.equal(coc7StatValue(after, 'will'), 20);
+    assert.deepEqual(Object.keys(after).sort(), ['attributes', 'skills']);
+});
+
+test('invalid points, pools and shapes are rejected without changing their input', () => {
+    const valid = sheet();
+    const missing = structuredClone(valid); delete missing.skills.concealment;
+    const invalidSheets = [{}, missing, { ...valid, luck: 50 }, { ...valid, extra: 1 },
+        { ...valid, attributes: { body: 100, will: 0, appearance: 50 } },
+        { ...valid, attributes: { body: 49, will: 51, appearance: 50 } },
+        { ...valid, attributes: { body: '50', will: 50, appearance: 50 } },
+        { ...valid, attributes: { body: NaN, will: 50, appearance: 50 } },
+        { ...valid, attributes: { body: Infinity, will: 50, appearance: 50 } },
+        { ...valid, attributes: { body: 45, will: 50, appearance: 50 }, skills: { ...valid.skills, athletics: 65 } },
+        { ...valid, skills: { ...valid.skills, athletics: 65 } },
+        { ...valid, skills: Object.fromEntries(COC7_SKILL_IDS.map(id => [id, 80])) }];
+    for (const invalid of invalidSheets) {
+        const original = structuredClone(invalid);
+        assert.throws(() => parseCoc7Sheet(invalid));
+        assert.equal(readCoc7Sheet(invalid).kind, 'invalid');
+        assert.deepEqual(invalid, original);
+    }
+    assert.equal(coc7PointBudget('attributes'), 150);
+    assert.equal(coc7PointBudget('skills'), 500);
 });
 
 test('single-check thresholds, degree and achievement remain distinct; stored facts are not rejudged', () => {
@@ -62,27 +126,27 @@ test('single-check thresholds, degree and achievement remain distinct; stored fa
 test('requests accept only capability IDs and difficulty; all invalid input is rejected before sampling', () => {
     const invalid = [{ ...skill, value: 65 }, { ...skill, kind: 'skill' }, { ...skill, opponent: {} },
         { ...skill, bonus: 1 }, { ...skill, penalty: 1 }, { ...skill, character: 'Mira' }, { ...skill, stakes: 'risk' },
-        { ...skill, stat: 'Climb' }, { ...skill, stat: '攀爬' }, { ...skill, stat: 'hpMax' }, { ...skill, stat: '__proto__' },
+        { ...skill, stat: 'Athletics' }, { ...skill, stat: '运动' }, { ...skill, stat: 'hpMax' }, { ...skill, stat: '__proto__' },
         { ...skill, difficulty: 'ordinary' }, { ...skill, difficulty: undefined }, { ...skill, action: '' }];
     for (const request of invalid) {
         assert.equal(prepare(request, { random: () => assert.fail('invalid request sampled') }).kind, 'invalid');
     }
-    for (const coc7Sheet of [null, {}, { ...sheet(), luck: '65' }]) {
+    for (const coc7Sheet of [null, {}, { ...sheet(), attributes: { body: '50', will: 50, appearance: 50 } }]) {
         assert.equal(prepare(skill, { coc7Sheet, random: () => assert.fail('missing or invalid sheet sampled') }).kind, 'invalid');
     }
     assert.deepEqual(parseCoc7Request(skill), skill);
     assert.equal(parseActionCheck(tagged({ ...skill, difficulty: 'regular' })).kind, 'invalid');
     const prepared = prepare();
-    assert.equal(prepared.records.checks[0].result.value, 65);
+    assert.equal(prepared.records.checks[0].result.value, 60);
     assert.deepEqual(parseDiceRecords(prepared.records), prepared.records);
 });
 
-test('model capabilities include base-only skills, never values; the injected example really executes', () => {
+test('model capabilities include both independent attributes and skills, never values; the injected example really executes', () => {
     const capabilities = coc7CapabilityProjection();
     assert.deepEqual(capabilities.map(item => item.id), Object.keys(COC7_CAPABILITIES));
     for (const item of capabilities) {
         // Check the model-facing data boundary, not human-readable descriptions or menu layout.
-        assert.deepEqual(Object.keys(item).sort(), item.use === undefined ? ['id', 'name'] : ['id', 'name', 'use']);
+        assert.deepEqual(Object.keys(item).sort(), ['id', 'name', 'use']);
         assert.ok(Object.values(item).every(value => typeof value === 'string' && value.length > 0));
         const prepared = prepare({ ...skill, stat: item.id });
         assert.equal(prepared.kind, 'candidate');
@@ -121,30 +185,4 @@ test('mixed history shares its existing limit; result serialization preserves da
     assert.deepEqual(JSON.parse(encoded), projectActionCheckResults(prepared.records.checks));
     // External SillyTavern macro syntax is a security boundary, not prose wording.
     assert.equal(encoded.includes('{{'), false);
-});
-
-test('retiring actual test-line CoC records preserves mixed D20, prose, encounters and swipe data', () => {
-    // Captured by running 9bded7e1's prepareActionCheck before replacing its model.
-    const old = JSON.parse(readFileSync(new URL('./fixtures/dice-coc7-test-9bded7e1.json', import.meta.url), 'utf8'));
-    const upstream = JSON.parse(readFileSync(new URL('./fixtures/dice-message-a32c28d0.json', import.meta.url), 'utf8'));
-    const d20 = parseDiceRecords(upstream.extra.xiaobaiOsDice).checks;
-    const body = 'Before [dice:old-coc] after [dice:' + d20[0].id + ']';
-    const records = { ...old.extra.xiaobaiOsDice, checks: [...old.extra.xiaobaiOsDice.checks, ...d20] };
-    const extra = { xiaobaiOsDice: records, encounter: { keep: 1 }, display_text: body };
-    const message = { mes: body, extra: structuredClone(extra), swipe_id: 1, swipes: [body, body],
-        swipe_info: [{ extra: structuredClone(extra) }, { extra: structuredClone(extra) }] };
-    assert.equal(retireCoc7TestRecords([message]).size, 1);
-    assert.equal(message.mes, 'Before  after [dice:' + d20[0].id + ']');
-    assert.deepEqual(message.extra.xiaobaiOsDice.checks, d20);
-    assert.deepEqual(message.extra.encounter, { keep: 1 });
-    for (const [index, info] of message.swipe_info.entries()) {
-        assert.equal(message.swipes[index], message.mes);
-        assert.deepEqual(info.extra, message.extra);
-    }
-    assert.equal(retireCoc7TestRecords([message]).size, 0);
-    const broken = structuredClone(old);
-    broken.extra.xiaobaiOsDice.checks[0].id = 'bad id';
-    const originals = structuredClone([old, broken]);
-    assert.throws(() => retireCoc7TestRecords([old, broken]));
-    assert.deepEqual([old, broken], originals);
 });

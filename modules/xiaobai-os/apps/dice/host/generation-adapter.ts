@@ -12,6 +12,7 @@ import { parseDiceRecords } from '../domain/check-records.js';
 import { createActionCheckSession } from '../application/action-check-session.js';
 import { applyDiceCandidate, captureDiceTarget, clearNewDiceSwipe, isDiceTargetCurrent, readDiceRecords, type DiceCandidate, type DiceTarget } from './message-records.js';
 import { filterDiceGenerationData, type DiceGenerationData } from './request-filter.js';
+import { parseActionCheck } from '../protocol/request.js';
 import { captureDiceChat, diceHostContext, ensureDiceDisplayRule, isDiceMessageBeingEdited, waitForDiceHost } from './sillytavern-port.js';
 
 const KEY = 'xiaobai_os_dice';
@@ -42,8 +43,8 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
     const session = createActionCheckSession({
         enabled, current: currentTarget,
         same: (left, right) => left.message === right.message && left.swipe === right.swipe,
-        ready: (target, signal, inGroup) => waitForDiceHost(target, signal, inGroup,
-            () => controls?.signal === signal ? controls.nativePending : isGenerating()),
+        ready: (target, signal, inGroup, report) => waitForDiceHost(target, signal, inGroup,
+            () => controls?.signal === signal ? controls.nativePending : isGenerating(), report),
         apply: (target, candidate) => applyDiceCandidate(captureDiceChat(), target, candidate), changed,
         busy(value, signal) { setPostprocessBusy(value, signal); },
         id: uuidv4,
@@ -120,7 +121,10 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
             return;
         }
         if (controls?.signal !== signal) { return; }
+        const nativePending = controls.nativePending;
         controls = null;
+        // A paused Dice wait must not unlock a generation still owned by ST.
+        if (nativePending) { return; }
         setSendButtonState(false);
         if (!is_group_generating) { activateSendButtons(); }
     }
@@ -147,7 +151,7 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
         try {
             await session.drain(Boolean(is_group_generating));
             const result = session.view();
-            if (result && ['continue-error', 'invalid'].includes(result.phase.kind) && is_group_generating) {
+            if (result && ['wait-error', 'continue-error', 'invalid'].includes(result.phase.kind) && is_group_generating) {
                 // Abort the native wrapper, not a second queue. The interceptor below blocks its next drafted call.
                 stopGeneration();
             }
@@ -285,7 +289,7 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
         const stopped = () => {
             const phase = session.view()?.phase.kind;
             // Internal wrapper stop must not discard the same-roll recovery candidate.
-            if (controls || (phase !== 'continue-error' && phase !== 'invalid')) { cancel(); }
+            if (controls || !['wait-error', 'continue-error', 'invalid'].includes(phase ?? '')) { cancel(); }
             clearPrompt();
         };
         eventSource.makeFirst(event_types.GENERATION_STOPPED, stopped);
@@ -314,11 +318,19 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
         cancel(); unsubscribe?.(); unsubscribe = null; wrapperSignal = undefined;
     }
     return { start, stop, cancel, view: session.view, isBusy: () => isGenerating() || !!controls || !!intention,
+        canRetryRequest(index: number): boolean {
+            if (!enabled() || session.view() || isGenerating() || observation || intention || isDiceMessageBeingEdited(index)) { return false; }
+            const source = captureDiceChat();
+            if (!source || index !== source.chat.length - 1) { return false; }
+            const target = captureDiceTarget(source, index, 0, rule());
+            return !!target && parseActionCheck(target.body, 0, target.rule).kind === 'request';
+        },
         async retry(index: number) {
             if (isGenerating()) { throw new Error('请等待酒馆生成结束。'); }
             const source = captureDiceChat();
             const pending = session.view();
-            const retained = pending?.phase.kind === 'continue-error' && pending.target.index === index && currentTarget(pending.target)
+            const retained = pending && ['wait-error', 'continue-error'].includes(pending.phase.kind)
+                && pending.target.index === index && currentTarget(pending.target)
                 ? pending.target : null;
             const target = retained ?? (source && captureDiceTarget(source, index, 0, rule(), captureSheet()));
             if (!target) { throw new Error('回复已不存在。'); }

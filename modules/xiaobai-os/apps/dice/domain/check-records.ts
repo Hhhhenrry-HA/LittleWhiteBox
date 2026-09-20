@@ -1,26 +1,27 @@
 import { parseActionCheckRequest, type ActionCheckRequest, type ActionCheckResult } from './action-check.js';
 import { checkMarker, checkMarkerIds } from './check-marker.js';
-import { upgradeDiceRecordsV1 } from '../storage/records-v1.js';
-import { parseCoc7Request, type Coc7Request } from './coc7-request.js';
+import { readDiceChecksV1 } from '../storage/records-v1.js';
+import { parseCoc7RecordedRequest, type Coc7RecordedRequest } from './coc7-record.js';
 import { parseCoc7Result, type Coc7Result } from './coc7.js';
 
 export const MAX_ACTION_CHECKS = 8;
 export const DICE_MESSAGE_KEY = 'xiaobaiOsDice';
-export const DICE_RECORDS_SCHEMA_VERSION = 2;
+export const DICE_RECORDS_SCHEMA_VERSION = 3;
 
 export interface D20CheckRecord extends ActionCheckResult {
     rule: 'd20';
     id: string;
     request: ActionCheckRequest;
 }
-export interface Coc7CheckRecord { rule: 'coc7'; id: string; request: Coc7Request; result: Coc7Result }
+export interface Coc7CheckRecord { rule: 'coc7'; id: string; request: Coc7RecordedRequest; result: Coc7Result }
 export type ActionCheckRecord = D20CheckRecord | Coc7CheckRecord;
 export interface DiceMessageRecords { schemaVersion: typeof DICE_RECORDS_SCHEMA_VERSION; checks: ActionCheckRecord[] }
 
 export function parseDiceRecords(value: unknown): DiceMessageRecords {
     if (!value || typeof value !== 'object' || Array.isArray(value)) { throw new TypeError('dice_records_invalid'); }
     const raw = value as Record<string, unknown>;
-    const input = (raw.schemaVersion === 1 ? upgradeDiceRecordsV1(raw) : raw) as Record<string, unknown>;
+    const input = raw.schemaVersion === 1
+        ? { schemaVersion: DICE_RECORDS_SCHEMA_VERSION, checks: readDiceChecksV1(raw) } : raw;
     if (input.schemaVersion !== DICE_RECORDS_SCHEMA_VERSION || Object.keys(input).length !== 2 || !Array.isArray(input.checks)
         || input.checks.length > MAX_ACTION_CHECKS) { throw new TypeError('dice_records_invalid'); }
     const ids = new Set<string>();
@@ -34,7 +35,7 @@ export function parseDiceRecords(value: unknown): DiceMessageRecords {
         }
         ids.add(record.id);
         if (record.rule === 'coc7') {
-            const request = parseCoc7Request(record.request);
+            const request = parseCoc7RecordedRequest(record.request);
             return { ...record, request, result: parseCoc7Result(record.result) };
         }
         if (record.rule !== 'd20' || !Number.isInteger(record.roll) || record.roll < 1 || record.roll > 20

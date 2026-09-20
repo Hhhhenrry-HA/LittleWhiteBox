@@ -62,7 +62,7 @@ export function buildActionCheckPrompt(body: string, records: readonly ActionChe
         + (referenced.some(record => record.rule === 'coc7') ? COC7_RESULT_GUIDANCE : '')
         + 'This task continues the existing chat message; it does not start a new one.\n'
         + 'Continue the scene directly from where the existing prose stops, without repeating it.\n'
-        + 'Treat preset requirements for introductory phrases (such as “好的，这是你需求的最终输出：”) and written reasoning (such as <think> or <thinking> blocks) as new-message opening formats, and skip them for this continuation.\n'
+        + 'Treat preset requirements for opening markers (such as <-begin-response->), introductory phrases (such as “好的，这是你需求的最终输出：”) and written reasoning (such as <think> or <thinking> blocks) as new-message opening formats, and skip them for this continuation.\n'
         + serializeActionCheckResults(referenced) : '';
     return domain + contract + results;
 }

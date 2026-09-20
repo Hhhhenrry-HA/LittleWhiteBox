@@ -2,7 +2,6 @@ import type { ActionCheckRecord } from '../domain/check-records.js';
 import { createD20Result } from './d20-result.js';
 import { createCoc7Result } from './coc7-result.js';
 import { diceSpan } from './card-elements.js';
-import { COC7_CAPABILITIES } from '../domain/coc7-catalog.js';
 
 /** A saved check's view. It never rolls, saves, or starts generation. */
 export function createCheckCard(record: ActionCheckRecord, pending: boolean) {
@@ -14,7 +13,7 @@ export function createCheckCard(record: ActionCheckRecord, pending: boolean) {
     element.dataset.rule = record.rule;
     element.setAttribute('role', 'group');
     const result = record.rule === 'coc7' ? createCoc7Result(record) : createD20Result(record);
-    const name = record.rule === 'coc7' ? COC7_CAPABILITIES[record.request.stat].label : [record.request.character, record.request.stat].filter(Boolean).join(' · ');
+    const name = record.rule === 'coc7' ? record.request.stat : [record.request.character, record.request.stat].filter(Boolean).join(' · ');
     const identity = diceSpan('xb-dice-identity', name);
     const rolling = diceSpan('xb-dice-rolling-label', '正在掷骰');
     if (record.rule === 'd20') { result.element.append(rolling); }

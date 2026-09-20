@@ -13,7 +13,6 @@ import { clearDiceMessageData, type DiceHostMessage } from './host/message-recor
 import { createEncounterRuntime } from './host/encounter-runtime.js';
 import { createEncounterDisplay } from './host/encounter-display.js';
 import type { EncounterReferences } from './protocol/encounter-prompt.js';
-import { retireCoc7TestRecords } from './storage/retire-coc7-test-records.js';
 
 export function createProductionDiceModule(settings: XiaobaiOsSettingsRepository,
     references: (identityKey: string) => Promise<EncounterReferences>,
@@ -23,8 +22,6 @@ export function createProductionDiceModule(settings: XiaobaiOsSettingsRepository
         descriptor: DICE_APP_DESCRIPTOR, capabilities: [],
         async install(context) {
             let running = false;
-            let retirementTimer: ReturnType<typeof setTimeout> | null = null;
-            const cancelRetirement = () => { if (retirementTimer !== null) { clearTimeout(retirementTimer); retirementTimer = null; } };
             const enabled = () => running && !!captureDiceChat() && settings.read()!.apps.dice.actionChecksEnabled;
             const generation = createDiceGenerationAdapter(enabled, () => settings.read()!.apps.dice.actionCheckFrequency,
                 () => display.refresh(),
@@ -56,26 +53,11 @@ export function createProductionDiceModule(settings: XiaobaiOsSettingsRepository
                 encounterDisplay.refresh();
             };
             // Preferences are global; generation still requires a current chat.
-            const retireTestRecords = () => {
-                cancelRetirement();
-                const source = captureDiceChat();
-                if (!source) { return; }
-                const attempt = () => {
-                    if (!running || captureDiceChat()?.chat !== source.chat || captureDiceChat()?.key !== source.key) { return; }
-                    const changed = retireCoc7TestRecords(source.chat, message => !isGenerating() && !isChatSaving && !isDiceMessageBeingEdited(source.chat.indexOf(message)));
-                    if (changed === null) {
-                        retirementTimer = setTimeout(() => { retirementTimer = null; void context.execution.run(attempt); }, 200);
-                        return;
-                    }
-                    for (const message of changed) { updateMessageBlock(source.chat.indexOf(message), message); }
-                };
-                attempt();
-            };
             const background = {
-                startBackground() { running = true; retireTestRecords(); generation.start(); display.start(); encounters.start(); encounterDisplay.start(); },
-                stopBackground() { running = false; cancelRetirement(); display.stop(); encounterDisplay.stop(); encounters.stop(); generation.stop(); },
-                handleChatChanged() { generation.cancel(); encounters.cancel(); retireTestRecords(); display.refresh(); encounterDisplay.refresh(); },
-                cancelAll() { cancelRetirement(); generation.cancel(); encounters.cancel(); },
+                startBackground() { running = true; generation.start(); display.start(); encounters.start(); encounterDisplay.start(); },
+                stopBackground() { running = false; display.stop(); encounterDisplay.stop(); encounters.stop(); generation.stop(); },
+                handleChatChanged() { generation.cancel(); encounters.cancel(); display.refresh(); encounterDisplay.refresh(); },
+                cancelAll() { generation.cancel(); encounters.cancel(); },
             };
             context.execution.addCleanup(background.stopBackground);
             return createAppRuntimeGroup(controller, [background]);

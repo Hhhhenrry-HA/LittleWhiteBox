@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { resolveActionCheck, rollActionCheck } from '../apps/dice/domain/action-check.ts';
-import { parseDiceRecords, referencedActionChecks, isCheckContinuationPoint } from '../apps/dice/domain/check-records.ts';
+import { parseDiceRecords, referencedActionChecks, isCheckContinuationPoint, DICE_RECORDS_SCHEMA_VERSION } from '../apps/dice/domain/check-records.ts';
 import { prepareActionCheck } from '../apps/dice/application/prepare-action-check.ts';
 import { parseActionCheck, ACTION_CHECK_EXAMPLE, ACTION_CHECK_FIELDS } from '../apps/dice/protocol/request.ts';
 import { ACTION_CHECK_OPEN, ACTION_CHECK_DISPLAY_PATTERN } from '../apps/dice/protocol/markup.ts';
@@ -138,7 +138,11 @@ test('invalid requests and the persisted eight-check limit consume no randomness
 });
 
 test('unsupported message record versions are rejected', () => {
-    assert.throws(() => parseDiceRecords({ schemaVersion: 99, checks: [] }));
+    for (const schemaVersion of [2, 99]) {
+        const input = { schemaVersion, checks: [] };
+        assert.throws(() => parseDiceRecords(input));
+        assert.deepEqual(input, { schemaVersion, checks: [] });
+    }
 });
 
 test('malformed saved records cannot produce another die roll', () => {
@@ -155,12 +159,12 @@ test('malformed saved records cannot produce another die roll', () => {
     }
 });
 
-// Created with the unchanged upstream a32c28d0 prepare/stage functions before the v2 change.
+// Created with the unchanged upstream a32c28d0 prepare/stage functions.
 const upstreamMessage = JSON.parse(readFileSync(new URL('./fixtures/dice-message-a32c28d0.json', import.meta.url), 'utf8'));
 test('upstream records convert at parsing without changing outcomes, IDs, source messages or current records', () => {
     const before = structuredClone(upstreamMessage);
     const parsed = parseDiceRecords(upstreamMessage.extra.xiaobaiOsDice);
-    const expected = { schemaVersion: 2, checks: upstreamMessage.extra.xiaobaiOsDice.checks.map(({ id, request, roll, dc, outcome }) =>
+    const expected = { schemaVersion: DICE_RECORDS_SCHEMA_VERSION, checks: upstreamMessage.extra.xiaobaiOsDice.checks.map(({ id, request, roll, dc, outcome }) =>
         ({ rule: 'd20', id, request, roll, dc, outcome })) };
     assert.deepEqual(parsed, expected);
     assert.deepEqual(parseDiceRecords(parsed), expected);

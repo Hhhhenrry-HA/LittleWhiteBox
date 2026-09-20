@@ -12,6 +12,7 @@ import { DICE_CARD_CSS } from './card-style.js';
 import { mountCheckCards, restoreCheckMarker } from './check-marker-dom.js';
 import { checkDisplayProjection } from './check-display-projection.js';
 import { showCheckReveal } from './reveal-visibility.js';
+import { DICE_SESSION_COPY, diceHostWaitLabel } from '../ui/session-copy.js';
 
 type Runtime = ReturnType<typeof createDiceGenerationAdapter>;
 const OWN = '.xb-dice-card';
@@ -27,14 +28,15 @@ export function createDiceMessageDisplay(runtime: Runtime, enabled: () => boolea
     // Don't repeatedly repaint a source whose markers are suppressed by host formatting.
     const failedSync = new WeakMap<HTMLElement, string>();
 
-    function retryButton(index: number, label: string): HTMLButtonElement {
+    function retryButton(index: number, label: string, action = 'continue-check'): HTMLButtonElement {
         const button = document.createElement('button');
         button.type = 'button'; button.textContent = label;
+        button.dataset.diceAction = action;
         button.addEventListener('click', () => {
             button.disabled = true;
             void runtime.retry(index).catch(error => {
                 console.error('[LittleWhiteBox] Dice retry failed', error);
-                const note = span('xb-dice-note', '暂时无法继续，请稍后重试；回复已有变化时，请用酒馆的「继续」。');
+                const note = span('xb-dice-note', DICE_SESSION_COPY.retryFailed);
                 note.setAttribute('role', 'alert'); button.after(note);
             }).finally(() => { button.disabled = false; refresh(); });
         });
@@ -65,8 +67,9 @@ export function createDiceMessageDisplay(runtime: Runtime, enabled: () => boolea
                 const content = root.querySelector<HTMLElement>('.mes_text');
                 if (!content) { continue; }
                 const value = message && readDiceRecords(message);
-                const phase = active && active.target.message === message && active.target.swipe === (message?.swipe_id ?? 0) ? active.phase : null;
-                const continuing = phase?.kind === 'continuing' || phase?.kind === 'continue-error'
+                const current = active && active.target.message === message && active.target.swipe === (message?.swipe_id ?? 0) ? active : null;
+                const phase = current?.phase;
+                const continuing = phase && 'candidate' in phase && phase.candidate
                     ? referencedActionChecks(phase.candidate.body, phase.candidate.records.checks).at(-1) : undefined;
                 const editing = !!root.querySelector('.edit_textarea');
                 if (editing) {
@@ -108,14 +111,18 @@ export function createDiceMessageDisplay(runtime: Runtime, enabled: () => boolea
                             const waitingForText = phase?.kind === 'continuing'
                                 && continuing?.id === record.id
                                 && message.mes === phase.candidate.body;
-                            const error = failedContinuation ? phase.error : waitingForText ? '正在续写…' : '';
+                            const waitingForHost = phase?.kind === 'settling' && continuing?.id === record.id;
+                            const error = (failedContinuation || waitingForHost) && current?.wait
+                                ? `${diceHostWaitLabel(current.wait)}${failedContinuation ? `。${DICE_SESSION_COPY.retained}` : ''}`
+                                : failedContinuation ? phase.error : waitingForText ? DICE_SESSION_COPY.continuing
+                                    : waitingForHost ? DICE_SESSION_COPY.waitingHost : '';
                             let retry = '';
                             if (enabled() && (failedContinuation || source?.chat.at(-1) === message && record === referenced.at(-1)
                                 && isCheckContinuationPoint(message.mes, record) && !active)) {
-                                retry = '沿用骰点续写';
+                                retry = DICE_SESSION_COPY.retryContinue;
                             }
                             setStatus(entry, index, error, retry);
-                            errorPlaced ||= !!failedContinuation;
+                            errorPlaced ||= !!failedContinuation || !!waitingForHost;
                         }
                     } catch {
                         const notice = span('xb-dice-card xb-dice-notice', '这条检定记录暂时无法显示。');
@@ -142,7 +149,9 @@ export function createDiceMessageDisplay(runtime: Runtime, enabled: () => boolea
                             ?? span('xb-dice-card xb-dice-pending');
                         pending.setAttribute('role', 'status');
                         pending.setAttribute('aria-live', 'polite');
-                        const label = '正在准备检定…';
+                        const label = current?.wait ? diceHostWaitLabel(current.wait)
+                            : phase.kind === 'waiting' ? DICE_SESSION_COPY.waitingGroup : DICE_SESSION_COPY.waitingHost;
+                        pending.dataset.diceState = 'waiting';
                         if (pending.textContent !== label) { pending.textContent = label; }
                         wanted.add(pending);
                         if (!pending.isConnected) { content.append(pending); }
@@ -152,10 +161,26 @@ export function createDiceMessageDisplay(runtime: Runtime, enabled: () => boolea
                         notice.setAttribute('role', 'status');
                         notice.append(span('xb-dice-note', phase.error));
                         if (enabled() && phase.kind === 'continue-error') {
-                            notice.append(retryButton(index, '沿用骰点续写'));
+                            notice.append(retryButton(index, DICE_SESSION_COPY.retryContinue));
                         }
                         wanted.add(notice); content.append(notice);
                     }
+                }
+                const paused = phase?.kind === 'wait-error';
+                if (paused || !active && source?.chat.at(-1) === message && runtime.canRetryRequest(index)) {
+                    const notice = content.querySelector<HTMLElement>('.xb-dice-recovery')
+                        ?? span('xb-dice-card xb-dice-notice xb-dice-recovery');
+                    const signature = JSON.stringify([paused, current?.wait, enabled()]);
+                    if (notice.dataset.signature !== signature) {
+                        notice.dataset.signature = signature;
+                        notice.dataset.diceState = paused ? 'wait-error' : 'unrolled';
+                        notice.setAttribute('role', 'status');
+                        notice.replaceChildren(span('xb-dice-note', paused ? DICE_SESSION_COPY.paused : DICE_SESSION_COPY.unrolled));
+                        if (current?.wait) { notice.append(span('xb-dice-note', diceHostWaitLabel(current.wait))); }
+                        if (enabled()) { notice.append(retryButton(index, DICE_SESSION_COPY.retryCheck, 'retry-check')); }
+                    }
+                    wanted.add(notice);
+                    if (!notice.isConnected) { content.append(notice); }
                 }
                 content.querySelectorAll<HTMLElement>(OWN).forEach(node => { if (!wanted.has(node)) { node.remove(); } });
             }

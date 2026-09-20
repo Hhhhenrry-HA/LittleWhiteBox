@@ -5,6 +5,7 @@ import { getScriptsByType, saveScriptsByType, SCRIPT_TYPES } from '../../../../.
 import { repairDiceDisplayRules } from './display-rule.js';
 import { showDiceDisplayRule } from './managed-rule-display.js';
 import { isDiceTargetCurrent, type DiceChat, type DiceHostMessage, type DiceTarget } from './message-records.js';
+import { DiceHostWaitTimeout, type DiceHostWait, type DiceHostBlocker } from '../application/host-wait.js';
 
 export interface DiceHostContext {
     chat: DiceHostMessage[]; chatId: string; groupId?: string; characterId?: number;
@@ -41,16 +42,28 @@ export async function ensureDiceDisplayRule(): Promise<void> {
 }
 
 export async function waitForDiceHost(target: DiceTarget, signal: AbortSignal, inGroup: boolean,
-    generationPending: () => boolean = isGenerating): Promise<void> {
-    const deadline = Date.now() + 20_000;
+    generationPending: () => boolean = isGenerating, report?: (wait: DiceHostWait) => void): Promise<void> {
+    const started = Date.now();
+    const deadline = started + 20_000;
+    let previous: DiceHostWait | undefined;
     while (true) {
         if (signal.aborted || !isDiceTargetCurrent(captureDiceChat(), target)) { throw new Error('聊天或回复已变化。'); }
         if (isDiceMessageBeingEdited(target.index)) { throw new Error('请先结束消息编辑。'); }
         const stream = diceHostContext().streamingProcessor;
         // ST 1.18 retains a stopped processor after stream errors. A normally finished stream,
         // however, still owns finalization/saving until the host releases its processor.
-        if ((!stream || stream.isStopped) && !isChatSaving && (inGroup || !generationPending())) { return; }
-        if (Date.now() >= deadline) { throw new Error('酒馆仍在生成或保存，请结束后再试。'); }
+        const blockers: DiceHostBlocker[] = [];
+        if (stream && !stream.isStopped) { blockers.push('stream'); }
+        if (isChatSaving) { blockers.push('save'); }
+        if (!inGroup && generationPending()) { blockers.push('generation'); }
+        if (!blockers.length) { return; }
+        const now = Date.now();
+        const wait = { blockers, elapsedSeconds: Math.floor((now - started) / 1000) };
+        if (!previous || previous.elapsedSeconds !== wait.elapsedSeconds || previous.blockers.join() !== blockers.join()) {
+            report?.(wait);
+            previous = wait;
+        }
+        if (now >= deadline) { throw new DiceHostWaitTimeout(wait); }
         await new Promise<void>((resolve, reject) => {
             const cancel = () => { globalThis.clearTimeout(timer); reject(new Error('已停止')); };
             const timer = globalThis.setTimeout(() => { signal.removeEventListener('abort', cancel); resolve(); }, 40);

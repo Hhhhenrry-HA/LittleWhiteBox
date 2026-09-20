@@ -3,7 +3,8 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { createDiceController } from '../apps/dice/host/controller.ts';
 import { createSettingsRepository } from '../host/settings-repository.ts';
-import { generateCoc7Sheet, editCoc7Stat } from '../apps/dice/domain/coc7-sheet.ts';
+import { parseCoc7Sheet } from '../apps/dice/domain/coc7-sheet.ts';
+import { generateCoc7Sheet } from '../apps/dice/domain/coc7-creation.ts';
 
 async function harness(ensureDisplay = async () => {}, root = {}) {
     let persist = () => {};
@@ -138,7 +139,7 @@ test('one committed sheet survives chats and reload; failed saves and clear pres
     h.switchChat('another-card');
     assert.deepEqual((await h.activate()).coc7Sheet, { kind: 'ready', sheet: original });
     await h.rule('coc7'); await h.rule('d20');
-    const changed = editCoc7Stat(original, 'STR', 80);
+    const changed = parseCoc7Sheet({ ...original, attributes: { body: 80, will: 20, appearance: 50 } });
     h.save(() => false);
     await assert.rejects(h.sheet(changed));
     await assert.rejects(h.sheet(null));
@@ -150,6 +151,7 @@ test('one committed sheet survives chats and reload; failed saves and clear pres
     const reopened = createSettingsRepository({ getExtensionSettings: () => h.root, saveSettings() {} });
     assert.deepEqual((await reopened.prepare()).apps.dice.coc7Sheet, changed);
     await assert.rejects(h.sheet({ ...changed, luck: '50' }));
+    await assert.rejects(h.sheet({ ...changed, attributes: Object.fromEntries(Object.keys(changed.attributes).map(id => [id, 80])) }));
     assert.deepEqual(h.settings.read().apps.dice.coc7Sheet, changed);
     await h.sheet(null);
     assert.equal(h.settings.read().apps.dice.coc7Sheet, null);
@@ -160,7 +162,7 @@ test('damaged sheets stay intact across OS initialization and unrelated writes, 
     t.mock.method(console, 'error', () => {});
     const complete = generateCoc7Sheet(() => 0.5);
     const missing = structuredClone(complete);
-    delete missing.attributes.STR;
+    delete missing.attributes.body;
     for (const damaged of [missing, { ...complete, luck: '50' }]) {
         for (const replacement of [null, complete]) {
             const h = await harness(undefined, { xiaobaiOs: { enabled: true, apps: { dice: { coc7Sheet: damaged } } } });

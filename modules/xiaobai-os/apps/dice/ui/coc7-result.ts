@@ -1,6 +1,6 @@
 import type { Coc7CheckRecord } from '../domain/check-records.js';
-import { COC7_CAPABILITIES } from '../domain/coc7-catalog.js';
 import { diceSpan } from './card-elements.js';
+import { COC7_UI } from './coc7-copy.js';
 
 const LEVELS = { critical: '大成功', extreme: '极难成功', hard: '困难成功', regular: '普通成功', failure: '失败', fumble: '大失败' };
 const DIFFICULTIES = { regular: '普通', hard: '困难', extreme: '极难' };
@@ -11,11 +11,11 @@ export function createCoc7Result(record: Coc7CheckRecord) {
     const element = diceSpan('xb-dice-coc7');
     const heading = diceSpan('xb-dice-coc7-heading');
     const verdict = VERDICTS[result.verdict];
-    heading.append(diceSpan('xb-dice-outcome', verdict.label), diceSpan('xb-dice-system', 'CoC 7 · D100'));
+    heading.append(diceSpan('xb-dice-outcome', verdict.label), diceSpan('xb-dice-system', COC7_UI.rule));
     const participant = diceSpan('xb-dice-participant');
     const score = diceSpan('xb-dice-percentile', String(result.roll).padStart(2, '0'));
     score.setAttribute('aria-label', `掷骰 ${result.roll}`);
-    const identity = diceSpan('xb-dice-participant-name', `${COC7_CAPABILITIES[request.stat].label} ${result.value}`);
+    const identity = diceSpan('xb-dice-participant-name', `${request.stat} ${result.value}`);
     const basis = diceSpan('xb-dice-basis', `要求${DIFFICULTIES[request.difficulty]} · 阈值 ${result.threshold}`);
     const level = diceSpan('xb-dice-level', LEVELS[result.level]);
     level.dataset.level = result.level;

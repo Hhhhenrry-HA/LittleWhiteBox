@@ -7,6 +7,7 @@ import { parseHTML } from 'linkedom';
 import { build } from 'esbuild';
 import { DICE_RECORDS_SCHEMA_VERSION, parseDiceRecords } from '../apps/dice/domain/check-records.ts';
 import { prepareActionCheck } from '../apps/dice/application/prepare-action-check.ts';
+import { generateCoc7Sheet } from '../apps/dice/domain/coc7-creation.ts';
 
 // Exercise the real display; only native chat/event access is replaced.
 const compiled = await build({
@@ -46,11 +47,50 @@ function setup(t, runtime, enabled = () => true) {
     const render = () => { const work = [...frames.values()]; frames.clear(); for (const fn of work) fn(); };
     const chat = document.getElementById('chat');
     const content = document.querySelector('.mes_text');
-    display = createDiceMessageDisplay(runtime, enabled);
+    display = createDiceMessageDisplay({ canRetryRequest: () => false, ...runtime }, enabled);
     content.textContent = source.chat[0].mes;
     display.start(); render();
     return { chat, content, display, render };
 }
+
+test('host wait updates in place and its paused request has an actionable, stable retry control', async t => {
+    const message = { mes: '<xb_action_check>{"action":"Climb","stat":"Agility","difficulty":"hard"}</xb_action_check>', extra: {} };
+    source.chat = [message];
+    const target = { message, swipe: 0, index: 0, source };
+    let active = { target, phase: { kind: 'settling' }, wait: { blockers: ['stream', 'save'], elapsedSeconds: 1 } };
+    const retries = [];
+    const { content, display, render } = setup(t, { view: () => active, cancel() {}, retry: async index => { retries.push(index); } });
+    const pending = content.querySelector('[data-dice-state="waiting"]');
+    assert.ok(pending);
+    const initial = pending.textContent;
+    active.wait = { blockers: ['save'], elapsedSeconds: 8 };
+    display.refresh(); render();
+    assert.equal(content.querySelector('[data-dice-state="waiting"]'), pending);
+    assert.notEqual(pending.textContent, initial, 'the current wait and its elapsed time must be visible');
+    active.phase = { kind: 'wait-error' };
+    display.refresh(); render();
+    assert.equal(content.querySelector('[data-dice-state="waiting"]'), null);
+    assert.equal(content.querySelectorAll('[data-dice-state="wait-error"]').length, 1);
+    const button = content.querySelector('[data-dice-action="retry-check"]');
+    assert.ok(button);
+    display.refresh(); render();
+    assert.equal(content.querySelector('[data-dice-action="retry-check"]'), button, 'unrelated repaints keep focus and click ownership');
+    button.click(); await Promise.resolve();
+    assert.deepEqual(retries, [0]);
+    assert.equal(message.extra.xiaobaiOsDice, undefined);
+});
+
+test('an unrolled restored request offers manual recovery without triggering it on render', async t => {
+    source.chat = [{ mes: 'Unrolled request', extra: {} }];
+    const retries = [];
+    const { content, display, render } = setup(t, { view: () => null, cancel() {}, canRetryRequest: index => index === 0,
+        retry: async index => { retries.push(index); } });
+    display.refresh(); render();
+    assert.deepEqual(retries, []);
+    assert.equal(content.querySelectorAll('[data-dice-state="unrolled"]').length, 1);
+    content.querySelector('[data-dice-action="retry-check"]').click(); await Promise.resolve();
+    assert.deepEqual(retries, [0]);
+});
 
 test('card redraws leave scrolling to the host, even when a temporary layout appears at the bottom', t => {
     const record = { rule: 'd20', id: 'one', request: { character: 'Test', action: 'Climb', stat: 'Ability', difficulty: 'hard' },
@@ -88,7 +128,7 @@ test('card redraws leave scrolling to the host, even when a temporary layout app
 });
 
 test('reloaded CoC history mounts with checks disabled and keeps its recorded verdict', t => {
-    const request = { action: 'Break past the guard', stat: 'brawl', difficulty: 'hard' };
+    const request = { action: 'Break past the guard', stat: 'melee', difficulty: 'hard' };
     const prepared = prepareActionCheck({ body: `<xb_action_check>${JSON.stringify(request)}</xb_action_check>`, rule: 'coc7',
         generatedFrom: 0, id: 'coc', coc7Sheet: generateCoc7Sheet(() => 0.5), random: () => 0.1 });
     source.chat = JSON.parse(JSON.stringify([{ mes: prepared.body + '\nNext sentence.', extra: { xiaobaiOsDice: prepared.records } }]));
@@ -165,4 +205,3 @@ test('a serialized current message renders the same static card on reload with n
     }
     assert.deepEqual(message, before);
 });
-import { generateCoc7Sheet } from '../apps/dice/domain/coc7-sheet.ts';
