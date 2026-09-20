@@ -28,7 +28,6 @@ import { getDefaultApiPrefix, resolveApiBaseUrl } from "../../shared/common/open
 import {
     commitIfSignalActive,
     mergeAbortSignals,
-    runWithAbortDeadline,
 } from "../../shared/common/abort-utils.js";
 import {
     GENERATE_INTERCEPTOR_ORDER,
@@ -91,6 +90,7 @@ import {
 import { selectBestStoryMemoryResult } from "./generate/story-memory-result.js";
 import { createRecallReuse, recallConfigKey } from './generate/recall-reuse.js';
 import { createRecallDiagnostics, formatRecallDiagnostics, formatRecallReuseDiagnostics, recordRecallFallback } from './recall-diagnostics.js';
+import { RECALL_TIMEOUT_MS, RECALL_TIMEOUT_REASONS, recallFailureNotice } from './generate/recall-failure.js';
 
 // summary generation
 import { runSummaryGeneration } from "./generate/generator.js";
@@ -3984,10 +3984,8 @@ function clearExtensionPrompt() {
 // Prompt 注入
 // ═══════════════════════════════════════════════════════════════════════════
 
-// 整轮硬截止：召回在宿主 generate_interceptor 的 await 内执行，必须有兜底，
-// 不能把宿主发送流程无限卡住。30s 为初始护栏值，进入浏览器 E2E 后需结合
-// 真实 p50/p95 与首 token 体感校准。
-const STORY_SUMMARY_RECALL_DEADLINE_MS = 30000;
+// The coordinator times actual computation separately from waiting for a USER
+// message. Completed outcomes remain claimable by this generation only.
 const RECALL_WARNING_COOLDOWN_MS = 10000;
 const RECALL_REASONS_THAT_ABORT_GENERATION = new Set([
     'chat-changed',
@@ -4003,9 +4001,9 @@ const recallPrefetch = createRecallPrefetchCoordinator({
     getContext,
     prepare: (type, signal, diagnostics) => prepareMemoryPrompt(type, signal, diagnostics),
     pollMs: 16,
-    maxAgeMs: STORY_SUMMARY_RECALL_DEADLINE_MS,
+    maxAgeMs: RECALL_TIMEOUT_MS,
     onJoinedCancel: (run) => {
-        if (run.cancelReason === 'prefetch-timeout') return; // The interceptor reports a deadline failure.
+        if (Object.values(RECALL_TIMEOUT_REASONS).includes(run.cancelReason)) return; // The interceptor owns failure reporting.
         const publish = getContext()?.chatId === run.chatId
             && ['generation-stopped', 'generation-signal-aborted', 'dispatch-aborted', 'disabled', 'deactivated', 'summary-cleared'].includes(run.cancelReason);
         if (!publish && !xbLog.isEnabled()) return;
@@ -4271,7 +4269,7 @@ async function runStorySummaryRecallInterceptor(_interceptorChat, _contextSize, 
     const focusRef = normalizedType === 'normal' && lastMessage?.is_user === true
         ? lastMessage
         : null;
-    const { slot: run, path, remainingMs } = recallPrefetch.join({
+    const { slot: run, path } = recallPrefetch.join({
         chatId,
         type: normalizedType,
         focusRef,
@@ -4280,14 +4278,7 @@ async function runStorySummaryRecallInterceptor(_interceptorChat, _contextSize, 
     const waitStartedAt = performance.now();
     let joinStatus = 'pending';
     try {
-        const outcome = await runWithAbortDeadline(
-            () => run.outcome,
-            {
-                controller: run.controller,
-                timeoutMs: remainingMs,
-                timeoutMessage: 'Story Summary recall deadline exceeded',
-            },
-        );
+        const outcome = await recallPrefetch.waitForOutcome(run);
         if (!outcome?.ok) throw outcome?.error || new Error('Story Summary recall produced no outcome');
 
         const recallResult = await commitMemoryPrompt(outcome.value, run.controller.signal);
@@ -4299,30 +4290,18 @@ async function runStorySummaryRecallInterceptor(_interceptorChat, _contextSize, 
     } catch (error) {
         // 截止或失败时 fail-open。显式取消的调用方已经清理 Prompt；旧任务
         // 不能在这里清掉替代它的新任务结果。后台残余任务也受最终写入闸门保护。
-        if (run.cancelReason && run.cancelReason !== 'prefetch-timeout') {
+        const failure = recallFailureNotice(run.cancelReason, error);
+        if (!failure) {
             joinStatus = `cancelled:${run.cancelReason}`;
         } else {
             joinStatus = 'failed';
             if (recallPrefetch.getCurrent() !== run || getContext()?.chatId !== run.chatId) return;
             clearExtensionPrompt();
             run.diagnostics.finishedAt ??= performance.now();
-            const failureLog = formatRecallDiagnostics(run.diagnostics, { status: 'failed', error });
+            const failureLog = formatRecallDiagnostics(run.diagnostics, { status: 'failed', reason: failure.issueCode, error });
             postToFrame({ type: 'RECALL_LOG', text: failureLog });
-            xbLog.warn(MODULE_ID,
-                `召回失败或达到 ${STORY_SUMMARY_RECALL_DEADLINE_MS}ms 硬截止，本轮跳过记忆注入`,
-                error
-            );
-            const timedOut = run.cancelReason === 'prefetch-timeout' || run.controller.signal.aborted;
-            const embeddingFailed = error?.code === 'RECALL_EMBEDDING_FAILED'
-                || error?.code === 'RECALL_EMBEDDING_INVALID_RESPONSE';
-            const issueCode = timedOut
-                ? 'recall_timeout'
-                : (embeddingFailed ? 'recall_embedding_failed' : 'recall_failed');
-            const notice = timedOut
-                ? '剧情记忆召回超过 30 秒，本轮已跳过。请检查嵌入 API、重排 API、网络和向量设置后重试。'
-                : (embeddingFailed
-                    ? '剧情记忆嵌入请求失败，本轮已跳过。请检查嵌入 API、网络和向量设置后重试。'
-                    : '剧情记忆召回失败，本轮已跳过。请检查嵌入 API、重排 API、网络和向量设置后重试。');
+            const { issueCode, notice } = failure;
+            xbLog.warn(MODULE_ID, notice, error);
             const { chatId } = getContext();
             if (claimWarningCooldown('recall', chatId, issueCode, RECALL_WARNING_COOLDOWN_MS)) {
                 try {
