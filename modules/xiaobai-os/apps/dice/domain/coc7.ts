@@ -3,6 +3,8 @@ import { COC7_DIFFICULTIES, type Coc7Difficulty } from './coc7-request.js';
 export const COC7_LEVELS = ['fumble', 'failure', 'regular', 'hard', 'extreme', 'critical'] as const;
 export type Coc7Level = typeof COC7_LEVELS[number];
 export type Coc7Verdict = 'achieved' | 'not_achieved';
+export const COC7_CRITICAL_ROLL = 1;
+export function coc7FumbleMinimum(threshold: number): number { return threshold < 50 ? 96 : 100; }
 export interface Coc7Result {
     value: number;
     units: number;
@@ -14,8 +16,8 @@ export interface Coc7Result {
 }
 export function coc7Percentile(units: number, tens: number): number { return tens * 10 + units || 100; }
 export function coc7Level(value: number, threshold: number, roll: number): Coc7Level {
-    if (roll === 1) { return 'critical'; }
-    if (roll === 100 || threshold < 50 && roll >= 96) { return 'fumble'; }
+    if (roll === COC7_CRITICAL_ROLL) { return 'critical'; }
+    if (roll >= coc7FumbleMinimum(threshold)) { return 'fumble'; }
     if (roll <= Math.floor(value / COC7_DIFFICULTIES.extreme)) { return 'extreme'; }
     if (roll <= Math.floor(value / COC7_DIFFICULTIES.hard)) { return 'hard'; }
     return roll <= value ? 'regular' : 'failure';

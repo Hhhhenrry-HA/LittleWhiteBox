@@ -20,7 +20,7 @@ export function createD20Result(record: D20CheckRecord) {
     verdict.append(outcome, comparison);
     verdict.hidden = true;
     element.append(die, verdict);
-    return { element, tone: record.outcome,
+    return { element, rollingSlot: element, tone: record.outcome,
         label: `${OUTCOMES[record.outcome]}，掷骰 ${record.roll}，难度 ${record.dc}`,
         settle() { outcome.textContent = OUTCOMES[record.outcome]; verdict.hidden = false; solid.draw(1, true); },
         draw: solid.draw };

@@ -57,13 +57,13 @@ test('host wait updates in place and its paused request has an actionable, stabl
     const message = { mes: '<xb_action_check>{"action":"Climb","stat":"Agility","difficulty":"hard"}</xb_action_check>', extra: {} };
     source.chat = [message];
     const target = { message, swipe: 0, index: 0, source };
-    let active = { target, phase: { kind: 'settling' }, wait: { blockers: ['stream', 'save'], elapsedSeconds: 1 } };
+    let active = { target, phase: { kind: 'settling' }, wait: { blockers: ['generation'], elapsedSeconds: 1 } };
     const retries = [];
     const { content, display, render } = setup(t, { view: () => active, cancel() {}, retry: async index => { retries.push(index); } });
     const pending = content.querySelector('[data-dice-state="waiting"]');
     assert.ok(pending);
     const initial = pending.textContent;
-    active.wait = { blockers: ['save'], elapsedSeconds: 8 };
+    active.wait = { blockers: ['generation'], elapsedSeconds: 8 };
     display.refresh(); render();
     assert.equal(content.querySelector('[data-dice-state="waiting"]'), pending);
     assert.notEqual(pending.textContent, initial, 'the current wait and its elapsed time must be visible');
@@ -137,9 +137,9 @@ test('reloaded CoC history mounts with checks disabled and keeps its recorded ve
     assert.ok(card);
     assert.equal(card.dataset.rule, 'coc7');
     assert.equal(card.dataset.verdict, prepared.records.checks[0].result.verdict);
-    assert.equal(card.querySelectorAll('.xb-dice-percentile').length, 1);
+    assert.equal(Number(card.querySelector('[data-roll]').dataset.roll), prepared.records.checks[0].result.roll);
     assert.equal(card.querySelector('button'), null);
-    assert.equal(card.querySelector('svg'), null, 'percentiles are not painted on a D20');
+    assert.equal(card.querySelector('[data-result]').hidden, false);
 });
 
 test('cards, continuation status and recovery follow retained markers, not their old positions or stored order', async t => {

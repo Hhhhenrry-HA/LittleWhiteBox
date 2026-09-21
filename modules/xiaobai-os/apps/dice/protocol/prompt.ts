@@ -58,7 +58,9 @@ export function buildActionCheckPrompt(body: string, records: readonly ActionChe
         + Object.entries(ACTION_CHECK_DC_RANGES).map(([name, { min, max }]) => `${name} (DC ${min === max ? min : `${min}–${max}`}, ${D20_DIFFICULTY_GUIDANCE[name as ActionCheckDifficulty]})`).join('; ') + '.\n'
         + `Example:\n${ACTION_CHECK_EXAMPLE}\n`);
     const results = referenced.length ? '## Confirmed results for this reply\n'
-        + 'Results below are confirmed, in their order in the existing prose. Carry each forward; critical success or failure adds an appropriate benefit or complication.\n'
+        + 'Results below are confirmed, in their order in the existing prose. Carry each forward.\n'
+        + 'Critical success achieves the objective and brings an unexpected pleasant surprise.\n'
+        + 'Critical failure leaves the objective unachieved and brings an unexpected disaster.\n'
         + (referenced.some(record => record.rule === 'coc7') ? COC7_RESULT_GUIDANCE : '')
         + 'This task continues the existing chat message; it does not start a new one.\n'
         + 'Continue the scene directly from where the existing prose stops, without repeating it.\n'

@@ -15,8 +15,9 @@ export function createCheckCard(record: ActionCheckRecord, pending: boolean) {
     const result = record.rule === 'coc7' ? createCoc7Result(record) : createD20Result(record);
     const name = record.rule === 'coc7' ? record.request.stat : [record.request.character, record.request.stat].filter(Boolean).join(' · ');
     const identity = diceSpan('xb-dice-identity', name);
+    identity.hidden = record.rule === 'coc7';
     const rolling = diceSpan('xb-dice-rolling-label', '正在掷骰');
-    if (record.rule === 'd20') { result.element.append(rolling); }
+    result.rollingSlot.append(rolling);
     const copy = diceSpan('xb-dice-copy');
     copy.append(diceSpan('xb-dice-action', record.request.action));
     if (record.rule === 'd20' && record.request.stakes) {
@@ -32,7 +33,7 @@ export function createCheckCard(record: ActionCheckRecord, pending: boolean) {
     }
     const status = diceSpan('xb-dice-status'); status.hidden = true;
     status.setAttribute('role', 'status');
-    element.append(identity, result.element, ...(record.rule === 'coc7' ? [rolling] : []), copy, status);
+    element.append(identity, result.element, copy, status);
     function settle(): void {
         if (element.dataset.state === 'settled') { return; }
         if (element.dataset.state === 'rolling') { element.dataset.revealed = 'true'; }
