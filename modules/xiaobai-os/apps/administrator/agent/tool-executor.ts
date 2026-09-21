@@ -6,13 +6,14 @@ import type { createAdministratorChatReader } from '../host/chat-reader.js';
 import { ADMINISTRATOR_CHAT_TOOLS } from './chat-tools.js';
 import { ADMINISTRATOR_COPY } from '../ui/copy.js';
 import { createAdministratorToolResults } from './tool-results.js';
+import { createAdministratorId } from '../application/identity.js';
 
 type Reader = ReturnType<typeof createAdministratorChatReader>;
 export async function createAdministratorToolExecutor(options: {
     registry: ManagementRegistry; reader: Reader; readOnly: boolean; operations: AdministratorOperation[];
     guard(): boolean; onChange(): void; saveReceipts(confirmedOnly?: boolean): Promise<void>;
 }) {
-    const runId = crypto.randomUUID();
+    const runId = createAdministratorId();
     const routes = new Map<string, { appId: string; tool: ManagementTool; session: ManagementSession | null }>();
     const domains: { id: string; prompt: string; data: unknown }[] = [];
     const unavailable: { id: string; error: string }[] = [];

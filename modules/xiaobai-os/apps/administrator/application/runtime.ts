@@ -13,6 +13,7 @@ import type { AdministratorRepository } from '../storage/repository.js';
 import { parseAdministratorUpload, type AdministratorImages, type AdministratorUpload } from '../storage/images.js';
 import type { AdministratorConversation } from './conversation.js';
 import { administratorError, ADMINISTRATOR_COPY } from '../ui/copy.js';
+import { createAdministratorId } from './identity.js';
 
 interface ActiveRun {
     current(): boolean;
@@ -219,7 +220,7 @@ export function createAdministratorRuntime(deps: {
             const guard = () => current() && identity === repository.identity() && !!source && source === deps.capture()?.identityKey;
             const input: AdministratorUpload | null = upload ? parseAdministratorUpload(upload) : null;
             run = null; error = '';
-            const turn: AdministratorTurn = { id: crypto.randomUUID(), createdAt: Date.now(), user: { text: text.trim() },
+            const turn: AdministratorTurn = { id: createAdministratorId(), createdAt: Date.now(), user: { text: text.trim() },
                 assistant: null, operations: [], status: 'interrupted', error: '' };
             const sending: PendingSend = { turn, input, current: guard, stopped: false };
             pendingSend = sending;

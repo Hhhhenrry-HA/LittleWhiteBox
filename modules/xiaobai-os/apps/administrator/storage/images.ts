@@ -1,6 +1,7 @@
 import { ADMINISTRATOR_POLICY } from '../domain/policy.js';
 import { object, parseAdministratorData } from '../domain/data.js';
 import type { AdministratorData, AdministratorImage } from '../domain/types.js';
+import { createAdministratorId } from '../application/identity.js';
 
 export interface AdministratorUpload { name: string; dataUrl: string }
 const SAFE_ID = /^[A-Za-z0-9_-]+$/u;
@@ -28,7 +29,7 @@ export function createAdministratorImages(options: {
     id?: () => string;
 }) {
     const request = options.read ?? fetch;
-    const id = options.id ?? (() => crypto.randomUUID());
+    const id = options.id ?? createAdministratorId;
     function ownedPath(osId: string, path: string) {
         const prefix = `/user/images/${administratorImageFolder(osId)}/`;
         if (!path.startsWith(prefix) || !IMAGE_FILE.test(path.slice(prefix.length))) { throw new Error('administrator_image_owner_mismatch'); }
