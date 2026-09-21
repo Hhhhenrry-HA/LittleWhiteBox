@@ -1,4 +1,4 @@
-export type DiceHostBlocker = 'stream' | 'save' | 'generation';
+export type DiceHostBlocker = 'generation';
 
 /** A transient observation of the host, not a prediction of its completion time. */
 export interface DiceHostWait {

@@ -30,6 +30,7 @@ const compiled = await build({
             export let is_send_press = false;
             export const host = {
                 source: null, get busy() { return is_send_press; }, set busy(value) { is_send_press = value; },
+                get savingActive() { return isChatSaving; },
                 draft: '', enabled: true, requests: [], prompts: new Map(), diceWrites: 0, ids: 0, nativeSaves: [],
                 preflight: async () => {}, controller: null, stream: null, reply: normalReply, editing: false,
                 generate,
@@ -500,7 +501,7 @@ test('one check uses only native pre-check and post-continuation saves while bus
     host.reply = async () => { await continuing.promise; await reply(); };
     await received(); await received();
     assert.equal(adapter.view().phase.kind, 'settling');
-    assert.equal(target.extra.xiaobaiOsDice, undefined, 'native finalization must release the message before rolling');
+    assert.equal(target.extra.xiaobaiOsDice, undefined, 'native generation occupancy must be released before rolling');
     await host.saveNative();
     host.unlock(); await setImmediate();
     assert.equal(host.busy, true);
@@ -635,27 +636,124 @@ test('Stop during replacement handoff prevents the incoming native call from dis
     assert.equal(adapter.view(), null);
 });
 
-test('same-roll retry after Stop waits for the cancelled native continuation to finish', async t => {
+// Explicit same-roll recovery must not wait for a cancelled native call's I/O.
+// Exercise the real adapter with delayed requests/saves and out-of-order completion.
+for (const rule of ['d20', 'coc7']) {
+    for (const pending of ['request', 'save']) {
+        test(`${rule} retry after Stop dispatches before the old ${pending} finishes and retains ownership`, async t => {
+            let reveals = 0;
+            const adapter = setup(t, false, async () => { reveals++; });
+            host.rule = rule;
+            const cleanup = Promise.withResolvers();
+            const retryReply = Promise.withResolvers();
+            t.after(() => { cleanup.resolve(); retryReply.resolve(); });
+            const nativeSave = host.saveNative;
+            let saves = 0;
+            t.mock.method(host, 'saveNative', async () => {
+                if (++saves === 1 && pending === 'save') { await cleanup.promise; }
+                await nativeSave();
+            });
+            host.reply = async signal => {
+                if (host.requests.length === 1) {
+                    if (pending === 'request') { await cleanup.promise; signal.throwIfAborted(); }
+                    host.unlock();
+                    await host.emit('MESSAGE_RECEIVED', 1, 'continue');
+                } else {
+                    await retryReply.promise;
+                    signal.throwIfAborted();
+                    host.source.chat.at(-1).mes += '\n\nAfterward.';
+                    await host.emit('MESSAGE_RECEIVED', 1, 'continue');
+                }
+            };
+            await begin(); await host.intercept('normal');
+            const target = message(rule === 'd20' ? call : cocCall); host.source.chat.push(target);
+            await received(); await setImmediate();
+            assert.equal(host.requests.length, 1);
+            const saved = structuredClone(target.extra.xiaobaiOsDice);
+            host.stop(); await setImmediate();
+            assert.equal(host.requests[0].signal.aborted, true);
+            const retry = adapter.retry(1); await setImmediate();
+            assert.equal(host.requests.length, 2, 'retry dispatch must precede old I/O completion');
+            await assert.rejects(adapter.retry(1));
+            assert.equal(host.ids, 1);
+            assert.equal(reveals, 1);
+            cleanup.resolve(); await setImmediate();
+            assert.equal(host.requests[1].signal.aborted, false);
+            assert.equal(adapter.view().phase.kind, 'continuing');
+            assert.equal(host.busy, true);
+            assert.equal(host.stopVisible, true);
+            retryReply.resolve(); await retry;
+            assert.equal(host.requests.length, 2);
+            assert.deepEqual(target.extra.xiaobaiOsDice, saved);
+            assert.equal(adapter.view(), null);
+            assert.equal(host.busy, false);
+        });
+    }
+}
+
+for (const failed of [false, true]) {
+    test(`cancelled preparation ${failed ? 'failure' : 'completion'} cannot clear the retry prompt`, async t => {
+        const adapter = setup(t);
+        await begin(); await host.intercept('normal');
+        const preparing = Promise.withResolvers();
+        const assembly = Promise.withResolvers();
+        t.after(() => { preparing.resolve(); assembly.resolve(); });
+        let preparations = 0;
+        host.preflight = async () => { if (++preparations === 1) { await preparing.promise; } };
+        // Native prompt assembly continues asynchronously after extension interceptors.
+        const intercept = host.intercept;
+        t.mock.method(host, 'intercept', async type => {
+            const aborted = await intercept(type);
+            if (!aborted) { await assembly.promise; }
+            return aborted;
+        });
+        const target = message(call); host.source.chat.push(target);
+        await received(); await setImmediate();
+        const saved = structuredClone(target.extra.xiaobaiOsDice);
+        host.stop(); await setImmediate();
+        const retry = adapter.retry(1); await setImmediate();
+        const retryPrompt = host.prompts.get('xiaobai_os_dice');
+        assert.ok(retryPrompt);
+        if (failed) { preparing.reject(new Error('preparation_failed')); }
+        else { preparing.resolve(); }
+        await setImmediate();
+        assert.equal(host.prompts.get('xiaobai_os_dice'), retryPrompt);
+        assert.equal(host.busy, true);
+        assembly.resolve(); await retry;
+        assert.equal(host.requests.length, 1, 'only the retry reaches the provider');
+        assert.equal(host.requests[0].prompt, retryPrompt);
+        assert.equal(host.ids, 1);
+        assert.deepEqual(target.extra.xiaobaiOsDice, saved);
+        assert.equal(adapter.view(), null);
+    });
+}
+
+test('a stopped call finishing after its successful retry cannot revive the old Dice run', async t => {
     const adapter = setup(t);
     const cleanup = Promise.withResolvers();
     t.after(() => cleanup.resolve());
+    const nativeSave = host.saveNative;
+    let saves = 0;
+    t.mock.method(host, 'saveNative', async () => {
+        if (++saves === 1) { await cleanup.promise; }
+        await nativeSave();
+    });
     const normalReply = host.reply;
-    host.reply = async signal => {
-        if (host.requests.length === 1) { await cleanup.promise; signal.throwIfAborted(); }
-        else await normalReply();
-    };
+    host.reply = async () => { if (host.requests.length > 1) { await normalReply(); } };
     await begin(); await host.intercept('normal');
     const target = message(call); host.source.chat.push(target);
     await received(); await setImmediate();
-    const saved = structuredClone(target.extra.xiaobaiOsDice);
     host.stop(); await setImmediate();
     const retry = adapter.retry(1); await setImmediate();
-    assert.equal(host.requests.length, 1);
-    cleanup.resolve(); await retry;
     assert.equal(host.requests.length, 2);
-    assert.deepEqual(target.extra.xiaobaiOsDice, saved);
+    await retry;
+    const completed = structuredClone(target);
+    assert.equal(adapter.view(), null);
+    cleanup.resolve(); await setImmediate();
+    assert.deepEqual(target, completed);
     assert.equal(adapter.view(), null);
     assert.equal(host.busy, false);
+    assert.equal(host.ids, 1);
 });
 
 test('native auto-swipe can re-enter Generate from the completed continuation without waiting on itself', { timeout: 2000 }, async t => {
@@ -681,16 +779,17 @@ test('native auto-swipe can re-enter Generate from the completed continuation wi
     assert.equal(host.stopVisible, false);
 });
 
-test('Stop cancels a continuation retry waiting for native saving without another request', async t => {
+test('Stop cancels a continuation retry during native preparation without another request', async t => {
     const adapter = setup(t);
-    t.mock.timers.enable({ apis: ['setTimeout'] });
     await begin(); await host.intercept('normal');
     host.source.chat.push(message(call));
     host.reply = async () => { throw new Error('provider unavailable'); };
     await received(); await settled(adapter);
     assert.equal(adapter.view().phase.kind, 'continue-error');
     const requests = host.requests.length;
-    host.saving(true);
+    const preparing = Promise.withResolvers();
+    host.preflight = () => preparing.promise;
+    host.stream = { isStopped: false };
     const retry = adapter.retry(1);
     await setImmediate();
     assert.equal(host.busy, true);
@@ -699,7 +798,7 @@ test('Stop cancels a continuation retry waiting for native saving without anothe
     assert.equal(adapter.view(), null);
     assert.equal(host.busy, false);
     assert.equal(host.stopVisible, false);
-    host.saving(false); t.mock.timers.tick(40); await retry;
+    preparing.resolve(); await retry;
     assert.equal(host.requests.length, requests);
 });
 
@@ -871,36 +970,79 @@ test('a target changed during continuation preparation is rejected before any pr
     assert.equal(host.busy, false);
 });
 
-test('readiness waits through stream finalization, saving and generation but releases an abandoned stopped stream', async t => {
+test('readiness follows native generation occupancy without waiting for or clearing the stream', async t => {
     setup(t);
     t.mock.timers.enable({ apis: ['setTimeout'] });
     const target = captureDiceTarget(captureDiceChat(), 0, 0);
-    host.stream = { isStopped: false, isFinished: true };
+    host.saving(true);
+    const stream = { isStopped: false, isFinished: true };
+    host.stream = stream; host.busy = true;
     let ready = false;
     const operation = waitForDiceHost(target, new AbortController().signal, false).then(() => { ready = true; });
     await setImmediate();
-    assert.equal(ready, false, 'finished tokens do not mean finalization has released the message');
-    const stopped = { isStopped: true, isFinished: false };
-    host.stream = stopped; host.saving(true);
-    t.mock.timers.tick(40); await setImmediate();
-    assert.equal(ready, false, 'a stopped stream cannot bypass an active save');
-    host.saving(false); host.busy = true;
-    t.mock.timers.tick(40); await setImmediate();
-    assert.equal(ready, false, 'a stopped stream cannot bypass another generation');
+    assert.equal(ready, false, 'native generation occupancy still blocks admission');
     host.group(true); host.busy = false;
     t.mock.timers.tick(40); await setImmediate();
     assert.equal(ready, false, 'the group wrapper remains busy between member generations');
     host.group(false);
     t.mock.timers.tick(40); await operation;
     assert.equal(ready, true);
-    assert.equal(host.stream, stopped, 'Dice must not clear native processor state');
+    assert.equal(host.stream, stream, 'Dice must not clear native processor state');
 
-    host.stream = { isStopped: false };
+    host.busy = true;
     const controller = new AbortController();
     const cancelled = waitForDiceHost(target, controller.signal, false);
     controller.abort();
     await assert.rejects(cancelled);
 });
+
+// Native continuation admission does not require save-idle or processor cleanup.
+// Both rules must dispatch with that internal work pending; native code owns cleanup.
+for (const rule of ['d20', 'coc7']) {
+    for (const entry of ['automatic', 'reloaded-request', 'reloaded-result']) {
+        test(`${rule} ${entry} continues while native saving and stream cleanup remain pending`, async t => {
+            const adapter = setup(t);
+            host.rule = rule;
+            const body = rule === 'd20' ? call : cocCall;
+            const target = message(body);
+            let saved;
+            if (entry === 'reloaded-result') {
+                const candidate = prepareActionCheck({ body, records: undefined, generatedFrom: 0,
+                    rule, coc7Sheet: host.sheet, id: 'persisted-check', random: () => 0.5 });
+                assert.equal(candidate.kind, 'candidate');
+                target.mes = candidate.body;
+                target.extra.xiaobaiOsDice = candidate.records;
+                saved = structuredClone(candidate.records);
+            }
+            if (entry === 'automatic') { await begin(); await host.intercept('normal'); }
+            host.source.chat.push(JSON.parse(JSON.stringify(target)));
+            const savingAtDispatch = [];
+            const streamsAtDispatch = [];
+            const normalReply = host.reply;
+            host.reply = async () => {
+                savingAtDispatch.push(host.savingActive);
+                streamsAtDispatch.push(host.stream);
+                await normalReply();
+            };
+            const stream = { isStopped: false, isFinished: true };
+            host.stream = stream;
+            host.saving(true);
+            const operation = entry === 'automatic' ? received() : adapter.retry(1);
+            await setImmediate();
+            assert.deepEqual(savingAtDispatch, [true], 'native continuation starts without waiting for the save flag');
+            assert.deepEqual(streamsAtDispatch, [stream], 'Dice leaves the previous processor to the host');
+            await operation;
+            await settled(adapter);
+            assert.equal(host.requests.length, 1);
+            const records = host.source.chat.at(-1).extra.xiaobaiOsDice;
+            assert.equal(records.checks.length, 1);
+            assert.equal(host.ids, saved ? 0 : 1);
+            if (saved) { assert.deepEqual(records, saved); }
+            assert.equal(adapter.view(), null);
+            assert.equal(host.busy, false);
+        });
+    }
+}
 
 test('a failed incoming stream never rolls, and its residual processor cannot reject the next non-streaming reply', async t => {
     const adapter = setup(t);
@@ -927,33 +1069,31 @@ test('a failed incoming stream never rolls, and its residual processor cannot re
 
 // Host waiting is a recoverable condition, not an invalid model request. These
 // exercise the real readiness timer and adapter rather than a session-only stub.
-test('readiness reports simultaneous blockers and elapsed time, then pauses without rolling and retries once', async t => {
+test('native generation occupancy reports elapsed time, then pauses without rolling and retries once', async t => {
     const adapter = setup(t);
     t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
     await begin(); await host.intercept('normal');
     const target = message(call); host.source.chat.push(target);
+    host.lock();
     host.stream = { isStopped: false }; host.saving(true);
     await received();
-    assert.deepEqual(adapter.view().wait, { blockers: ['stream', 'save'], elapsedSeconds: 0 });
+    assert.deepEqual(adapter.view().wait, { blockers: ['generation'], elapsedSeconds: 0 });
     t.mock.timers.tick(1000); await setImmediate();
-    assert.deepEqual(adapter.view().wait, { blockers: ['stream', 'save'], elapsedSeconds: 1 });
-    host.stream = null;
-    t.mock.timers.tick(40); await setImmediate();
-    assert.deepEqual(adapter.view().wait.blockers, ['save']);
-    t.mock.timers.tick(19000); await setImmediate();
+    assert.deepEqual(adapter.view().wait, { blockers: ['generation'], elapsedSeconds: 1 });
+    t.mock.timers.tick(9000); await setImmediate();
     assert.equal(adapter.view().phase.kind, 'wait-error');
-    assert.equal(adapter.view().wait.elapsedSeconds, 20);
-    assert.equal(host.busy, false);
+    assert.equal(adapter.view().wait.elapsedSeconds, 10);
+    assert.equal(host.busy, true, 'pausing does not release the native generation');
     assert.equal(target.mes, call);
     assert.equal(target.extra.xiaobaiOsDice, undefined);
     assert.equal(host.ids, 0);
     assert.equal(host.requests.length, 0);
 
+    host.unlock();
     const first = adapter.retry(1);
     await assert.rejects(adapter.retry(1)); // Native busy state also guards repeated UI clicks.
-    assert.equal(adapter.view().phase.kind, 'settling');
-    host.saving(false);
-    t.mock.timers.tick(40); await first;
+    assert.equal(adapter.view().wait, null);
+    await first;
     assert.equal(target.extra.xiaobaiOsDice.checks.length, 1);
     assert.equal(host.requests.length, 1);
     assert.equal(host.ids, 1);
@@ -985,7 +1125,7 @@ test('pausing Dice releases only its own controls while a native generation is s
     host.lock();
     await received();
     assert.deepEqual(adapter.view().wait.blockers, ['generation']);
-    t.mock.timers.tick(20000); await setImmediate();
+    t.mock.timers.tick(10000); await setImmediate();
     assert.equal(adapter.view().phase.kind, 'wait-error');
     assert.equal(host.busy, true, 'native generation still owns the send controls');
     assert.equal(host.ids, 0);
@@ -995,29 +1135,29 @@ test('pausing Dice releases only its own controls while a native generation is s
     assert.equal(host.busy, false);
 });
 
-test('retrying a saved result reports host waiting and cannot start a second continuation while waiting', async t => {
+test('retrying a saved result ignores pending native cleanup and cannot start a duplicate continuation', async t => {
     const adapter = setup(t);
-    t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
     await begin(); await host.intercept('normal');
     const target = message(call); host.source.chat.push(target);
     host.reply = async () => {};
     await received(); await settled(adapter);
     const saved = structuredClone(target.extra.xiaobaiOsDice);
     const ids = host.ids;
-    host.saving(true);
+    const stream = { isStopped: false, isFinished: true };
+    host.stream = stream; host.saving(true);
+    const continuing = Promise.withResolvers();
+    host.reply = () => continuing.promise;
     const retry = adapter.retry(1);
-    assert.equal(adapter.view().phase.kind, 'settling');
+    await setImmediate();
+    assert.equal(adapter.view().phase.kind, 'continuing');
     assert.deepEqual(adapter.view().phase.candidate.records, saved);
     await assert.rejects(adapter.retry(1));
-    t.mock.timers.tick(20000); await retry;
-    assert.equal(adapter.view().phase.kind, 'continue-error');
-    assert.deepEqual(adapter.view().wait, { blockers: ['save'], elapsedSeconds: 20 });
-    assert.equal(host.ids, ids);
-    assert.equal(host.requests.length, 1);
-    host.saving(false);
-    await adapter.retry(1);
+    assert.equal(adapter.view().wait, null);
     assert.equal(host.ids, ids);
     assert.equal(host.requests.length, 2);
+    assert.equal(host.stream, stream);
+    continuing.resolve(); await retry;
+    assert.equal(adapter.view().phase.kind, 'continue-error');
     assert.deepEqual(target.extra.xiaobaiOsDice, saved);
 });
 

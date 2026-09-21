@@ -50,7 +50,9 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
         id: uuidv4,
         reveal,
         async continue(target, candidate, signal) {
-            if (intention) { await intention.settled; }
+            // Explicit recovery may replace a cancelled call while its native I/O unwinds.
+            // A live continuation still owns the normal chain until Generate resolves.
+            if (intention && !intention.signal.aborted) { await intention.settled; }
             if (!currentTarget(target) || signal.aborted) { return null; }
             const inGroup = is_group_generating;
             const callController = new AbortController();
@@ -95,6 +97,7 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
                     console.error('[LittleWhiteBox] Dice host continuation failed', error);
                     return null;
                 }
+                if (signal.aborted || intention !== own) { return null; }
                 if (own.error) { throw new Error(own.error); }
                 const source = captureDiceChat();
                 if (!source || source.key !== target.source.key || source.chat !== target.source.chat
@@ -235,13 +238,13 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
                 && currentTarget(own.target)
                 : !observed || observation === observed && !observed.signal?.aborted
                     && captureDiceChat()?.chat === observed.source.chat && captureDiceChat()?.key === observed.source.key;
-            if (!current()) { clearPrompt(); abort(true); return; }
+            if (!current()) { abort(true); return; }
             if (!enabled() || !MAIN_TYPES.includes(String(type || ''))) { clearPrompt(); return; }
             if (observation) { observation.stage = 'receiving'; }
             try {
                 await ensureDiceDisplayRule();
                 // The host can yield during preparation. Stop this request before it can target another floor.
-                if (!current()) { clearPrompt(); abort(true); return; }
+                if (!current()) { abort(true); return; }
                 const last = diceHostContext().chat.at(-1);
                 const saved = type === 'continue' && last ? readDiceRecords(last) : undefined;
                 const records = own?.candidate.records.checks ?? (saved === undefined ? [] : parseDiceRecords(saved).checks);
@@ -250,9 +253,9 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
                 const activeSheet = own ? own.target.coc7Sheet : observed ? observed.coc7Sheet : captureSheet();
                 setSillyTavernPrompt(KEY, buildActionCheckPrompt(last?.mes ?? '', records, frequency(), activeRule, !!activeSheet));
             } catch (error) {
-                clearPrompt();
                 console.error('[LittleWhiteBox] Dice check preparation failed', error);
                 if (!current()) { abort(true); return; }
+                clearPrompt();
                 if (own) {
                     own.error = '暂时无法继续行动检定。';
                     abort(true);

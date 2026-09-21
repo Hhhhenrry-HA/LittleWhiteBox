@@ -1,5 +1,4 @@
 import { extension_settings, getContext } from '../../../../../../../../extensions.js';
-import { isChatSaving } from '../../../../../../../../../script.js';
 import { isGenerating } from '../../../host/sillytavern-generation-state.js';
 import { getScriptsByType, saveScriptsByType, SCRIPT_TYPES } from '../../../../../../../../extensions/regex/engine.js';
 import { repairDiceDisplayRules } from './display-rule.js';
@@ -44,17 +43,14 @@ export async function ensureDiceDisplayRule(): Promise<void> {
 export async function waitForDiceHost(target: DiceTarget, signal: AbortSignal, inGroup: boolean,
     generationPending: () => boolean = isGenerating, report?: (wait: DiceHostWait) => void): Promise<void> {
     const started = Date.now();
-    const deadline = started + 20_000;
+    const deadline = started + 10_000;
     let previous: DiceHostWait | undefined;
     while (true) {
         if (signal.aborted || !isDiceTargetCurrent(captureDiceChat(), target)) { throw new Error('聊天或回复已变化。'); }
         if (isDiceMessageBeingEdited(target.index)) { throw new Error('请先结束消息编辑。'); }
-        const stream = diceHostContext().streamingProcessor;
-        // ST 1.18 retains a stopped processor after stream errors. A normally finished stream,
-        // however, still owns finalization/saving until the host releases its processor.
+        // Match native continuation admission. Saving and processor cleanup belong to ST;
+        // neither is an additional Dice gate, and Dice must not clear the host's processor.
         const blockers: DiceHostBlocker[] = [];
-        if (stream && !stream.isStopped) { blockers.push('stream'); }
-        if (isChatSaving) { blockers.push('save'); }
         if (!inGroup && generationPending()) { blockers.push('generation'); }
         if (!blockers.length) { return; }
         const now = Date.now();

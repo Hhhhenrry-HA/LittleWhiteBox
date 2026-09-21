@@ -221,7 +221,7 @@ test('a retry readiness failure retains the same candidate until recovery succee
     let failOperation = true;
     let continuations = 0;
     const session = createSession(source, {
-        ready: async () => { if (failReadiness) throw new Error('Host is still saving'); },
+        ready: async () => { if (failReadiness) throw new Error('host_generation_pending'); },
         id: () => 'retained', random: () => { randomCalls++; return .3; },
         continue: async (_current, candidate) => {
             continuations++;
