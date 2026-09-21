@@ -55,9 +55,24 @@ test('dangling, malformed and self causal references reject the batch', () => {
         assert.throws(() => prepare(batch), /events\[0\]\.causedBy/, String(ref));
         assert.deepEqual(batch, before);
     }
-    assert.throws(() => prepare({ events: [event({ causedBy: ['evt-7', 'evt-12', 'new-2'] }), event()] }), /causedBy/);
-    assert.throws(() => prepare({ events: [event({ causedBy: ['evt-7', 'evt-12', 'evt-14'] }), event()] }), /causedBy/);
     assert.throws(() => prepare({ events: [event({ causedBy: 'evt-7' })] }), /causedBy/);
+});
+
+test('three distinct direct causes survive binding and deduplication; four reject without mutation', () => {
+    for (const refs of [
+        ['evt-7', 'evt-12', 'new-2'],
+        ['evt-7', 'evt-12', 'evt-14'],
+        ['evt-7', 'evt-12', 'evt-14', 'new-2', 'evt-7'],
+    ]) {
+        const batch = { events: [event({ causedBy: refs }), event()] };
+        const before = structuredClone(batch);
+        assert.deepEqual(prepare(batch).events[0].causedBy, ['evt-7', 'evt-12', 'evt-14']);
+        assert.deepEqual(batch, before);
+    }
+    const batch = { events: [event({ causedBy: ['evt-7', 'evt-12', 'new-2', 'new-3'] }), event(), event()] };
+    const before = structuredClone(batch);
+    assert.throws(() => prepare(batch), /events\[0\]\.causedBy/);
+    assert.deepEqual(batch, before);
 });
 
 test('generated floor markers must map exactly to the supplied source, never clamped or reversed', () => {
@@ -68,13 +83,56 @@ test('generated floor markers must map exactly to the supplied source, never cla
         assert.equal(range.end, marker === '(#21)' ? 20 : 24);
     }
     for (const summary of ['无标注', '(#21-22)', '正文 (#0)', '正文 (#20-22)', '正文 (#21-26)',
-        '正文 (#23-21)', '正文 (#999-1000)', '正文 (#21) 续文', '正文 (#21) (#22)', '正文 (#21.5-22)']) {
+        '正文 (#23-21)', '正文 (#999-1000)', '正文 (#21) (#22)', '正文 (#21.5-22)']) {
         assert.throws(() => prepare({ events: [event({ summary })] }), /events\[0\]\.summary/, summary);
     }
 });
 
+test('equivalent fullwidth source marker punctuation is canonicalized without changing prose', () => {
+    for (const marker of ['（#21-22）', '（＃２１－２２）', '( #21 - 22 )', '(#21–22)', '(#21—22)',
+        '(#21−22)', '(#21-#22)', '（ ＃２１ － ＃２２ ）']) {
+        const result = prepare({ events: [event({ summary: `正文，保留全角标点，${marker}` })] });
+        assert.equal(result.events[0].summary, '正文，保留全角标点，(#21-22)');
+    }
+    const prose = '角色说“字幕（压得凸起）”，房间（21），年龄(22)，然后离开';
+    const result = prepare({ events: [event({ summary: `${prose} （#21）` })] });
+    assert.equal(result.events[0].summary, `${prose} (#21)`);
+});
+
+test('missing source markers remain invalid because their floor cannot be inferred', () => {
+    for (const summary of ['没有来源的事件', '正文（21-22）']) {
+        assert.throws(() => prepare({ events: [event({ summary })] }), { code: 'source_missing', path: 'events[0].summary' });
+    }
+});
+
+test('a unique explicit source is moved to the suffix without dropping narrative text', () => {
+    for (const [summary, expected] of [
+        ['（#21-22）两人离开。', '两人离开。 (#21-22)'],
+        ['两人（#21-22）离开。', '两人离开。 (#21-22)'],
+        ['两人离开（#21-22）。', '两人离开。 (#21-22)'],
+        ['两人离开。 (#21、22)', '两人离开。 (#21-22)'],
+    ]) {
+        const batch = { events: [event({ summary })] };
+        const before = structuredClone(batch);
+        const result = prepare(batch);
+        assert.equal(result.events[0].summary, expected);
+        assert.deepEqual(parseEventRange(result.events[0].summary), { start: 20, end: 21 });
+        assert.deepEqual(batch, before);
+    }
+});
+
+test('malformed or multiple explicit sources cannot hide behind a valid suffix', () => {
+    for (const summary of ['正文 (#abc) (#21)', '正文 (#21.5) （#22）', '正文 (#21) （#22）']) {
+        assert.throws(() => prepare({ events: [event({ summary })] }), { code: 'source_ambiguous' });
+    }
+    assert.throws(() => prepare({ events: [event({ summary: '正文（＃２６）' })] }), { code: 'source_range' });
+    assert.throws(() => prepare({ events: [event({ summary: '正文（#²¹）' })] }), { code: 'source_format' });
+    assert.throws(() => prepare({ events: [event({ summary: '（#21）' })] }), { code: 'source_body_empty' });
+});
+
 test('explicit source lists become a bounded runtime envelope without changing model input or prose', () => {
-    for (const marker of ['(#21、#23、#25)', '(#25, #21, #23)', '(#23，#25，#21)', '(#21、#25、#21)']) {
+    for (const marker of ['(#21、#23、#25)', '(#25, #21, #23)', '(#23，#25，#21)', '(#21、#25、#21)',
+        '（＃２１，＃２３，＃２５）', '(#21、23、25)']) {
         const batch = { events: [event({ summary: `正文 ${marker}` })] };
         const before = structuredClone(batch);
         const result = prepare(batch);
@@ -88,14 +146,14 @@ test('explicit source lists become a bounded runtime envelope without changing m
 test('source-list normalization rejects every out-of-batch member and ambiguous marker', () => {
     for (const marker of ['(#21、#26、#25)', '(#21、#0、#25)', '(#20、#25)',
         '(#21、#9007199254740992)', '(#21、#23.5)', '(#21、#-23)', '(#21、#23附近)',
-        '(#21、23)', '(#21、)', '(#21-23、#25)', '(#21至#25)', '(#21、#23) 续文',
+        '(#21、)', '(#21-23、#25)', '(#21至#25)',
         '(#21) (#23、#25)', '(#21、#23) (#25)', '(#21、#23) (#24、#25)']) {
         const batch = { events: [event(), event({ summary: `正文 ${marker}` })] };
         const before = structuredClone(batch);
         assert.throws(() => prepare(batch), /events\[1\]\.summary/, marker);
         assert.deepEqual(batch, before);
     }
-    assert.throws(() => prepare({ events: [event({ summary: '(#21、#25)' })] }), /须有正文/);
+    assert.throws(() => prepare({ events: [event({ summary: '(#21、#25)' })] }), { code: 'source_body_empty' });
 });
 
 test('omitted update collections and empty events are legitimate; populated collections must be well formed', () => {

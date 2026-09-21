@@ -3,10 +3,18 @@ import { runSummaryGeneration } from '../../modules/story-summary/generate/gener
 import { getSummaryStore } from '../../modules/story-summary/data/store.js';
 import { getContext, __setReplayContext } from './shims/extensions.js';
 import { chat_metadata, __setChatMetadata } from './shims/script.js';
+import { parseSummaryJson } from '../../modules/story-summary/generate/llm.js';
 
 // Exercise the commit boundary: JSON errors and malformed event results must
 // not consume source floors, save partial data, or invoke completion callbacks.
 export async function runSummaryResponseCheck() {
+    // External JSON protocol: repairs must never rewrite string values.
+    const text = 'Literal ,} and ,] and "quoted" and \\ path';
+    const jsonWithTrailingCommas = '{"events":[],"text":' + JSON.stringify(text) + ',"nested":[1,2,],}';
+    for (const raw of [jsonWithTrailingCommas, '```json\n' + jsonWithTrailingCommas + '\n```']) {
+        assert.deepEqual(parseSummaryJson(raw), { events: [], text, nested: [1, 2] });
+    }
+    assert.equal(parseSummaryJson('{"events":['), null);
     const previousContext = getContext();
     const previousMetadata = chat_metadata;
     const previousStreamingModule = globalThis.window.xiaobaixStreamingGeneration;
@@ -46,6 +54,12 @@ export async function runSummaryResponseCheck() {
         ...invalidStructure.map(value => ({ raw: JSON.stringify(value), valid: false, error: 'structure' })),
         { raw: '```json\n{"error":{"message":"quota exceeded"}}\n```', valid: false, error: 'structure' },
         { raw: nextSummary, valid: true },
+        ...['两人一起吃牛肉面。（＃２）', '（#2）两人一起吃牛肉面。', '两人一起吃牛肉面（#2）。'].map(value => ({
+            raw: JSON.stringify({ events: [{ ...summary(2).events[0], summary: value }] }),
+            valid: true,
+            generatedSummary: value.startsWith('两人一起吃牛肉面。')
+                ? '两人一起吃牛肉面。(#2)' : '两人一起吃牛肉面。 (#2)',
+        })),
         { raw: `\`\`\`json\n${nextSummary}\n\`\`\``, valid: true },
         { raw: `总结如下：\n${nextSummary}`, valid: true },
         { raw: '{"events":[]}', valid: true, eventIds: ['evt-1'] },
@@ -71,6 +85,7 @@ export async function runSummaryResponseCheck() {
             const chatId = `summary-response-${index}`;
             const chat = [{ is_user: true, mes: '我拎着两碗牛肉面推开家门。' }];
             let saved = 0;
+            let requests = 0;
             let failSave = false;
             let responseText = JSON.stringify({ ...summary(1),
                 arcUpdates: [{ name: '小红', trajectory: '开始建立信任', progress: 0.7 }],
@@ -82,7 +97,10 @@ export async function runSummaryResponseCheck() {
                 saved++;
             } });
             globalThis.window.xiaobaixStreamingGeneration = {
-                async xbgenrawCommand(args) { return args.nonstream === 'true' ? responseText : 'response-session'; },
+                async xbgenrawCommand(args) {
+                    requests++;
+                    return args.nonstream === 'true' ? responseText : 'response-session';
+                },
                 getStatus() { return { isStreaming: false, text: responseText }; },
             };
             const seed = await runSummaryGeneration(0, config);
@@ -90,6 +108,7 @@ export async function runSummaryResponseCheck() {
             assert.equal(saved, 1);
             const before = structuredClone(getSummaryStore());
             saved = 0;
+            requests = 0;
             failSave = !!scenario.saveFailure;
             chat.push({ is_user: false, mes: '小红接过碗，我们一起坐下。' });
             if (scenario.extraFloor) chat.push({ is_user: true, mes: '我说这家面馆味道不错。' });
@@ -104,6 +123,7 @@ export async function runSummaryResponseCheck() {
             });
 
             assert.equal(result.success, scenario.valid, scenario.raw);
+            assert.equal(requests, 1, 'response handling must not buy another generation');
             assert.equal(completed, scenario.valid, scenario.raw);
             assert.equal(saved, scenario.valid ? 1 : 0, scenario.raw);
             if (scenario.valid) {
