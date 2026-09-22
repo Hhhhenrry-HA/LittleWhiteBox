@@ -2,6 +2,7 @@ import type { ActionCheckRecord } from '../domain/check-records.js';
 import { createD20Result } from './d20-result.js';
 import { createCoc7Result } from './coc7-result.js';
 import { diceSpan } from './card-elements.js';
+import { createCardTexture } from './card-texture.js';
 
 /** A saved check's view. It never rolls, saves, or starts generation. */
 export function createCheckCard(record: ActionCheckRecord, pending: boolean) {
@@ -33,7 +34,7 @@ export function createCheckCard(record: ActionCheckRecord, pending: boolean) {
     }
     const status = diceSpan('xb-dice-status'); status.hidden = true;
     status.setAttribute('role', 'status');
-    element.append(identity, result.element, copy, status);
+    element.append(createCardTexture(), identity, result.element, copy, status);
     function settle(): void {
         if (element.dataset.state === 'settled') { return; }
         if (element.dataset.state === 'rolling') { element.dataset.revealed = 'true'; }

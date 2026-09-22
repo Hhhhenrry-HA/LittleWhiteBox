@@ -372,9 +372,7 @@ test('Tasks module owns a strict partition and declares its runtime capabilities
         MAP_CONTEXT_CAPABILITY.id,
         WORLD_CONTEXT_CAPABILITY.id,
     ]);
-    const removed = [];
-    await module.clearData({ removePartition: async key => { removed.push(key); } });
-    assert.deepEqual(removed, ['tasks']);
+    assert.equal(module.clearData, undefined);
 });
 
 test('Tasks module injects the current player name and Assistant count into its service', async () => {

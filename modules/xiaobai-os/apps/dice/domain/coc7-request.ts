@@ -1,14 +1,13 @@
 import { ACTION_CHECK_REQUEST_FIELDS } from './action-check.js';
-import { COC7_STAT_IDS, type Coc7Stat } from './coc7-catalog.js';
 
 export const COC7_DIFFICULTIES = { regular: 1, hard: 2, extreme: 5 } as const;
 export type Coc7Difficulty = keyof typeof COC7_DIFFICULTIES;
-export interface Coc7Request { action: string; stat: Coc7Stat; difficulty: Coc7Difficulty }
+export interface Coc7Request { action: string; stat: string; difficulty: Coc7Difficulty }
 
 // Parser and model description share the complete field set and constraints.
 export const COC7_REQUEST_FIELDS = {
     action: { type: 'string', maxLength: ACTION_CHECK_REQUEST_FIELDS.action.maxLength, description: 'The attempt and objective.' },
-    stat: { type: 'enum', values: COC7_STAT_IDS, description: 'Capability ID from the list below.' },
+    stat: { type: 'string', maxLength: ACTION_CHECK_REQUEST_FIELDS.stat.maxLength, description: 'Capability ID from the list below.' },
     difficulty: { type: 'enum', values: Object.keys(COC7_DIFFICULTIES), description: 'Required success degree.' },
 } as const;
 

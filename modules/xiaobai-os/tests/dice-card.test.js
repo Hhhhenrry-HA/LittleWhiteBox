@@ -5,6 +5,8 @@ import { createCheckCard } from '../apps/dice/ui/check-card.ts';
 import { revealCheckCard, DICE_REVEAL_MS } from '../apps/dice/ui/reveal.ts';
 import { prepareActionCheck } from '../apps/dice/application/prepare-action-check.ts';
 import { rollCoc7 } from '../apps/dice/domain/coc7.ts';
+import { emptyCoc7Draft } from '../apps/dice/domain/coc7-creation.ts';
+import { parseDiceRecords } from '../apps/dice/domain/check-records.ts';
 
 function browser(t) {
     const { document } = parseHTML('<html><body></body></html>');
@@ -175,4 +177,25 @@ test('D100 explains the required threshold, exact ties and special outcomes with
     }
     const historical = coc7Record(); historical.result.verdict = 'achieved';
     assert.equal(createCheckCard(historical, false).element.dataset.verdict, 'achieved');
+});
+
+test('D100 cards retain mapped inputs and untrained sources after history reload', t => {
+    browser(t);
+    for (const [stat, kind, value] of [['潜行', 'mapped', 10], ['隐匿潜行', 'mapped', 10], ['火系魔法', 'untrained', 40], ['运动与隐匿', 'untrained', 40]]) {
+        const candidate = prepareActionCheck({ id: 'resolved', rule: 'coc7', generatedFrom: 0, coc7Sheet: emptyCoc7Draft(), random: () => .2,
+            body: '<xb_action_check>' + JSON.stringify({ action: '尝试行动', stat, difficulty: 'hard' }) + '</xb_action_check>' });
+        const history = parseDiceRecords(JSON.parse(JSON.stringify(candidate.records)));
+        for (const pending of [true, false]) {
+            const card = createCheckCard(history.checks[0], pending);
+            const identity = card.element.querySelector('[data-resolution]');
+            assert.equal(identity.dataset.resolution, kind);
+            assert.ok(identity.textContent.includes(stat), 'the actual input is visible, not only a corrected name');
+            assert.ok(identity.textContent.includes(history.checks[0].request.stat), 'the saved capability remains visible');
+            card.settle();
+            const basis = card.element.querySelector('[data-divisor]');
+            assert.equal(Number(basis.dataset.value), value);
+            assert.equal(Number(basis.dataset.threshold), value / 2);
+            assert.ok(card.element.getAttribute('aria-label').includes(stat), 'assistive output also retains the input');
+        }
+    }
 });

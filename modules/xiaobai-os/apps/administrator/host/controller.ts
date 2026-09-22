@@ -13,12 +13,12 @@ export function createAdministratorController(conversation: AdministratorConvers
     let lastStateKey = '';
     function state(): AdministratorState {
         return { chatIdentity: conversation.identity(), page: conversation.page(), live: runtime.live(), context: runtime.context(),
-            error: localError || runtime.error(), corrupted: conversation.corrupted(), unsaved: conversation.unsaved(), retryTurnId: runtime.retryTurnId(), sendTurnId: runtime.sendTurnId(), conflict: conversation.conflict() };
+            error: localError || runtime.error(), corrupted: conversation.corrupted(), unsaved: conversation.unsaved(), submission: runtime.submission(), conflict: conversation.conflict() };
     }
     function emit() {
         if (!activation?.isCurrent()) { return; }
         const live = runtime.live();
-        const key = JSON.stringify([conversation.identity(), conversation.read().revision, !!live, localError || runtime.error(), conversation.corrupted(), conversation.unsaved(), conversation.conflict(), runtime.retryTurnId(), runtime.sendTurnId()]);
+        const key = JSON.stringify([conversation.identity(), conversation.read().revision, !!live, localError || runtime.error(), conversation.corrupted(), conversation.unsaved(), conversation.conflict(), runtime.submission()]);
         if (key !== lastStateKey) { lastStateKey = key; activation.post('administrator/state', { state: state() }); }
         else { activation.post('administrator/live', { live, context: runtime.context() }); }
     }
@@ -82,14 +82,13 @@ export function createAdministratorController(conversation: AdministratorConvers
                 }
                 case 'administrator/evidence': return runtime.evidence(String(payload.reference), payload.offset);
                 case 'administrator/send': return exclusive(async () => {
-                    const turnId = await runtime.send(String(payload.text ?? ''), payload.image);
+                    const turnId = await runtime.send(payload.submissionId, String(payload.text ?? ''), payload.image);
                     return { turnId, state: state() };
                 });
                 case 'administrator/regenerate': return exclusive(async () => {
                     if (conversation.unsaved()) { throw new Error('administrator_save_pending'); }
                     await runtime.regenerate(String(payload.turnId)); return state();
                 });
-                case 'administrator/retry': return exclusive(async () => { await runtime.retry(String(payload.turnId)); return state(); });
                 case 'administrator/check':
                 case 'administrator/confirm': return exclusive(async () => { await conversation.confirm(guard, message.type === 'administrator/check'); await runtime.confirmed(); return state(); });
                 case 'administrator/adopt': return exclusive(async () => {

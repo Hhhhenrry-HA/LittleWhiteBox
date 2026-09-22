@@ -3,9 +3,11 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, toRaw,
 import { estimateTokenCount } from '../../../../agent-core/runtime/context-tokens.js';
 import type { XiaobaiOsAppProps } from '../../../shell/app-contract.js';
 import AppDialog from '../../../shell/app-src/components/AppDialog.vue';
+import MessageMarkdown from '../../../shell/app-src/components/MessageMarkdown.vue';
 import type { AdministratorPage, AdministratorRow, AdministratorState } from '../domain/types.js';
 import { ADMINISTRATOR_IMAGE_TYPES, ADMINISTRATOR_POLICY as POLICY } from '../domain/policy.js';
 import type { AdministratorUpload } from '../storage/images.js';
+import { createAdministratorId } from '../application/identity.js';
 import { ADMINISTRATOR_COPY as C, administratorError } from './copy.js';
 import AdministratorContext from './AdministratorContext.vue';
 import AdministratorMessage from './AdministratorMessage.vue';
@@ -15,14 +17,15 @@ import './administrator.css';
 const props = defineProps<XiaobaiOsAppProps>();
 const state = shallowRef(structuredClone(toRaw(props.initialState as AdministratorState)));
 const rows = shallowRef(state.value.page.rows), start = ref(state.value.page.start), total = ref(state.value.page.total);
-const draft = ref(''), image = ref<AdministratorUpload | null>(null), error = ref(''), pending = ref(false), paging = ref(false);
+const draft = ref(''), image = ref<AdministratorUpload | null>(null), error = ref(''), pending = ref(''), paging = ref(false);
 const clearOpen = ref(false), deleteRow = ref<AdministratorRow | null>(null), details = ref<string | null>(null);
 const list = ref<HTMLElement | null>(null), file = ref<HTMLInputElement | null>(null), composer = ref<HTMLTextAreaElement | null>(null);
-const atBottom = ref(true), sentTurnId = ref<string | null>(null), composing = ref(false), draftTokens = ref(0);
+const atBottom = ref(true), composing = ref(false), draftTokens = ref(0);
 let draftRevision = 0;
-let sentInput: { revision: number } | null = null;
+let sentInput: { id: string; revision: number } | null = null;
 watch([draft, image], () => { draftRevision++; }, { flush: 'sync' });
-const busy = computed(() => pending.value || !!state.value.live);
+const busy = computed(() => !!pending.value || !!state.value.live);
+const phase = computed(() => state.value.live?.phase ?? (['send', 'regenerate'].includes(pending.value) ? 'preparing' : null));
 const disabled = computed(() => busy.value || state.value.unsaved || state.value.corrupted);
 const displayed = computed(() => rows.value.filter(row => row.role !== 'assistant' || row.turnId !== state.value.live?.turnId || !!row.text));
 const latest = computed(() => start.value + rows.value.length >= total.value);
@@ -48,7 +51,7 @@ function apply(next: AdministratorState) {
     const saved = anchor();
     const wasLatest = latest.value;
     const previous = state.value; state.value = next; total.value = next.page.total;
-    if (previous.chatIdentity !== next.chatIdentity) { windowRequest++; rows.value = next.page.rows; start.value = next.page.start; draft.value = ''; image.value = null; details.value = null; sentTurnId.value = null; sentInput = null; return; }
+    if (previous.chatIdentity !== next.chatIdentity) { windowRequest++; rows.value = next.page.rows; start.value = next.page.start; draft.value = ''; image.value = null; details.value = null; sentInput = null; return; }
     if (next.page.revision !== previous.page.revision) {
         const count = Math.max(POLICY.pageSize, rows.value.length);
         const position = wasLatest && atBottom.value ? Math.max(0, next.page.total - count) : Math.min(start.value, Math.max(0, next.page.total - count));
@@ -57,13 +60,9 @@ function apply(next: AdministratorState) {
             if (!atBottom.value) { void restore(saved); }
         } else { void refreshWindow(position, count, saved); }
     }
-    if (sentInput && !sentTurnId.value && next.sendTurnId) { sentTurnId.value = next.sendTurnId; }
-    if (sentTurnId.value && !next.live) {
-        const reply = next.page.rows.find(row => row.turnId === sentTurnId.value && row.role === 'assistant');
-        if (reply?.status === 'finished') {
-            if (sentInput?.revision === draftRevision) { draft.value = ''; image.value = null; }
-            sentTurnId.value = null; sentInput = null;
-        }
+    if (sentInput && next.submission?.id === sentInput.id && next.submission.accepted) {
+        if (sentInput.revision === draftRevision) { draft.value = ''; image.value = null; }
+        sentInput = null;
     }
     if (atBottom.value && latest.value) { void scrollEnd(); }
 }
@@ -107,28 +106,24 @@ async function loadPage(position: number, direction: 'earlier' | 'later' | 'repl
 async function jumpLatest() { await loadPage(Math.max(0, total.value - POLICY.pageSize), 'replace'); atBottom.value = true; await scrollEnd(); }
 async function send() {
     if (disabled.value || !draft.value.trim() && !image.value) { return; }
-    if (sentTurnId.value && sentTurnId.value === state.value.retryTurnId && sentInput?.revision === draftRevision) {
-        await action('retry', { turnId: sentTurnId.value }); return;
-    }
-    pending.value = true; error.value = ''; atBottom.value = true;
+    pending.value = 'send'; error.value = ''; atBottom.value = true;
     try {
-        sentTurnId.value = null;
-        sentInput = { revision: draftRevision };
-        const result = await request<{ turnId: string; state: AdministratorState }>('send', { text: draft.value, ...(image.value ? { image: toRaw(image.value) } : {}) });
-        sentTurnId.value = result.turnId; apply(result.state); await jumpLatest();
+        sentInput = { id: createAdministratorId(), revision: draftRevision };
+        const result = await request<{ turnId: string; state: AdministratorState }>('send', { submissionId: sentInput.id, text: draft.value, ...(image.value ? { image: toRaw(image.value) } : {}) });
+        apply(result.state); await jumpLatest();
     } catch (cause) { error.value = administratorError(cause); }
-    finally { pending.value = false; }
+    finally { pending.value = ''; }
 }
 async function action(type: string, payload: object = {}) {
     if (busy.value) { return; }
-    pending.value = true; error.value = '';
+    pending.value = type; error.value = '';
     try {
         apply(await request<AdministratorState>(type, payload)); clearOpen.value = false; deleteRow.value = null;
-        if (type === 'adopt') { sentTurnId.value = null; sentInput = null; }
-        if (type === 'clear') { draft.value = ''; image.value = null; sentTurnId.value = null; sentInput = null; details.value = null; }
+        if (type === 'adopt') { sentInput = null; }
+        if (type === 'clear') { draft.value = ''; image.value = null; sentInput = null; details.value = null; }
     }
     catch (cause) { error.value = administratorError(cause); }
-    finally { pending.value = false; }
+    finally { pending.value = ''; }
 }
 async function chooseImage(event: Event) {
     const input = event.target as HTMLInputElement, selected = input.files?.[0]; input.value = '';
@@ -164,20 +159,20 @@ onBeforeUnmount(() => { windowRequest++; unsubscribe(); if (tokenTimer) { clearT
 
 <template>
     <div class="administrator-app">
-        <header class="admin-header"><h1>{{ C.title }}</h1><AdministratorContext :usage="state.context" :draft-tokens="state.live || sentTurnId ? 0 : draftTokens" /><button type="button" class="admin-icon-button" :title="C.clear" :aria-label="C.clear" :disabled="busy || state.unsaved" @click="clearOpen = true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 10v7m4-7v7" /></svg></button></header>
+        <header class="admin-header"><h1>{{ C.title }}</h1><AdministratorContext :usage="state.context" :draft-tokens="state.live ? 0 : draftTokens" /><button type="button" class="admin-icon-button" :title="C.clear" :aria-label="C.clear" :disabled="busy || state.unsaved" @click="clearOpen = true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 10v7m4-7v7" /></svg></button></header>
         <div v-if="state.corrupted" class="admin-notice" role="alert">{{ C.corrupted }}<button type="button" :disabled="busy" @click="clearOpen = true">{{ C.clear }}</button></div>
         <div ref="list" class="admin-conversation" @scroll.passive="scrolled">
             <button v-if="start > 0" type="button" class="admin-history-button" :disabled="paging" @click="loadPage(Math.max(0, start - POLICY.pageSize), 'earlier')">{{ C.earlier }}</button>
-            <p v-if="!rows.length && !state.live && !state.corrupted" class="admin-empty">{{ C.empty }}</p>
+            <p v-if="!rows.length && !phase && !state.corrupted" class="admin-empty">{{ C.empty }}</p>
             <AdministratorMessage
-                v-for="row in displayed" :key="row.id" :row="row" :bridge="bridge" :chat-identity="state.chatIdentity" :disabled="disabled" :resumable="row.turnId === state.retryTurnId"
-                @delete="deleteRow = $event" @regenerate="action('regenerate', { turnId: $event.turnId })" @retry="action('retry', { turnId: $event.turnId })" @details="details = $event.turnId"
+                v-for="row in displayed" :key="row.id" :row="row" :bridge="bridge" :chat-identity="state.chatIdentity" :disabled="disabled"
+                @delete="deleteRow = $event" @regenerate="action('regenerate', { turnId: $event.turnId })" @details="details = $event.turnId"
             />
-            <div v-if="state.live && latest" class="admin-live" role="status" aria-live="off">
-                <div class="admin-live-status"><span class="admin-working-dot" />{{ C.phases[state.live.phase] }}</div>
-                <div v-for="op in state.live.operations" :key="op.id" class="admin-operation-line"><i class="admin-operation-dot" :class="`is-${op.status}`" /><span>{{ op.name }}<small v-if="op.target"> · {{ op.target }}</small></span><small>{{ C.operations[op.status] }}</small></div>
-                <p v-if="state.live.text" class="admin-prose">{{ state.live.text }}</p>
-                <small v-if="state.live.totalChars > POLICY.textBlock" class="admin-muted">{{ C.longReply }}</small>
+            <div v-if="phase && latest" class="admin-live">
+                <div class="admin-live-status" role="status" aria-live="polite"><span class="admin-working-dot" />{{ C.phases[phase] }}</div>
+                <div v-for="op in state.live?.operations" :key="op.id" class="admin-operation-line"><i class="admin-operation-dot" :class="`is-${op.status}`" /><span>{{ op.name }}<small v-if="op.target"> · {{ op.target }}</small></span><small>{{ C.operations[op.status] }}</small></div>
+                <MessageMarkdown v-if="state.live?.text" class="admin-markdown" :text="state.live.text" />
+                <small v-if="state.live && state.live.totalChars > POLICY.textBlock" class="admin-muted">{{ C.longReply }}</small>
             </div>
             <button v-if="!latest" type="button" class="admin-history-button" :disabled="paging" @click="loadPage(start + rows.length, 'later')">{{ C.later }}</button>
         </div>
@@ -186,7 +181,6 @@ onBeforeUnmount(() => { windowRequest++; unsubscribe(); if (tokenTimer) { clearT
             <span>{{ error || (state.unsaved ? C.unsaved : state.error) }}</span>
             <button v-if="state.unsaved" type="button" :disabled="busy" @click="action('check')">{{ C.check }}</button>
             <button v-if="state.unsaved" type="button" :disabled="busy" @click="action('confirm')">{{ C.confirm }}</button>
-            <button v-else-if="state.retryTurnId" type="button" :disabled="busy" @click="action('retry', { turnId: state.retryTurnId })">{{ C.retry }}</button>
             <button v-if="state.conflict || state.unsaved" type="button" :disabled="busy" @click="action('adopt')">{{ C.adopt }}</button>
         </div>
         <div v-if="image" class="admin-attachment"><img :src="image.dataUrl" :alt="image.name"><span>{{ image.name }}</span><button type="button" :aria-label="C.removeImage" :disabled="busy" @click="image = null">×</button></div>
@@ -194,7 +188,7 @@ onBeforeUnmount(() => { windowRequest++; unsubscribe(); if (tokenTimer) { clearT
             <input ref="file" type="file" :accept="ADMINISTRATOR_IMAGE_TYPES.join(',')" hidden @change="chooseImage">
             <button type="button" class="admin-icon-button" :disabled="disabled" :aria-label="C.attach" :title="C.attach" @click="file?.click()"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="8" cy="8" r="1.5" /><path d="m3 17 5-5 4 4 4-7 5 8" /></svg></button>
             <textarea ref="composer" v-model="draft" rows="1" maxlength="16000" :placeholder="C.placeholder" :aria-label="C.placeholder" :disabled="state.corrupted || busy" @keydown="keydown" @compositionstart="composing = true" @compositionend="composing = false" />
-            <button v-if="state.live" type="button" class="admin-send" :aria-label="C.stop" :title="C.stop" @click="props.bridge.post('administrator/stop', binding())"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" /></svg></button>
+            <button v-if="phase" type="button" class="admin-send" :disabled="phase === 'stopping'" :aria-label="C.stop" :title="C.stop" @click="props.bridge.post('administrator/stop', binding())"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" /></svg></button>
             <button v-else type="submit" class="admin-send" :disabled="disabled || !draft.trim() && !image" :aria-label="C.send" :title="C.send"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6" /></svg></button>
         </form>
         <AdministratorDetails v-if="details" :key="details" :bridge="bridge" :chat-identity="state.chatIdentity" :turn-id="details" @close="details = null" />

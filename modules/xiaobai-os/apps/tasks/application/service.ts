@@ -5,7 +5,7 @@ import {
 } from '../../../capabilities/economy/index.js';
 import type {
     PendingCommitRecoveryResult,
-    ScopedChatStore,
+    PartitionStore,
     XiaobaiOsFileControls,
     XiaobaiOsFileState,
 } from '../../../kernel/contracts.js';
@@ -161,7 +161,7 @@ async function assertCommitGuard(guard: CommitGuard): Promise<void> {
 }
 
 export function createTasksService(
-    store: ScopedChatStore<TaskDomainV1>,
+    store: PartitionStore<TaskDomainV1>,
     files: XiaobaiOsFileControls,
     economy: EconomyReadCapability,
     {

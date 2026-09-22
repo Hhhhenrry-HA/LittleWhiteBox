@@ -110,7 +110,9 @@ const compiled = await build({
                 }
                 host.lock();
                 if (await host.intercept(type) || options.signal?.aborted) { activateSendButtons(); return; }
-                host.requests.push({type, signal:host.controller.signal, busy:is_send_press || is_group_generating, prompt:host.prompts.get('xiaobai_os_dice')});
+                const prompt = host.prompts.get('xiaobai_os_dice');
+                await host.emit('GENERATE_AFTER_DATA', {}, false);
+                host.requests.push({type, signal:host.controller.signal, busy:is_send_press || is_group_generating, prompt});
                 try {
                     await host.reply(host.controller.signal);
                     if (!host.stream?.isStopped) await host.saveNative();
@@ -325,10 +327,10 @@ test('native stream UI ending before MESSAGE_RECEIVED still resolves CoC; failur
 test('the reply snapshot survives edits and rule changes; next replies capture the new configuration', async t => {
     const adapter = setup(t);
     host.rule = 'coc7';
-    Object.assign(host.sheet.attributes, { body: 40, will: 60, appearance: 50 });
+    Object.assign(host.sheet.attributes, { body: 40, mind: 50, will: 60, appearance: 50 });
     host.source.chat = [message(cocCall)];
     await begin(); await host.intercept('normal');
-    Object.assign(host.sheet.attributes, { body: 80, will: 20, appearance: 50 });
+    Object.assign(host.sheet.attributes, { body: 80, mind: 50, will: 20, appearance: 50 });
     host.rule = 'd20';
     let continuations = 0;
     host.reply = async () => {
@@ -779,6 +781,40 @@ test('native auto-swipe can re-enter Generate from the completed continuation wi
     assert.equal(host.stopVisible, false);
 });
 
+test('continuation progress follows native preparation and response events without inventing a save wait', async t => {
+    const adapter = setup(t);
+    const prepared = prepareActionCheck({ body: call, generatedFrom: 0, id: 'progress', random: () => .3 });
+    host.source.chat = [message(prepared.body)];
+    host.source.chat[0].extra.xiaobaiOsDice = prepared.records;
+    const preparing = Promise.withResolvers(), requesting = Promise.withResolvers(), reply = Promise.withResolvers();
+    const normalReply = host.reply;
+    let now = 1000;
+    t.mock.method(Date, 'now', () => now);
+    host.preflight = () => preparing.promise;
+    host.reply = async () => { requesting.resolve(); await reply.promise; await normalReply(); };
+    const operation = adapter.retry(0);
+    await setImmediate();
+    assert.deepEqual(adapter.view().continuation, { stage: 'preparing', elapsedSeconds: 0 });
+    now += 3500;
+    assert.deepEqual(adapter.view().continuation, { stage: 'preparing', elapsedSeconds: 3 });
+    await host.emit('GENERATE_AFTER_DATA', {}, true);
+    assert.equal(adapter.view().continuation.stage, 'preparing', 'dry runs cannot advance the live request');
+    preparing.resolve(); await requesting.promise;
+    assert.deepEqual(adapter.view().continuation, { stage: 'requesting', elapsedSeconds: 0 });
+    now += 7000;
+    assert.equal(adapter.view().continuation.elapsedSeconds, 7);
+    await host.emit('STREAM_TOKEN_RECEIVED', '');
+    assert.deepEqual(adapter.view().continuation, { stage: 'responding', elapsedSeconds: 0 });
+    assert.equal(host.source.chat[0].mes, prepared.body, 'response chunks need not contain visible prose yet');
+    now += 2000;
+    await host.emit('STREAM_TOKEN_RECEIVED', '');
+    assert.equal(adapter.view().continuation.elapsedSeconds, 2, 'more chunks do not reset stage time');
+    reply.resolve(); await operation;
+    assert.equal(adapter.view(), null);
+    assert.equal(host.requests.length, 1);
+    assert.deepEqual(host.source.chat[0].extra.xiaobaiOsDice, prepared.records);
+});
+
 test('Stop cancels a continuation retry during native preparation without another request', async t => {
     const adapter = setup(t);
     await begin(); await host.intercept('normal');
@@ -792,6 +828,7 @@ test('Stop cancels a continuation retry during native preparation without anothe
     host.stream = { isStopped: false };
     const retry = adapter.retry(1);
     await setImmediate();
+    assert.equal(adapter.view().continuation.stage, 'preparing');
     assert.equal(host.busy, true);
     assert.equal(host.stopVisible, true);
     host.stop(); await setImmediate();

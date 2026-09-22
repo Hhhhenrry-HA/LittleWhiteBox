@@ -13,28 +13,35 @@ import { clearDiceMessageData, type DiceHostMessage } from './host/message-recor
 import { createEncounterRuntime } from './host/encounter-runtime.js';
 import { createEncounterDisplay } from './host/encounter-display.js';
 import type { EncounterReferences } from './protocol/encounter-prompt.js';
+import { ECONOMY_TRANSACTION_CAPABILITY } from '../../capabilities/economy/index.js';
+import type { PartitionStore } from '../../kernel/contracts.js';
+import { DICE_PARTITION, type DiceData } from './partition.js';
+import { createDiceSheetService } from './application/sheet-service.js';
 
 export function createProductionDiceModule(settings: XiaobaiOsSettingsRepository,
     references: (identityKey: string) => Promise<EncounterReferences>,
     isAuxiliaryMessage: (message: DiceHostMessage) => boolean): XiaobaiOsAppModule {
     let cleanup: (() => Promise<void>) | null = null;
     return {
-        descriptor: DICE_APP_DESCRIPTOR, capabilities: [],
+        descriptor: DICE_APP_DESCRIPTOR, partition: DICE_PARTITION, capabilities: [ECONOMY_TRANSACTION_CAPABILITY],
         async install(context) {
+            const sheets = createDiceSheetService(context.partition as PartitionStore<DiceData>, context.files);
+            await sheets.refresh();
             let running = false;
             const enabled = () => running && !!captureDiceChat() && settings.read()!.apps.dice.actionChecksEnabled;
             const generation = createDiceGenerationAdapter(enabled, () => settings.read()!.apps.dice.actionCheckFrequency,
                 () => display.refresh(),
                 (target, candidate, signal) => display.reveal(target, candidate, signal), () => settings.read()!.apps.dice.actionCheckRule,
-                () => settings.read()!.apps.dice.coc7Sheet);
+                sheets.read);
             const display = createDiceMessageDisplay(generation, enabled);
             const encountersEnabled = () => running && !!captureDiceChat() && settings.read()!.apps.dice.encountersEnabled;
             const encounters = createEncounterRuntime({ enabled: encountersEnabled, references, isAuxiliaryMessage,
                 changed: message => encounterDisplay.refresh(message) });
             const encounterDisplay = createEncounterDisplay(encounters);
             context.execution.addCleanup(settings.subscribe(display.refresh));
+            context.execution.addCleanup(sheets.subscribe(display.refresh));
             const controller = createDiceController(settings, () => captureDiceChat()?.key ?? '', ensureDiceDisplayRule,
-                feature => feature === 'actionChecksEnabled' ? generation.cancel() : encounters.cancel());
+                feature => feature === 'actionChecksEnabled' ? generation.cancel() : encounters.cancel(), sheets);
             cleanup = async () => {
                 if (isGenerating() || isChatSaving) { throw new Error('请等回复和保存结束，再清理 Dice 数据。'); }
                 const source = captureDiceChat();
@@ -63,12 +70,10 @@ export function createProductionDiceModule(settings: XiaobaiOsSettingsRepository
             return createAppRuntimeGroup(controller, [background]);
         },
         async dispose(runtime) { await runtime.stopBackground?.(); cleanup = null; },
-        async clearData(context) {
+        async clearData() {
             if (!cleanup) { throw new Error('请先启用小白 OS 并打开要清理的聊天。'); }
             await cleanup();
-            // Remove upstream's former per-chat preferences on explicit cleanup.
-            // Drop this cleanup when those chat files are no longer supported.
-            await context.removePartition('dice');
+            // Chat record cleanup must not clear the paid, user-owned character sheet.
         },
     };
 }

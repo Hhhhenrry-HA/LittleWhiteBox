@@ -1,41 +1,60 @@
 <script setup lang="ts">
-import { computed, ref, shallowRef } from 'vue';
+import { computed, ref, shallowRef, watch } from 'vue';
 import AppDialog from '../../../shell/app-src/components/AppDialog.vue';
 import { COC7_CAPABILITIES, type Coc7Stat } from '../domain/coc7-catalog.js';
 import { coc7StatValue, coc7RemainingPoints, coc7PointBudget, parseCoc7Sheet, readCoc7Sheet, COC7_POINT_GROUPS, type Coc7PointGroup, type Coc7Sheet } from '../domain/coc7-sheet.js';
 import { emptyCoc7Draft, generateCoc7Sheet, adjustCoc7Stat, canAdjustCoc7Stat, type Coc7Draft } from '../domain/coc7-creation.js';
-import { COC7_UI as copy, COC7_CAPABILITY_HINTS as hints } from './coc7-copy.js';
+import { COC7_UI as copy } from './coc7-copy.js';
 
-const props = defineProps<{ sheet: Coc7Sheet | null; invalid?: boolean; busy: boolean; save: (sheet: Coc7Sheet | null) => Promise<boolean> }>();
+const props = defineProps<{ sheet: Coc7Sheet | null; invalid?: boolean; busy: boolean; failure?: string; blocked?: boolean;
+    checkSave?: () => Promise<boolean>; save: (sheet: Coc7Sheet | null) => Promise<boolean> }>();
+const emit = defineEmits<{ confirmed: [] }>();
+const locked = computed(() => props.busy || props.blocked);
 const draft = shallowRef<Coc7Draft | null>(null);
+// Only a submitted, unconfirmed operation can consume the local draft on recovery.
+const pendingSubmission = shallowRef<Coc7Sheet | null | undefined>();
 const opened = ref(false);
 const error = ref('');
-const clearing = ref(false);
+const confirmingReset = ref(false);
 const visible = computed(() => draft.value ?? props.sheet ?? emptyCoc7Draft());
 const ready = computed(() => readCoc7Sheet(visible.value).kind === 'ready');
 const groups = (Object.keys(COC7_POINT_GROUPS) as Coc7PointGroup[]).map(id => ({
     id, label: copy[id], ids: COC7_POINT_GROUPS[id].ids, budget: coc7PointBudget(id),
 }));
-function update(value: Coc7Draft) { draft.value = value; error.value = ''; clearing.value = false; }
+watch([pendingSubmission, () => props.sheet, () => props.invalid, () => props.blocked, () => props.busy], () => {
+    if (props.busy || props.blocked || pendingSubmission.value === undefined) { return; }
+    const submitted = pendingSubmission.value;
+    pendingSubmission.value = undefined;
+    const saved = props.sheet;
+    const matches = !props.invalid && (submitted === null ? saved === null : saved !== null
+        && groups.every(group => group.ids.every(id => coc7StatValue(saved, id) === coc7StatValue(submitted, id))));
+    if (matches) { cancel(); emit('confirmed'); }
+});
+function update(value: Coc7Draft) { pendingSubmission.value = undefined; draft.value = value; error.value = ''; confirmingReset.value = false; }
 function closeSheet() {
     if (props.busy) { return; }
-    opened.value = false; clearing.value = false;
+    opened.value = false; confirmingReset.value = false;
 }
 function adjust(stat: Coc7Stat, direction: -1 | 1) {
-    if (!props.busy) { update(adjustCoc7Stat(visible.value, stat, direction)); }
+    if (!locked.value) { update(adjustCoc7Stat(visible.value, stat, direction)); }
 }
-function randomize() { if (!props.busy) { update(generateCoc7Sheet()); } }
+function randomize() { if (!locked.value) { update(generateCoc7Sheet()); } }
 async function saveDraft() {
-    if (props.busy || !draft.value) { return; }
-    if (!ready.value) { error.value = copy.incomplete; return; }
-    if (await props.save(parseCoc7Sheet(draft.value))) { draft.value = null; error.value = ''; }
-    else { error.value = copy.saveFailed; }
+    if (locked.value || (!draft.value && props.sheet)) { return; }
+    if (!ready.value) { error.value = copy.invalidAllocation; return; }
+    await submit(parseCoc7Sheet(visible.value));
 }
-function cancel() { draft.value = null; error.value = ''; clearing.value = false; }
-async function clear() {
-    if (props.busy) { return; }
-    if (await props.save(null)) { cancel(); }
-    else { error.value = copy.clearFailed; }
+function cancel() { pendingSubmission.value = undefined; draft.value = null; error.value = ''; confirmingReset.value = false; }
+async function submit(sheet: Coc7Sheet | null) {
+    if (await props.save(sheet)) { cancel(); }
+    else {
+        if (props.blocked) { pendingSubmission.value = sheet; }
+        error.value = sheet === null ? copy.resetFailed : copy.saveFailed;
+    }
+}
+async function reset() {
+    if (locked.value) { return; }
+    await submit(null);
 }
 </script>
 
@@ -66,27 +85,33 @@ async function clear() {
                     <h3 :id="'coc-' + group.id">{{ group.label }}</h3>
                     <div class="coc-grid">
                         <div v-for="id in group.ids" :key="id" class="coc-stat" :data-stat="id">
-                            <div class="coc-stat-name"><span :id="'coc-label-' + id">{{ COC7_CAPABILITIES[id].label }}</span><small>{{ hints[id] }}</small></div>
+                            <div class="coc-stat-name"><span :id="'coc-label-' + id">{{ COC7_CAPABILITIES[id].label }}</span><small>{{ COC7_CAPABILITIES[id].description }}</small></div>
                             <div class="coc-stepper" role="group" :aria-labelledby="'coc-label-' + id">
-                                <button type="button" data-step="decrease" :aria-label="copy.decrease + COC7_CAPABILITIES[id].label" :disabled="busy || !canAdjustCoc7Stat(visible, id, -1)" @click="adjust(id, -1)">−</button>
+                                <button type="button" data-step="decrease" :aria-label="copy.decrease + COC7_CAPABILITIES[id].label" :disabled="locked || !canAdjustCoc7Stat(visible, id, -1)" @click="adjust(id, -1)">−</button>
                                 <output :aria-labelledby="'coc-label-' + id">{{ coc7StatValue(visible, id) }}</output>
-                                <button type="button" data-step="increase" :aria-label="copy.increase + COC7_CAPABILITIES[id].label" :disabled="busy || !canAdjustCoc7Stat(visible, id, 1)" @click="adjust(id, 1)">+</button>
+                                <button type="button" data-step="increase" :aria-label="copy.increase + COC7_CAPABILITIES[id].label" :disabled="locked || !canAdjustCoc7Stat(visible, id, 1)" @click="adjust(id, 1)">+</button>
                             </div>
                         </div>
                     </div>
                 </section>
-                <template v-if="sheet || invalid">
-                    <button v-if="!clearing" type="button" class="coc-clear" data-sheet-action="clear" :disabled="busy" @click="clearing = true">{{ copy.clear }}</button>
-                    <div v-else class="coc-clear-confirm"><p>{{ copy.clearNotice }}</p><button type="button" :disabled="busy" @click="clearing = false">{{ copy.cancel }}</button><button type="button" data-sheet-action="confirm-clear" :disabled="busy" @click="clear">{{ copy.confirmClear }}</button></div>
-                </template>
+                <button v-if="(sheet || invalid) && !confirmingReset" type="button" class="coc-reset" data-sheet-action="reset" :disabled="locked" @click="confirmingReset = true">{{ copy.reset }}</button>
             </div>
             <footer class="coc-footer">
-                <p v-if="error" role="alert" class="coc-error">{{ error }}</p>
-                <div class="coc-draft-actions">
-                    <button type="button" class="coc-random" data-sheet-action="generate" :disabled="busy" @click="randomize">{{ copy.generate }}</button>
+                <p v-if="failure || error || blocked" role="alert" class="coc-error">{{ failure || (blocked ? copy.saveUnconfirmed : error) }}</p>
+                <button v-if="blocked" type="button" data-sheet-action="check-save" :disabled="busy" @click="checkSave?.()">{{ copy.checkSave }}</button>
+                <div v-if="confirmingReset && !blocked" class="coc-reset-confirm" role="group" aria-labelledby="coc-reset-question">
+                    <p id="coc-reset-question">{{ copy.resetQuestion }}</p>
+                    <p>{{ copy.resetNotice }}</p>
+                    <div class="coc-draft-actions">
+                        <button type="button" data-sheet-action="cancel-reset" :disabled="busy" @click="confirmingReset = false">{{ copy.cancelReset }}</button>
+                        <button type="button" class="primary" data-sheet-action="confirm-reset" :disabled="locked" @click="reset">{{ busy ? copy.resetting : copy.confirmReset }}</button>
+                    </div>
+                </div>
+                <div v-else-if="!blocked" class="coc-draft-actions">
+                    <button type="button" class="coc-random" data-sheet-action="generate" :disabled="locked" @click="randomize">{{ copy.generate }}</button>
                     <span v-if="!draft && sheet" class="coc-saved" role="status">{{ copy.saved }}</span>
                     <button v-if="draft" type="button" data-sheet-action="cancel" :disabled="busy" @click="cancel">{{ copy.cancel }}</button>
-                    <button type="button" class="primary" data-sheet-action="save" :disabled="busy || !draft || !ready" @click="saveDraft">{{ busy ? copy.saving : copy.save }}</button>
+                    <button type="button" class="primary" data-sheet-action="save" :disabled="locked || (!draft && !!sheet) || !ready" @click="saveDraft">{{ busy ? copy.saving : copy.save }}</button>
                 </div>
             </footer>
         </section>
@@ -137,8 +162,9 @@ button:focus-visible { outline:2px solid #8577f0; outline-offset:2px; }
 .coc-draft-actions { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:6px; font-size:13px; }
 .coc-saved { font-size:12px; opacity:.65; }
 button.primary { background:#7062d9; color:white; min-width:64px; }
-.coc-clear { font-size:12px; opacity:.7; margin-top:16px; }
-.coc-clear-confirm { font-size:13px; }.coc-clear-confirm p { margin:8px 0; }
+.coc-reset { font-size:12px; opacity:.7; margin-top:16px; }
+.coc-reset-confirm { font-size:13px; }.coc-reset-confirm p { margin:8px 0; }
+#coc-reset-question { font-weight:600; }
 .coc-error { font-size:13px; color:var(--xiaobai-os-ink); border-left:3px solid #d47757; padding-left:10px; }
 @container (min-width:590px) { .coc-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 24px; } }
 @media (max-width:380px) {

@@ -9,17 +9,17 @@ import { createAdministratorToolResults } from './tool-results.js';
 import { createAdministratorId } from '../application/identity.js';
 
 type Reader = ReturnType<typeof createAdministratorChatReader>;
+export interface AdministratorConfirmation { messageIndex: number; result: ManagementResult & { receipt: AdministratorOperation } }
 export async function createAdministratorToolExecutor(options: {
-    registry: ManagementRegistry; reader: Reader; readOnly: boolean; operations: AdministratorOperation[];
-    guard(): boolean; onChange(): void; saveReceipts(confirmedOnly?: boolean): Promise<void>;
+    registry: ManagementRegistry; reader: Reader; operations: AdministratorOperation[];
+    guard(): boolean; onChange(): void; saveReceipts(confirmation?: AdministratorConfirmation): Promise<void>;
 }) {
     const runId = createAdministratorId();
     const routes = new Map<string, { appId: string; tool: ManagementTool; session: ManagementSession | null }>();
     const domains: { id: string; prompt: string; data: unknown }[] = [];
     const unavailable: { id: string; error: string }[] = [];
     const evidence = createAdministratorToolResults();
-    let completed: { id: string; output: unknown } | null = null;
-    let pending: { id: string; operation: AdministratorOperation; session: ManagementSession } | null = null;
+    let pending: { id: string; operation: AdministratorOperation; session: ManagementSession; messageIndex: number; confirmation?: AdministratorConfirmation } | null = null;
     for (const participant of options.registry.list()) {
         let session: ManagementSession;
         try { session = await participant.open(); }
@@ -43,68 +43,56 @@ export async function createAdministratorToolExecutor(options: {
         operation.summary = report?.applied || report?.skipped
             ? ADMINISTRATOR_COPY.itemReport(report.applied?.length ?? 0, report.skipped?.length ?? 0) : ADMINISTRATOR_COPY.operations[result.status];
         const output = { ...(continuation ? result : evidence.project(operation.id, result)), receipt: { ...operation } };
-        completed = { id: operation.id, output };
         options.onChange();
         return output;
     }
     return {
-        tools: [...routes.values()].filter(route => !options.readOnly || route.tool.effect === 'read').map(route => route.tool.definition),
+        tools: [...routes.values()].map(route => route.tool.definition),
         prompt: domains.map(domain => domain.prompt).join('\n\n'),
         data: { story: options.reader.info, apps: domains.map(({ id, data }) => ({ id, data })), unavailable },
         evidence: evidence.read,
-        hasPendingWrite: () => pending !== null,
-        releaseCheckpoint() { completed = null; pending = null; },
         async confirmSaved() {
             if (!pending) { return; }
-            const inspection = await pending.session.confirmSaved();
+            const inspection = pending.confirmation ? { status: 'confirmed' as const, result: pending.confirmation.result } : await pending.session.confirmSaved();
             if (!inspection || inspection.status !== 'confirmed') { return inspection; }
-            complete(pending.operation, inspection.result); pending = null;
-            await options.saveReceipts(true);
+            const confirmation = pending.confirmation ??= { messageIndex: pending.messageIndex, result: complete(pending.operation, inspection.result) };
+            await options.saveReceipts(confirmation);
+            pending = null;
             return inspection;
         },
-        async execute(name: string, raw: unknown, callId: string): Promise<unknown> {
+        async execute(name: string, raw: unknown, callId: string, messageIndex: number): Promise<unknown> {
             const id = `${runId}:${callId}`;
             const route = routes.get(name);
             if (!route) { return { ok: false, status: 'failed', code: 'tool_unavailable' }; }
-            // Enforcement is independent of the definitions supplied to the model.
-            if (options.readOnly && route.tool.effect === 'write') { return { ok: false, status: 'failed', code: 'read_only' }; }
             if (!raw || typeof raw !== 'object' || Array.isArray(raw)) { return { ok: false, status: 'failed', code: 'arguments_must_be_object' }; }
             const args = raw as Record<string, unknown>;
-            if (completed?.id === id) { if (route.tool.effect === 'write') { await options.saveReceipts(); } return completed.output; }
-            if (route.tool.effect === 'write' && pending?.id !== id && !options.reader.isCurrent()) {
+            if (route.tool.effect === 'write' && !options.reader.isCurrent()) {
                 return { ok: false, status: 'failed', code: 'story_evidence_changed', floors: options.reader.staleFloors() };
             }
-            const operation = options.operations.find(operation => operation.id === id) ?? {
+            const operation: AdministratorOperation = {
                 id, appId: route.appId, name: route.tool.label, target: route.tool.target(args).slice(0, 160),
                 status: route.tool.effect === 'write' ? 'saving' as const : 'reading' as const, elapsedMs: 0, summary: '',
             };
-            if (!options.operations.includes(operation)) { options.operations.push(operation); }
-            const wasUnconfirmed = operation.status === 'unconfirmed';
-            operation.status = route.tool.effect === 'write' ? 'saving' : 'reading';
+            options.operations.push(operation);
             const started = performance.now(); options.onChange();
             try {
                 // Record the attempted write before dispatch, so reload cannot present it as a confirmed success.
                 if (route.tool.effect === 'write') { await options.saveReceipts(); }
                 let result: ManagementResult;
-                if (pending?.id === id) {
-                    result = await pending.session.recover(options.guard) ?? await route.session!.execute(name, args, options.guard); pending = null;
-                } else if (route.session) {
+                if (route.session) {
                     try { result = await route.session.execute(name, args, options.guard); }
-                    catch (error) { if (route.tool.effect === 'write') { pending = { id, operation, session: route.session }; } throw error; }
+                    catch (error) { if (route.tool.effect === 'write') { pending = { id, operation, session: route.session, messageIndex }; } throw error; }
                 } else {
                     const data = name === 'ChatRead' ? await options.reader.read(args) : name === 'ChatSearch' ? await options.reader.search(args) : evidence.page(id, String(args.reference), args.offset);
                     result = { ok: true, status: 'read', data };
                 }
                 operation.elapsedMs += Math.round(performance.now() - started);
-                const output = complete(operation, result, name === 'ToolResultRead');
-                if (route.tool.effect === 'write') { await options.saveReceipts(); }
-                return output;
+                // The loop saves this result and its receipt together before any further dispatch.
+                return complete(operation, result, name === 'ToolResultRead');
             } catch (error) {
-                if (completed?.id !== id) {
-                    operation.status = pending?.id === id && (wasUnconfirmed || (error as { uncertain?: boolean })?.uncertain) ? 'unconfirmed' : 'failed';
-                    operation.elapsedMs += Math.round(performance.now() - started);
-                    operation.summary = String(error instanceof Error ? error.message : error).slice(0, 350);
-                }
+                operation.status = pending?.id === id && (error as { uncertain?: boolean })?.uncertain ? 'unconfirmed' : 'failed';
+                operation.elapsedMs += Math.round(performance.now() - started);
+                operation.summary = String(error instanceof Error ? error.message : error).slice(0, 350);
                 options.onChange();
                 if (route.tool.effect === 'read' && (error as Error).name !== 'AbortError' && (error as Error).message !== 'administrator_context_changed') {
                     return { ok: false, status: 'failed', code: (error as Error).message, receipt: { ...operation } };

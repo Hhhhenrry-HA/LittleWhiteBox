@@ -1,6 +1,6 @@
 import type {
     PendingCommitRecoveryResult,
-    ScopedChatStore,
+    PartitionStore,
     XiaobaiOsFileState,
 } from '../../../kernel/contracts.js';
 import type { TransactionCoordinator } from '../../../kernel/transaction-coordinator.js';
@@ -55,7 +55,7 @@ function transactionError(result: { status: string; error?: { code: string; mess
 }
 
 export function createMapService(
-    store: ScopedChatStore<MapDomainV1>,
+    store: PartitionStore<MapDomainV1>,
     files: Pick<
         TransactionCoordinator,
         'retryPending' | 'adoptServerState' | 'getFileState' | 'subscribeFileState'

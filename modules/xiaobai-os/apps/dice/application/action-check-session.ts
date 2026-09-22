@@ -32,7 +32,7 @@ export interface DiceSessionPort<T extends ActionCheckTarget> {
 const errors: Record<string, string> = {
     dice_check_limit: `本条回复已检定 ${MAX_ACTION_CHECKS} 次，不再继续掷骰。`,
     [COC7_SHEET_ERRORS.missing]: '请先在 Dice 中分配并保存人物能力，未掷骰。',
-    [COC7_SHEET_ERRORS.invalid]: '人物能力分配无效，未掷骰。请在 Dice 中重新分配或清空。',
+    [COC7_SHEET_ERRORS.invalid]: '人物能力分配无效，未掷骰。请在 Dice 中重新分配或重置。',
 };
 const invalidRequest = '这次检定信息不完整或格式无效，未掷骰。';
 

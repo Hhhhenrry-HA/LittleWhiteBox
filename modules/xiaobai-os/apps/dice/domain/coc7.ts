@@ -27,7 +27,7 @@ function digit(random: () => number): number {
     if (!Number.isFinite(sample) || sample < 0 || sample >= 1) { throw new TypeError('dice_random_invalid'); }
     return Math.floor(sample * 10);
 }
-/** Value is resolved from the validated run sheet, never from model input. */
+/** Value is resolved by the app, never accepted as a model-supplied number. */
 export function rollCoc7(value: number, difficulty: Coc7Difficulty, random: () => number = Math.random): Coc7Result {
     if (!Number.isSafeInteger(value) || value < 1 || !Object.hasOwn(COC7_DIFFICULTIES, difficulty)) { throw new TypeError('dice_coc7_basis_invalid'); }
     const threshold = Math.floor(value / COC7_DIFFICULTIES[difficulty]);

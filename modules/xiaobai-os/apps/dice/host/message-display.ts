@@ -12,7 +12,7 @@ import { DICE_CARD_CSS } from './card-style.js';
 import { mountCheckCards, restoreCheckMarker } from './check-marker-dom.js';
 import { checkDisplayProjection } from './check-display-projection.js';
 import { showCheckReveal } from './reveal-visibility.js';
-import { DICE_SESSION_COPY, diceHostWaitLabel } from '../ui/session-copy.js';
+import { DICE_SESSION_COPY, diceHostWaitLabel, diceContinuationLabel } from '../ui/session-copy.js';
 
 type Runtime = ReturnType<typeof createDiceGenerationAdapter>;
 const OWN = '.xb-dice-card';
@@ -22,6 +22,7 @@ export function createDiceMessageDisplay(runtime: Runtime, enabled: () => boolea
     let observer: MutationObserver | null = null;
     let disposeEvents: (() => void) | null = null;
     let frame: number | null = null;
+    let progressTimer: ReturnType<typeof setTimeout> | null = null;
     let style: HTMLStyleElement | null = null;
     // Message/candidate identity, not the host's replaceable formatted DOM, owns a mounted card.
     const cards = new WeakMap<DiceHostMessage, { swipe: number; entries: Map<string, CardEntry> }>();
@@ -55,6 +56,8 @@ export function createDiceMessageDisplay(runtime: Runtime, enabled: () => boolea
 
     function render(): void {
         frame = null;
+        if (progressTimer !== null) { clearTimeout(progressTimer); progressTimer = null; }
+        let timeContinuation = false;
         observer?.disconnect();
         try {
             const source = captureDiceChat();
@@ -110,11 +113,14 @@ export function createDiceMessageDisplay(runtime: Runtime, enabled: () => boolea
                             const failedContinuation = phase?.kind === 'continue-error' && continuing?.id === record.id;
                             const waitingForText = phase?.kind === 'continuing'
                                 && continuing?.id === record.id
-                                && message.mes === phase.candidate.body;
+                                && isCheckContinuationPoint(message.mes, record);
                             const waitingForHost = phase?.kind === 'settling' && continuing?.id === record.id;
+                            const progress = waitingForText ? current?.continuation : null;
+                            timeContinuation ||= !!progress;
                             const error = (failedContinuation || waitingForHost) && current?.wait
                                 ? `${diceHostWaitLabel(current.wait)}${failedContinuation ? `。${DICE_SESSION_COPY.retained}` : ''}`
-                                : failedContinuation ? phase.error : waitingForText ? DICE_SESSION_COPY.continuing
+                                : failedContinuation ? phase.error : waitingForText
+                                    ? progress ? diceContinuationLabel(progress) : DICE_SESSION_COPY.continuing
                                     : waitingForHost ? DICE_SESSION_COPY.waitingHost : '';
                             let retry = '';
                             if (enabled() && (failedContinuation || source?.chat.at(-1) === message && record === referenced.at(-1)
@@ -122,6 +128,11 @@ export function createDiceMessageDisplay(runtime: Runtime, enabled: () => boolea
                                 retry = DICE_SESSION_COPY.retryContinue;
                             }
                             setStatus(entry, index, error, retry);
+                            if (waitingForText || waitingForHost) {
+                                view.status.dataset.diceState = waitingForHost ? 'waiting' : progress?.stage ?? 'preparing';
+                            } else { delete view.status.dataset.diceState; }
+                            if (progress) { view.status.dataset.elapsedSeconds = String(progress.elapsedSeconds); }
+                            else { delete view.status.dataset.elapsedSeconds; }
                             errorPlaced ||= !!failedContinuation || !!waitingForHost;
                         }
                     } catch {
@@ -184,7 +195,10 @@ export function createDiceMessageDisplay(runtime: Runtime, enabled: () => boolea
                 }
                 content.querySelectorAll<HTMLElement>(OWN).forEach(node => { if (!wanted.has(node)) { node.remove(); } });
             }
-        } finally { observe(); }
+        } finally {
+            observe();
+            if (timeContinuation) { progressTimer = setTimeout(refresh, 1000); }
+        }
     }
     function observe(): void {
         const chat = document.getElementById('chat');
@@ -216,6 +230,7 @@ export function createDiceMessageDisplay(runtime: Runtime, enabled: () => boolea
         },
         stop() {
             observer?.disconnect(); observer = null;
+            if (progressTimer !== null) { clearTimeout(progressTimer); progressTimer = null; }
             if (frame !== null) { cancelAnimationFrame(frame); frame = null; }
             disposeEvents?.(); disposeEvents = null; style?.remove(); style = null;
             document.querySelectorAll<HTMLElement>(`#chat ${OWN}`).forEach(restoreCheckMarker);

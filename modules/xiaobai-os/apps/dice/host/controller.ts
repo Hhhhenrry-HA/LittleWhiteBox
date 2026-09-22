@@ -3,17 +3,19 @@ import type { XiaobaiOsAppActivationContext, XiaobaiOsAppRuntime } from '../../.
 import type { DiceClientState, DiceFeature } from '../types.js';
 import { isActionCheckFrequency, isActionCheckRule } from '../settings.js';
 import { parseCoc7Sheet, readCoc7Sheet } from '../domain/coc7-sheet.js';
+import type { DiceSheetService } from '../application/sheet-service.js';
 
-export function createDiceController(settings: Pick<XiaobaiOsSettingsRepository, 'read' | 'subscribe' | 'setDiceFeature' | 'setDiceActionCheckFrequency' | 'setDiceActionCheckRule' | 'setDiceCoc7Sheet'>,
+export function createDiceController(settings: Pick<XiaobaiOsSettingsRepository, 'read' | 'subscribe' | 'setDiceFeature' | 'setDiceActionCheckFrequency' | 'setDiceActionCheckRule'>,
     getChatIdentity: () => string, ensureDisplay: () => Promise<void>,
-    cancel: (feature: DiceFeature) => void): XiaobaiOsAppRuntime & { disable(): Promise<void> } {
+    cancel: (feature: DiceFeature) => void, sheets: DiceSheetService): XiaobaiOsAppRuntime & { disable(): Promise<void> } {
     let activation: XiaobaiOsAppActivationContext | null = null;
     const state = (): DiceClientState => {
         const preferences = settings.read()!.apps.dice;
-        return { chatIdentity: getChatIdentity(), ...preferences, coc7Sheet: readCoc7Sheet(preferences.coc7Sheet) };
+        return { chatIdentity: getChatIdentity(), ...preferences, coc7Sheet: readCoc7Sheet(sheets.read()), sheetStorage: sheets.getFileState() };
     };
     const emit = () => activation?.post('dice/state', { state: state() });
     let unsubscribe: (() => void) | null = null;
+    let unsubscribeSheets: (() => void) | null = null;
 
     async function savePreference(save: () => Promise<unknown>): Promise<void> {
         try { await save(); }
@@ -40,11 +42,12 @@ export function createDiceController(settings: Pick<XiaobaiOsSettingsRepository,
     }
 
     return {
-        async activate(context) { activation = context; return state(); },
+        async activate(context) { await sheets.refresh(); activation = context; return state(); },
         deactivate() { activation = null; },
         cancelForeground() { activation = null; },
         startBackground() {
             if (unsubscribe) { return; }
+            unsubscribeSheets = sheets.subscribe(emit);
             let previous = settings.read()!.apps.dice;
             unsubscribe = settings.subscribe(next => {
                 for (const feature of ['actionChecksEnabled', 'encountersEnabled'] as const) {
@@ -54,7 +57,7 @@ export function createDiceController(settings: Pick<XiaobaiOsSettingsRepository,
                 emit();
             });
         },
-        stopBackground() { unsubscribe?.(); unsubscribe = null; activation = null; cancel('actionChecksEnabled'); cancel('encountersEnabled'); },
+        stopBackground() { unsubscribe?.(); unsubscribeSheets?.(); unsubscribe = null; unsubscribeSheets = null; activation = null; cancel('actionChecksEnabled'); cancel('encountersEnabled'); },
         async handleMessage(message) {
             const payload = message.payload as { chatIdentity?: string; feature?: string; enabled?: boolean; frequency?: unknown; rule?: unknown; sheet?: unknown } | undefined;
             const owner = activation;
@@ -73,11 +76,14 @@ export function createDiceController(settings: Pick<XiaobaiOsSettingsRepository,
                 emit();
             } else if (message.type === 'dice/set-coc7-sheet') {
                 const sheet = payload?.sheet === null ? null : parseCoc7Sheet(payload?.sheet);
-                await savePreference(() => settings.setDiceCoc7Sheet(sheet));
+                try { await sheets.save(sheet, () => activation === owner && owner.isCurrent()); }
+                finally { emit(); }
                 if (activation !== owner || !owner.isCurrent() || payload?.chatIdentity !== getChatIdentity()) {
                     throw new Error('聊天或页面已切换。');
                 }
                 emit();
+            } else if (message.type === 'dice/confirm-sheet-save') {
+                await sheets.confirm(); emit();
             } else if (message.type === 'dice/set-frequency') {
                 const frequency = payload?.frequency;
                 if (!isActionCheckFrequency(frequency)) { throw new Error('检定频率无效。'); }

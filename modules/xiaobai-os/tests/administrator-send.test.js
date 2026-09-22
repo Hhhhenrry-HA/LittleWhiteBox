@@ -5,6 +5,55 @@ import { createAdministratorImages } from '../apps/administrator/storage/images.
 
 const image = { name: 'screen.png', dataUrl: 'data:image/png;base64,YQ==' };
 
+test('a send is acknowledged when its USER is saved, while the model is still running', async () => {
+    const h = await administratorHarness();
+    let rejectReply;
+    h.state.generate = () => new Promise((_, reject) => { rejectReply = reject; });
+    const sent = await h.request('send', { submissionId: 'draft-a', text: 'request' });
+    for (let i = 0; !rejectReply && i < 100; i++) { await tick(); }
+    assert.ok(rejectReply);
+    try {
+        assert.equal(h.runtime.busy(), true);
+        assert.deepEqual(sent.state.submission, { id: 'draft-a', turnId: sent.turnId, accepted: true });
+        assert.equal(h.conversation.read().turns[0].assistant, null);
+        assert.ok(h.pushed.some(message => message.type === 'administrator/state' && message.payload.state.submission?.accepted));
+    } finally { rejectReply(new Error('provider failure')); await settled(h.runtime); }
+    assert.equal(h.runtime.submission().accepted, true);
+    assert.equal(h.conversation.read().turns[0].status, 'failed');
+});
+
+test('an unconfirmed USER keeps its submission identity through confirmation', async () => {
+    const h = await administratorHarness();
+    h.state.replace = async () => ({ status: 'unconfirmed', observed: null });
+    await assert.rejects(h.request('send', { submissionId: 'draft-a', text: 'request' }));
+    const pending = h.runtime.submission();
+    assert.equal(pending.id, 'draft-a'); assert.equal(pending.accepted, false);
+    assert.equal(h.state.requests.length, 0);
+    h.state.replace = null;
+    await h.request('confirm'); await settled(h.runtime);
+    assert.deepEqual(h.runtime.submission(), { ...pending, accepted: true });
+    assert.deepEqual(h.conversation.read().turns.map(turn => turn.id), [pending.turnId]);
+    assert.equal(h.state.requests.length, 1);
+});
+
+test('regenerating history cannot acknowledge a failed upload as a sent draft', async () => {
+    const h = await administratorHarness();
+    const first = await h.request('send', { text: 'history' }); await settled(h.runtime);
+    const save = h.images.save;
+    h.images.save = async () => { throw new Error('upload failure'); };
+    await assert.rejects(h.request('send', { submissionId: 'unsent-draft', text: 'new request', image }));
+    assert.equal(h.runtime.submission().accepted, false);
+    const offset = h.pushed.length;
+    const rerolled = await h.request('regenerate', { turnId: first.turnId }); await settled(h.runtime);
+    assert.equal(rerolled.submission, null);
+    assert.ok(h.pushed.slice(offset).every(message => message.type !== 'administrator/state' || !message.payload.state.submission?.accepted));
+    assert.deepEqual(h.conversation.read().turns.map(turn => turn.user.text), ['history']);
+    h.images.save = save;
+    const resent = await h.request('send', { submissionId: 'resent-draft', text: 'new request', image }); await settled(h.runtime);
+    assert.deepEqual(resent.state.submission, { id: 'resent-draft', turnId: resent.turnId, accepted: true });
+    assert.deepEqual(h.conversation.read().turns.map(turn => turn.user.text), ['history', 'new request']);
+});
+
 // Browser contract: LAN HTTP exposes getRandomValues, but not randomUUID.
 // Exercise production ID creation through activation, sends, tools and attachment storage.
 test('LAN HTTP can open administrator and save text, tool receipts and an image', async t => {
@@ -54,7 +103,7 @@ test('a first image send resumes initialization, upload, message save and genera
     const save = h.images.save;
     h.images.save = async (...args) => { uploads++; return save(...args); };
     await assert.rejects(h.request('send', { text: '查看图片', image }));
-    const turnId = h.runtime.sendTurnId();
+    const turnId = h.runtime.submission()?.turnId;
     assert.ok(turnId); assert.equal(uploads, 0); assert.equal(h.state.requests.length, 0);
     await h.request('check'); assert.equal(h.conversation.unsaved(), true);
     h.state.replace = null;
@@ -82,7 +131,11 @@ for (const method of ['stop', 'cancelAll', 'stopBackground']) {
             const sending = h.request('send', { text: '旧发送', ...(stage === 'message' ? {} : { image }) }).catch(error => error);
             for (let i = 0; !release && i < 100; i++) { await tick(); }
             assert.ok(release);
+            assert.equal(h.runtime.busy(), true);
+            assert.equal(h.runtime.live().phase, 'preparing');
+            assert.ok(h.pushed.some(message => message.payload.state?.live?.phase === 'preparing'));
             if (method === 'stop') { await h.request('stop'); } else { await h.controller[method](); }
+            if (method === 'stop') { assert.equal(h.runtime.live().phase, 'stopping'); }
             release(); await sending; await settled(h.runtime);
             h.state.replace = null;
             await h.request('check'); await settled(h.runtime);
@@ -125,6 +178,7 @@ test('reopening the panel during image upload does not continue the same send tw
     assert.ok(release);
     h.controller.deactivate();
     await h.controller.activate({ isCurrent: () => true, activationToken: 'reopened', post: () => true });
+    assert.equal(h.runtime.live().phase, 'preparing');
     assert.equal(uploads, 1); assert.equal(h.state.requests.length, 0);
     release(); await sending; await settled(h.runtime);
     assert.equal(h.conversation.read().turns.length, 1); assert.equal(h.state.requests.length, 1);

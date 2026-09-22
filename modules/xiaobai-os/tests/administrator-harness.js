@@ -63,5 +63,6 @@ export async function administratorHarness(initial = {}, { fresh = false } = {})
     controller = createAdministratorController(conversation, runtime);
     await controller.activate({ isCurrent: () => true, activationToken: 'test', post: (type, payload) => { pushed.push({ type, payload }); return true; } });
     return { state, coordinator, tasks, map, world, economy, registry, repository, images, conversation, runtime, controller, gateway, capture, pushed,
-        async request(type, payload = {}) { return controller.handleMessage({ type: `administrator/${type}`, payload: { chatIdentity: state.capture.identityKey, ...payload } }); } };
+        async request(type, payload = {}) { return controller.handleMessage({ type: `administrator/${type}`, payload: { chatIdentity: state.capture.identityKey,
+            ...(type === 'send' ? { submissionId: `submission-${++id}` } : {}), ...payload } }); } };
 }

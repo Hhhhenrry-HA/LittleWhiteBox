@@ -6,14 +6,17 @@ import { COC7_RESULT_COPY as copy } from './coc7-result-copy.js';
 import { createD10 } from './d10.js';
 
 export function createCoc7Result(record: Coc7CheckRecord) {
-    const { request, result } = record;
+    const { request, result, resolution } = record;
     const critical = result.level === 'critical', fumble = result.level === 'fumble';
     const special = critical || fumble;
     const outcome = special ? copy.levels[result.level] : copy.verdicts[result.verdict];
     const tone = critical ? 'critical_success' : fumble ? 'critical_failure' : result.verdict === 'achieved' ? 'success' : 'failure';
     const element = diceSpan('xb-dice-coc7');
     const heading = diceSpan('xb-dice-coc7-heading');
-    heading.append(diceSpan('xb-dice-coc7-identity', `${request.stat} ${result.value}`), diceSpan('xb-dice-system', copy.system(request.difficulty)));
+    const name = copy.identity(request.stat, result.value, resolution);
+    const identity = diceSpan('xb-dice-coc7-identity', name);
+    identity.dataset.resolution = resolution?.kind ?? 'direct';
+    heading.append(identity, diceSpan('xb-dice-system', copy.system(request.difficulty)));
     const hero = diceSpan('xb-dice-coc7-hero');
     const dice = diceSpan('xb-dice-percentile-dice');
     const tens = createD10(result.tens, 'tens'), units = createD10(result.units, 'units');
@@ -46,13 +49,15 @@ export function createCoc7Result(record: Coc7CheckRecord) {
     else if (result.level === 'fumble') { explanation = copy.fumble(coc7FumbleMinimum(result.threshold)); }
     const detail = diceSpan('xb-dice-coc7-detail');
     detail.dataset.level = result.level;
+    const sourceReason = resolution?.kind === 'untrained' ? copy.untrainedReasons[resolution.reason] : '';
+    if (sourceReason) { detail.append(diceSpan('xb-dice-coc7-reason', sourceReason)); }
     detail.append(basis);
     if (explanation) { detail.append(diceSpan('xb-dice-coc7-reason', explanation)); }
     if (result.roll === 100) { detail.append(diceSpan('xb-dice-coc7-hundred', copy.hundred)); }
     hero.append(dice, verdict); element.append(heading, hero, detail);
     verdict.hidden = true; detail.hidden = true;
     return { element, rollingSlot: hero, tone,
-        label: copy.accessible(request.stat, outcome, result.roll, result.threshold, basisText, explanation),
+        label: copy.accessible(name, outcome, result.roll, result.threshold, basisText, [sourceReason, explanation].filter(Boolean).join('；')),
         settle() { tens.draw(1, true); units.draw(1, true); verdict.hidden = false; detail.hidden = false; },
         draw(progress: number) { tens.draw(progress); units.draw(progress); } };
 }

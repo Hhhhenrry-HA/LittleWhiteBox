@@ -10,7 +10,7 @@ import {
     type MaintenanceCapability,
 } from '../../capabilities/maintenance/index.js';
 import type { AppInstallContext, XiaobaiOsAppModule } from '../../kernel/app-registry.js';
-import type { ScopedChatStore } from '../../kernel/contracts.js';
+import type { PartitionStore } from '../../kernel/contracts.js';
 import type { TaskDomainV1 } from '../../domains/tasks/types.js';
 import type { XiaobaiOsAppRuntime } from '../../types.js';
 import { MAP_CONTEXT_CAPABILITY, type MapContextCapability } from '../map/context-capability.js';
@@ -27,7 +27,7 @@ export { TASKS_PARTITION } from './partition.js';
 
 export interface TasksModuleInstallContext {
     ownerId: string;
-    store: ScopedChatStore<TaskDomainV1>;
+    store: PartitionStore<TaskDomainV1>;
     tasks: TasksService;
     economy: EconomyReadCapability;
     agent: AgentCapability;
@@ -63,7 +63,7 @@ export function createTasksModule(dependencies: TasksModuleDependencies): Xiaoba
         async install(context) {
             if (!context.partition) { throw new Error('Tasks partition store is unavailable'); }
             const economy = context.useCapability(ECONOMY_READ_CAPABILITY);
-            const store = context.partition as ScopedChatStore<TaskDomainV1>;
+            const store = context.partition as PartitionStore<TaskDomainV1>;
             const tasks = createTasksService(
                 store,
                 context.files,
@@ -100,6 +100,5 @@ export function createTasksModule(dependencies: TasksModuleDependencies): Xiaoba
             services.delete(runtime);
             await dependencies.dispose?.(runtime);
         },
-        clearData: context => context.removePartition(TASKS_PARTITION.key),
     };
 }

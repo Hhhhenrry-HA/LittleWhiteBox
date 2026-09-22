@@ -7,6 +7,7 @@ import { parseHTML } from 'linkedom';
 import { parse, compileScript } from 'vue/compiler-sfc';
 import { build } from 'esbuild';
 import { readCoc7Sheet } from '../apps/dice/domain/coc7-sheet.ts';
+import { emptyCoc7Draft } from '../apps/dice/domain/coc7-creation.ts';
 
 // Mount the actual SFC. Only the bridge is replaced, returning the host's public {ok,result} envelope.
 test('Dice switches accept confirmed settings, keep newer preference pushes and unsubscribe on exit', async t => {
@@ -40,13 +41,27 @@ test('Dice switches accept confirmed settings, keep newer preference pushes and 
     });
     // eslint-disable-next-line no-unsanitized/method -- Compiled repository Vue component, not user content.
     const { default: DiceApp } = await import(`data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`);
-    let state = { chatIdentity: 'chat-a', actionChecksEnabled: false, actionCheckFrequency: 'standard', actionCheckRule: 'd20', encountersEnabled: false, coc7Sheet: { kind: 'empty' } };
+    let state = { chatIdentity: 'chat-a', actionChecksEnabled: false, actionCheckFrequency: 'standard', actionCheckRule: 'd20', encountersEnabled: false, coc7Sheet: { kind: 'empty' }, sheetStorage: 'ready' };
     const listeners = new Set();
     let calls = 0;
     let release;
     let failFrequency = false;
     let failSheet = false;
+    let unconfirmedSheet = false;
+    let failConfirmation = false;
+    let pendingSheet;
     const sheets = [];
+    const push = patch => {
+        state = { ...state, ...patch };
+        for (const listener of listeners) { listener({ type: 'dice/state', payload: { state: structuredClone(state) } }); }
+    };
+    const confirmPending = async () => {
+        // The store notification precedes the global file-ready notification.
+        if (pendingSheet !== undefined) { push({ coc7Sheet: readCoc7Sheet(pendingSheet) }); }
+        await Promise.resolve();
+        pendingSheet = undefined;
+        push({ sheetStorage: 'ready' });
+    };
     const bridge = {
         subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); },
         async request(type, payload) {
@@ -54,7 +69,17 @@ test('Dice switches accept confirmed settings, keep newer preference pushes and 
             if (type === 'dice/set-coc7-sheet') {
                 sheets.push(structuredClone(payload.sheet));
                 if (failSheet) { throw new Error('save failed'); }
+                if (unconfirmedSheet) {
+                    pendingSheet = structuredClone(payload.sheet);
+                    push({ sheetStorage: 'unconfirmed' });
+                    throw new Error('save acknowledgement unknown');
+                }
                 state = { ...state, coc7Sheet: readCoc7Sheet(payload.sheet) };
+                return { ok: true, result: state };
+            }
+            if (type === 'dice/confirm-sheet-save') {
+                if (failConfirmation) { throw new Error('confirmation failed'); }
+                await confirmPending();
                 return { ok: true, result: state };
             }
             if (type === 'dice/set-rule') {
@@ -137,18 +162,19 @@ test('Dice switches accept confirmed settings, keep newer preference pushes and 
     assert.equal(dom.document.querySelector('[role="dialog"]'), null);
     action('open').click(); await flush();
     assert.ok(dom.document.querySelector('[role="dialog"]'));
-    assert.equal(scores().length, 13, 'all capabilities exist before randomization');
-    assert.equal(action('save').disabled, true);
+    assert.equal(scores().length, 16, 'all capabilities exist before randomization');
+    assert.equal(action('save').disabled, false, 'minimum scores can be saved without randomization or edits');
     step('body', 'increase').click(); await flush();
     assert.equal(statValue('body'), 25, 'manual creation does not require randomization');
     assert.equal(sheets.length, 0);
-    assert.equal(action('save').disabled, true, 'unspent allocation cannot be submitted');
+    assert.equal(action('save').disabled, false, 'unspent allocation can be submitted');
     action('close').click(); await flush();
     assert.equal(dom.document.querySelector('[role="dialog"]'), null);
     action('open').click(); await flush();
     assert.equal(statValue('body'), 25, 'closing and reopening the dialog retains the local draft');
     action('cancel').click(); await flush();
-    assert.ok(scores().every(element => Number(element.querySelector('output').textContent) === 20));
+    const minimum = emptyCoc7Draft();
+    for (const [id, value] of Object.entries({ ...minimum.attributes, ...minimum.skills })) assert.equal(statValue(id), value);
     action('generate').click(); await flush();
     assert.equal(sheets.length, 0, 'random allocation is a draft until explicitly saved');
     assert.equal(action('save').disabled, false);
@@ -186,10 +212,15 @@ test('Dice switches accept confirmed settings, keep newer preference pushes and 
     action('generate').click(); await flush();
     action('cancel').click(); await flush();
     assert.deepEqual(state.coc7Sheet, confirmed, 'cancelling random allocation preserves saved values');
-    action('clear').click(); await flush();
-    action('confirm-clear').click(); await flush();
+    action('reset').click(); await flush();
+    action('confirm-reset').click(); await flush();
     assert.deepEqual(state.coc7Sheet, { kind: 'empty' });
-    assert.equal(scores().length, 13);
+    assert.equal(scores().length, 16);
+    action('save').click(); await flush();
+    assert.deepEqual(state.coc7Sheet, { kind: 'ready', sheet: minimum }, 'all-minimum sheet saves without a draft edit');
+    step('mind', 'increase').click(); await flush();
+    action('save').click(); await flush();
+    assert.equal(state.coc7Sheet.sheet.attributes.mind, 25, 'partial allocation saves with unspent points in both pools');
     action('close').click(); await flush();
     rules()[0].click();
     await Promise.resolve(); await nextTick();
@@ -206,13 +237,84 @@ test('Dice switches accept confirmed settings, keep newer preference pushes and 
     action('cancel').click(); await flush();
     assert.deepEqual(state.coc7Sheet, { kind: 'invalid' });
     failSheet = true;
-    action('clear').click(); await flush();
-    action('confirm-clear').click(); await flush();
+    action('reset').click(); await flush();
+    action('confirm-reset').click(); await flush();
     assert.deepEqual(state.coc7Sheet, { kind: 'invalid' });
     assert.ok(dom.document.querySelector('[role="alert"]'));
     failSheet = false;
-    action('confirm-clear').click(); await flush();
+    action('confirm-reset').click(); await flush();
     assert.deepEqual(state.coc7Sheet, { kind: 'empty' });
+
+    const noFailure = () => {
+        assert.ok(!dom.document.querySelector('.coc-footer [role="alert"]'));
+        assert.ok(!dom.document.querySelector('.dice-recovery'), 'the parent error also clears');
+    };
+    for (const scenario of ['minimum', 'edited', 'reset-ready', 'reset-invalid', 'external-confirmation']) {
+        await t.test(`uncertain ${scenario} submission finishes when its saved data is confirmed`, async () => {
+            push({ actionChecksEnabled: true, actionCheckRule: 'coc7', sheetStorage: 'ready',
+                coc7Sheet: scenario === 'reset-ready' ? readCoc7Sheet(minimum) : { kind: scenario === 'reset-invalid' ? 'invalid' : 'empty' } });
+            await flush();
+            action('open').click(); await flush();
+            const resetting = scenario.startsWith('reset-');
+            if (scenario !== 'minimum') { step('body', 'increase').click(); await flush(); }
+            if (resetting) { action('reset').click(); await flush(); }
+            unconfirmedSheet = true;
+            action(resetting ? 'confirm-reset' : 'save').click(); await flush();
+            const submitted = structuredClone(pendingSheet);
+            const count = sheets.length;
+            assert.ok(action('check-save'));
+            assert.ok(dom.document.querySelector('.coc-footer [role="alert"]'));
+            failConfirmation = true;
+            action('check-save').click(); await flush();
+            assert.ok(action('check-save'), 'failed checks remain recoverable');
+            assert.ok(dom.document.querySelector('.coc-footer [role="alert"]'));
+            assert.equal(statValue('body'), scenario === 'minimum' ? 20 : 25, 'failure keeps the draft');
+            failConfirmation = false;
+            unconfirmedSheet = false;
+            if (scenario === 'external-confirmation') { await confirmPending(); }
+            else { action('check-save').click(); }
+            await flush();
+            assert.deepEqual(state.coc7Sheet, readCoc7Sheet(submitted));
+            assert.equal(sheets.length, count, 'confirmation does not submit or charge again');
+            assert.ok(!action('check-save'));
+            assert.ok(!action('cancel'), 'the confirmed draft is no longer unsaved');
+            assert.ok(!action('confirm-reset'), 'a confirmed reset does not ask for payment again');
+            assert.equal(action('save').disabled, !resetting);
+            assert.equal(statValue('body'), resetting || scenario === 'minimum' ? 20 : 25);
+            noFailure();
+            action('close').click(); await flush();
+        });
+    }
+    await t.test('confirming another operation preserves an unsubmitted draft', async () => {
+        push({ coc7Sheet: readCoc7Sheet(minimum), sheetStorage: 'ready' }); await flush();
+        action('open').click(); await flush();
+        step('body', 'increase').click(); await flush();
+        push({ sheetStorage: 'unconfirmed' }); await flush();
+        action('check-save').click(); await flush();
+        assert.equal(statValue('body'), 25);
+        assert.ok(action('cancel'));
+        assert.equal(action('save').disabled, false);
+        assert.deepEqual(state.coc7Sheet, readCoc7Sheet(minimum));
+        noFailure();
+        action('cancel').click(); await flush();
+    });
+    await t.test('a different confirmed sheet does not discard the failed submission', async () => {
+        step('body', 'increase').click(); await flush();
+        unconfirmedSheet = true;
+        action('save').click(); await flush();
+        pendingSheet = { ...minimum, attributes: { ...minimum.attributes, mind: 30 } };
+        unconfirmedSheet = false;
+        action('check-save').click(); await flush();
+        assert.equal(state.coc7Sheet.sheet.attributes.mind, 30);
+        assert.equal(statValue('body'), 25);
+        assert.equal(statValue('mind'), 20);
+        assert.ok(action('cancel'));
+        assert.equal(action('save').disabled, false);
+        assert.ok(dom.document.querySelector('.coc-footer [role="alert"]'));
+        action('save').click(); await flush();
+        assert.equal(state.coc7Sheet.sheet.attributes.body, 25);
+        noFailure();
+    });
     app.unmount();
     assert.equal(listeners.size, 0);
 });

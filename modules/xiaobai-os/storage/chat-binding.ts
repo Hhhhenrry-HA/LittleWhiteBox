@@ -8,6 +8,7 @@ import type {
     XiaobaiOsStoragePort,
 } from '../kernel/contracts.js';
 import { cloneJsonValue, sidecarRevision } from '../kernel/envelope.js';
+import { createStorageId } from '../kernel/identity.js';
 import {
     readXiaobaiOsReference,
     type ChatMetadataAdapter,
@@ -30,9 +31,11 @@ export interface ChatBindingManagerOptions {
     createId?: () => string;
     prepareClonedPartitions?: (capture: ChatMetadataCapture, source: XiaobaiOsChatBindingV1, partitions: Record<string, unknown>, ids: { source: string; target: string }) => void | Promise<void>;
     cleanupAttachments?: (osId: string) => Promise<void>;
+    prepareInitialPartitions?: (capture: CapturedChatBinding) => Promise<Record<string, unknown>>;
 }
 
 export interface ChatBindingManager {
+    ensureCurrent(): Promise<ChatBindingResolution>;
     resolveCurrent(): Promise<ChatBindingResolution>;
     retryPendingCurrent(): Promise<ChatBindingResolution>;
     handleChatDeleted(chatId: string, ownerLocator?: string): Promise<'deleted' | 'retained'>;
@@ -49,13 +52,6 @@ interface PendingNewSidecar {
 
 function failure(code: string, message: string, retryable: boolean): KernelWriteFailure {
     return { code, message, retryable };
-}
-
-function randomId(): string {
-    if (typeof globalThis.crypto?.randomUUID === 'function') {
-        return globalThis.crypto.randomUUID().replace(/[^A-Za-z0-9_-]/g, '_');
-    }
-    return `${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
 }
 
 function captureForReference(capture: ChatMetadataCapture): CapturedChatBinding {
@@ -76,7 +72,7 @@ function expectedRevision(envelope: XiaobaiOsSidecarV1): SidecarRevision {
 
 export function createChatBindingManager(options: ChatBindingManagerOptions): ChatBindingManager {
     const { metadata, references, storage, index } = options;
-    const createId = options.createId ?? randomId;
+    const createId = options.createId ?? createStorageId;
     const pending = new Map<string, PendingNewSidecar>();
 
     function rememberBestEffort(osId: string, binding: XiaobaiOsChatBindingV1): void {
@@ -388,5 +384,17 @@ export function createChatBindingManager(options: ChatBindingManagerOptions): Ch
         await index.updateOwner(oldOwnerLocator, newOwnerLocator);
     }
 
-    return Object.freeze({ resolveCurrent, retryPendingCurrent, handleChatDeleted, handleCharacterRenamed });
+    async function ensureCurrent(): Promise<ChatBindingResolution> {
+        const capture = metadata.capture();
+        const resolved = await resolveCurrent();
+        if (resolved.status !== 'empty' || !capture) { return resolved; }
+        const referenceCapture = captureForReference(capture);
+        const partitions = await options.prepareInitialPartitions?.(referenceCapture) ?? {};
+        if (!await references.isCurrent(referenceCapture)) {
+            return { status: 'failed', error: failure('chat_changed', 'Chat changed while preparing its reference', true) };
+        }
+        return await completeNewSidecar(capture, { formatVersion: 1, osId: createId(), binding: { ...capture.binding },
+            revision: 0, commitId: createId(), partitions });
+    }
+    return Object.freeze({ resolveCurrent, ensureCurrent, retryPendingCurrent, handleChatDeleted, handleCharacterRenamed });
 }

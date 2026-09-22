@@ -80,6 +80,47 @@ test('host wait updates in place and its paused request has an actionable, stabl
     assert.equal(message.extra.xiaobaiOsDice, undefined);
 });
 
+test('continuation status ticks through preparation and response, survives whitespace, and ends on actual prose', t => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const candidate = prepareActionCheck({ body: '<xb_action_check>{"action":"Climb","stat":"Agility","difficulty":"hard"}</xb_action_check>',
+        generatedFrom: 0, id: 'progress', random: () => .3 });
+    const message = { mes: candidate.body, extra: { xiaobaiOsDice: candidate.records } };
+    source.chat = [message];
+    const active = { target: { message, swipe: 0, index: 0, source }, phase: { kind: 'continuing', candidate },
+        continuation: { stage: 'preparing', elapsedSeconds: 0 } };
+    let reads = 0;
+    const { content, display, render } = setup(t, { view: () => { reads++; return active; }, cancel() {}, retry: async () => {} });
+    const card = content.querySelector('[data-dice-record="progress"]');
+    const status = card.querySelector('[role="status"]');
+    for (const stage of ['preparing', 'requesting', 'responding']) {
+        active.continuation = { stage, elapsedSeconds: 0 };
+        display.refresh(); render();
+        assert.equal(status.hidden, false);
+        assert.equal(status.dataset.diceState, stage);
+        active.continuation.elapsedSeconds = 4;
+        t.mock.timers.tick(1000); render();
+        assert.equal(status.dataset.elapsedSeconds, '4', 'time advances without a message mutation');
+        assert.equal(card.querySelector('[role="status"]'), status);
+    }
+    message.mes = '\n' + candidate.body + '  \n';
+    display.refresh(); render();
+    assert.equal(status.hidden, false, 'native whitespace changes are not continuation output');
+    message.mes += 'The character reaches the top.';
+    display.refresh(); render();
+    assert.equal(status.hidden, true);
+    assert.equal(status.dataset.diceState, undefined);
+    assert.equal(status.dataset.elapsedSeconds, undefined);
+    const finishedReads = reads;
+    t.mock.timers.tick(5000); render();
+    assert.equal(reads, finishedReads, 'visible prose ends the status timer');
+    message.mes = candidate.body;
+    display.refresh(); render();
+    display.stop();
+    const stoppedReads = reads;
+    t.mock.timers.tick(5000); render();
+    assert.equal(reads, stoppedReads, 'unmount clears the active timer');
+});
+
 test('an unrolled restored request offers manual recovery without triggering it on render', async t => {
     source.chat = [{ mes: 'Unrolled request', extra: {} }];
     const retries = [];

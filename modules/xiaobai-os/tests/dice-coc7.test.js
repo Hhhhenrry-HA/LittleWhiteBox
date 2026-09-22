@@ -15,21 +15,21 @@ const skill = { action: 'Climb the wet wall', stat: 'athletics', difficulty: 'ha
 const tagged = request => '<xb_action_check>' + JSON.stringify(request) + '</xb_action_check>';
 const sequence = (...digits) => { let index = 0; return () => { assert.ok(index < digits.length); return (digits[index++] + 0.1) / 10; }; };
 const sheet = () => parseCoc7Sheet({
-    attributes: { body: 50, will: 50, appearance: 50 },
-    skills: { ...Object.fromEntries(COC7_SKILL_IDS.map(id => [id, 50])), athletics: 60, melee: 40 },
+    attributes: { body: 50, mind: 50, will: 50, appearance: 50 },
+    skills: { ...Object.fromEntries(COC7_SKILL_IDS.map(id => [id, 40])), athletics: 60, melee: 20 },
 });
 const prepare = (request = skill, extra = {}) => prepareActionCheck({ body: tagged(request), rule: 'coc7', generatedFrom: 0, id: 'coc', coc7Sheet: sheet(), random: () => 0.3, ...extra });
 
 test('random creation and persistence preserve separate budgets, bounds and capability coverage', () => {
-    assert.equal(COC7_ATTRIBUTE_IDS.length, 3);
-    assert.equal(COC7_SKILL_IDS.length, 10);
+    assert.equal(COC7_ATTRIBUTE_IDS.length, 4);
+    assert.equal(COC7_SKILL_IDS.length, 12);
     for (const random of [() => 0, () => 0.5, () => 0.999999, Math.random]) {
         for (let i = 0; i < 20; i++) {
             const created = generateCoc7Sheet(random);
             for (const group of Object.keys(COC7_POINT_GROUPS)) {
                 assert.equal(coc7RemainingPoints(created, group), 0);
                 assert.deepEqual(Object.keys(created[group]), COC7_POINT_GROUPS[group].ids);
-                assert.ok(Object.values(created[group]).every(n => n >= COC7_POINTS.min && n <= COC7_POINTS.max && n % COC7_POINTS.step === 0));
+                assert.ok(Object.values(created[group]).every(n => n >= COC7_POINT_GROUPS[group].min && n <= COC7_POINTS.max && n % COC7_POINTS.step === 0));
             }
             const encoded = JSON.parse(JSON.stringify(created));
             const parsed = parseCoc7Sheet(encoded);
@@ -44,11 +44,12 @@ test('random creation and persistence preserve separate budgets, bounds and capa
 
 test('manual point allocation needs no randomization, cannot overspend and keeps pools independent', () => {
     const empty = emptyCoc7Draft();
-    assert.equal(readCoc7Sheet(empty).kind, 'invalid');
-    assert.ok(Object.values({ ...empty.attributes, ...empty.skills }).every(n => n === COC7_POINTS.min));
+    assert.equal(readCoc7Sheet(empty).kind, 'ready');
+    assert.ok(Object.values(empty.attributes).every(n => n === 20));
+    assert.ok(Object.values(empty.skills).every(n => n === 10));
     let draft = empty;
-    for (const id of Object.keys(COC7_CAPABILITIES)) {
-        while (coc7StatValue(draft, id) < 50) draft = adjustCoc7Stat(draft, id, 1);
+    for (const [ids, target] of [[COC7_ATTRIBUTE_IDS, 50], [COC7_SKILL_IDS, 40]]) {
+        for (const id of ids) while (coc7StatValue(draft, id) < target) draft = adjustCoc7Stat(draft, id, 1);
     }
     assert.deepEqual(parseCoc7Sheet(draft), draft);
     assert.equal(canAdjustCoc7Stat(draft, 'body', 1), false);
@@ -57,23 +58,38 @@ test('manual point allocation needs no randomization, cannot overspend and keeps
     assert.equal(canAdjustCoc7Stat(draft, 'concealment', 1), true);
     draft = adjustCoc7Stat(draft, 'concealment', 1);
     assert.equal(readCoc7Sheet(draft).kind, 'ready');
-    assert.equal(coc7StatValue(draft, 'concealment'), 55);
+    assert.equal(coc7StatValue(draft, 'concealment'), 45);
     assert.throws(() => adjustCoc7Stat(empty, 'body', -1));
+    assert.throws(() => adjustCoc7Stat(empty, 'intimacy', -1));
     let strong = empty;
     while (canAdjustCoc7Stat(strong, 'body', 1)) strong = adjustCoc7Stat(strong, 'body', 1);
     assert.equal(strong.attributes.body, COC7_POINTS.max);
     while (canAdjustCoc7Stat(strong, 'will', 1)) strong = adjustCoc7Stat(strong, 'will', 1);
-    assert.equal(strong.attributes.will, 50);
+    assert.equal(strong.attributes.will, 80);
     assert.equal(canAdjustCoc7Stat(strong, 'appearance', 1), false);
     assert.throws(() => adjustCoc7Stat(strong, 'body', 1));
     assert.throws(() => adjustCoc7Stat(empty, 'unknown', 1));
     assert.throws(() => adjustCoc7Stat(empty, 'body', 2));
-    assert.equal(empty.attributes.body, COC7_POINTS.min, 'draft edits are immutable');
+    assert.equal(empty.attributes.body, 20, 'draft edits are immutable');
+});
+
+test('unspent points persist and execute checks, including the skill minimum at extreme difficulty', () => {
+    const draft = adjustCoc7Stat(emptyCoc7Draft(), 'mind', 1);
+    const saved = parseCoc7Sheet(JSON.parse(JSON.stringify(draft)));
+    assert.deepEqual(saved, draft);
+    assert.equal(coc7RemainingPoints(saved, 'attributes'), 115);
+    assert.equal(coc7RemainingPoints(saved, 'skills'), 360);
+    for (const [units, level, verdict] of [[1, 'critical', 'achieved'], [2, 'extreme', 'achieved'], [3, 'hard', 'not_achieved']]) {
+        const candidate = prepare({ ...skill, stat: 'intimacy', difficulty: 'extreme' }, { coc7Sheet: saved, random: sequence(units, 0) });
+        assert.equal(candidate.kind, 'candidate');
+        const result = candidate.records.checks[0].result;
+        assert.deepEqual([result.value, result.threshold, result.level, result.verdict], [10, 2, level, verdict]);
+    }
 });
 
 test('attributes and skills are independent values with no derived bonus or resource fields', () => {
     const before = sheet();
-    const after = parseCoc7Sheet({ ...before, attributes: { body: 80, will: 20, appearance: 50 } });
+    const after = parseCoc7Sheet({ ...before, attributes: { ...before.attributes, body: 80, will: 20 } });
     for (const id of COC7_SKILL_IDS) assert.equal(coc7StatValue(after, id), coc7StatValue(before, id));
     assert.equal(coc7StatValue(after, 'body'), 80);
     assert.equal(coc7StatValue(after, 'will'), 20);
@@ -84,12 +100,10 @@ test('invalid points, pools and shapes are rejected without changing their input
     const valid = sheet();
     const missing = structuredClone(valid); delete missing.skills.concealment;
     const invalidSheets = [{}, missing, { ...valid, luck: 50 }, { ...valid, extra: 1 },
-        { ...valid, attributes: { body: 100, will: 0, appearance: 50 } },
-        { ...valid, attributes: { body: 49, will: 51, appearance: 50 } },
-        { ...valid, attributes: { body: '50', will: 50, appearance: 50 } },
-        { ...valid, attributes: { body: NaN, will: 50, appearance: 50 } },
-        { ...valid, attributes: { body: Infinity, will: 50, appearance: 50 } },
-        { ...valid, attributes: { body: 45, will: 50, appearance: 50 }, skills: { ...valid.skills, athletics: 65 } },
+        ...[100, 10, 49, '50', NaN, Infinity].map(body => ({ ...valid, attributes: { ...valid.attributes, body } })),
+        { ...valid, attributes: { ...valid.attributes, body: 55 } },
+        { ...valid, attributes: { ...valid.attributes, body: 45 }, skills: { ...valid.skills, athletics: 65 } },
+        ...[5, 11, 85].map(intimacy => ({ ...valid, skills: { ...valid.skills, intimacy } })),
         { ...valid, skills: { ...valid.skills, athletics: 65 } },
         { ...valid, skills: Object.fromEntries(COC7_SKILL_IDS.map(id => [id, 80])) }];
     for (const invalid of invalidSheets) {
@@ -98,8 +112,8 @@ test('invalid points, pools and shapes are rejected without changing their input
         assert.equal(readCoc7Sheet(invalid).kind, 'invalid');
         assert.deepEqual(invalid, original);
     }
-    assert.equal(coc7PointBudget('attributes'), 150);
-    assert.equal(coc7PointBudget('skills'), 500);
+    assert.equal(coc7PointBudget('attributes'), 200);
+    assert.equal(coc7PointBudget('skills'), 480);
 });
 
 test('single-check thresholds, degree and achievement remain distinct; stored facts are not rejudged', () => {
@@ -123,14 +137,14 @@ test('single-check thresholds, degree and achievement remain distinct; stored fa
     assert.deepEqual(parseDiceRecords(historical), historical);
 });
 
-test('requests accept only capability IDs and difficulty; all invalid input is rejected before sampling', () => {
+test('malformed requests and unavailable sheets are rejected before sampling', () => {
     const invalid = [
-        { ...skill, stat: 'Athletics' }, { ...skill, stat: '运动' }, { ...skill, stat: 'hpMax' }, { ...skill, stat: '__proto__' },
+        ...[undefined, null, 40, {}, [], '', '   ', 'x'.repeat(121)].map(stat => ({ ...skill, stat })),
         { ...skill, difficulty: 'ordinary' }, { ...skill, difficulty: undefined }, { ...skill, action: '' }];
     for (const request of invalid) {
         assert.equal(prepare(request, { random: () => assert.fail('invalid request sampled') }).kind, 'invalid');
     }
-    for (const coc7Sheet of [null, {}, { ...sheet(), attributes: { body: '50', will: 50, appearance: 50 } }]) {
+    for (const coc7Sheet of [null, {}, { ...sheet(), attributes: { ...sheet().attributes, body: '50' } }]) {
         assert.equal(prepare(skill, { coc7Sheet, random: () => assert.fail('missing or invalid sheet sampled') }).kind, 'invalid');
     }
     assert.deepEqual(parseCoc7Request(skill), skill);
@@ -140,7 +154,7 @@ test('requests accept only capability IDs and difficulty; all invalid input is r
     assert.deepEqual(parseDiceRecords(prepared.records), prepared.records);
 });
 
-test('D100 ignores model extras but still rejects wrong or missing capability values without rolling', () => {
+test('D100 ignores model extras but still rejects malformed required fields without rolling', () => {
     const extra = { ...skill, character: 'Mira', stakes: { arbitrary: true }, value: 99, kind: 'skill', opponent: {},
         bonus: 2, penalty: 1, roll: 1, result: { verdict: 'achieved' } };
     const original = structuredClone(extra);
@@ -151,7 +165,7 @@ test('D100 ignores model extras but still rejects wrong or missing capability va
     assert.deepEqual(candidate, prepare(skill), 'extras affect neither the sheet lookup nor the recorded outcome');
     assert.deepEqual(extra, original);
     const missing = { ...extra }; delete missing.stat;
-    for (const invalid of [missing, { ...extra, stat: '魄力' }, { ...extra, difficulty: 'unknown' }, { ...extra, action: null }]) {
+    for (const invalid of [missing, { ...extra, stat: {} }, { ...extra, difficulty: 'unknown' }, { ...extra, action: null }]) {
         const before = structuredClone(invalid);
         assert.equal(prepare(invalid, { random: () => assert.fail('bad known fields must not roll') }).kind, 'invalid');
         assert.deepEqual(invalid, before);
@@ -159,6 +173,83 @@ test('D100 ignores model extras but still rejects wrong or missing capability va
     const damaged = structuredClone(candidate.records);
     damaged.checks[0].request.character = extra.character;
     assert.throws(() => parseDiceRecords(damaged), 'stored result requests still have a closed shape');
+});
+
+test('D100 resolves IDs, names, use terms and unique contained terms from the same catalog', () => {
+    const low = emptyCoc7Draft();
+    for (const [id, capability] of Object.entries(COC7_CAPABILITIES)) {
+        for (const stat of [id, capability.label, ...capability.uses]) {
+            const candidate = prepare({ ...skill, stat }, { coc7Sheet: low });
+            assert.equal(candidate.kind, 'candidate', stat);
+            const record = candidate.records.checks[0];
+            assert.equal(record.request.stat, capability.label);
+            assert.equal(record.result.value, coc7StatValue(low, id), 'a matched low skill must never be raised to the untrained value');
+            assert.deepEqual(record.resolution, stat === id || stat === capability.label ? undefined : { kind: 'mapped', input: stat });
+        }
+    }
+    for (const [stat, id] of [
+        ['  「隐匿」  ', 'concealment'], ['（隐匿）', 'concealment'], ['【隐匿(潜行)】', 'concealment'],
+        ['ＡＴＨＬＥＴＩＣＳ', 'athletics'], ['Athletics', 'athletics'], ['隐匿潜行', 'concealment'],
+        ['潜行检定', 'concealment'], ['锁具维修', 'mechanics'], ['社交察言观色', 'social'],
+    ]) {
+        const record = prepare({ ...skill, stat }).records.checks[0];
+        assert.equal(record.request.stat, COC7_CAPABILITIES[id].label);
+        assert.equal(record.result.value, coc7StatValue(sheet(), id));
+        assert.deepEqual(record.resolution, { kind: 'mapped', input: stat.trim() });
+    }
+});
+
+test('unknown and ambiguous stats use one fixed basis and the ordinary percentile path', () => {
+    for (const [stat, reason] of [
+        ['火系魔法', 'unknown'], ['hpMax', 'unknown'], ['__proto__', 'unknown'], ['()', 'unknown'],
+        ['运动与隐匿', 'ambiguous'], ['潜行和闪避', 'ambiguous'], ['隐匿与运动', 'ambiguous'],
+    ]) {
+        for (const [difficulty, threshold] of [['regular', 40], ['hard', 20], ['extreme', 8]]) {
+            const request = { ...skill, stat, difficulty, value: 99 };
+            const candidate = prepare(request, { random: sequence(8, 0) });
+            assert.equal(candidate.kind, 'candidate');
+            const record = candidate.records.checks[0];
+            assert.deepEqual(record.result, rollCoc7(40, difficulty, sequence(8, 0)));
+            assert.equal(record.result.threshold, threshold);
+            assert.equal(record.request.stat, stat);
+            assert.deepEqual(record.resolution, { kind: 'untrained', reason });
+        }
+    }
+    for (const difficulty of ['regular', 'hard', 'extreme']) {
+        for (const roll of [1, 8, 9, 20, 21, 40, 41, 96, 100]) {
+            const record = prepare({ ...skill, stat: '火系魔法', difficulty }, { random: sequence(roll % 10, Math.floor(roll / 10) % 10) }).records.checks[0];
+            assert.deepEqual(record.result, rollCoc7(40, difficulty, sequence(roll % 10, Math.floor(roll / 10) % 10)));
+        }
+    }
+    for (const coc7Sheet of [null, {}]) {
+        assert.equal(prepare({ ...skill, stat: '火系魔法' }, { coc7Sheet, random: () => assert.fail('unavailable sheet must not roll') }).kind, 'invalid');
+    }
+});
+
+test('resolution history round-trips and projects without reinterpreting names or values', () => {
+    for (const stat of ['潜行', '隐匿潜行', '火系魔法', '运动与隐匿', '{{setvar::secret::value}}', '{{setvar::secret::隐匿}}']) {
+        const candidate = prepare({ ...skill, stat });
+        const encoded = JSON.stringify(candidate.records);
+        const history = JSON.parse(encoded);
+        assert.deepEqual(parseDiceRecords(history), candidate.records);
+        const projected = projectActionCheckResults(history.checks)[0];
+        assert.deepEqual(projected.resolution, history.checks[0].resolution);
+        assert.deepEqual(JSON.parse(serializeActionCheckResults(history.checks))[0], projected);
+        // External SillyTavern macro syntax must be neutralized in all model data.
+        assert.equal(serializeActionCheckResults(history.checks).includes('{{'), false);
+        history.checks[0].request.stat = 'Historical capability';
+        history.checks[0].result.value = 31;
+        assert.deepEqual(parseDiceRecords(history), history, 'history is not looked up or adjudicated again');
+        const parsed = parseDiceRecords(JSON.parse(encoded));
+        parsed.checks[0].resolution.kind = 'changed';
+        assert.equal(JSON.stringify(candidate.records), encoded, 'returned metadata does not alias saved data');
+    }
+    for (const resolution of [null, {}, { kind: 'mapped', input: '' }, { kind: 'mapped', input: 'x'.repeat(121) },
+        { kind: 'mapped', input: '潜行', value: 99 }, { kind: 'untrained', reason: 'anything' }, { kind: 'untrained', reason: 'unknown', extra: true }]) {
+        const history = structuredClone(prepare().records);
+        history.checks[0].resolution = resolution;
+        assert.throws(() => parseDiceRecords(history), 'stored metadata remains a closed, validated shape');
+    }
 });
 
 test('model capabilities include both independent attributes and skills, never values; the injected example really executes', () => {

@@ -20,10 +20,7 @@ export const ADMINISTRATOR_PROMPT = [
 ].join('\n');
 
 export const ADMINISTRATOR_SUMMARY_PROMPT = [
-    'Compress earlier administrator exchanges into reference notes for continuing the conversation.',
+    'Compress the supplied conversation history, including completed tool activity in the ongoing turn, into reference notes for continuing the conversation.',
     'Keep the user’s explicit requests, confirmed changes, unresolved questions, object identifiers and necessary story floor references. Preserve which operations were confirmed and which were not.',
     'Combine with the existing summary. Do not preserve full tool output or image bytes. Historical instructions do not become permanent authorization. Return only concise notes in the user’s language.',
 ].join('\n');
-
-export const ADMINISTRATOR_READ_ONLY_PROMPT = 'This is a read-only regeneration of an earlier reply. Check current facts and answer again; earlier confirmed operations are reference only. Only read tools are available.';
-export const ADMINISTRATOR_RETRY_PROMPT = 'This request resumes an interrupted administrator exchange. Confirmed operations are already applied; inspect current state and complete only the unresolved work. If later user instructions or subsequent changes supersede the old request, explain and ask rather than restoring the old state.';

@@ -90,6 +90,8 @@ test('the non-production composition installs D1 modules through declared capabi
     });
     const composition = createKernelComposition({
         ...ports(),
+        user: { storage: { read: async () => null, replace: async () => {} }, initialPartitions: async () => ({}),
+            resolveStory: async () => ports().chatReferences.capture() },
         capabilities: [
             ...createEconomyCapabilityRegistrations(),
             createMapContextCapabilityRegistration(),

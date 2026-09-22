@@ -9,12 +9,12 @@ export interface DiceSettings {
     actionCheckFrequency: ActionCheckFrequency;
     actionCheckRule: ActionCheckRule;
     encountersEnabled: boolean;
-    /** Persisted input is preserved, even when invalid; Dice validates it before use. */
-    coc7Sheet: unknown;
 }
 
 export interface DiceClientState extends Omit<DiceSettings, 'coc7Sheet'> {
     chatIdentity: string;
     coc7Sheet: Coc7SheetState;
+    sheetStorage: XiaobaiOsFileState;
 }
 import type { Coc7SheetState } from './domain/coc7-sheet.js';
+import type { XiaobaiOsFileState } from '../../kernel/contracts.js';

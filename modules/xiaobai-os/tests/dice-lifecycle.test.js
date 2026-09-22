@@ -5,6 +5,9 @@ import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 import { createKernelComposition } from '../host/kernel-composition.ts';
 import { createSettingsRepository } from '../host/settings-repository.ts';
+import { createEconomyCapabilityRegistrations, ECONOMY_PARTITION } from '../capabilities/economy/index.ts';
+import { DICE_PARTITION } from '../apps/dice/partition.ts';
+import { userEconomyHarness } from './user-economy-harness.js';
 
 // Keep the production module, controller and message cleanup. Replace native I/O and inactive UI workers.
 const compiled = await build({
@@ -56,8 +59,11 @@ for (const startsWithChat of [false, true]) {
         await settings.prepare();
         await settings.setDiceFeature('actionChecksEnabled', true);
         await settings.setDiceFeature('encountersEnabled', true);
+        let userDocument = null;
         const kernel = createKernelComposition({
-            modules: [createProductionDiceModule(settings, async () => ({world:false,summary:false}), () => false)], capabilities: [],
+            modules: [createProductionDiceModule(settings, async () => ({world:false,summary:false}), () => false)], capabilities: createEconomyCapabilityRegistrations(),
+            user: { storage: { read: async () => userDocument, replace: async (_name, value) => { userDocument = value; } },
+                initialPartitions: async () => ({ economy: ECONOMY_PARTITION.createInitial(), dice: DICE_PARTITION.createInitial() }), resolveStory: async () => capture },
             storage: {
                 async read() { throw new Error('The binding lifecycle already loaded this file'); },
                 async replace() { writes++; throw new Error('Lifecycle must not write preferences'); },
@@ -110,7 +116,7 @@ for (const startsWithChat of [false, true]) {
     });
 }
 
-test('cleanup disables before removing message data and saves once before removing the partition after same-chat confirmation', async () => {
+test('chat cleanup disables Dice and saves its message cleanup without deleting the paid global sheet', async () => {
     for (const mode of ['confirmed', 'unconfirmed', 'switched', 'busy']) {
         const userMessage = { is_user: true, mes: 'User prose', extra: { foreign: 1, xiaobaiOsDice: { schemaVersion: 1, encounter: { outcome: 'medium' } } } };
         const message = { mes: 'Narrative', extra: { xiaobaiOsDice: { checks: [] }, other: 'retained' },
@@ -132,7 +138,8 @@ test('cleanup disables before removing message data and saves once before removi
         const saving = Promise.withResolvers();
         const confirmation = Promise.withResolvers();
         const module = createProductionDiceModule(settings, async () => ({world:false,summary:false}), () => false);
-        await module.install({ execution: { addCleanup() {} } });
+        const wallet = await userEconomyHarness();
+        await module.install({ execution: { addCleanup() {} }, partition: wallet.store(DICE_PARTITION), files: wallet.transactions });
         host.save = async guard => {
             saving.resolve();
             writes++;
@@ -145,7 +152,7 @@ test('cleanup disables before removing message data and saves once before removi
             return confirmation.promise;
         };
         const operation = module.clearData({ async removePartition(key) {
-            assert.equal(key, 'dice'); assert.equal(writes, 1); assert.equal(host.source.key, 'chat-a'); removed = true;
+            removed = true; assert.fail(`Chat cleanup must not remove user partition ${key}`);
         } });
         const result = operation.then(() => null, error => error);
         if (mode !== 'busy') {
@@ -157,7 +164,7 @@ test('cleanup disables before removing message data and saves once before removi
         }
         const error = await result;
         assert.equal(writes, mode === 'busy' ? 0 : 1);
-        assert.equal(removed, mode === 'confirmed');
+        assert.equal(removed, false);
         assert.equal(Boolean(error), mode !== 'confirmed');
         assert.equal(message.mes, 'Narrative');
         assert.equal(userMessage.mes, 'User prose');

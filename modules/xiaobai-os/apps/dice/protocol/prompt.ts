@@ -22,7 +22,8 @@ const D20_DIFFICULTY_GUIDANCE: Record<ActionCheckDifficulty, string> = {
 };
 
 export function projectActionCheckResults(records: readonly ActionCheckRecord[]) {
-    return records.map(record => record.rule === 'coc7' ? { rule: record.rule, ...record.request, result: record.result }
+    return records.map(record => record.rule === 'coc7' ? { rule: record.rule, ...record.request, result: record.result,
+        ...(record.resolution ? { resolution: record.resolution } : {}) }
         : { rule: record.rule, ...record.request, roll: record.roll, dc: record.dc, outcome: record.outcome });
 }
 

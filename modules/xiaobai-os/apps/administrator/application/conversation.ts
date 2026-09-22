@@ -2,10 +2,10 @@ import { administratorPage } from './projection.js';
 import { createAdministratorData, invalidateSummary } from '../domain/data.js';
 import type { AdministratorRepository } from '../storage/repository.js';
 import { administratorAttachments, type AdministratorImages } from '../storage/images.js';
-import type { AdministratorData, AdministratorImage } from '../domain/types.js';
+import type { AdministratorData, AdministratorImage, AdministratorTurn } from '../domain/types.js';
 
 type Cleanup = { osId: string; images: AdministratorImage[] | 'all' };
-type PendingSave = { candidate: AdministratorData; revision: number; clear: boolean; cleanup: Cleanup | null; osId: string | null };
+type PendingSave = { candidate: AdministratorData; revision: number; clear: boolean; cleanup: Cleanup | null; osId: string | null; guard(): boolean };
 const matchesCandidate = (data: AdministratorData, pending: PendingSave) => data.revision === pending.revision + 1
     && JSON.stringify(data.turns) === JSON.stringify(pending.candidate.turns)
     && JSON.stringify(data.summary) === JSON.stringify(pending.candidate.summary);
@@ -43,10 +43,10 @@ export function createAdministratorConversation(repository: AdministratorReposit
         const owner = session, current = capture();
         if (owner.unsaved) { throw new Error('administrator_save_pending'); }
         const osId = repository.osId();
-        const prepared: PendingSave = { candidate: structuredClone(candidate), revision: owner.data.revision, clear: !!options.clear, osId,
+        const prepared: PendingSave = { candidate: structuredClone(candidate), revision: owner.data.revision, clear: !!options.clear, osId, guard: () => current() && guard(),
             cleanup: options.cleanup && osId ? { osId, images: options.cleanup } : null };
         try {
-            const data = await repository.save(prepared.candidate, prepared.revision, () => current() && guard(), prepared.clear);
+            const data = await repository.save(prepared.candidate, prepared.revision, prepared.guard, prepared.clear);
             if (current()) { owner.data = data; owner.corrupted = false; owner.conflict = false; }
         } catch (error) {
             if (current()) { owner.unsaved = prepared; owner.conflict = (error as Error).message === 'administrator_history_conflict'; }
@@ -64,6 +64,19 @@ export function createAdministratorConversation(repository: AdministratorReposit
         unsaved: () => !!session.unsaved || !!session.cleanup || repository.pending(),
         page: (start?: number) => administratorPage(session.data, start),
         refresh, save,
+        async prepareTurn(turn: AdministratorTurn, guard: () => boolean) {
+            const candidate = structuredClone(session.data);
+            const index = candidate.turns.findIndex(item => item.id === turn.id);
+            if (index < 0) { candidate.turns.push(turn); }
+            else {
+                invalidateSummary(candidate, turn.id);
+                candidate.turns = [...candidate.turns.slice(0, index), turn];
+                if (JSON.stringify(candidate) === JSON.stringify(session.data)) { return; }
+            }
+            const retained = new Set(administratorAttachments(candidate).map(image => image.path));
+            const cleanup = administratorAttachments(session.data).filter(image => !retained.has(image.path));
+            await save(candidate, guard, { cleanup });
+        },
         async adopt() {
             const owner = session, current = capture();
             const abandoned = owner.unsaved;
@@ -104,7 +117,7 @@ export function createAdministratorConversation(repository: AdministratorReposit
                     owner.conflict = true;
                     throw new Error('administrator_history_conflict');
                 } else if (!readOnly) {
-                    const saved = await repository.save(pending.candidate, pending.revision, valid, pending.clear);
+                    const saved = await repository.save(pending.candidate, pending.revision, () => valid() && pending.guard(), pending.clear);
                     if (valid()) { owner.data = saved; owner.unsaved = null; owner.corrupted = false; }
                     owner.cleanup = pending.cleanup;
                 }
@@ -116,8 +129,10 @@ export function createAdministratorConversation(repository: AdministratorReposit
             if (!turn || !['user', 'assistant'].includes(role)) { throw new Error('administrator_message_missing'); }
             invalidateSummary(candidate, turnId);
             const removed = role === 'user' && turn.user?.image ? [turn.user.image] : [];
-            if (role === 'user') { turn.user = null; } else { turn.assistant = null; turn.operations = []; turn.status = 'finished'; turn.error = ''; }
-            if (!turn.user && turn.assistant === null && !turn.operations.length) { candidate.turns.splice(candidate.turns.indexOf(turn), 1); }
+            if (role === 'user') { turn.user = null; } else {
+                turn.assistant = null; delete turn.assistantPayload; turn.toolMessages = []; turn.operations = []; turn.status = 'finished'; turn.error = '';
+            }
+            if (!turn.user && turn.assistant === null && !turn.toolMessages.length && !turn.operations.length) { candidate.turns.splice(candidate.turns.indexOf(turn), 1); }
             await save(candidate, guard, { cleanup: removed });
         },
         async clear(guard: () => boolean) { await save(createAdministratorData(), guard, { clear: true, cleanup: 'all' }); },

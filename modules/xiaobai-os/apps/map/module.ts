@@ -1,5 +1,5 @@
 import type { AppInstallContext, XiaobaiOsAppModule } from '../../kernel/app-registry.js';
-import type { ScopedChatStore } from '../../kernel/contracts.js';
+import type { PartitionStore } from '../../kernel/contracts.js';
 import type { XiaobaiOsAppRuntime } from '../../types.js';
 import { AGENT_CAPABILITY, type AgentCapability } from '../../capabilities/agent/index.js';
 import { MANAGEMENT_CAPABILITY, type ManagementRegistry } from '../../capabilities/management/index.js';
@@ -39,7 +39,7 @@ export function createMapModule(dependencies: MapModuleDependencies): XiaobaiOsA
         install(context) {
             if (!context.partition) { throw new Error('Map partition store is unavailable'); }
             const map = createMapService(
-                context.partition as ScopedChatStore<MapDomainV1>,
+                context.partition as PartitionStore<MapDomainV1>,
                 context.files,
             );
             context.execution.addCleanup(map.dispose);

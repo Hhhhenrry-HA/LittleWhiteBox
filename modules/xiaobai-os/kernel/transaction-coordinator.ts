@@ -8,7 +8,7 @@ import type {
     PartitionSnapshot,
     PendingCommitRecoveryResult,
     PendingCommitRecoveryOptions,
-    ScopedChatStore,
+    PartitionStore,
     ScopedTransaction,
     ScopedTransactionResult,
     SidecarRevision,
@@ -22,11 +22,12 @@ import type {
 } from './contracts.js';
 import { cloneJsonValue, sameSidecarRevision, sidecarRevision } from './envelope.js';
 import {
-    createRegisteredPartitionInitial,
     parseRegisteredPartition,
     serializeRegisteredPartition,
     type XiaobaiOsPartitionRegistry,
 } from './partition-registry.js';
+import { preparePartitionCommand } from './partition-command.js';
+import { createStorageId } from './identity.js';
 
 export interface TransactionCapabilityBinder {
     bind<C>(
@@ -63,7 +64,7 @@ export interface TransactionCoordinator {
     createScopedStore<T>(
         registration: PartitionRegistration<T>,
         options?: ScopedStoreOptions,
-    ): ScopedChatStore<T>;
+    ): PartitionStore<T>;
     refresh(): Promise<void>;
     installResolvedEnvelope(envelope: XiaobaiOsSidecarV1 | null): Promise<void>;
     invalidateCurrent(): void;
@@ -94,14 +95,6 @@ class KernelOperationError extends Error {
         super(failure.message, options);
         this.name = 'KernelOperationError';
     }
-}
-
-function randomId(): string {
-    if (typeof globalThis.crypto?.randomUUID === 'function') {
-        return globalThis.crypto.randomUUID().replace(/[^A-Za-z0-9_-]/g, '_');
-    }
-    const random = Math.random().toString(36).slice(2);
-    return `${Date.now().toString(36)}_${random}`;
 }
 
 function writeFailure(code: string, message: string, retryable: boolean): KernelWriteFailure {
@@ -155,7 +148,7 @@ export function createTransactionCoordinator(options: TransactionCoordinatorOpti
     if (!storage || !partitions || !chatReferences) {
         throw new TypeError('transaction coordinator requires storage, partitions and chat references');
     }
-    const createId = options.createId ?? randomId;
+    const createId = options.createId ?? createStorageId;
     let queue: Promise<unknown> = Promise.resolve();
     const states = new Map<string, XiaobaiOsFileState>();
     const stateErrors = new Map<string, KernelWriteFailure>();
@@ -428,11 +421,8 @@ export function createTransactionCoordinator(options: TransactionCoordinatorOpti
     function createScopedStore<T>(
         registration: PartitionRegistration<T>,
         storeOptions: ScopedStoreOptions = {},
-    ): ScopedChatStore<T> {
+    ): PartitionStore<T> {
         partitions.assertRegistered(registration);
-        const allowedTokens = new Map(
-            (storeOptions.allowedCapabilities ?? []).map(token => [token.id, token] as const),
-        );
 
         function peekCurrent(): PartitionSnapshot<T> | null {
             if (!chatReferences.capture()) { return null; }
@@ -494,61 +484,11 @@ export function createTransactionCoordinator(options: TransactionCoordinatorOpti
                     return { status: 'failed', error: failure };
                 }
 
-                const parsedValues = new Map<string, unknown>();
-                const replacements = new Map<string, unknown>();
-                const capabilities = new Map<string, unknown>();
-                const readPartition = <P>(target: PartitionRegistration<P>): P | null => {
-                    partitions.assertRegistered(target);
-                    if (replacements.has(target.key)) {
-                        return clonePartitionValue(target, replacements.get(target.key) as P);
-                    }
-                    if (parsedValues.has(target.key)) {
-                        return clonePartitionValue(target, parsedValues.get(target.key) as P);
-                    }
-                    const sourcePartitions = envelope?.partitions ?? initialPartitions;
-                    if (!Object.hasOwn(sourcePartitions, target.key)) { return null; }
-                    const parsed = parseRegisteredPartition(target, sourcePartitions[target.key]);
-                    parsedValues.set(target.key, parsed);
-                    return clonePartitionValue(target, parsed);
-                };
-                const replacePartition = <P>(target: PartitionRegistration<P>, value: P): void => {
-                    partitions.assertRegistered(target);
-                    // Serialize now so mutations after replace cannot alter the prepared candidate.
-                    const serialized = serializeRegisteredPartition(target, value);
-                    replacements.set(target.key, parseRegisteredPartition(target, serialized));
-                };
-                const current = readPartition(registration);
-                const access: CapabilityTransactionAccess = { readPartition, replacePartition };
-                const context: ScopedTransaction<T> = {
-                    current,
-                    currentOrInitial: () => current === null
-                        ? createRegisteredPartitionInitial(registration)
-                        : clonePartitionValue(registration, current),
-                    replace: next => replacePartition(registration, next),
-                    useCapability: <C>(token: CapabilityToken<C>): C => {
-                        if (!allowedTokens.has(token.id)) {
-                            throw new KernelOperationError(
-                                writeFailure(
-                                    'capability_not_authorized',
-                                    `${registration.ownerId} did not declare capability ${token.id}`,
-                                    false,
-                                ),
-                            );
-                        }
-                        if (!options.capabilityBinder) {
-                            throw new KernelOperationError(
-                                writeFailure('capability_unavailable', `Capability ${token.id} is unavailable`, false),
-                            );
-                        }
-                        if (!capabilities.has(token.id)) {
-                            capabilities.set(
-                                token.id,
-                                options.capabilityBinder.bind(token, registration.ownerId, access),
-                            );
-                        }
-                        return capabilities.get(token.id) as C;
-                    },
-                };
+                const { context, replacements } = preparePartitionCommand({
+                    registration, partitions, binder: options.capabilityBinder,
+                    allowedCapabilities: storeOptions.allowedCapabilities ?? [],
+                    readRaw: target => (envelope?.partitions ?? initialPartitions)[target.key],
+                });
 
                 let result: R;
                 try {
@@ -577,8 +517,7 @@ export function createTransactionCoordinator(options: TransactionCoordinatorOpti
                     ? cloneJsonValue(envelope.partitions)
                     : cloneJsonValue(initialPartitions);
                 for (const [key, value] of replacements) {
-                    const target = partitions.require<unknown>(key);
-                    candidatePartitions[key] = serializeRegisteredPartition(target, value);
+                    candidatePartitions[key] = value;
                 }
                 const candidate: XiaobaiOsSidecarV1 = {
                     formatVersion: 1,

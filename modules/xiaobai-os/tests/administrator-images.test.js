@@ -30,7 +30,7 @@ function imagesFixture() {
 test('administrator branch copies have independently owned images; deleting either chat cannot remove the other attachment', async () => {
     const { images, files } = imagesFixture();
     const attachment = await images.save('parent', { name: 'screen.png', dataUrl: 'data:image/png;base64,YWJj' });
-    const original = { ...createAdministratorData(), turns: [{ id: 'one', createdAt: 1, user: { text: '', image: attachment }, assistant: null, operations: [], status: 'interrupted', error: '' }] };
+    const original = { ...createAdministratorData(), turns: [{ id: 'one', createdAt: 1, user: { text: '', image: attachment }, assistant: null, toolMessages: [], operations: [], status: 'interrupted', error: '' }] };
     const copied = await images.clonePartition('parent', 'child', original);
     assert.notEqual(copied.turns[0].user.image.path, attachment.path);
     assert.equal(await images.load('child', copied.turns[0].user.image), 'data:image/png;base64,YWJj');

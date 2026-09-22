@@ -1,4 +1,4 @@
-import type { ScopedChatStore, XiaobaiOsFileControls, XiaobaiOsFileState } from '../../../kernel/contracts.js';
+import type { PartitionStore, XiaobaiOsFileControls, XiaobaiOsFileState } from '../../../kernel/contracts.js';
 import { parseWorld, parseWorldContent } from '../../../domains/world/invariants.js';
 import { worldContent } from '../../../domains/world/projection.js';
 import { createEmptyWorld, sameWorldContent, type WorldContent, type WorldDomain } from '../../../domains/world/types.js';
@@ -14,7 +14,7 @@ export interface WorldView {
 }
 
 export function createWorldService(
-    store: ScopedChatStore<WorldDomain>,
+    store: PartitionStore<WorldDomain>,
     files: XiaobaiOsFileControls,
     getChatIdentity: () => string,
 ) {

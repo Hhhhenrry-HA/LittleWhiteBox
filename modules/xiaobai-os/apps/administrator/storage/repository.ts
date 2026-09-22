@@ -1,9 +1,9 @@
-import type { ScopedChatStore, XiaobaiOsFileControls } from '../../../kernel/contracts.js';
+import type { PartitionStore, XiaobaiOsFileControls } from '../../../kernel/contracts.js';
 import { createAdministratorData, parseAdministratorData } from '../domain/data.js';
 import type { AdministratorData } from '../domain/types.js';
 import type { AdministratorStored } from '../partition.js';
 
-export function createAdministratorRepository(store: ScopedChatStore<unknown>, files: XiaobaiOsFileControls) {
+export function createAdministratorRepository(store: PartitionStore<unknown>, files: XiaobaiOsFileControls) {
     function read(): AdministratorData { const stored = store.peekCurrent()?.value as AdministratorStored | null | undefined; return stored === null || stored === undefined ? createAdministratorData() : parseAdministratorData(stored.raw); }
     return {
         read,

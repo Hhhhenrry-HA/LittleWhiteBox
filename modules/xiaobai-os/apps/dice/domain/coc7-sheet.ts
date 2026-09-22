@@ -2,10 +2,10 @@ import { COC7_ATTRIBUTES, COC7_ATTRIBUTE_IDS, COC7_SKILL_IDS, type Coc7Attribute
 
 // Tavern adaptation, not official CoC character creation. Each random allocation
 // also defines its group's budget, so generation, editing and saving cannot drift.
-export const COC7_POINTS = { min: 20, max: 80, step: 5 } as const;
+export const COC7_POINTS = { max: 80, step: 5 } as const;
 export const COC7_POINT_GROUPS = {
-    attributes: { ids: COC7_ATTRIBUTE_IDS, allocation: [70, 50, 30] },
-    skills: { ids: COC7_SKILL_IDS, allocation: [80, 70, 60, 60, 50, 50, 40, 40, 30, 20] },
+    attributes: { ids: COC7_ATTRIBUTE_IDS, min: 20, allocation: [70, 60, 40, 30] },
+    skills: { ids: COC7_SKILL_IDS, min: 10, allocation: [80, 70, 60, 50, 40, 40, 30, 30, 30, 20, 20, 10] },
 } as const;
 export type Coc7PointGroup = keyof typeof COC7_POINT_GROUPS;
 export interface Coc7Sheet {
@@ -35,8 +35,8 @@ export function parseCoc7Sheet(value: unknown): Coc7Sheet {
         const scores = value[group];
         if (!exact(scores, COC7_POINT_GROUPS[group].ids)) { return invalid(); }
         if (!Object.values(scores).every(n => typeof n === 'number' && Number.isInteger(n)
-            && n >= COC7_POINTS.min && n <= COC7_POINTS.max && n % COC7_POINTS.step === 0)
-            || Object.values(scores).reduce<number>((total, n) => total + (n as number), 0) !== coc7PointBudget(group)) { return invalid(); }
+            && n >= COC7_POINT_GROUPS[group].min && n <= COC7_POINTS.max && n % COC7_POINTS.step === 0)
+            || Object.values(scores).reduce<number>((total, n) => total + (n as number), 0) > coc7PointBudget(group)) { return invalid(); }
     }
     const sheet = value as unknown as Coc7Sheet;
     return { attributes: { ...sheet.attributes }, skills: { ...sheet.skills } };

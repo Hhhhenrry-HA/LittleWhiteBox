@@ -1,6 +1,11 @@
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
 
+export interface JsonUserFilePort {
+    read(filename: string): Promise<unknown | null>;
+    replace(filename: string, value: unknown): Promise<void>;
+}
+
 export interface XiaobaiOsReferenceV1 {
     formatVersion: 1;
     osId: string;
@@ -58,6 +63,8 @@ export interface PartitionRegistration<T> {
     key: string;
     ownerId: string;
     schemaVersion: number;
+    /** Omitted: chat sidecar. User-story keeps its business scope inside the user document. */
+    storage?: 'user' | 'user-story';
     parse(value: unknown): PartitionParseResult<T>;
     serialize(value: T): unknown;
     createInitial(): T;
@@ -70,6 +77,8 @@ export interface CapabilityToken<T> {
 }
 
 export interface CapabilityTransactionAccess {
+    /** Trusted business scope supplied by the store, never by an APP command. */
+    scopeId?: string;
     readPartition<T>(registration: PartitionRegistration<T>): T | null;
     replacePartition<T>(registration: PartitionRegistration<T>, value: T): void;
 }
@@ -108,7 +117,7 @@ export type ScopedTransactionResult<T, R> =
     | { status: 'unconfirmed'; preparedResult: R; commitId: string }
     | { status: 'conflict'; preparedResult: R };
 
-export interface ScopedChatStore<T> {
+export interface PartitionStore<T> {
     /** Binding metadata only; does not parse or copy a partition's potentially large content. */
     peekBinding(): { identityKey: string; osId: string | null } | null;
     peekCurrent(): PartitionSnapshot<T> | null;
@@ -167,7 +176,7 @@ export interface XiaobaiOsFileControls {
     retryPending(options?: PendingCommitRecoveryOptions): Promise<PendingCommitRecoveryResult>;
     adoptServerState(): Promise<PendingCommitRecoveryResult>;
     getFileState(): XiaobaiOsFileState;
-    /** Whether the active chat has a prepared candidate, optionally scoped to its owning partition. */
+    /** Whether this document has a prepared candidate, optionally scoped to its owning partition. */
     hasPendingCommit(partitionKey?: string): boolean;
     subscribeFileState(listener: (change: XiaobaiOsFileStateChange) => void): () => void;
 }

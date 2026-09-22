@@ -53,6 +53,7 @@ function record(overrides = {}) {
 function createHarness(records = [record()]) {
     const state = { autoMaintenance: false, actionIds: 0, commits: [] };
     const tasks = {
+        getWriteState: () => 'ready',
         readCurrent: () => ({ domain: null, records: structuredClone(records), playerBalance: 100, writeState: 'ready' }),
         createActionId: () => `task-action-${++state.actionIds}`,
         async commitMaintenance(input, guard) {

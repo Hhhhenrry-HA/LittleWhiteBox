@@ -10,6 +10,7 @@ import type { ActionCheckFrequency, ActionCheckRule } from '../types.js';
 import { readCoc7Sheet, type Coc7Sheet } from '../domain/coc7-sheet.js';
 import { parseDiceRecords } from '../domain/check-records.js';
 import { createActionCheckSession } from '../application/action-check-session.js';
+import type { DiceContinuationStage, DiceContinuationProgress } from '../application/host-wait.js';
 import { applyDiceCandidate, captureDiceTarget, clearNewDiceSwipe, isDiceTargetCurrent, readDiceRecords, type DiceCandidate, type DiceTarget } from './message-records.js';
 import { filterDiceGenerationData, type DiceGenerationData } from './request-filter.js';
 import { parseActionCheck } from '../protocol/request.js';
@@ -32,7 +33,7 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
     sheet: () => unknown = () => null) {
     let observation: Observation | null = null;
     let intention: { target: DiceTarget; candidate: DiceCandidate; signal: AbortSignal;
-        settled: Promise<void>; received: boolean; error?: string } | null = null;
+        settled: Promise<void>; received: boolean; stage: DiceContinuationStage; stageStartedAt: number; error?: string } | null = null;
     let wrapperSignal: AbortSignal | undefined;
     let controls: { signal: AbortSignal; nativePending: boolean } | null = null;
     let replacement: AbortController | null = null;
@@ -60,9 +61,11 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
             if (!callSignal) { throw new Error('本次群聊已结束，无法继续检定。'); }
             let settle!: () => void;
             const settled = new Promise<void>(resolve => { settle = resolve; });
-            const own: NonNullable<typeof intention> = { target, candidate, signal: callSignal, settled, received: false };
+            const own: NonNullable<typeof intention> = { target, candidate, signal: callSignal, settled, received: false,
+                stage: 'preparing', stageStartedAt: Date.now() };
             if (!inGroup) { setExternalAbortController(callController); }
             intention = own;
+            changed();
             const previousStream = diceHostContext().streamingProcessor;
             const cancel = () => {
                 if (intention !== own) { return; }
@@ -114,6 +117,13 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
             }
         },
     });
+
+    function advanceContinuation(stage: DiceContinuationStage): void {
+        if (!intention || intention.signal.aborted || intention.stage === stage) { return; }
+        intention.stage = stage;
+        intention.stageStartedAt = Date.now();
+        changed();
+    }
 
     function setPostprocessBusy(value: boolean, signal: AbortSignal): void {
         if (value) {
@@ -267,8 +277,9 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
         events.on(event_types.GENERATE_AFTER_DATA, (data: DiceGenerationData, dryRun: unknown) => {
             // Saved markers remain display-only even when new checks are disabled; previews use the same projection.
             filterDiceGenerationData(data);
-            if (!dryRun) { clearPrompt(); }
+            if (!dryRun) { clearPrompt(); advanceContinuation('requesting'); }
         });
+        events.on(event_types.STREAM_TOKEN_RECEIVED, () => advanceContinuation('responding'));
         const received = (index: number, type: string) => {
             if (intention && index === intention.target.index) { intention.received = true; }
             if (intention || observation?.stage !== 'receiving' || !MAIN_TYPES.includes(type) && type !== 'appendFinal') { return; }
@@ -320,7 +331,17 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
     function stop(): void {
         cancel(); unsubscribe?.(); unsubscribe = null; wrapperSignal = undefined;
     }
-    return { start, stop, cancel, view: session.view, isBusy: () => isGenerating() || !!controls || !!intention,
+    return { start, stop, cancel,
+        view() {
+            const current = session.view();
+            if (!current) { return null; }
+            const own = intention;
+            const continuation: DiceContinuationProgress | null = current.phase.kind === 'continuing'
+                && own && !own.signal.aborted && !own.received && own.candidate === current.phase.candidate
+                ? { stage: own.stage, elapsedSeconds: Math.floor((Date.now() - own.stageStartedAt) / 1000) } : null;
+            return { ...current, continuation };
+        },
+        isBusy: () => isGenerating() || !!controls || !!intention,
         canRetryRequest(index: number): boolean {
             if (!enabled() || session.view() || isGenerating() || observation || intention || isDiceMessageBeingEdited(index)) { return false; }
             const source = captureDiceChat();

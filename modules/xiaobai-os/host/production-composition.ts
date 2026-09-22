@@ -41,6 +41,9 @@ import {
 } from '../storage/sillytavern-file-storage.js';
 import { createSillyTavernChatMetadataAdapter } from '../storage/sillytavern-chat-metadata.js';
 import { createSidecarIndex } from '../storage/sidecar-index.js';
+import { resetLegacyChatEconomy } from '../storage/reset-chat-economy.js';
+import { initialUserPartitions } from './user-initial-partitions.js';
+import { createUserStoryResolver } from './user-story.js';
 import { createXiaobaiOsBootstrap, type XiaobaiOsBootstrap } from './bootstrap.js';
 import { createKernelComposition } from './kernel-composition.js';
 import { createPromptContextAdapter } from './prompt-context/adapter.js';
@@ -70,7 +73,8 @@ const frameSource = `${extensionFolderPath}/modules/xiaobai-os/shell/xiaobai-os.
 export function createProductionBootstrap(
     settings: XiaobaiOsSettingsRepository,
 ): XiaobaiOsBootstrap {
-    const storage = createSillyTavernFileStorage({ getRequestHeaders });
+    const storage = resetLegacyChatEconomy(createSillyTavernFileStorage({ getRequestHeaders }));
+    const userFiles = createSillyTavernUserJsonFilePort({ getRequestHeaders });
     const metadata = createSillyTavernChatMetadataAdapter();
     const index = createSidecarIndex(createSillyTavernUserJsonFilePort({ getRequestHeaders }));
     const upstreamFourthWall = createFourthWallUpstreamImport(metadata);
@@ -86,6 +90,7 @@ export function createProductionBootstrap(
     });
     const administratorImages = createAdministratorImages({ upload: saveBase64AsFile, headers: getRequestHeaders });
     const bindingManager = createChatBindingManager({ metadata, references, storage, index,
+        prepareInitialPartitions: upstreamFourthWall.prepareInitialPartitions,
         async prepareClonedPartitions(capture, source, partitions, ids) {
             copyMessagesBranch(capture, source, partitions);
             copyWorldBranch(capture, source, partitions);
@@ -132,7 +137,7 @@ export function createProductionBootstrap(
         createProductionFourthWallModule(settings, upstreamFourthWall),
         createProductionMessagesModule(mainGeneration, settings),
         createProductionLearningModule(learningRepository, promptContext),
-        createWalletModule({ getChatIdentity: getSillyTavernChatIdentity }),
+        createWalletModule(),
         createProductionShopModule({
             getChatIdentity: getSillyTavernChatIdentity,
             captureChatSurface: getSillyTavernChatSurface,
@@ -184,6 +189,14 @@ export function createProductionBootstrap(
         modules,
         beforeRead: () => bindingLifecycle.ready(),
         prepareInitialPartitions: upstreamFourthWall.prepareInitialPartitions,
+        user: {
+            storage: userFiles,
+            initialPartitions: () => initialUserPartitions(settings.readLegacyDiceSheet(), learningRepository),
+            resolveStory: createUserStoryResolver({
+                ready: () => bindingLifecycle.ready(), references, manager: bindingManager,
+                install: envelope => composition.transactions.installResolvedEnvelope(envelope),
+            }),
+        },
     });
     const bindingLifecycle = createChatBindingLifecycle({
         manager: bindingManager,
@@ -210,6 +223,12 @@ export function createProductionBootstrap(
                 bindingLifecycle.start();
                 await bindingLifecycle.ready();
                 await composition.install();
+                // Only remove the old sheet after the user document has acknowledged its copy.
+                // App installation is isolated: an unavailable user file must not disable chat-only APPs.
+                if (composition.userTransactions?.getFileState() === 'ready') {
+                    await composition.userTransactions.prepare();
+                    await settings.finishDiceSheetMigration();
+                }
                 const maintenance = composition.capabilities.require(MAINTENANCE_CAPABILITY);
                 maintenance.runner.startBackground(subscribeMaintenanceMessages);
                 productionInstalled = true;

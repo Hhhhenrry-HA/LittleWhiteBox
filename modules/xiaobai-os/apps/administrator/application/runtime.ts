@@ -1,12 +1,12 @@
 import type { XiaobaiOsAgentGateway } from '../../../capabilities/agent/gateway.js';
 import type { ManagementRegistry } from '../../../capabilities/management/index.js';
 import { safePromptJson } from '../../../capabilities/maintenance/prompt-safety.js';
-import { createAdministratorToolExecutor, type AdministratorToolExecutor } from '../agent/tool-executor.js';
-import { createAdministratorCheckpoint, runAdministratorLoop, type AdministratorLoopCheckpoint } from '../agent/provider-loop.js';
-import { administratorTurnMessages, contextUsage, historyBefore, referenceSummary } from '../agent/history.js';
-import { ADMINISTRATOR_PROMPT, ADMINISTRATOR_READ_ONLY_PROMPT, ADMINISTRATOR_RETRY_PROMPT } from '../agent/prompt.js';
+import { createAdministratorToolExecutor, type AdministratorToolExecutor, type AdministratorConfirmation } from '../agent/tool-executor.js';
+import { runAdministratorLoop } from '../agent/provider-loop.js';
+import { administratorContext, contextUsage, historyBefore, type AdministratorHistory } from '../agent/history.js';
+import { ADMINISTRATOR_PROMPT } from '../agent/prompt.js';
 import { ADMINISTRATOR_POLICY as POLICY } from '../domain/policy.js';
-import { invalidateSummary, settledOperations } from '../domain/data.js';
+import { settledOperations } from '../domain/data.js';
 import type { AdministratorContextUsage, AdministratorLive, AdministratorOperation, AdministratorTurn } from '../domain/types.js';
 import { createAdministratorChatReader, type AdministratorChatSurface } from '../host/chat-reader.js';
 import type { AdministratorRepository } from '../storage/repository.js';
@@ -17,9 +17,9 @@ import { createAdministratorId } from './identity.js';
 
 interface ActiveRun {
     current(): boolean;
-    identity: string; sourceIdentity: string; turn: AdministratorTurn; readOnly: boolean; retrying: boolean;
-    abort: AbortController; checkpoint: AdministratorLoopCheckpoint; executor: AdministratorToolExecutor | null;
-    reader: ReturnType<typeof createAdministratorChatReader>; config: unknown; text: string;
+    identity: string; sourceIdentity: string; turn: AdministratorTurn;
+    abort: AbortController; context: AdministratorHistory | null; executor: AdministratorToolExecutor | null;
+    reader: ReturnType<typeof createAdministratorChatReader>; text: string;
     phase: AdministratorLive['phase']; promise: Promise<void> | null;
     preview: AdministratorOperation[];
     failed: boolean;
@@ -29,6 +29,7 @@ interface PendingSend {
     input: AdministratorUpload | null;
     current(): boolean;
     stopped: boolean;
+    preparing: boolean;
 }
 export function createAdministratorRuntime(deps: {
     conversation: AdministratorConversation; repository: AdministratorRepository; images: AdministratorImages;
@@ -38,6 +39,7 @@ export function createAdministratorRuntime(deps: {
     const { conversation, repository } = deps;
     let run: ActiveRun | null = null;
     let pendingSend: PendingSend | null = null;
+    let submission: { id: string; turnId: string; current(): boolean } | null = null;
     let error = '';
     let usage: AdministratorContextUsage = { used: 0, limit: POLICY.inputBudget, trigger: POLICY.summaryTrigger, rules: 0, tools: 0, history: 0, images: 0, runtime: 0 };
     let streamTimer: ReturnType<typeof setTimeout> | null = null;
@@ -46,49 +48,47 @@ export function createAdministratorRuntime(deps: {
         if (immediate) { if (streamTimer) { clearTimeout(streamTimer); streamTimer = null; } deps.changed(); }
         else if (!streamTimer) { streamTimer = setTimeout(() => { streamTimer = null; deps.changed(); }, POLICY.streamInterval); }
     }
-    async function persistTurn(active: ActiveRun, final = false, receiptsOnly = false) {
-        if (active.readOnly && !final) { return; }
+    async function persistTurn(active: ActiveRun, confirmation?: AdministratorConfirmation) {
         if (!sameChat(active)) { throw new Error('administrator_context_changed'); }
         const candidate = structuredClone(conversation.read());
         const index = candidate.turns.findIndex(turn => turn.id === active.turn.id);
         if (index < 0) { throw new Error('administrator_message_missing'); }
-        if (receiptsOnly) {
-            candidate.turns[index].operations = candidate.turns[index].operations.map(previous => {
-                const confirmed = active.turn.operations.find(operation => operation.id === previous.id);
-                return confirmed && ['saved', 'partial', 'unchanged'].includes(confirmed.status) ? { ...confirmed } : previous;
-            });
-            if (JSON.stringify(candidate.turns[index].operations) === JSON.stringify(conversation.read().turns[index].operations)) { return; }
+        if (confirmation) {
+            const target = candidate.turns[index], { messageIndex, result } = confirmation;
+            const operationIndex = target.operations.findIndex(operation => operation.id === result.receipt.id);
+            // Adoption may have removed this attempt. Confirmation never recreates it.
+            if (operationIndex < 0) { return; }
+            const message = target.toolMessages[messageIndex], original = active.turn.toolMessages[messageIndex];
+            if (!message || message.role !== 'tool' || message.toolCallId !== original?.toolCallId || message.toolName !== original.toolName) { throw new Error('administrator_history_conflict'); }
+            message.content = original.content = safePromptJson(result);
+            target.operations[operationIndex] = { ...result.receipt };
+            const boundary = candidate.summary && candidate.turns.findIndex(turn => turn.id === candidate.summary!.throughId);
+            if (boundary !== null && (boundary > index || boundary === index && (candidate.summary!.throughToolMessage === null || candidate.summary!.throughToolMessage! > messageIndex))) { candidate.summary = null; }
+            if (JSON.stringify(target) === JSON.stringify(conversation.read().turns[index]) && JSON.stringify(candidate.summary) === JSON.stringify(conversation.read().summary)) { return; }
             await conversation.save(candidate, () => sameChat(active)); return;
         }
-        if (active.readOnly) { invalidateSummary(candidate, active.turn.id); }
-        if (active.readOnly) { Object.assign(candidate.turns[index], { assistant: active.turn.assistant, status: active.turn.status, error: active.turn.error }); }
-        else { candidate.turns[index] = { ...structuredClone(active.turn), operations: settledOperations(active.turn.operations) }; }
-        if (!active.readOnly && active.checkpoint.compactedThrough) {
-            candidate.summary = { text: active.checkpoint.summary, throughId: active.checkpoint.compactedThrough };
-        }
+        candidate.turns[index] = { ...structuredClone(active.turn), operations: settledOperations(active.turn.operations) };
+        if (active.context) { candidate.summary = structuredClone(active.context.summary); }
         await conversation.save(candidate, () => sameChat(active));
     }
     async function perform(active: ActiveRun) {
         try {
-            if (!active.executor) {
-                active.config = await deps.gateway.loadConfig();
-                active.executor = await createAdministratorToolExecutor({ registry: deps.management, reader: active.reader, readOnly: active.readOnly,
-                    operations: active.readOnly ? [] : active.turn.operations,
-                    guard: () => sameChat(active) && active.reader.isCurrent(), onChange: () => { if (sameChat(active)) { changed(true); } },
-                    saveReceipts: confirmed => persistTurn(active, false, confirmed),
-                });
-            }
+            const config = await deps.gateway.loadConfig();
+            active.executor = await createAdministratorToolExecutor({ registry: deps.management, reader: active.reader,
+                operations: active.turn.operations,
+                guard: () => sameChat(active) && active.reader.isCurrent(), onChange: () => { if (sameChat(active)) { changed(true); } },
+                saveReceipts: confirmation => persistTurn(active, confirmation),
+            });
             active.abort.signal.throwIfAborted();
             const image = active.turn.user?.image;
             const dataUrl = image ? await deps.images.load(repository.osId()!, image, active.abort.signal) : null;
             const userText = active.turn.user?.text ?? '';
-            const text = await runAdministratorLoop({ gateway: deps.gateway, config: active.config, checkpoint: active.checkpoint,
-                system: [ADMINISTRATOR_PROMPT, active.executor.prompt, active.readOnly ? ADMINISTRATOR_READ_ONLY_PROMPT : active.retrying ? ADMINISTRATOR_RETRY_PROMPT : ''].filter(Boolean).join('\n\n'),
-                prefix: [{ role: 'system', content: `Current reference data:\n${safePromptJson({ ...active.executor.data,
-                    ...(active.readOnly || active.retrying ? { previousAttempt: { operations: active.turn.operations, status: active.turn.status, error: active.turn.error } } : {}) })}` }],
+            const text = await runAdministratorLoop({ gateway: deps.gateway, config, state: active.context!,
+                system: [ADMINISTRATOR_PROMPT, active.executor.prompt].join('\n\n'),
+                prefix: [{ role: 'system', content: `Current reference data:\n${safePromptJson(active.executor.data)}` }],
                 request: { role: 'user', content: dataUrl ? [{ type: 'text', text: userText || ADMINISTRATOR_COPY.imageRequest }, { type: 'image_url', image_url: { url: dataUrl } }] : userText },
                 requestForCounting: { role: 'user', content: userText }, imageCount: dataUrl ? 1 : 0,
-                tools: active.executor.tools, signal: active.abort.signal, execute: active.executor.execute,
+                tools: active.executor.tools, signal: active.abort.signal, execute: active.executor.execute, save: () => persistTurn(active),
                 onText: value => { active.text = value; if (sameChat(active)) { changed(); } },
                 onPhase: value => { active.phase = value; if (sameChat(active)) { changed(true); } },
                 onContext: value => { if (sameChat(active)) { usage = value; changed(); } },
@@ -96,16 +96,15 @@ export function createAdministratorRuntime(deps: {
             });
             active.turn.assistant = text; active.turn.status = 'finished'; active.turn.error = '';
             active.phase = 'saving'; changed(true);
-            await persistTurn(active, true);
+            await persistTurn(active);
             active.failed = false;
-            active.checkpoint = createAdministratorCheckpoint([], '');
-            active.executor.releaseCheckpoint(); active.reader.releaseEvidence(); active.config = null;
+            active.reader.releaseEvidence();
             if (run === active) { error = ''; }
         } catch (cause) {
             active.failed = true;
             const reason = active.abort.signal.aborted ? ADMINISTRATOR_COPY.stopped : administratorError(cause);
             if (run === active) { error = reason; }
-            if (!active.readOnly && sameChat(active)) {
+            if (sameChat(active)) {
                 active.turn.status = active.abort.signal.aborted ? 'interrupted' : 'failed';
                 active.turn.error = reason;
                 // Partial prose is visible as interrupted, never as a completed reply.
@@ -116,26 +115,29 @@ export function createAdministratorRuntime(deps: {
                 }
             }
         } finally {
+            active.context = null;
             active.promise = null;
             if (run === active && sameChat(active)) { changed(true); }
         }
     }
-    async function launch(turnId: string, readOnly: boolean, retrying: boolean) {
-        if (run?.promise) { throw new Error('administrator_busy'); }
+    async function launch(turnId: string) {
+        if (run?.promise || conversation.unsaved()) { throw new Error('administrator_busy'); }
         const turn = conversation.read().turns.find(t => t.id === turnId);
         if (!turn?.user) { throw new Error('administrator_message_missing'); }
         const source = deps.capture();
         if (!source) { throw new Error('administrator_chat_unavailable'); }
         const history = historyBefore(conversation.read(), turn.id);
-        const active: ActiveRun = { current: conversation.capture(), identity: repository.identity(), sourceIdentity: source.identityKey, turn: structuredClone(turn), readOnly, retrying,
-            abort: new AbortController(), checkpoint: createAdministratorCheckpoint(history.turns, history.summary), executor: null, config: null,
+        const currentTurn = structuredClone(turn);
+        const active: ActiveRun = { current: conversation.capture(), identity: repository.identity(), sourceIdentity: source.identityKey, turn: currentTurn,
+            abort: new AbortController(), context: { turns: [...history.turns, currentTurn], summary: history.summary }, executor: null,
             text: '', phase: 'preparing', promise: null, preview: [], failed: false, reader: createAdministratorChatReader(deps.capture, () => active.abort.signal) };
         run = active; error = '';
         active.promise = perform(active); changed(true);
     }
     async function continueSend(sending: PendingSend) {
         const guard = () => !sending.stopped && sending.current() && pendingSend === sending;
-        const assertCurrent = () => { if (!guard()) { throw new Error('administrator_context_changed'); } };
+        const assertCurrent = () => { if (!guard()) { throw new Error(sending.stopped ? 'administrator_stopped' : 'administrator_context_changed'); } };
+        sending.preparing = true; changed(true);
         try {
             assertCurrent();
             if (sending.input && !repository.osId()) { await conversation.save(conversation.read(), guard); }
@@ -148,23 +150,33 @@ export function createAdministratorRuntime(deps: {
                 sending.input = null;
             }
             assertCurrent();
-            if (!conversation.read().turns.some(turn => turn.id === sending.turn.id)) {
-                const candidate = structuredClone(conversation.read()); candidate.turns.push(sending.turn);
-                await conversation.save(candidate, guard);
-            }
+            await conversation.prepareTurn(sending.turn, guard);
             assertCurrent();
             pendingSend = null;
-            await launch(sending.turn.id, false, false);
+            await launch(sending.turn.id);
         } catch (cause) {
             // Only an unconfirmed save needs a live continuation. Upload failure leaves the UI draft resendable.
             if (pendingSend === sending && !conversation.unsaved()) { pendingSend = null; }
             throw cause;
-        }
+        } finally { sending.preparing = false; changed(true); }
         return sending.turn.id;
     }
+    function start(request: Pick<AdministratorTurn, 'id' | 'createdAt' | 'user'>, input: AdministratorUpload | null = null, submissionId: string | null = null) {
+        const identity = repository.identity(), source = deps.capture()?.identityKey;
+        const current = conversation.capture();
+        const guard = () => current() && identity === repository.identity() && !!source && source === deps.capture()?.identityKey;
+        run = null; error = '';
+        submission = submissionId ? { id: submissionId, turnId: request.id, current: guard } : null;
+        const turn: AdministratorTurn = { id: request.id, createdAt: request.createdAt, user: structuredClone(request.user),
+            assistant: null, toolMessages: [], operations: [], status: 'interrupted', error: '' };
+        const sending: PendingSend = { turn, input, current: guard, stopped: false, preparing: false };
+        pendingSend = sending;
+        return continueSend(sending);
+    }
     return {
-        busy: () => !!run?.promise,
-        sendTurnId: () => pendingSend?.current() ? pendingSend.turn.id : run && !run.readOnly && sameChat(run) ? run.turn.id : null,
+        busy: () => !!run?.promise || !!pendingSend?.preparing,
+        submission: () => submission?.current() ? { id: submission.id, turnId: submission.turnId,
+            accepted: conversation.read().turns.some(turn => turn.id === submission!.turnId && !!turn.user) } : null,
         error: () => error,
         context: () => usage,
         async prepareContext() {
@@ -172,17 +184,18 @@ export function createAdministratorRuntime(deps: {
             const sourceIdentity = deps.capture()?.identityKey;
             if (!sourceIdentity) { return; }
             const current = conversation.capture();
+            const agent = await deps.gateway.openSession(await deps.gateway.loadConfig());
+            if (!current() || run?.promise || deps.capture()?.identityKey !== sourceIdentity) { return; }
             const abort = new AbortController();
             const reader = createAdministratorChatReader(deps.capture, () => abort.signal);
-            const executor = await createAdministratorToolExecutor({ registry: deps.management, reader, readOnly: false, operations: [], guard: () => false, onChange() {}, async saveReceipts() {} });
+            const executor = await createAdministratorToolExecutor({ registry: deps.management, reader, operations: [], guard: () => false, onChange() {}, async saveReceipts() {} });
             if (!current() || run?.promise || deps.capture()?.identityKey !== sourceIdentity) { return; }
-            const data = conversation.read(), boundary = data.summary ? data.turns.findIndex(t => t.id === data.summary!.throughId) : -1;
+            const projected = administratorContext(conversation.read());
             usage = contextUsage([ADMINISTRATOR_PROMPT, executor.prompt].join('\n\n'), executor.tools,
                 [{ role: 'system', content: `Current reference data:\n${safePromptJson(executor.data)}` }],
-                [...referenceSummary(data.summary?.text ?? ''), ...data.turns.slice(boundary + 1).flatMap(administratorTurnMessages)], [], 0, {});
+                projected, 0, agent.providerConfig);
             changed(true);
         },
-        retryTurnId: () => run && !run.promise && run.failed && sameChat(run) ? run.turn.id : null,
         async confirmed(resumeSend = true) {
             if (conversation.unsaved()) { return; }
             const sending = pendingSend;
@@ -203,47 +216,39 @@ export function createAdministratorRuntime(deps: {
             if (run?.failed && !conversation.unsaved()) {
                 const actual = conversation.read().turns.find(turn => turn.id === run!.turn.id);
                 if (actual?.status === 'finished' && actual.assistant === run.turn.assistant) {
-                    run.failed = false; run.checkpoint = createAdministratorCheckpoint([], ''); run.executor?.releaseCheckpoint(); run.reader.releaseEvidence(); error = '';
+                    run.failed = false; run.reader.releaseEvidence(); error = '';
                 }
             }
             await this.prepareContext();
         },
         live(): AdministratorLive | null {
-            return run?.promise && sameChat(run) ? { turnId: run.turn.id, text: run.text.slice(0, POLICY.textBlock), totalChars: run.text.length,
-                operations: [...run.turn.operations, ...run.preview].slice(-POLICY.visibleOperations), operationCount: run.turn.operations.length + run.preview.length, phase: run.phase } : null;
-        },
-        async send(text: string, upload?: unknown) {
-            if (run?.promise || conversation.unsaved()) { throw new Error('administrator_busy'); }
-            if (typeof text !== 'string' || text.length > 16000 || !text.trim() && !upload) { throw new Error('administrator_input_invalid'); }
-            const identity = repository.identity(), source = deps.capture()?.identityKey;
-            const current = conversation.capture();
-            const guard = () => current() && identity === repository.identity() && !!source && source === deps.capture()?.identityKey;
-            const input: AdministratorUpload | null = upload ? parseAdministratorUpload(upload) : null;
-            run = null; error = '';
-            const turn: AdministratorTurn = { id: createAdministratorId(), createdAt: Date.now(), user: { text: text.trim() },
-                assistant: null, operations: [], status: 'interrupted', error: '' };
-            const sending: PendingSend = { turn, input, current: guard, stopped: false };
-            pendingSend = sending;
-            return continueSend(sending);
-        },
-        regenerate: (turnId: string) => launch(turnId, true, false),
-        async retry(turnId: string) {
-            if (run?.promise || conversation.unsaved()) { throw new Error('administrator_busy'); }
-            if (run?.failed && run.turn.id === turnId && sameChat(run)) {
-                run.abort = new AbortController(); run.retrying = true; error = ''; run.text = '';
-                run.promise = perform(run); changed(true); return;
+            if (pendingSend?.preparing && pendingSend.current()) {
+                return { turnId: pendingSend.turn.id, text: '', totalChars: 0, operations: [], operationCount: 0, phase: pendingSend.stopped ? 'stopping' : 'preparing' };
             }
-            // After reload the live execution checkpoint is gone. Recheck facts without replaying uncertain writes.
-            await launch(turnId, true, true);
+            return run?.promise && sameChat(run) ? { turnId: run.turn.id, text: run.text.slice(0, POLICY.textBlock), totalChars: run.text.length,
+                operations: [...run.turn.operations, ...run.preview].slice(-POLICY.visibleOperations), operationCount: run.turn.operations.length + run.preview.length, phase: run.abort.signal.aborted ? 'stopping' : run.phase } : null;
+        },
+        async send(submissionId: unknown, text: string, upload?: unknown) {
+            if (run?.promise || conversation.unsaved()) { throw new Error('administrator_busy'); }
+            if (typeof submissionId !== 'string' || !submissionId || submissionId.length > 128) { throw new Error('administrator_input_invalid'); }
+            if (typeof text !== 'string' || text.length > 16000 || !text.trim() && !upload) { throw new Error('administrator_input_invalid'); }
+            const input: AdministratorUpload | null = upload ? parseAdministratorUpload(upload) : null;
+            return start({ id: createAdministratorId(), createdAt: Date.now(), user: { text: text.trim() } }, input, submissionId);
+        },
+        async regenerate(turnId: string) {
+            if (run?.promise || conversation.unsaved()) { throw new Error('administrator_busy'); }
+            const turn = conversation.read().turns.find(item => item.id === turnId);
+            if (!turn?.user) { throw new Error('administrator_message_missing'); }
+            return start(turn);
         },
         evidence(reference: string, offset?: unknown) {
             if (!run?.executor || !sameChat(run)) { throw new Error('administrator_evidence_expired'); }
             return run.executor.evidence(reference, offset);
         },
-        stop() { run?.abort.abort(); if (pendingSend) { pendingSend.stopped = true; } },
+        stop() { run?.abort.abort(); if (pendingSend) { pendingSend.stopped = true; } changed(true); },
         async reset() {
             if (pendingSend) { pendingSend.stopped = true; }
-            const previous = run; run = null; pendingSend = null; previous?.abort.abort();
+            const previous = run; run = null; pendingSend = null; submission = null; previous?.abort.abort();
             error = ''; usage = { ...usage, used: 0, history: 0, rules: 0, tools: 0, images: 0, runtime: 0 };
             if (streamTimer) { clearTimeout(streamTimer); streamTimer = null; }
             if (previous?.promise) { await previous.promise; }

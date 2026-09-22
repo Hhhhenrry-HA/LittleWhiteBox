@@ -1,3 +1,5 @@
+import type { AgentMessage } from '../../../../agent-core/runtime/conversation.js';
+
 export interface AdministratorImage { name: string; path: string }
 export type OperationStatus = 'preparing' | 'reading' | 'saving' | 'read' | 'saved' | 'unchanged' | 'partial' | 'failed' | 'unconfirmed';
 export interface AdministratorOperation {
@@ -14,15 +16,18 @@ export interface AdministratorTurn {
     createdAt: number;
     user: { text: string; image?: AdministratorImage } | null;
     assistant: string | null;
+    assistantPayload?: Record<string, unknown>;
+    toolMessages: AgentMessage[];
     operations: AdministratorOperation[];
     status: 'finished' | 'interrupted' | 'failed';
     error: string;
 }
+export interface AdministratorSummary { text: string; throughId: string; throughToolMessage: number | null }
 export interface AdministratorData {
-    schemaVersion: 1;
+    schemaVersion: 2;
     revision: number;
     turns: AdministratorTurn[];
-    summary: { text: string; throughId: string } | null;
+    summary: AdministratorSummary | null;
 }
 export interface AdministratorContextUsage { used: number; limit: number; trigger: number; history: number; rules: number; tools: number; images: number; runtime: number }
 export interface AdministratorRow {
@@ -34,12 +39,11 @@ export interface AdministratorRow {
 export interface AdministratorPage { rows: AdministratorRow[]; start: number; total: number; revision: number }
 export interface AdministratorLive {
     turnId: string; text: string; totalChars: number; operations: AdministratorOperation[]; operationCount: number;
-    phase: 'preparing' | 'replying' | 'summarizing' | 'saving';
+    phase: 'preparing' | 'replying' | 'summarizing' | 'saving' | 'stopping';
 }
 export interface AdministratorState {
     chatIdentity: string; page: AdministratorPage; live: AdministratorLive | null;
     context: AdministratorContextUsage; error: string; corrupted: boolean; unsaved: boolean;
-    retryTurnId: string | null;
-    sendTurnId: string | null;
+    submission: { id: string; turnId: string; accepted: boolean } | null;
     conflict: boolean;
 }

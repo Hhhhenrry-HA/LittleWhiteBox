@@ -1,7 +1,7 @@
 import { parseActionCheckRequest, type ActionCheckRequest, type ActionCheckResult } from './action-check.js';
 import { checkMarker, checkMarkerIds } from './check-marker.js';
 import { readDiceChecksV1 } from '../storage/records-v1.js';
-import { parseCoc7RecordedRequest, type Coc7RecordedRequest } from './coc7-record.js';
+import { parseCoc7RecordedRequest, parseCoc7Resolution, type Coc7RecordedRequest, type Coc7Resolution } from './coc7-record.js';
 import { parseCoc7Result, type Coc7Result } from './coc7.js';
 
 export const MAX_ACTION_CHECKS = 8;
@@ -13,7 +13,7 @@ export interface D20CheckRecord extends ActionCheckResult {
     id: string;
     request: ActionCheckRequest;
 }
-export interface Coc7CheckRecord { rule: 'coc7'; id: string; request: Coc7RecordedRequest; result: Coc7Result }
+export interface Coc7CheckRecord { rule: 'coc7'; id: string; request: Coc7RecordedRequest; result: Coc7Result; resolution?: Coc7Resolution }
 export type ActionCheckRecord = D20CheckRecord | Coc7CheckRecord;
 export interface DiceMessageRecords { schemaVersion: typeof DICE_RECORDS_SCHEMA_VERSION; checks: ActionCheckRecord[] }
 
@@ -29,6 +29,7 @@ export function parseDiceRecords(value: unknown): DiceMessageRecords {
         if (!item || typeof item !== 'object' || Array.isArray(item)) { throw new TypeError('dice_record_invalid'); }
         const record = item as ActionCheckRecord;
         const keys = record.rule === 'coc7' ? ['rule', 'id', 'request', 'result'] : ['rule', 'id', 'request', 'roll', 'dc', 'outcome'];
+        if (record.rule === 'coc7' && Object.hasOwn(record, 'resolution')) { keys.push('resolution'); }
         if (Object.keys(record).length !== keys.length || keys.some(key => !Object.hasOwn(record, key))
             || typeof record.id !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(record.id) || ids.has(record.id)) {
             throw new TypeError('dice_record_invalid');
@@ -36,7 +37,8 @@ export function parseDiceRecords(value: unknown): DiceMessageRecords {
         ids.add(record.id);
         if (record.rule === 'coc7') {
             const request = parseCoc7RecordedRequest(record.request);
-            return { ...record, request, result: parseCoc7Result(record.result) };
+            return { ...record, request, result: parseCoc7Result(record.result),
+                ...(Object.hasOwn(record, 'resolution') ? { resolution: parseCoc7Resolution(record.resolution) } : {}) };
         }
         if (record.rule !== 'd20' || !Number.isInteger(record.roll) || record.roll < 1 || record.roll > 20
             || !Number.isInteger(record.dc) || record.dc < 1

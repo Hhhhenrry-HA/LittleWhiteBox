@@ -8,7 +8,7 @@ import { COC7_UI } from './coc7-copy.js';
 const props = defineProps<XiaobaiOsAppProps>();
 const state = ref(props.initialState as DiceClientState);
 const busy = ref(false);
-const error = ref('');
+const error = ref<{ type: string; message: string } | null>(null);
 const continuationNotice = '使用不支持预填充的模型时，请关闭「续写预填充」，并保留预设「实用提示词」里的「继续推进」内容（不能为空）。';
 const frequencyChoices: Record<ActionCheckFrequency, { label: string; description: string }> = {
     standard: { label: '标准', description: '有风险或阻力，且成败会改变后续的行动才检定。' },
@@ -33,7 +33,7 @@ onMounted(() => {
 onBeforeUnmount(() => { mounted = false; unsubscribe(); });
 async function send(type: string, payload: Record<string, unknown>, reportError = true) {
     if (busy.value) { return false; }
-    busy.value = true; error.value = '';
+    busy.value = true; error.value = null;
     const identity = state.value.chatIdentity;
     const version = pushed;
     try {
@@ -41,11 +41,14 @@ async function send(type: string, payload: Record<string, unknown>, reportError 
         if (mounted && version === pushed && response.result.chatIdentity === identity) { state.value = response.result; }
         return mounted && response.result.chatIdentity === identity;
     } catch (cause) {
-        if (mounted && reportError) { error.value = cause instanceof HostRequestError && cause.code === 'app_request_failed'
-            ? cause.message : '操作未完成，请稍后重试。'; }
+        if (mounted && reportError) { error.value = { type, message: cause instanceof HostRequestError && cause.code === 'app_request_failed'
+            ? cause.message : '操作未完成，请稍后重试。' }; }
         return false;
     }
     finally { if (mounted) { busy.value = false; } }
+}
+function clearSheetFailure() {
+    if (error.value?.type === 'dice/set-coc7-sheet' || error.value?.type === 'dice/confirm-sheet-save') { error.value = null; }
 }
 </script>
 
@@ -91,7 +94,9 @@ async function send(type: string, payload: Record<string, unknown>, reportError 
             <Coc7Sheet
                 v-if="state.coc7Sheet.kind === 'invalid' || state.actionChecksEnabled && state.actionCheckRule === 'coc7'"
                 :sheet="state.coc7Sheet.kind === 'ready' ? state.coc7Sheet.sheet : null" :invalid="state.coc7Sheet.kind === 'invalid'"
-                :busy="busy" :save="sheet => send('dice/set-coc7-sheet', { sheet }, false)"
+                :busy="busy" :failure="error?.message" :blocked="state.sheetStorage !== 'ready'"
+                :check-save="() => send('dice/confirm-sheet-save', {})" :save="sheet => send('dice/set-coc7-sheet', { sheet })"
+                @confirmed="clearSheetFailure"
             />
             <aside class="dice-notice">
                 <p>请勿开启酒馆的「自动续写」。</p>
@@ -115,7 +120,7 @@ async function send(type: string, payload: Record<string, unknown>, reportError 
             <p class="dice-cooldown">触发后，接下来的两次用户发言不会触发新遭遇。不额外调用模型。</p>
         </section>
         <section v-if="error" class="dice-recovery" aria-live="polite">
-            <p>{{ error }}</p>
+            <p>{{ error.message }}</p>
         </section>
     </main>
 </template>

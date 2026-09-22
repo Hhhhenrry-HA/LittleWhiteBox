@@ -12,11 +12,11 @@ async function fixture(messages = [], registry = createManagementRegistry()) {
     const operations = [];
     const executor = await createAdministratorToolExecutor({
         registry, reader: createAdministratorChatReader(() => surface, () => abort.signal),
-        readOnly: true, operations, guard: () => !abort.signal.aborted,
+        operations, guard: () => !abort.signal.aborted,
         onChange() {}, async saveReceipts() { assert.fail('read tools must not save business data'); },
     });
     let sequence = 0;
-    return { executor, operations, surface, call: (name, args) => executor.execute(name, args, String(++sequence)) };
+    return { executor, operations, surface, call: (name, args) => executor.execute(name, args, String(++sequence), sequence) };
 }
 
 test('result continuation keeps one reference and cursor while reconstructing HTML and Unicode story pages', async () => {
