@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { prepareSummaryResult } from '../generate/summary-result.js';
 import { parseEventRange } from '../vector/retrieval/temporal-turn-carrier.js';
+import { formatModelArcProgress } from '../generate/arc-progress.js';
 
 const event = (fields = {}) => ({ title: '归还钥匙', summary: '小红归还了钥匙。 (#21-22)', ...fields });
 const context = { existingEvents: [{ id: 'evt-12' }, { id: 'evt-7' }], startFloor: 21, endFloor: 25 };
@@ -170,14 +171,52 @@ test('omitted update collections and empty events are legitimate; populated coll
     }
 });
 
-test('arc updates require complete trajectory and numeric progress, including legitimate zero', () => {
-    const arc = { name: '小红', trajectory: '开始建立信任', progress: 0.7, newMoment: '归还了钥匙' };
+test('arc updates retain required content and reject non-numeric progress without mutating the batch', () => {
+    const arc = { name: '小红', trajectory: '开始建立信任', progress: 70, newMoment: '归还了钥匙' };
     for (const fields of [{ trajectory: undefined }, { trajectory: '' }, { name: '' }, { progress: undefined },
-        { progress: null }, { progress: '0.7' }, { progress: -0.1 }, { progress: 1.1 }, { progress: NaN }, { newMoment: {} }]) {
-        assert.throws(() => prepare({ events: [], arcUpdates: [{ ...arc, ...fields }] }), /arcUpdates\[0\]/);
+        ...[null, NaN, Infinity, -Infinity, true, [], {}, '', ' ', '%', '75%%', '75/100', '75分', 'abc75', '75abc', '0x10']
+            .map(progress => ({ progress })), { newMoment: {} }]) {
+        const batch = { events: [event()], arcUpdates: [{ ...arc, ...fields }] };
+        const before = structuredClone(batch);
+        assert.throws(() => prepare(batch), { code: 'invalid_summary_field', path: `arcUpdates[0].${Object.keys(fields)[0]}` });
+        assert.deepEqual(batch, before);
     }
-    for (const progress of [0, 0.7, 1]) {
-        assert.deepEqual(prepare({ events: [], arcUpdates: [{ ...arc, progress }] }).arcUpdates, [{ ...arc, progress }]);
+});
+
+test('model arc scores accept percentages, truncate decimals and clamp before ratio storage', () => {
+    const arc = { name: '小红', trajectory: '开始建立信任', newMoment: '归还了钥匙' };
+    for (const [progress, expected] of [
+        [0, 0], [1, 0.01], [0.75, 0], [75, 0.75], [75.99, 0.75], [100, 1], [150, 1], [-1, 0], [-0.9, 0],
+        ['75', 0.75], ['75%', 0.75], [' 75.99 % ', 0.75], ['150%', 1], ['-2.8%', 0], ['.9%', 0], ['+29.9', 0.29],
+    ]) {
+        const batch = { events: [event()], arcUpdates: [{ ...arc, progress }] };
+        const before = structuredClone(batch);
+        assert.deepEqual(prepare(batch).arcUpdates, [{ ...arc, progress: expected }]);
+        assert.deepEqual(batch, before);
+    }
+    // Every stored hundredth re-enters the model as the same integer, including .29/.57.
+    for (let score = 0; score <= 100; score++) {
+        const ratio = prepare({ events: [], arcUpdates: [{ ...arc, progress: score }] }).arcUpdates[0].progress;
+        assert.equal(formatModelArcProgress(ratio), score);
+    }
+});
+
+test('missing relationship trend preserves fact content without inventing a label', () => {
+    for (const p of ['对小蓝的看法', '对小蓝的态度', '与小蓝的关系']) {
+        const fact = { s: '小红', p, o: '愿意共同承担责任', isState: true };
+        for (const trend of [undefined, null, '', '  ']) {
+            const batch = { events: [event()], factUpdates: [{ ...fact, trend }] };
+            const before = structuredClone(batch);
+            assert.deepEqual(prepare(batch).factUpdates, [fact]);
+            assert.deepEqual(batch, before);
+        }
+    }
+    const fact = { s: '小红', p: '对小蓝的看法', o: '愿意共同承担责任', isState: true };
+    assert.deepEqual(prepare({ events: [], factUpdates: [{ ...fact, trend: ' 亲密 ' }] }).factUpdates, [{ ...fact, trend: '亲密' }]);
+    for (const trend of ['未知倾向', 0, false, {}]) {
+        assert.throws(() => prepare({ events: [], factUpdates: [{ ...fact, trend }] }), {
+            code: 'invalid_summary_field', path: 'factUpdates[0].trend',
+        });
     }
 });
 

@@ -2679,7 +2679,7 @@ function mergeCharacterRelationshipsIntoFacts(existingFacts, relationships, floo
         const key = `${from}->${to}`;
         const oldFact = oldRelationByKey.get(key);
         const label = String(rel?.label || "").trim() || "未知";
-        const trend = String(rel?.trend || "").trim() || "陌生";
+        const trend = String(rel?.trend || "").trim();
         const id = oldFact?.id || `f-${nextFactId++}`;
 
         newRelationFacts.push({
@@ -2687,7 +2687,7 @@ function mergeCharacterRelationshipsIntoFacts(existingFacts, relationships, floo
             s: from,
             p: oldFact?.p || `对${to}的关系`,
             o: label,
-            trend,
+            ...(trend ? { trend } : {}),
             since: oldFact?.since ?? floorHint,
             _addedAt: oldFact?._addedAt ?? floorHint,
         });

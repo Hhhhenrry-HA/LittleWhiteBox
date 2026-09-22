@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { runSummaryGeneration } from '../../modules/story-summary/generate/generator.js';
-import { getSummaryStore } from '../../modules/story-summary/data/store.js';
+import { getSummaryStore, extractRelationshipsFromFacts } from '../../modules/story-summary/data/store.js';
 import { getContext, __setReplayContext } from './shims/extensions.js';
 import { chat_metadata, __setChatMetadata } from './shims/script.js';
 import { parseSummaryJson } from '../../modules/story-summary/generate/llm.js';
+import { applySummaryUndo } from '../../modules/story-summary/data/summary-undo.js';
 
 // Exercise the commit boundary: JSON errors and malformed event results must
 // not consume source floors, save partial data, or invoke completion callbacks.
@@ -71,6 +72,10 @@ export async function runSummaryResponseCheck() {
         ] }), valid: true, eventIds: ['evt-1', 'evt-2', 'evt-3'], causes: [['evt-1'], ['evt-2']] },
         { raw: JSON.stringify({ events: [], arcUpdates: [{ name: '小红', trajectory: '重新认识彼此', progress: 0 }] }),
             valid: true, eventIds: ['evt-1'], arcProgress: 0 },
+        { raw: JSON.stringify({ ...summary(2),
+            arcUpdates: [{ name: '小红', trajectory: '重新认识彼此', progress: '75.9%' }],
+            factUpdates: [{ s: '小红', p: '对小蓝的看法', o: '愿意共同承担责任', isState: true }],
+        }), valid: true, arcProgress: 0.75, relationWithoutTrend: true },
         { raw: nextSummary, valid: false, saveFailure: true },
         ...[false, true].map(saveFailure => ({
             raw: JSON.stringify({ events: [{ ...summary(2).events[0], summary: '两人一起吃牛肉面。 (#2、#3)' }] }),
@@ -88,8 +93,9 @@ export async function runSummaryResponseCheck() {
             let requests = 0;
             let failSave = false;
             let responseText = JSON.stringify({ ...summary(1),
-                arcUpdates: [{ name: '小红', trajectory: '开始建立信任', progress: 0.7 }],
-                factUpdates: [{ s: '小红', p: '位置', o: '门口', isState: true }],
+                arcUpdates: [{ name: '小红', trajectory: '开始建立信任', progress: 70 }],
+                factUpdates: [{ s: '小红', p: '位置', o: '门口', isState: true },
+                    { s: '小红', p: '对小蓝的看法', o: '初次见面', isState: true, trend: '陌生' }],
             });
             __setChatMetadata({});
             __setReplayContext({ chatId, chat, saveMetadata: async () => {
@@ -137,7 +143,17 @@ export async function runSummaryResponseCheck() {
                 if (scenario.causes) assert.deepEqual(generated.map(event => event.causedBy), scenario.causes);
                 const arc = getSummaryStore().json.arcs[0];
                 assert.equal(arc.progress, scenario.arcProgress ?? 0.7);
-                assert.equal(arc.trajectory, scenario.arcProgress === 0 ? '重新认识彼此' : '开始建立信任');
+                assert.equal(arc.trajectory, scenario.arcProgress !== undefined ? '重新认识彼此' : '开始建立信任');
+                if (scenario.relationWithoutTrend) {
+                    const fact = getSummaryStore().json.facts.find(f => f.p === '对小蓝的看法');
+                    assert.equal(fact.o, '愿意共同承担责任');
+                    assert.equal(Object.hasOwn(fact, 'trend'), false);
+                    assert.equal(extractRelationshipsFromFacts([fact])[0].trend, '');
+                    const store = getSummaryStore();
+                    const restored = applySummaryUndo(store.json, store.summaryHistory.at(-1).undo);
+                    assert.deepEqual(restored.arcs, before.json.arcs);
+                    assert.deepEqual(restored.facts, before.json.facts);
+                }
                 if (scenario.factValue) {
                     assert.equal(getSummaryStore().json.facts.find(fact => fact.s === '小红' && fact.p === '位置')?.o, scenario.factValue);
                 }

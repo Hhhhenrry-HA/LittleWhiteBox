@@ -1,12 +1,13 @@
 // Model output boundary. No store mutation; temporary references live only here.
 import { sanitizeCharacterAliasUpdates } from '../data/character-aliases.js';
 import { EVENT_MEMORY_ROLES } from '../data/events.js';
+import { isRelationFact, RELATION_TRENDS } from '../data/fact-predicates.js';
+import { parseModelArcProgress } from './arc-progress.js';
 
 const FACT_PREDICATE_ALIASES = new Map([
     ['当前位置', '位置'], ['当前所在地', '位置'], ['所在位置', '位置'],
     ['所在地', '位置'], ['当前状态', '状态'],
 ]);
-const RELATION_TRENDS = ['破裂', '厌恶', '反感', '陌生', '投缘', '亲密', '交融'];
 // Accept one extra cause beyond the prompt's target; never truncate valid links.
 const MAX_DIRECT_CAUSES = 3;
 const SOURCE_ERRORS = {
@@ -25,7 +26,10 @@ function invalidSource(path, code) {
 }
 
 function invalid(path, reason) {
-    throw new Error(`${path}：${reason}`);
+    const error = new Error(`${path}：${reason}`);
+    error.code = 'invalid_summary_field';
+    error.path = path;
+    throw error;
 }
 
 function object(value, path) {
@@ -120,12 +124,10 @@ function prepareArc(update, path) {
     object(update, path);
     const name = text(update.name, `${path}.name`);
     const trajectory = text(update.trajectory, `${path}.trajectory`);
-    if (typeof update.progress !== 'number' || !Number.isFinite(update.progress)
-        || update.progress < 0 || update.progress > 1) {
-        invalid(`${path}.progress`, '须为 0 到 1 之间的数字');
-    }
+    const progress = parseModelArcProgress(update.progress);
+    if (progress === null) invalid(`${path}.progress`, '须为有效数值或百分数');
     return {
-        name, trajectory, progress: update.progress,
+        name, trajectory, progress,
         ...(update.newMoment === undefined ? {} : { newMoment: text(update.newMoment, `${path}.newMoment`, true) }),
     };
 }
@@ -142,9 +144,12 @@ function prepareFact(update, path) {
     const o = text(update.o, `${path}.o`);
     if (typeof update.isState !== 'boolean') invalid(`${path}.isState`, '须为布尔值');
     const fact = { s, p, o, isState: update.isState };
-    if (/^对.+的看法$/.test(p) || /^与.+的关系$/.test(p)) {
-        if (!RELATION_TRENDS.includes(update.trend)) invalid(`${path}.trend`, '须为规定的关系趋势');
-        fact.trend = update.trend;
+    if (isRelationFact(fact) && update.trend != null) {
+        const trend = text(update.trend, `${path}.trend`, true);
+        if (trend) {
+            if (!RELATION_TRENDS.includes(trend)) invalid(`${path}.trend`, '须为规定的关系趋势');
+            fact.trend = trend;
+        }
     }
     return fact;
 }
