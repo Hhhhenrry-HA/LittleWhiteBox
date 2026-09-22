@@ -5276,6 +5276,8 @@ export async function initComfyDraw() {
     }, 300);
 
     window.xiaobaixComfyDraw = {
+        mountMessagePanel: floatingPanel.ensureComfyDrawPanel,
+        releaseMessagePanel: floatingPanel.releaseComfyDrawPanel,
         openSettings,
         getSettings,
         getGenerationSnapshot,

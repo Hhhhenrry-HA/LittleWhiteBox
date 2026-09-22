@@ -23,6 +23,7 @@ import { formatErrorDetails } from '../../core/error-details.js';
 import { createModuleEvents } from "../../core/event-manager.js";
 import { postToIframe, isTrustedMessage } from "../../core/iframe-messaging.js";
 import { createMessageButtonOwnership } from "../../core/message-button-ownership.js";
+import { STORY_SUMMARY_TOGGLE_EVENT } from './runtime-events.js';
 import { initAfterAiGate, notifyAfterAiHint, registerAfterAiHandler } from "../../core/after-ai-gate.js";
 import { getDefaultApiPrefix, resolveApiBaseUrl } from "../../shared/common/openai-url-utils.js";
 import {
@@ -129,6 +130,8 @@ import {
     syncOnMessageSwiped,
 } from "./vector/pipeline/chunk-builder.js";
 import { runVectorMaintenance } from "./vector/pipeline/vector-workflow.js";
+import { isL0FloorDeferred } from './vector/pipeline/l0-eligibility.js';
+import { createVectorMaintenanceScheduler } from './vector/pipeline/maintenance-scheduler.js';
 import { repairMissingChunks } from "./vector/pipeline/chunk-repair.js";
 import {
     incrementalExtractAtoms,
@@ -189,6 +192,7 @@ import { invalidateLexicalIndex, warmupIndex, removeDocumentsByFloor, addEventDo
 
 const MODULE_ID = "storySummary";
 const messageButtonOwnership = createMessageButtonOwnership();
+let saveChatSummaryState = context => context.saveMetadata();
 const iframePath = `${extensionFolderPath}/modules/story-summary/story-summary.html`;
 const VALID_SECTIONS = ["keywords", "events", "characters", "arcs", "facts"];
 const MESSAGE_EVENT = "message";
@@ -272,7 +276,7 @@ export async function setStorySummaryEnabledForCurrentChat(enabled) {
     try {
         notifyStorySummaryChatState();
         if (!nextEnabled) clearHideState({ persist: false });
-        await context.saveMetadata();
+        await saveChatSummaryState(context);
 
         if (getContext()?.chatId === targetChatId && events) {
             await handleChatChanged();
@@ -423,7 +427,12 @@ class TaskGuard {
 const guard = new TaskGuard();
 
 let lexicalWarmupTimer = null;
-let autoL0BackfillTimer = null;
+const vectorMaintenanceScheduler = createVectorMaintenanceScheduler({
+    getContext,
+    isStale: isChatStale,
+    getQuietWaitMs: getBackgroundQuietWaitMs,
+    run: maybeRunDelayedVectorMaintenance,
+});
 let vectorIntegrityTimer = null;
 // 完整性检查连续失败时的退避间隔（纯内存态，切聊天/停用/卸载即清零）。
 let vectorIntegrityRetryDelayMs = 0;
@@ -1209,6 +1218,7 @@ async function maybeRunDelayedVectorMaintenance(scheduledChatId = null) {
     const { chatId, chat } = getContext();
     const targetChatId = scheduledChatId || chatId;
     if (!targetChatId || !chatId || targetChatId !== chatId || !chat?.length) return;
+    if (isL0FloorDeferred(chat)) return;
 
     if (isHostGenerating() || guard.isAnyRunning('summary', 'anchor', 'vector')) {
         scheduleAutoL0Backfill(AUTO_L0_BACKFILL_DELAY_MS, targetChatId);
@@ -1289,7 +1299,7 @@ async function maybeRunDelayedVectorMaintenance(scheduledChatId = null) {
                 return { chunkResult: null, l0Result: null, l0VectorResult: null, deferred: false, stale: false, cancelled: true };
             }
             if (hasL0LlmWork || hasL0VectorWork || hasL1Work) {
-                if (isHostGenerating() || isChatStale(chatId)) {
+                if (isHostGenerating() || isChatStale(chatId) || isL0FloorDeferred(chatSnapshot)) {
                     return {
                         chunkResult: { success: true, status: 'up_to_date', built: 0 },
                         l0Result: null,
@@ -2018,8 +2028,9 @@ function addSummaryBtnToMessage(mesId) {
     msg.querySelector(".flex-container.flex1.alignitemscenter")?.appendChild(btn);
 }
 
-export function configureStorySummaryRuntime({ ownsMessageButtons: nextOwnership = true } = {}) {
+export function configureStorySummaryRuntime({ ownsMessageButtons: nextOwnership = true, saveChatState } = {}) {
     messageButtonOwnership.configure(nextOwnership);
+    if (saveChatState) saveChatSummaryState = saveChatState;
 }
 
 export function mountStorySummaryButton(message, mesId) {
@@ -2847,18 +2858,7 @@ function scheduleAutoSummary(reason, delayMs = AUTO_SUMMARY_DELAY_MS) {
 }
 
 function scheduleAutoL0Backfill(delayMs = AUTO_L0_BACKFILL_DELAY_MS, chatIdOverride = null) {
-    clearTimeout(autoL0BackfillTimer);
-    const scheduledChatId = chatIdOverride || getContext().chatId || null;
-    autoL0BackfillTimer = setTimeout(() => {
-        autoL0BackfillTimer = null;
-        if (isChatStale(scheduledChatId)) return;
-        const quietWait = getBackgroundQuietWaitMs();
-        if (quietWait > 0) {
-            scheduleAutoL0Backfill(quietWait, scheduledChatId);
-            return;
-        }
-        maybeRunDelayedVectorMaintenance(scheduledChatId);
-    }, delayMs);
+    vectorMaintenanceScheduler.schedule(delayMs, chatIdOverride);
 }
 
 /** 完整性读取连续失败时 6s → 12s → 24s … 封顶 5min；成功后由调用方清零。 */
@@ -2892,8 +2892,7 @@ function scheduleVectorIntegrityCheck(delayMs = 2000) {
 function clearDeferredBackgroundTasks() {
     clearTimeout(lexicalWarmupTimer);
     lexicalWarmupTimer = null;
-    clearTimeout(autoL0BackfillTimer);
-    autoL0BackfillTimer = null;
+    vectorMaintenanceScheduler.clear();
     clearTimeout(vectorIntegrityTimer);
     vectorIntegrityTimer = null;
     vectorIntegrityRetryDelayMs = 0;
@@ -3889,14 +3888,12 @@ async function handleMessageSwiped(scheduledChatId, messageId) {
 async function handleMessageReceived(scheduledChatId, targetMesId = null) {
     if (!isStorySummaryConsumableForCurrentChat()) return;
     if (isChatStale(scheduledChatId)) return;
-    const { chat, chatId } = getContext();
+    const { chat } = getContext();
     const lastFloor = (chat?.length || 1) - 1;
     const floor = Number.isFinite(targetMesId) ? Number(targetMesId) : lastFloor;
     if (floor < 0 || floor > lastFloor) return;
     const message = chat?.[floor];
     if (!message || message.is_user) return;
-    const vectorConfig = getVectorConfig();
-
     initButtonsForAll();
 
     applyHideStateDebounced();
@@ -3904,11 +3901,6 @@ async function handleMessageReceived(scheduledChatId, targetMesId = null) {
 
     // Refresh entity lexicon after new message (new roles may appear)
     refreshEntityLexiconAndWarmup();
-
-    if (vectorConfig?.enabled) {
-        rememberVectorMaintenance(chatId, floor, 'after_ai');
-        scheduleAutoL0Backfill(AUTO_L0_BACKFILL_DELAY_MS, chatId);
-    }
 }
 
 function handleMessageSent(scheduledChatId) {
@@ -3916,6 +3908,7 @@ function handleMessageSent(scheduledChatId) {
     initButtonForLatestMessage();
     if (!isStorySummaryConsumableForCurrentChat()) return;
     scheduleAutoSummary("before_user");
+    if (getVectorConfig()?.enabled) scheduleAutoL0Backfill(AUTO_L0_BACKFILL_DELAY_MS, scheduledChatId);
 }
 
 /**
@@ -4410,6 +4403,15 @@ function notifyStorySummaryAfterAi(data, source) {
     const message = chat[messageId];
     if (!message || message.is_user) return;
 
+    // A continuation changes the same floor while send_date stays unchanged.
+    // Schedule directly from completion signals, not the after-AI gate's deduped
+    // UI notification. Render-only hints (including virtualized remounts) do not
+    // start maintenance. The timer rechecks the live continuation boundary.
+    if (source !== 'character_message_rendered' && isStorySummaryConsumableForCurrentChat() && getVectorConfig()?.enabled) {
+        rememberVectorMaintenance(chatId, messageId, 'after_ai');
+        scheduleAutoL0Backfill(AUTO_L0_BACKFILL_DELAY_MS, chatId);
+    }
+
     notifyAfterAiHint({
         chatId,
         messageId,
@@ -4830,7 +4832,7 @@ function showBackupManagerModal(initialFiles) {
 // Toggle 监听
 // ═══════════════════════════════════════════════════════════════════════════
 
-$(document).on("xiaobaix:storySummary:toggle", async (_e, enabled) => {
+$(document).on(STORY_SUMMARY_TOGGLE_EVENT, async (_e, enabled) => {
     if (enabled) {
         await registerEvents();
         await handleChatChanged();

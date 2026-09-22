@@ -4561,6 +4561,8 @@ export async function initSdDraw() {
     }, 300);
 
     window.xiaobaixSdDraw = {
+        mountMessagePanel: floatingPanel.ensureSdDrawPanel,
+        releaseMessagePanel: floatingPanel.releaseSdDrawPanel,
         openSettings,
         getSettings,
         getGenerationSnapshot,

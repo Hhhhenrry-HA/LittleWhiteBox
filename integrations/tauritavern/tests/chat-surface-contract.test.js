@@ -2,18 +2,19 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createMessageButtonOwnership } from '../../../core/message-button-ownership.js';
-import { mountMessageDecorators } from '../decorator-lifecycle.js';
+import { mountMessageDecorators } from '../chat-surface/decorator-lifecycle.js';
 import {
-    CHAT_SURFACE_PROTOCOL_VERSION,
-    inspectTauriTavernChatSurface,
+    inspectTauriTavernEnvironment,
 } from '../environment.js';
 import {
     LITTLEWHITEBOX_PARTICIPANT_ID,
-    getUnsupportedManagedFeatures,
-    registerTauriTavernChatSurfaceParticipant,
-} from '../participant.js';
-import { claimIframeRuntimes } from '../runtime-claims.js';
-import { applyTauriTavernChatSurfaceSettingsLock } from '../settings-ui.js';
+    CHAT_SURFACE_PROTOCOL_VERSION,
+} from '../chat-surface/participant.js';
+import { claimIframeRuntimes } from '../features/iframe-renderer/runtime-claims.js';
+import { getManagedLockedControlIds, getUnsupportedManagedFeatures } from '../feature-policy.js';
+import { registerTauriTavernIntegration } from '../registration.js';
+import { TAURITAVERN_ERROR_CODES } from '../diagnostics.js';
+import { applyTauriTavernChatSurfaceSettingsLock, lockTauriTavernChatSurfaceSettings } from '../settings-ui.js';
 
 function createSettings(overrides = {}) {
     return {
@@ -40,11 +41,12 @@ function createRegistrationInput(overrides = {}) {
 }
 
 test('missing and older TauriTavern APIs remain on the static renderer', () => {
-    assert.deepEqual(inspectTauriTavernChatSurface(undefined), { managed: false, api: null });
-    assert.deepEqual(inspectTauriTavernChatSurface({ api: {} }), { managed: false, api: null });
+    assert.deepEqual(inspectTauriTavernEnvironment(undefined), { isTauriTavern: false, managed: false, api: null });
+    assert.deepEqual(inspectTauriTavernEnvironment({ api: {} }), { isTauriTavern: true, managed: false, api: null });
 
     const api = { isManagedOwnershipRequired: () => false };
-    assert.deepEqual(inspectTauriTavernChatSurface({ api: { chatSurface: api } }), {
+    assert.deepEqual(inspectTauriTavernEnvironment({ api: { chatSurface: api } }), {
+        isTauriTavern: true,
         managed: false,
         api: null,
     });
@@ -52,7 +54,7 @@ test('missing and older TauriTavern APIs remain on the static renderer', () => {
 
 test('managed ownership is frozen together with the exact host API', () => {
     const api = { isManagedOwnershipRequired: () => true };
-    const environment = inspectTauriTavernChatSurface({ api: { chatSurface: api } });
+    const environment = inspectTauriTavernEnvironment({ api: { chatSurface: api } });
 
     assert.equal(environment.managed, true);
     assert.equal(environment.api, api);
@@ -61,7 +63,7 @@ test('managed ownership is frozen together with the exact host API', () => {
 
 test('static environments do not register a participant', () => {
     let registered = false;
-    const result = registerTauriTavernChatSurfaceParticipant(createRegistrationInput({
+    const result = registerTauriTavernIntegration(createRegistrationInput({
         environment: {
             managed: false,
             api: { registerParticipant: () => { registered = true; } },
@@ -85,7 +87,7 @@ test('managed environments register the exact ChatSurface v1 participant', () =>
     const prepareContent = () => {};
     const didMount = () => {};
 
-    const result = registerTauriTavernChatSurfaceParticipant(createRegistrationInput({
+    const result = registerTauriTavernIntegration(createRegistrationInput({
         environment: { managed: true, api },
         prepareContent,
         didMount,
@@ -113,12 +115,9 @@ test('unsupported enabled features reject managed ownership before registration'
     });
 
     assert.deepEqual(unsupported, [
-        'immersive mode',
-        'message preview/purge',
-        'draw provider',
-        'custom template iframe',
+        'immersive', 'preview', 'customTemplate',
     ]);
-    assert.throws(() => registerTauriTavernChatSurfaceParticipant(createRegistrationInput({
+    assert.throws(() => registerTauriTavernIntegration(createRegistrationInput({
         environment: {
             managed: true,
             api: {
@@ -129,18 +128,76 @@ test('unsupported enabled features reject managed ownership before registration'
         settings,
         hasActiveCustomTemplate: () => true,
         isDrawProviderActive: () => true,
-    })), /does not support: immersive mode, message preview\/purge, draw provider, custom template iframe/);
+    })), error => {
+        assert.equal(error.code, TAURITAVERN_ERROR_CODES.unsupportedFeatures);
+        assert.deepEqual(error.featureIds, unsupported);
+        return true;
+    });
     assert.equal(registered, false);
 });
 
-test('managed ownership rejects an enabled Xiaobai OS', () => {
-    const settings = createSettings({ xiaobaiOs: { enabled: true } });
+test('managed ownership admits enabled OS, TTS and outline without requiring a backend', () => {
+    const settings = createSettings({ xiaobaiOs: { enabled: true }, tts: { enabled: true }, storyOutline: { enabled: true } });
 
     assert.deepEqual(getUnsupportedManagedFeatures({
         settings,
         hasActiveCustomTemplate: () => false,
         isDrawProviderActive: () => false,
-    }), ['Xiaobai OS']);
+    }), []);
+});
+
+test('supported features can start and their controls remain mutable', () => {
+    let registered = false;
+    registerTauriTavernIntegration(createRegistrationInput({
+        environment: {
+            managed: true,
+            api: {
+                protocolVersion: CHAT_SURFACE_PROTOCOL_VERSION,
+                registerParticipant() { registered = true; },
+            },
+        },
+        settings: createSettings({
+            variablesPanel: { enabled: true },
+            storySummary: { enabled: true },
+        }),
+    }));
+    const controls = new Map(['xiaobaix_variables_panel_enabled', 'xiaobaix_story_summary_enabled']
+        .map(id => [id, { disabled: false, setAttribute() {}, classList: { add() {} } }]));
+    applyTauriTavernChatSurfaceSettingsLock({ getElementById: id => controls.get(id) });
+    assert.equal(registered, true);
+    assert.equal(controls.get('xiaobaix_variables_panel_enabled').disabled, false);
+    assert.equal(controls.get('xiaobaix_story_summary_enabled').disabled, false);
+});
+
+test('draw can start under managed ownership and the master/draw controls remain usable', () => {
+    let registered = false;
+    const didCommitContent = () => {};
+    registerTauriTavernIntegration(createRegistrationInput({
+        environment: {
+            managed: true,
+            api: {
+                protocolVersion: CHAT_SURFACE_PROTOCOL_VERSION,
+                registerParticipant(definition) {
+                    registered = true;
+                    assert.equal(definition.didCommitContent, didCommitContent);
+                },
+            },
+        },
+        isDrawProviderActive: () => true,
+        didCommitContent,
+    }));
+    const controls = new Map(['xiaobaix_enabled', 'xiaobaix_draw_provider', 'xiaobaix_draw_open_settings', 'xiaobaix_reset_btn']
+        .map(id => [id, { disabled: false, setAttribute() {}, classList: { add() {} } }]));
+    applyTauriTavernChatSurfaceSettingsLock({ getElementById: id => controls.get(id) });
+    assert.equal(registered, true);
+    for (const id of ['xiaobaix_enabled', 'xiaobaix_draw_provider', 'xiaobaix_draw_open_settings']) {
+        assert.equal(controls.get(id).disabled, false);
+    }
+    assert.equal(controls.get('xiaobaix_reset_btn').disabled, false);
+});
+
+test('ordinary SillyTavern settings are not touched by the integration lock', () => {
+    lockTauriTavernChatSurfaceSettings({ getElementById() { assert.fail('Unexpected settings mutation'); } });
 });
 
 test('a disabled LittleWhiteBox still registers its required participant identity', () => {
@@ -157,7 +214,7 @@ test('a disabled LittleWhiteBox still registers its required participant identit
         },
     };
 
-    registerTauriTavernChatSurfaceParticipant(createRegistrationInput({
+    registerTauriTavernIntegration(createRegistrationInput({
         environment: { managed: true, api },
         settings,
         hasActiveCustomTemplate: () => true,
@@ -168,12 +225,12 @@ test('a disabled LittleWhiteBox still registers its required participant identit
 });
 
 test('managed ownership rejects protocol mismatches', () => {
-    assert.throws(() => registerTauriTavernChatSurfaceParticipant(createRegistrationInput({
+    assert.throws(() => registerTauriTavernIntegration(createRegistrationInput({
         environment: {
             managed: true,
             api: { protocolVersion: CHAT_SURFACE_PROTOCOL_VERSION + 1, registerParticipant() {} },
         },
-    })), /participant v1 API is unavailable/);
+    })), error => error.code === TAURITAVERN_ERROR_CODES.unavailableChatSurface);
 });
 
 test('externally owned message buttons ignore module-wide cleanup', () => {
@@ -217,19 +274,20 @@ test('message decorator disposer releases decorators and container exactly once'
 
 test('message decorator mount failure rolls back partial managed UI', () => {
     const calls = [];
+    const failure = new Error();
     assert.throws(() => mountMessageDecorators({
         element: {},
         mesid: 7,
         createContainerCleanup: () => () => calls.push('container:release'),
         decorators: [
             () => () => calls.push('first:release'),
-            () => { throw new Error('mount failed'); },
+            () => { throw failure; },
         ],
-    }), /mount failed/);
+    }), error => error === failure);
     assert.deepEqual(calls, ['first:release', 'container:release']);
 });
 
-test('managed settings lock includes the X button position and Xiaobai OS controls', () => {
+test('only the three unvalidated features remain locked under managed ownership', () => {
     const attributes = new Map();
     const classes = new Set();
     const requestedIds = [];
@@ -241,14 +299,14 @@ test('managed settings lock includes the X button position and Xiaobai OS contro
     const root = {
         getElementById(id) {
             requestedIds.push(id);
-            return ['xiaobaix_xposition_btn', 'xiaobaix_os_enabled'].includes(id) ? control : null;
+            return control;
         },
     };
 
     applyTauriTavernChatSurfaceSettingsLock(root);
 
-    assert.equal(requestedIds.includes('xiaobaix_xposition_btn'), true);
-    assert.equal(requestedIds.includes('xiaobaix_os_enabled'), true);
+    assert.deepEqual(requestedIds.sort(), ['xiaobaix_immersive_enabled', 'xiaobaix_preview_enabled', 'xiaobaix_template_enabled']);
+    assert.deepEqual(getManagedLockedControlIds().sort(), requestedIds);
     assert.equal(control.disabled, true);
     assert.equal(attributes.get('aria-disabled'), 'true');
     assert.equal(classes.has('disabled-control'), true);
@@ -278,4 +336,26 @@ test('runtime claims include only renderable code blocks while rendering is enab
     });
 
     assert.deepEqual(claimed, [{ source: codeBlocks[0].parentElement, activate: mountRuntime }]);
+});
+
+test('render limits and toggles admit only configured floors on every content mount', () => {
+    const source = {};
+    const settings = { enabled: true, renderEnabled: true, maxRenderedMessages: 2 };
+    const claimed = [];
+    const mount = mesid => claimIframeRuntimes({
+        content: { querySelectorAll: () => [{ parentElement: source }] },
+        claims: { claim: () => claimed.push(mesid) },
+        settings, mesid, chatLength: 10, shouldRender: () => true, mountRuntime() {},
+    });
+    mount(7); mount(8); mount(9);
+    assert.deepEqual(claimed, [8, 9]);
+    settings.maxRenderedMessages = 3;
+    mount(7);
+    assert.deepEqual(claimed, [8, 9, 7]);
+    settings.renderEnabled = false;
+    mount(9);
+    settings.renderEnabled = true;
+    settings.enabled = false;
+    mount(9);
+    assert.deepEqual(claimed, [8, 9, 7]);
 });

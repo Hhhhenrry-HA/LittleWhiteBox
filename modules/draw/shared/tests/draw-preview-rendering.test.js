@@ -185,6 +185,14 @@ test('settlement and reopening retain old images alongside newly completed and f
     }
 });
 
+test('content leases respect host-filtered markers instead of restoring the raw message', async t => {
+    const { root } = mountMessage(t, 'Before[image:filtered]After');
+    root.textContent = 'Filtered by host';
+    await api.renderPreviewsForMessage(0, { content: root, signal: new AbortController().signal });
+    assert.equal(root.textContent, 'Filtered by host');
+    assert.equal(root.querySelector('.xb-nd-img'), null);
+});
+
 test('genuinely missing anchors still rebuild from the current persisted message', async t => {
     const slotId = 'missing-anchor';
     const { message, root } = mountMessage(t, `Before[image : ${slotId}]After`);
@@ -200,6 +208,26 @@ test('genuinely missing anchors still rebuild from the current persisted message
 });
 
 const CODE_BLOCK = ['', '', '```html', '<div>frontend</div>', '```', ''].join('\n');
+
+test('a revoked content lease does not paint; remount reads the existing image without generating again', async t => {
+    const slotId = 'leased-image';
+    const { message, root } = mountMessage(t, `Before[image:${slotId}]After`);
+    const imgId = await seedImage(slotId, 'image');
+    const controller = new AbortController();
+    const pending = api.renderPreviewsForMessage(0, { content: root, signal: controller.signal });
+    controller.abort();
+    await pending;
+    assert.equal(root.querySelector('.xb-nd-img'), null);
+
+    const nextContent = root.cloneNode(true);
+    root.replaceWith(nextContent);
+    await api.renderPreviewsForMessage(0, { content: root, signal: new AbortController().signal });
+    assert.equal(nextContent.querySelector('.xb-nd-img'), null, 'stale content cannot write into its replacement');
+    await api.renderPreviewsForMessage(0, { content: nextContent, signal: new AbortController().signal });
+    assert.equal(nextContent.querySelector('.xb-nd-img').dataset.imgId, imgId);
+    assert.equal((await api.getPreviewsBySlot(slotId)).length, 1);
+    assert.equal(message.mes, `Before[image:${slotId}]After`);
+});
 
 test('rebuilding a message with a code block notifies other renderers only after the rewritten DOM is in place', async t => {
     const slotId = 'rewrite-notify';

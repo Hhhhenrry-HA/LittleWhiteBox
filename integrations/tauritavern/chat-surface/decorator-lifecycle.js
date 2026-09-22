@@ -1,3 +1,5 @@
+import { TAURITAVERN_MESSAGES } from '../diagnostics.js';
+
 export function mountMessageDecorators({
     element,
     mesid,
@@ -20,7 +22,7 @@ export function mountMessageDecorators({
         }
     } catch (error) {
         try { release(); } catch (cleanupError) {
-            const failure = new Error('LittleWhiteBox managed decorator mount and cleanup failed');
+            const failure = new Error(TAURITAVERN_MESSAGES.decoratorCleanupFailed);
             failure.cause = error;
             failure.cleanupError = cleanupError;
             throw failure;

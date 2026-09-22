@@ -4995,6 +4995,8 @@ export async function initNovelDraw() {
     // ════════════════════════════════════════════════════════════════════
 
     window.xiaobaixNovelDraw = {
+        mountMessagePanel: floatingPanel.ensureNovelDrawPanel,
+        releaseMessagePanel: floatingPanel.releaseNovelDrawPanel,
         getSettings,
         getGenerationSnapshot,
         saveSettings,
