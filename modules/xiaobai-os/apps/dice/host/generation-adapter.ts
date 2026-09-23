@@ -1,11 +1,10 @@
-import { activateSendButtons, deactivateSendButtons, setCharacterId, setCharacterName, setExternalAbortController, setSendButtonState, stopGeneration, is_send_press, eventSource } from '../../../../../../../../../script.js';
+import { activateSendButtons, deactivateSendButtons, setCharacterId, setCharacterName, setExternalAbortController, setExtensionPrompt, extension_prompt_types, extension_prompt_roles, setSendButtonState, stopGeneration, is_send_press, eventSource } from '../../../../../../../../../script.js';
 import { isGenerating } from '../../../host/sillytavern-generation-state.js';
 import { generateGroupWrapper, is_group_generating } from '../../../../../../../../group-chats.js';
 import { uuidv4 } from '../../../../../../../../utils.js';
 import { createModuleEvents, event_types } from '../../../../../core/event-manager.js';
 import { registerGenerateInterceptor, unregisterGenerateInterceptor, GENERATE_INTERCEPTOR_ORDER } from '../../../../../shared/common/generate-interceptor.js';
-import { setSillyTavernPrompt } from '../../../host/sillytavern-runtime-adapters.js';
-import { buildActionCheckPrompt } from '../protocol/prompt.js';
+import { buildActionCheckContinuation, buildActionCheckRules } from '../protocol/prompt.js';
 import type { ActionCheckFrequency, ActionCheckRule } from '../types.js';
 import { readCoc7Sheet, type Coc7Sheet } from '../domain/coc7-sheet.js';
 import { parseDiceRecords } from '../domain/check-records.js';
@@ -13,6 +12,7 @@ import { createActionCheckSession } from '../application/action-check-session.js
 import type { DiceContinuationStage, DiceContinuationProgress } from '../application/host-wait.js';
 import { applyDiceCandidate, captureDiceTarget, clearNewDiceSwipe, isDiceTargetCurrent, readDiceRecords, type DiceCandidate, type DiceTarget } from './message-records.js';
 import { filterDiceGenerationData, type DiceGenerationData } from './request-filter.js';
+import { appendDiceWorldInfoRules } from './world-info-rules.js';
 import { parseActionCheck } from '../protocol/request.js';
 import { captureDiceChat, diceHostContext, ensureDiceDisplayRule, isDiceMessageBeingEdited, waitForDiceHost } from './sillytavern-port.js';
 
@@ -38,7 +38,8 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
     let controls: { signal: AbortSignal; nativePending: boolean } | null = null;
     let replacement: AbortController | null = null;
     let unsubscribe: (() => void) | null = null;
-    const clearPrompt = () => setSillyTavernPrompt(KEY, '');
+    const setPrompt = (content: string) => setExtensionPrompt(KEY, content, extension_prompt_types.IN_CHAT, 0, false, extension_prompt_roles.USER);
+    const clearPrompt = () => setPrompt('');
     const currentTarget = (target: DiceTarget) => isDiceTargetCurrent(captureDiceChat(), target) && !isDiceMessageBeingEdited(target.index);
     const captureSheet = () => { const value = readCoc7Sheet(sheet()); return value.kind === 'ready' ? value.sheet : null; };
     const session = createActionCheckSession({
@@ -179,6 +180,12 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
     function start(): void {
         if (unsubscribe) { return; }
         const events = createModuleEvents('xiaobaiOsDice');
+        events.on(event_types.WORLDINFO_ENTRIES_LOADED, (payload: { globalLore: unknown[] }) => {
+            if (!enabled()) { return; }
+            const activeRule = intention?.target.rule ?? observation?.rule ?? rule();
+            const activeSheet = intention ? intention.target.coc7Sheet : observation ? observation.coc7Sheet : captureSheet();
+            appendDiceWorldInfoRules(payload, buildActionCheckRules(frequency(), activeRule, !!activeSheet));
+        });
         const started = async (type: unknown, options: { signal?: AbortSignal }, dryRun: unknown) => {
             if (dryRun || intention && type === 'continue' && options.signal === intention.signal
                 && currentTarget(intention.target)) { return; }
@@ -261,7 +268,10 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
                 if (!enabled()) { clearPrompt(); return; }
                 const activeRule = own?.target.rule ?? observed?.rule ?? rule();
                 const activeSheet = own ? own.target.coc7Sheet : observed ? observed.coc7Sheet : captureSheet();
-                setSillyTavernPrompt(KEY, buildActionCheckPrompt(last?.mes ?? '', records, frequency(), activeRule, !!activeSheet));
+                if (type === 'continue' && last) {
+                    const content = buildActionCheckContinuation(last.mes, records, activeRule !== 'coc7' || !!activeSheet);
+                    setPrompt(content);
+                } else { clearPrompt(); }
             } catch (error) {
                 console.error('[LittleWhiteBox] Dice check preparation failed', error);
                 if (!current()) { abort(true); return; }

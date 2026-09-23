@@ -7,9 +7,10 @@ import { setImmediate } from 'node:timers/promises';
 import { build } from 'esbuild';
 import { prepareActionCheck } from '../apps/dice/application/prepare-action-check.ts';
 import { captureDiceTarget } from '../apps/dice/host/message-records.ts';
-import { buildActionCheckPrompt, projectActionCheckResults } from '../apps/dice/protocol/prompt.ts';
+import { buildActionCheckRules, projectActionCheckResults } from '../apps/dice/protocol/prompt.ts';
 import { parseDiceRecords } from '../apps/dice/domain/check-records.ts';
 import { generateCoc7Sheet } from '../apps/dice/domain/coc7-creation.ts';
+import { readDicePromptResults } from './helpers/dice-prompt.js';
 
 // These regressions live at the native event/API boundary, which the session's continuation stub cannot cover.
 // Run the actual adapter, readiness barrier, session and protocol; replace native I/O only.
@@ -21,7 +22,7 @@ const compiled = await build({
     bundle: true, write: false, format: 'esm', platform: 'node', logLevel: 'silent',
     plugins: [{ name: 'dice-generation-host', setup(builder) {
         builder.onResolve({ filter: /^js-sha256$/ }, () => ({ path: import.meta.resolve('js-sha256'), external: true }));
-        builder.onResolve({ filter: /(?:^dice-generation-host$|\/(?:script|group-chats|utils|extensions|event-manager|generate-interceptor|sillytavern-runtime-adapters|sillytavern-chat-save)\.js$|\/extensions\/regex\/engine\.js$)/ },
+        builder.onResolve({ filter: /(?:^dice-generation-host$|\/(?:script|group-chats|utils|extensions|event-manager|generate-interceptor|sillytavern-chat-save|world-info)\.js$|\/extensions\/regex\/engine\.js$)/ },
             () => ({ path: 'host', namespace: 'fixture' }));
         builder.onLoad({ filter: /.*/, namespace: 'fixture' }, () => ({ contents: `
             const listeners = new Map();
@@ -46,6 +47,7 @@ const compiled = await build({
                     return () => listeners.get(name).delete(fn);
                 },
                 group(value) { is_group_generating = value; },
+                promptMessages() { return [...host.prompts.values()].map(({ value, role }) => ({ role: role === 1 ? 'user' : 'system', content: value })); },
                 saving(value) { isChatSaving = value; },
                 lock() { setSendButtonState(true); deactivateSendButtons(); },
                 unlock: activateSendButtons,
@@ -70,7 +72,15 @@ const compiled = await build({
             export const registerGenerateInterceptor = (_, fn) => { host.interceptor = fn; };
             export const unregisterGenerateInterceptor = () => { host.interceptor = null; };
             export const GENERATE_INTERCEPTOR_ORDER = {};
-            export const setSillyTavernPrompt = (key, value) => host.prompts.set(key, value);
+            // Native extension-prompt API values shared by ST 1.14 and 1.18.
+            export const extension_prompt_types = { IN_CHAT: 1 };
+            export const extension_prompt_roles = { SYSTEM: 0, USER: 1, ASSISTANT: 2 };
+            export const setExtensionPrompt = (key, value, position, depth, scan, role) => {
+                if (value) host.prompts.set(key, { value, position, depth, scan, role });
+                else host.prompts.delete(key);
+            };
+            export const newWorldInfoEntryTemplate = { content: '', constant: false, position: 0, order: 100, ignoreBudget: false };
+            export const world_info_position = { after: 1 };
             export const uuidv4 = () => 'generated-' + host.ids++;
             export const getContext = () => ({ ...host.source, name2: host.source.characterName, generate,
                 streamingProcessor: host.stream,
@@ -110,9 +120,11 @@ const compiled = await build({
                 }
                 host.lock();
                 if (await host.intercept(type) || options.signal?.aborted) { activateSendButtons(); return; }
-                const prompt = host.prompts.get('xiaobai_os_dice');
-                await host.emit('GENERATE_AFTER_DATA', {}, false);
-                host.requests.push({type, signal:host.controller.signal, busy:is_send_press || is_group_generating, prompt});
+                // Native continue moves its pending assistant reply after in-chat extension prompts.
+                const data = { prompt: [...host.promptMessages(), {role:'assistant',content:host.source.chat.at(-1)?.mes ?? ''}] };
+                await host.emit('GENERATE_AFTER_DATA', data, false);
+                if (host.controller.signal.aborted || options.signal?.aborted) { activateSendButtons(); return; }
+                host.requests.push({type, signal:host.controller.signal, busy:is_send_press || is_group_generating, prompt:data.prompt});
                 try {
                     await host.reply(host.controller.signal);
                     if (!host.stream?.isStopped) await host.saveNative();
@@ -198,11 +210,13 @@ test('continuation injection follows retained markers after edits, moves, deleti
             target.mes = body;
             await begin('continue');
             assert.equal(await host.intercept('continue'), false);
-            const prompt = host.prompts.get('xiaobai_os_dice');
+            const data = { prompt: [...host.promptMessages(), { role: 'assistant', content: body }] };
+            await host.emit('GENERATE_AFTER_DATA', data, false);
             if (referenced.length) {
-                assert.deepEqual(JSON.parse(prompt.split('\n').at(-1)), projectActionCheckResults(referenced));
+                assert.equal(data.prompt[0].role, 'user');
+                assert.deepEqual(readDicePromptResults(data.prompt[0].content), projectActionCheckResults(referenced));
             } else {
-                assert.equal(prompt, buildActionCheckPrompt(body, [], frequency), 'deletion keeps the check instructions installed');
+                assert.equal(data.prompt.length, 1, 'deleted references do not leak results');
             }
             assert.deepEqual(target.extra.xiaobaiOsDice, raw, 'reading a migrated result never rewrites saved history');
         }
@@ -220,7 +234,7 @@ test('same-roll recovery accepts an edited terminal marker even after removing a
         target.mes = body;
         await adapter.retry(0);
         assert.equal(target.mes, body + '\n\nAfterward.');
-        assert.deepEqual(JSON.parse(host.requests.at(-1).prompt.split('\n').at(-1)).at(-1), projectActionCheckResults([wall])[0]);
+        assert.deepEqual(readDicePromptResults(host.requests.at(-1).prompt[0].content).at(-1), projectActionCheckResults([wall])[0]);
         assert.equal(adapter.view(), null);
         assert.deepEqual(target.extra.xiaobaiOsDice, raw);
     }
@@ -230,28 +244,40 @@ test('same-roll recovery accepts an edited terminal marker even after removing a
 // The native event boundary is the cheapest place to verify installation, request projection and cleanup together.
 test('each generation uses the current frequency, including continuations with already-confirmed results', async t => {
     setup(t);
-    const prompts = new Set();
+    const rules = new Set();
     for (const frequency of ['standard', 'active']) {
         host.frequency = frequency;
         await begin();
         await host.intercept('normal');
-        assert.equal(host.prompts.get('xiaobai_os_dice'), buildActionCheckPrompt(host.source.chat.at(-1).mes, [], frequency));
-        prompts.add(host.prompts.get('xiaobai_os_dice'));
+        const loaded = { globalLore: [] };
+        await host.emit('WORLDINFO_ENTRIES_LOADED', loaded);
+        assert.equal(loaded.globalLore.length, 1);
+        assert.equal(loaded.globalLore[0].position, 1);
+        assert.equal(loaded.globalLore[0].order, 999);
+        assert.equal(loaded.globalLore[0].content, buildActionCheckRules(frequency, 'd20', true));
+        rules.add(loaded.globalLore[0].content);
     }
-    assert.equal(prompts.size, 2, 'the two preferences produce distinct model instructions');
+    assert.equal(rules.size, 2, 'the two preferences produce distinct model instructions');
     const saved = prepareActionCheck({ body: call, generatedFrom: 0, id: 'saved', random: () => 0.4 });
     host.source.chat.push({ ...message(saved.body), extra: { xiaobaiOsDice: saved.records } });
     for (const frequency of ['standard', 'active']) {
         host.frequency = frequency;
         await begin('continue');
         await host.intercept('continue');
-        assert.equal(host.prompts.get('xiaobai_os_dice'), buildActionCheckPrompt(saved.body, saved.records.checks, frequency));
+        const loaded = { globalLore: [] };
+        await host.emit('WORLDINFO_ENTRIES_LOADED', loaded);
+        assert.equal(loaded.globalLore[0].content, buildActionCheckRules(frequency, 'd20', true));
+        const request = { prompt: [...host.promptMessages(), { role: 'assistant', content: saved.body }] };
+        await host.emit('GENERATE_AFTER_DATA', request, false);
+        assert.deepEqual(readDicePromptResults(request.prompt[0].content), projectActionCheckResults(saved.records.checks));
         assert.deepEqual(host.source.chat.at(-1).extra.xiaobaiOsDice, saved.records, 'switching frequency preserves rolled results');
     }
     host.enabled = false;
     await begin();
     await host.intercept('normal');
-    assert.equal(host.prompts.get('xiaobai_os_dice'), '');
+    const loaded = { globalLore: [] };
+    await host.emit('WORLDINFO_ENTRIES_LOADED', loaded);
+    assert.deepEqual(loaded.globalLore, []);
 });
 
 test('CoC checks apply once and retry a failed continuation without rolling or revealing again', async t => {
@@ -289,7 +315,7 @@ test('CoC checks apply once and retry a failed continuation without rolling or r
     assert.equal(host.nativeSaves.length, 2, 'only the native pre-check and completed continuation saves');
     assert.deepEqual(parseDiceRecords(host.nativeSaves.at(-1)[0].extra.xiaobaiOsDice), records);
     assert.equal(host.requests.length, 2);
-    assert.deepEqual(JSON.parse(host.requests.at(-1).prompt.split('\n').at(-1)), projectActionCheckResults(records.checks));
+    assert.deepEqual(readDicePromptResults(host.requests.at(-1).prompt[0].content), projectActionCheckResults(records.checks));
     assert.equal(adapter.isBusy(), false);
 });
 
@@ -352,7 +378,9 @@ test('uninitialized CoC has no request prompt and cannot roll, but saved results
     host.rule = 'coc7'; host.sheet = null;
     host.source.chat = [message('Ordinary conversation.')];
     await begin(); await host.intercept('normal');
-    assert.equal(host.prompts.get('xiaobai_os_dice'), '');
+    const loaded = { globalLore: [] };
+    await host.emit('WORLDINFO_ENTRIES_LOADED', loaded);
+    assert.equal(loaded.globalLore.length, 0);
     await received(); await settled(adapter);
     assert.equal(host.source.chat[0].extra.xiaobaiOsDice, undefined);
     const retained = prepareActionCheck({ body: cocCall, rule: 'coc7', coc7Sheet: generateCoc7Sheet(() => 0.5), generatedFrom: 0, id: 'retained' });
@@ -372,7 +400,7 @@ test('a damaged stored sheet does not abort ordinary chat or enable CoC rolls', 
     host.source.chat = [message('Ordinary conversation.')];
     await begin();
     assert.equal(await host.intercept('normal'), false);
-    assert.equal(host.prompts.get('xiaobai_os_dice'), '');
+    assert.equal(host.prompts.size, 0);
     await received(); await settled(adapter);
     assert.equal(host.source.chat[0].extra.xiaobaiOsDice, undefined);
     host.source.chat = [message(cocCall)];
@@ -388,10 +416,7 @@ test('final requests hide Dice markers without changing source messages, non-tex
     host.source.chat.push({ ...message(saved.body), extra: { xiaobaiOsDice: saved.records } });
     await begin('continue');
     await host.intercept('continue');
-    const resultsPrompt = host.prompts.get('xiaobai_os_dice');
-    assert.ok(resultsPrompt);
     const sourceMessages = [
-        { role: 'system', content: resultsPrompt },
         { role: 'assistant', content: saved.body, extra: host.source.chat.at(-1).extra },
         { role: 'user', content: [
             { type: 'text', text: 'Before[dice:saved]\n[dice:second-ID_2]After [image:keep] [ordinary] <xb_action_check>' },
@@ -399,33 +424,74 @@ test('final requests hide Dice markers without changing source messages, non-tex
         ] },
         { role: 'assistant', content: null, tool_calls: [{ id: 'keep', function: { arguments: '[dice:keep]' } }] },
         { role: 'assistant', tool_calls: [] },
+        ...host.promptMessages(),
     ];
     const original = structuredClone(sourceMessages);
     const savedChat = structuredClone(host.source.chat);
     const data = { prompt: sourceMessages, temperature: 0.5 };
     await host.emit('GENERATE_AFTER_DATA', data, false);
-    assert.equal(data.prompt[0].content, resultsPrompt);
-    assert.equal(data.prompt[1].content, 'Attempt.\n\n');
-    assert.equal(data.prompt[2].content[0].text, 'Before\nAfter [image:keep] [ordinary] <xb_action_check>');
-    assert.deepEqual(data.prompt[2].content[1], original[2].content[1]);
-    assert.deepEqual(data.prompt.slice(3), original.slice(3));
+    assert.equal(data.prompt[0].content, 'Attempt.\n\n');
+    assert.equal(data.prompt[1].content[0].text, 'Before\nAfter [image:keep] [ordinary] <xb_action_check>');
+    assert.deepEqual(data.prompt[1].content[1], original[1].content[1]);
+    assert.deepEqual(data.prompt.slice(2), original.slice(2));
+    assert.deepEqual(readDicePromptResults(data.prompt.at(-1).content), projectActionCheckResults(saved.records.checks));
     assert.deepEqual(sourceMessages, original, 'host-owned prompt objects are not mutated');
     assert.deepEqual(host.source.chat, savedChat, 'body, records and continuation anchors remain unchanged');
     assert.equal(data.temperature, 0.5);
-    assert.equal(host.prompts.get('xiaobai_os_dice'), '', 'normal prompt cleanup still runs after assembly');
+    assert.equal(host.prompts.size, 0, 'the native prompt is cleared after assembly');
+});
+
+// Protect the extension API contract, not a second implementation of native budgeting/formatting.
+test('confirmed results use native D0 USER, remain separate from rules, and clear after assembly', async t => {
+    setup(t);
+    const saved = prepareActionCheck({ body: call, generatedFrom: 0, id: 'saved', random: () => 0.4 });
+    host.source.chat.push({ ...message(saved.body), extra: { xiaobaiOsDice: saved.records } });
+    await begin('continue'); await host.intercept('continue');
+    const [prompt] = host.prompts.values();
+    assert.deepEqual({ position: prompt.position, depth: prompt.depth, scan: prompt.scan, role: prompt.role },
+        { position: 1, depth: 0, scan: false, role: 1 });
+    assert.deepEqual(readDicePromptResults(prompt.value), projectActionCheckResults(saved.records.checks));
+    const loaded = { globalLore: [] };
+    await host.emit('WORLDINFO_ENTRIES_LOADED', loaded);
+    assert.equal(loaded.globalLore[0].content, buildActionCheckRules('standard', 'd20', true));
+    const data = { prompt: [...host.promptMessages(), { role: 'assistant', content: saved.body }] };
+    await host.emit('GENERATE_AFTER_DATA', data, true);
+    assert.equal(host.prompts.size, 1, 'a preview does not consume a live injection');
+    await host.emit('GENERATE_AFTER_DATA', data, false);
+    assert.equal(host.prompts.size, 0);
+    assert.equal(data.prompt.length, 2, 'no extra message is appended after assembly');
+    assert.deepEqual(readDicePromptResults(data.prompt[0].content), projectActionCheckResults(saved.records.checks));
+    await begin('normal'); await host.intercept('normal');
+    assert.equal(host.prompts.size, 0, 'an unrelated turn does not inherit the result');
+});
+
+test('pending result injection clears on cancellation, chat changes and disabling Dice', async t => {
+    const adapter = setup(t);
+    const saved = prepareActionCheck({ body: call, generatedFrom: 0, id: 'saved', random: () => 0.4 });
+    host.source.chat.push({ ...message(saved.body), extra: { xiaobaiOsDice: saved.records } });
+    for (const clear of [
+        () => host.emit('GENERATION_STOPPED'),
+        () => host.emit('CHAT_CHANGED'),
+        () => adapter.cancel(),
+        () => { host.enabled = false; adapter.stop(); },
+    ]) {
+        await begin('continue'); await host.intercept('continue');
+        assert.equal(host.prompts.size, 1);
+        await clear();
+        assert.equal(host.prompts.size, 0);
+    }
 });
 
 test('historical Dice markers filter for text requests and previews even with checks disabled', async t => {
     setup(t);
     host.enabled = false;
-    host.prompts.set('xiaobai_os_dice', 'Pending result data');
     const original = 'Before\n[dice:one][dice:two-ID_3]\nAfter [image:keep] [ordinary] [dice:] [dice:unfinished';
     for (const dryRun of [true, false]) {
         const data = { prompt: original, max_length: 80 };
         await host.emit('GENERATE_AFTER_DATA', data, dryRun);
         assert.equal(data.prompt, 'Before\n\nAfter [image:keep] [ordinary] [dice:] [dice:unfinished');
         assert.equal(data.max_length, 80);
-        assert.equal(host.prompts.get('xiaobai_os_dice'), dryRun ? 'Pending result data' : '');
+        assert.equal(host.prompts.size, 0);
     }
     assert.equal(host.requests.length, 0);
 });
@@ -535,7 +601,9 @@ test('one check uses only native pre-check and post-continuation saves while bus
     assert.equal(reloaded.swipe_info[0].extra.foreign, true);
     // A normal next floor uses the finished prose, not the preceding floor's roll injection.
     await begin('normal'); await host.intercept('normal');
-    assert.equal(host.prompts.get('xiaobai_os_dice'), buildActionCheckPrompt(target.mes));
+    const nextFloor = { prompt: [{ role: 'user', content: 'Next turn' }] };
+    await host.emit('GENERATE_AFTER_DATA', nextFloor, false);
+    assert.equal(nextFloor.prompt.length, 1);
 });
 
 for (const replacement of [false, true]) {
@@ -565,7 +633,7 @@ for (const replacement of [false, true]) {
         assert.equal(host.requests.length, 0);
         assert.equal(host.busy, replacement);
         assert.equal(host.stopVisible, replacement);
-        assert.equal(host.prompts.get('xiaobai_os_dice'), '');
+        assert.equal(host.prompts.size, 0);
         otherListener.resolve(); await starting;
     });
 }
@@ -694,7 +762,7 @@ for (const rule of ['d20', 'coc7']) {
 }
 
 for (const failed of [false, true]) {
-    test(`cancelled preparation ${failed ? 'failure' : 'completion'} cannot clear the retry prompt`, async t => {
+    test(`cancelled preparation ${failed ? 'failure' : 'completion'} cannot clear the retry result`, async t => {
         const adapter = setup(t);
         await begin(); await host.intercept('normal');
         const preparing = Promise.withResolvers();
@@ -714,16 +782,19 @@ for (const failed of [false, true]) {
         const saved = structuredClone(target.extra.xiaobaiOsDice);
         host.stop(); await setImmediate();
         const retry = adapter.retry(1); await setImmediate();
-        const retryPrompt = host.prompts.get('xiaobai_os_dice');
-        assert.ok(retryPrompt);
+        const retryPrompt = host.promptMessages();
+        assert.equal(retryPrompt.length, 1);
+        assert.equal(host.requests.length, 0);
         if (failed) { preparing.reject(new Error('preparation_failed')); }
         else { preparing.resolve(); }
         await setImmediate();
-        assert.equal(host.prompts.get('xiaobai_os_dice'), retryPrompt);
+        assert.deepEqual(host.promptMessages(), retryPrompt);
+        assert.equal(host.requests.length, 0);
         assert.equal(host.busy, true);
         assembly.resolve(); await retry;
         assert.equal(host.requests.length, 1, 'only the retry reaches the provider');
-        assert.equal(host.requests[0].prompt, retryPrompt);
+        assert.equal(host.requests[0].prompt[0].role, 'user');
+        assert.deepEqual(readDicePromptResults(host.requests[0].prompt[0].content), projectActionCheckResults(saved.checks));
         assert.equal(host.ids, 1);
         assert.deepEqual(target.extra.xiaobaiOsDice, saved);
         assert.equal(adapter.view(), null);
@@ -878,7 +949,7 @@ for (const mode of ['single', 'group-member', 'group-finished']) {
         assert.equal(host.requests.length, 1);
         assert.equal(host.requests[0].busy, true);
         assert.equal(host.busy, false);
-        const data = JSON.parse(host.requests[0].prompt.split('\n').at(-1));
+        const data = readDicePromptResults(host.requests[0].prompt[0].content);
         assert.equal(data[0].roll, target.extra.xiaobaiOsDice.checks[0].roll);
     });
 }
@@ -1241,7 +1312,7 @@ for (const group of [false, true]) {
         host.preflight = async () => { throw new Error('internal setup details'); };
         await begin('normal', { signal: new AbortController().signal });
         assert.equal(await host.intercept('normal'), false);
-        assert.equal(host.prompts.get('xiaobai_os_dice'), '');
+        assert.equal(host.prompts.size, 0);
         const target = message(call);
         host.source.chat.push(target);
         await received();

@@ -141,7 +141,7 @@ function Ze(t) {
 }
 var Ne = Object.freeze({
   administrator: () => import("./xiaobai-os-AdministratorApp-D42sXrbM.js"),
-  dice: () => import("./xiaobai-os-DiceApp-2u5CnArz.js"),
+  dice: () => import("./xiaobai-os-DiceApp-vrOFYfVT.js"),
   "agent-api": () => import("./xiaobai-os-AgentApiApp-DbV8FXck.js"),
   "fourth-wall": () => import("./xiaobai-os-FourthWallApp-pw9TzS2g.js"),
   wallet: () => import("./xiaobai-os-WalletApp-CzbAwwme.js"),
