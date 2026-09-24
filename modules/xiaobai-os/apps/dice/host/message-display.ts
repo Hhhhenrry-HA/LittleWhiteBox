@@ -1,5 +1,5 @@
 import { updateMessageBlock } from '../../../../../../../../../script.js';
-import { isGenerating } from '../../../host/sillytavern-generation-state.js';
+import { isGenerating } from '../../../../../shared/common/sillytavern-generation-state.js';
 import { createModuleEvents, event_types } from '../../../../../core/event-manager.js';
 import { isCheckContinuationPoint, referencedActionChecks } from '../domain/check-records.js';
 import { createCheckCard, type CheckCard } from '../ui/check-card.js';

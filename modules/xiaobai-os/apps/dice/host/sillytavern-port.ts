@@ -1,5 +1,5 @@
 import { extension_settings, getContext } from '../../../../../../../../extensions.js';
-import { isGenerating } from '../../../host/sillytavern-generation-state.js';
+import { isGenerating } from '../../../../../shared/common/sillytavern-generation-state.js';
 import { getScriptsByType, saveScriptsByType, SCRIPT_TYPES } from '../../../../../../../../extensions/regex/engine.js';
 import { repairDiceDisplayRules } from './display-rule.js';
 import { showDiceDisplayRule } from './managed-rule-display.js';

@@ -1,7 +1,8 @@
 import { getContext } from '../../../../../extensions.js';
 import { eventSource, event_types } from '../../../../../events.js';
 import { is_group_generating } from '../../../../../group-chats.js';
-import { isGenerating, online_status, setSendButtonState, streamingProcessor } from '../../../../../../script.js';
+import { online_status, setSendButtonState, streamingProcessor } from '../../../../../../script.js';
+import { isGenerating } from '../../shared/common/sillytavern-generation-state.js';
 import { createReplyProgressRuntime } from './runtime.js';
 
 export function createReplyProgressHostRuntime() {

@@ -3,7 +3,7 @@ import type { XiaobaiOsSettingsRepository } from '../../host/settings-repository
 import { createAppRuntimeGroup } from '../../kernel/runtime-group.js';
 import { saveSillyTavernChat } from '../../host/sillytavern-chat-save.js';
 import { isChatSaving, updateMessageBlock } from '../../../../../../../../script.js';
-import { isGenerating } from '../../host/sillytavern-generation-state.js';
+import { isGenerating } from '../../../../shared/common/sillytavern-generation-state.js';
 import { DICE_APP_DESCRIPTOR } from './descriptor.js';
 import { createDiceController } from './host/controller.js';
 import { createDiceGenerationAdapter } from './host/generation-adapter.js';

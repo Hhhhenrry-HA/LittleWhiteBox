@@ -2736,7 +2736,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/reply-progress/host.js",
       "relativePath": "modules/reply-progress/host.js",
       "extension": ".js",
-      "sizeBytes": 1182
+      "sizeBytes": 1252
     },
     {
       "source": "littlewhitebox",
@@ -2765,6 +2765,13 @@
       "relativePath": "modules/reply-progress/settings.js",
       "extension": ".js",
       "sizeBytes": 398
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/reply-progress/tests/host.test.js",
+      "relativePath": "modules/reply-progress/tests/host.test.js",
+      "extension": ".js",
+      "sizeBytes": 3128
     },
     {
       "source": "littlewhitebox",
@@ -7769,7 +7776,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/dice/host/generation-adapter.ts",
       "relativePath": "modules/xiaobai-os/apps/dice/host/generation-adapter.ts",
       "extension": ".ts",
-      "sizeBytes": 29678
+      "sizeBytes": 29693
     },
     {
       "source": "littlewhitebox",
@@ -7783,7 +7790,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/dice/host/message-display.ts",
       "relativePath": "modules/xiaobai-os/apps/dice/host/message-display.ts",
       "extension": ".ts",
-      "sizeBytes": 19130
+      "sizeBytes": 19145
     },
     {
       "source": "littlewhitebox",
@@ -7818,7 +7825,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/dice/host/sillytavern-port.ts",
       "relativePath": "modules/xiaobai-os/apps/dice/host/sillytavern-port.ts",
       "extension": ".ts",
-      "sizeBytes": 4317
+      "sizeBytes": 4332
     },
     {
       "source": "littlewhitebox",
@@ -7832,7 +7839,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/dice/production-module.ts",
       "relativePath": "modules/xiaobai-os/apps/dice/production-module.ts",
       "extension": ".ts",
-      "sizeBytes": 8013
+      "sizeBytes": 8028
     },
     {
       "source": "littlewhitebox",
@@ -11840,13 +11847,6 @@
     },
     {
       "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/host/sillytavern-generation-state.ts",
-      "relativePath": "modules/xiaobai-os/host/sillytavern-generation-state.ts",
-      "extension": ".ts",
-      "sizeBytes": 389
-    },
-    {
-      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/host/sillytavern-runtime-adapters.ts",
       "relativePath": "modules/xiaobai-os/host/sillytavern-runtime-adapters.ts",
       "extension": ".ts",
@@ -14518,6 +14518,13 @@
       "relativePath": "shared/common/openai-url-utils.js",
       "extension": ".js",
       "sizeBytes": 1697
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/shared/common/sillytavern-generation-state.js",
+      "relativePath": "shared/common/sillytavern-generation-state.js",
+      "extension": ".js",
+      "sizeBytes": 374
     },
     {
       "source": "littlewhitebox",
