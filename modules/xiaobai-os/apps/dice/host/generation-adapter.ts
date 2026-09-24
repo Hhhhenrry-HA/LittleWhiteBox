@@ -13,7 +13,6 @@ import { createActionCheckSession } from '../application/action-check-session.js
 import type { DiceContinuationStage, DiceContinuationProgress } from '../application/host-wait.js';
 import { applyDiceCandidate, captureDiceTarget, clearNewDiceSwipe, isDiceTargetCurrent, readDiceRecords, type DiceCandidate, type DiceTarget } from './message-records.js';
 import { filterDiceGenerationData, type DiceGenerationData } from './request-filter.js';
-import { appendDiceWorldInfoRules } from './world-info-rules.js';
 import { parseActionCheck } from '../protocol/request.js';
 import { captureDiceChat, diceHostContext, ensureDiceDisplayRule, isDiceMessageBeingEdited, waitForDiceHost } from './sillytavern-port.js';
 import type { DiceResults } from '../application/results.js';
@@ -29,6 +28,7 @@ export interface DiceCardTarget extends DiceTarget { resultVersion: string; orig
 export interface DiceCardActions { target: DiceCardTarget; kind: 'choice' | 'request'; disabled: boolean; canReroll: boolean; rerollDisabled?: boolean; insufficientFunds?: boolean }
 
 const KEY = 'xiaobai_os_dice';
+const RULES_KEY = `${KEY}_rules`;
 const MAIN_TYPES = ['', 'normal', 'regenerate', 'swipe', 'continue'];
 interface Observation {
     source: NonNullable<ReturnType<typeof captureDiceChat>>;
@@ -58,7 +58,8 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
     const records = (message: DiceTarget['message']) => results.records(readDiceRecords(message));
     const project = (target: DiceTarget | null) => target ? { ...target, records: records(target.message) } : null;
     const setPrompt = (content: string) => setExtensionPrompt(KEY, content, extension_prompt_types.IN_CHAT, 0, false, extension_prompt_roles.USER);
-    const clearPrompt = () => setPrompt('');
+    const setRulesPrompt = (content: string) => setExtensionPrompt(RULES_KEY, content, extension_prompt_types.IN_CHAT, 1, false, extension_prompt_roles.SYSTEM);
+    const clearPrompt = () => { setPrompt(''); setRulesPrompt(''); };
     const currentTarget = (target: DiceTarget) => isDiceTargetCurrent(captureDiceChat(), target)
         && jsonValuesEqual(records(target.message), target.records) && !isDiceMessageBeingEdited(target.index);
     const captureSheet = () => { const value = readCoc7Sheet(sheet()); return value.kind === 'ready' ? value.sheet : null; };
@@ -230,12 +231,6 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
     function start(): void {
         if (unsubscribe) { return; }
         const events = createModuleEvents('xiaobaiOsDice');
-        events.on(event_types.WORLDINFO_ENTRIES_LOADED, (payload: { globalLore: unknown[] }) => {
-            if (!enabled()) { return; }
-            const activeRule = intention?.target.rule ?? observation?.rule ?? rule();
-            const activeSheet = intention ? intention.target.coc7Sheet : observation ? observation.coc7Sheet : captureSheet();
-            appendDiceWorldInfoRules(payload, buildActionCheckRules(frequency(), activeRule, !!activeSheet));
-        });
         const started = async (type: unknown, options: { signal?: AbortSignal }, dryRun: unknown) => {
             if (dryRun || intention && type === 'continue' && options.signal === intention.signal
                 && currentTarget(intention.target)) { return; }
@@ -325,10 +320,11 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
                 if (!enabled()) { clearPrompt(); return; }
                 const activeRule = own?.target.rule ?? observed?.rule ?? rule();
                 const activeSheet = own ? own.target.coc7Sheet : observed ? observed.coc7Sheet : captureSheet();
+                setRulesPrompt(buildActionCheckRules(frequency(), activeRule, !!activeSheet));
                 if (type === 'continue' && last) {
                     const content = buildActionCheckContinuation(last.mes, checks, activeRule !== 'coc7' || !!activeSheet);
                     setPrompt(content);
-                } else { clearPrompt(); }
+                } else { setPrompt(''); }
             } catch (error) {
                 console.error('[LittleWhiteBox] Dice check preparation failed', error);
                 clearPrompt();

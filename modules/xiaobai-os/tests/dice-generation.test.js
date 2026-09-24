@@ -28,7 +28,7 @@ const compiled = await build({
     footer: { js: '//# sourceURL=dice-generation-fixture.js' },
     plugins: [{ name: 'dice-generation-host', setup(builder) {
         builder.onResolve({ filter: /^js-sha256$/ }, () => ({ path: import.meta.resolve('js-sha256'), external: true }));
-        builder.onResolve({ filter: /(?:^dice-generation-host$|\/(?:script|group-chats|utils|extensions|event-manager|generate-interceptor|sillytavern-chat-save|world-info)\.js$|\/extensions\/regex\/engine\.js$)/ },
+        builder.onResolve({ filter: /(?:^dice-generation-host$|\/(?:script|group-chats|utils|extensions|event-manager|generate-interceptor|sillytavern-chat-save)\.js$|\/extensions\/regex\/engine\.js$)/ },
             () => ({ path: 'host', namespace: 'fixture' }));
         builder.onLoad({ filter: /.*/, namespace: 'fixture' }, () => ({ contents: `
             const listeners = new Map();
@@ -89,8 +89,6 @@ const compiled = await build({
                 if (value) host.prompts.set(key, { value, position, depth, scan, role });
                 else host.prompts.delete(key);
             };
-            export const newWorldInfoEntryTemplate = { content: '', constant: false, position: 0, order: 100, ignoreBudget: false };
-            export const world_info_position = { after: 1 };
             export const uuidv4 = () => 'generated-' + host.ids++;
             export const getContext = () => ({ ...host.source, name2: host.source.characterName, generate,
                 streamingProcessor: host.stream,
@@ -523,10 +521,9 @@ test('continuation injection follows retained markers after edits, moves, deleti
             const data = { prompt: [...host.promptMessages(), { role: 'assistant', content: body }] };
             await host.emit('GENERATE_AFTER_DATA', data, false);
             if (referenced.length) {
-                assert.equal(data.prompt[0].role, 'user');
-                assert.deepEqual(readDicePromptResults(data.prompt[0].content), projectActionCheckResults(referenced));
+                assert.deepEqual(readDicePromptResults(data.prompt.find(item => item.role === 'user').content), projectActionCheckResults(referenced));
             } else {
-                assert.equal(data.prompt.length, 1, 'deleted references do not leak results');
+                assert.equal(data.prompt.some(item => item.role === 'user'), false, 'deleted references do not leak results');
             }
             assert.deepEqual(target.extra.xiaobaiOsDice, raw, 'reading a migrated result never rewrites saved history');
         }
@@ -607,7 +604,7 @@ test('same-roll recovery accepts an edited terminal marker even after removing a
         target.mes = body;
         await choose(adapter, 0);
         assert.equal(target.mes, body + '\n\nAfterward.');
-        assert.deepEqual(readDicePromptResults(host.requests.at(-1).prompt[0].content).at(-1), projectActionCheckResults([wall])[0]);
+        assert.deepEqual(readDicePromptResults(host.requests.at(-1).prompt.find(item => item.role === 'user').content).at(-1), projectActionCheckResults([wall])[0]);
         assert.equal(adapter.view(), null);
         assert.deepEqual(target.extra.xiaobaiOsDice, raw);
     }
@@ -622,13 +619,11 @@ test('each generation uses the current frequency, including continuations with a
         host.frequency = frequency;
         await begin();
         await host.intercept('normal');
-        const loaded = { globalLore: [] };
-        await host.emit('WORLDINFO_ENTRIES_LOADED', loaded);
-        assert.equal(loaded.globalLore.length, 1);
-        assert.equal(loaded.globalLore[0].position, 1);
-        assert.equal(loaded.globalLore[0].order, 999);
-        assert.equal(loaded.globalLore[0].content, buildActionCheckRules(frequency, 'd20', true));
-        rules.add(loaded.globalLore[0].content);
+        const [prompt] = host.prompts.values();
+        assert.equal(host.prompts.size, 1);
+        assert.deepEqual(prompt, { value: buildActionCheckRules(frequency, 'd20', true),
+            position: 1, depth: 1, scan: false, role: 0 });
+        rules.add(prompt.value);
     }
     assert.equal(rules.size, 2, 'the two preferences produce distinct model instructions');
     const saved = prepareActionCheck({ body: call, generatedFrom: 0, id: 'saved', random: () => 0.4 });
@@ -637,20 +632,18 @@ test('each generation uses the current frequency, including continuations with a
         host.frequency = frequency;
         await begin('continue');
         await host.intercept('continue');
-        const loaded = { globalLore: [] };
-        await host.emit('WORLDINFO_ENTRIES_LOADED', loaded);
-        assert.equal(loaded.globalLore[0].content, buildActionCheckRules(frequency, 'd20', true));
+        const prompt = [...host.prompts.values()].find(item => item.role === 0);
+        assert.deepEqual(prompt, { value: buildActionCheckRules(frequency, 'd20', true),
+            position: 1, depth: 1, scan: false, role: 0 });
         const request = { prompt: [...host.promptMessages(), { role: 'assistant', content: saved.body }] };
         await host.emit('GENERATE_AFTER_DATA', request, false);
-        assert.deepEqual(readDicePromptResults(request.prompt[0].content), projectActionCheckResults(saved.records.checks));
+        assert.deepEqual(readDicePromptResults(request.prompt.find(item => item.role === 'user').content), projectActionCheckResults(saved.records.checks));
         assert.deepEqual(host.source.chat.at(-1).extra.xiaobaiOsDice, saved.records, 'switching frequency preserves rolled results');
     }
     host.enabled = false;
     await begin();
     await host.intercept('normal');
-    const loaded = { globalLore: [] };
-    await host.emit('WORLDINFO_ENTRIES_LOADED', loaded);
-    assert.deepEqual(loaded.globalLore, []);
+    assert.equal(host.prompts.size, 0);
 });
 
 test('CoC checks apply once and retry a failed continuation without rolling or revealing again', async t => {
@@ -688,7 +681,7 @@ test('CoC checks apply once and retry a failed continuation without rolling or r
     assert.equal(host.nativeSaves.length, 2, 'only native reply and continuation saves');
     assert.deepEqual(parseDiceRecords(host.nativeSaves.at(-1)[0].extra.xiaobaiOsDice), records);
     assert.equal(host.requests.length, 2);
-    assert.deepEqual(readDicePromptResults(host.requests.at(-1).prompt[0].content), projectActionCheckResults(records.checks));
+    assert.deepEqual(readDicePromptResults(host.requests.at(-1).prompt.find(item => item.role === 'user').content), projectActionCheckResults(records.checks));
     assert.equal(adapter.isBusy(), false);
 });
 
@@ -751,9 +744,7 @@ test('uninitialized CoC has no request prompt and cannot roll, but saved results
     host.rule = 'coc7'; host.sheet = null;
     host.source.chat = [message('Ordinary conversation.')];
     await begin(); await host.intercept('normal');
-    const loaded = { globalLore: [] };
-    await host.emit('WORLDINFO_ENTRIES_LOADED', loaded);
-    assert.equal(loaded.globalLore.length, 0);
+    assert.equal(host.prompts.size, 0);
     await received(); await settled(adapter);
     assert.equal(host.source.chat[0].extra.xiaobaiOsDice, undefined);
     const retained = prepareActionCheck({ body: cocCall, rule: 'coc7', coc7Sheet: generateCoc7Sheet(() => 0.5), generatedFrom: 0, id: 'retained' });
@@ -815,30 +806,36 @@ test('final requests hide Dice markers without changing source messages, non-tex
 });
 
 // Protect the extension API contract, not a second implementation of native budgeting/formatting.
-test('confirmed results use native D0 USER, remain separate from rules, and clear after assembly', async t => {
+test('rules use native D1 SYSTEM and results use D0 USER without duplicate lore injection', async t => {
     setup(t);
     const saved = prepareActionCheck({ body: call, generatedFrom: 0, id: 'saved', random: () => 0.4 });
     host.source.chat.push({ ...message(saved.body), extra: { xiaobaiOsDice: saved.records } });
     await begin('continue'); await host.intercept('continue');
-    const [prompt] = host.prompts.values();
+    const prompts = [...host.prompts.values()];
+    const prompt = prompts.find(item => item.role === 1);
+    assert.equal(prompts.length, 2);
     assert.deepEqual({ position: prompt.position, depth: prompt.depth, scan: prompt.scan, role: prompt.role },
         { position: 1, depth: 0, scan: false, role: 1 });
     assert.deepEqual(readDicePromptResults(prompt.value), projectActionCheckResults(saved.records.checks));
     const loaded = { globalLore: [] };
     await host.emit('WORLDINFO_ENTRIES_LOADED', loaded);
-    assert.equal(loaded.globalLore[0].content, buildActionCheckRules('standard', 'd20', true));
+    assert.deepEqual(loaded.globalLore, []);
+    assert.deepEqual(prompts.find(item => item.role === 0), {
+        value: buildActionCheckRules('standard', 'd20', true), position: 1, depth: 1, scan: false, role: 0,
+    });
     const data = { prompt: [...host.promptMessages(), { role: 'assistant', content: saved.body }] };
     await host.emit('GENERATE_AFTER_DATA', data, true);
-    assert.equal(host.prompts.size, 1, 'a preview does not consume a live injection');
+    assert.equal(host.prompts.size, 2, 'a preview does not consume live injections');
     await host.emit('GENERATE_AFTER_DATA', data, false);
     assert.equal(host.prompts.size, 0);
-    assert.equal(data.prompt.length, 2, 'no extra message is appended after assembly');
-    assert.deepEqual(readDicePromptResults(data.prompt[0].content), projectActionCheckResults(saved.records.checks));
+    assert.equal(data.prompt.length, 3, 'no extra message is appended after assembly');
+    assert.deepEqual(readDicePromptResults(data.prompt.find(item => item.role === 'user').content), projectActionCheckResults(saved.records.checks));
     await begin('normal'); await host.intercept('normal');
-    assert.equal(host.prompts.size, 0, 'an unrelated turn does not inherit the result');
+    assert.equal(host.prompts.size, 1);
+    assert.equal([...host.prompts.values()].some(item => item.role === 1), false, 'an unrelated turn does not inherit the result');
 });
 
-test('pending result injection clears on cancellation, chat changes and disabling Dice', async t => {
+test('pending rule and result injections clear on cancellation, chat changes and disabling Dice', async t => {
     const adapter = setup(t);
     const saved = prepareActionCheck({ body: call, generatedFrom: 0, id: 'saved', random: () => 0.4 });
     host.source.chat.push({ ...message(saved.body), extra: { xiaobaiOsDice: saved.records } });
@@ -849,7 +846,7 @@ test('pending result injection clears on cancellation, chat changes and disablin
         () => { host.enabled = false; adapter.stop(); },
     ]) {
         await begin('continue'); await host.intercept('continue');
-        assert.equal(host.prompts.size, 1);
+        assert.equal(host.prompts.size, 2);
         await clear();
         assert.equal(host.prompts.size, 0);
     }
@@ -1135,13 +1132,12 @@ for (const failed of [false, true]) {
         if (failed) { preparing.reject(new Error('preparation_failed')); }
         else { preparing.resolve(); }
         await new Promise(resolve => setTimeout(resolve, 60));
-        assert.equal(host.promptMessages().length, 1);
+        assert.equal(host.promptMessages().length, 2);
         assert.equal(host.requests.length, 0);
         assert.equal(host.busy, true);
         assembly.resolve(); await retry;
         assert.equal(host.requests.length, 1, 'only the retry reaches the provider');
-        assert.equal(host.requests[0].prompt[0].role, 'user');
-        assert.deepEqual(readDicePromptResults(host.requests[0].prompt[0].content), projectActionCheckResults(saved.checks));
+        assert.deepEqual(readDicePromptResults(host.requests[0].prompt.find(item => item.role === 'user').content), projectActionCheckResults(saved.checks));
         assert.equal(host.ids, 1);
         assert.deepEqual(target.extra.xiaobaiOsDice, saved);
         assert.equal(adapter.view(), null);
@@ -1299,7 +1295,7 @@ for (const mode of ['single', 'group-member', 'group-finished']) {
         assert.equal(host.requests.length, 1);
         assert.equal(host.requests[0].busy, true);
         assert.equal(host.busy, false);
-        const data = readDicePromptResults(host.requests[0].prompt[0].content);
+        const data = readDicePromptResults(host.requests[0].prompt.find(item => item.role === 'user').content);
         assert.equal(data[0].roll, target.extra.xiaobaiOsDice.checks[0].roll);
     });
 }
