@@ -25,7 +25,7 @@ export function assertPreparedArguments(argv) {
     for (const arg of argv) {
         if (arg === '--preflight' || arg === '--allow-api' || arg === '--resume-prepared'
             || arg === '--apply-transition' || arg === '--check-prepared-resume'
-            || /^--(?:config|job|retry-unknown|retry-journal-sha256|retry-source-manifest|retry-source-sha256)=.+$/.test(arg)) continue;
+            || /^--(?:config|job|retry-unknown|retry-empty-summary|retry-journal-sha256|retry-source-manifest|retry-source-sha256)=.+$/.test(arg)) continue;
         throw new Error('Prepared runs accept only --config, --job, --preflight, --resume-prepared and --allow-api; edit the profile and repeat preflight');
     }
 }
