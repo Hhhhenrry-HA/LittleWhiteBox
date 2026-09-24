@@ -4270,6 +4270,7 @@ async function runStorySummaryRecallInterceptor(_interceptorChat, _contextSize, 
     });
     const waitStartedAt = performance.now();
     let joinStatus = 'pending';
+    runContext?.reportProgress?.(run.diagnostics);
     try {
         const outcome = await recallPrefetch.waitForOutcome(run);
         if (!outcome?.ok) throw outcome?.error || new Error('Story Summary recall produced no outcome');
@@ -4308,6 +4309,7 @@ async function runStorySummaryRecallInterceptor(_interceptorChat, _contextSize, 
             return selectBestStoryMemoryResult(undefined, getStorySummaryForEna());
         }
     } finally {
+        runContext?.reportProgress?.(null);
         xbLog.info(
             MODULE_ID,
             `Recall join: path=${path} status=${joinStatus} `
