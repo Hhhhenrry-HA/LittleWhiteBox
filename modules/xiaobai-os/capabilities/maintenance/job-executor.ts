@@ -1,5 +1,5 @@
 import { normalizeAgentSettings } from '../../../agent-core/config.js';
-import { isSillyTavernProvider, resolveActiveProviderConfig } from '../../../agent-core/provider-resolution.js';
+import { resolveActiveProviderConfig } from '../../../agent-core/provider-resolution.js';
 import { classifyProviderFailure } from '../agent/provider-failure.js';
 import type { AcceptedTurnSource } from './accepted-turn-source.js';
 import {
@@ -351,8 +351,7 @@ export function createMaintenanceJobExecutor(
             report(error);
             return failedJobOutcome(job, active.map(run => run.participant.id), 'config-load-failed');
         }
-        if (!String(providerConfig.model || '').trim()
-            || (!isSillyTavernProvider(providerConfig.provider) && !String(providerConfig.apiKey || '').trim())) {
+        if (!String(providerConfig.model || '').trim()) {
             return failedJobOutcome(job, active.map(run => run.participant.id), 'agent-not-configured');
         }
 

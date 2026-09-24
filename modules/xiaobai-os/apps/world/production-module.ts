@@ -1,5 +1,5 @@
 import { normalizeAgentSettings } from '../../../agent-core/config.js';
-import { isSillyTavernProvider, resolveActiveProviderConfig } from '../../../agent-core/provider-resolution.js';
+import { resolveActiveProviderConfig } from '../../../agent-core/provider-resolution.js';
 import { createAppRuntimeGroup } from '../../kernel/runtime-group.js';
 import { createWorldModule } from './module.js';
 import { createWorldManagement } from './management/participant.js';
@@ -25,8 +25,7 @@ export function createProductionWorldModule(dependencies: {
                 getChatIdentity: dependencies.getChatIdentity,
                 async checkAgent() {
                     const config = resolveActiveProviderConfig(normalizeAgentSettings(await agent.loadConfig()));
-                    return !!String(config.model || '').trim()
-                        && (isSillyTavernProvider(config.provider) || !!String(config.apiKey || '').trim());
+                    return !!String(config.model || '').trim();
                 },
             });
             const prompt = createWorldPromptRuntime({ world, settings: dependencies.settings, getChatIdentity: dependencies.getChatIdentity,

@@ -1,5 +1,5 @@
 import { normalizeAgentSettings } from '../../../../agent-core/config.js';
-import { isSillyTavernProvider, resolveActiveProviderConfig } from '../../../../agent-core/provider-resolution.js';
+import { resolveActiveProviderConfig } from '../../../../agent-core/provider-resolution.js';
 import type { XiaobaiOsAgentGateway } from '../../../capabilities/agent/gateway.js';
 import { jsonValuesEqual } from '../../../host/json-values-equal.js';
 import type { TasksActionResult, TasksService } from '../application/service.js';
@@ -143,8 +143,7 @@ export function createTaskGenerationRequests({
     function assertConfigured(value: unknown): void {
         const config = normalizeAgentSettings((value || {}) as UnknownRecord);
         const provider = resolveActiveProviderConfig(config);
-        if (!String(provider.model || '').trim()
-            || (!isSillyTavernProvider(provider.provider) && !String(provider.apiKey || '').trim())) {
+        if (!String(provider.model || '').trim()) {
             throw new Error('tasks_agent_not_configured');
         }
     }

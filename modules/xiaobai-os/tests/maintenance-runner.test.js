@@ -182,6 +182,7 @@ function createHarness({
     participants = [],
     chat = surface(),
     provider = 'sillytavern-openai-compatible',
+    config = validConfig(provider),
     agent,
     gate = createWriteGate(),
     generationActive = false,
@@ -191,7 +192,7 @@ function createHarness({
     const calls = { loadConfig: 0, openSession: 0, run: 0, requests: [] };
     const resolvedAgent = agent || { supportsSessionToolLoop: false, async run() {return { text: 'no changes' };} };
     const gateway = {
-        async loadConfig() {calls.loadConfig += 1; return validConfig(provider);},
+        async loadConfig() {calls.loadConfig += 1; return config;},
         async openSession() {
             calls.openSession += 1;
             return {
@@ -216,6 +217,19 @@ function createHarness({
     });
     return { calls, gate, runner, setSurface: next => {currentSurface = next;} };
 }
+
+test('maintenance opens direct Agent sessions without a key but still requires a model', async () => {
+    for (const model of ['test-model', '']) {
+        const config = validConfig('openai-compatible');
+        Object.assign(config.presets.maintenance.modelConfigs['openai-compatible'], { model, apiKey: '' });
+        const map = createParticipant('map');
+        const h = createHarness({ config, participants: [map.participant] });
+        const outcome = await runManual(h.runner);
+        assert.equal(h.calls.run, model ? 1 : 0);
+        assert.equal(outcome.status, model ? 'unchanged' : 'failed');
+        h.runner.stopBackground();
+    }
+});
 
 test('aggregate outcome reports partial only when some participant actually preserved a change', () => {
     const result = (participantId, status, changed = false) => ({ participantId, status, changed });

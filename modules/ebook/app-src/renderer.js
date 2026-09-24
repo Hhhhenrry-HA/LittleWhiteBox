@@ -191,7 +191,6 @@ export function renderProviderReadiness(providerConfig = {}) {
     const provider = String(providerConfig.provider || '');
     const missing = [];
     if (!String(providerConfig.model || '').trim()) missing.push('模型');
-    if (provider !== 'sillytavern-openai-compatible' && !String(providerConfig.apiKey || '').trim()) missing.push('API Key');
     if (provider === 'openai-compatible' && !String(providerConfig.baseUrl || '').trim()) missing.push('URL');
     if (missing.length) {
         return {
