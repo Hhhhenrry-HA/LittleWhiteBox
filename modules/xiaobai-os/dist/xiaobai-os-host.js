@@ -6906,7 +6906,7 @@ function ak(e, t, n, r, i, a = () => null, s = null, c) {
   const g = Kb, y = () => Tc() || g.isChatSaving === !0 || !!h, w = (M) => c.records(Tt(M)), k = (M) => M ? {
     ...M,
     records: w(M.message)
-  } : null, I = (M) => il(jo, M, rl.IN_CHAT, 0, !1, nl.USER), S = (M) => il(ik, M, rl.IN_CHAT, 1, !1, nl.SYSTEM), x = () => {
+  } : null, I = (M) => il(jo, M, rl.IN_CHAT, 0, !1, nl.USER), S = (M) => il(ik, M, rl.IN_CHAT, 1, !1, nl.USER), x = () => {
     I(""), S("");
   }, v = (M) => yu(Ae(), M) && ve(w(M.message), M.records) && !ei(M.index), _ = () => {
     const M = hu(a());

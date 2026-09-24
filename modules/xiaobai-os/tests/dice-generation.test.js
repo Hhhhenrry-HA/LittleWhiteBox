@@ -330,7 +330,7 @@ for (const group of [false, true]) {
         assert.equal(adapter.actions(0).kind, 'choice');
         await adapter.act(adapter.actions(0).target, 'continue-check');
         assert.equal(host.requests.length, 1);
-        const injected = readDicePromptResults(host.requests[0].prompt.find(item => item.role === 'user').content);
+        const injected = readDicePromptResults(host.requests[0].prompt.findLast(item => item.role === 'user').content);
         assert.equal(injected[0].roll, 17);
         assert.deepEqual(reloaded.extra.xiaobaiOsDice, first);
     });
@@ -521,9 +521,9 @@ test('continuation injection follows retained markers after edits, moves, deleti
             const data = { prompt: [...host.promptMessages(), { role: 'assistant', content: body }] };
             await host.emit('GENERATE_AFTER_DATA', data, false);
             if (referenced.length) {
-                assert.deepEqual(readDicePromptResults(data.prompt.find(item => item.role === 'user').content), projectActionCheckResults(referenced));
+                assert.deepEqual(readDicePromptResults(data.prompt.findLast(item => item.role === 'user').content), projectActionCheckResults(referenced));
             } else {
-                assert.equal(data.prompt.some(item => item.role === 'user'), false, 'deleted references do not leak results');
+                assert.equal(data.prompt.filter(item => item.role === 'user').length, 1, 'only rules remain after deleting all result references');
             }
             assert.deepEqual(target.extra.xiaobaiOsDice, raw, 'reading a migrated result never rewrites saved history');
         }
@@ -549,7 +549,7 @@ test('rerolled D0 and the next free check share effective results while native s
     await adapter.act(adapter.actions(0).target, 'continue-check');
     await setImmediate();
     assert.equal(host.requests.length, 1);
-    assert.equal(readDicePromptResults(host.requests[0].prompt.find(message => message.role === 'user').content)[0].roll, 17);
+    assert.equal(readDicePromptResults(host.requests[0].prompt.findLast(message => message.role === 'user').content)[0].roll, 17);
     assert.equal(adapter.view().phase.kind, 'awaiting-choice');
     assert.equal(adapter.records(host.source.chat[0]).checks[0].roll, 17);
     assert.deepEqual(host.nativeSaves[0][0].extra.xiaobaiOsDice.checks[0], prepared.records.checks[0]);
@@ -604,7 +604,7 @@ test('same-roll recovery accepts an edited terminal marker even after removing a
         target.mes = body;
         await choose(adapter, 0);
         assert.equal(target.mes, body + '\n\nAfterward.');
-        assert.deepEqual(readDicePromptResults(host.requests.at(-1).prompt.find(item => item.role === 'user').content).at(-1), projectActionCheckResults([wall])[0]);
+        assert.deepEqual(readDicePromptResults(host.requests.at(-1).prompt.findLast(item => item.role === 'user').content).at(-1), projectActionCheckResults([wall])[0]);
         assert.equal(adapter.view(), null);
         assert.deepEqual(target.extra.xiaobaiOsDice, raw);
     }
@@ -622,7 +622,7 @@ test('each generation uses the current frequency, including continuations with a
         const [prompt] = host.prompts.values();
         assert.equal(host.prompts.size, 1);
         assert.deepEqual(prompt, { value: buildActionCheckRules(frequency, 'd20', true),
-            position: 1, depth: 1, scan: false, role: 0 });
+            position: 1, depth: 1, scan: false, role: 1 });
         rules.add(prompt.value);
     }
     assert.equal(rules.size, 2, 'the two preferences produce distinct model instructions');
@@ -632,12 +632,12 @@ test('each generation uses the current frequency, including continuations with a
         host.frequency = frequency;
         await begin('continue');
         await host.intercept('continue');
-        const prompt = [...host.prompts.values()].find(item => item.role === 0);
+        const prompt = [...host.prompts.values()].find(item => item.depth === 1);
         assert.deepEqual(prompt, { value: buildActionCheckRules(frequency, 'd20', true),
-            position: 1, depth: 1, scan: false, role: 0 });
+            position: 1, depth: 1, scan: false, role: 1 });
         const request = { prompt: [...host.promptMessages(), { role: 'assistant', content: saved.body }] };
         await host.emit('GENERATE_AFTER_DATA', request, false);
-        assert.deepEqual(readDicePromptResults(request.prompt.find(item => item.role === 'user').content), projectActionCheckResults(saved.records.checks));
+        assert.deepEqual(readDicePromptResults(request.prompt.findLast(item => item.role === 'user').content), projectActionCheckResults(saved.records.checks));
         assert.deepEqual(host.source.chat.at(-1).extra.xiaobaiOsDice, saved.records, 'switching frequency preserves rolled results');
     }
     host.enabled = false;
@@ -681,7 +681,7 @@ test('CoC checks apply once and retry a failed continuation without rolling or r
     assert.equal(host.nativeSaves.length, 2, 'only native reply and continuation saves');
     assert.deepEqual(parseDiceRecords(host.nativeSaves.at(-1)[0].extra.xiaobaiOsDice), records);
     assert.equal(host.requests.length, 2);
-    assert.deepEqual(readDicePromptResults(host.requests.at(-1).prompt.find(item => item.role === 'user').content), projectActionCheckResults(records.checks));
+    assert.deepEqual(readDicePromptResults(host.requests.at(-1).prompt.findLast(item => item.role === 'user').content), projectActionCheckResults(records.checks));
     assert.equal(adapter.isBusy(), false);
 });
 
@@ -806,13 +806,13 @@ test('final requests hide Dice markers without changing source messages, non-tex
 });
 
 // Protect the extension API contract, not a second implementation of native budgeting/formatting.
-test('rules use native D1 SYSTEM and results use D0 USER without duplicate lore injection', async t => {
+test('rules use native D1 USER and results use D0 USER without duplicate lore injection', async t => {
     setup(t);
     const saved = prepareActionCheck({ body: call, generatedFrom: 0, id: 'saved', random: () => 0.4 });
     host.source.chat.push({ ...message(saved.body), extra: { xiaobaiOsDice: saved.records } });
     await begin('continue'); await host.intercept('continue');
     const prompts = [...host.prompts.values()];
-    const prompt = prompts.find(item => item.role === 1);
+    const prompt = prompts.find(item => item.depth === 0);
     assert.equal(prompts.length, 2);
     assert.deepEqual({ position: prompt.position, depth: prompt.depth, scan: prompt.scan, role: prompt.role },
         { position: 1, depth: 0, scan: false, role: 1 });
@@ -820,8 +820,8 @@ test('rules use native D1 SYSTEM and results use D0 USER without duplicate lore 
     const loaded = { globalLore: [] };
     await host.emit('WORLDINFO_ENTRIES_LOADED', loaded);
     assert.deepEqual(loaded.globalLore, []);
-    assert.deepEqual(prompts.find(item => item.role === 0), {
-        value: buildActionCheckRules('standard', 'd20', true), position: 1, depth: 1, scan: false, role: 0,
+    assert.deepEqual(prompts.find(item => item.depth === 1), {
+        value: buildActionCheckRules('standard', 'd20', true), position: 1, depth: 1, scan: false, role: 1,
     });
     const data = { prompt: [...host.promptMessages(), { role: 'assistant', content: saved.body }] };
     await host.emit('GENERATE_AFTER_DATA', data, true);
@@ -829,10 +829,10 @@ test('rules use native D1 SYSTEM and results use D0 USER without duplicate lore 
     await host.emit('GENERATE_AFTER_DATA', data, false);
     assert.equal(host.prompts.size, 0);
     assert.equal(data.prompt.length, 3, 'no extra message is appended after assembly');
-    assert.deepEqual(readDicePromptResults(data.prompt.find(item => item.role === 'user').content), projectActionCheckResults(saved.records.checks));
+    assert.deepEqual(readDicePromptResults(data.prompt.findLast(item => item.role === 'user').content), projectActionCheckResults(saved.records.checks));
     await begin('normal'); await host.intercept('normal');
     assert.equal(host.prompts.size, 1);
-    assert.equal([...host.prompts.values()].some(item => item.role === 1), false, 'an unrelated turn does not inherit the result');
+    assert.equal([...host.prompts.values()].some(item => item.depth === 0), false, 'an unrelated turn does not inherit the result');
 });
 
 test('pending rule and result injections clear on cancellation, chat changes and disabling Dice', async t => {
@@ -1137,7 +1137,7 @@ for (const failed of [false, true]) {
         assert.equal(host.busy, true);
         assembly.resolve(); await retry;
         assert.equal(host.requests.length, 1, 'only the retry reaches the provider');
-        assert.deepEqual(readDicePromptResults(host.requests[0].prompt.find(item => item.role === 'user').content), projectActionCheckResults(saved.checks));
+        assert.deepEqual(readDicePromptResults(host.requests[0].prompt.findLast(item => item.role === 'user').content), projectActionCheckResults(saved.checks));
         assert.equal(host.ids, 1);
         assert.deepEqual(target.extra.xiaobaiOsDice, saved);
         assert.equal(adapter.view(), null);
@@ -1295,7 +1295,7 @@ for (const mode of ['single', 'group-member', 'group-finished']) {
         assert.equal(host.requests.length, 1);
         assert.equal(host.requests[0].busy, true);
         assert.equal(host.busy, false);
-        const data = readDicePromptResults(host.requests[0].prompt.find(item => item.role === 'user').content);
+        const data = readDicePromptResults(host.requests[0].prompt.findLast(item => item.role === 'user').content);
         assert.equal(data[0].roll, target.extra.xiaobaiOsDice.checks[0].roll);
     });
 }

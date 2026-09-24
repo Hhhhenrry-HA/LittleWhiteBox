@@ -58,7 +58,7 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
     const records = (message: DiceTarget['message']) => results.records(readDiceRecords(message));
     const project = (target: DiceTarget | null) => target ? { ...target, records: records(target.message) } : null;
     const setPrompt = (content: string) => setExtensionPrompt(KEY, content, extension_prompt_types.IN_CHAT, 0, false, extension_prompt_roles.USER);
-    const setRulesPrompt = (content: string) => setExtensionPrompt(RULES_KEY, content, extension_prompt_types.IN_CHAT, 1, false, extension_prompt_roles.SYSTEM);
+    const setRulesPrompt = (content: string) => setExtensionPrompt(RULES_KEY, content, extension_prompt_types.IN_CHAT, 1, false, extension_prompt_roles.USER);
     const clearPrompt = () => { setPrompt(''); setRulesPrompt(''); };
     const currentTarget = (target: DiceTarget) => isDiceTargetCurrent(captureDiceChat(), target)
         && jsonValuesEqual(records(target.message), target.records) && !isDiceMessageBeingEdited(target.index);

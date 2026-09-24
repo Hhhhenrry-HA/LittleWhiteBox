@@ -7776,7 +7776,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/dice/host/generation-adapter.ts",
       "relativePath": "modules/xiaobai-os/apps/dice/host/generation-adapter.ts",
       "extension": ".ts",
-      "sizeBytes": 29693
+      "sizeBytes": 29691
     },
     {
       "source": "littlewhitebox",
@@ -12466,7 +12466,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/dice-generation.test.js",
       "relativePath": "modules/xiaobai-os/tests/dice-generation.test.js",
       "extension": ".js",
-      "sizeBytes": 91905
+      "sizeBytes": 91964
     },
     {
       "source": "littlewhitebox",
