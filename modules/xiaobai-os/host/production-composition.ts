@@ -1,6 +1,7 @@
 import { getRequestHeaders } from '../../../../../../../script.js';
 import { saveBase64AsFile } from '../../../../../../utils.js';
 import { createAdministratorModule } from '../apps/administrator/module.js';
+import { createAdministratorEnvironmentReader } from '../apps/administrator/host/environment.js';
 import { createAdministratorImages } from '../apps/administrator/storage/images.js';
 import { extensionFolderPath } from '../../../core/constants.js';
 import { createAgentApiModule } from '../apps/agent-api/module.js';
@@ -127,7 +128,20 @@ export function createProductionBootstrap(
     ];
 
     const modules = [
-        createAdministratorModule({ images: administratorImages, capture: getSillyTavernChatSurface }),
+        createAdministratorModule({ images: administratorImages, capture: getSillyTavernChatSurface,
+            readEnvironment: createAdministratorEnvironmentReader({
+                captureIdentity: () => getSillyTavernChatIdentity()?.key ?? null,
+                descriptors: () => composition.apps.descriptors(),
+                appStatus: id => composition.apps.status(id),
+                maintenance: identity => {
+                    const { registry, runner } = composition.capabilities.require(MAINTENANCE_CAPABILITY);
+                    return registry.participants.map(participant => ({ id: participant.id, automaticEnabled: participant.isEnabled('automatic'), status: runner.getStatus(participant.id, identity) }));
+                },
+                mainChatGenerating: mainGeneration.isActive,
+                chatFile: { getFileState: () => composition.transactions.getFileState(), hasPendingCommit: () => composition.transactions.hasPendingCommit() },
+                userFile: { getFileState: () => composition.userTransactions!.getFileState(), hasPendingCommit: () => composition.userTransactions!.hasPendingCommit() },
+            }),
+        }),
         createProductionDiceModule(settings, async identityKey => {
             const summary = await import('../../story-summary/story-summary.js') as { isStorySummaryEnabledForCurrentChat(): boolean };
             return { world: composition.capabilities.require(WORLD_CONTEXT_CAPABILITY).isStoryBackgroundEnabled(identityKey),

@@ -5,6 +5,7 @@ import { createAdministratorToolExecutor, type AdministratorToolExecutor, type A
 import { runAdministratorLoop } from '../agent/provider-loop.js';
 import { administratorContext, contextUsage, historyBefore, type AdministratorHistory } from '../agent/history.js';
 import { ADMINISTRATOR_PROMPT } from '../agent/prompt.js';
+import { administratorReferenceMessage } from '../agent/reference-data.js';
 import { ADMINISTRATOR_POLICY as POLICY } from '../domain/policy.js';
 import { settledOperations } from '../domain/data.js';
 import type { AdministratorContextUsage, AdministratorLive, AdministratorOperation, AdministratorTurn } from '../domain/types.js';
@@ -14,6 +15,7 @@ import { parseAdministratorUpload, type AdministratorImages, type AdministratorU
 import type { AdministratorConversation } from './conversation.js';
 import { administratorError, ADMINISTRATOR_COPY } from '../ui/copy.js';
 import { createAdministratorId } from './identity.js';
+import type { AdministratorEnvironmentReader } from '../domain/environment.js';
 
 interface ActiveRun {
     current(): boolean;
@@ -34,6 +36,7 @@ interface PendingSend {
 export function createAdministratorRuntime(deps: {
     conversation: AdministratorConversation; repository: AdministratorRepository; images: AdministratorImages;
     gateway: XiaobaiOsAgentGateway; management: ManagementRegistry; capture(): AdministratorChatSurface | null;
+    readEnvironment: AdministratorEnvironmentReader;
     changed(): void;
 }) {
     const { conversation, repository } = deps;
@@ -75,6 +78,7 @@ export function createAdministratorRuntime(deps: {
         try {
             const config = await deps.gateway.loadConfig();
             active.executor = await createAdministratorToolExecutor({ registry: deps.management, reader: active.reader,
+                readEnvironment: deps.readEnvironment,
                 operations: active.turn.operations,
                 guard: () => sameChat(active) && active.reader.isCurrent(), onChange: () => { if (sameChat(active)) { changed(true); } },
                 saveReceipts: confirmation => persistTurn(active, confirmation),
@@ -85,10 +89,10 @@ export function createAdministratorRuntime(deps: {
             const userText = active.turn.user?.text ?? '';
             const text = await runAdministratorLoop({ gateway: deps.gateway, config, state: active.context!,
                 system: [ADMINISTRATOR_PROMPT, active.executor.prompt].join('\n\n'),
-                prefix: [{ role: 'system', content: `Current reference data:\n${safePromptJson(active.executor.data)}` }],
+                prefix: [administratorReferenceMessage(active.executor.data)],
                 request: { role: 'user', content: dataUrl ? [{ type: 'text', text: userText || ADMINISTRATOR_COPY.imageRequest }, { type: 'image_url', image_url: { url: dataUrl } }] : userText },
                 requestForCounting: { role: 'user', content: userText }, imageCount: dataUrl ? 1 : 0,
-                tools: active.executor.tools, signal: active.abort.signal, execute: active.executor.execute, save: () => persistTurn(active),
+                getTools: active.executor.getTools, signal: active.abort.signal, execute: active.executor.execute, save: () => persistTurn(active),
                 onText: value => { active.text = value; if (sameChat(active)) { changed(); } },
                 onPhase: value => { active.phase = value; if (sameChat(active)) { changed(true); } },
                 onContext: value => { if (sameChat(active)) { usage = value; changed(); } },
@@ -188,11 +192,11 @@ export function createAdministratorRuntime(deps: {
             if (!current() || run?.promise || deps.capture()?.identityKey !== sourceIdentity) { return; }
             const abort = new AbortController();
             const reader = createAdministratorChatReader(deps.capture, () => abort.signal);
-            const executor = await createAdministratorToolExecutor({ registry: deps.management, reader, operations: [], guard: () => false, onChange() {}, async saveReceipts() {} });
+            const executor = await createAdministratorToolExecutor({ registry: deps.management, reader, readEnvironment: deps.readEnvironment, operations: [], guard: () => false, onChange() {}, async saveReceipts() {} });
             if (!current() || run?.promise || deps.capture()?.identityKey !== sourceIdentity) { return; }
             const projected = administratorContext(conversation.read());
-            usage = contextUsage([ADMINISTRATOR_PROMPT, executor.prompt].join('\n\n'), executor.tools,
-                [{ role: 'system', content: `Current reference data:\n${safePromptJson(executor.data)}` }],
+            usage = contextUsage([ADMINISTRATOR_PROMPT, executor.prompt].join('\n\n'), executor.getTools(),
+                [administratorReferenceMessage(executor.data)],
                 projected, 0, agent.providerConfig);
             changed(true);
         },

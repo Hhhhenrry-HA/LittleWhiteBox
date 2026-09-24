@@ -7,9 +7,10 @@ export function worldEditTool(saveDescription: string): MaintenanceFunctionDecla
     return { type: 'function', function: {
         name: 'WorldEdit',
         description: [
-            'Edit overview and news in one atomic batch. Unmentioned items remain; existing items keep their order, new items appear first in input order. A failed batch changes nothing.',
-            `Maximum ${L.news} current items. Text limits count Unicode code points.`,
+            'Edit the world overview and news articles in one batch.',
             saveDescription,
+            'Use it to submit related publication changes together. The batch is atomic: a failed batch changes nothing.',
+            `Unmentioned articles remain; existing articles keep their order, and new articles appear first in input order. The publication holds at most ${L.news} articles. Text limits count Unicode code points.`,
         ].join('\n'),
         parameters: { type: 'object', additionalProperties: false, properties: {
             overview: text(L.overview, 'Wider-world atmosphere. Omit to keep; an empty string clears it.'),
@@ -20,7 +21,7 @@ export function worldEditTool(saveDescription: string): MaintenanceFunctionDecla
                     body: text(L.body, 'Non-empty plain-text news brief. Used for reading and story background; its opening is also the list preview.'),
                 },
             } },
-            remove: { type: 'array', maxItems: L.news, items: text(L.id, 'Article ID to retire. A missing ID is already removed.') },
+            remove: { type: 'array', maxItems: L.news, description: 'Article IDs to retire. Omit to keep all articles not replaced by upsert.', items: text(L.id, 'Article ID to retire. A missing ID is already removed.') },
         } },
     } };
 }

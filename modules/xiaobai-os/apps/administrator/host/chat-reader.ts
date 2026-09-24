@@ -1,4 +1,5 @@
 import { MANAGEMENT_READ_CHARS, readOffset } from '../../../capabilities/management/read-page.js';
+import { ADMINISTRATOR_POLICY as POLICY } from '../domain/policy.js';
 
 export interface AdministratorChatSurface { identityKey: string; messages: readonly unknown[]; playerName: string; assistantName: string }
 interface SourceMessage { mes?: unknown; name?: unknown; is_user?: unknown; is_system?: unknown; swipe_id?: unknown }
@@ -37,6 +38,7 @@ export function createAdministratorChatReader(capture: () => AdministratorChatSu
     }
     return {
         identity,
+        assertCurrent: () => { current(); },
         releaseEvidence: () => evidence.clear(),
         info: { player: initial.playerName, assistant: initial.assistantName, firstFloor: 0, lastFloor: initial.messages.length - 1 },
         staleFloors() {
@@ -62,7 +64,7 @@ export function createAdministratorChatReader(capture: () => AdministratorChatSu
             let remaining = MANAGEMENT_READ_CHARS;
             const result = (scannedTo: number, next: { from: number; to: number; offset: number } | null) => ({ items, omittedSystemFloors, scanned: { from: first, to: scannedTo }, next, complete: next === null });
             for (let floor = first; floor <= last; floor++) {
-                if (floor - first === 20) { return result(floor - 1, { from: floor, to: last, offset: 0 }); }
+                if (floor - first === POLICY.chatReadFloors) { return result(floor - 1, { from: floor, to: last, offset: 0 }); }
                 if ((floor - first) % 25 === 0) { await new Promise(resolve => setTimeout(resolve, 0)); }
                 const raw = current().messages[floor], source = message(raw), text = String(source.mes ?? '');
                 if (source.is_system) { omittedSystemFloors.push(floor); continue; }
@@ -78,7 +80,7 @@ export function createAdministratorChatReader(capture: () => AdministratorChatSu
             return result(last, null);
         },
         async search(args: Record<string, unknown>) {
-            if (typeof args.query !== 'string' || !args.query.trim() || args.query.length > 200) { throw new Error('administrator_query_invalid'); }
+            if (typeof args.query !== 'string' || !args.query.trim() || args.query.length > POLICY.chatQueryChars) { throw new Error('administrator_query_invalid'); }
             if (!current().messages.length) { return { items: [], next: null, complete: true }; }
             const { first, last } = bounds(args.from, args.to);
             const needle = new RegExp(args.query.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'), 'iu');
@@ -93,7 +95,7 @@ export function createAdministratorChatReader(capture: () => AdministratorChatSu
                     const offset = Math.max(0, found - 100);
                     items.push({ floor, speaker: String(source.name ?? ''), snippet: text.slice(offset, offset + 350), offset });
                 }
-                if (items.length === 20 && floor < last) { return { items, next: { query: args.query, from: floor + 1, to: last }, complete: false }; }
+                if (items.length === POLICY.chatSearchMatches && floor < last) { return { items, next: { query: args.query, from: floor + 1, to: last }, complete: false }; }
             }
             return { items, next: null, complete: true };
         },

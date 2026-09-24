@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { administratorHarness, settled } from './administrator-harness.js';
+import { administratorHarness, settled, withLoadedTools } from './administrator-harness.js';
 import { createTasksManagement } from '../apps/tasks/management/participant.js';
 import { createMapManagement } from '../apps/map/management/participant.js';
 import { createWorldManagement } from '../apps/world/management/participant.js';
@@ -26,11 +26,11 @@ test('task management completes an active objective through its existing atomic 
 });
 test('source changes block a new write and an unconfirmed retry that would have to dispatch again', async () => {
     const h = await administratorHarness(); let step = 0;
-    h.state.generate = async () => {
+    h.state.generate = withLoadedTools(['world'], async () => {
         if (step++ === 0) { return { toolCalls: [{ id: 'read', name: 'ChatRead', arguments: '{"from":55}' }] }; }
         if (step === 2) { h.state.messages[55].swipe_id++; return { toolCalls: [{ id: 'write', name: 'WorldEdit', arguments: '{"overview":"旧证据"}' }] }; }
         return { text: '原文版本改变，需要重新查阅。' };
-    };
+    });
     await h.request('send', { text: '根据55楼更正概况' }); await settled(h.runtime);
     assert.equal(h.world.readCurrent().world.overview, '');
     const session = await createWorldManagement(h.world).open();

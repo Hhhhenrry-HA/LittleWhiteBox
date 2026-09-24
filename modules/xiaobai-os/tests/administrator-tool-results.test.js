@@ -5,6 +5,7 @@ import { createAdministratorChatReader } from '../apps/administrator/host/chat-r
 import { ADMINISTRATOR_POLICY } from '../apps/administrator/domain/policy.js';
 import { createManagementRegistry } from '../capabilities/management/index.js';
 import { MANAGEMENT_READ_CHARS } from '../capabilities/management/read-page.js';
+import { TOOLS_LOAD } from '../apps/administrator/agent/tool-loader.js';
 
 async function fixture(messages = [], registry = createManagementRegistry()) {
     const surface = { identityKey: 'tool-results', playerName: 'Player', assistantName: 'Narrator', messages };
@@ -12,10 +13,13 @@ async function fixture(messages = [], registry = createManagementRegistry()) {
     const operations = [];
     const executor = await createAdministratorToolExecutor({
         registry, reader: createAdministratorChatReader(() => surface, () => abort.signal),
+        readEnvironment: () => ({ observedAt: 1, apps: [], maintenance: [], mainChatGenerating: false,
+            storage: { chat: { state: 'ready', hasPendingCommit: false }, user: { state: 'ready', hasPendingCommit: false } } }),
         operations, guard: () => !abort.signal.aborted,
         onChange() {}, async saveReceipts() { assert.fail('read tools must not save business data'); },
     });
     let sequence = 0;
+    await executor.execute(TOOLS_LOAD, { apps: registry.list().map(app => app.id) }, 'load', -1);
     return { executor, operations, surface, call: (name, args) => executor.execute(name, args, String(++sequence), sequence) };
 }
 
