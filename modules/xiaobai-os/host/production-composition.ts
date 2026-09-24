@@ -6,6 +6,7 @@ import { extensionFolderPath } from '../../../core/constants.js';
 import { createAgentApiModule } from '../apps/agent-api/module.js';
 import { createProductionBankModule } from '../apps/bank/production-module.js';
 import { createProductionDiceModule } from '../apps/dice/production-module.js';
+import { upgradeDiceUserFile } from '../apps/dice/upgrade/partition-v1.js';
 import { createProductionFourthWallModule } from '../apps/fourth-wall/production-module.js';
 import { createProductionGameModule } from '../apps/game/production-module.js';
 import { createProductionLearningModule } from '../apps/learning/production-module.js';
@@ -50,7 +51,6 @@ import { createPromptContextAdapter } from './prompt-context/adapter.js';
 import { createMaintenanceBackgroundCapture } from './prompt-context/maintenance-background.js';
 import type { XiaobaiOsSettingsRepository } from './settings-repository.js';
 import {
-    getSillyTavernAssistantTurnCount,
     getSillyTavernChatIdentity,
     getSillyTavernChatSurface,
     getSillyTavernShellSnapshot,
@@ -132,7 +132,7 @@ export function createProductionBootstrap(
             const summary = await import('../../story-summary/story-summary.js') as { isStorySummaryEnabledForCurrentChat(): boolean };
             return { world: composition.capabilities.require(WORLD_CONTEXT_CAPABILITY).isStoryBackgroundEnabled(identityKey),
                 summary: summary.isStorySummaryEnabledForCurrentChat() };
-        }, message => !!projectionMarker(message)),
+        }, message => !!projectionMarker(message), () => upgradeDiceUserFile(composition.userTransactions!)),
         createAgentApiModule(),
         createProductionFourthWallModule(settings, upstreamFourthWall),
         createProductionMessagesModule(mainGeneration, settings),
@@ -146,9 +146,7 @@ export function createProductionBootstrap(
             subscribePrompt: subscribeShopPromptEvents,
         }),
         createProductionBankModule({
-            getChatIdentity: getSillyTavernChatIdentity,
-            getCurrentAssistantTurn: getSillyTavernAssistantTurnCount,
-            mainGeneration,
+            userTransactions: () => composition.userTransactions,
         }),
         createProductionGameModule({ getChatIdentity: getSillyTavernChatIdentity, mainGeneration }),
         createProductionMapModule({
@@ -162,7 +160,7 @@ export function createProductionBootstrap(
             settings,
             getChatIdentity: getSillyTavernChatIdentity,
             getPlayerDisplayName: () => getSillyTavernChatSurface()?.playerName ?? '玩家',
-            getObservedAssistantCount: () => getSillyTavernAssistantTurnCount(),
+            userTransactions: () => composition.userTransactions,
             mainGeneration,
             setPrompt: value => setSillyTavernPrompt('xiaobai_os_tasks_context', value),
             subscribePrompt: subscribeTaskPromptEvents,

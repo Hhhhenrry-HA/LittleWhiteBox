@@ -1,14 +1,14 @@
 /* eslint-disable */
 import { n as $e } from "./xiaobai-os-message-markdown-p_WvGylV.js";
-import { E as le, G as Q, H as D, J as P, K as M, M as c, P as ne, Q as S, T as se, V as _, X as ee, Y as re, Z as Ce, b as O, f as R, g as h, h as B, i as G, k as oe, l as Ie, m as H, o as z, p as e, u as j, v as U, x as Z, y as Y, z as L } from "./xiaobai-os-runtime-dom.esm-bundler-BcM9c-Z9.js";
+import { E as le, G as Q, H as D, J as R, K as M, M as c, P as ne, Q as S, T as se, V as _, X as ee, Y as re, Z as Ce, b as O, f as P, g as p, h as B, i as G, k as oe, l as Ie, m as H, o as z, p as e, u as j, v as U, x as Z, y as Y, z as L } from "./xiaobai-os-runtime-dom.esm-bundler-BcM9c-Z9.js";
 import { n as ie, r as ue } from "./xiaobai-os-app-navigation-sg-40eOk.js";
 import { t as J } from "./xiaobai-os-context-tokens-bfmDTbG3.js";
 import { t as de } from "./xiaobai-os-AppDialog-CI-E933W.js";
-var xe = { class: "fourth-wall-context" }, Se = ["aria-label", "aria-expanded"], Ae = {
+var xe = { class: "fourth-wall-context" }, Se = ["aria-label", "aria-expanded"], Te = {
   key: 0,
   class: "fourth-wall-context-popover",
   "aria-label": "上下文用量"
-}, Te = { class: "fourth-wall-context-total" }, Me = ["disabled"], qe = { key: 2 }, Ee = /* @__PURE__ */ O({
+}, Ae = { class: "fourth-wall-context-total" }, Me = ["disabled"], qe = { key: 2 }, Ee = /* @__PURE__ */ O({
   __name: "FourthWallContextButton",
   props: {
     stats: {},
@@ -16,54 +16,54 @@ var xe = { class: "fourth-wall-context" }, Se = ["aria-label", "aria-expanded"],
     phase: {}
   },
   emits: ["summarize", "cancel"],
-  setup(s, { emit: T }) {
-    const n = s, i = T, u = M(!1);
-    ie(() => (u.value = !1, !0), () => u.value);
-    const m = R(() => Math.min(1, n.stats.usedTokens / n.stats.limit)), o = (a) => `${(a / 1e3).toFixed(1)}k`, v = {
+  setup(s, { emit: A }) {
+    const l = s, i = A, d = M(!1);
+    ie(() => (d.value = !1, !0), () => d.value);
+    const m = P(() => Math.min(1, l.stats.usedTokens / l.stats.limit)), o = (a) => `${(a / 1e3).toFixed(1)}k`, v = {
       counting: "计算中",
       summarizing: "总结中",
       saving: "保存中",
       replying: "回复中"
     };
-    return (a, r) => (c(), h("div", xe, [e("button", {
+    return (a, n) => (c(), p("div", xe, [e("button", {
       type: "button",
       class: ee(["fourth-wall-context-ring", { "is-warning": s.stats.usedTokens >= s.stats.trigger }]),
       style: Ce({ "--context-fill": `${m.value * 360}deg` }),
       "aria-label": `上下文：约 ${o(s.stats.usedTokens)} / 158k`,
-      "aria-expanded": u.value,
+      "aria-expanded": d.value,
       title: "上下文",
-      onClick: r[0] || (r[0] = (l) => u.value = !u.value)
-    }, [e("span", null, S(s.busy ? "…" : ""), 1)], 14, Se), u.value ? (c(), h("section", Ae, [
-      e("header", null, [r[4] || (r[4] = e("strong", null, "上下文", -1)), e("button", {
+      onClick: n[0] || (n[0] = (r) => d.value = !d.value)
+    }, [e("span", null, S(s.busy ? "…" : ""), 1)], 14, Se), d.value ? (c(), p("section", Te, [
+      e("header", null, [n[4] || (n[4] = e("strong", null, "上下文", -1)), e("button", {
         type: "button",
         "aria-label": "关闭上下文用量",
-        onClick: r[1] || (r[1] = (l) => u.value = !1)
+        onClick: n[1] || (n[1] = (r) => d.value = !1)
       }, "×")]),
-      e("p", Te, "约 " + S(o(s.stats.usedTokens)) + " / 158k", 1),
+      e("p", Ae, "约 " + S(o(s.stats.usedTokens)) + " / 158k", 1),
       e("dl", null, [
-        r[5] || (r[5] = e("dt", null, "主剧情", -1)),
+        n[5] || (n[5] = e("dt", null, "主剧情", -1)),
         e("dd", null, S(o(s.stats.mainTokens)), 1),
-        r[6] || (r[6] = e("dt", null, "皮下记忆", -1)),
+        n[6] || (n[6] = e("dt", null, "皮下记忆", -1)),
         e("dd", null, S(o(s.stats.memoryTokens)), 1),
-        r[7] || (r[7] = e("dt", null, "皮下聊天", -1)),
+        n[7] || (n[7] = e("dt", null, "皮下聊天", -1)),
         e("dd", null, S(o(s.stats.historyTokens)), 1),
-        r[8] || (r[8] = e("dt", null, "提示词与输入", -1)),
+        n[8] || (n[8] = e("dt", null, "提示词与输入", -1)),
         e("dd", null, S(o(s.stats.promptTokens)), 1)
       ]),
-      r[9] || (r[9] = e("p", null, "128k 时在下次回复前自动总结。", -1)),
-      s.busy ? (c(), h("button", {
+      n[9] || (n[9] = e("p", null, "128k 时在下次回复前自动总结。", -1)),
+      s.busy ? (c(), p("button", {
         key: 0,
         type: "button",
-        onClick: r[2] || (r[2] = (l) => i("cancel"))
-      }, S(s.phase ? v[s.phase] : "处理中") + " · 取消", 1)) : (c(), h("button", {
+        onClick: n[2] || (n[2] = (r) => i("cancel"))
+      }, S(s.phase ? v[s.phase] : "处理中") + " · 取消", 1)) : (c(), p("button", {
         key: 1,
         type: "button",
         disabled: !s.stats.canSummarize,
-        onClick: r[3] || (r[3] = (l) => {
-          i("summarize"), u.value = !1;
+        onClick: n[3] || (n[3] = (r) => {
+          i("summarize"), d.value = !1;
         })
       }, "立即总结", 8, Me)),
-      !s.stats.canSummarize && !s.busy ? (c(), h("small", qe, "暂无可总结的较早聊天，近期原文会保留。")) : B("", !0)
+      !s.stats.canSummarize && !s.busy ? (c(), p("small", qe, "暂无可总结的较早聊天，近期原文会保留。")) : B("", !0)
     ])) : B("", !0)]));
   }
 }), Fe = Ee, Be = ["disabled"], We = ["disabled"], Ve = {
@@ -78,13 +78,13 @@ var xe = { class: "fourth-wall-context" }, Se = ["aria-label", "aria-expanded"],
     error: {}
   },
   emits: ["close", "save"],
-  setup(s, { emit: T }) {
-    const n = s, i = T, u = M(n.content);
+  setup(s, { emit: A }) {
+    const l = s, i = A, d = M(l.content);
     function m() {
-      (u.value === n.content || window.confirm("放弃尚未保存的记忆修改？")) && i("close");
+      (d.value === l.content || window.confirm("放弃尚未保存的记忆修改？")) && i("close");
     }
     function o() {
-      window.confirm("清空皮下记忆？聊天记录会保留，但已总结过的旧消息不会自动再发给模型。") && (u.value = "", i("save", ""));
+      window.confirm("清空皮下记忆？聊天记录会保留，但已总结过的旧消息不会自动再发给模型。") && (d.value = "", i("save", ""));
     }
     return (v, a) => (c(), H(de, {
       class: "fourth-wall-memory fourth-wall-dialog",
@@ -99,12 +99,12 @@ var xe = { class: "fourth-wall-context" }, Se = ["aria-label", "aria-expanded"],
           onClick: m
         }, "关闭", 8, Be)]),
         D(e("textarea", {
-          "onUpdate:modelValue": a[0] || (a[0] = (r) => u.value = r),
+          "onUpdate:modelValue": a[0] || (a[0] = (n) => d.value = n),
           "aria-label": "皮下记忆正文",
           disabled: s.busy,
           placeholder: "总结后的皮下人设与长期记忆，也可以直接填写。"
-        }, null, 8, We), [[z, u.value]]),
-        s.error ? (c(), h("p", Ve, S(s.error), 1)) : B("", !0),
+        }, null, 8, We), [[z, d.value]]),
+        s.error ? (c(), p("p", Ve, S(s.error), 1)) : B("", !0),
         e("footer", null, [e("button", {
           type: "button",
           class: "is-danger",
@@ -114,34 +114,34 @@ var xe = { class: "fourth-wall-context" }, Se = ["aria-label", "aria-expanded"],
           type: "button",
           class: "is-primary",
           disabled: s.busy,
-          onClick: a[1] || (a[1] = (r) => i("save", u.value))
+          onClick: a[1] || (a[1] = (n) => i("save", d.value))
         }, "保存", 8, Ue)])
       ]),
       _: 1
     }, 8, ["busy"]));
   }
-}), Pe = Ne, ve = O({
+}), Re = Ne, ve = O({
   name: "FourthWallContent",
   props: { content: {
     type: Object,
     required: !0
   } },
-  setup(s, { slots: T }) {
-    function n(i) {
+  setup(s, { slots: A }) {
+    function l(i) {
       if (i.kind === "text") return i.value;
       if (i.kind === "media") {
         const m = s.content.media[i.index];
-        return T.media?.({
+        return A.media?.({
           segment: m,
           index: i.index
         }) ?? m.raw;
       }
-      const u = Z(i.tag, i.attrs, i.children.map(n));
-      return i.tag === "table" ? Z("div", { class: "fourth-wall-table-scroll" }, [u]) : u;
+      const d = Z(i.tag, i.attrs, i.children.map(l));
+      return i.tag === "table" ? Z("div", { class: "fourth-wall-table-scroll" }, [d]) : d;
     }
-    return () => Z("div", { class: "fourth-wall-markdown" }, s.content.nodes.map(n));
+    return () => Z("div", { class: "fourth-wall-markdown" }, s.content.nodes.map(l));
   }
-}), Re = /* @__PURE__ */ new Set([
+}), Pe = /* @__PURE__ */ new Set([
   "p",
   "br",
   "em",
@@ -181,56 +181,56 @@ var xe = { class: "fourth-wall-context" }, Se = ["aria-label", "aria-expanded"],
   "svg",
   "math"
 ]);
-function me(s, T = globalThis.document) {
-  const n = [], i = `XB4W${Array.from(crypto.getRandomValues(new Uint32Array(4))).join("")}MEDIA`, u = s.replace(/\[(?:img|图片)\s*:\s*([^\]]+)\]|\[(?:voice|语音)\s*:([^:\]]*):([^\]]+)\]|\[(?:voice|语音)\s*:\s*([^\]]+)\]/gi, (l, p, x, q, E, F) => {
+function me(s, A = globalThis.document) {
+  const l = [], i = `XB4W${Array.from(crypto.getRandomValues(new Uint32Array(4))).join("")}MEDIA`, d = s.replace(/\[(?:img|图片)\s*:\s*([^\]]+)\]|\[(?:voice|语音)\s*:([^:\]]*):([^\]]+)\]|\[(?:voice|语音)\s*:\s*([^\]]+)\]/gi, (r, h, x, q, E, F) => {
     let W = 0;
-    for (let d = F - 1; d >= 0 && s[d] === "\\"; d--) W++;
-    return W % 2 ? l : (n.push(p !== void 0 ? {
+    for (let u = F - 1; u >= 0 && s[u] === "\\"; u--) W++;
+    return W % 2 ? r : (l.push(h !== void 0 ? {
       kind: "image",
-      raw: l,
-      value: p.trim()
+      raw: r,
+      value: h.trim()
     } : {
       kind: "voice",
-      raw: l,
+      raw: r,
       value: String(q ?? E ?? "").trim(),
       emotion: String(x || "").trim().toLowerCase()
-    }), `${i}${n.length - 1}END`);
-  }), m = new RegExp(`${i}(\\d+)END`, "g"), o = (l) => l.replace(m, (p, x) => n[Number(x)].raw);
-  function v(l, p) {
-    if (p) return [{
+    }), `${i}${l.length - 1}END`);
+  }), m = new RegExp(`${i}(\\d+)END`, "g"), o = (r) => r.replace(m, (h, x) => l[Number(x)].raw);
+  function v(r, h) {
+    if (h) return [{
       kind: "text",
-      value: o(l)
+      value: o(r)
     }];
     const x = [];
     let q = 0;
-    for (const E of l.matchAll(m))
+    for (const E of r.matchAll(m))
       E.index > q && x.push({
         kind: "text",
-        value: l.slice(q, E.index)
+        value: r.slice(q, E.index)
       }), x.push({
         kind: "media",
         index: Number(E[1])
       }), q = E.index + E[0].length;
-    return q < l.length && x.push({
+    return q < r.length && x.push({
       kind: "text",
-      value: l.slice(q)
+      value: r.slice(q)
     }), x;
   }
-  function a(l, p = !1) {
-    if (l.nodeType === 3) return v(l.textContent || "", p);
-    if (l.nodeType !== 1) return [];
-    const x = l, q = x.localName;
+  function a(r, h = !1) {
+    if (r.nodeType === 3) return v(r.textContent || "", h);
+    if (r.nodeType !== 1) return [];
+    const x = r, q = x.localName;
     if (ze.has(q)) return [];
     if (q === "img") return [{
       kind: "text",
       value: o(x.getAttribute("alt") || "")
     }];
-    const E = Array.from(x.childNodes).flatMap((W) => a(W, p || [
+    const E = Array.from(x.childNodes).flatMap((W) => a(W, h || [
       "code",
       "pre",
       "a"
     ].includes(q)));
-    if (!Re.has(q)) return E;
+    if (!Pe.has(q)) return E;
     const F = {};
     if (q === "a") {
       const W = o(x.getAttribute("href") || "").trim();
@@ -244,10 +244,10 @@ function me(s, T = globalThis.document) {
       children: E
     }];
   }
-  const r = T.createElement("template");
-  return r.innerHTML = $e(u, { htmlFenceMode: "code" }), {
-    nodes: Array.from(r.content.childNodes).flatMap((l) => a(l)),
-    media: n
+  const n = A.createElement("template");
+  return n.innerHTML = $e(d, { htmlFenceMode: "code" }), {
+    nodes: Array.from(n.content.childNodes).flatMap((r) => a(r)),
+    media: l
   };
 }
 var Oe = ["data-message-index"], He = ["src"], Le = {
@@ -281,33 +281,33 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
     "draft",
     "editCancel"
   ],
-  setup(s, { emit: T }) {
-    const n = s, i = T, u = R(() => n.editDraft !== void 0);
-    ie(() => (i("editCancel"), !0), () => u.value);
-    const m = R({
-      get: () => n.editDraft || "",
+  setup(s, { emit: A }) {
+    const l = s, i = A, d = P(() => l.editDraft !== void 0);
+    ie(() => (i("editCancel"), !0), () => d.value);
+    const m = P({
+      get: () => l.editDraft || "",
       set: (f) => i("draft", f)
     }), o = M(null);
     let v = null;
-    const a = Q({}), r = /* @__PURE__ */ new Set();
-    let l = () => {
+    const a = Q({}), n = /* @__PURE__ */ new Set();
+    let r = () => {
     };
-    const p = R(() => me(n.message.content)), x = R(() => n.message.ts ? new Intl.DateTimeFormat("zh-CN", {
+    const h = P(() => me(l.message.content)), x = P(() => l.message.ts ? new Intl.DateTimeFormat("zh-CN", {
       hour: "2-digit",
       minute: "2-digit"
-    }).format(n.message.ts) : "");
+    }).format(l.message.ts) : "");
     function q(f, g) {
-      return `fw-${f}-${Date.now()}-${n.messageIndex}-${g}-${Math.random().toString(36).slice(2, 7)}`;
+      return `fw-${f}-${Date.now()}-${l.messageIndex}-${g}-${Math.random().toString(36).slice(2, 7)}`;
     }
     function E(f) {
       return f.result;
     }
     function F(f, g) {
-      return r.has(g) && a[f]?.requestId === g;
+      return n.has(g) && a[f]?.requestId === g;
     }
     async function W(f, g) {
       if (a[g]?.status === "loading" || a[g]?.status === "ready") return;
-      if (!n.imageAvailable) {
+      if (!l.imageAvailable) {
         a[g] = {
           status: "unavailable",
           message: "请先开启画图功能"
@@ -315,17 +315,17 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
         return;
       }
       const b = q("image", g);
-      r.add(b), a[g] = {
+      n.add(b), a[g] = {
         status: "loading",
         message: "正在加载图片",
         requestId: b
       };
       const C = {
-        chatIdentity: n.chatIdentity,
-        sessionId: n.sessionId
+        chatIdentity: l.chatIdentity,
+        sessionId: l.sessionId
       };
       try {
-        const V = E(await n.bridge.request("fourth-wall/image-check", {
+        const V = E(await l.bridge.request("fourth-wall/image-check", {
           ...C,
           tags: f.value,
           mediaRequestId: b
@@ -346,7 +346,7 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
             message: "正在生成图片",
             requestId: b
           };
-          const K = E(await n.bridge.request("fourth-wall/image-generate", {
+          const K = E(await l.bridge.request("fourth-wall/image-generate", {
             ...C,
             tags: f.value,
             mediaRequestId: b
@@ -365,11 +365,11 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
           requestId: b
         });
       } finally {
-        r.delete(b);
+        n.delete(b);
       }
     }
-    async function d(f, g) {
-      if (!n.voiceAvailable) {
+    async function u(f, g) {
+      if (!l.voiceAvailable) {
         a[g] = {
           status: "unavailable",
           message: "请先开启 TTS 语音"
@@ -379,22 +379,22 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
       const b = a[g];
       if (b?.status === "loading") return;
       if (b?.status === "playing" && b.requestId) {
-        n.bridge.post("fourth-wall/voice-stop", {
-          chatIdentity: n.chatIdentity,
+        l.bridge.post("fourth-wall/voice-stop", {
+          chatIdentity: l.chatIdentity,
           mediaRequestId: b.requestId
         }), a[g] = { status: "idle" };
         return;
       }
       const C = q("voice", g);
-      r.add(C), a[g] = {
+      n.add(C), a[g] = {
         status: "loading",
         message: "正在准备语音",
         requestId: C
       };
       try {
-        await n.bridge.request("fourth-wall/voice-play", {
-          chatIdentity: n.chatIdentity,
-          sessionId: n.sessionId,
+        await l.bridge.request("fourth-wall/voice-play", {
+          chatIdentity: l.chatIdentity,
+          sessionId: l.sessionId,
           mediaRequestId: C,
           text: f.value,
           emotion: f.emotion
@@ -404,32 +404,32 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
           status: "error",
           message: V instanceof Error ? V.message : String(V),
           requestId: C
-        }), r.delete(C);
+        }), n.delete(C);
       }
     }
     function I() {
-      i("draft", n.message.content);
+      i("draft", l.message.content);
     }
     function w() {
       const f = m.value.trim();
-      f && i("edit", n.messageIndex, f);
+      f && i("edit", l.messageIndex, f);
     }
     function $() {
-      r.forEach((f) => {
-        n.bridge.post("fourth-wall/image-cancel", {
-          chatIdentity: n.chatIdentity,
+      n.forEach((f) => {
+        l.bridge.post("fourth-wall/image-cancel", {
+          chatIdentity: l.chatIdentity,
           mediaRequestId: f
-        }), n.bridge.post("fourth-wall/voice-stop", {
-          chatIdentity: n.chatIdentity,
+        }), l.bridge.post("fourth-wall/voice-stop", {
+          chatIdentity: l.chatIdentity,
           mediaRequestId: f
         });
-      }), r.clear();
+      }), n.clear();
     }
-    function A() {
+    function T() {
       v?.disconnect(), o.value?.querySelectorAll("[data-image-index]").forEach((f) => v?.observe(f));
     }
     return oe(() => {
-      l = n.bridge.subscribe((f) => {
+      r = l.bridge.subscribe((f) => {
         if (f.type === "fourth-wall/image-progress") {
           const g = f.payload, b = Object.keys(a).map(Number).find((C) => a[C]?.requestId === g.mediaRequestId);
           b !== void 0 && (a[b].message = g.status === "queued" ? `图片队列第 ${g.position || 1} 位` : "正在生成图片");
@@ -437,7 +437,7 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
         if (f.type === "fourth-wall/voice-state") {
           const g = f.payload, b = Object.keys(a).map(Number).find((C) => a[C]?.requestId === g.requestId);
           if (b === void 0) return;
-          g.state === "playing" && (a[b].status = "playing"), (g.state === "ended" || g.state === "stopped") && (r.delete(String(g.requestId || "")), a[b] = { status: "idle" }), g.state === "error" && (r.delete(String(g.requestId || "")), a[b] = {
+          g.state === "playing" && (a[b].status = "playing"), (g.state === "ended" || g.state === "stopped") && (n.delete(String(g.requestId || "")), a[b] = { status: "idle" }), g.state === "error" && (n.delete(String(g.requestId || "")), a[b] = {
             status: "error",
             message: g.message || "语音播放失败"
           });
@@ -445,71 +445,71 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
       }), o.value && typeof IntersectionObserver < "u" && (v = new IntersectionObserver((f) => {
         for (const g of f) {
           if (!g.isIntersecting) continue;
-          const b = Number(g.target.dataset.imageIndex), C = p.value.media[b];
+          const b = Number(g.target.dataset.imageIndex), C = h.value.media[b];
           C?.kind === "image" && W(C, b), v?.unobserve(g.target);
         }
-      }, { root: o.value.closest(".fourth-wall-conversation") }), A());
-    }), L(() => n.message.content, () => {
+      }, { root: o.value.closest(".fourth-wall-conversation") }), T());
+    }), L(() => l.message.content, () => {
       $(), Object.keys(a).forEach((f) => delete a[Number(f)]);
-    }), L([p, u], A, { flush: "post" }), le(() => {
-      l(), v?.disconnect(), $();
-    }), (f, g) => (c(), h("article", {
+    }), L([h, d], T, { flush: "post" }), le(() => {
+      r(), v?.disconnect(), $();
+    }), (f, g) => (c(), p("article", {
       ref_key: "root",
       ref: o,
       class: ee(["fourth-wall-message", s.message.role === "user" ? "is-user" : "is-ai"]),
       "data-message-index": s.messageIndex
-    }, [(s.message.role === "user" ? s.userAvatar : s.characterAvatar) ? (c(), h("img", {
+    }, [(s.message.role === "user" ? s.userAvatar : s.characterAvatar) ? (c(), p("img", {
       key: 0,
       class: "fourth-wall-avatar",
       src: s.message.role === "user" ? s.userAvatar : s.characterAvatar,
       alt: ""
-    }, null, 8, He)) : (c(), h("span", Le)), e("div", Ge, [
-      s.message.thinking ? (c(), h("details", je, [g[3] || (g[3] = e("summary", null, "思考过程", -1)), e("div", null, S(s.message.thinking), 1)])) : B("", !0),
-      e("div", Ke, [u.value ? D((c(), h("textarea", {
+    }, null, 8, He)) : (c(), p("span", Le)), e("div", Ge, [
+      s.message.thinking ? (c(), p("details", je, [g[3] || (g[3] = e("summary", null, "思考过程", -1)), e("div", null, S(s.message.thinking), 1)])) : B("", !0),
+      e("div", Ke, [d.value ? D((c(), p("textarea", {
         key: 0,
         "onUpdate:modelValue": g[0] || (g[0] = (b) => m.value = b),
         class: "fourth-wall-edit",
         rows: "3"
       }, null, 512)), [[z, m.value]]) : (c(), H(re(ve), {
         key: 1,
-        content: p.value
+        content: h.value
       }, {
-        media: _(({ segment: b, index: C }) => [b.kind === "image" ? (c(), h("span", {
+        media: _(({ segment: b, index: C }) => [b.kind === "image" ? (c(), p("span", {
           key: 0,
           class: "fourth-wall-image-card",
           "data-image-index": C
-        }, [a[C]?.status === "ready" ? (c(), h("img", {
+        }, [a[C]?.status === "ready" ? (c(), p("img", {
           key: 0,
           src: a[C].source,
           alt: b.value
-        }, null, 8, Qe)) : a[C]?.status === "error" ? (c(), h("button", {
+        }, null, 8, Qe)) : a[C]?.status === "error" ? (c(), p("button", {
           key: 1,
           type: "button",
           onClick: (V) => W(b, C)
-        }, [U(S(b.raw), 1), e("small", null, S(a[C].message) + "，点此重试", 1)], 8, Ze)) : a[C]?.status === "unavailable" ? (c(), h("span", Je, [U(S(b.raw), 1), e("small", null, S(a[C].message), 1)])) : (c(), h("button", {
+        }, [U(S(b.raw), 1), e("small", null, S(a[C].message) + "，点此重试", 1)], 8, Ze)) : a[C]?.status === "unavailable" ? (c(), p("span", Je, [U(S(b.raw), 1), e("small", null, S(a[C].message), 1)])) : (c(), p("button", {
           key: 3,
           type: "button",
           disabled: a[C]?.status === "loading",
           onClick: (V) => W(b, C)
-        }, [U(S(b.raw), 1), e("small", null, S(a[C]?.message || "生成图片"), 1)], 8, Ye))], 8, Xe)) : (c(), h("button", {
+        }, [U(S(b.raw), 1), e("small", null, S(a[C]?.message || "生成图片"), 1)], 8, Ye))], 8, Xe)) : (c(), p("button", {
           key: 1,
           class: "fourth-wall-voice",
           type: "button",
-          onClick: (V) => d(b, C)
+          onClick: (V) => u(b, C)
         }, [
           e("span", et, S(a[C]?.status === "playing" ? "■" : "▶"), 1),
           e("span", null, S(b.value), 1),
-          a[C]?.message ? (c(), h("small", tt, S(a[C].message), 1)) : B("", !0)
+          a[C]?.message ? (c(), p("small", tt, S(a[C].message), 1)) : B("", !0)
         ], 8, _e))]),
         _: 1
-      }, 8, ["content"])), e("div", at, [u.value ? (c(), h(j, { key: 0 }, [e("button", {
+      }, 8, ["content"])), e("div", at, [d.value ? (c(), p(j, { key: 0 }, [e("button", {
         type: "button",
         disabled: !s.editable,
         onClick: w
       }, "保存", 8, st), e("button", {
         type: "button",
         onClick: g[1] || (g[1] = (b) => i("editCancel"))
-      }, "取消")], 64)) : (c(), h(j, { key: 1 }, [e("button", {
+      }, "取消")], 64)) : (c(), p(j, { key: 1 }, [e("button", {
         type: "button",
         disabled: !s.editable,
         onClick: I
@@ -518,7 +518,7 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
         disabled: !s.editable,
         onClick: g[2] || (g[2] = (b) => i("delete", s.messageIndex))
       }, "删除", 8, nt)], 64))])]),
-      x.value ? (c(), h("time", rt, S(x.value), 1)) : B("", !0)
+      x.value ? (c(), p("time", rt, S(x.value), 1)) : B("", !0)
     ])], 10, Oe));
   }
 }), it = ot, ut = ["disabled"], dt = {
@@ -557,110 +557,110 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
     "delete",
     "error"
   ],
-  setup(s, { emit: T }) {
-    const n = s, i = T, u = M(null), m = M(n.page), o = R(() => me(n.generation.text || "")), v = M(!1), a = M(!0), r = M(null);
-    let l = 0;
-    const p = {
+  setup(s, { emit: A }) {
+    const l = s, i = A, d = M(null), m = M(l.page), o = P(() => me(l.generation.text || "")), v = M(!1), a = M(!0), n = M(null);
+    let r = 0;
+    const h = {
       counting: "正在计算上下文…",
       summarizing: "正在整理皮下记忆…",
       saving: "正在保存…",
       replying: "等待回应…"
     };
     function x() {
-      const d = u.value;
-      if (!d) return null;
-      const I = d.getBoundingClientRect().top, w = Array.from(d.querySelectorAll("[data-message-index]")).find(($) => $.getBoundingClientRect().bottom > I);
+      const u = d.value;
+      if (!u) return null;
+      const I = u.getBoundingClientRect().top, w = Array.from(u.querySelectorAll("[data-message-index]")).find(($) => $.getBoundingClientRect().bottom > I);
       return w ? {
         index: w.dataset.messageIndex,
         offset: w.getBoundingClientRect().top - I
       } : null;
     }
-    async function q(d, I = !1) {
+    async function q(u, I = !1) {
       const w = x();
-      if (r.value && d.sessionId === m.value.sessionId) {
-        const A = d.messages[r.value.index - d.start];
-        A?.ts === r.value.ts && A.content === r.value.content.trim() ? r.value = null : A?.ts === r.value.ts && A.content === r.value.original ? r.value.revision = d.revision : A && (i("error", `正在编辑的消息已变化，未保存的草稿：${r.value.content}`), r.value = null);
+      if (n.value && u.sessionId === m.value.sessionId) {
+        const T = u.messages[n.value.index - u.start];
+        T?.ts === n.value.ts && T.content === n.value.content.trim() ? n.value = null : T?.ts === n.value.ts && T.content === n.value.original ? n.value.revision = u.revision : T && (i("error", `正在编辑的消息已变化，未保存的草稿：${n.value.content}`), n.value = null);
       }
-      m.value = d, await se();
-      const $ = u.value;
+      m.value = u, await se();
+      const $ = d.value;
       if ($) {
         if (I) {
           $.scrollTop = $.scrollHeight, a.value = !0;
           return;
         }
         if (w) {
-          const A = $.querySelector('[data-message-index="' + w.index + '"]');
-          A && ($.scrollTop += A.getBoundingClientRect().top - $.getBoundingClientRect().top - w.offset);
+          const T = $.querySelector('[data-message-index="' + w.index + '"]');
+          T && ($.scrollTop += T.getBoundingClientRect().top - $.getBoundingClientRect().top - w.offset);
         }
       }
     }
     function E() {
-      const d = u.value;
-      d && (a.value = m.value.start + m.value.messages.length === m.value.total && d.scrollHeight - d.clientHeight - d.scrollTop < 48);
+      const u = d.value;
+      u && (a.value = m.value.start + m.value.messages.length === m.value.total && u.scrollHeight - u.clientHeight - u.scrollTop < 48);
     }
-    async function F(d) {
+    async function F(u) {
       if (v.value) return;
-      const I = ++l;
+      const I = ++r;
       v.value = !0;
-      const w = n.sessionId;
+      const w = l.sessionId;
       try {
-        const $ = await n.bridge.request("fourth-wall/history-page", {
-          chatIdentity: n.chatIdentity,
+        const $ = await l.bridge.request("fourth-wall/history-page", {
+          chatIdentity: l.chatIdentity,
           sessionId: w,
-          direction: d,
+          direction: u,
           revision: m.value.revision
         });
-        if (I !== l || w !== n.sessionId) return;
-        d !== "latest" && (a.value = !1);
-        const A = $.result;
-        if (d === "earlier") A.messages = [...A.messages, ...m.value.messages].slice(0, 60);
-        else if (d === "later") {
-          const f = [...m.value.messages, ...A.messages];
-          A.start = m.value.start + Math.max(0, f.length - 60), A.messages = f.slice(-60);
+        if (I !== r || w !== l.sessionId) return;
+        u !== "latest" && (a.value = !1);
+        const T = $.result;
+        if (u === "earlier") T.messages = [...T.messages, ...m.value.messages].slice(0, 60);
+        else if (u === "later") {
+          const f = [...m.value.messages, ...T.messages];
+          T.start = m.value.start + Math.max(0, f.length - 60), T.messages = f.slice(-60);
         }
-        await q(A, d === "latest");
+        await q(T, u === "latest");
       } catch ($) {
-        I === l && i("error", $ instanceof Error ? $.message : String($));
+        I === r && i("error", $ instanceof Error ? $.message : String($));
       } finally {
-        I === l && (v.value = !1);
+        I === r && (v.value = !1);
       }
     }
-    function W(d, I) {
-      const w = m.value.messages[d - m.value.start];
-      w && (r.value?.index === d ? r.value.content = I : r.value = {
-        index: d,
+    function W(u, I) {
+      const w = m.value.messages[u - m.value.start];
+      w && (n.value?.index === u ? n.value.content = I : n.value = {
+        index: u,
         content: I,
         original: w.content,
         ts: w.ts,
         revision: m.value.revision
       });
     }
-    return L(() => n.page, (d) => {
-      l++, v.value = !1, q(d, d.sessionId !== m.value.sessionId || a.value);
-    }, { immediate: !0 }), L(() => n.sessionId, () => {
-      r.value = null, a.value = !0;
-    }), L(() => n.generation.text, async () => {
-      a.value && (await se(), u.value && (u.value.scrollTop = u.value.scrollHeight));
-    }), (d, I) => (c(), h("section", {
+    return L(() => l.page, (u) => {
+      r++, v.value = !1, q(u, u.sessionId !== m.value.sessionId || a.value);
+    }, { immediate: !0 }), L(() => l.sessionId, () => {
+      n.value = null, a.value = !0;
+    }), L(() => l.generation.text, async () => {
+      a.value && (await se(), d.value && (d.value.scrollTop = d.value.scrollHeight));
+    }), (u, I) => (c(), p("section", {
       ref_key: "viewport",
-      ref: u,
+      ref: d,
       class: "fourth-wall-conversation",
       "aria-live": "polite",
       onScrollPassive: E
     }, [
-      m.value.start > 0 ? (c(), h("button", {
+      m.value.start > 0 ? (c(), p("button", {
         key: 0,
         type: "button",
         class: "fourth-wall-earlier",
         disabled: v.value,
         onClick: I[0] || (I[0] = (w) => F("earlier"))
       }, S(v.value ? "读取中…" : "查看更早的记录"), 9, ut)) : B("", !0),
-      m.value.total === 0 && s.generation.status === "idle" ? (c(), h("div", dt, [...I[6] || (I[6] = [
+      m.value.total === 0 && s.generation.status === "idle" ? (c(), p("div", dt, [...I[6] || (I[6] = [
         e("span", null, "IV", -1),
         e("strong", null, "越过故事边界", -1),
         e("p", null, "这里是你与角色扮演者的皮下私聊。", -1)
       ])])) : B("", !0),
-      (c(!0), h(j, null, ne(m.value.messages, (w, $) => (c(), H(it, {
+      (c(!0), p(j, null, ne(m.value.messages, (w, $) => (c(), H(it, {
         key: w.ts + "-" + (m.value.start + $),
         message: w,
         "message-index": m.value.start + $,
@@ -672,11 +672,11 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
         "voice-available": s.voiceAvailable,
         bridge: s.bridge,
         editable: !s.busy,
-        "edit-draft": r.value?.index === m.value.start + $ && r.value.ts === w.ts ? r.value.content : void 0,
-        onDraft: (A) => W(m.value.start + $, A),
-        onEditCancel: I[1] || (I[1] = (A) => r.value = null),
-        onEdit: I[2] || (I[2] = (A, f) => i("edit", A, f, r.value?.revision ?? m.value.revision)),
-        onDelete: I[3] || (I[3] = (A) => i("delete", A))
+        "edit-draft": n.value?.index === m.value.start + $ && n.value.ts === w.ts ? n.value.content : void 0,
+        onDraft: (T) => W(m.value.start + $, T),
+        onEditCancel: I[1] || (I[1] = (T) => n.value = null),
+        onEdit: I[2] || (I[2] = (T, f) => i("edit", T, f, n.value?.revision ?? m.value.revision)),
+        onDelete: I[3] || (I[3] = (T) => i("delete", T))
       }, null, 8, [
         "message",
         "message-index",
@@ -691,23 +691,23 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
         "edit-draft",
         "onDraft"
       ]))), 128)),
-      m.value.start + m.value.messages.length < m.value.total ? (c(), h("button", {
+      m.value.start + m.value.messages.length < m.value.total ? (c(), p("button", {
         key: 2,
         type: "button",
         class: "fourth-wall-earlier",
         disabled: v.value,
         onClick: I[4] || (I[4] = (w) => F("later"))
       }, " 查看后面的记录 ", 8, vt)) : B("", !0),
-      s.generation.status !== "idle" && a.value ? (c(), h("article", mt, [s.characterAvatar ? (c(), h("img", {
+      s.generation.status !== "idle" && a.value ? (c(), p("article", mt, [s.characterAvatar ? (c(), p("img", {
         key: 0,
         class: "fourth-wall-avatar",
         src: s.characterAvatar,
         alt: ""
-      }, null, 8, ft)) : (c(), h("span", gt)), e("div", bt, [s.generation.thinking ? (c(), h("details", ct, [I[7] || (I[7] = e("summary", null, "思考中", -1)), e("div", null, S(s.generation.thinking), 1)])) : B("", !0), e("div", yt, [s.generation.text ? (c(), H(re(ve), {
+      }, null, 8, ft)) : (c(), p("span", gt)), e("div", bt, [s.generation.thinking ? (c(), p("details", ct, [I[7] || (I[7] = e("summary", null, "思考中", -1)), e("div", null, S(s.generation.thinking), 1)])) : B("", !0), e("div", yt, [s.generation.text ? (c(), H(re(ve), {
         key: 0,
         content: o.value
-      }, null, 8, ["content"])) : (c(), h(j, { key: 1 }, [U(S(s.generation.status === "error" ? s.generation.message : p[s.generation.phase || "replying"]), 1)], 64)), s.generation.unsaved ? (c(), h("small", pt, "未保存")) : B("", !0)])])])) : B("", !0),
-      a.value ? B("", !0) : (c(), h("button", {
+      }, null, 8, ["content"])) : (c(), p(j, { key: 1 }, [U(S(s.generation.status === "error" ? s.generation.message : h[s.generation.phase || "replying"]), 1)], 64)), s.generation.unsaved ? (c(), p("small", pt, "未保存")) : B("", !0)])])])) : B("", !0),
+      a.value ? B("", !0) : (c(), p("button", {
         key: 4,
         type: "button",
         class: "fourth-wall-latest",
@@ -728,44 +728,44 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
     "save",
     "restore"
   ],
-  setup(s, { emit: T }) {
-    const n = s, i = T, u = Q(structuredClone(P(n.templates))), m = M(null);
+  setup(s, { emit: A }) {
+    const l = s, i = A, d = Q(structuredClone(R(l.templates))), m = M(null);
     ue(m, () => i("close"));
     function o() {
-      i("save", structuredClone(P(u)));
+      i("save", structuredClone(R(d)));
     }
-    return (v, a) => (c(), h("div", {
+    return (v, a) => (c(), p("div", {
       ref_key: "layer",
       ref: m,
       class: "fourth-wall-modal-backdrop",
-      onClick: a[6] || (a[6] = Ie((r) => i("close"), ["self"]))
+      onClick: a[6] || (a[6] = Ie((n) => i("close"), ["self"]))
     }, [e("section", $t, [
       e("header", null, [a[7] || (a[7] = e("strong", null, "提示词模板", -1)), e("button", {
         type: "button",
-        onClick: a[0] || (a[0] = (r) => i("close"))
+        onClick: a[0] || (a[0] = (n) => i("close"))
       }, "关闭")]),
       e("div", Ct, [
         e("label", null, [a[8] || (a[8] = U("Top User", -1)), D(e("textarea", {
-          "onUpdate:modelValue": a[1] || (a[1] = (r) => u.topuser = r),
+          "onUpdate:modelValue": a[1] || (a[1] = (n) => d.topuser = n),
           rows: "5"
-        }, null, 512), [[z, u.topuser]])]),
+        }, null, 512), [[z, d.topuser]])]),
         e("label", null, [a[9] || (a[9] = U("Confirm", -1)), D(e("textarea", {
-          "onUpdate:modelValue": a[2] || (a[2] = (r) => u.confirm = r),
+          "onUpdate:modelValue": a[2] || (a[2] = (n) => d.confirm = n),
           rows: "3"
-        }, null, 512), [[z, u.confirm]])]),
+        }, null, 512), [[z, d.confirm]])]),
         e("label", null, [a[10] || (a[10] = U("Meta Protocol", -1)), D(e("textarea", {
-          "onUpdate:modelValue": a[3] || (a[3] = (r) => u.metaProtocol = r),
+          "onUpdate:modelValue": a[3] || (a[3] = (n) => d.metaProtocol = n),
           rows: "12"
-        }, null, 512), [[z, u.metaProtocol]])]),
+        }, null, 512), [[z, d.metaProtocol]])]),
         e("label", null, [a[11] || (a[11] = U("Bottom", -1)), D(e("textarea", {
-          "onUpdate:modelValue": a[4] || (a[4] = (r) => u.bottom = r),
+          "onUpdate:modelValue": a[4] || (a[4] = (n) => d.bottom = n),
           rows: "5"
-        }, null, 512), [[z, u.bottom]])])
+        }, null, 512), [[z, d.bottom]])])
       ]),
       e("footer", null, [e("button", {
         type: "button",
         class: "is-danger",
-        onClick: a[5] || (a[5] = (r) => i("restore"))
+        onClick: a[5] || (a[5] = (n) => i("restore"))
       }, "恢复默认"), e("button", {
         type: "button",
         class: "is-primary",
@@ -773,7 +773,7 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
       }, "保存")])
     ])], 512));
   }
-}), xt = It, St = { class: "fourth-wall-settings-section" }, At = { class: "fourth-wall-session-row" }, Tt = ["value", "disabled"], Mt = ["value"], qt = ["disabled"], Et = ["disabled"], Ft = ["disabled"], Bt = /* @__PURE__ */ O({
+}), xt = It, St = { class: "fourth-wall-settings-section" }, Tt = { class: "fourth-wall-session-row" }, At = ["value", "disabled"], Mt = ["value"], qt = ["disabled"], Et = ["disabled"], Ft = ["disabled"], Bt = /* @__PURE__ */ O({
   __name: "FourthWallSessions",
   props: {
     sessions: {},
@@ -786,28 +786,28 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
     "rename",
     "delete"
   ],
-  setup(s, { emit: T }) {
-    const n = T;
+  setup(s, { emit: A }) {
+    const l = A;
     function i() {
       const o = window.prompt("新记录名称", "新记录")?.trim();
-      o && n("add", o);
+      o && l("add", o);
     }
-    function u(o, v) {
+    function d(o, v) {
       const a = window.prompt("重命名记录", v)?.trim();
-      a && n("rename", o, a);
+      a && l("rename", o, a);
     }
     function m(o) {
-      window.confirm("确定删除当前记录及其皮下记忆吗？") && n("delete", o);
+      window.confirm("确定删除当前记录及其皮下记忆吗？") && l("delete", o);
     }
-    return (o, v) => (c(), h("section", St, [v[3] || (v[3] = e("h3", null, "聊天记录", -1)), e("div", At, [
+    return (o, v) => (c(), p("section", St, [v[3] || (v[3] = e("h3", null, "聊天记录", -1)), e("div", Tt, [
       e("select", {
         value: s.activeSessionId,
         disabled: s.disabled,
-        onChange: v[0] || (v[0] = (a) => n("switch", a.target.value))
-      }, [(c(!0), h(j, null, ne(s.sessions, (a) => (c(), h("option", {
+        onChange: v[0] || (v[0] = (a) => l("switch", a.target.value))
+      }, [(c(!0), p(j, null, ne(s.sessions, (a) => (c(), p("option", {
         key: a.id,
         value: a.id
-      }, S(a.name), 9, Mt))), 128))], 40, Tt),
+      }, S(a.name), 9, Mt))), 128))], 40, At),
       e("button", {
         type: "button",
         disabled: s.disabled,
@@ -818,7 +818,7 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
         type: "button",
         disabled: s.disabled,
         title: "重命名记录",
-        onClick: v[1] || (v[1] = (a) => u(s.activeSessionId, s.sessions.find((r) => r.id === s.activeSessionId)?.name || ""))
+        onClick: v[1] || (v[1] = (a) => d(s.activeSessionId, s.sessions.find((n) => n.id === s.activeSessionId)?.name || ""))
       }, " 改 ", 8, Et),
       e("button", {
         type: "button",
@@ -829,7 +829,7 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
       }, " 删 ", 8, Ft)
     ])]));
   }
-}), Wt = Bt, Vt = { class: "fourth-wall-settings-scroll" }, Dt = { class: "fourth-wall-settings-section" }, Ut = { class: "is-toggle" }, Nt = { class: "is-toggle" }, Pt = ["disabled"], Rt = { class: "fourth-wall-settings-section" }, zt = { class: "is-toggle" }, Ot = { class: "is-toggle" }, Ht = { class: "is-toggle" }, Lt = { key: 0 }, Gt = ["disabled"], jt = { class: "fourth-wall-settings-section is-actions" }, Kt = /* @__PURE__ */ O({
+}), Wt = Bt, Vt = { class: "fourth-wall-settings-scroll" }, Dt = { class: "fourth-wall-settings-section" }, Ut = { class: "is-toggle" }, Nt = ["disabled"], Rt = { class: "fourth-wall-settings-section" }, Pt = { class: "is-toggle" }, zt = { class: "is-toggle" }, Ot = { class: "is-toggle" }, Ht = { key: 0 }, Lt = ["disabled"], Gt = { class: "fourth-wall-settings-section is-actions" }, jt = /* @__PURE__ */ O({
   __name: "FourthWallSettings",
   props: {
     chat: {},
@@ -846,86 +846,82 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
     "deleteSession",
     "openPrompts"
   ],
-  setup(s, { emit: T }) {
-    const n = s, i = T, u = Q(structuredClone(P(n.chat.settings))), m = M(null);
+  setup(s, { emit: A }) {
+    const l = s, i = A, d = Q(structuredClone(R(l.chat.settings))), m = M(null);
     ue(m, () => i("close"));
-    const o = Q(structuredClone(P(n.global)));
+    const o = Q(structuredClone(R(l.global)));
     function v() {
-      i("updateChat", structuredClone(P(u)));
+      i("updateChat", structuredClone(R(d)));
     }
     function a() {
       i("updateGlobal", {
-        image: structuredClone(P(o.image)),
-        voice: structuredClone(P(o.voice)),
-        commentary: structuredClone(P(o.commentary))
+        image: structuredClone(R(o.image)),
+        voice: structuredClone(R(o.voice)),
+        commentary: structuredClone(R(o.commentary))
       });
     }
-    return (r, l) => (c(), h("aside", {
+    return (n, r) => (c(), p("aside", {
       ref_key: "layer",
       ref: m,
       class: "fourth-wall-settings",
       "aria-label": "四次元壁设置"
-    }, [e("header", null, [l[13] || (l[13] = e("strong", null, "四次元壁设置", -1)), e("button", {
+    }, [e("header", null, [r[12] || (r[12] = e("strong", null, "四次元壁设置", -1)), e("button", {
       type: "button",
-      onClick: l[0] || (l[0] = (p) => i("close"))
+      onClick: r[0] || (r[0] = (h) => i("close"))
     }, "关闭")]), e("div", Vt, [
       Y(Wt, {
         sessions: s.chat.sessions,
         "active-session-id": s.chat.activeSessionId,
         disabled: s.busy,
-        onSwitch: l[1] || (l[1] = (p) => i("switchSession", p)),
-        onAdd: l[2] || (l[2] = (p) => i("addSession", p)),
-        onRename: l[3] || (l[3] = (p, x) => i("renameSession", p, x)),
-        onDelete: l[4] || (l[4] = (p) => i("deleteSession", p))
+        onSwitch: r[1] || (r[1] = (h) => i("switchSession", h)),
+        onAdd: r[2] || (r[2] = (h) => i("addSession", h)),
+        onRename: r[3] || (r[3] = (h, x) => i("renameSession", h, x)),
+        onDelete: r[4] || (r[4] = (h) => i("deleteSession", h))
       }, null, 8, [
         "sessions",
         "active-session-id",
         "disabled"
       ]),
       e("section", Dt, [
-        l[17] || (l[17] = e("h3", null, "上下文", -1)),
-        e("label", null, [l[14] || (l[14] = U("带入的主聊天楼层数", -1)), D(e("input", {
-          "onUpdate:modelValue": l[5] || (l[5] = (p) => u.maxChatLayers = p),
+        r[15] || (r[15] = e("h3", null, "上下文", -1)),
+        e("label", null, [r[13] || (r[13] = U("带入的主聊天楼层数", -1)), D(e("input", {
+          "onUpdate:modelValue": r[5] || (r[5] = (h) => d.maxChatLayers = h),
           type: "number",
           min: "1",
           max: "9999"
         }, null, 512), [[
           z,
-          u.maxChatLayers,
+          d.maxChatLayers,
           void 0,
           { number: !0 }
         ]])]),
-        e("label", Ut, [l[15] || (l[15] = e("span", null, "流式生成", -1)), D(e("input", {
-          "onUpdate:modelValue": l[6] || (l[6] = (p) => u.stream = p),
+        e("label", Ut, [r[14] || (r[14] = e("span", null, "流式生成", -1)), D(e("input", {
+          "onUpdate:modelValue": r[6] || (r[6] = (h) => d.stream = h),
           type: "checkbox"
-        }, null, 512), [[G, u.stream]])]),
-        e("label", Nt, [l[16] || (l[16] = e("span", null, "禁用助手预填充", -1)), D(e("input", {
-          "onUpdate:modelValue": l[7] || (l[7] = (p) => u.disableAssistantPrefill = p),
-          type: "checkbox"
-        }, null, 512), [[G, u.disableAssistantPrefill]])]),
+        }, null, 512), [[G, d.stream]])]),
         e("button", {
           type: "button",
           class: "is-primary",
           disabled: s.busy,
           onClick: v
-        }, "保存上下文设置", 8, Pt)
+        }, "保存上下文设置", 8, Nt)
       ]),
       e("section", Rt, [
-        l[21] || (l[21] = e("h3", null, "回复方式", -1)),
-        e("label", zt, [l[18] || (l[18] = e("span", null, "允许对方发图片", -1)), D(e("input", {
-          "onUpdate:modelValue": l[8] || (l[8] = (p) => o.image.enablePrompt = p),
+        r[19] || (r[19] = e("h3", null, "回复方式", -1)),
+        e("label", Pt, [r[16] || (r[16] = e("span", null, "允许对方发图片", -1)), D(e("input", {
+          "onUpdate:modelValue": r[7] || (r[7] = (h) => o.image.enablePrompt = h),
           type: "checkbox"
         }, null, 512), [[G, o.image.enablePrompt]])]),
-        e("label", Ot, [l[19] || (l[19] = e("span", null, "允许对方发语音", -1)), D(e("input", {
-          "onUpdate:modelValue": l[9] || (l[9] = (p) => o.voice.enabled = p),
+        e("label", zt, [r[17] || (r[17] = e("span", null, "允许对方发语音", -1)), D(e("input", {
+          "onUpdate:modelValue": r[8] || (r[8] = (h) => o.voice.enabled = h),
           type: "checkbox"
         }, null, 512), [[G, o.voice.enabled]])]),
-        e("label", Ht, [l[20] || (l[20] = e("span", null, "实时吐槽", -1)), D(e("input", {
-          "onUpdate:modelValue": l[10] || (l[10] = (p) => o.commentary.enabled = p),
+        e("label", Ot, [r[18] || (r[18] = e("span", null, "实时吐槽", -1)), D(e("input", {
+          "onUpdate:modelValue": r[9] || (r[9] = (h) => o.commentary.enabled = h),
           type: "checkbox"
         }, null, 512), [[G, o.commentary.enabled]])]),
-        o.commentary.enabled ? (c(), h("label", Lt, [U(" 吐槽概率 " + S(o.commentary.probability) + "% ", 1), D(e("input", {
-          "onUpdate:modelValue": l[11] || (l[11] = (p) => o.commentary.probability = p),
+        o.commentary.enabled ? (c(), p("label", Ht, [U(" 吐槽概率 " + S(o.commentary.probability) + "% ", 1), D(e("input", {
+          "onUpdate:modelValue": r[10] || (r[10] = (h) => o.commentary.probability = h),
           type: "range",
           min: "1",
           max: "99"
@@ -940,32 +936,32 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
           class: "is-primary",
           disabled: s.busy,
           onClick: a
-        }, "保存设置", 8, Gt)
+        }, "保存设置", 8, Lt)
       ]),
-      e("section", jt, [e("button", {
+      e("section", Gt, [e("button", {
         type: "button",
-        onClick: l[12] || (l[12] = (p) => i("openPrompts"))
+        onClick: r[11] || (r[11] = (h) => i("openPrompts"))
       }, "提示词模板")])
     ])], 512));
   }
-}), Xt = Kt, Qt = { class: "fourth-wall-app" }, Zt = { class: "fourth-wall-header" }, Jt = { class: "fourth-wall-heading" }, Yt = { class: "fourth-wall-header-actions" }, _t = ["disabled"], ea = ["disabled"], ta = {
+}), Kt = jt, Xt = { class: "fourth-wall-app" }, Qt = { class: "fourth-wall-header" }, Zt = { class: "fourth-wall-heading" }, Jt = { class: "fourth-wall-header-actions" }, Yt = ["disabled"], _t = ["disabled"], ea = {
   key: 0,
   class: "fourth-wall-error",
   role: "alert"
-}, aa = ["disabled"], sa = { class: "fourth-wall-composer" }, la = ["disabled"], na = ["disabled"], ra = ["disabled"], oa = { class: "fourth-wall-clear-choice" }, ia = {
+}, ta = ["disabled"], aa = { class: "fourth-wall-composer" }, sa = ["disabled"], la = ["disabled"], na = ["disabled"], ra = { class: "fourth-wall-clear-choice" }, oa = {
   key: 0,
   class: "fourth-wall-dialog-error",
   role: "alert"
-}, ua = ["disabled"], da = ["disabled"], X = 35e3, va = /* @__PURE__ */ O({
+}, ia = ["disabled"], ua = ["disabled"], X = 35e3, da = /* @__PURE__ */ O({
   __name: "FourthWallApp",
   props: {
     bridge: {},
     initialState: {}
   },
   setup(s) {
-    const T = s, n = M(structuredClone(P(T.initialState))), i = M(""), u = M(!1), m = M(!1), o = M(!1), v = M(""), a = M(!1), r = M(!1), l = M(!1), p = M(!1), x = M(""), q = M(0), E = M(!1), F = M(0);
+    const A = s, l = M(structuredClone(R(A.initialState))), i = M(""), d = M(!1), m = M(!1), o = M(!1), v = M(""), a = M(!1), n = M(!1), r = M(!1), h = M(!1), x = M(""), q = M(0), E = M(!1), F = M(0);
     let W;
-    const d = M({
+    const u = M({
       status: "idle",
       sessionId: "",
       text: "",
@@ -975,17 +971,17 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
     });
     let I = () => {
     };
-    const w = R(() => n.value.chat.sessions.find((y) => y.id === n.value.chat.activeSessionId)), $ = R(() => d.value.status === "started" || d.value.status === "progress"), A = R(() => ({
-      ...n.value.context,
-      usedTokens: n.value.context.usedTokens + F.value,
-      promptTokens: n.value.context.promptTokens + F.value
+    const w = P(() => l.value.chat.sessions.find((y) => y.id === l.value.chat.activeSessionId)), $ = P(() => u.value.status === "started" || u.value.status === "progress"), T = P(() => ({
+      ...l.value.context,
+      usedTokens: l.value.context.usedTokens + F.value,
+      promptTokens: l.value.context.promptTokens + F.value
     }));
-    L(() => [i.value, d.value.text], () => {
+    L(() => [i.value, u.value.text], () => {
       W || (W = setTimeout(() => {
-        F.value = J(i.value) + J(d.value.text), W = void 0;
+        F.value = J(i.value) + J(u.value.text), W = void 0;
       }, 200));
     }), L(() => w.value.id, () => {
-      p.value = !1, r.value = !1, E.value = !1, i.value = "", d.value = {
+      h.value = !1, n.value = !1, E.value = !1, i.value = "", u.value = {
         status: "idle",
         sessionId: "",
         text: "",
@@ -996,7 +992,7 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
     });
     function f(y = w.value.id) {
       return {
-        chatIdentity: n.value.chatIdentity,
+        chatIdentity: l.value.chatIdentity,
         sessionId: y
       };
     }
@@ -1006,7 +1002,7 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
     async function b(y, t) {
       o.value = !0, v.value = "";
       try {
-        return n.value = g(await T.bridge.request(y, t, X)), !0;
+        return l.value = g(await A.bridge.request(y, t, X)), !0;
       } catch (k) {
         return v.value = k instanceof Error ? k.message : String(k), !1;
       } finally {
@@ -1016,7 +1012,7 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
     async function C() {
       const y = i.value.trim();
       if (!(!y || $.value || o.value)) {
-        i.value = "", v.value = "", E.value = !1, d.value = {
+        i.value = "", v.value = "", E.value = !1, u.value = {
           status: "started",
           sessionId: w.value.id,
           text: "",
@@ -1025,18 +1021,18 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
           unsaved: !1
         };
         try {
-          await T.bridge.request("fourth-wall/send", {
+          await A.bridge.request("fourth-wall/send", {
             ...f(),
             content: y
           }, X);
         } catch (t) {
-          v.value = `还不确定是否发送成功：${t instanceof Error ? t.message : String(t)}。请核对聊天记录后再发送。原输入：${y}`, d.value.status = "idle";
+          v.value = `还不确定是否发送成功：${t instanceof Error ? t.message : String(t)}。请核对聊天记录后再发送。原输入：${y}`, u.value.status = "idle";
         }
       }
     }
     async function V() {
       if (!($.value || o.value)) {
-        v.value = "", E.value = !1, d.value = {
+        v.value = "", E.value = !1, u.value = {
           status: "started",
           sessionId: w.value.id,
           text: "",
@@ -1045,14 +1041,14 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
           unsaved: !1
         };
         try {
-          await T.bridge.request("fourth-wall/regenerate", f(), X);
+          await A.bridge.request("fourth-wall/regenerate", f(), X);
         } catch (y) {
-          v.value = y instanceof Error ? y.message : String(y), d.value.status = "idle";
+          v.value = y instanceof Error ? y.message : String(y), u.value.status = "idle";
         }
       }
     }
     function N() {
-      T.bridge.post("fourth-wall/cancel", f());
+      A.bridge.post("fourth-wall/cancel", f());
     }
     function K(y) {
       y && (i.value ? v.value += `
@@ -1066,18 +1062,18 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
 ` : "";
       window.confirm(`${t}确定删除这条消息吗？`) && b("fourth-wall/delete-message", {
         ...f(),
-        revision: n.value.history.revision,
+        revision: l.value.history.revision,
         messageIndex: y
       });
     }
     function be() {
-      l.value = !1, r.value = !0;
+      r.value = !1, n.value = !0;
     }
     async function ce() {
       await b("fourth-wall/clear-history", {
         ...f(),
-        clearMemory: l.value
-      }) && (r.value = !1);
+        clearMemory: r.value
+      }) && (n.value = !1);
     }
     async function ye(y, t, k) {
       y < w.value.archivedCount && !window.confirm("这条消息已记入皮下记忆，修改消息不会同时修改记忆；需要更正时请另行编辑皮下记忆。继续修改？") || await b("fourth-wall/edit-message", {
@@ -1089,7 +1085,7 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
     }
     async function te(y) {
       if (!($.value || o.value)) {
-        v.value = "", E.value = !1, d.value = {
+        v.value = "", E.value = !1, u.value = {
           status: "started",
           sessionId: w.value.id,
           text: "",
@@ -1100,23 +1096,23 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
           manual: y === "summarize"
         };
         try {
-          await T.bridge.request(`fourth-wall/${y}`, f(), X);
+          await A.bridge.request(`fourth-wall/${y}`, f(), X);
         } catch (t) {
-          d.value.status = "idle", v.value = String(t instanceof Error ? t.message : t);
+          u.value.status = "idle", v.value = String(t instanceof Error ? t.message : t);
         }
       }
     }
     async function pe() {
       if (o.value || $.value) return;
       o.value = !0, v.value = "";
-      const y = f(), t = n.value.history.revision;
+      const y = f(), t = l.value.history.revision;
       try {
-        const k = await T.bridge.request("fourth-wall/read-memory", {
+        const k = await A.bridge.request("fourth-wall/read-memory", {
           ...y,
           revision: t
         });
-        if (y.sessionId !== w.value.id || y.chatIdentity !== n.value.chatIdentity) return;
-        x.value = k.result.content, q.value = t, p.value = !0;
+        if (y.sessionId !== w.value.id || y.chatIdentity !== l.value.chatIdentity) return;
+        x.value = k.result.content, q.value = t, h.value = !0;
       } catch (k) {
         v.value = k instanceof Error ? k.message : String(k);
       } finally {
@@ -1129,7 +1125,7 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
         revision: q.value,
         expectedContent: x.value,
         content: y
-      }) && (p.value = !1);
+      }) && (h.value = !1);
     }
     function ke(y) {
       b("fourth-wall/update-chat-settings", {
@@ -1144,12 +1140,12 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
       });
     }
     return oe(() => {
-      I = T.bridge.subscribe((y) => {
-        if (y.type === "fourth-wall/state" && (n.value = structuredClone(y.payload.state)), y.type !== "fourth-wall/generation") return;
+      I = A.bridge.subscribe((y) => {
+        if (y.type === "fourth-wall/state" && (l.value = structuredClone(y.payload.state)), y.type !== "fourth-wall/generation") return;
         const t = y.payload;
         if (!(t.sessionId && t.sessionId !== w.value.id)) {
           if (t.status === "complete" || t.status === "cancelled") {
-            t.status === "cancelled" && (t.message && (v.value = t.message), K(t.inputDraft)), F.value = J(i.value), d.value = {
+            t.status === "cancelled" && (t.message && (v.value = t.message), K(t.inputDraft)), F.value = J(i.value), u.value = {
               status: "idle",
               sessionId: "",
               text: "",
@@ -1160,7 +1156,7 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
             return;
           }
           if (t.status === "error") {
-            v.value = t.message || "生成失败", E.value = !t.manual && t.kind !== "save" && t.kind !== "input-save", K(t.inputDraft), d.value = t.kind === "save" && (t.draft?.text || t.draft?.thinking) ? {
+            v.value = t.message || "生成失败", E.value = !t.manual && t.kind !== "save" && t.kind !== "input-save", K(t.inputDraft), u.value = t.kind === "save" && (t.draft?.text || t.draft?.thinking) ? {
               status: "error",
               sessionId: t.sessionId || w.value.id,
               text: t.draft?.text || "",
@@ -1177,26 +1173,26 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
             };
             return;
           }
-          d.value = {
+          u.value = {
             status: t.status || "progress",
             sessionId: t.sessionId || w.value.id,
-            text: t.text || d.value.text,
-            thinking: t.thinking || d.value.thinking,
+            text: t.text || u.value.text,
+            thinking: t.thinking || u.value.thinking,
             message: "",
             unsaved: !1,
-            phase: t.phase || d.value.phase,
-            manual: t.manual ?? d.value.manual
+            phase: t.phase || u.value.phase,
+            manual: t.manual ?? u.value.manual
           };
         }
       });
     }), le(() => {
       I(), clearTimeout(W);
-    }), (y, t) => (c(), h("main", Qt, [
-      e("header", Zt, [e("div", Jt, [t[23] || (t[23] = e("span", null, "IV", -1)), e("div", null, [t[22] || (t[22] = e("strong", null, "四次元壁", -1)), e("small", null, S(w.value.name), 1)])]), e("div", Yt, [
+    }), (y, t) => (c(), p("main", Xt, [
+      e("header", Qt, [e("div", Zt, [t[23] || (t[23] = e("span", null, "IV", -1)), e("div", null, [t[22] || (t[22] = e("strong", null, "四次元壁", -1)), e("small", null, S(w.value.name), 1)])]), e("div", Jt, [
         Y(Fe, {
-          stats: A.value,
+          stats: T.value,
           busy: $.value,
-          phase: d.value.phase,
+          phase: u.value.phase,
           onSummarize: t[0] || (t[0] = (k) => te("summarize")),
           onCancel: N
         }, null, 8, [
@@ -1213,7 +1209,7 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
         }, [...t[24] || (t[24] = [e("svg", {
           viewBox: "0 0 24 24",
           "aria-hidden": "true"
-        }, [e("path", { d: "M12 5c-3-2-7-2-9-1v15c3-1 6-1 9 1m0-15c3-2 7-2 9-1v15c-3-1-6-1-9 1V5Z" })], -1)])], 8, _t),
+        }, [e("path", { d: "M12 5c-3-2-7-2-9-1v15c3-1 6-1 9 1m0-15c3-2 7-2 9-1v15c-3-1-6-1-9 1V5Z" })], -1)])], 8, Yt),
         e("button", {
           type: "button",
           title: "清空当前记录",
@@ -1223,21 +1219,21 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
         }, [...t[25] || (t[25] = [e("svg", {
           viewBox: "0 0 24 24",
           "aria-hidden": "true"
-        }, [e("path", { d: "M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7m4 4v5m4-5v5" })], -1)])], 8, ea),
+        }, [e("path", { d: "M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7m4 4v5m4-5v5" })], -1)])], 8, _t),
         e("button", {
           type: "button",
           title: "设置",
-          onClick: t[1] || (t[1] = (k) => u.value = !0)
+          onClick: t[1] || (t[1] = (k) => d.value = !0)
         }, "⚙")
       ])]),
-      v.value ? (c(), h("div", ta, [
+      v.value ? (c(), p("div", ea, [
         e("span", null, S(v.value), 1),
-        E.value ? (c(), h("button", {
+        E.value ? (c(), p("button", {
           key: 0,
           type: "button",
           disabled: $.value || o.value,
           onClick: t[2] || (t[2] = (k) => te("retry"))
-        }, "重试回复", 8, aa)) : B("", !0),
+        }, "重试回复", 8, ta)) : B("", !0),
         e("button", {
           type: "button",
           "aria-label": "关闭错误提示",
@@ -1245,15 +1241,15 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
         }, "×")
       ])) : B("", !0),
       Y(wt, {
-        page: n.value.history,
+        page: l.value.history,
         busy: o.value || $.value,
         "session-id": w.value.id,
-        "chat-identity": n.value.chatIdentity,
-        "user-avatar": n.value.userAvatar,
-        "character-avatar": n.value.characterAvatar,
-        "image-available": n.value.capabilities.image.available,
-        "voice-available": n.value.capabilities.voice.available,
-        generation: d.value,
+        "chat-identity": l.value.chatIdentity,
+        "user-avatar": l.value.userAvatar,
+        "character-avatar": l.value.characterAvatar,
+        "image-available": l.value.capabilities.image.available,
+        "voice-available": l.value.capabilities.voice.available,
+        generation: u.value,
         bridge: s.bridge,
         onEdit: ye,
         onDelete: ge,
@@ -1270,7 +1266,7 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
         "generation",
         "bridge"
       ]),
-      e("footer", sa, [
+      e("footer", aa, [
         e("button", {
           type: "button",
           class: "fourth-wall-regenerate",
@@ -1278,7 +1274,7 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
           "aria-label": "重答",
           disabled: o.value || $.value,
           onClick: V
-        }, " ↻ ", 8, la),
+        }, " ↻ ", 8, sa),
         D(e("textarea", {
           "onUpdate:modelValue": t[5] || (t[5] = (k) => i.value = k),
           rows: "1",
@@ -1287,20 +1283,20 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
           onCompositionstart: t[6] || (t[6] = (k) => a.value = !0),
           onCompositionend: t[7] || (t[7] = (k) => a.value = !1),
           onKeydown: fe
-        }, null, 40, na), [[z, i.value]]),
+        }, null, 40, la), [[z, i.value]]),
         e("button", {
           type: "button",
           class: ee({ "is-stop": $.value }),
           disabled: o.value,
           onClick: t[8] || (t[8] = (k) => $.value ? N() : C())
-        }, S($.value ? "■" : "↑"), 11, ra)
+        }, S($.value ? "■" : "↑"), 11, na)
       ]),
-      u.value ? (c(), H(Xt, {
+      d.value ? (c(), H(Kt, {
         key: 1,
-        chat: n.value.chat,
-        global: n.value.global,
+        chat: l.value.chat,
+        global: l.value.global,
         busy: o.value || $.value,
-        onClose: t[9] || (t[9] = (k) => u.value = !1),
+        onClose: t[9] || (t[9] = (k) => d.value = !1),
         onUpdateChat: ke,
         onUpdateGlobal: ae,
         onSwitchSession: t[10] || (t[10] = (k) => b("fourth-wall/switch-session", {
@@ -1324,7 +1320,7 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
       ])) : B("", !0),
       m.value ? (c(), H(xt, {
         key: 2,
-        templates: n.value.global.promptTemplates,
+        templates: l.value.global.promptTemplates,
         onClose: t[15] || (t[15] = (k) => m.value = !1),
         onSave: t[16] || (t[16] = (k) => {
           ae({ promptTemplates: k }), m.value = !1;
@@ -1333,49 +1329,49 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
           b("fourth-wall/restore-prompts", f()), m.value = !1;
         })
       }, null, 8, ["templates"])) : B("", !0),
-      p.value ? (c(), H(Pe, {
+      h.value ? (c(), H(Re, {
         key: 3,
         content: x.value,
         busy: o.value,
         error: v.value,
-        onClose: t[18] || (t[18] = (k) => p.value = !1),
+        onClose: t[18] || (t[18] = (k) => h.value = !1),
         onSave: he
       }, null, 8, [
         "content",
         "busy",
         "error"
       ])) : B("", !0),
-      r.value ? (c(), H(de, {
+      n.value ? (c(), H(de, {
         key: 4,
         class: "fourth-wall-dialog",
         "aria-label": "清空皮下聊天",
         busy: o.value,
-        onClose: t[21] || (t[21] = (k) => r.value = !1)
+        onClose: t[21] || (t[21] = (k) => n.value = !1)
       }, {
         default: _(() => [
           t[27] || (t[27] = e("header", null, [e("strong", null, "清空皮下聊天？")], -1)),
           t[28] || (t[28] = e("p", null, "当前聊天原文将被删除，默认保留皮下记忆。", -1)),
-          e("label", oa, [D(e("input", {
-            "onUpdate:modelValue": t[19] || (t[19] = (k) => l.value = k),
+          e("label", ra, [D(e("input", {
+            "onUpdate:modelValue": t[19] || (t[19] = (k) => r.value = k),
             type: "checkbox"
-          }, null, 512), [[G, l.value]]), t[26] || (t[26] = U("同时清空皮下记忆", -1))]),
-          v.value ? (c(), h("p", ia, S(v.value), 1)) : B("", !0),
+          }, null, 512), [[G, r.value]]), t[26] || (t[26] = U("同时清空皮下记忆", -1))]),
+          v.value ? (c(), p("p", oa, S(v.value), 1)) : B("", !0),
           e("footer", null, [e("button", {
             type: "button",
             disabled: o.value,
-            onClick: t[20] || (t[20] = (k) => r.value = !1)
-          }, "取消", 8, ua), e("button", {
+            onClick: t[20] || (t[20] = (k) => n.value = !1)
+          }, "取消", 8, ia), e("button", {
             type: "button",
             class: "is-danger",
             disabled: o.value,
             onClick: ce
-          }, "清空聊天", 8, da)])
+          }, "清空聊天", 8, ua)])
         ]),
         _: 1
       }, 8, ["busy"])) : B("", !0)
     ]));
   }
-}), ya = va;
+}), ca = da;
 export {
-  ya as default
+  ca as default
 };

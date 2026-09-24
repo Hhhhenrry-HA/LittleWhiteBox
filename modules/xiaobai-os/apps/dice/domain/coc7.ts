@@ -33,6 +33,13 @@ export function rollCoc7(value: number, difficulty: Coc7Difficulty, random: () =
     if (!Number.isSafeInteger(value) || value < 1 || !Object.hasOwn(COC7_DIFFICULTIES, difficulty)) { throw new TypeError('dice_coc7_basis_invalid'); }
     const rule = COC7_DIFFICULTIES[difficulty];
     const threshold = rule.kind === 'bonus' ? Math.min(value + rule.amount, rule.cap) : Math.floor(value / rule.divisor);
+    return rollCoc7AgainstThreshold(value, threshold, random);
+}
+
+export function rollCoc7AgainstThreshold(value: number, threshold: number, random: () => number = Math.random): Coc7Result {
+    if (!Number.isSafeInteger(value) || value < 1 || !Number.isSafeInteger(threshold) || threshold < 0) {
+        throw new TypeError('dice_coc7_basis_invalid');
+    }
     const units = digit(random);
     const tens = digit(random);
     const roll = coc7Percentile(units, tens);

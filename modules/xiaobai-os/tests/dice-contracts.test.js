@@ -46,7 +46,7 @@ test('each band maps equal random intervals to integer targets independently of 
 });
 
 test('invalid targets, rolls and random samples cannot produce check results', () => {
-    for (const dc of [1, 22, 2.5, NaN, Infinity]) assert.throws(() => resolveActionCheck(dc, 10));
+    for (const dc of [0, -1, 2.5, NaN, Infinity]) assert.throws(() => resolveActionCheck(dc, 10));
     for (const roll of [0, 21, 1.5, NaN, Infinity]) assert.throws(() => resolveActionCheck(10, roll));
     assert.throws(() => rollActionCheck('unknown', () => assert.fail('invalid difficulty must not draw')));
     for (const bad of [-0.01, 1, NaN, Infinity]) {

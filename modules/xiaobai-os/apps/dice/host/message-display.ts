@@ -1,13 +1,13 @@
 import { updateMessageBlock } from '../../../../../../../../../script.js';
 import { isGenerating } from '../../../host/sillytavern-generation-state.js';
 import { createModuleEvents, event_types } from '../../../../../core/event-manager.js';
-import { isCheckContinuationPoint, parseDiceRecords, referencedActionChecks } from '../domain/check-records.js';
+import { isCheckContinuationPoint, referencedActionChecks } from '../domain/check-records.js';
 import { createCheckCard, type CheckCard } from '../ui/check-card.js';
 import { diceSpan as span } from '../ui/card-elements.js';
 import { revealCheckCard } from '../ui/reveal.js';
 import { readDiceRecords, type DiceCandidate, type DiceHostMessage, type DiceTarget } from './message-records.js';
 import { captureDiceChat } from './sillytavern-port.js';
-import type { createDiceGenerationAdapter } from './generation-adapter.js';
+import type { createDiceGenerationAdapter, DiceCardAction, DiceCardActions } from './generation-adapter.js';
 import { DICE_CARD_CSS } from './card-style.js';
 import { mountCheckCards, restoreCheckMarker } from './check-marker-dom.js';
 import { checkDisplayProjection } from './check-display-projection.js';
@@ -16,7 +16,7 @@ import { DICE_SESSION_COPY, diceHostWaitLabel, diceContinuationLabel } from '../
 
 type Runtime = ReturnType<typeof createDiceGenerationAdapter>;
 const OWN = '.xb-dice-card';
-interface CardEntry { signature: string; view: CheckCard; status: string }
+interface CardEntry { signature: string; identity: string; view: CheckCard; status: string; revealId?: string; error?: string; restoreFocus?: HTMLButtonElement }
 
 export function createDiceMessageDisplay(runtime: Runtime, enabled: () => boolean) {
     let observer: MutationObserver | null = null;
@@ -29,13 +29,15 @@ export function createDiceMessageDisplay(runtime: Runtime, enabled: () => boolea
     // Don't repeatedly repaint a source whose markers are suppressed by host formatting.
     const failedSync = new WeakMap<HTMLElement, string>();
 
-    function retryButton(index: number, label: string, action = 'continue-check'): HTMLButtonElement {
+    function retryButton(index: number, label: string, action: DiceCardAction = 'continue-check'): HTMLButtonElement {
         const button = document.createElement('button');
         button.type = 'button'; button.textContent = label;
         button.dataset.diceAction = action;
+        const available = runtime.actions(index);
         button.addEventListener('click', () => {
             button.disabled = true;
-            void runtime.retry(index).catch(error => {
+            if (!available) { button.disabled = false; return; }
+            void runtime.act(available.target, action).catch(error => {
                 console.error('[LittleWhiteBox] Dice retry failed', error);
                 const note = span('xb-dice-note', DICE_SESSION_COPY.retryFailed);
                 note.setAttribute('role', 'alert'); button.after(note);
@@ -44,14 +46,41 @@ export function createDiceMessageDisplay(runtime: Runtime, enabled: () => boolea
         return button;
     }
 
-    function setStatus(entry: CardEntry, index: number, error: string, retry: string): void {
-        const signature = JSON.stringify([index, error, retry]);
-        if (entry.status === signature) { return; }
-        entry.status = signature;
-        entry.view.status.replaceChildren();
-        entry.view.status.hidden = !error && !retry;
-        if (error) { entry.view.status.append(span('xb-dice-note', error)); }
-        if (retry) { entry.view.status.append(retryButton(index, retry)); }
+    function setStatus(entry: CardEntry, error: string, actions: DiceCardActions | null): void {
+        const signature = JSON.stringify([actions?.kind, actions?.canReroll]);
+        const status = entry.view.status;
+        if (entry.status !== signature) {
+            entry.status = signature;
+            status.replaceChildren(span('xb-dice-note'));
+            const items: [DiceCardAction, string][] = actions?.kind === 'choice'
+                ? [['continue-check', DICE_SESSION_COPY.retryContinue], ...(actions.canReroll ? [['reroll-check', DICE_SESSION_COPY.reroll] as [DiceCardAction, string]] : [])]
+                : [];
+            for (const [action, label] of items) {
+                const button = document.createElement('button');
+                button.type = 'button'; button.textContent = label; button.dataset.diceAction = action;
+                if (action === 'reroll-check') {
+                    button.append(span('xb-dice-price', DICE_SESSION_COPY.price));
+                    button.setAttribute('aria-label', DICE_SESSION_COPY.rerollAccessible);
+                }
+                status.append(button);
+            }
+        }
+        const note = status.querySelector<HTMLElement>('.xb-dice-note')!;
+        note.textContent = error || entry.error || (actions?.insufficientFunds ? DICE_SESSION_COPY.insufficientFunds : '');
+        note.hidden = !note.textContent;
+        status.hidden = !note.textContent && !actions;
+        for (const button of status.querySelectorAll<HTMLButtonElement>('button')) {
+            button.disabled = !actions || actions.disabled || button.dataset.diceAction === 'reroll-check' && !!actions.rerollDisabled;
+            button.onclick = () => {
+                if (!actions || button.disabled) { return; }
+                entry.error = undefined;
+                if (document.activeElement === button) { entry.restoreFocus = button; }
+                status.querySelectorAll<HTMLButtonElement>('button').forEach(item => { item.disabled = true; });
+                void runtime.act(actions.target, button.dataset.diceAction as DiceCardAction).catch(cause => {
+                    entry.error = cause instanceof Error ? cause.message : DICE_SESSION_COPY.retryFailed;
+                }).finally(refresh);
+            };
+        }
     }
 
     function render(): void {
@@ -90,20 +119,26 @@ export function createDiceMessageDisplay(runtime: Runtime, enabled: () => boolea
                 }
                 const kept = new Set<string>();
                 let errorPlaced = false;
+                let unreadable = false;
                 let projection = message.mes;
                 if (value !== undefined) {
                     try {
-                        const records = parseDiceRecords(value);
+                        const records = runtime.records(message)!;
                         projection = checkDisplayProjection(message, records.checks);
                         const referenced = referencedActionChecks(message.mes, records.checks);
                         for (const record of referenced) {
                             const pending = phase?.kind === 'revealing'
-                                && phase.candidate.records.checks.at(-1)?.id === record.id;
+                                && continuing?.id === record.id;
                             const signature = JSON.stringify(record);
+                            const identity = JSON.stringify([record.rule, record.request]);
+                            const revealId = pending && phase?.kind === 'revealing' ? phase.revealId : undefined;
                             let entry = cached.entries.get(record.id);
-                            if (!entry || entry.signature !== signature) {
-                                entry = { signature, view: createCheckCard(record, !!pending), status: '' };
+                            if (!entry || entry.identity !== identity) {
+                                entry = { signature, identity, view: createCheckCard(record, !!pending), status: '', revealId };
                                 cached.entries.set(record.id, entry);
+                            } else if (entry.signature !== signature || revealId && entry.revealId !== revealId) {
+                                entry.view.update(record, !!pending);
+                                entry.signature = signature; entry.revealId = revealId; entry.error = undefined;
                             }
                             kept.add(record.id);
                             const { view } = entry;
@@ -122,12 +157,8 @@ export function createDiceMessageDisplay(runtime: Runtime, enabled: () => boolea
                                 : failedContinuation ? phase.error : waitingForText
                                     ? progress ? diceContinuationLabel(progress) : DICE_SESSION_COPY.continuing
                                     : waitingForHost ? DICE_SESSION_COPY.waitingHost : '';
-                            let retry = '';
-                            if (enabled() && (failedContinuation || source?.chat.at(-1) === message && record === referenced.at(-1)
-                                && isCheckContinuationPoint(message.mes, record) && !active)) {
-                                retry = DICE_SESSION_COPY.retryContinue;
-                            }
-                            setStatus(entry, index, error, retry);
+                            const actions = record === referenced.at(-1) ? runtime.actions(index) : null;
+                            setStatus(entry, error, actions);
                             if (waitingForText || waitingForHost) {
                                 view.status.dataset.diceState = waitingForHost ? 'waiting' : progress?.stage ?? 'preparing';
                             } else { delete view.status.dataset.diceState; }
@@ -136,7 +167,9 @@ export function createDiceMessageDisplay(runtime: Runtime, enabled: () => boolea
                             errorPlaced ||= !!failedContinuation || !!waitingForHost;
                         }
                     } catch {
-                        const notice = span('xb-dice-card xb-dice-notice', '这条检定记录暂时无法显示。');
+                        unreadable = true;
+                        const notice = span('xb-dice-card xb-dice-notice', DICE_SESSION_COPY.unavailable);
+                        notice.setAttribute('role', 'alert');
                         wanted.add(notice); content.append(notice);
                     }
                 }
@@ -154,6 +187,15 @@ export function createDiceMessageDisplay(runtime: Runtime, enabled: () => boolea
                 if (mounted.size === placements.size) { failedSync.delete(content); }
                 for (const node of mounted) { wanted.add(node); }
                 for (const id of cached.entries.keys()) { if (!kept.has(id)) { cached.entries.delete(id); } }
+                for (const entry of cached.entries.values()) {
+                    const focus = entry.restoreFocus;
+                    if (!focus || focus.isConnected && focus.disabled) { continue; }
+                    entry.restoreFocus = undefined;
+                    // Button readiness, not optional payment completion, returns keyboard focus.
+                    if (focus.isConnected && (document.activeElement === document.body || document.activeElement === focus)) {
+                        focus.focus({ preventScroll: true });
+                    }
+                }
                 if (phase && !errorPlaced) {
                     if (phase.kind === 'waiting' || phase.kind === 'settling') {
                         const pending = content.querySelector<HTMLElement>('.xb-dice-pending')
@@ -177,17 +219,15 @@ export function createDiceMessageDisplay(runtime: Runtime, enabled: () => boolea
                         wanted.add(notice); content.append(notice);
                     }
                 }
-                const paused = phase?.kind === 'wait-error';
-                if (paused || !active && source?.chat.at(-1) === message && runtime.canRetryRequest(index)) {
+                if (!unreadable && !active && source?.chat.at(-1) === message && runtime.canRetryRequest(index)) {
                     const notice = content.querySelector<HTMLElement>('.xb-dice-recovery')
                         ?? span('xb-dice-card xb-dice-notice xb-dice-recovery');
-                    const signature = JSON.stringify([paused, current?.wait, enabled()]);
+                    const signature = JSON.stringify([enabled()]);
                     if (notice.dataset.signature !== signature) {
                         notice.dataset.signature = signature;
-                        notice.dataset.diceState = paused ? 'wait-error' : 'unrolled';
+                        notice.dataset.diceState = 'unrolled';
                         notice.setAttribute('role', 'status');
-                        notice.replaceChildren(span('xb-dice-note', paused ? DICE_SESSION_COPY.paused : DICE_SESSION_COPY.unrolled));
-                        if (current?.wait) { notice.append(span('xb-dice-note', diceHostWaitLabel(current.wait))); }
+                        notice.replaceChildren(span('xb-dice-note', DICE_SESSION_COPY.unrolled));
                         if (enabled()) { notice.append(retryButton(index, DICE_SESSION_COPY.retryCheck, 'retry-check')); }
                     }
                     wanted.add(notice);
@@ -209,13 +249,26 @@ export function createDiceMessageDisplay(runtime: Runtime, enabled: () => boolea
         refresh,
         async reveal(target: DiceTarget, candidate: DiceCandidate, signal: AbortSignal) {
             if (!observer || signal.aborted) { return; }
+            // Non-streaming MESSAGE_RECEIVED precedes addOneMessage in ST and TT.
+            // Calculation is already applied; only the optional animation waits for DOM.
+            if (!document.querySelector(`#chat .mes[mesid="${target.index}"]`)) {
+                await new Promise<void>(resolve => {
+                    const events = createModuleEvents('xiaobaiOsDiceReveal');
+                    const done = () => { events.cleanup(); signal.removeEventListener('abort', done); resolve(); };
+                    events.on(event_types.CHARACTER_MESSAGE_RENDERED, (index: number) => { if (index === target.index) { done(); } });
+                    signal.addEventListener('abort', done, { once: true });
+                });
+            }
+            if (!observer || signal.aborted) { return; }
             if (frame !== null) { cancelAnimationFrame(frame); }
             render();
-            const id = candidate.records.checks.at(-1)?.id;
+            const id = referencedActionChecks(candidate.body, candidate.records.checks).at(-1)?.id;
             const cached = cards.get(target.message);
             const card = id && cached?.swipe === target.swipe ? cached.entries.get(id)?.view : undefined;
             if (signal.aborted) { return; }
-            if (!card?.element.isConnected || !showCheckReveal(card.element)) { throw new Error('检定卡片暂时不可见。'); }
+            const phase = runtime.view()?.phase;
+            const replacing = phase?.kind === 'revealing' && phase.placement === 'replace';
+            if (!card?.element.isConnected || !replacing && !showCheckReveal(card.element)) { throw new Error('检定卡片暂时不可见。'); }
             await revealCheckCard(card, signal);
         },
         start() {

@@ -141,16 +141,16 @@ function Ze(t) {
 }
 var Ne = Object.freeze({
   administrator: () => import("./xiaobai-os-AdministratorApp-D42sXrbM.js"),
-  dice: () => import("./xiaobai-os-DiceApp-vrOFYfVT.js"),
+  dice: () => import("./xiaobai-os-DiceApp-D3safTxs.js"),
   "agent-api": () => import("./xiaobai-os-AgentApiApp-DbV8FXck.js"),
-  "fourth-wall": () => import("./xiaobai-os-FourthWallApp-pw9TzS2g.js"),
+  "fourth-wall": () => import("./xiaobai-os-FourthWallApp-Dnol7gy7.js"),
   wallet: () => import("./xiaobai-os-WalletApp-CzbAwwme.js"),
   shop: () => import("./xiaobai-os-ShopApp-DOKTz1s-.js"),
-  bank: () => import("./xiaobai-os-BankApp-BioyH4gR.js"),
+  bank: () => import("./xiaobai-os-BankApp-DyEIcJy8.js"),
   game: () => import("./xiaobai-os-GameApp-Bcj5wN4e.js"),
   map: () => import("./xiaobai-os-MapApp-Dg4svz3Y.js"),
-  messages: () => import("./xiaobai-os-MessagesApp-CMwchheJ.js"),
-  tasks: () => import("./xiaobai-os-TasksApp-C_ZPQDOG.js"),
+  messages: () => import("./xiaobai-os-MessagesApp-BBrIKZjn.js"),
+  tasks: () => import("./xiaobai-os-TasksApp-BwTQ9U5-.js"),
   world: () => import("./xiaobai-os-WorldApp-BMNVlva7.js"),
   learning: () => import("./xiaobai-os-LearningApp-SWaU3Xrg.js")
 }), he = Object.freeze(Xe.map((t) => {

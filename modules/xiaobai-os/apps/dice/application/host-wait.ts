@@ -13,10 +13,3 @@ export interface DiceContinuationProgress {
     stage: DiceContinuationStage;
     elapsedSeconds: number;
 }
-
-export class DiceHostWaitTimeout extends Error {
-    constructor(readonly wait: DiceHostWait) {
-        super('dice_host_wait_timeout');
-        this.name = 'DiceHostWaitTimeout';
-    }
-}

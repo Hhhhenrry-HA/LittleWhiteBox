@@ -58,6 +58,7 @@ function createParticipant(id, options = {}) {
     const records = { commits: 0, invalidations: [], sessions: [], toolCalls: [] };
     const participant = {
         id,
+        ...(options.writeGate ? { writeGate: options.writeGate } : {}),
         isEnabled: options.isEnabled || (() => true),
         createSession(source, mode) {
             records.sessions.push({ source, mode });
@@ -83,7 +84,7 @@ function createParticipant(id, options = {}) {
                 getResult: () => ({ status: failed ? (staged ? 'partial' : 'failed') : staged ? 'updated' : 'unchanged', changed: staged }),
                 async commit(guard) {
                     if (!guard()) {throw new Error('stale source');}
-                    if (options.commit) {await options.commit(guard, records);}
+                    if (options.commit) {return await options.commit(guard, records);}
                     else {records.commits += 1;}
                 },
                 invalidate(reason) {records.invalidations.push(reason); staged = false;},
@@ -92,6 +93,79 @@ function createParticipant(id, options = {}) {
     };
     return { participant, records };
 }
+
+test('a user-file save waits for task checks without making a normally ready chat file fail', async () => {
+    const userFile = createWriteGate('saving');
+    const task = createParticipant('tasks', { writeGate: userFile, initiallyStaged: true });
+    const map = createParticipant('map', { initiallyStaged: true });
+    const chat = surface([user('U1'), assistant('A1'), user('U2')]);
+    const h = createHarness({ chat, participants: [task.participant, map.participant] });
+    assert.equal(h.runner.handleMessageSent(2), true);
+    await flush();
+    assert.equal(task.records.commits, 0);
+    userFile.set('ready');
+    await flush();
+    await flush();
+    assert.equal(task.records.commits, 1);
+    assert.equal(map.records.commits, 1);
+    h.runner.stopBackground();
+});
+
+test('an unavailable user file fails only the task participant; map can still finish', async () => {
+    const userFile = createWriteGate('saving');
+    const task = createParticipant('tasks', { writeGate: userFile, initiallyStaged: true });
+    const map = createParticipant('map', { initiallyStaged: true });
+    const h = createHarness({ participants: [task.participant, map.participant],
+        chat: surface([user('U1'), assistant('A1'), user('U2')]) });
+    assert.equal(h.runner.handleMessageSent(2), true);
+    await flush();
+    userFile.set('failed');
+    await flush();
+    await flush();
+    assert.equal(task.records.commits, 0);
+    assert.equal(map.records.commits, 1);
+    h.runner.stopBackground();
+});
+
+test('an unknown user-file task save leaves another file participant free to commit', async () => {
+    const userFile = createWriteGate();
+    const task = createParticipant('tasks', { writeGate: userFile, initiallyStaged: true,
+        commit() {userFile.set('unconfirmed'); throw unconfirmedMutationError('unknown task save');} });
+    const map = createParticipant('map', { initiallyStaged: true });
+    const h = createHarness({ participants: [task.participant, map.participant],
+        chat: surface([user('U1'), assistant('A1'), user('U2')]) });
+    assert.equal(h.runner.handleMessageSent(2), true);
+    await flush();
+    await flush();
+    assert.equal(task.records.commits, 0);
+    assert.equal(map.records.commits, 1);
+    h.runner.stopBackground();
+});
+
+test('a failed chat file blocks map without blocking a ready user-file task', async () => {
+    const chatFile = createWriteGate('failed');
+    const userFile = createWriteGate();
+    const task = createParticipant('tasks', { writeGate: userFile, initiallyStaged: true });
+    const map = createParticipant('map', { initiallyStaged: true });
+    const h = createHarness({ participants: [task.participant, map.participant], gate: chatFile,
+        chat: surface([user('U1'), assistant('A1'), user('U2')]) });
+    assert.equal(h.runner.handleMessageSent(2), true);
+    await flush();
+    await flush();
+    assert.equal(task.records.commits, 1);
+    assert.equal(map.records.commits, 0);
+    h.runner.stopBackground();
+});
+
+test('an obsolete task check without business writes is reported as stale, not committed', async () => {
+    const task = createParticipant('tasks', { initiallyStaged: true,
+        commit: () => ({ status: 'stale', changed: false }) });
+    const h = createHarness({ participants: [task.participant] });
+    const outcome = await runManual(h.runner, 'tasks');
+    assert.equal(outcome.participantResults[0].reason, 'task-version-changed');
+    assert.deepEqual(outcome.committedParticipantIds, []);
+    h.runner.stopBackground();
+});
 
 function createWriteGate(initial = 'ready') {
     let state = initial;

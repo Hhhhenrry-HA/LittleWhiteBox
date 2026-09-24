@@ -1,6 +1,9 @@
 import type { XiaobaiOsSettingsRepository } from '../../host/settings-repository.js';
 import type { MainGenerationRuntime } from '../../host/main-generation-runtime.js';
 import type { XiaobaiOsChatIdentity } from '../../types.js';
+import type { UserTransactions } from '../../kernel/user-transactions.js';
+import { getSillyTavernChatSurface } from '../../host/sillytavern-context.js';
+import { latestTaskEvidenceDigest } from '../../capabilities/maintenance/accepted-turn-source.js';
 import { createAppRuntimeGroup } from '../../kernel/runtime-group.js';
 import { createTaskGenerationRequests } from './generation/request.js';
 import { createTaskGenerationContextAdapter } from './host/context-adapter.js';
@@ -16,7 +19,7 @@ export interface ProductionTasksModuleDependencies {
     settings: XiaobaiOsSettingsRepository;
     getChatIdentity: () => XiaobaiOsChatIdentity | null;
     getPlayerDisplayName: () => string;
-    getObservedAssistantCount: () => number;
+    userTransactions: () => UserTransactions | null;
     mainGeneration: MainGenerationRuntime;
     setPrompt(value: string): void;
     subscribePrompt(handlers: TaskPromptEventHandlers): () => void;
@@ -26,12 +29,15 @@ export interface ProductionTasksModuleDependencies {
 export function createProductionTasksModule(dependencies: ProductionTasksModuleDependencies) {
     return createTasksModule({
         getPlayerDisplayName: dependencies.getPlayerDisplayName,
-        getObservedAssistantCount: dependencies.getObservedAssistantCount,
+        getEvidenceDigest: () => latestTaskEvidenceDigest(getSillyTavernChatSurface()),
+        getStoryLabel: () => getSillyTavernChatSurface()?.assistantName ?? '',
+        userTransactions: dependencies.userTransactions,
         async install({ tasks, store, economy, agent, maintenance, management, mapContext, worldContext, execution }) {
-            execution.addCleanup(management.register(createTasksManagement(tasks, dependencies.getObservedAssistantCount)));
+            execution.addCleanup(management.register(createTasksManagement(tasks)));
             const unregisterParticipant = maintenance.registerParticipant(createTaskMaintenanceParticipant({
                 tasks,
                 readSettings: () => dependencies.settings.read()?.apps.tasks ?? null,
+                captureSurface: getSillyTavernChatSurface,
             }));
             execution.addCleanup(unregisterParticipant);
             const generation = createTaskGenerationRequests({
@@ -64,7 +70,29 @@ export function createProductionTasksModule(dependencies: ProductionTasksModuleD
                 maintenance: maintenance.runner,
             });
             const completion = createTaskCompletionRuntime({ store, notify: dependencies.notifyCompletion });
-            return createAppRuntimeGroup(controller, [prompt, settings, completion]);
+            const runtime = createAppRuntimeGroup(controller, [prompt, settings, completion]);
+            const currentEvidence = () => {
+                const identity = dependencies.getChatIdentity()?.key;
+                const surface = getSillyTavernChatSurface();
+                return identity && surface?.identityKey === identity
+                    ? { identity, digest: latestTaskEvidenceDigest(surface) } : null;
+            };
+            const initializeCurrent = () => {
+                const evidence = currentEvidence();
+                if (!evidence) {return;}
+                void tasks.ensureReady(evidence.digest, evidence.identity).catch(error => {
+                    console.error('[LittleWhiteBox] 任务剧情基线初始化失败', error);
+                });
+            };
+            return {
+                ...runtime,
+                activate(context) {
+                    initializeCurrent();
+                    return runtime.activate?.(context);
+                },
+                startBackground() {void runtime.startBackground?.(); initializeCurrent();},
+                handleChatChanged() {void runtime.handleChatChanged?.(); initializeCurrent();},
+            };
         },
     });
 }

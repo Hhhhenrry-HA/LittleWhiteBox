@@ -597,7 +597,7 @@ var ye = {
             enabled: !a.value.actionChecksEnabled
           }))
         }, [s[2] || (s[2] = e("span", { "aria-hidden": "true" }, null, -1)), e("span", ia, n(a.value.actionChecksEnabled ? "关闭" : "开启"), 1)], 8, ta)]),
-        s[9] || (s[9] = e("p", { class: "dice-intro" }, "当你尝试不确定的事——说服陌生人、翻越高墙、破译符文——由骰子裁决，而非 AI。一次真随机掷骰仲裁结果，故事顺从命运。", -1)),
+        s[9] || (s[9] = e("p", { class: "dice-intro" }, "当你尝试不确定的事——说服陌生人、翻越高墙、破译符文——由骰点裁决，而非 AI。", -1)),
         a.value.actionChecksEnabled ? (d(), u("fieldset", {
           key: 0,
           class: "dice-frequency",
@@ -652,7 +652,7 @@ var ye = {
         e("aside", { class: "dice-notice" }, [
           s[6] || (s[6] = e("p", null, "请勿开启酒馆的「自动续写」。", -1)),
           e("p", null, n(pa)),
-          s[7] || (s[7] = e("p", null, "酒馆 1.14 / 1.15：行动检定的自动续写会发送输入框中尚未发送的文字。", -1)),
+          s[7] || (s[7] = e("p", null, "酒馆 1.14 / 1.15：点击检定的「继续」会发送输入框中尚未发送的文字。", -1)),
           s[8] || (s[8] = e("p", null, "功能开启期间，会自动创建「小白 OS · 行动检定显示」全局正则。", -1))
         ])
       ]),
@@ -682,7 +682,7 @@ var ye = {
       o.value ? (d(), u("section", fa, [e("p", null, n(o.value.message), 1)])) : g("", !0)
     ]));
   }
-}), ga = /* @__PURE__ */ ee(ka, [["__scopeId", "data-v-814a198a"]]);
+}), ga = /* @__PURE__ */ ee(ka, [["__scopeId", "data-v-839ca5e6"]]);
 export {
   ga as default
 };

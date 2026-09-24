@@ -18,7 +18,7 @@ async function prepare(id) {
         tool = { name: 'MapAtlasEdit', arguments: JSON.stringify({ locations: [{ key: 'port', name: '港口', scale: 'city' }] }) };
     } else { tool = { name: 'WorldEdit', arguments: '{"overview":"updated"}' }; }
     const participant = id === 'map' ? createMapMaintenanceParticipant({ map: h.map, readSettings: () => ({ autoMaintenance: true }) })
-        : id === 'tasks' ? createTaskMaintenanceParticipant({ tasks: h.tasks, readSettings: () => ({ autoMaintenance: true }) })
+        : id === 'tasks' ? createTaskMaintenanceParticipant({ tasks: h.tasks, readSettings: () => ({ autoMaintenance: true }), captureSurface: h.capture })
             : createWorldMaintenanceParticipant(h.world, () => ({ subscribed: true }));
     let step = 0;
     const runner = createMaintenanceRunner({

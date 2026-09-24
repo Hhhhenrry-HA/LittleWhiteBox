@@ -18,7 +18,7 @@ const compiled = await build({
                 emit(name, ...args) { for (const callback of listeners.get(name) ?? []) callback(...args); },
                 get listenerCount() { return [...listeners.values()].reduce((sum, set) => sum + set.size, 0); } };
             export const event_types = Object.fromEntries(['GENERATION_STARTED','GENERATE_AFTER_DATA','GENERATION_ENDED',
-                'GENERATION_STOPPED','MESSAGE_RECEIVED'].map(name => [name,name]));
+                'GENERATION_STOPPED','MESSAGE_RECEIVED','STREAM_TOKEN_RECEIVED'].map(name => [name,name]));
             export function createModuleEvents() { const owned = []; return {
                 on(name, callback) { if (!listeners.has(name)) listeners.set(name,new Set()); listeners.get(name).add(callback); owned.push([name,callback]); },
                 cleanup() { for (const [name,callback] of owned) listeners.get(name).delete(callback); } }; }
@@ -27,6 +27,7 @@ const compiled = await build({
             export const unregisterGenerateInterceptor = key => host.interceptors.delete(key);
             export const extension_prompt_roles = { SYSTEM: 0 };
             export const extension_prompt_types = { IN_CHAT: 1 };
+            export const isStreamingEnabled = () => false;
             export const setExtensionPrompt = (key, value, ...options) => host.prompts.set(key,{value,options});
         ` }));
     } }],

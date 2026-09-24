@@ -4,7 +4,7 @@ import { getScriptsByType, saveScriptsByType, SCRIPT_TYPES } from '../../../../.
 import { repairDiceDisplayRules } from './display-rule.js';
 import { showDiceDisplayRule } from './managed-rule-display.js';
 import { isDiceTargetCurrent, type DiceChat, type DiceHostMessage, type DiceTarget } from './message-records.js';
-import { DiceHostWaitTimeout, type DiceHostWait, type DiceHostBlocker } from '../application/host-wait.js';
+import type { DiceHostWait, DiceHostBlocker } from '../application/host-wait.js';
 
 export interface DiceHostContext {
     chat: DiceHostMessage[]; chatId: string; groupId?: string; characterId?: number;
@@ -14,8 +14,9 @@ export interface DiceHostContext {
 }
 export const diceHostContext = () => getContext() as unknown as DiceHostContext;
 
-export function isDiceMessageBeingEdited(index: number): boolean {
-    return !!document.querySelector(`#chat .mes[mesid="${index}"] .edit_textarea`);
+export function isDiceMessageBeingEdited(index?: number): boolean {
+    const message = index === undefined ? '#chat .mes' : `#chat .mes[mesid="${index}"]`;
+    return !!document.querySelector(`${message} .edit_textarea, ${message} .reasoning_edit_textarea`);
 }
 
 export function captureDiceChat(): DiceChat | null {
@@ -43,13 +44,11 @@ export async function ensureDiceDisplayRule(): Promise<void> {
 export async function waitForDiceHost(target: DiceTarget, signal: AbortSignal, inGroup: boolean,
     generationPending: () => boolean = isGenerating, report?: (wait: DiceHostWait) => void): Promise<void> {
     const started = Date.now();
-    const deadline = started + 10_000;
     let previous: DiceHostWait | undefined;
     while (true) {
         if (signal.aborted || !isDiceTargetCurrent(captureDiceChat(), target)) { throw new Error('聊天或回复已变化。'); }
         if (isDiceMessageBeingEdited(target.index)) { throw new Error('请先结束消息编辑。'); }
-        // Match native continuation admission. Saving and processor cleanup belong to ST;
-        // neither is an additional Dice gate, and Dice must not clear the host's processor.
+        // Observe native generation/save cleanup without clearing its flags or processor.
         const blockers: DiceHostBlocker[] = [];
         if (!inGroup && generationPending()) { blockers.push('generation'); }
         if (!blockers.length) { return; }
@@ -59,7 +58,6 @@ export async function waitForDiceHost(target: DiceTarget, signal: AbortSignal, i
             report?.(wait);
             previous = wait;
         }
-        if (now >= deadline) { throw new DiceHostWaitTimeout(wait); }
         await new Promise<void>((resolve, reject) => {
             const cancel = () => { globalThis.clearTimeout(timer); reject(new Error('已停止')); };
             const timer = globalThis.setTimeout(() => { signal.removeEventListener('abort', cancel); resolve(); }, 40);

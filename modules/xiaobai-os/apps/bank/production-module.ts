@@ -1,29 +1,46 @@
-import type { XiaobaiOsChatIdentity } from '../../types.js';
-import type { MainGenerationRuntime } from '../../host/main-generation-runtime.js';
+import type { UserTransactions } from '../../kernel/user-transactions.js';
+import { createAssistantFloorObserver } from '../../host/assistant-floor-observer.js';
+import { getSillyTavernChatSurface } from '../../host/sillytavern-context.js';
+import { subscribeBankReplies } from '../../host/sillytavern-runtime-adapters.js';
 import { createBankController } from './host/controller.js';
 import { createBankModule } from './module.js';
 
 export interface ProductionBankModuleDependencies {
-    getChatIdentity: () => XiaobaiOsChatIdentity | null;
-    getCurrentAssistantTurn: () => number;
-    mainGeneration: MainGenerationRuntime;
+    userTransactions: () => UserTransactions | null;
 }
 
 export function createProductionBankModule(dependencies: ProductionBankModuleDependencies) {
     return createBankModule({
         service: {
-            getCurrentAssistantTurn: dependencies.getCurrentAssistantTurn,
-            isMainGenerationActive: dependencies.mainGeneration.isActive,
+            get userTransactions() {return dependencies.userTransactions() ?? undefined;},
         },
         async install({ bank, economy, execution }) {
-            return createBankController({
+            const controller = createBankController({
                 bank,
                 economy,
-                getChatIdentity: dependencies.getChatIdentity,
-                isMainGenerationActive: dependencies.mainGeneration.isActive,
-                subscribeGeneration: dependencies.mainGeneration.subscribe,
                 execution,
             });
+            const observer = createAssistantFloorObserver(getSillyTavernChatSurface,
+                () => {void bank.advanceTurns(1).catch(error => {
+                    console.error('[LittleWhiteBox] 银行计期保存失败', error);
+                });});
+            let unsubscribe: (() => void) | null = null;
+            return {
+                ...controller,
+                startBackground() {
+                    controller.startBackground?.();
+                    unsubscribe ||= subscribeBankReplies(observer);
+                },
+                stopBackground() {
+                    unsubscribe?.();
+                    unsubscribe = null;
+                    controller.stopBackground?.();
+                },
+                handleChatChanged() {
+                    observer.reset();
+                    controller.handleChatChanged?.();
+                },
+            };
         },
         async dispose(runtime) { await runtime.stopBackground?.(); },
     });

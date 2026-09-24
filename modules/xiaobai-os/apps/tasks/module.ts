@@ -12,6 +12,7 @@ import {
 import type { AppInstallContext, XiaobaiOsAppModule } from '../../kernel/app-registry.js';
 import type { PartitionStore } from '../../kernel/contracts.js';
 import type { TaskDomainV1 } from '../../domains/tasks/types.js';
+import type { UserTransactions } from '../../kernel/user-transactions.js';
 import type { XiaobaiOsAppRuntime } from '../../types.js';
 import { MAP_CONTEXT_CAPABILITY, type MapContextCapability } from '../map/context-capability.js';
 import { WORLD_CONTEXT_CAPABILITY, type WorldContextCapability } from '../world/context-capability.js';
@@ -40,8 +41,10 @@ export interface TasksModuleInstallContext {
 
 export interface TasksModuleDependencies {
     getPlayerDisplayName: () => string;
-    getObservedAssistantCount: () => number;
-    service?: Omit<TasksServiceDependencies, 'getPlayerDisplayName' | 'getObservedAssistantCount'>;
+    getEvidenceDigest: () => string;
+    getStoryLabel: () => string;
+    userTransactions?: () => UserTransactions | null;
+    service?: Omit<TasksServiceDependencies, 'getPlayerDisplayName' | 'getEvidenceDigest' | 'getStoryLabel' | 'userTransactions'>;
     install(context: TasksModuleInstallContext): Promise<XiaobaiOsAppRuntime>;
     dispose?(runtime: XiaobaiOsAppRuntime): Promise<void>;
 }
@@ -71,7 +74,9 @@ export function createTasksModule(dependencies: TasksModuleDependencies): Xiaoba
                 {
                     ...dependencies.service,
                     getPlayerDisplayName: dependencies.getPlayerDisplayName,
-                    getObservedAssistantCount: dependencies.getObservedAssistantCount,
+                    getEvidenceDigest: dependencies.getEvidenceDigest,
+                    getStoryLabel: dependencies.getStoryLabel,
+                    userTransactions: dependencies.userTransactions?.() ?? undefined,
                 },
             );
             try {

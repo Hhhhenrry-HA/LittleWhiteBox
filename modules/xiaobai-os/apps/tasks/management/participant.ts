@@ -5,7 +5,7 @@ import { taskTools } from '../tools/tool-contract.js';
 import { TASK_OBJECTIVE_POLICY } from '../tools/objective-policy.js';
 import { createManagementSave } from '../../../capabilities/management/save.js';
 
-export function createTasksManagement(tasks: TasksService, observedCount: () => number): ManagementParticipant {
+export function createTasksManagement(tasks: TasksService): ManagementParticipant {
     return {
         id: 'tasks', label: '任务', confirmPending: tasks.confirmPending,
         async open() {
@@ -40,10 +40,9 @@ export function createTasksManagement(tasks: TasksService, observedCount: () => 
                     const compiled = compileTaskMaintenanceCommand(name, args, { records: new Map(records.map(r => [r.taskId, r])), staged: new Map(), createActionId: tasks.createActionId });
                     if (!compiled.command) { return { ok: compiled.result.ok, status: compiled.result.ok ? 'unchanged' : 'failed', data: compiled.result }; }
                     const command = compiled.command;
-                    const observedAssistantCount = observedCount();
                     const savedResult = () => ({ ok: true, status: 'saved' as const, data: project().find(r => r.taskId === compiled.taskId) });
                     return saving.run(async commitGuard => {
-                        const result = await tasks.commitMaintenance({ commands: [command], observedAssistantCount }, commitGuard);
+                        const result = await tasks.commitMaintenance({ commands: [command], checkedTasks: [], evidenceDigest: '' }, commitGuard);
                         records = result.view.records;
                         return savedResult();
                     }, async () => {

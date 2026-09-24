@@ -53,7 +53,7 @@ export interface XiaobaiOsSettingsRepository {
     setAppOrder: (order: readonly string[]) => Promise<XiaobaiOsSettings>;
     setMapAutoMaintenance: (enabled: boolean) => Promise<XiaobaiOsSettings>;
     setTasksAutoMaintenance: (enabled: boolean) => Promise<XiaobaiOsSettings>;
-    setMessagesCapabilities: (settings: MessagesSettings) => Promise<XiaobaiOsSettings>;
+    setMessagesSettings: (settings: MessagesSettings) => Promise<XiaobaiOsSettings>;
     setDiceFeature: (feature: DiceFeature, enabled: boolean) => Promise<XiaobaiOsSettings>;
     setDiceActionCheckFrequency: (frequency: ActionCheckFrequency) => Promise<XiaobaiOsSettings>;
     setDiceActionCheckRule: (rule: ActionCheckRule) => Promise<XiaobaiOsSettings>;
@@ -270,11 +270,13 @@ export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): Xia
         });
     }
 
-    function setMessagesCapabilities(settings: MessagesSettings): Promise<XiaobaiOsSettings> {
-        if (typeof settings?.imagePrompt !== 'boolean' || typeof settings?.voicePrompt !== 'boolean') {
-            throw new TypeError('messages capabilities must be boolean');
+    function setMessagesSettings(settings: MessagesSettings): Promise<XiaobaiOsSettings> {
+        if (typeof settings?.imagePrompt !== 'boolean' || typeof settings?.voicePrompt !== 'boolean'
+            || typeof settings?.syncNoticeEnabled !== 'boolean') {
+            throw new TypeError('messages settings must be boolean');
         }
-        const nextSettings = { imagePrompt: settings.imagePrompt, voicePrompt: settings.voicePrompt };
+        const nextSettings = { imagePrompt: settings.imagePrompt, voicePrompt: settings.voicePrompt,
+            syncNoticeEnabled: settings.syncNoticeEnabled };
         return mutate(next => ({ ...next, apps: { ...next.apps, messages: nextSettings } }));
     }
 
@@ -366,7 +368,7 @@ export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): Xia
         setAppOrder,
         setMapAutoMaintenance,
         setTasksAutoMaintenance,
-        setMessagesCapabilities,
+        setMessagesSettings,
         setDiceFeature,
         setDiceActionCheckFrequency,
         setDiceActionCheckRule,

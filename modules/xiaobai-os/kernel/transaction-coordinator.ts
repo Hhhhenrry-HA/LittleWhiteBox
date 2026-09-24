@@ -544,8 +544,8 @@ export function createTransactionCoordinator(options: TransactionCoordinatorOpti
                     stage: 'replace',
                     observed: null,
                     retainFailedCandidate: transactionOptions.retainFailedCandidate === true,
-                    commitGuard: async () => !transactionOptions.signal?.aborted
-                        && (!transactionOptions.commitGuard || await transactionOptions.commitGuard()),
+                    commitGuard: transactionOptions.recoveryGuard ?? (async () => !transactionOptions.signal?.aborted
+                        && (!transactionOptions.commitGuard || await transactionOptions.commitGuard())),
                 };
                 setState(requested.identityKey, 'saving');
                 let replaceResult: StorageReplaceResult;
