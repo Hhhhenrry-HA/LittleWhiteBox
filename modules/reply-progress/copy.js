@@ -2,9 +2,15 @@
 export const REPLY_PROGRESS_COPY = Object.freeze({
     message: '消息事件处理',
     context: '酒馆/插件处理',
-    waiting: '组装/请求等待',
+    assembly: '酒馆组装提示词',
+    request: 'API请求',
+    waiting: '等待回复',
     interceptor: '小白x插件处理',
     recall: '小白x记忆处理',
+});
+
+export const REPLY_PROGRESS_ERRORS = Object.freeze({
+    observeRequest: '[生成状态追踪] 请求边界观察失败',
 });
 
 const HANDLERS = Object.freeze({
@@ -22,8 +28,8 @@ const RECALL_STAGES = Object.freeze({
     tokenizer: '小白x分词准备',
     'source-boundary': '小白x边界读取',
     'query-build': '小白x构造查询',
-    'round1-embed': '小白x记忆嵌入',
-    'round2-embed': '小白x记忆嵌入',
+    'round1-embed': '小白x查询向量',
+    'round2-embed': '小白x线索向量',
     'runtime-load': '小白x检索准备',
     'round1-retrieval': '小白x向量检索',
     'round2-retrieval': '小白x向量检索',

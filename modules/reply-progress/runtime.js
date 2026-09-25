@@ -2,6 +2,7 @@ import { observeGenerateInterceptors } from '../../shared/common/generate-interc
 import { createPlaceholderPresenter } from './placeholder.js';
 
 const VISIBLE_TYPES = new Set(['', 'normal', 'regenerate', 'swipe', 'continue']);
+const HOST_PHASES = new Set(['assembly', 'request', 'waiting']);
 
 function isVisibleGeneration(type, params, dryRun) {
     return !dryRun && !params?.automatic_trigger && !(params?.quiet_prompt && !params?.quietToLoud)
@@ -10,10 +11,11 @@ function isVisibleGeneration(type, params, dryRun) {
 
 // ST's world-info/prompt/data events have no generation identity, and raw/quiet
 // requests and previews emit them too. Never use them to advance this run.
-// Only our claimed dispatch has attributable stages; the remaining host work
-// and request wait deliberately share one interval until actual reply text.
+// Our claimed dispatch and the host request observer provide attributable
+// boundaries. Hosts without one keep an explicitly unsplit waiting interval.
 export function createReplyProgressRuntime({
     events, eventTypes, getTextarea, getChat, getStream, isGenerating, markHostPreparing,
+    observeRequest,
     isConnected = () => true,
     now = () => performance.now(),
     schedule = (fn, ms) => setInterval(fn, ms),
@@ -28,6 +30,7 @@ export function createReplyProgressRuntime({
 
     function stop() {
         if (!run) return;
+        run.unobserveRequest?.();
         run.presenter.restore();
         run = null;
         if (timer !== null) {
@@ -87,6 +90,7 @@ export function createReplyProgressRuntime({
             dispatch: null,
             handler: null,
             recall: null,
+            unobserveRequest: null,
             presenter: createPresenter(textarea),
         };
         paint();
@@ -95,7 +99,7 @@ export function createReplyProgressRuntime({
 
     function onInterceptor({ phase, id, type, run: dispatch, detail }) {
         if (!run || !run.afterCommands || run.chat !== getChat()
-            || run.phase === 'waiting'
+            || HOST_PHASES.has(run.phase)
             || !VISIBLE_TYPES.has(String(type || '')) || String(type || 'normal') !== run.type) return;
         if (phase === 'dispatch-start') {
             // Claim through this run's post-command lifecycle, not UI busy:
@@ -126,7 +130,14 @@ export function createReplyProgressRuntime({
         } else if (phase === 'dispatch-end') {
             run.handler = null;
             run.recall = null;
-            setStage('waiting');
+            const owner = run;
+            owner.unobserveRequest = observeRequest({ type: owner.type, previousStream: owner.previousStream }, () => {
+                if (run !== owner) return;
+                owner.unobserveRequest?.();
+                owner.unobserveRequest = null;
+                setStage('request');
+            });
+            setStage(owner.unobserveRequest ? 'assembly' : 'waiting');
         }
     }
 
@@ -184,7 +195,7 @@ export function createReplyProgressRuntime({
                 && stream.messageId === run.chat.length - 1) stop();
         });
         on('MESSAGE_RECEIVED', (index, type) => {
-            if (run?.phase !== 'waiting') return;
+            if (!run || !HOST_PHASES.has(run.phase)) return;
             const sameType = String(type || 'normal') === run.type
                 || (run.type === 'continue' && type === 'appendFinal')
                 || (['regenerate', 'swipe'].includes(run.type) && type === 'normal');

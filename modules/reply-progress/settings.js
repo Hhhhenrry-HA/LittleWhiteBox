@@ -1,7 +1,7 @@
 export const REPLY_PROGRESS_SETTINGS = Object.freeze({
     key: 'replyProgress',
     controlId: 'xiaobaix_reply_progress_enabled',
-    label: '回复进度统计',
+    label: '生成状态追踪',
     defaultEnabled: true,
 });
 

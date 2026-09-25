@@ -205,6 +205,10 @@ function normalizeDelivery(source) {
         chatId,
         messageId,
         ...(Number.isSafeInteger(swipeIndex) && swipeIndex >= 0 ? { swipeIndex } : {}),
+        // Released Draw Run journals own their newly inserted slots. Prepared
+        // image inputs instead survive cancellation (including an existing slot
+        // whose previous image has expired). This local policy dies with the job.
+        ...(source.preserveSlotsOnCancel === true ? { preserveSlotsOnCancel: true } : {}),
     };
 }
 
@@ -639,11 +643,12 @@ export async function forgetPendingImageJob(jobId, leaseId) {
 // 每次渲染读一遍全量记录：条数受后端每用户任务上限约束，且必须是最新值。
 export async function getPendingImageJobSlots() {
     const slots = new Map();
-    const records = await listPendingImageJobs().catch(() => []);
+    const records = await listPendingImageJobs();
     for (const record of records) {
         for (const item of record.items) {
             slots.set(item.slotId, {
                 jobId: record.jobId,
+                imgId: item.imgId,
                 provider: record.provider,
                 state: record.state,
                 index: item.index,

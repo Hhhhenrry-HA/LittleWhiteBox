@@ -1319,7 +1319,7 @@ export async function recallMemory(allEvents, vectorConfig, options = {}) {
     const T_R1_Embed_Start = performance.now();
     try {
     try {
-        r1Vectors = await embed(segmentTexts, vectorConfig, { timeout: 10000, signal });
+        r1Vectors = await embed(segmentTexts, vectorConfig, { timeout: 3000, signal });
     } catch (e1) {
         throwIfSignalAborted(signal);
         recordExternalFailure(metrics, { stage: 'round1-embed', kind: 'request', attempt: 1, error: e1 });
@@ -1332,7 +1332,7 @@ export async function recallMemory(allEvents, vectorConfig, options = {}) {
         }
         throwIfSignalAborted(signal);
         try {
-            r1Vectors = await embed(segmentTexts, vectorConfig, { timeout: 15000, signal });
+            r1Vectors = await embed(segmentTexts, vectorConfig, { timeout: 6000, signal });
         } catch (e2) {
             throwIfSignalAborted(signal);
             recordExternalFailure(metrics, { stage: 'round1-embed', kind: 'request', attempt: 2, error: e2 });
