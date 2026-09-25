@@ -123,6 +123,9 @@ export async function withPreparedRequestBudget(config, operation, { journal = n
         if (!allowed.has(url.origin)) reject('Prepared run rejected an unapproved API origin', 'unapproved-origin');
         const saved = archive.match(input, init);
         if (saved) return saved;
+        if (config.goldEval?.probeCaseIds?.length && !url.pathname.endsWith('/rerank')) {
+            reject('Source-only probe can only buy changed rerank requests', 'probe-unexpected-request');
+        }
         if (journal) return journal.dispatch(input, init, originalFetch);
         if (requests >= config.prepared.maxRequests) reject('Prepared request budget exhausted', 'request-budget');
         requests++;

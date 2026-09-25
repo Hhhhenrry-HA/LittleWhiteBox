@@ -88,8 +88,18 @@ export async function prepareNaturalCapturePlan({ rootDir, config, sample }) {
         minDistanceFloors: minEvidenceDistanceFloors,
         ids: requestedIds,
     });
+    const probeIds = Array.isArray(settings.probeCaseIds) ? settings.probeCaseIds.map(String) : [];
+    if (settings.probeCaseIds != null && (!sourceOnly || !probeIds.length
+        || new Set(probeIds).size !== probeIds.length || settings.prefixPositions != null)) {
+        throw new Error('Source-only probe requires distinct case IDs and cannot combine with a prefix');
+    }
     if (sourceOnly && (requestedIds.length || settings.limit != null)) {
         throw new Error('Source-only capture cannot silently filter natural positions');
+    }
+    if (probeIds.length) {
+        const available = new Set(selected.map(item => item.id));
+        const missing = probeIds.filter(id => !available.has(id));
+        if (missing.length) throw new Error(`Source-only probe includes unknown positions: ${missing.join(', ')}`);
     }
     const limit = settings.limit == null ? null : validatePositiveInteger(settings.limit, 'goldEval.limit', null);
     const prefixPositions = sourceOnly && settings.prefixPositions != null
@@ -100,7 +110,8 @@ export async function prepareNaturalCapturePlan({ rootDir, config, sample }) {
     if (prefixPositions != null && prefixPositions > selected.length) {
         throw new Error('Source-only prefix cannot exceed the real USER target count');
     }
-    const cases = sourceOnly ? (prefixPositions ? selected.slice(0, prefixPositions) : selected)
+    const cases = sourceOnly ? (probeIds.length ? selected.filter(item => probeIds.includes(item.id))
+        : prefixPositions ? selected.slice(0, prefixPositions) : selected)
         : limit == null ? selected : selected.slice(0, limit);
     if (!cases.length) throw new Error('natural-capture 没有符合长期记忆距离的 accepted cases');
     if (requestedIds.length) {
@@ -129,6 +140,8 @@ export async function prepareNaturalCapturePlan({ rootDir, config, sample }) {
     return {
         cases,
         sourceOnly,
+        probeCaseIds: probeIds,
+        targetPositions: selected.length,
         prefixPositions,
         casesPath,
         casesHash: sha256Text(casesText),
@@ -230,8 +243,9 @@ export async function runNaturalCaptureCases({
             requestJournal: config.__requestJournal || null,
             historyPolicy: 'persist floors 0..q-1; push the real USER object q into in-memory chat only for recall',
             minEvidenceDistanceFloors: plan.minEvidenceDistanceFloors,
-            ...(plan.sourceOnly ? { positionMode: 'source-only', prefixPositions: plan.prefixPositions,
-                targetPositions: plan.prefixPositions || plan.cases.length } : {}),
+            ...(plan.sourceOnly ? { positionMode: plan.probeCaseIds.length ? 'source-only-probe' : 'source-only',
+                prefixPositions: plan.prefixPositions, targetPositions: plan.targetPositions,
+                probeCaseIds: plan.probeCaseIds } : {}),
             turnPacing: {
                 minMs: plan.turnIntervalMinMs,
                 maxMs: plan.turnIntervalMaxMs,
@@ -460,7 +474,7 @@ export async function runNaturalCaptureCases({
         const aggregated = plan.sourceOnly ? { qualityMeasured: false, reviewedPositions: 0,
             capturedPositions: prompts.length } : aggregateMetrics(metricRows);
         const reportMarkdown = plan.sourceOnly
-            ? `# Natural source-only capture\n\nCaptured ${prompts.length} original USER positions. No semantic requirements, scores, or reader responses were generated.\n`
+            ? `# Natural source-only ${plan.probeCaseIds.length ? 'probe' : 'capture'}\n\nCaptured ${prompts.length} of ${plan.targetPositions} original USER positions. No semantic requirements, scores, or reader responses were generated.\n`
             : renderGoldEvalReport({
             manifest: { ...runStore.manifest, status: 'valid' },
             aggregated,
