@@ -37,10 +37,19 @@ const compiled = await build({
 const { createDiceMessageDisplay, source, emit } = await import(`data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`);
 
 function setup(t, runtime, enabled = () => true) {
-    const { document, window } = parseHTML('<html><head></head><body><div id="chat"><div class="mes" mesid="0"><div class="mes_text"></div></div></div></body></html>');
-    const previous = new Map(), frames = new Map();
+    const { document } = parseHTML('<html><head></head><body><div id="chat"><div class="mes" mesid="0"><div class="mes_text"></div></div></div></body></html>');
+    const previous = new Map(), frames = new Map(), microtasks = [];
     let frameId = 0, display;
-    const globals = { document, MutationObserver: window.MutationObserver,
+    let notify, observing = false;
+    // Linkedom reports the observed root as every subtree mutation's target.
+    // Supply browser-shaped notifications explicitly; real delivery/layout is
+    // exercised by the browser regression, not this DOM model.
+    class MutationObserver {
+        constructor(callback) { notify = callback; }
+        observe() { observing = true; }
+        disconnect() { observing = false; }
+    }
+    const globals = { document, MutationObserver, queueMicrotask: fn => microtasks.push(fn),
         requestAnimationFrame: fn => { frames.set(++frameId, fn); return frameId; }, cancelAnimationFrame: id => frames.delete(id) };
     for (const [key, value] of Object.entries(globals)) {
         previous.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
@@ -49,7 +58,10 @@ function setup(t, runtime, enabled = () => true) {
     t.after(() => { display?.stop(); for (const [key, descriptor] of previous) {
         if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete globalThis[key];
     } });
-    const render = () => { const work = [...frames.values()]; frames.clear(); for (const fn of work) fn(); };
+    const render = () => {
+        while (microtasks.length) { microtasks.shift()(); }
+        const work = [...frames.values()]; frames.clear(); for (const fn of work) fn();
+    };
     const chat = document.getElementById('chat');
     const content = document.querySelector('.mes_text');
     display = createDiceMessageDisplay({ canRetryRequest: () => false,
@@ -67,7 +79,10 @@ function setup(t, runtime, enabled = () => true) {
         act: (target, action) => runtime.retry?.(target.index, action), ...runtime }, enabled);
     content.textContent = source.chat[0].mes;
     display.start(); render();
-    return { chat, content, display, render };
+    const changed = (target, addedNodes = [], removedNodes = []) => {
+        if (observing) { notify([{ target, addedNodes, removedNodes }]); }
+    };
+    return { chat, content, display, render, changed };
 }
 
 test('host wait updates in place; an unrolled request has an actionable stable retry control', async t => {
@@ -216,6 +231,83 @@ test('card redraws leave scrolling to the host, even when a temporary layout app
     display.refresh(); display.stop(); render();
     assert.equal(content.textContent, message.mes, 'stopping restores the marker');
     assert.deepEqual(writes, []);
+});
+
+// Regression: native streaming schedules its layout/scroll frame before the DOM
+// observer is delivered. DOM-only tests cannot measure pixels, but can guarantee
+// that the host sees the complete card, rather than a transient marker, then.
+test('stream repaint restores retained cards before the host measures its next frame', async t => {
+    const candidate = prepareActionCheck({ body: '<xb_action_check>{"action":"Climb","stat":"Agility","difficulty":"hard"}</xb_action_check>',
+        generatedFrom: 0, id: 'stream-layout', random: () => .3 });
+    const message = { mes: candidate.body, extra: { xiaobaiOsDice: candidate.records } };
+    source.chat = [message];
+    const { content, display, render, changed } = setup(t, { view: () => null, cancel() {} });
+    const card = content.querySelector('[data-dice-record="stream-layout"]');
+    let measured = false;
+    message.mes += '\nContinuation';
+    content.textContent = message.mes;
+    requestAnimationFrame(() => {
+        assert.ok(content.querySelector('[data-dice-record="stream-layout"]') === card);
+        measured = true;
+    });
+    await Promise.resolve();
+    changed(content, [content.firstChild]); // Native observer phase, not display.refresh().
+    render();
+    assert.equal(measured, true);
+    assert.deepEqual(message.extra.xiaobaiOsDice, candidate.records);
+    // A queued state refresh must not put the cards back after disabling display.
+    display.refresh(); display.stop(); render();
+    assert.equal(content.querySelector('[data-dice-record]'), null);
+    assert.equal(content.textContent, message.mes);
+});
+
+test('unrelated message repaint does not stop an active continuation clock', async t => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const candidate = prepareActionCheck({ body: '<xb_action_check>{"action":"Climb","stat":"Agility","difficulty":"hard"}</xb_action_check>',
+        generatedFrom: 0, id: 'clock', random: () => .3 });
+    const message = { mes: candidate.body, extra: { xiaobaiOsDice: candidate.records } };
+    source.chat = [message, { mes: 'Other message', extra: {} }];
+    const active = { target: { message, swipe: 0, index: 0, source }, phase: { kind: 'continuing', candidate },
+        continuation: { stage: 'requesting', elapsedSeconds: 0 } };
+    const { chat, content, render, changed } = setup(t, { view: () => active, cancel() {} });
+    const other = content.closest('.mes').cloneNode(false);
+    other.setAttribute('mesid', '1');
+    const otherContent = content.cloneNode(false); other.append(otherContent); chat.append(other);
+    await Promise.resolve(); changed(chat, [other]); render();
+    otherContent.textContent = source.chat[1].mes;
+    await Promise.resolve(); changed(otherContent, [otherContent.firstChild]); render();
+    active.continuation.elapsedSeconds = 1;
+    t.mock.timers.tick(1000); render();
+    assert.equal(content.querySelector('[data-dice-record="clock"] [role="status"]').dataset.elapsedSeconds, '1');
+});
+
+test('message insertion, removal and content remount update card ownership and terminal actions', async t => {
+    const candidate = prepareActionCheck({ body: '<xb_action_check>{"action":"Climb","stat":"Agility","difficulty":"hard"}</xb_action_check>',
+        generatedFrom: 0, id: 'resident', random: () => .3 });
+    const message = { mes: candidate.body, extra: { xiaobaiOsDice: candidate.records } };
+    source.chat = [message];
+    const { chat, content, display, render, changed } = setup(t, { view: () => null, cancel() {} });
+    const root = content.closest('.mes');
+    const card = content.querySelector('[data-dice-record="resident"]');
+    assert.ok(card.querySelector('[data-dice-action="continue-check"]'));
+    source.chat.push({ mes: 'Next message', extra: {} });
+    const next = root.cloneNode(false); next.setAttribute('mesid', '1'); next.append(content.cloneNode(false)); chat.append(next);
+    await Promise.resolve(); changed(chat, [next]); render();
+    assert.equal(card.querySelector('[data-dice-action]'), null);
+    source.chat.pop(); next.remove();
+    await Promise.resolve(); changed(chat, [], [next]); render();
+    assert.ok(card.querySelector('[data-dice-action="continue-check"]'));
+    const remounted = content.cloneNode(false); remounted.textContent = message.mes;
+    content.replaceWith(remounted);
+    await Promise.resolve(); changed(root, [remounted], [content]); render();
+    assert.ok(remounted.querySelector('[data-dice-record="resident"]') === card);
+    root.remove(); source.chat = [{ mes: 'Different chat', extra: {} }];
+    const replacement = root.cloneNode(false); const body = content.cloneNode(false);
+    body.textContent = source.chat[0].mes; replacement.append(body); chat.append(replacement);
+    display.refresh();
+    await Promise.resolve(); render();
+    assert.equal(chat.querySelector('[data-dice-record]'), null);
+    assert.equal(body.textContent, source.chat[0].mes);
 });
 
 test('reloaded CoC history mounts with checks disabled and keeps its recorded verdict', t => {

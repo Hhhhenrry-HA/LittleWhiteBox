@@ -358,7 +358,10 @@ for (const blocker of ['finalization', 'save']) {
             if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete globalThis[key];
         } });
         const display = createDiceMessageDisplay(adapter, () => host.enabled);
-        const paint = () => { display.refresh(); const work = [...frames.values()]; frames.clear(); for (const fn of work) fn(); };
+        const paint = async () => {
+            display.refresh(); await Promise.resolve();
+            const work = [...frames.values()]; frames.clear(); for (const fn of work) fn();
+        };
         const pending = Promise.withResolvers();
         const release = Promise.withResolvers();
         if (blocker === 'finalization') {
@@ -389,15 +392,15 @@ for (const blocker of ['finalization', 'save']) {
             const content = document.createElement('div'); content.className = 'mes_text';
             content.textContent = host.source.chat[1].mes;
             document.querySelector('.mes[mesid="1"]').append(content);
-            display.start(); paint();
+            display.start(); await paint();
             const button = content.querySelector('[data-dice-action="continue-check"]');
             assert.ok(button); assert.equal(button.disabled, false);
-            button.click(); await setImmediate(); paint();
+            button.click(); await setImmediate(); await paint();
             assert.deepEqual(adapter.view().wait.blockers, [blocker]);
             assert.equal(host.stopVisible, false);
             assert.equal(content.querySelector('[data-dice-action="cancel-continue"]'), button);
             assert.equal(button.disabled, false);
-            button.click(); await setImmediate(); paint();
+            button.click(); await setImmediate(); await paint();
             assert.equal(adapter.view(), null);
             assert.equal(host.stream, stream);
             assert.equal(host.controller.signal.aborted, false);
@@ -406,11 +409,11 @@ for (const blocker of ['finalization', 'save']) {
             assert.equal(button.disabled, false);
 
             release.resolve(); await originating;
-            t.mock.timers.tick(80); await setImmediate(); paint();
+            t.mock.timers.tick(80); await setImmediate(); await paint();
             assert.equal(host.requests.length, 1, 'cancelled Continue cannot dispatch when native saving finishes');
             assert.deepEqual(host.source.chat[1].extra.xiaobaiOsDice, savedRoll);
             assert.equal(host.diceWrites, 0);
-            button.click(); await setImmediate(); await settled(adapter); paint();
+            button.click(); await setImmediate(); await settled(adapter); await paint();
             assert.equal(host.requests.length, 2);
             assert.equal(host.nativeSaves.length, 2);
             assert.equal(host.ids, 1);
