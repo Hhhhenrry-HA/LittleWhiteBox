@@ -25,7 +25,7 @@ async function fixture(messages = [], registry = createManagementRegistry()) {
 
 test('result continuation keeps one reference and cursor while reconstructing HTML and Unicode story pages', async () => {
     const original = '<p>她说："好。🙂"</p>\n'.repeat(2200);
-    const h = await fixture([{ mes: original, swipe_id: 0 }, { mes: '末楼', swipe_id: 0 }]);
+    const h = await fixture([{ mes: original, swipe_id: 0, is_system: true }, { mes: '末楼', swipe_id: 0 }]);
     const texts = ['', ''];
     let args = { from: 0, to: 1 };
     let continuationCalls = 0;

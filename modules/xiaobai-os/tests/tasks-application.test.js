@@ -397,6 +397,7 @@ test('Tasks module owns a strict partition and declares its runtime capabilities
         ECONOMY_READ_CAPABILITY.id,
         ECONOMY_TRANSACTION_CAPABILITY.id,
         AGENT_CAPABILITY.id,
+        'prompt.injection',
         MAINTENANCE_CAPABILITY.id,
         MANAGEMENT_CAPABILITY.id,
         MAP_CONTEXT_CAPABILITY.id,

@@ -1,4 +1,4 @@
-import { activateSendButtons, deactivateSendButtons, setCharacterId, setCharacterName, setExternalAbortController, setExtensionPrompt, extension_prompt_types, extension_prompt_roles, setSendButtonState, stopGeneration, is_send_press, eventSource, saveChat } from '../../../../../../../../../script.js';
+import { activateSendButtons, deactivateSendButtons, setCharacterId, setCharacterName, setExternalAbortController, setSendButtonState, stopGeneration, is_send_press, eventSource, saveChat } from '../../../../../../../../../script.js';
 import * as nativeHost from '../../../../../../../../../script.js';
 import { isGenerating } from '../../../../../shared/common/sillytavern-generation-state.js';
 import { generateGroupWrapper, is_group_generating, saveGroupChat } from '../../../../../../../../group-chats.js';
@@ -10,7 +10,7 @@ import type { ActionCheckFrequency, ActionCheckRule } from '../types.js';
 import { readCoc7Sheet, type Coc7Sheet } from '../domain/coc7-sheet.js';
 import { parseDiceRecords } from '../domain/check-records.js';
 import { createActionCheckSession } from '../application/action-check-session.js';
-import type { DiceContinuationStage, DiceContinuationProgress } from '../application/host-wait.js';
+import type { DiceContinuationStage, DiceContinuationProgress, DiceHostBlocker } from '../application/host-wait.js';
 import { applyDiceCandidate, captureDiceTarget, clearNewDiceSwipe, isDiceTargetCurrent, readDiceRecords, type DiceCandidate, type DiceTarget } from './message-records.js';
 import { filterDiceGenerationData, type DiceGenerationData } from './request-filter.js';
 import { parseActionCheck } from '../protocol/request.js';
@@ -22,13 +22,12 @@ import type { DiceRerollService } from '../application/reroll-service.js';
 import { jsonValuesEqual } from '../../../host/json-values-equal.js';
 import { holdDiceRecoverySave } from './recovery-save-gate.js';
 
-export type DiceCardAction = 'continue-check' | 'reroll-check' | 'retry-check';
+export type DiceCardAction = 'continue-check' | 'cancel-continue' | 'reroll-check' | 'retry-check';
 // A replacement gets a new in-memory identity even when the paid roll has identical values.
 export interface DiceCardTarget extends DiceTarget { resultVersion: string; originalRecords: unknown }
-export interface DiceCardActions { target: DiceCardTarget; kind: 'choice' | 'request'; disabled: boolean; canReroll: boolean; rerollDisabled?: boolean; insufficientFunds?: boolean }
+export interface DiceCardActions { target: DiceCardTarget; kind: 'choice' | 'request'; disabled: boolean; canCancel: boolean; canReroll: boolean; rerollDisabled?: boolean; insufficientFunds?: boolean }
 
 const KEY = 'xiaobai_os_dice';
-const RULES_KEY = `${KEY}_rules`;
 const MAIN_TYPES = ['', 'normal', 'regenerate', 'swipe', 'continue'];
 interface Observation {
     source: NonNullable<ReturnType<typeof captureDiceChat>>;
@@ -43,7 +42,7 @@ interface Observation {
 export function createDiceGenerationAdapter(enabled: () => boolean, frequency: () => ActionCheckFrequency, changed: () => void,
     reveal: (target: DiceTarget, candidate: DiceCandidate, signal: AbortSignal) => Promise<void>, rule: () => ActionCheckRule,
     sheet: () => unknown = () => null, rerolls: DiceRerollService<DiceTarget> | null = null,
-    results: DiceResults) {
+    results: DiceResults, prompts: { setRules(content: string): void; setResult(content: string): void }) {
     let observation: Observation | null = null;
     let intention: { target: DiceTarget; candidate: DiceCandidate; signal: AbortSignal;
         settled: Promise<void>; received: boolean; stage: DiceContinuationStage; stageStartedAt: number; error?: string } | null = null;
@@ -53,12 +52,23 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
     let unsubscribe: (() => void) | null = null;
     let pausingGroup = false;
     let recoverySave: Promise<void> | null = null;
+    // Only a successful reply observed by this adapter can own this tail. Reloaded
+    // messages and pre-existing/failed processors never reconstruct pending work.
+    let finalizingStream: ReturnType<typeof diceHostContext>['streamingProcessor'] = null;
     const native = nativeHost as unknown as { isChatSaving?: boolean; waitForGenerationIdle?: () => Promise<void> };
-    const nativeBusy = () => isGenerating() || native.isChatSaving === true || !!recoverySave;
+    const nativeBlocker = (): DiceHostBlocker | null => {
+        // A replacement first emits GENERATION_STARTED, which cancels the old choice;
+        // losing this reference must never revive that choice on the replacement call.
+        if (finalizingStream && diceHostContext().streamingProcessor !== finalizingStream) { finalizingStream = null; }
+        if (native.isChatSaving === true || recoverySave) { return 'save'; }
+        if (finalizingStream) { return 'finalization'; }
+        return isGenerating() ? 'generation' : null;
+    };
+    const nativeBusy = () => nativeBlocker() !== null;
     const records = (message: DiceTarget['message']) => results.records(readDiceRecords(message));
     const project = (target: DiceTarget | null) => target ? { ...target, records: records(target.message) } : null;
-    const setPrompt = (content: string) => setExtensionPrompt(KEY, content, extension_prompt_types.IN_CHAT, 0, false, extension_prompt_roles.USER);
-    const setRulesPrompt = (content: string) => setExtensionPrompt(RULES_KEY, content, extension_prompt_types.IN_CHAT, 1, false, extension_prompt_roles.USER);
+    const setPrompt = prompts.setResult;
+    const setRulesPrompt = prompts.setRules;
     const clearPrompt = () => { setPrompt(''); setRulesPrompt(''); };
     const currentTarget = (target: DiceTarget) => isDiceTargetCurrent(captureDiceChat(), target)
         && jsonValuesEqual(records(target.message), target.records) && !isDiceMessageBeingEdited(target.index);
@@ -69,7 +79,8 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
             // TT exposes the full native Promise boundary, including preparation and chat-history cleanup.
             let nativePending = !!native.waitForGenerationIdle;
             void native.waitForGenerationIdle?.().then(() => { nativePending = false; });
-            await waitForDiceHost(target, signal, inGroup, () => !!intention || nativeBusy() || nativePending, report);
+            await waitForDiceHost(target, signal, inGroup,
+                () => nativeBlocker() ?? (intention || nativePending ? 'finalization' : null), report);
             if (!terminalCheck(target.body, target.records) && isDiceMessageBeingEdited()) { throw new DiceOperationError('dice_busy'); }
         },
         apply(target, candidate) {
@@ -361,6 +372,12 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
             if (stream && stream !== observed.previousStream && stream.isStopped) { return; }
             const source = captureDiceChat();
             if (!source || source.key !== observed.source.key || source.chat !== observed.source.chat || observed.signal?.aborted) { return; }
+            // ST 1.14/1.18 unlock streaming UI before message listeners and saving.
+            // Native code releases this exact processor only after onFinishStreaming
+            // returns. Our own continuations already have their full Generate Promise.
+            if (!own && stream && stream !== observed.previousStream && stream.isFinished && stream.messageId === index) {
+                finalizingStream = stream;
+            }
             try {
                 const target = project(captureDiceTarget(source, index, observed.from, observed.rule, observed.coc7Sheet));
                 if (!target || !target.body.startsWith(observed.initialBody)) { return; }
@@ -422,13 +439,14 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
         const busy = !!controls || !!intention && !intention.signal.aborted;
         if (terminalCheck(target.body, target.records)) {
             return { target, kind: 'choice', disabled: busy || !!phase && !['revealing', 'awaiting-choice', 'continue-error'].includes(phase),
+                canCancel: phase === 'settling',
                 // Rerolls never write chat: a received result can change while native
                 // saving finishes. A new, not-yet-received generation still excludes it.
                 canReroll: !!rerolls, rerollDisabled: phase === 'revealing' || !!observation && nativeBusy() || !rerolls?.canAfford(),
                 insufficientFunds: !!rerolls && !rerolls.canAfford() };
         }
         if (!active && parseActionCheck(target.body, target.generatedFrom, target.rule).kind === 'request') {
-            return { target, kind: 'request', disabled: busy || nativeBusy() || isDiceMessageBeingEdited(), canReroll: false };
+            return { target, kind: 'request', disabled: busy || nativeBusy() || isDiceMessageBeingEdited(), canCancel: false, canReroll: false };
         }
         return null;
     }
@@ -437,6 +455,12 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
         if (!currentTarget(target) || target.originalRecords !== readDiceRecords(target.message)
             || target.resultVersion !== results.version(readDiceRecords(target.message))) { throw new DiceOperationError('dice_target_changed'); }
         const available = actions(target.index);
+        if (action === 'cancel-continue' && available?.canCancel) {
+            // Only this queued choice is cancelled. Native finalization and any
+            // previous Generate Promise still own their real completion boundary.
+            session.cancel();
+            return;
+        }
         if (!available || available.disabled) { throw new DiceOperationError('dice_busy'); }
         if (action === 'retry-check' && available.kind === 'request') { await session.retryRequest(target); }
         else if (action === 'continue-check' && available.kind === 'choice') { await session.continueCheck(target); }

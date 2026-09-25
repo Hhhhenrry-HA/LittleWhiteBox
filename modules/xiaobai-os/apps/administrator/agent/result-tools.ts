@@ -8,11 +8,11 @@ export const ADMINISTRATOR_RESULT_READ: ManagementTool = {
     definition: { type: 'function', function: {
         name: TOOL_RESULT_READ,
         description: [
-            'Continue a large tool result retained during this run.',
+            'Read the remaining pages of a large tool result from this run.',
             `data contains reference, text, offset, nextOffset and totalChars, with at most ${MANAGEMENT_READ_CHARS} text characters per page.`,
-            'Use it when a tool result supplies data.reference. Keep that reference and follow nextOffset until null to finish the retained result.',
-            'This reads the earlier result, not a refreshed source. Any continuation inside the recovered result belongs to its original tool.',
-            'A result with detailsUnavailable and totalChars has no retained body. For this or an expired reference, read the original source again in smaller pages.',
+            'When a result provides data.reference, use it here and follow nextOffset until null to finish reading that result.',
+            'The pages belong to the result already returned. Use the original tool for fresh source data or for a continuation found inside that result.',
+            'If a result has detailsUnavailable and totalChars, its full body was too large to retain. An expired reference also needs a fresh read from the original source in smaller pages.',
         ].join('\n'),
         parameters: { type: 'object', properties: {
             reference: { type: 'string', description: 'data.reference from the original result page, valid only in this run.' },

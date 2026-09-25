@@ -3,6 +3,8 @@ import { DICE_REROLL_COST } from '../domain/reroll.js';
 
 const blockerLabels: Record<DiceHostBlocker, string> = {
     generation: '上一轮生成结束',
+    finalization: '上一轮回复收尾',
+    save: '聊天保存',
 };
 
 const continuationLabels: Record<DiceContinuationStage, string> = {
@@ -20,6 +22,7 @@ export const DICE_SESSION_COPY = {
     retained: '已暂停等待，骰点已保留。',
     retryCheck: '重试检定',
     retryContinue: '继续',
+    cancelContinue: '取消续写',
     reroll: '重掷',
     price: `${DICE_REROLL_COST} 币`,
     rerollAccessible: `重掷，花费 ${DICE_REROLL_COST} 小白币`,

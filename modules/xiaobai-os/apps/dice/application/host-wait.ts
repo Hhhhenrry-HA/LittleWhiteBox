@@ -1,4 +1,4 @@
-export type DiceHostBlocker = 'generation';
+export type DiceHostBlocker = 'generation' | 'finalization' | 'save';
 
 /** A transient observation of the host, not a prediction of its completion time. */
 export interface DiceHostWait {

@@ -70,7 +70,12 @@ export function createDiceMessageDisplay(runtime: Runtime, enabled: () => boolea
         note.hidden = !note.textContent;
         status.hidden = !note.textContent && !actions;
         for (const button of status.querySelectorAll<HTMLButtonElement>('button')) {
-            button.disabled = !actions || actions.disabled || button.dataset.diceAction === 'reroll-check' && !!actions.rerollDisabled;
+            if (button.dataset.diceAction === 'continue-check' || button.dataset.diceAction === 'cancel-continue') {
+                button.dataset.diceAction = actions?.canCancel ? 'cancel-continue' : 'continue-check';
+                button.textContent = actions?.canCancel ? DICE_SESSION_COPY.cancelContinue : DICE_SESSION_COPY.retryContinue;
+            }
+            button.disabled = button.dataset.diceAction === 'cancel-continue' ? !actions?.canCancel
+                : !actions || actions.disabled || button.dataset.diceAction === 'reroll-check' && !!actions.rerollDisabled;
             button.onclick = () => {
                 if (!actions || button.disabled) { return; }
                 entry.error = undefined;

@@ -2,6 +2,7 @@ import { normalizeAgentSettings } from '../../../agent-core/config.js';
 import { resolveActiveProviderConfig } from '../../../agent-core/provider-resolution.js';
 import { createAppRuntimeGroup } from '../../kernel/runtime-group.js';
 import { createWorldModule } from './module.js';
+import { WORLD_PROMPTS } from './prompt-registration.js';
 import { createWorldManagement } from './management/participant.js';
 import { createWorldController } from './host/controller.js';
 import { createWorldMaintenanceParticipant } from './host/maintenance-participant.js';
@@ -11,13 +12,14 @@ import type { XiaobaiOsSettingsRepository } from '../../host/settings-repository
 export function createProductionWorldModule(dependencies: {
     settings: XiaobaiOsSettingsRepository;
     getChatIdentity(): string;
-    setPrompt(value: string): void;
     subscribePrompt(handlers: WorldPromptEventHandlers): () => void;
 }) {
     return createWorldModule({
         settings: dependencies.settings,
         getChatIdentity: dependencies.getChatIdentity,
-        install({ world, maintenance, management, agent, execution }) {
+        install({ world, maintenance, management, agent, prompts, execution }) {
+            const injection = prompts.register(WORLD_PROMPTS);
+            execution.addCleanup(injection.dispose);
             execution.addCleanup(management.register(createWorldManagement(world)));
             const unregister = maintenance.registerParticipant(createWorldMaintenanceParticipant(world, () => dependencies.settings.read()!.apps.world));
             execution.addCleanup(unregister);
@@ -29,7 +31,7 @@ export function createProductionWorldModule(dependencies: {
                 },
             });
             const prompt = createWorldPromptRuntime({ world, settings: dependencies.settings, getChatIdentity: dependencies.getChatIdentity,
-                setPrompt: dependencies.setPrompt, subscribe: dependencies.subscribePrompt });
+                setPrompt: value => injection.set('context', value), subscribe: dependencies.subscribePrompt });
             return createAppRuntimeGroup(controller, [prompt]);
         },
     });

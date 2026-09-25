@@ -16,11 +16,12 @@ export function createAdministratorToolLoader(apps: readonly ToolPackage[], comm
         definition: { type: 'function', function: {
             name: TOOLS_LOAD,
             description: [
-                'Load complete APP tool packages for this run, together with the common tools listed below.',
+                'Make the selected APPs’ tools available for the current request, together with the common tools listed below.',
                 'data contains apps (all loaded APP IDs) and tools (all currently available tool names, including this entry). Full tool definitions become available on the next model request.',
-                'Use it before an operation whose tool is not yet available. Each APP package includes both its read and write tools; moving from inspection to editing needs no further load.',
-                'Loaded tools remain available for this run. Repeated loads are harmless; a new user request or regeneration starts with this entry alone.',
-                'Loading exposes tools without executing their operations or granting authorization to change records. An invalid request loads nothing; unavailable APP IDs are returned in data.unavailableApps.',
+                'Choose the packages that help with the user’s request. Each package includes both read and write tools, ready for the next steps of the work.',
+                'Loaded packages stay available until this run ends. A new user request or regeneration starts with this catalog tool again.',
+                'This call opens access to the tools; reading and changing records happen through those tools afterward.',
+                'An invalid request loads nothing. data.unavailableApps identifies any requested APPs that could not be loaded.',
                 '',
                 `Common tools: ${describe(common)}`,
                 ...apps.map(app => `APP ${app.id} (${app.label}): ${describe(app.tools)}`),

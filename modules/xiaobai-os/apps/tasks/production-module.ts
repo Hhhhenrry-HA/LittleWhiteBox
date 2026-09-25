@@ -13,6 +13,7 @@ import { createTaskMaintenanceParticipant } from './host/maintenance-participant
 import { createTaskPromptRuntime, type TaskPromptEventHandlers } from './host/prompt-runtime.js';
 import { createTaskSettingsRuntime } from './host/settings-runtime.js';
 import { createTasksModule } from './module.js';
+import { TASK_PROMPTS } from './prompt-registration.js';
 import { createTasksManagement } from './management/participant.js';
 
 export interface ProductionTasksModuleDependencies {
@@ -21,7 +22,6 @@ export interface ProductionTasksModuleDependencies {
     getPlayerDisplayName: () => string;
     userTransactions: () => UserTransactions | null;
     mainGeneration: MainGenerationRuntime;
-    setPrompt(value: string): void;
     subscribePrompt(handlers: TaskPromptEventHandlers): () => void;
     notifyCompletion(notice: TaskCompletionNotice): void;
 }
@@ -32,7 +32,9 @@ export function createProductionTasksModule(dependencies: ProductionTasksModuleD
         getEvidenceDigest: () => latestTaskEvidenceDigest(getSillyTavernChatSurface()),
         getStoryLabel: () => getSillyTavernChatSurface()?.assistantName ?? '',
         userTransactions: dependencies.userTransactions,
-        async install({ tasks, store, economy, agent, maintenance, management, mapContext, worldContext, execution }) {
+        async install({ tasks, store, economy, agent, maintenance, management, mapContext, worldContext, prompts, execution }) {
+            const injection = prompts.register(TASK_PROMPTS);
+            execution.addCleanup(injection.dispose);
             execution.addCleanup(management.register(createTasksManagement(tasks)));
             const unregisterParticipant = maintenance.registerParticipant(createTaskMaintenanceParticipant({
                 tasks,
@@ -62,7 +64,7 @@ export function createProductionTasksModule(dependencies: ProductionTasksModuleD
             });
             const prompt = createTaskPromptRuntime({
                 tasks,
-                setPrompt: dependencies.setPrompt,
+                setPrompt: value => injection.set('context', value),
                 subscribe: dependencies.subscribePrompt,
             });
             const settings = createTaskSettingsRuntime({

@@ -13,12 +13,15 @@ import { createWorldContextCapabilityRegistration, WORLD_CONTEXT_CAPABILITY } fr
 import { AGENT_CAPABILITY } from '../capabilities/agent/index.js';
 import { MAINTENANCE_CAPABILITY, createMaintenanceRegistry } from '../capabilities/maintenance/index.js';
 import { MANAGEMENT_CAPABILITY, createManagementRegistry } from '../capabilities/management/index.js';
+import { PROMPT_INJECTION_CAPABILITY } from '../capabilities/prompt-injection/index.ts';
+import { headlessPromptInjection } from './helpers/prompt-injection.js';
 
 test('production World subscription accepts keyless direct models but still rejects a missing model', async t => {
     const h = await worldHarness();
     h.state.messages = [];
     let model = '';
     const capabilities = new Map([
+        [PROMPT_INJECTION_CAPABILITY, headlessPromptInjection().install()],
         [AGENT_CAPABILITY, { async loadConfig() { return { currentPresetName: 'test', presets: { test: {
             provider: 'openai-compatible', modelConfigs: { 'openai-compatible': { model, apiKey: '' } },
         } } }; } }],
@@ -28,7 +31,7 @@ test('production World subscription accepts keyless direct models but still reje
     ]);
     const cleanups = [];
     const module = createProductionWorldModule({ settings: h.settings, getChatIdentity: h.getChatIdentity,
-        setPrompt() {}, subscribePrompt: () => () => {} });
+        subscribePrompt: () => () => {} });
     const runtime = await module.install({
         partition: h.coordinator.createScopedStore(WORLD_PARTITION), files: h.coordinator,
         execution: { addCleanup: cleanup => cleanups.push(cleanup) },

@@ -2,7 +2,7 @@ import { MANAGEMENT_READ_CHARS, readOffset } from '../../../capabilities/managem
 import { ADMINISTRATOR_POLICY as POLICY } from '../domain/policy.js';
 
 export interface AdministratorChatSurface { identityKey: string; messages: readonly unknown[]; playerName: string; assistantName: string }
-interface SourceMessage { mes?: unknown; name?: unknown; is_user?: unknown; is_system?: unknown; swipe_id?: unknown }
+interface SourceMessage { mes?: unknown; name?: unknown; is_user?: unknown; swipe_id?: unknown }
 interface Evidence { raw: unknown; text: string; swipe: unknown }
 const message = (value: unknown): SourceMessage => value && typeof value === 'object' ? value as SourceMessage : {};
 
@@ -60,14 +60,12 @@ export function createAdministratorChatReader(capture: () => AdministratorChatSu
         async read(args: Record<string, unknown>) {
             const { first, last } = bounds(args.from, args.to ?? args.from);
             const items: { floor: number; speaker: string; role: string; text: string; offset: number; totalChars: number }[] = [];
-            const omittedSystemFloors: number[] = [];
             let remaining = MANAGEMENT_READ_CHARS;
-            const result = (scannedTo: number, next: { from: number; to: number; offset: number } | null) => ({ items, omittedSystemFloors, scanned: { from: first, to: scannedTo }, next, complete: next === null });
+            const result = (scannedTo: number, next: { from: number; to: number; offset: number } | null) => ({ items, scanned: { from: first, to: scannedTo }, next, complete: next === null });
             for (let floor = first; floor <= last; floor++) {
                 if (floor - first === POLICY.chatReadFloors) { return result(floor - 1, { from: floor, to: last, offset: 0 }); }
                 if ((floor - first) % 25 === 0) { await new Promise(resolve => setTimeout(resolve, 0)); }
                 const raw = current().messages[floor], source = message(raw), text = String(source.mes ?? '');
-                if (source.is_system) { omittedSystemFloors.push(floor); continue; }
                 const offset = floor === first ? readOffset(args.offset, 0, text.length) : 0;
                 let end = Math.min(text.length, offset + remaining);
                 if (end < text.length && /[\uD800-\uDBFF]/u.test(text[end - 1])) { end--; }
@@ -88,7 +86,6 @@ export function createAdministratorChatReader(capture: () => AdministratorChatSu
             for (let floor = first; floor <= last; floor++) {
                 if ((floor - first) % 25 === 0) { await new Promise(resolve => setTimeout(resolve, 0)); }
                 const raw = current().messages[floor], source = message(raw);
-                if (source.is_system) { continue; }
                 const text = String(source.mes ?? ''), found = needle.exec(text)?.index ?? -1;
                 if (found >= 0) {
                     retain(floor, raw);

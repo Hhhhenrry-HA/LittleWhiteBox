@@ -1,8 +1,5 @@
 import {
-    extension_prompt_roles,
-    extension_prompt_types,
     isStreamingEnabled,
-    setExtensionPrompt,
 } from '../../../../../../../script.js';
 import {
     GENERATE_INTERCEPTOR_ORDER,
@@ -29,17 +26,6 @@ export function subscribeBankReplies(observer: ReturnType<typeof createAssistant
         observer.received(Number(index), String(type || ''));
     });
     return () => events.cleanup();
-}
-
-export function setSillyTavernPrompt(key: string, value: string, depth = 1): void {
-    setExtensionPrompt(
-        key,
-        value,
-        Number(extension_prompt_types.IN_CHAT) || 1,
-        depth,
-        false,
-        Number(extension_prompt_roles.SYSTEM) || 0,
-    );
 }
 
 export function subscribeShopPromptEvents(handlers: ShopPromptEventHandlers): () => void {

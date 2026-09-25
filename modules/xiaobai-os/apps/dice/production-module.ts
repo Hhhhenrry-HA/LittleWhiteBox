@@ -1,4 +1,6 @@
 import type { XiaobaiOsAppModule } from '../../kernel/app-registry.js';
+import { PROMPT_INJECTION_CAPABILITY } from '../../capabilities/prompt-injection/index.js';
+import { DICE_CHECK_PROMPTS, DICE_ENCOUNTER_PROMPTS } from './prompt-registration.js';
 import type { XiaobaiOsSettingsRepository } from '../../host/settings-repository.js';
 import { createAppRuntimeGroup } from '../../kernel/runtime-group.js';
 import { saveSillyTavernChat } from '../../host/sillytavern-chat-save.js';
@@ -26,8 +28,13 @@ export function createProductionDiceModule(settings: XiaobaiOsSettingsRepository
     isAuxiliaryMessage: (message: DiceHostMessage) => boolean, upgrade: () => Promise<void>): XiaobaiOsAppModule {
     let cleanup: (() => Promise<void>) | null = null;
     return {
-        descriptor: DICE_APP_DESCRIPTOR, partition: DICE_PARTITION, capabilities: [ECONOMY_READ_CAPABILITY, ECONOMY_TRANSACTION_CAPABILITY],
+        descriptor: DICE_APP_DESCRIPTOR, partition: DICE_PARTITION, capabilities: [ECONOMY_READ_CAPABILITY, ECONOMY_TRANSACTION_CAPABILITY, PROMPT_INJECTION_CAPABILITY],
         async install(context) {
+            const prompts = context.useCapability(PROMPT_INJECTION_CAPABILITY);
+            const checkPrompts = prompts.register(DICE_CHECK_PROMPTS);
+            context.execution.addCleanup(checkPrompts.dispose);
+            const encounterPrompts = prompts.register(DICE_ENCOUNTER_PROMPTS);
+            context.execution.addCleanup(encounterPrompts.dispose);
             await upgrade();
             const sheets = createDiceSheetService(context.partition as PartitionStore<DiceData>, context.files);
             await sheets.refresh();
@@ -46,10 +53,14 @@ export function createProductionDiceModule(settings: XiaobaiOsSettingsRepository
             const generation = createDiceGenerationAdapter(enabled, () => settings.read()!.apps.dice.actionCheckFrequency,
                 () => display.refresh(),
                 (target, candidate, signal) => display.reveal(target, candidate, signal), () => settings.read()!.apps.dice.actionCheckRule,
-                sheets.read, rerolls, results);
+                sheets.read, rerolls, results, {
+                    setRules: content => checkPrompts.set('rules', content),
+                    setResult: content => checkPrompts.set('result', content),
+                });
             const display = createDiceMessageDisplay(generation, enabled);
             const encountersEnabled = () => running && !!captureDiceChat() && settings.read()!.apps.dice.encountersEnabled;
             const encounters = createEncounterRuntime({ enabled: encountersEnabled, references, isAuxiliaryMessage,
+                setPrompt: content => encounterPrompts.set('context', content),
                 changed: message => encounterDisplay.refresh(message) });
             const encounterDisplay = createEncounterDisplay(encounters);
             context.execution.addCleanup(settings.subscribe(display.refresh));

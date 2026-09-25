@@ -12,6 +12,8 @@ import { upgradeDiceUserFile } from '../apps/dice/upgrade/partition-v1.ts';
 import { prepareActionCheck } from '../apps/dice/application/prepare-action-check.ts';
 import { createResultOverride } from '../apps/dice/domain/result-override.ts';
 import { rerollCheck } from '../apps/dice/domain/reroll.ts';
+import { headlessPromptInjection } from './helpers/prompt-injection.js';
+import { PROMPT_INJECTION_CAPABILITY } from '../capabilities/prompt-injection/index.ts';
 
 // Keep the production module, controller and message cleanup. Replace native I/O and inactive UI workers.
 const compiled = await build({
@@ -20,6 +22,7 @@ const compiled = await build({
     bundle: true, write: false, format: 'esm', platform: 'node', logLevel: 'silent',
     footer: { js: '//# sourceURL=dice-lifecycle-fixture.js' },
     plugins: [{ name: 'dice-cleanup-host', setup(builder) {
+        builder.onResolve({ filter: /\/prompt-registration\.js$/ }, () => ({ path: new URL('../apps/dice/prompt-registration.ts', import.meta.url).href, external: true }));
         builder.onResolve({ filter: /(?:^|\/)partition\.js$/ }, args => args.importer.replaceAll('\\', '/').includes('/dice/') ? ({ path: new URL('../apps/dice/partition.ts', import.meta.url).href, external: true }) : undefined);
         builder.onResolve({ filter: /^js-sha256$/ }, () => ({ path: import.meta.resolve('js-sha256'), external: true }));
         builder.onResolve({ filter: /(?:^dice-cleanup-host$|\/(?:script|extensions|group-chats|sillytavern-port|sillytavern-chat-save|generation-adapter|message-display|encounter-runtime|encounter-display)\.js$)/ },
@@ -70,7 +73,7 @@ for (const startsWithChat of [false, true]) {
         let userDocument = null;
         const kernel = createKernelComposition({
             modules: [createProductionDiceModule(settings, async () => ({world:false,summary:false}), () => false,
-                () => upgradeDiceUserFile(kernel.userTransactions))], capabilities: createEconomyCapabilityRegistrations(),
+                () => upgradeDiceUserFile(kernel.userTransactions))], capabilities: [...createEconomyCapabilityRegistrations(), headlessPromptInjection()],
             user: { storage: { read: async () => userDocument, replace: async (_name, value) => { userDocument = value; } },
                 initialPartitions: async () => ({ economy: ECONOMY_PARTITION.createInitial(), dice: DICE_PARTITION.createInitial() }), resolveStory: async () => capture },
             storage: {
@@ -149,7 +152,9 @@ test('chat cleanup disables Dice and saves its message cleanup without deleting 
         const wallet = await userEconomyHarness();
         const module = createProductionDiceModule(settings, async () => ({world:false,summary:false}), () => false,
             () => upgradeDiceUserFile(wallet.transactions));
-        await module.install({ execution: { addCleanup() {} }, partition: wallet.store(DICE_PARTITION), files: wallet.transactions, useCapability: () => wallet.economy });
+        const prompts = headlessPromptInjection().install();
+        await module.install({ execution: { addCleanup() {} }, partition: wallet.store(DICE_PARTITION), files: wallet.transactions,
+            useCapability: token => token.id === PROMPT_INJECTION_CAPABILITY.id ? prompts : wallet.economy });
         host.save = async guard => {
             saving.resolve();
             writes++;
@@ -210,8 +215,9 @@ async function cleanupFixture(t) {
     await settings.prepare();
     const module = createProductionDiceModule(settings, async () => ({ world: false, summary: false }), () => false,
         () => upgradeDiceUserFile(wallet.transactions));
+    const prompts = headlessPromptInjection().install();
     await module.install({ execution: { addCleanup(cleanup) { t.after(cleanup); } }, partition: wallet.store(DICE_PARTITION),
-        files: wallet.transactions, useCapability: () => wallet.economy });
+        files: wallet.transactions, useCapability: token => token.id === PROMPT_INJECTION_CAPABILITY.id ? prompts : wallet.economy });
     const savedChats = [];
     host.save = async guard => {
         assert.equal(guard(), true);

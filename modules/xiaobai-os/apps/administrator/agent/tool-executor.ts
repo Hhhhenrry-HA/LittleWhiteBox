@@ -11,6 +11,7 @@ import type { AdministratorEnvironmentReader } from '../domain/environment.js';
 import { ADMINISTRATOR_OS_INSPECT, OS_INSPECT } from './os-tools.js';
 import { ADMINISTRATOR_RESULT_READ, TOOL_RESULT_READ } from './result-tools.js';
 import { createAdministratorToolLoader, TOOLS_LOAD, TOOL_NOT_LOADED } from './tool-loader.js';
+import { ADMINISTRATOR_REFERENCE_TEXT } from './reference-data.js';
 
 type Reader = ReturnType<typeof createAdministratorChatReader>;
 export interface AdministratorConfirmation { messageIndex: number; result: ManagementResult & { receipt: AdministratorOperation } }
@@ -36,7 +37,7 @@ export async function createAdministratorToolExecutor(options: {
         catch { options.reader.assertCurrent(); unavailable.push({ id: participant.id, code: 'management_unavailable' }); continue; }
         const initial = safePromptJson(session.initial);
         domains.push({ id: participant.id, label: participant.label, tools: session.tools, prompt: session.prompt,
-            data: initial.length <= MANAGEMENT_READ_CHARS ? session.initial : { ...textPage(initial), detail: 'Initial data is paged. Use this APP’s read tools for the complete records.' } });
+            data: initial.length <= MANAGEMENT_READ_CHARS ? session.initial : { ...textPage(initial), detail: ADMINISTRATOR_REFERENCE_TEXT.initialPage } });
         for (const tool of session.tools) { register(tool, participant.id, session); }
     }
     const common = [...ADMINISTRATOR_CHAT_TOOLS, ADMINISTRATOR_OS_INSPECT, ADMINISTRATOR_RESULT_READ];

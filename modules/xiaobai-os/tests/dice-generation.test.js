@@ -16,11 +16,14 @@ import { buildActionCheckRules, projectActionCheckResults } from '../apps/dice/p
 import { parseDiceRecords } from '../apps/dice/domain/check-records.ts';
 import { generateCoc7Sheet } from '../apps/dice/domain/coc7-creation.ts';
 import { readDicePromptResults } from './helpers/dice-prompt.js';
+import { createPromptInjectionRegistry } from '../capabilities/prompt-injection/registry.ts';
+import { DICE_CHECK_PROMPTS } from '../apps/dice/prompt-registration.ts';
 
 // These regressions live at the native event/API boundary, which the session's continuation stub cannot cover.
 // Run the actual adapter, readiness barrier, session and protocol; replace native I/O only.
 const compiled = await build({
     stdin: { contents: `export { createDiceGenerationAdapter } from '../apps/dice/host/generation-adapter.ts';
+        export { createDiceMessageDisplay } from '../apps/dice/host/message-display.ts';
         export { captureDiceChat, waitForDiceHost } from '../apps/dice/host/sillytavern-port.ts';
         export { host } from 'dice-generation-host';`,
         resolveDir: fileURLToPath(new URL('.', import.meta.url)) },
@@ -29,7 +32,7 @@ const compiled = await build({
     plugins: [{ name: 'dice-generation-host', setup(builder) {
         builder.onResolve({ filter: /^js-sha256$/ }, () => ({ path: import.meta.resolve('js-sha256'), external: true }));
         builder.onResolve({ filter: /(?:^dice-generation-host$|\/(?:script|group-chats|utils|extensions|event-manager|generate-interceptor|sillytavern-chat-save)\.js$|\/extensions\/regex\/engine\.js$)/ },
-            () => ({ path: 'host', namespace: 'fixture' }));
+            args => args.importer.includes('node_modules') ? undefined : ({ path: 'host', namespace: 'fixture' }));
         builder.onLoad({ filter: /.*/, namespace: 'fixture' }, () => ({ contents: `
             const listeners = new Map();
             export let is_group_generating = false;
@@ -40,7 +43,7 @@ const compiled = await build({
                 source: null, get busy() { return is_send_press; }, set busy(value) { is_send_press = value; },
                 get savingActive() { return isChatSaving; },
                 draft: '', enabled: true, requests: [], prompts: new Map(), diceWrites: 0, ids: 0, nativeSaves: [],
-                preflight: async () => {}, controller: null, stream: null, reply: normalReply, editing: false,
+                preflight: async () => {}, controller: null, stream: null, streaming: false, reply: normalReply, editing: false,
                 ping: async () => true, saveBarrier: async () => {}, saveFails: false,
                 generate,
                 async saveNative() {
@@ -65,7 +68,7 @@ const compiled = await build({
                 reset(source) {
                     Object.assign(host, { source, busy: false, draft: '', enabled: true, requests: [], diceWrites: 0, ids: 0, nativeSaves: [],
                         preflight: async () => {}, ping: async () => true, saveBarrier: async () => {}, saveFails: false,
-                        controller: null, stream: null, reply: normalReply, editing: false,
+                        controller: null, stream: null, streaming: false, reply: normalReply, editing: false,
                         stopVisible: false, dataGenerating: false, locks: 0 });
                     host.prompts.clear(); is_group_generating = false; isChatSaving = false; is_send_press = false; swipesHidden = false;
                 },
@@ -82,13 +85,6 @@ const compiled = await build({
             export const registerGenerateInterceptor = (_, fn) => { host.interceptor = fn; };
             export const unregisterGenerateInterceptor = () => { host.interceptor = null; };
             export const GENERATE_INTERCEPTOR_ORDER = {};
-            // Native extension-prompt API values shared by ST 1.14 and 1.18.
-            export const extension_prompt_types = { IN_CHAT: 1 };
-            export const extension_prompt_roles = { SYSTEM: 0, USER: 1, ASSISTANT: 2 };
-            export const setExtensionPrompt = (key, value, position, depth, scan, role) => {
-                if (value) host.prompts.set(key, { value, position, depth, scan, role });
-                else host.prompts.delete(key);
-            };
             export const uuidv4 = () => 'generated-' + host.ids++;
             export const getContext = () => ({ ...host.source, name2: host.source.characterName, generate,
                 streamingProcessor: host.stream,
@@ -98,6 +94,7 @@ const compiled = await build({
             export const getScriptsByType = () => [];
             export const saveScriptsByType = () => host.preflight();
             export const getRequestHeaders = () => ({});
+            export const updateMessageBlock = () => { throw new Error('Unexpected native repaint'); };
             export const saveChatConditional = async () => { host.diceWrites++; if (isChatSaving) return; await host.saveNative(); };
             // Like native saveChat/saveGroupChat, bind/serialize before the first await.
             export async function saveChat() {
@@ -144,7 +141,14 @@ const compiled = await build({
                 host.requests.push({type, signal:host.controller.signal, busy:is_send_press || is_group_generating, prompt:data.prompt});
                 try {
                     await host.reply(host.controller.signal);
-                    if (!host.stream?.isStopped) await host.saveNative();
+                    if (host.streaming) {
+                        // ST 1.14/1.18 check the shared processor after streaming, then
+                        // unconditionally release it AFTER awaited listeners and saving.
+                        if (host.stream && !host.stream.isStopped && host.stream.isFinished) {
+                            await host.stream.onFinishStreaming();
+                            host.stream = null;
+                        }
+                    } else if (!host.stream?.isStopped) await host.saveNative();
                 }
                 finally { activateSendButtons(); }
             }
@@ -162,7 +166,7 @@ const compiled = await build({
     } }],
 });
 // eslint-disable-next-line no-unsanitized/method -- Compiled repository modules and fixed native I/O fixture only.
-const { createDiceGenerationAdapter, captureDiceChat, waitForDiceHost, host } = await import(`data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`);
+const { createDiceGenerationAdapter, createDiceMessageDisplay, captureDiceChat, waitForDiceHost, host } = await import(`data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`);
 
 const call = 'Attempt.\n\n<xb_action_check>{"action":"Climb","stat":"Agility","difficulty":"hard"}</xb_action_check>';
 const cocCall = '<xb_action_check>' + JSON.stringify({ action: 'Force the door', stat: 'body', difficulty: 'regular' }) + '</xb_action_check>';
@@ -191,7 +195,15 @@ function setup(t, group = false, reveal = async () => {}, rerolls = null, result
     host.sheet = generateCoc7Sheet(() => 0.5);
     host.sheetReads = 0;
     host.busyViews = [];
-    const adapter = createDiceGenerationAdapter(() => host.enabled, () => host.frequency, () => host.busyViews.push(adapter.isBusy()), reveal, () => host.rule, () => { host.sheetReads++; return host.sheet; }, rerolls, results);
+    const registry = createPromptInjectionRegistry([DICE_CHECK_PROMPTS], entry => {
+        if (entry.content) host.prompts.set(entry.identifier, { value: entry.content, role: entry.role === 'user' ? 1 : 0,
+            depth: entry.depth, position: 1, scan: false });
+        else host.prompts.delete(entry.identifier);
+    });
+    const prompts = registry.register(DICE_CHECK_PROMPTS);
+    t.after(registry.dispose);
+    const adapter = createDiceGenerationAdapter(() => host.enabled, () => host.frequency, () => host.busyViews.push(adapter.isBusy()), reveal, () => host.rule, () => { host.sheetReads++; return host.sheet; }, rerolls, results,
+        { setRules: content => prompts.set('rules', content), setResult: content => prompts.set('result', content) });
     adapter.start();
     t.after(() => adapter.stop());
     return adapter;
@@ -203,6 +215,261 @@ async function begin(type = 'normal', options = {}) {
     host.busy = false;
 }
 async function received() { await host.emit('MESSAGE_RECEIVED', host.source.chat.length - 1, 'normal'); }
+
+// Native streaming unlocks the UI before awaited message handlers and the chat save.
+// Keep that ordering separate from non-streaming, whose send flag covers its save.
+function streamingReply(type) {
+    const stream = {
+        messageId: host.source.chat.length - 1, isStopped: false, isFinished: true,
+        onStopStreaming() { this.isFinished = true; },
+        async onFinishStreaming() {
+            host.unlock();
+            await host.emit('MESSAGE_RECEIVED', this.messageId, type);
+            await host.emit('CHARACTER_MESSAGE_RENDERED', this.messageId, type);
+            await host.saveNative();
+        },
+    };
+    host.stream = stream;
+    return stream;
+}
+
+test('Continue waits across native message finalization and saving so both replies persist', { timeout: 3000 }, async t => {
+    const adapter = setup(t);
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const messagePending = Promise.withResolvers();
+    const releaseMessage = Promise.withResolvers();
+    const savePending = Promise.withResolvers();
+    const releaseSave = Promise.withResolvers();
+    t.after(host.listen('MESSAGE_RECEIVED', async (_index, type) => {
+        if (type === 'normal') { messagePending.resolve(); await releaseMessage.promise; }
+    }));
+    let saves = 0;
+    t.mock.method(host, 'saveNative', async () => {
+        const snapshot = structuredClone(host.source.chat);
+        host.saving(true);
+        try {
+            if (++saves === 1) { savePending.resolve(); await releaseSave.promise; }
+            host.nativeSaves.push(snapshot);
+        } finally { host.saving(false); }
+    });
+    host.streaming = true;
+    host.reply = async () => {
+        const first = host.requests.length === 1;
+        if (first) host.source.chat.push(message(call));
+        else host.source.chat.at(-1).mes += '\n\nAfterward.';
+        streamingReply(first ? 'normal' : 'continue');
+    };
+    const originating = host.generate('normal', { depth: 1 });
+    let continuation;
+    try {
+        await messagePending.promise;
+        await setImmediate();
+        const card = adapter.actions(1);
+        assert.equal(card.disabled, false);
+        assert.equal(adapter.view().phase.kind, 'awaiting-choice');
+        assert.equal(host.ids, 1);
+        assert.equal(host.busy, false);
+        assert.equal(host.savingActive, false);
+        continuation = adapter.act(card.target, 'continue-check');
+        await setImmediate();
+        assert.deepEqual(adapter.view().wait.blockers, ['finalization']);
+        assert.deepEqual(host.requests.map(request => request.type), ['normal']);
+        assert.equal(host.nativeSaves.length, 0);
+
+        releaseMessage.resolve();
+        await savePending.promise;
+        t.mock.timers.tick(40); await setImmediate();
+        assert.deepEqual(adapter.view().wait.blockers, ['save']);
+        assert.equal(host.requests.length, 1);
+
+        releaseSave.resolve();
+        await originating;
+        t.mock.timers.tick(40); await continuation;
+        assert.deepEqual(host.requests.map(request => request.type), ['normal', 'continue']);
+        assert.equal(host.diceWrites, 0);
+        assert.equal(host.nativeSaves.length, 2);
+        assert.equal(host.nativeSaves.at(-1).at(-1).mes, host.source.chat.at(-1).mes);
+        assert.ok(host.nativeSaves.at(-1).at(-1).mes.length > host.nativeSaves[0].at(-1).mes.length);
+        assert.equal(host.nativeSaves[0].at(-1).extra.xiaobaiOsDice.checks.length, 1);
+        assert.equal(host.ids, 1);
+        assert.equal(adapter.view(), null);
+    } finally {
+        releaseMessage.resolve(); releaseSave.resolve(); adapter.cancel();
+        await originating; await continuation;
+    }
+});
+
+test('stopping a queued Continue does not release native finalization for its retry', { timeout: 3000 }, async t => {
+    const adapter = setup(t);
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const pending = Promise.withResolvers();
+    const release = Promise.withResolvers();
+    t.after(host.listen('MESSAGE_RECEIVED', async (_index, type) => {
+        if (type === 'normal') { pending.resolve(); await release.promise; }
+    }));
+    host.streaming = true;
+    host.reply = async () => {
+        const first = host.requests.length === 1;
+        if (first) host.source.chat.push(message(call));
+        else host.source.chat.at(-1).mes += '\n\nAfterward.';
+        streamingReply(first ? 'normal' : 'continue');
+    };
+    const originating = host.generate('normal', { depth: 1 });
+    let continuation;
+    let retry;
+    try {
+        await pending.promise; await setImmediate();
+        continuation = adapter.act(adapter.actions(1).target, 'continue-check');
+        await setImmediate();
+        host.stop(); await continuation;
+        assert.equal(adapter.view(), null);
+        retry = adapter.act(adapter.actions(1).target, 'continue-check');
+        await setImmediate();
+        assert.deepEqual(adapter.view().wait.blockers, ['finalization']);
+        assert.equal(host.requests.length, 1);
+        release.resolve(); await originating;
+        t.mock.timers.tick(40); await retry;
+        assert.equal(host.requests.length, 2);
+        assert.equal(host.ids, 1);
+        assert.equal(host.nativeSaves.length, 2);
+    } finally {
+        release.resolve(); adapter.cancel();
+        await originating; await continuation; await retry;
+    }
+});
+
+for (const blocker of ['finalization', 'save']) {
+    test(`the visible Continue control cancels its ${blocker} queue without stopping native work or losing the roll`, { timeout: 3000 }, async t => {
+        const adapter = setup(t);
+        t.mock.timers.enable({ apis: ['setTimeout'] });
+        const frames = new Map();
+        let nextFrame = 0;
+        const globals = {
+            MutationObserver: document.defaultView.MutationObserver,
+            requestAnimationFrame: fn => { frames.set(++nextFrame, fn); return nextFrame; },
+            cancelAnimationFrame: id => frames.delete(id),
+        };
+        const previous = new Map();
+        for (const [key, value] of Object.entries(globals)) {
+            previous.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
+            Object.defineProperty(globalThis, key, { configurable: true, value });
+        }
+        t.after(() => { for (const [key, descriptor] of previous) {
+            if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete globalThis[key];
+        } });
+        const display = createDiceMessageDisplay(adapter, () => host.enabled);
+        const paint = () => { display.refresh(); const work = [...frames.values()]; frames.clear(); for (const fn of work) fn(); };
+        const pending = Promise.withResolvers();
+        const release = Promise.withResolvers();
+        if (blocker === 'finalization') {
+            t.after(host.listen('MESSAGE_RECEIVED', async (_index, type) => {
+                if (type === 'normal') { pending.resolve(); await release.promise; }
+            }));
+        } else {
+            const save = host.saveNative.bind(host);
+            t.mock.method(host, 'saveNative', async () => {
+                if (host.requests.length === 1) { host.saving(true); pending.resolve(); await release.promise; }
+                await save();
+            });
+        }
+        let stops = 0;
+        t.after(host.listen('GENERATION_STOPPED', () => { stops++; }));
+        host.streaming = true;
+        host.reply = async () => {
+            const first = host.requests.length === 1;
+            if (first) host.source.chat.push(message(call));
+            else host.source.chat.at(-1).mes += '\n\nAfterward.';
+            streamingReply(first ? 'normal' : 'continue');
+        };
+        const originating = host.generate('normal', { depth: 1 });
+        try {
+            await pending.promise; await setImmediate();
+            const stream = host.stream;
+            const savedRoll = structuredClone(host.source.chat[1].extra.xiaobaiOsDice);
+            const content = document.createElement('div'); content.className = 'mes_text';
+            content.textContent = host.source.chat[1].mes;
+            document.querySelector('.mes[mesid="1"]').append(content);
+            display.start(); paint();
+            const button = content.querySelector('[data-dice-action="continue-check"]');
+            assert.ok(button); assert.equal(button.disabled, false);
+            button.click(); await setImmediate(); paint();
+            assert.deepEqual(adapter.view().wait.blockers, [blocker]);
+            assert.equal(host.stopVisible, false);
+            assert.equal(content.querySelector('[data-dice-action="cancel-continue"]'), button);
+            assert.equal(button.disabled, false);
+            button.click(); await setImmediate(); paint();
+            assert.equal(adapter.view(), null);
+            assert.equal(host.stream, stream);
+            assert.equal(host.controller.signal.aborted, false);
+            assert.equal(stops, 0);
+            assert.equal(content.querySelector('[data-dice-action="continue-check"]'), button);
+            assert.equal(button.disabled, false);
+
+            release.resolve(); await originating;
+            t.mock.timers.tick(80); await setImmediate(); paint();
+            assert.equal(host.requests.length, 1, 'cancelled Continue cannot dispatch when native saving finishes');
+            assert.deepEqual(host.source.chat[1].extra.xiaobaiOsDice, savedRoll);
+            assert.equal(host.diceWrites, 0);
+            button.click(); await setImmediate(); await settled(adapter); paint();
+            assert.equal(host.requests.length, 2);
+            assert.equal(host.nativeSaves.length, 2);
+            assert.equal(host.ids, 1);
+        } finally {
+            adapter.cancel(); release.resolve(); await originating; display.stop();
+        }
+    });
+}
+
+for (const event of ['CHAT_CHANGED', 'MESSAGE_EDITED', 'GENERATION_STARTED']) {
+    test(`${event} cancels a queued Continue before native finalization releases`, { timeout: 3000 }, async t => {
+        const adapter = setup(t);
+        t.mock.timers.enable({ apis: ['setTimeout'] });
+        await begin(); await host.intercept('normal');
+        host.source.chat.push(message(call));
+        const stream = streamingReply('normal');
+        await received(); await setImmediate();
+        const continuation = adapter.act(adapter.actions(1).target, 'continue-check');
+        await setImmediate();
+        assert.deepEqual(adapter.view().wait.blockers, ['finalization']);
+        await host.emit(event, 'normal', {}, false);
+        await continuation;
+        assert.equal(host.stream, stream, 'Cancelling a choice must not clear the native processor');
+        host.stream = null;
+        t.mock.timers.tick(80); await setImmediate();
+        assert.equal(host.requests.length, 0);
+        assert.equal(host.ids, 1);
+    });
+}
+
+for (const residual of [false, true]) {
+    test(`a loaded result has no pending finalization${residual ? ', even with an unobserved residual processor' : ''}`, { timeout: 3000 }, async t => {
+        const adapter = setup(t);
+        t.mock.timers.enable({ apis: ['setTimeout'] });
+        const saved = prepareActionCheck({ body: call, generatedFrom: 0, id: 'saved', random: () => .3 });
+        host.source.chat = [{ ...message(saved.body), extra: { xiaobaiOsDice: saved.records } }];
+        if (residual) streamingReply('normal');
+        const continuation = adapter.act(adapter.actions(0).target, 'continue-check');
+        await setImmediate();
+        assert.equal(host.requests.length, 1);
+        await continuation;
+        assert.equal(host.ids, 0);
+        assert.deepEqual(host.source.chat[0].extra.xiaobaiOsDice, saved.records);
+    });
+}
+
+test('a pre-existing successful processor is not the tail of a new non-streaming reply', { timeout: 3000 }, async t => {
+    const adapter = setup(t);
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    streamingReply('normal');
+    await begin(); await host.intercept('normal');
+    host.source.chat.push(message(call));
+    await received(); await setImmediate();
+    const continuation = adapter.act(adapter.actions(1).target, 'continue-check');
+    await setImmediate();
+    assert.equal(host.requests.length, 1);
+    await continuation;
+    assert.equal(host.ids, 1);
+});
 
 test('an old card credential cannot continue a replaced result even when its rolled values are identical', async t => {
     const adapter = setup(t);
@@ -1476,7 +1743,7 @@ for (const rule of ['d20', 'coc7']) {
                 streamsAtDispatch.push(host.stream);
                 await normalReply();
             };
-            const stream = { isStopped: false, isFinished: true };
+            const stream = { messageId: 1, isStopped: false, isFinished: true };
             host.stream = stream;
             host.saving(true);
             let operation = entry === 'automatic' ? received() : entry === 'reloaded-request' ? Promise.resolve() : choose(adapter, 1);
@@ -1489,10 +1756,13 @@ for (const rule of ['d20', 'coc7']) {
             }
             assert.deepEqual(savingAtDispatch, []);
             host.saving(false);
+            // A received native stream is released after saving. Loaded entries have
+            // no observed native call, so their residual processor is not a wait gate.
+            if (entry === 'automatic') { host.stream = null; }
             if (entry === 'reloaded-request') { operation = choose(adapter, 1); }
             await operation;
             assert.deepEqual(savingAtDispatch, [false]);
-            assert.deepEqual(streamsAtDispatch, [stream], 'Dice leaves the previous processor to the host');
+            assert.deepEqual(streamsAtDispatch, [entry === 'automatic' ? null : stream], 'Only native code releases its processor');
             await operation;
             await settled(adapter);
             assert.equal(host.requests.length, 1);

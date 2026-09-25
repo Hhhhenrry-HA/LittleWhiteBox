@@ -9,7 +9,7 @@ import type { DiceHostWait, DiceHostBlocker } from '../application/host-wait.js'
 export interface DiceHostContext {
     chat: DiceHostMessage[]; chatId: string; groupId?: string; characterId?: number;
     name2: string; characters: Record<string, { avatar: string; name: string }>;
-    streamingProcessor?: { isStopped: boolean; onStopStreaming(): void } | null;
+    streamingProcessor?: { messageId: number; isStopped: boolean; isFinished: boolean; onStopStreaming(): void } | null;
     generate(type: string, options?: Record<string, unknown>): Promise<unknown>;
 }
 export const diceHostContext = () => getContext() as unknown as DiceHostContext;
@@ -42,15 +42,16 @@ export async function ensureDiceDisplayRule(): Promise<void> {
 }
 
 export async function waitForDiceHost(target: DiceTarget, signal: AbortSignal, inGroup: boolean,
-    generationPending: () => boolean = isGenerating, report?: (wait: DiceHostWait) => void): Promise<void> {
+    readBlocker: () => DiceHostBlocker | null = () => isGenerating() ? 'generation' : null,
+    report?: (wait: DiceHostWait) => void): Promise<void> {
     const started = Date.now();
     let previous: DiceHostWait | undefined;
     while (true) {
         if (signal.aborted || !isDiceTargetCurrent(captureDiceChat(), target)) { throw new Error('聊天或回复已变化。'); }
         if (isDiceMessageBeingEdited(target.index)) { throw new Error('请先结束消息编辑。'); }
         // Observe native generation/save cleanup without clearing its flags or processor.
-        const blockers: DiceHostBlocker[] = [];
-        if (!inGroup && generationPending()) { blockers.push('generation'); }
+        const blocker = inGroup ? null : readBlocker();
+        const blockers = blocker ? [blocker] : [];
         if (!blockers.length) { return; }
         const now = Date.now();
         const wait = { blockers, elapsedSeconds: Math.floor((now - started) / 1000) };

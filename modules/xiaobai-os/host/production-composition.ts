@@ -50,6 +50,9 @@ import { createXiaobaiOsBootstrap, type XiaobaiOsBootstrap } from './bootstrap.j
 import { createKernelComposition } from './kernel-composition.js';
 import { createPromptContextAdapter } from './prompt-context/adapter.js';
 import { createMaintenanceBackgroundCapture } from './prompt-context/maintenance-background.js';
+import { createPromptInjectionCapabilityRegistration } from '../capabilities/prompt-injection/index.js';
+import { PROMPT_INJECTION_POLICY } from './prompt-injection-policy.js';
+import { createSillyTavernPromptInjectionHost } from './sillytavern-prompt-injection.js';
 import type { XiaobaiOsSettingsRepository } from './settings-repository.js';
 import {
     getSillyTavernChatIdentity,
@@ -59,7 +62,6 @@ import {
 import {
     createChatBindingEventAdapter,
     createSillyTavernMainGenerationRuntime,
-    setSillyTavernPrompt,
     subscribeMaintenanceMessages,
     subscribeMapPromptEvents,
     subscribeShopPromptEvents,
@@ -106,6 +108,7 @@ export function createProductionBootstrap(
     let composition: ReturnType<typeof createKernelComposition>;
 
     const capabilities = [
+        createPromptInjectionCapabilityRegistration(PROMPT_INJECTION_POLICY, createSillyTavernPromptInjectionHost),
         createAgentCapabilityRegistration(),
         createManagementCapabilityRegistration(),
         ...createEconomyCapabilityRegistrations(),
@@ -156,7 +159,6 @@ export function createProductionBootstrap(
             getChatIdentity: getSillyTavernChatIdentity,
             captureChatSurface: getSillyTavernChatSurface,
             mainGeneration,
-            setPrompt: value => setSillyTavernPrompt('xiaobai_os_shop_effects', value),
             subscribePrompt: subscribeShopPromptEvents,
         }),
         createProductionBankModule({
@@ -167,7 +169,6 @@ export function createProductionBootstrap(
             settings,
             getPlayerDisplayName: () => getSillyTavernChatSurface()?.playerName ?? '玩家',
             getChatIdentity: getSillyTavernChatIdentity,
-            setPrompt: value => setSillyTavernPrompt('xiaobai_os_map_context', value, 3),
             subscribePrompt: subscribeMapPromptEvents,
         }),
         createProductionTasksModule({
@@ -176,7 +177,6 @@ export function createProductionBootstrap(
             getPlayerDisplayName: () => getSillyTavernChatSurface()?.playerName ?? '玩家',
             userTransactions: () => composition.userTransactions,
             mainGeneration,
-            setPrompt: value => setSillyTavernPrompt('xiaobai_os_tasks_context', value),
             subscribePrompt: subscribeTaskPromptEvents,
             notifyCompletion: ({ title, message }) => {
                 // Same global toast as /echo severity=success, without parsing task text as commands/macros.
@@ -189,7 +189,6 @@ export function createProductionBootstrap(
         createProductionWorldModule({
             settings,
             getChatIdentity: () => getSillyTavernChatIdentity()?.key ?? '',
-            setPrompt: value => setSillyTavernPrompt('xiaobai_os_world_context', value, 4),
             subscribePrompt: subscribeWorldPromptEvents,
         }),
     ];
