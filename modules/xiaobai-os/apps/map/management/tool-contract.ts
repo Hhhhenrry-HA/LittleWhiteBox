@@ -1,6 +1,6 @@
 import type { ManagementTool } from '../../../capabilities/management/index.js';
 import { MANAGEMENT_PAGE_SIZE, MANAGEMENT_READ_CHARS } from '../../../capabilities/management/read-page.js';
-import { mapTools, MAP_MAINTENANCE_TOOL_NAMES as TOOLS } from '../tools/tool-contract.js';
+import { mapTools, MAP_MAINTENANCE_TOOL_NAMES as TOOLS, MAP_SCENE_READ_DESCRIPTION } from '../tools/tool-contract.js';
 
 const LABELS: Record<string, string> = {
     [TOOLS.ATLAS_READ]: '查看图册',
@@ -30,9 +30,10 @@ export function createMapManagementTools(): readonly ManagementTool[] {
         } else if (name === TOOLS.SCENE_READ) {
             properties.offset = { type: 'integer', minimum: 0, description: 'Character offset in the scene JSON. Default 0; use nextOffset to continue.' };
             definition.function.description = [
-                'Read one scene layout in MapSceneEdit vocabulary: {scene,title,viewBox,mood?,elements}, or null when no layout exists.',
+                MAP_SCENE_READ_DESCRIPTION,
+                'Returns {ok,status,data}; a successful read has status read.',
                 `data contains a JSON text page with text, offset, nextOffset and totalChars, at most ${MANAGEMENT_READ_CHARS} characters.`,
-                'Use it to inspect a layout and its element IDs before patching. Continue with nextOffset while it is not null.',
+                'Continue with nextOffset while it is not null.',
             ].join('\n');
         }
         return {

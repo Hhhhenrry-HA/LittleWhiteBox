@@ -257,13 +257,13 @@ test('real Map rebuild replaces old content only after a complete successful run
                     async run(_request, round) {
                         if (round === 1) {
                             return { toolCalls: [{ id: 'new-place', name: 'MapAtlasEdit', arguments: JSON.stringify({
-                                locations: [{ key: 'new', name: 'New' }, ...(['unresolved', 'corrected'].includes(ending) ? [{ key: 'broken', name: '' }] : [])],
+                                locations: [{ key: 'new', name: 'New', scale: 'region' }, ...(['unresolved', 'corrected'].includes(ending) ? [{ key: 'broken', name: '' }] : [])],
                             }) }] };
                         }
                         if (ending === 'provider-error') {throw new Error('offline');}
                         if (ending === 'cancelled') {h.runner.cancelAll(); return { text: 'cancelled' };}
                         if (ending === 'corrected' && round === 2) {
-                            return { toolCalls: [{ id: 'repair', name: 'MapAtlasEdit', arguments: JSON.stringify({ locations: [{ key: 'broken', name: 'Repaired' }] }) }] };
+                            return { toolCalls: [{ id: 'repair', name: 'MapAtlasEdit', arguments: JSON.stringify({ locations: [{ key: 'broken', name: 'Repaired', scale: 'region' }] }) }] };
                         }
                         return { text: 'done' };
                     },
@@ -311,7 +311,7 @@ test('real Map manual and rebuild jobs persist after new turns, but not after th
                 const h = createHarness({ chat, participants: [participant], agent: {
                     async run(_request, round) {
                         if (round === 1) { return { toolCalls: [{ id: 'place', name: 'MapAtlasEdit',
-                            arguments: JSON.stringify({ locations: [{ key: 'harbor', name: 'Harbor' }] }) }] }; }
+                            arguments: JSON.stringify({ locations: [{ key: 'harbor', name: 'Harbor', scale: 'region' }] }) }] }; }
                         staged.resolve(); return finish.promise;
                     },
                 } });

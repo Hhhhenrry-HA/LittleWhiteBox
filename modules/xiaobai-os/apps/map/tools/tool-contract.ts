@@ -40,6 +40,11 @@ const objectGuidance = MAP_OBJECT_GROUPS.map(group => `${group.name}: ${group.ic
 const EDIT_ITEM_REPORTS = 'applied and skipped identify edits by index, id and, when available, collection. applied may include changed; skipped includes reason and hint. warnings lists additional notices.';
 const READ_REPORT = 'Returns {ok,status,changed,applied,skipped,warnings,data}. A successful read has status unchanged and changed false; it does not edit the draft.';
 
+export const MAP_SCENE_READ_DESCRIPTION = [
+    'Read one scene layout in MapSceneEdit vocabulary: {scene,viewBox,mood?,elements}, or null when no layout exists.',
+    'Use it to assess a layout or obtain current element IDs before patching it. Location names, scales and visit status belong to the atlas.',
+].join('\n');
+
 const coordinatePair = {
     type: 'array',
     items: { type: 'number', minimum: -MAX_MAP_COORDINATE, maximum: MAX_MAP_COORDINATE },
@@ -68,9 +73,11 @@ export function mapTools(saveDescription: string): readonly MaintenanceFunctionD
             description: [
                 'Read locations, links and actor positions in the current atlas draft.',
                 READ_REPORT,
-                'data contains mode and revision. Summary adds counts for locations/links/actors and player (null when unrecorded); document adds the complete atlas; collection modes add the named collection, count, returned, truncated and nextOffset.',
+                'data contains mode and revision. Summary adds counts for locations/links/actors/needsRegion and player (null when unrecorded); document adds the complete atlas; collection modes add the named collection, count, returned, truncated and nextOffset.',
                 'Use it when the initial atlas was too large to inline, to confirm a key, or to inspect edits made during this run.',
                 'Locations include hasScene, which indicates whether a layout exists, not whether it is complete. Continue collection reads with nextOffset while it is not null, keeping the same mode and filters.',
+                'Read status includes containment: visiting a place also means its containing locations have been visited.',
+                'needsRegion marks a concrete place without a containing region. Use the locations filter needsRegion: true to read these places for an Atlas correction; worlds and regions themselves are not marked.',
             ].join('\n'),
             parameters: {
                 type: 'object',
@@ -79,6 +86,7 @@ export function mapTools(saveDescription: string): readonly MaintenanceFunctionD
                     query: { type: 'string', maxLength: MAX_ATLAS_QUERY_LENGTH, description: 'Case-insensitive text filter for the selected collection.' },
                     parent: { type: 'string', maxLength: MAX_MAP_ID_LENGTH, description: 'Optional exact parent key filter for locations.' },
                     status: { type: 'string', enum: locationStatus, description: 'Optional location status filter.' },
+                    needsRegion: { type: 'boolean', description: 'Optional location filter for missing region ownership. Omit to include both assigned and unassigned places.' },
                     from: { type: 'string', maxLength: MAX_MAP_ID_LENGTH, description: 'Optional endpoint filter for links.' },
                     to: { type: 'string', maxLength: MAX_MAP_ID_LENGTH, description: 'Optional other-endpoint filter for links.' },
                     kind: { type: 'string', enum: linkKind, description: 'Optional link kind filter.' },
@@ -98,7 +106,7 @@ export function mapTools(saveDescription: string): readonly MaintenanceFunctionD
                 'Add, update or remove atlas locations, routes and world-level actor positions.',
                 saveDescription,
                 EDIT_ITEM_REPORTS,
-                'Use it for world geography and movement between places. MapSceneEdit handles the layout within a place and links that layout to its atlas location.',
+                'Use it to establish places and their hierarchy before drawing their layouts with MapSceneEdit, or for movement between places.',
             ].join('\n'),
             parameters: {
                 type: 'object',
@@ -106,7 +114,7 @@ export function mapTools(saveDescription: string): readonly MaintenanceFunctionD
                     locations: {
                         type: 'array',
                         maxItems: MAX_MAP_LOCATIONS,
-                        description: `Upsert setting-authored or coherently created places, including unvisited destinations. Parents may appear anywhere in the same call. The atlas holds at most ${MAX_MAP_LOCATIONS} locations.`,
+                        description: `Upsert setting-authored or coherently created places, including unvisited destinations. Parents may appear anywhere in the same call. Declarations connected by existing or requested parent chains are validated and accepted together; independent groups can succeed separately. The atlas holds at most ${MAX_MAP_LOCATIONS} locations.`,
                         items: {
                             type: 'object',
                             properties: {
@@ -117,10 +125,10 @@ export function mapTools(saveDescription: string): readonly MaintenanceFunctionD
                                 parent: {
                                     type: ['string', 'null'],
                                     maxLength: MAX_MAP_ID_LENGTH,
-                                    description: 'Existing or same-call parent location key. Use null to move the location to the Atlas root.',
+                                    description: 'Existing or same-call parent key. Concrete places need a region ancestor, directly or through another place. Worlds and regions may be at the Atlas root; null clears their parent.',
                                 },
                                 brief: { type: 'string', maxLength: MAX_MAP_BRIEF_LENGTH, description: 'Short in-world description: what distinguishes this place and why someone might visit. Do not invent events that already happened.' },
-                                position: { ...coordinatePair, type: ['array', 'null'], description: 'Stable [x,y] position inside the parent region; root places share the world plane. North is smaller y. Use roughly 0..1000 with 160+ separation, following authored directions or the requested correction. Omit to preserve an existing position; null clears it.' },
+                                position: { ...coordinatePair, type: ['array', 'null'], description: 'Stable [x,y] position inside the immediate parent; root regions share the world plane. North is smaller y. Use roughly 0..1000 with 160+ separation, following authored directions or the requested correction. Omit to preserve an existing position; null clears it.' },
                                 terrain: nullableEnum(['urban', 'plain', 'forest', 'water', 'mountain', 'desert', 'snow'], 'Use null to clear. Landscape of this place, used on the world map. Match the setting.'),
                             },
                             required: ['key', 'name'], additionalProperties: false,
@@ -177,10 +185,9 @@ export function mapTools(saveDescription: string): readonly MaintenanceFunctionD
         function: {
             name: MAP_MAINTENANCE_TOOL_NAMES.SCENE_READ,
             description: [
-                'Read one scene layout in the current draft.',
+                MAP_SCENE_READ_DESCRIPTION,
                 READ_REPORT,
-                'data contains revision and scene. scene is {scene,title,viewBox,mood?,elements} in MapSceneEdit vocabulary, or null when no layout exists.',
-                'Use it to assess a layout or obtain current element IDs before patching it. Location scale and visit status belong to the atlas.',
+                'data contains revision and scene.',
             ].join('\n'),
             parameters: {
                 type: 'object',
@@ -196,7 +203,7 @@ export function mapTools(saveDescription: string): readonly MaintenanceFunctionD
         function: {
             name: MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT,
             description: [
-                'Create or patch one scene layout. It creates and links the owning atlas location itself.',
+                'Create or patch the internal layout of an existing concrete atlas place with a containing region.',
                 saveDescription,
                 EDIT_ITEM_REPORTS,
                 'Use it for the spatial arrangement of a place and visible actor positions. Elements absent from the call remain untouched.',
@@ -207,15 +214,8 @@ export function mapTools(saveDescription: string): readonly MaintenanceFunctionD
                     scene: {
                         type: 'string',
                         maxLength: MAX_MAP_ID_LENGTH,
-                        description: 'Stable scene key, or the location key that owns the scene. Reused on every later edit of the same place.',
+                        description: 'Owning atlas location key. Establish the place and its region with MapAtlasEdit before drawing its layout.',
                     },
-                    title: {
-                        type: 'string',
-                        maxLength: MAX_MAP_NAME_LENGTH,
-                        description: 'Display name of the place. Defaults to the existing name, or to the scene key for a new place.',
-                    },
-                    scale: { type: 'string', enum: ['city', 'district', 'building', 'floor', 'room', 'outdoor'], description: 'Concrete scene scale; default room. Use the world atlas for worlds and regions.' },
-                    status: { type: 'string', enum: locationStatus, description: 'Confirmed discovery state. Preserves an existing value; a new place defaults to mentioned unless the player is placed here, which makes it visited.' },
                     playerHere: { type: 'boolean', description: 'True when the player is inside this scene now. This makes the place visited. Also send a player element so the visible position updates.' },
                     viewBox: {
                         type: 'array',

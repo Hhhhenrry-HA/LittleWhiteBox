@@ -6,6 +6,8 @@
 
 可切换酒馆、溪谷、观测舱、旅舍起居室、厨卫间、工坊、庭院、无当前场景和空地图；`?loading=1` 模拟异步首读。新增四场景来自真实工具输入，合计覆盖 37 类；页顶的测试控件不属于正式 APP。
 
+`?scene=regions` 使用 `tests/fixtures/map-browse.js` 的地区浏览样例。Playwright CLI `run-code --filename output/map-production-check/check-regions.cjs` 验证世界／地区／场景切换、横幅与列表范围一致、同名地点隔离、空地区、异地空场景返回、当前位置变化、地区级与具体地点级定位、切聊与零 Host 请求；覆盖地区 key 与世界层级同名、嵌套地区不扰动外层坐标，并检查桌面/390/320px 深浅主题。结果为 `window.mapRegionReport`，截图位于 `output/playwright/map-regions-*.png`。
+
 生成 bundle 和检查日志不提交；正式运行产物仍在 `modules/xiaobai-os/dist/`。
 
 37 类验收（下列回调默认静态服务器为 `http://127.0.0.1:8765/`）：

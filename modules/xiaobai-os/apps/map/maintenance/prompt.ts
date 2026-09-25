@@ -3,7 +3,7 @@ import { sceneExamplesPrompt } from '../tools/scene-examples.js';
 
 const SCOPE = [
     '# Map domain',
-    'The map has two layers. The world atlas is how the player discovers where to go: places, their hierarchy, routes between them, and where actors are. A scene is the spatial layout of one particular place, drawn so someone could walk through it.',
+    'The player browses the world by region, each region by its places, and each place by its internal scene layout. The atlas records this geography, routes and actor positions; a scene is drawn so someone could walk through the place.',
     'You keep both consistent with the story: realize the geography the author supplies, complete the ordinary layout of the places the story uses, and record what the story establishes.',
 ].join('\n');
 
@@ -27,7 +27,7 @@ const TOOLS = [
     '- MapAtlasRead: page locations, links or actors when the injected atlas was too large to inline, or to confirm a key before extending a region.',
     '- MapSceneRead: the current layout of one place, in the same vocabulary MapSceneEdit accepts. Read it before editing an existing scene so you patch by real ids instead of inventing them.',
     '- MapAtlasEdit: establish destinations, positions, routes and world-level actor positions. Parents and endpoints may be created in the same call.',
-    '- MapSceneEdit: draw or patch the layout of the current story place. It creates and links the atlas location itself.',
+    '- MapSceneEdit: draw or patch the layout of the current story place after its atlas entry exists.',
 ].join('\n');
 
 const WHEN_TO_READ = [
@@ -53,6 +53,7 @@ const CHOOSING_THE_SCENE = [
 
 const WORLD_ATLAS = [
     '## World atlas',
+    '- A place belongs to its nearest region ancestor. When recorded places have needsRegion: true, complete their containment from the setting during this update, preserving their keys, layouts and visits. Correcting geography is map maintenance, not a question for the player.',
     '- Follow author geography first. Otherwise establish a small, varied, connected set of destinations appropriate to the world, each with a brief reason to visit. A home-and-office conversation should not yield only home and office unless the setting limits the world to those places.',
     '- Match scale, era, genre and restrictions; do not impose a generic fantasy continent or city. New geography is an opportunity to explore, not a quest or fabricated history.',
     '- Keys are stable identities: reuse them when names change and preserve positions and routes. Parent expresses containment, not traversability. Removing a location removes its descendants, routes, actor positions and scene; remove only for explicit correction, disappearance or destruction, never because someone left.',
@@ -74,7 +75,7 @@ const SPATIAL_ORGANIZATION = [
 
 const READING_A_PLACE = [
     '## Reading a place into geometry',
-    'Named regions become terrain areas. Boundaries become walls with real gaps where openings are evidenced. Roads, trails and corridors become paths. Rivers and lakes with meaningful banks become closed water areas; an open water line is only a schematic centreline.',
+    'Named areas within the place become terrain elements. Boundaries become walls with real gaps where openings are evidenced. Roads, trails and corridors become paths. Rivers and lakes with meaningful banks become closed water areas; an open water line is only a schematic centreline.',
     'Furniture and fixtures become rect or circle footprints with an icon when a familiar token fits, or their real outline with a short label when nothing fits. Doors, stairs and exits become door elements at the opening. People become actors where evidence places them.',
 ].join('\n');
 

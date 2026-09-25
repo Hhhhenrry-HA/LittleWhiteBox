@@ -133,7 +133,7 @@ for (const transport of ['native', 'tagged-json', 'google']) {
     test(`${transport}: loading, reading and editing use the real protocol and preserve history without duplicate execution`, async t => {
         const h = await administratorHarness();
         const wire = [], creations = [], requests = [], counts = [];
-        const location = { key: 'north-port', name: '北岸“码头”🙂', scale: 'city', brief: '路牌写着 "到站"\n第二行' };
+        const location = { key: 'north-port', name: '北岸“码头”🙂', scale: 'region', brief: '路牌写着 "到站"\n第二行' };
         const script = [call(TOOLS_LOAD, { apps: ['map'] }), call('MapAtlasRead', { mode: 'summary' }),
             call('MapAtlasEdit', { locations: [location] }), call(TOOLS_LOAD, { apps: ['map'] }), { text: 'done' }];
         let step = 0;

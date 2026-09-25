@@ -1,5 +1,7 @@
 import type { AcceptedTurnPlayer } from '../../../capabilities/maintenance/accepted-turn-source.js';
 import type { MapDomainEdit } from '../../../domains/map/edit.js';
+import { isMapSceneLocation, locationRegion } from '../../../domains/map/hierarchy.js';
+import { MAP_REGION_REQUIRED_HINT, MAP_SCENE_LOCATION_REQUIRED_HINT } from './hierarchy-feedback.js';
 import { MAX_MAP_LABEL_LENGTH, MAX_SCENE_ELEMENTS } from '../../../domains/map/invariants.js';
 import {
     MAP_CERTAINTIES,
@@ -16,8 +18,6 @@ import type {
     MapElementCategory,
     MapElementShape,
     MapLocation,
-    MapLocationScale,
-    MapLocationStatus,
     MapSceneMood,
 } from '../../../domains/map/types.js';
 import { mapToolResult, type MapToolItemReport, type MapToolResult } from './result.js';
@@ -35,10 +35,8 @@ import {
     positivePair,
 } from './intent-common.js';
 
-const LOCATION_SCALES: readonly MapLocationScale[] = ['city', 'district', 'building', 'floor', 'room', 'outdoor'];
-const LOCATION_STATUSES: readonly MapLocationStatus[] = ['mentioned', 'visited'];
 const SCENE_MOODS: readonly MapSceneMood[] = ['neutral', 'warm', 'cold', 'dark', 'mystic', 'danger', 'calm'];
-const ROOT_FIELDS = new Set(['scene', 'title', 'scale', 'status', 'playerHere', 'viewBox', 'mood', 'elements', 'remove']);
+const ROOT_FIELDS = new Set(['scene', 'playerHere', 'viewBox', 'mood', 'elements', 'remove']);
 const ELEMENT_FIELDS = new Set(['id', 'cat', 'kind', 'shape', 'geo', 'label', 'actorKey', 'icon', 'material', 'certainty', 'closed', 'rotation']);
 // geo.icon was accepted by the original intent compiler and remains a deliberate tolerant input.
 const GEO_FIELDS = new Set(['center', 'at', 'size', 'radius', 'points', 'curve', 'icon']);
@@ -378,12 +376,15 @@ export function compileSceneIntent(
     const skipped: MapToolItemReport[] = [];
     let changed = false;
     const existingLocation = findLocation(working, sceneName);
-    const locationKey = existingLocation?.key || sceneName;
-    const sceneKey = existingLocation?.sceneKey || existingLocation?.key || sceneName;
-    const title = intentText(value.title, existingLocation?.name || sceneName);
-    const scale = enumToken(value.scale, LOCATION_SCALES) || existingLocation?.scale || 'room';
-    const status = enumToken(value.status, LOCATION_STATUSES)
-        || (value.playerHere === true ? 'visited' : existingLocation?.status || 'mentioned');
+    if (!existingLocation || !isMapSceneLocation(existingLocation)) {
+        return { domain: current, edits: [], result: mapToolResult({ skipped: [{ index: 0, id: sceneName, reason: 'scene_location_required', hint: MAP_SCENE_LOCATION_REQUIRED_HINT }] }) };
+    }
+    if (!locationRegion(working.atlas, existingLocation.key)) {
+        return { domain: current, edits: [], result: mapToolResult({ skipped: [{ index: 0, id: sceneName, reason: 'location_region_required', hint: MAP_REGION_REQUIRED_HINT }] }) };
+    }
+    const locationKey = existingLocation.key;
+    const sceneKey = existingLocation.sceneKey || locationKey;
+    const title = existingLocation.name;
     const viewBox = Array.isArray(value.viewBox) && value.viewBox.length === 4
         ? value.viewBox.map(finiteNumber) : null;
     const validViewBox = viewBox?.every((entry): entry is number => entry !== null)
@@ -394,7 +395,7 @@ export function compileSceneIntent(
     const mood = enumToken(value.mood, SCENE_MOODS);
     if (value.mood !== undefined && value.mood !== null && !mood) {warnings.push('Ignored invalid scene mood.');}
 
-    if (!existingLocation && rawElements.length === 0) {
+    if (!existingLocation.sceneKey && rawElements.length === 0 && rawRemovals.length === 0) {
         return {
             domain: current,
             edits: [],
@@ -405,10 +406,7 @@ export function compileSceneIntent(
     }
     const setup: MapDomainEdit[] = [];
     const nextLocation: MapLocation = {
-        ...(existingLocation || { key: locationKey, name: title, scale, status }),
-        name: title,
-        scale,
-        status,
+        ...existingLocation,
         sceneKey,
     };
     setup.push({ op: 'upsert-location', location: nextLocation });

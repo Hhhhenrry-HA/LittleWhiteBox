@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createMapMaintenanceParticipant, MAP_MAINTENANCE_TOOL_NAMES as TOOLS } from '../apps/map/host/maintenance-participant.js';
 import { parseMapDomain } from '../domains/map/invariants.js';
-import { createEmptyMapDomain } from '../domains/map/state.js';
+import { mapAtlasFixture } from './fixtures/map-atlas.js';
 import { createMapKernelHarness } from './map-kernel-harness.js';
-import { sceneMapInputs } from './fixtures/scene-maps.js';
+import { sceneMapInputs, sceneMapLocations } from './fixtures/scene-maps.js';
 import { sceneElementPath } from '../apps/map/ui/scene-geometry.js';
 import { SCENE_EXAMPLES } from '../apps/map/tools/scene-examples.js';
 
@@ -12,11 +12,10 @@ const source = { chatIdentity: 'scene-map-verification', messages: [{ index: 0, 
 const sessionFor = kernel => createMapMaintenanceParticipant({ map: kernel.map, readSettings: () => ({ autoMaintenance: false }) }).createSession(source, 'manual');
 
 test('Scene readback targets the owning location even when its internal key collides with another location', async () => {
-    const domain = createEmptyMapDomain();
-    domain.atlas.locations = [
+    const domain = mapAtlasFixture([
         { key: 'owner', name: 'Owner', scale: 'room', status: 'mentioned', sceneKey: 'layout' },
         { key: 'layout', name: 'Other', scale: 'room', status: 'mentioned', sceneKey: 'other-layout' },
-    ];
+    ]);
     domain.scenes = {
         layout: { key: 'layout', name: 'Owner', status: 'active', viewBox: [0, 0, 400, 300], elements: [{ id: 'mark', category: 'marker', shape: 'icon', geometry: { x: 20, y: 30 } }] },
         'other-layout': { key: 'other-layout', name: 'Other', status: 'active', viewBox: [0, 0, 400, 300], elements: [] },
@@ -34,10 +33,10 @@ test('Scene readback targets the owning location even when its internal key coll
 });
 
 test('Scene read returns editable vocabulary for every shape without exposing or mutating storage', async () => {
-    const kernel = createMapKernelHarness();
+    const kernel = createMapKernelHarness(mapAtlasFixture([{ key: 'readback', name: 'Readback' }]));
     let session = await sessionFor(kernel);
     const input = {
-        scene: 'readback', title: 'Readback', mood: 'cold', viewBox: [0, 0, 400, 300],
+        scene: 'readback', mood: 'cold', viewBox: [0, 0, 400, 300],
         elements: [
             { id: 'rect', cat: 'furniture', shape: 'rect', geo: { center: [100.25, 80.5], size: [30.5, 40.25] }, icon: 'chair', rotation: 180, material: 'metal', certainty: 'inferred' },
             { id: 'circle', cat: 'decoration', shape: 'circle', geo: { at: [220, 90], radius: 15 }, icon: 'rock', rotation: 0 },
@@ -68,7 +67,7 @@ test('Scene read returns editable vocabulary for every shape without exposing or
 });
 
 test('inclusive provider bounds cannot store zero-sized physical footprints', async () => {
-    const kernel = createMapKernelHarness();
+    const kernel = createMapKernelHarness(mapAtlasFixture([{ key: 'invalid-size' }, { key: 'point' }]));
     const session = await sessionFor(kernel);
     const result = await session.executeTool(TOOLS.SCENE_EDIT, { scene: 'invalid-size', elements: [
         { id: 'rect', cat: 'furniture', shape: 'rect', geo: { center: [20, 20], size: [0, 30] } },
@@ -92,6 +91,7 @@ for (const example of SCENE_EXAMPLES) {
     test(`model-facing ${example.create.scene} example saves and its next-turn patch changes only the named element`, async () => {
         const kernel = createMapKernelHarness();
         let session = await sessionFor(kernel);
+        assert.equal((await session.executeTool(TOOLS.ATLAS_EDIT, example.atlas)).status, 'updated');
         const created = await session.executeTool(TOOLS.SCENE_EDIT, example.create);
         assert.equal(created.status, 'updated');
         assert.deepEqual(created.skipped, []);
@@ -118,7 +118,7 @@ for (const example of SCENE_EXAMPLES) {
 
 for (const fixture of sceneMapInputs) {
     test(`${fixture.scene}: Tool compiler → domain → persistence → readback → renderer geometry`, async () => {
-        const kernel = createMapKernelHarness();
+        const kernel = createMapKernelHarness(mapAtlasFixture([sceneMapLocations.find(place => place.key === fixture.scene)]));
         const session = await sessionFor(kernel);
         const result = await session.executeTool(TOOLS.SCENE_EDIT, fixture);
         assert.equal(result.status, 'updated');
@@ -135,7 +135,7 @@ for (const fixture of sceneMapInputs) {
 }
 
 test('rotation/material/movement/delete patches preserve unrelated facts through save and scene read', async () => {
-    const kernel = createMapKernelHarness();
+    const kernel = createMapKernelHarness(mapAtlasFixture([sceneMapLocations[0]]));
     let session = await sessionFor(kernel);
     await session.executeTool(TOOLS.SCENE_EDIT, sceneMapInputs[0]);
     await session.commit(() => true);
@@ -162,7 +162,7 @@ test('rotation/material/movement/delete patches preserve unrelated facts through
 });
 
 test('bad orientations reject only that element, can be repaired, and cannot enter through stored data', async () => {
-    const kernel = createMapKernelHarness();
+    const kernel = createMapKernelHarness(mapAtlasFixture([sceneMapLocations[0]]));
     const session = await sessionFor(kernel);
     await session.executeTool(TOOLS.SCENE_EDIT, sceneMapInputs[0]);
     for (const rotation of [-1, 360, Infinity, NaN, '90']) {
@@ -189,7 +189,7 @@ test('bad orientations reject only that element, can be repaired, and cannot ent
 });
 
 test('round footprints accept orientation; changing to a path requires explicitly clearing it', async () => {
-    const kernel = createMapKernelHarness();
+    const kernel = createMapKernelHarness(mapAtlasFixture([{ key: 'circular' }]));
     const session = await sessionFor(kernel);
     assert.equal((await session.executeTool(TOOLS.SCENE_EDIT, {
         scene: 'circular', elements: [{ id: 'seat', cat: 'furniture', shape: 'circle', geo: { at: [40, 30], radius: 18 }, icon: 'chair', material: 'glass', rotation: 90 }],
