@@ -54,6 +54,7 @@ import {
 } from './query-builder.js';
 import { getLexicalIndex, searchLexicalIndex } from './lexical-index.js';
 import { getRerankBatchDiagnostics, rerankChunks } from '../llm/reranker.js';
+import { selectContextualRerankChunks } from './rerank-context-chunks.js';
 import { createMetrics, calcSimilarityStats, finalizeMetricsTiming } from './metrics.js';
 import { recordRecallFallback } from '../../recall-diagnostics.js';
 import { formatErrorDetails } from '../../../../core/error-details.js';
@@ -803,7 +804,7 @@ async function locateAndPullEvidence(anchorHits, queryVector, rerankQuery, lexic
     const l1ScoredByFloor = await pullAndScoreL1(chatId, [...floorsToFetch], queryVector, signal);
 
     // ─────────────────────────────────────────────────────────────────
-    // 6e. 构建 rerank documents（每个 floor: USER chunks + AI chunks）
+    // 6e. 构建一份 U/A rerank document：完整 USER + AI 前三锚点及邻块
     // ─────────────────────────────────────────────────────────────────
 
     const normalFloors = fusedFloors.filter(f => !mustKeep.floorSet.has(f.id));
@@ -813,10 +814,11 @@ async function locateAndPullEvidence(anchorHits, queryVector, rerankQuery, lexic
         const aiFloor = f.id;
         const userFloor = aiFloor - 1;
 
-        const aiChunks = l1ScoredByFloor.get(aiFloor) || [];
-        const userChunks = (userFloor >= 0 && chat?.[userFloor]?.is_user)
-            ? (l1ScoredByFloor.get(userFloor) || [])
-            : [];
+        const { aiChunks, userChunks } = selectContextualRerankChunks({
+            aiChunks: l1ScoredByFloor.get(aiFloor) || [],
+            userChunks: userFloor >= 0 && chat?.[userFloor]?.is_user
+                ? (l1ScoredByFloor.get(userFloor) || []) : [],
+        });
 
         const parts = [];
         const userName = chat?.[userFloor]?.name || name1 || '用户';
