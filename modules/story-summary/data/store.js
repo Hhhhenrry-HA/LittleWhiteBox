@@ -15,8 +15,8 @@ import {
     applyExactSummaryHistoryUndo,
     buildSummaryUndo,
 } from "./summary-undo.js";
-import { isRelationFact, parseRelationTarget } from "./fact-predicates.js";
-import { projectSummaryEvent } from "./events.js";
+import { isRelationFact, parseRelationTarget, factKey } from "./fact-predicates.js";
+import { projectSummaryEvent, normalizeEventStringArray } from "./events.js";
 import { upgradeStoredEventMemoryRoles } from "./migrations/event-memory-role.js";
 import { upgradeSummaryHistory, createSummaryBatch } from './summary-history.js';
 export { getRollbackOnceTargetEndMesId } from './summary-history.js';
@@ -33,41 +33,6 @@ const loadedEventStores = new WeakSet();
 
 function isPlainObject(value) {
     return !!value && typeof value === 'object' && !Array.isArray(value);
-}
-
-function normalizeStringArray(value) {
-    if (!Array.isArray(value)) {
-        return { value: [], changed: value != null };
-    }
-
-    const next = [];
-    let changed = false;
-    for (const item of value) {
-        let text = '';
-        if (typeof item === 'string') {
-            text = item.trim();
-        } else if (isPlainObject(item)) {
-            // Old data may store names/ids as lightweight objects; only accept explicit text-like fields.
-            text = String(item.name || item.text || item.id || '').trim();
-            changed = true;
-        } else if (item != null) {
-            changed = true;
-        }
-        if (!text) {
-            if (item != null) changed = true;
-            continue;
-        }
-        next.push(text);
-        if (typeof item !== 'string' || item !== text) {
-            changed = true;
-        }
-    }
-
-    if (!changed && next.length !== value.length) {
-        changed = true;
-    }
-
-    return { value: changed ? next : value, changed };
 }
 
 function normalizeSummaryHistory(history) {
@@ -116,14 +81,14 @@ function normalizeSummaryJson(json) {
 
             let normalizedEvent = event;
 
-            const participants = normalizeStringArray(event.participants);
+            const participants = normalizeEventStringArray(event.participants);
             if (participants.changed) {
                 normalizedEvent = normalizedEvent === event ? { ...event } : normalizedEvent;
                 normalizedEvent.participants = participants.value;
                 changed = true;
             }
 
-            const causedBy = normalizeStringArray(event.causedBy);
+            const causedBy = normalizeEventStringArray(event.causedBy);
             if (causedBy.changed) {
                 normalizedEvent = normalizedEvent === event ? { ...event } : normalizedEvent;
                 normalizedEvent.causedBy = causedBy.value;
@@ -327,9 +292,9 @@ export function getSummaryStore() {
     return store;
 }
 
-export function addSummarySnapshot(store, previousEndMesId, endMesId, undo) {
+export function addSummarySnapshot(store, previousEndMesId, endMesId, undo, policy) {
     store.summaryHistory ||= [];
-    store.summaryHistory.push(createSummaryBatch(previousEndMesId, endMesId, undo));
+    store.summaryHistory.push(createSummaryBatch(previousEndMesId, endMesId, undo, policy));
 }
 
 export function isSummaryRollbackRequired(store, currentLength) {
@@ -363,13 +328,6 @@ export function extractRelationshipsFromFacts(facts) {
             };
         })
         .filter(Boolean);
-}
-
-/**
- * 生成 fact 的唯一键（s + p）
- */
-function factKey(f) {
-    return `${f.s}::${f.p}`;
 }
 
 /**

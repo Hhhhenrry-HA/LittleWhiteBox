@@ -658,6 +658,7 @@ test('actor movement uses the merged canonical element and preserves an existing
         elements: [{ id: 'keeper-cellar', cat: 'actor', actorKey: 'keeper', shape: 'icon', geo: { at: [70, 90] } }],
     });
     assert.equal(movedByScene.status, 'updated');
+    assert.deepEqual(movedByScene.warnings, []);
     atlas = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.ATLAS_READ, { mode: 'actors', actorKey: 'keeper' });
     assert.deepEqual(atlas.data.actors, [{ actorKey: 'keeper', displayName: 'Mara', locationKey: 'Cellar' }]);
     const inn = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_READ, { scene: 'Inn' });
@@ -674,6 +675,7 @@ test('actor movement uses the merged canonical element and preserves an existing
     const keeper = cellar.data.scene.elements.find(element => element.id === 'keeper-cellar');
     assert.equal(keeper.cat, 'actor');
     assert.equal(keeper.actorKey, 'keeper');
+    assert.equal(keeper.label, 'Mara');
     assert.deepEqual(keeper.geo, { at: [90, 110] });
 
     const movedByAtlas = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.ATLAS_EDIT, {
@@ -684,6 +686,25 @@ test('actor movement uses the merged canonical element and preserves an existing
     assert.deepEqual(atlas.data.actors, [{ actorKey: 'keeper', displayName: 'Mara', locationKey: 'Inn' }]);
     cellar = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_READ, { scene: 'Cellar' });
     assert.equal(cellar.data.scene.elements.some(element => element.actorKey === 'keeper'), false);
+});
+
+// actorKey is an internal id: an unnamed new actor is reported instead of silently storing the key as its name.
+test('a new non-player actor without label is reported, and the player needs none', async () => {
+    const harness = createHarness(mapAtlasFixture([{ key: 'Inn' }]));
+    const session = await harness.participant.createSession(acceptedSource(), 'manual');
+    const placed = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT, {
+        scene: 'Inn',
+        elements: [
+            { id: 'stranger', cat: 'actor', actorKey: 'stranger', shape: 'icon', geo: { at: [60, 60] } },
+            { id: 'player', cat: 'actor', kind: 'player', actorKey: 'player', shape: 'icon', geo: { at: [90, 90] } },
+        ],
+    });
+    assert.equal(placed.status, 'updated');
+    assert.deepEqual(placed.warnings, ["Actor stranger has no displayed name; set label to the character's name."]);
+    const named = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.SCENE_EDIT, { scene: 'Inn', elements: [{ id: 'stranger', label: 'Ivo' }] });
+    assert.deepEqual(named.warnings, []);
+    const atlas = await session.executeTool(MAP_MAINTENANCE_TOOL_NAMES.ATLAS_READ, { mode: 'actors', actorKey: 'stranger' });
+    assert.equal(atlas.data.actors[0].displayName, 'Ivo');
 });
 
 test('existing element category and actor identity cannot be rewritten by a patch', async () => {

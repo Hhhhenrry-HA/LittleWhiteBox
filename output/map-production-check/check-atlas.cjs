@@ -3,6 +3,16 @@ async (page) => {
     const base = 'http://127.0.0.1:8765/output/map-production-check/dist/';
     const check = (ok, detail) => { if (!ok) throw new Error(detail); };
     const settle = () => page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+    // Tiles arrive from a worker: wait until no cell shows a neighbouring level and the tile set stops changing.
+    const tilesSettled = async () => {
+        let last = '', since = Date.now();
+        for (const start = Date.now(); Date.now() - start < 20000;) {
+            const [pending, keys] = await page.evaluate(() => [document.querySelectorAll('.map-atlas-fallback').length, [...document.querySelectorAll('.map-atlas-tile')].map(n => n.dataset.tile).join()]);
+            if (pending || !keys || keys !== last) { last = keys; since = Date.now(); } else if (Date.now() - since > 400) { return keys.split(',').length; }
+            await page.waitForTimeout(100);
+        }
+        throw new Error('atlas tiles did not settle');
+    };
     const tab = i => page.locator('.map-view-switch button').nth(i);
     const box = () => page.locator('.map-viewport-svg').getAttribute('viewBox');
     const back = async () => { await page.evaluate(() => window.mapCheck.back()); await settle(); };
@@ -91,15 +101,21 @@ async (page) => {
     report.checks.push('unknown and region-level player, unchanged update viewport, distant terrain fit');
 
     await page.goto(base + '?scene=atlas-nature'); await page.setViewportSize({ width: 1280, height: 844 }); await settle();
-    const details = () => page.locator('[data-feature="forest"] .map-atlas-material').evaluateAll(async nodes => Promise.all(nodes.map(async tile => {
-        const rect = tile.viewBox.baseVal, img = new Image(); img.src = tile.querySelector('image').getAttribute('href'); await img.decode();
-        const canvas = document.createElement('canvas'); canvas.width = rect.width; canvas.height = rect.height;
-        canvas.getContext('2d').drawImage(img, rect.x, rect.y, rect.width, rect.height, 0, 0, rect.width, rect.height);
-        return [tile.getAttribute('x'), tile.getAttribute('y'), tile.getAttribute('width'), tile.getAttribute('height'), canvas.toDataURL()];
-    })));
+    // Tile keys are surface identity plus level/x/y: the same forest keeps its key, and a tile present in both maps keeps its pixels.
+    const details = async () => { await tilesSettled(); return page.locator('[data-feature="forest"] .map-atlas-tile').evaluateAll(async nodes => Object.fromEntries(await Promise.all(nodes.map(async node => {
+        const img = new Image(); img.src = node.getAttribute('href'); await img.decode();
+        const canvas = document.createElement('canvas'); canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+        return [node.dataset.tile, canvas.toDataURL()];
+    })))); };
     const worldDetails = await details();
     await tab(1).click(); await settle(); const regionalDetails = await details();
-    check(worldDetails.length > 0 && JSON.stringify(worldDetails) === JSON.stringify(regionalDetails), 'same forest changed its source material');
+    const surfaces = tiles => new Set(Object.keys(tiles).map(key => key.split('@')[0]));
+    check(Object.keys(worldDetails).length > 0 && Object.keys(regionalDetails).length > 0, 'forest has no texture tiles');
+    check(surfaces(worldDetails).size === 1 && JSON.stringify([...surfaces(worldDetails)]) === JSON.stringify([...surfaces(regionalDetails)]), 'same forest changed its source material');
+    const shared = Object.keys(worldDetails).filter(key => key in regionalDetails);
+    check(shared.every(key => worldDetails[key] === regionalDetails[key]), 'same forest tile differs between maps');
+    report.sharedForestTiles = shared.length;
     await page.screenshot({ path: 'output/playwright/atlas-nature-region.png' });
     const client = await page.context().newCDPSession(page);
     await client.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 2 });
@@ -124,5 +140,5 @@ async (page) => {
     check(errors.length === 0, errors.join('\n'));
     report.checks.push('source-stable cross-map details, native touch pan, keyboard return, zoom, unmount/remount');
     await page.evaluate(result => { window.mapAtlasReport = result; }, report);
-    return { browser: report.browser, themeCases: report.themes.length, checks: report.checks, errors };
+    return { browser: report.browser, themeCases: report.themes.length, checks: report.checks, sharedForestTiles: report.sharedForestTiles, errors };
 }

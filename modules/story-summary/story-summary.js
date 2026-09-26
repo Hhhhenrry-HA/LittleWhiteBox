@@ -213,7 +213,7 @@ async function sendMemoryMaintenanceResults(offset = 0) {
     } catch (error) {
         xbLog.error(MODULE_ID, 'memory_maintenance_results_failed', error);
         if (getContext()?.chatId === chatId) postToFrame({ type: 'MEMORY_MAINTENANCE_RESULTS', payload: {
-            items: [], next: null, canReview: false, state: { status: 'failed', code: 'load_failed' },
+            chatId, items: [], next: null, state: { status: 'failed', code: 'load_failed' },
         } });
     }
 }
@@ -2993,16 +2993,11 @@ async function handleFrameMessage(event) {
     const data = event.data;
 
     switch (data.type) {
+        case 'MEMORY_MAINTENANCE_SOURCE':
+            postToFrame({ type: 'MEMORY_MAINTENANCE_SOURCE_RESULT', payload: memoryMaintenance.source(data) });
+            break;
         case 'MEMORY_MAINTENANCE_QUERY':
             await sendMemoryMaintenanceResults(data.offset);
-            break;
-        case 'MEMORY_MAINTENANCE_REVIEW':
-            try { memoryMaintenance.review(); }
-            catch (error) {
-                postToFrame({ type: 'MEMORY_MAINTENANCE_RESULTS', payload: {
-                    items: [], next: null, canReview: false, state: { status: 'failed', code: error.code || 'agent_failed' },
-                } });
-            }
             break;
         case 'MEMORY_MAINTENANCE_CANCEL':
             memoryMaintenance.cancel();
@@ -3571,7 +3566,7 @@ async function handleFrameMessage(event) {
                     if (previousRecallConfig !== recallConfigKey(savedConfig)) {
                         cancelRecallAndClearPrompt('recall-config-changed');
                     }
-                    if (!savedConfig.memoryMaintenanceEnabled) memoryMaintenance.cancel({ automaticOnly: true });
+                    if (!savedConfig.memoryMaintenanceEnabled) memoryMaintenance.cancel();
                     const nextVectorConfig = savedConfig?.vector || {};
                     const vectorEnabledChanged = !!previousVectorConfig?.enabled !== !!nextVectorConfig?.enabled;
                     const vectorFingerprintChanged = !!previousVectorConfig?.enabled

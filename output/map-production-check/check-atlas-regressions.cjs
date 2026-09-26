@@ -2,6 +2,28 @@ async (page) => {
     const base = 'http://127.0.0.1:8765/output/map-production-check/dist/?scene=atlas-geography';
     const check = (ok, why) => { if (!ok) throw new Error(why); };
     const settle = () => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    // Tiles arrive from a worker: wait until no cell shows a neighbouring level and the tile set stops changing.
+    const tilesSettled = async () => {
+        let last = '', since = Date.now();
+        for (const start = Date.now(); Date.now() - start < 20000;) {
+            const [pending, keys] = await page.evaluate(() => [document.querySelectorAll('.map-atlas-fallback').length, [...document.querySelectorAll('.map-atlas-tile')].map(n => n.dataset.tile).join()]);
+            if (pending || !keys || keys !== last) { last = keys; since = Date.now(); } else if (Date.now() - since > 400) { return keys.split(',').length; }
+            await page.waitForTimeout(100);
+        }
+        throw new Error('atlas tiles did not settle');
+    };
+    // Screen pixels of the atlas layer alone, at source points: markers and controls are hidden, tiles stay as displayed.
+    const atlasPixels = async points => {
+        const screen = await page.locator('.map-atlas-space').evaluate((node, points) => { const m = node.getScreenCTM(); return points.map(([x, y]) => [m.a * x + m.c * y + m.e, m.b * x + m.d * y + m.f]); }, points);
+        const style = await page.addStyleTag({ content: 'body * { visibility: hidden !important; } .map-atlas-space, .map-atlas-space * { visibility: visible !important; }' });
+        const shot = await page.screenshot(); await style.evaluate(node => node.remove());
+        return page.evaluate(async ({ data, screen }) => {
+            const bitmap = await createImageBitmap(await (await fetch('data:image/png;base64,' + data)).blob());
+            const canvas = new OffscreenCanvas(bitmap.width, bitmap.height), ctx = canvas.getContext('2d'); ctx.drawImage(bitmap, 0, 0);
+            const scale = bitmap.width / innerWidth;
+            return screen.map(([x, y]) => [...ctx.getImageData(Math.round(x * scale), Math.round(y * scale), 1, 1).data]);
+        }, { data: shot.toString('base64'), screen });
+    };
     const report = { focus: [], bridges: [] }, errors = [];
     page.on('pageerror', error => errors.push(String(error)));
     await page.setViewportSize({ width: 390, height: 844 }); await page.goto(base);
@@ -47,10 +69,9 @@ async (page) => {
         window.mapCheck.push(map);
     });
     await settle(); await page.locator('.map-fit').click(); await settle();
-    report.sheet = await page.locator('.map-atlas-material image').first().evaluate(async node => {
-        const image = new Image(); image.src = node.getAttribute('href'); await image.decode();
-        return { width: image.naturalWidth, height: image.naturalHeight };
-    });
+    report.stripTiles = await tilesSettled();
+    const bare = await page.locator('[data-feature]').evaluateAll(nodes => nodes.filter(node => !node.querySelector('.map-atlas-tile')).map(node => node.dataset.feature));
+    check(bare.length === 0, 'strips without texture: ' + bare.join());
     check(await page.locator('[data-feature]').count() === 256, 'packed atlas dropped a feature');
 
     await page.setViewportSize({ width: 1280, height: 844 }); await page.goto(base);
@@ -64,14 +85,8 @@ async (page) => {
             window.mapCheck.push(map);
         }, id);
         await settle(); await page.locator('.map-fit').click(); await settle();
-        const pixels = await page.evaluate(async () => {
-            const source = document.querySelector('.map-atlas-space').cloneNode(true), svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            svg.setAttribute('viewBox', '0 0 400 300'); svg.setAttribute('width', '400'); svg.setAttribute('height', '300'); svg.append(source);
-            const image = new Image(); image.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(svg)); await image.decode();
-            const canvas = document.createElement('canvas'); canvas.width = 400; canvas.height = 300;
-            const ctx = canvas.getContext('2d'); ctx.drawImage(image, 0, 0);
-            return { bridge: [...ctx.getImageData(200, 150, 1, 1).data], water: [...ctx.getImageData(100, 150, 1, 1).data] };
-        });
+        await tilesSettled();
+        const [bridge, water] = await atlasPixels([[200, 150], [100, 150]]), pixels = { bridge, water };
         check(pixels.bridge[0] > 150 && Math.abs(pixels.bridge[2] - pixels.bridge[0]) < 30, 'ground removed the explicit stone crossing');
         check(pixels.water[2] > pixels.water[1] && pixels.water[1] > pixels.water[0], 'crossing filled the rest of the river');
         await page.screenshot({ path: `output/playwright/atlas-fixed-${id}.png` });

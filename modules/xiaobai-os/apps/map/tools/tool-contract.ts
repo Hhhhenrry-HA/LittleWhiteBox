@@ -263,7 +263,7 @@ export function mapTools(saveDescription: string): readonly MaintenanceFunctionD
                                     },
                                     additionalProperties: false,
                                 },
-                                label: { type: ['string', 'null'], maxLength: MAX_MAP_LABEL_LENGTH, description: 'Optional short visible text. Required for shape "label". Use null to clear it.' },
+                                label: { type: ['string', 'null'], maxLength: MAX_MAP_LABEL_LENGTH, description: 'Short visible text. Required for shape "label". On cat "actor" it is the character\'s displayed name: actorKey is only an internal id and is never shown, so give every new non-player actor its name here. The player\'s name is filled automatically. Use null to clear it.' },
                                 actorKey: { type: ['string', 'null'], maxLength: MAX_MAP_ID_LENGTH, description: 'Stable actor identity for a new cat "actor" element. The player is always "player". An existing actor keeps its stored actorKey.' },
                                 icon: nullableEnum(MAP_ICON_TOKENS, `Object type or marker symbol. Sized objects use rect/circle footprints; other outlines retain their original shape. On shape icon/label it is only a position marker/text. Actors and entrances retain their marker identity regardless of icon. Use null to clear.\n${objectGuidance}`),
                                 material: nullableEnum(MAP_MATERIALS, 'What the surface is made of, independent of object type: e.g. icon table + material metal. Floors, ground, decks and platforms are cat terrain with a surface material; fabric and bed-sheet describe soft objects, not a floor. Textures are automatic. Use null to clear.'),

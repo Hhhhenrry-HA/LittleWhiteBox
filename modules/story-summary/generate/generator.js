@@ -11,7 +11,7 @@ import {
     mergeNewData,
     isSummaryConsumable,
 } from "../data/store.js";
-import { commitSummaryMemory, readSummaryMemory } from '../data/memory-commit.js';
+import { commitSummaryMemory, readSummaryMemory, waitForMemoryCommit } from '../data/memory-commit.js';
 import { memorySaveError } from '../data/memory-copy.js';
 import { formatCharacterAliasTableForAI } from "../data/character-aliases.js";
 import {
@@ -19,7 +19,9 @@ import {
     isSummaryGenerationCancelledError,
     parseSummaryJson,
 } from "./llm.js";
-import { filterText } from "../vector/utils/text-filter.js";
+import { applyTextFilterRules } from '../data/text-filter-rules.js';
+import { getTextFilterRules } from '../data/config.js';
+import { memoryPolicy } from '../data/memory-policy.js';
 import { getSummarySourceEnd } from './source-boundary.js';
 import { normalizeSummaryDelayFloors } from '../data/summary-delay.js';
 import { prepareSummaryResult } from './summary-result.js';
@@ -67,7 +69,7 @@ export function formatExistingSummaryForAI(store) {
     return parts.join("\n") || "（空白，这是首次总结）";
 }
 
-export function buildIncrementalSlice(targetMesId, lastSummarizedMesId, maxPerRun = 100, delayFloors = 0) {
+export function buildIncrementalSlice(targetMesId, lastSummarizedMesId, maxPerRun = 100, delayFloors = 0, filterRules = getTextFilterRules()) {
     const { chat, name1, name2 } = getContext();
 
     const start = Math.max(0, (lastSummarizedMesId ?? -1) + 1);
@@ -82,7 +84,7 @@ export function buildIncrementalSlice(targetMesId, lastSummarizedMesId, maxPerRu
 
     const text = slice.map((m, i) => {
         const speaker = m.name || (m.is_user ? userLabel : charLabel);
-        const filteredMessage = filterText(m.mes || "");
+        const filteredMessage = applyTextFilterRules(m.mes || '', filterRules);
         return `#${start + i + 1} 【${speaker}】\n${filteredMessage}`;
     }).join('\n\n');
 
@@ -125,7 +127,8 @@ export async function runSummaryGeneration(mesId, config, callbacks = {}, runtim
     const storeJsonAtStart = JSON.stringify(store?.json || {});
     const maxPerRun = config.trigger?.maxPerRun || 100;
     const delayFloors = normalizeSummaryDelayFloors(config.trigger?.delayFloors);
-    const slice = buildIncrementalSlice(mesId, lastSummarized, maxPerRun, delayFloors);
+    const filterRules = structuredClone(getTextFilterRules());
+    const slice = buildIncrementalSlice(mesId, lastSummarized, maxPerRun, delayFloors, filterRules);
 
     if (slice.count === 0) {
         const { chat } = getContext();
@@ -160,8 +163,14 @@ export async function runSummaryGeneration(mesId, config, callbacks = {}, runtim
             sessionId: SUMMARY_SESSION_ID,
             signal,
         });
+        if (isSummaryRunInactive(signal, targetChatId)) {
+            return cancelledResult(onStatus);
+        }
+        // Wait before revalidating or merging: a maintenance save may still be
+        // publishing its receipt, or may restore the previous snapshot on failure.
+        await waitForMemoryCommit(signal);
     } catch (err) {
-        if (isSummaryGenerationCancelledError(err)) {
+        if (isSummaryGenerationCancelledError(err) || isSummaryRunInactive(signal, targetChatId)) {
             onStatus?.("已停止");
             return { success: false, cancelled: true };
         }
@@ -175,7 +184,7 @@ export async function runSummaryGeneration(mesId, config, callbacks = {}, runtim
     }
     // Revalidate the captured slice without expanding it when new messages make
     // more floors eligible. A shortened chat must still respect the delayed tail.
-    const currentSlice = buildIncrementalSlice(slice.endMesId, lastSummarized, maxPerRun, delayFloors);
+    const currentSlice = buildIncrementalSlice(slice.endMesId, lastSummarized, maxPerRun, delayFloors, filterRules);
     if (
         (store?.lastSummarizedMesId ?? -1) !== lastSummarized
         || store?.updatedAt !== storeUpdatedAt
@@ -222,11 +231,11 @@ export async function runSummaryGeneration(mesId, config, callbacks = {}, runtim
     next.storySummary.json = merged;
     delete next.storySummary.pendingImportBoundary;
     next.storySummary.updatedAt = Date.now();
-    addSummarySnapshot(next.storySummary, lastSummarized, slice.endMesId, mergeResult.undo);
+    addSummarySnapshot(next.storySummary, lastSummarized, slice.endMesId, mergeResult.undo, memoryPolicy(filterRules));
 
     try {
         await commitSummaryMemory(targetChatId, next, { previous, validate: () => {
-            const latest = buildIncrementalSlice(slice.endMesId, lastSummarized, maxPerRun, delayFloors);
+            const latest = buildIncrementalSlice(slice.endMesId, lastSummarized, maxPerRun, delayFloors, filterRules);
             if (isSummaryRunInactive(signal, targetChatId) || latest.endMesId !== slice.endMesId || latest.text !== slice.text) {
                 throw Object.assign(new Error('metadata_draft_conflict'), { code: 'metadata_draft_conflict' });
             }

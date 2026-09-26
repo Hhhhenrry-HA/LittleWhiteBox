@@ -1,148 +1,240 @@
-import { editMemory, memoryRecords, memoryItems, memoryKey, sameMemory } from './domain.js';
-import { createEvidenceReader } from './evidence.js';
-import { requireMemory } from './errors.js';
+import { editMemoryBatch, memoryRecords, memoryItems, memoryKey, replaceMemoryRecords, sameMemory } from './domain.js';
+import { createEvidenceReader, SOURCE_PAGE_CHARS } from './evidence.js';
+import { MemoryMaintenanceError, requireMemory, memoryUpdated } from './errors.js';
+import { projectMemoryRecord, memoryPolicy, recordHandle } from './records.js';
+import { maintenanceTask, memoryOwnership, selectMemoryRanges, subtractRanges } from './ranges.js';
+import { buildMemoryOpening } from './opening.js';
+import { ARC_PROGRESS_MAX } from '../generate/arc-progress.js';
+import { MEMORY_TOOLS } from './tools.js';
+import { normalizeToolArguments, validateToolArguments } from './arguments.js';
+import { MEMORY_PAGE_CHARS, MEMORY_PAGE_SIZE, OPENING_TOKENS } from './limits.js';
 
-export const MEMORY_PAGE_CHARS = 16000;
-export const MEMORY_PAGE_SIZE = 16;
-const handle = record => `${record.collection}:${record.key}`;
+export { projectMemoryRecord } from './records.js';
+export { MEMORY_PAGE_CHARS, MEMORY_PAGE_SIZE } from './limits.js';
 
-export function projectMemoryRecord(record) {
-    const value = structuredClone(record.value);
-    if (value && typeof value === 'object') {
-        delete value._addedAt;
-        delete value.quality;
-        delete value.source;
-        delete value.atomId;
-        delete value.id;
-        if (record.collection === 'anchors') value.floor += 1;
-        if (Object.hasOwn(value, '_isState')) {
-            value.isState = value._isState;
-            delete value._isState;
-        }
-    }
-    return { collection: record.collection, key: record.key, value };
-}
-
-export function createMemorySession({ chatId, chat, json, atoms, l0Index, cutoff, start = 0, mode = 'manual' }) {
+export function createMemorySession({ chatId, chat, json, atoms, l0Index, cutoff, start = 0, store,
+    filterRules = [], openingTokens = OPENING_TOKENS }) {
     const baseline = structuredClone({ json: json || {}, atoms: atoms.filter(atom => atom.floor <= cutoff) });
-    let memory = structuredClone(baseline);
-    const evidence = createEvidenceReader(chat, cutoff);
-    const all = memoryRecords(baseline).filter(record => record.collection !== 'anchors' || record.value.floor <= cutoff);
-    const targets = all.filter(record => mode === 'manual' || (record.collection === 'anchors'
-        ? record.value.floor >= start : (record.value._addedAt ?? 0) >= start || (record.value.since ?? -1) >= start));
-    // Updated old records (arcs, facts, aliases) may retain their original creation floor.
-    // Auto still inspects their current values; events/anchors are the bounded bulk of memory.
-    for (const record of all.filter(record => !['events', 'anchors'].includes(record.collection))) {
-        if (!targets.some(target => handle(target) === handle(record))) targets.push(record);
-    }
-    const reads = new Set();
-    const partialReads = new Map();
-    const reviews = new Map();
-    const operations = [];
-    const missingAnchors = evidence.source.filter(record => record.floor - 1 >= start && record.role === 'assistant'
+    let memory = structuredClone(baseline), history = structuredClone(store?.summaryHistory || []);
+    const policy = memoryPolicy(filterRules), evidence = createEvidenceReader(chat, cutoff, filterRules);
+    const generations = entries => entries.map(({ maintenance: _receipts, ...batch }) => batch);
+    const originalBatches = structuredClone(generations(history));
+    const allOperations = [];
+    let opening = null, pending = null;
+    const records = (value = memory, batches = history) => {
+        const owner = memoryOwnership(batches, cutoff);
+        return memoryRecords(value).map(record => projectMemoryRecord(record, batches, owner(record)))
+            .sort((a, b) => recordHandle(a) < recordHandle(b) ? -1 : recordHandle(a) > recordHandle(b) ? 1 : 0);
+    };
+    const task = () => maintenanceTask(history, cutoff);
+    const missingAnchors = () => evidence.source.filter(record => record.floor - 1 >= start && record.role === 'assistant'
         && !['ok', 'empty'].includes(l0Index?.byFloor?.[String(record.floor - 1)]?.status)
-        && !(baseline.atoms.some(atom => atom.floor === record.floor - 1) && !l0Index?.byFloor?.[String(record.floor - 1)]))
+        && !baseline.atoms.some(atom => atom.floor === record.floor - 1))
         .map(record => ({ floor: record.floor, status: l0Index?.byFloor?.[String(record.floor - 1)]?.status || 'missing' }));
-    let finished = false;
 
-    function readMemory({ collection, key, offset = 0, limit = MEMORY_PAGE_SIZE, textOffset = 0, query = '', targetsOnly = false } = {}) {
-        requireMemory(Number.isInteger(offset) && offset >= 0 && Number.isInteger(limit) && limit >= 1 && limit <= MEMORY_PAGE_SIZE
-            && Number.isInteger(textOffset) && textOffset >= 0 && typeof query === 'string', 'invalid_operation');
-        const records = memoryRecords(memory).filter(record => (!collection || record.collection === collection)
-            && (!key || record.key === key) && (record.collection !== 'anchors' || record.value.floor <= cutoff)
-            && (!query || JSON.stringify(record.value).toLocaleLowerCase().includes(query.toLocaleLowerCase()))
-            && (!targetsOnly || targets.some(target => handle(target) === handle(record))));
-        let remaining = MEMORY_PAGE_CHARS;
-        const items = [];
-        for (const record of records.slice(offset, offset + limit)) {
-            const projection = projectMemoryRecord(record);
-            const serialized = JSON.stringify(projection.value);
-            const begin = key ? textOffset : 0;
-            if (items.length && serialized.length > remaining) break;
-            const end = Math.min(serialized.length, begin + remaining);
-            requireMemory(begin <= serialized.length, 'invalid_operation');
-            const id = handle(record);
-            const previousEnd = partialReads.get(id) || 0;
-            if (begin <= previousEnd) partialReads.set(id, Math.max(previousEnd, end));
-            if (partialReads.get(id) >= serialized.length) reads.add(id);
-            items.push(end < serialized.length || begin > 0
-                ? { collection: record.collection, key: record.key, excerpt: serialized.slice(begin, end), nextTextOffset: end < serialized.length ? end : null }
-                : projection);
-            remaining -= end - begin;
-            if (remaining <= 0) break;
+    function page(items, { cursor, limit = MEMORY_PAGE_SIZE, textOffset = 0 } = {}) {
+        const offset = cursor ? items.findIndex(item => textOffset ? recordHandle(item) >= cursor : recordHandle(item) > cursor) : 0;
+        if (cursor && textOffset) requireMemory(offset >= 0 && recordHandle(items[offset]) === cursor, 'record_missing', '', 'cursor');
+        if (offset < 0) return { items: [], total: items.length, next: null };
+        const result = [];
+        let budget = MEMORY_PAGE_CHARS;
+        for (let i = offset; i < Math.min(items.length, offset + limit); i++) {
+            const item = items[i], text = JSON.stringify(item), begin = i === offset ? textOffset : 0;
+            requireMemory(begin <= text.length, 'invalid_arguments', '', 'textOffset');
+            if (result.length && text.length > budget) break;
+            if (begin || text.length > budget) {
+                const end = Math.min(text.length, begin + Math.max(1, budget - 300));
+                result.push({ ...(item.collection ? { collection: item.collection, key: item.key } : {}),
+                    excerpt: text.slice(begin, end), nextTextOffset: end < text.length ? end : null });
+                return { items: result, total: items.length,
+                    next: end < text.length ? { cursor: recordHandle(item), textOffset: end }
+                        : i + 1 < items.length ? { cursor: recordHandle(item) } : null };
+            }
+            result.push(item); budget -= text.length;
         }
-        return { items, total: records.length, next: offset + items.length < records.length ? offset + items.length : null };
+        return { items: result, total: items.length, next: offset + result.length < items.length ? { cursor: recordHandle(result.at(-1)) } : null };
     }
 
-    function coverage() {
-        return {
-            reviewed: [...reviews.values()].filter(review => review.status !== 'unresolved'),
-            unresolved: [...reviews.values()].filter(review => review.status === 'unresolved'),
-            unreviewed: targets.filter(record => !reviews.has(handle(record))).map(({ collection, key }) => ({ collection, key })),
-            missingAnchors,
-        };
+    function ownsHistory(current) {
+        const batches = generations(current.store?.summaryHistory || []);
+        return current.cutoff >= cutoff && (originalBatches.length
+            ? sameMemory(originalBatches, batches.slice(0, originalBatches.length)) : current.cutoff === cutoff);
+    }
+    function assertBoundary(current, allSource = false) {
+        requireMemory(current.chatId === chatId && ownsHistory(current), 'conflict');
+        evidence.assertCurrent(current.chat, allSource);
     }
 
-    function runTool(name, args = {}) {
-        requireMemory(!finished, 'invalid_operation');
-        requireMemory(args && typeof args === 'object' && !Array.isArray(args), 'invalid_operation');
-        if (name === 'ReadMemory') return readMemory(args);
-        if (name === 'ReadSource') return evidence.read(args);
-        if (name === 'SearchSource') return evidence.search(args);
-        if (name === 'EditMemory') {
-            const { kind, collection, key, patch, removeIds = [], reason, references } = args;
-            requireMemory(Array.isArray(removeIds) && removeIds.every(id => typeof id === 'string'), 'invalid_operation');
-            requireMemory(typeof reason === 'string' && reason.trim(), 'invalid_operation');
-            for (const id of [key, ...removeIds]) requireMemory(reads.has(handle({ collection, key: id })), 'read_first');
-            const cited = evidence.evidence(references);
-            if (collection === 'anchors') {
-                const atom = memoryItems(memory, collection).find(item => memoryKey(collection, item) === key);
-                requireMemory(cited.some(item => item.floor === atom?.floor + 1), 'evidence_required');
+    const find = (value, { collection, key }) => memoryItems(value, collection).find(item => memoryKey(collection, item) === key) ?? null;
+    const editTargets = commands => commands.flatMap(command => [command,
+        ...(command.removeIds || []).map(key => ({ collection: 'events', key }))]);
+    function assertRunOwnership(value, keys, batches) {
+        const owner = memoryOwnership(batches, cutoff);
+        const later = keys.filter(key => {
+            const record = find(value, key);
+            return record && owner({ ...key, value: record }).range.to > cutoff + 1;
+        });
+        if (later.length) throw memoryUpdated(later);
+    }
+    function assertKnown(currentMemory, keys) {
+        const changed = keys.filter(key => !sameMemory(find(currentMemory, key), find(baseline, key)));
+        if (changed.length) throw memoryUpdated(changed, { completion: !!pending?.completion });
+    }
+
+    function readMemory({ collection, key, query = '', ranges, ...paging } = {}, current) {
+        ranges?.forEach((range, index) => {
+            requireMemory(range.to >= range.from, 'invalid_arguments', '', `ranges[${index}].to`);
+            requireMemory(range.from <= cutoff + 1, 'source_boundary', '', `ranges[${index}].from`);
+            requireMemory(range.to <= cutoff + 1, 'source_boundary', '', `ranges[${index}].to`);
+        });
+        if (current) assertBoundary(current);
+        const value = current ? { json: current.json || {}, atoms: current.atoms.filter(atom => atom.floor <= cutoff) } : memory;
+        const batches = current?.store?.summaryHistory || history;
+        const items = records(value, batches);
+        if (current && key && collection && !items.some(item => item.collection === collection && item.key === key)) {
+            replaceMemoryRecords(baseline, [{ collection, key, value: null }]);
+            memory = structuredClone(baseline);
+        }
+        if (key) requireMemory(collection && items.some(item => item.collection === collection && item.key === key), 'record_missing', '', 'key');
+        const selected = selectMemoryRanges(items, ranges).filter(item => (!collection || item.collection === collection) && (!key || item.key === key)
+            && (!query || JSON.stringify(item.value).toLocaleLowerCase().includes(query.toLocaleLowerCase())));
+        if (current && paging.textOffset) assertKnown(value, selected.filter(item => recordHandle(item) === paging.cursor));
+        const result = page(selected, paging);
+        if (current) {
+            replaceMemoryRecords(baseline, result.items.map(item => ({ collection: item.collection, key: item.key, value: find(value, item) })));
+            memory = structuredClone(baseline);
+            history = structuredClone(batches);
+        }
+        if (result.next) result.next = { ...(collection ? { collection } : {}), ...(key ? { key } : {}), ...(query ? { query } : {}),
+            ...(ranges !== undefined ? { ranges: structuredClone(ranges) } : {}),
+            ...(paging.limit !== undefined ? { limit: paging.limit } : {}), ...result.next };
+        return result;
+    }
+
+    function initial(tokenBudget = openingTokens) {
+        opening = buildMemoryOpening({ task: task(), records: records(), maxTokens: Math.min(tokenBudget, openingTokens, OPENING_TOKENS) });
+        return structuredClone(opening);
+    }
+
+    function complete({ from, to }) {
+        requireMemory(to >= from && to <= cutoff + 1, 'source_boundary', '', 'to');
+        if (!subtractRanges([{ from, to }], task().completed).length) return { status: 'unchanged', task: task() };
+        pending = { operations: [], note: '', completion: { from, to } };
+        return { status: 'staged', changed: 0 };
+    }
+
+    function submit(args) {
+        const staged = [];
+        try {
+            validateToolArguments(args, MEMORY_TOOLS.find(tool => tool.function.name === 'EditMemory').function.parameters);
+            const commands = args.edits.map((operation, index) => {
+                try {
+                    const { collection, kind, key, removeIds } = operation;
+                    if (kind === 'delete') {
+                        requireMemory(operation.patch === undefined, 'invalid_arguments', '', 'patch');
+                        requireMemory(removeIds === undefined, 'invalid_arguments', '', 'removeIds');
+                    } else requireMemory(operation.patch, 'invalid_arguments', '', 'patch');
+                    if (kind !== 'merge') requireMemory(removeIds === undefined, 'invalid_arguments', '', 'removeIds');
+                    const patch = structuredClone(operation.patch || {});
+                    if (collection === 'facts' && Object.hasOwn(patch, 'isState')) { patch._isState = patch.isState; delete patch.isState; }
+                    if (collection === 'arcs' && Object.hasOwn(patch, 'progress')) patch.progress /= ARC_PROGRESS_MAX;
+                    return { kind, collection, key, removeIds, patch };
+                } catch (error) {
+                    if (error instanceof MemoryMaintenanceError) {
+                        error.entry = 'edits[' + index + ']';
+                        error.field ||= error.code === 'source_boundary' || error.code === 'source_marker_missing' ? 'patch.summary'
+                            : error.code === 'invalid_reference' ? 'patch.causedBy' : error.code === 'record_missing' ? 'key' : 'patch';
+                    }
+                    throw error;
+                }
+            });
+            assertRunOwnership(memory, editTargets(commands), history);
+            const result = editMemoryBatch(memory, commands, cutoff);
+            assertRunOwnership(memory, result.results.flatMap(item => item.changes), history);
+            for (const [index, edit] of result.results.entries()) {
+                const { kind, collection } = commands[index];
+                if (edit.changes.length) staged.push({ kind, collection, key: edit.key, changes: edit.changes });
             }
-            const internalPatch = structuredClone(patch);
-            if (collection === 'facts' && Object.hasOwn(internalPatch || {}, 'isState')) {
-                internalPatch._isState = internalPatch.isState;
-                delete internalPatch.isState;
-            }
-            const result = editMemory(memory, { kind, collection, key, patch: internalPatch, removeIds }, cutoff);
-            if (!result.changes.length) return { status: 'unchanged' };
             memory = result.memory;
-            operations.push({ kind, collection, key, reason, evidence: cited, changes: result.changes });
-            for (const id of [key, ...removeIds]) reviews.set(handle({ collection, key: id }), { collection, key: id, status: 'corrected' });
-            return { status: 'staged', changed: result.changes.map(({ collection: group, key: id }) => ({ collection: group, key: id })) };
+            if (staged.length) pending = { commands, operations: staged, note: args.note || '' };
+        } catch (error) {
+            if (!(error instanceof MemoryMaintenanceError)) throw error;
+            if (error.code === 'memory_updated') return { status: 'error', code: error.code, message: error.message, records: error.records };
+            return { status: 'needs_fix', rejected: [{ entry: error.entry || error.field?.match(/^edits\[\d+\]/u)?.[0] || 'arguments',
+                field: error.field || 'arguments', code: error.code, message: error.message,
+                ...(error.expected ? { expected: error.expected } : {}) }] };
         }
-        if (name === 'ReviewMemory') {
-            const { collection, key, status, reason, references } = args;
-            requireMemory(reads.has(handle({ collection, key })), 'read_first');
-            requireMemory(['checked', 'unresolved'].includes(status) && typeof reason === 'string' && reason.trim(), 'invalid_operation');
-            const cited = status === 'checked' ? evidence.evidence(references) : (references?.length ? evidence.evidence(references) : []);
-            reviews.set(handle({ collection, key }), { collection, key, status, reason, evidence: cited });
-            return { status: 'recorded' };
-        }
-        if (name === 'FinishReview') {
-            requireMemory(typeof args.summary === 'string' && args.summary.trim(), 'incomplete_finish');
-            finished = true;
-            return { status: 'ready', coverage: coverage(), summary: args.summary };
-        }
-        requireMemory(false, 'invalid_operation');
+        return { status: staged.length ? 'staged' : 'unchanged', changed: staged.length };
     }
 
-    return {
-        chatId, cutoff, start, mode, baseline, evidence,
+
+    function runTool(name, args = {}, current) {
+        const tool = MEMORY_TOOLS.find(item => item.function.name === name);
+        if (!tool) throw new MemoryMaintenanceError('unknown_tool', name, 'name');
+        requireMemory(opening && !pending, 'pending_edit');
+        args = normalizeToolArguments(args, tool.function.parameters);
+        if (name === 'EditMemory') return submit(args);
+        validateToolArguments(args, tool.function.parameters);
+        if (name === 'CompleteMaintenance') return complete(args);
+        if (name === 'ReadMemory') return readMemory(args, current);
+        if (name === 'SearchSource') return evidence.search(args);
+        if (name === 'ReadSource') {
+            const { floor, to = floor, offset = 0, view = 'story' } = args;
+            requireMemory(to >= floor && to <= cutoff + 1, 'source_boundary', '', 'to');
+            const items = [];
+            let budget = SOURCE_PAGE_CHARS;
+            for (let current = floor; current <= to; current++) {
+                const item = evidence.read({ floor: current, offset: current === floor ? offset : 0, view, limit: budget });
+                items.push(item); budget -= item.text.length;
+                if (!item.complete || budget <= 0) return { items, next: item.next && item.next.floor <= to ? { ...item.next, to } : null };
+            }
+            return { items, next: null };
+        }
+    }
+
+    return { chatId, get cutoff() { return cutoff; }, get start() { return start; },
+        get evidence() { return evidence; }, get policy() { return policy; },
+        get baseline() { return structuredClone(baseline); },
         get memory() { return structuredClone(memory); },
-        get operations() { return structuredClone(operations); },
-        get finished() { return finished; },
-        coverage, runTool,
-        initial() {
-            return { chatId, cutoff: cutoff + 1, start: start + 1, mode,
-                targetCount: targets.length, targets: targets.slice(0, MEMORY_PAGE_SIZE).map(({ collection, key }) => ({ collection, key })),
-                missingAnchorCount: missingAnchors.length, missingAnchors: missingAnchors.slice(0, MEMORY_PAGE_SIZE), memory: readMemory({ targetsOnly: true }) };
+        get operations() { return structuredClone(allOperations); },
+        get pending() { return structuredClone(pending); },
+        coverage: () => ({ supplied: evidence.ranges(), missingAnchors: missingAnchors() }),
+        runTool, initial, task, ownsHistory,
+        inputProvided() { evidence.inputProvided(); },
+        discard() { memory = structuredClone(baseline); pending = null; },
+        acknowledge(current) {
+            requireMemory(pending, 'pending_edit');
+            allOperations.push(...pending.operations);
+            replaceMemoryRecords(baseline, pending.operations.flatMap(operation => operation.changes)
+                .map(change => ({ ...change, value: change.after })));
+            memory = structuredClone(baseline);
+            history = structuredClone(current.store.summaryHistory);
+            l0Index = current.l0Index;
+            pending = null;
         },
-        assertCurrent({ chatId: currentId, chat: currentChat, json: currentJson, atoms: currentAtoms, cutoff: currentCutoff }) {
-            requireMemory(currentId === chatId && currentCutoff === cutoff && sameMemory(currentJson || {}, baseline.json), 'conflict');
-            // New L0 extraction may append records; existing anchors must still match, and are never overwritten wholesale.
-            for (const atom of baseline.atoms) requireMemory(sameMemory(atom, currentAtoms.find(item => item.atomId === atom.atomId)), 'conflict');
-            evidence.assertCurrent(currentChat);
+        conclude(outcome) {
+            memory = structuredClone(baseline); // An unconfirmed draft never enters the final receipt.
+            pending = { operations: [], note: outcome.summary || '', outcome: { status: outcome.status, ...(outcome.code ? { code: outcome.code } : {}) } };
+        },
+        assertCurrent(current) {
+            assertBoundary(current, !!pending?.completion);
+            const currentMemory = { json: current.json || {}, atoms: current.atoms };
+            if (pending?.completion) {
+                assertKnown(currentMemory, selectMemoryRanges(records(currentMemory, current.store.summaryHistory), [pending.completion]));
+            } else if (pending?.commands) {
+                const targets = editTargets(pending.commands);
+                assertRunOwnership(currentMemory, targets, current.store?.summaryHistory || history);
+                assertKnown(currentMemory, targets);
+                const result = editMemoryBatch(currentMemory, pending.commands, cutoff);
+                assertRunOwnership(currentMemory, result.results.flatMap(item => item.changes), current.store?.summaryHistory || history);
+                assertKnown(currentMemory, result.results.flatMap(item => item.changes));
+                // Reapplying to the latest state preserves unrelated edits and validates all references.
+                pending.operations = result.results.flatMap((item, index) => item.changes.length ? [{
+                    kind: pending.commands[index].kind, collection: pending.commands[index].collection, key: item.key, changes: item.changes,
+                }] : []);
+                return result.memory;
+            }
+            return structuredClone(currentMemory);
         },
     };
 }

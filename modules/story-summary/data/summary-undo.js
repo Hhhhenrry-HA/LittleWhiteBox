@@ -136,6 +136,20 @@ const CHANGE_FIELDS = [
     ['factChanges', factKey],
 ];
 
+/** Read-only projection of the generation delta; maintenance must not infer changes from creation dates. */
+export function summaryBatchChanges(undo) {
+    if (!undo) return [];
+    const collections = ['keywords', 'events', 'characters', 'arcs', 'facts'];
+    return SNAPSHOT_PAIRS.flatMap(([before, after], index) => {
+        const [field] = CHANGE_FIELDS[index - 1] || [];
+        const changes = field && undo[field];
+        return changes ? changes.map(change => ({ collection: collections[index], key: change.key,
+            before: change.previous, after: change.generated }))
+            : Object.hasOwn(undo, before) ? [{ collection: collections[index],
+                before: undo[before], after: undo[after] }] : [];
+    });
+}
+
 function normalizeChanges(value, getKey) {
     if (!Array.isArray(value)) return null;
     const keys = new Set();

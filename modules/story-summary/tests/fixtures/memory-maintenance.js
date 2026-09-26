@@ -49,7 +49,7 @@ export function maintenanceFixture() {
         atom(7, '夏实从客房走到船上的餐厅，点了一杯茶。', [{ s: '夏实', t: '茶', r: '点了一杯' }]),
     ];
     const l0Index = { version: 1, byFloor: Object.fromEntries(atoms.map(item => [item.floor, { floor: item.floor, status: 'ok', atoms: 1 }])) };
-    return { chatId: 'maintenance-fixture', chat, json, atoms, l0Index, cutoff: 23, start: 0, mode: 'manual' };
+    return { chatId: 'maintenance-fixture', chat, json, atoms, l0Index, cutoff: 23, start: 0 };
 }
 
 export const joinedEventPatch = {

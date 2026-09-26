@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, provide, ref, watch } from 'vue';
 import { useAppBack } from '../../../shell/app-src/navigation/app-navigation.js';
 import type { XiaobaiOsAppProps } from '../../../shell/app-contract.js';
 import MapAtlas from './MapAtlas.vue';
@@ -18,12 +18,16 @@ import { MAP_BROWSE_COPY, MAP_NAV_COPY, MAP_SPACE_COPY, MAP_VIEW_LABELS, mapBrow
 import { useMapState } from './use-map-state.js';
 import './map.css';
 import { useAtlasInsets } from './atlas/use-insets.js';
+import { atlasTileSession, ATLAS_TILE_SESSION } from './atlas/tile-session.js';
+import { atlasSurfaceKey } from './atlas/surface.js';
 
 const props = defineProps<XiaobaiOsAppProps>();
 const mapElement = ref<HTMLElement | null>(null), topElement = ref<HTMLElement | null>(null), bottomElement = ref<HTMLElement | null>(null);
 const atlasElement = ref<InstanceType<typeof MapAtlas> | null>(null);
 const { insets: atlasInsets, measure: measureAtlasInsets } = useAtlasInsets(mapElement, topElement, bottomElement);
 const { state, activeRequest, busy, disabledReason, requiresConfirmation, status, notice, isError, dismissNotice, refresh, confirmSave, adopt, setAuto, update, rebuild } = useMapState(props);
+const tileSession = atlasTileSession(props.bridge, state.value.chatIdentity);
+provide(ATLAS_TILE_SESSION, tileSession);
 const selectedKey = ref('');
 type MapView = { kind: 'world' } | { kind: 'region' | 'scene'; key: string };
 // An empty key follows the player's region/scene; explicit keys browse without moving anyone.
@@ -41,6 +45,7 @@ const settingsOpen = ref(false);
 const searchFilter = ref<MapBrowseFilter | null>(null);
 const helpOpen = ref(false);
 const atlas = computed(() => state.value.map?.atlas);
+watch(atlas, value => tileSession.cache.retainSurfaceKeys(new Set(value?.features.map(atlasSurfaceKey))), { immediate: true });
 const playerKey = computed(() => atlas.value?.actors.find(actor => actor.actorKey === 'player')?.locationKey || '');
 const player = computed(() => atlas.value?.locations.find(place => place.key === playerKey.value));
 const sceneLocation = computed(() => atlas.value?.locations.find(place => place.key === (sceneKey.value || playerKey.value)));

@@ -14,7 +14,7 @@ Atlas 升级检查：
 
 - 构建后运行 `node output/map-production-check/serve.mjs`，只监听 `127.0.0.1:8765`。打开 `/output/map-production-check/dist/?scene=atlas-nature`；七类 Atlas 样例与纯地形零地点样例均来自正式工具输入。
 - `run-code --filename output/map-production-check/check-atlas.cjs`：七类 × 三种宽度 × 深浅主题，范围与零 Host 请求、纯地形、未知定位、远处地形全图、源符号稳定、触摸／键盘及卸载。
-- `run-code --filename output/map-production-check/check-atlas-composition.cjs`：生产 SVG 栅格化后的水陆与嵌套承载遮罩，以及 256 要素负载。不把桌面更新耗时当成实体手机帧率。
+- `run-code --filename output/map-production-check/check-atlas-composition.cjs`：从生产截图取样水陆与嵌套承载遮罩下的纹理像素，以及 256 要素负载下所有可见要素都等到纹理瓦片。不把桌面更新耗时当成实体手机帧率。
 - 上述样例、截图和自动回环均不是实际模型生成结果。真实模型及用户存档补测状态见 Atlas 施工文档。
 
 视觉修正验收：
@@ -22,7 +22,11 @@ Atlas 升级检查：
 - `?scene=atlas-geography` 是 `atlas-geography.mjs` 中的海岸／山脉／河流／城市组合输入，经过正式工具编译。它用于检查内容尺度，不是模型生成或用户存档；原七类简单样例仍保留并验收。
 - `check-atlas-art.cjs` 检查连续满幅画布、初始视野与全图区别、三种宽度／深浅主题的全图与定位避让，以及只读浏览。截图为 `output/playwright/atlas-geography-*.png`。
 - `inspect-atlas-art.cjs` 生成七类材质的桌面／手机截图，供人工检查，不把截图生成等同于视觉通过。
-- `check-atlas-regressions.cjs` 复验细长地图全图后的缩放方向、长详情的真实定位避让、256 个横竖长条图集解码，以及不同 ID 的同材质跨河桥面像素。地形联动原子性、接边／重叠和最低分辨率材质保留由 Map 单测覆盖。
+- `check-atlas-regressions.cjs` 复验细长地图全图后的缩放方向、长详情的真实定位避让、256 个横竖长条各自等到纹理瓦片，以及不同 ID 的同材质跨河桥面截图像素。地形联动原子性、接边／重叠和最低分辨率材质保留由 Map 单测覆盖。
+- `check-atlas-tiles.cjs`：1280px 下的大面积草地／森林／河流／山脊。验证瓦片由 Worker 生成；分辨率跟随视野，重叠负载下允许为硬预算让出一级细节（本样例不超过 2^1.25 设备像素／纹素，已到最细级除外）；同一要素不混级、屏上瓦片解码不超过 48MiB；瓦片接缝列差不高于纹理自身；平移后仍在屏上的瓦片不重绘；4 倍 CPU 降速下持续加载的长任务，并用刻意的 120ms 阻塞对照确认观测器有效。这是桌面模拟，不是手机帧率。
+- `check-atlas-loading.cjs`：使用未替换内容的 `atlas-geography`，在 1280px／DPR1、390px／DPR3 下暂停 Worker，检查冷开山林底形、原镜头、放大期间沿用旧图、同聊天重开第一帧复用、帧重置释放资源。统计所有活跃 PNG URL（含解码中图片）的编码＋解码预算上界，并保存连续 trace 到 `output/playwright/atlas-loading-continuous.zip`、各阶段截图到 `atlas-loading-*.png`。使用新 CLI session，避免重复安装诊断包装；trace 的开销不计作实体手机加载速度。
+- `check-atlas-alpha.cjs`：把实际生产组件的星云瓦片合成结果与无接缝整图参考比较，覆盖整数和亚像素边界；72 个透明度样本误差不超过 1/255。防止透明瓦片重叠变深，以及独立裁剪的抗锯齿细缝。
+- `check-atlas-carriers.cjs`：`?scene=atlas-carrier` 的地区没有边界裁剪，房屋承载在世界坐标的平原上。进入地区后，平原内侧的房屋必须有像素，外侧必须与背景一致；平原只作蒙版，不绘制。桌面与 390px 两种宽度。
 - `check-atlas-controls.cjs` 检查长详情下五个地图按钮的真实命中、尺寸、鼠标／键盘操作和定位避让；覆盖 320／390px 窄屏、600／844px 矮横屏、桌面中嵌入的小窗口及深浅主题，另验 125% 缩放、原生触摸点击和错误提示。触摸检查从全图开始，避免在放大上限误判；等待实际视口变化，不把触摸事件发出当作操作完成。
 
 37 类验收（下列回调默认静态服务器为 `http://127.0.0.1:8765/`）：

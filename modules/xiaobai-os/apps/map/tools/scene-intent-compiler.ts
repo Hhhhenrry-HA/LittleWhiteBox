@@ -464,13 +464,20 @@ export function compileSceneIntent(
             const compiled = compileElement(raw, index, player, warnings, existingElement);
             const elementEdits: MapDomainEdit[] = [];
             if (compiled.element.category === 'actor' && compiled.element.actorKey) {
-                const existingActor = working.atlas.actors.find(actor => actor.actorKey === compiled.element.actorKey);
+                const { actorKey } = compiled.element;
+                const existingActor = working.atlas.actors.find(actor => actor.actorKey === actorKey);
+                // actorKey is never shown: a placed actor displays its label, so a known name fills it and a missing one is reported.
+                const knownName = existingActor?.displayName !== actorKey ? existingActor?.displayName : undefined;
+                if (actorKey !== 'player' && !compiled.element.label) {
+                    if (knownName) {compiled.element.label = knownName;}
+                    else {warnings.push(`Actor ${compiled.element.id} has no displayed name; set label to the character's name.`);}
+                }
                 elementEdits.push(...actorMoveEdits(
                     working,
-                    compiled.element.actorKey,
-                    compiled.element.actorKey === 'player'
+                    actorKey,
+                    actorKey === 'player'
                         ? player.displayName
-                        : compiled.element.label || existingActor?.displayName || compiled.element.actorKey,
+                        : compiled.element.label || existingActor?.displayName || actorKey,
                     locationKey,
                     { sceneKey, elementId: compiled.element.id },
                 ));

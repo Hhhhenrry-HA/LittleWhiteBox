@@ -3,6 +3,8 @@ import { chat_metadata, getRequestHeaders } from '../../../../../../../script.js
 import { EXT_ID } from '../../../core/constants.js';
 import { sameMemory } from '../maintenance/domain.js';
 import { createMetadataConfirmation, MetadataConfirmationError } from './metadata-confirmation.js';
+import { invalidateChangedMaintenance } from '../maintenance/ranges.js';
+import { createAbortError, throwIfSignalAborted } from '../../../shared/common/abort-utils.js';
 
 const FIELDS = ['storySummary', 'stateAtoms', 'l0Index'];
 // Scoped to the loaded metadata object: reload discards uncertainty, never replays a write.
@@ -28,6 +30,22 @@ export function rememberLoadedMemory() {
 }
 
 export function getMemoryCommitState() { return transactions.get(chat_metadata.extensions?.[EXT_ID])?.status || 'ready'; }
+
+// A caller can wait for an in-flight save without consuming its unpublished draft.
+export async function waitForMemoryCommit(signal) {
+    const owner = extension();
+    while (transactions.get(owner)?.status === 'saving') {
+        throwIfSignalAborted(signal);
+        let onAbort;
+        const cancelled = new Promise((_, reject) => {
+            onAbort = () => reject(createAbortError());
+            signal?.addEventListener('abort', onAbort, { once: true });
+        });
+        try { await Promise.race([transactions.get(owner).settled, cancelled]); }
+        finally { signal?.removeEventListener('abort', onAbort); }
+    }
+    throwIfSignalAborted(signal);
+}
 
 export function getRuntimeInvalidSourceFloor() { return transactions.get(chat_metadata.extensions?.[EXT_ID])?.sourceInvalidFloor; }
 
@@ -61,7 +79,7 @@ function install(owner, snapshot) {
 }
 
 /** The sole durable write for summary JSON, history, anchors and extraction status. */
-export async function commitSummaryMemory(chatId, next, { previous = readSummaryMemory(), invalidate, validate, resolvesSourceInvalidity = false } = {}) {
+export async function commitSummaryMemory(chatId, next, { previous = readSummaryMemory(), invalidate, validate, resolvesSourceInvalidity = false, maintenanceWrite = false } = {}) {
     assertMemoryWritable(chatId);
     const owner = extension();
     const context = getContext();
@@ -70,6 +88,7 @@ export async function commitSummaryMemory(chatId, next, { previous = readSummary
     const confirm = createMetadataConfirmation(context, getRequestHeaders);
     const expected = structuredClone(next);
     if (!FIELDS.every(key => Object.hasOwn(expected, key))) throw new MetadataConfirmationError('metadata_incomplete_draft');
+    invalidateChangedMaintenance(previous, expected, { maintenanceWrite });
     const assertBaseline = () => {
         if (getContext()?.chatId !== chatId || extension() !== owner || !sameMemory(project(owner), previous)) {
             throw new MetadataConfirmationError('metadata_draft_conflict');
@@ -78,7 +97,9 @@ export async function commitSummaryMemory(chatId, next, { previous = readSummary
     };
     assertBaseline();
     const sourceInvalidFloor = transactions.get(owner)?.sourceInvalidFloor;
-    const transaction = { status: 'saving', previous: structuredClone(previous), sourceInvalidFloor };
+    let settle;
+    const settled = new Promise(resolve => { settle = resolve; });
+    const transaction = { status: 'saving', previous: structuredClone(previous), sourceInvalidFloor, settled };
     const release = resolved => {
         if (sourceInvalidFloor != null && !resolved) transactions.set(owner, { status: 'source_invalid', previous: project(owner), sourceInvalidFloor });
         else transactions.delete(owner);
@@ -110,5 +131,5 @@ export async function commitSummaryMemory(chatId, next, { previous = readSummary
             release(false);
         }
         throw error;
-    }
+    } finally { settle(); }
 }

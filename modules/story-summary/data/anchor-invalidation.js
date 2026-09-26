@@ -1,5 +1,10 @@
+import { invalidateCompletionRanges } from '../maintenance/ranges.js';
+
 /** Draft-only operation. Retirement lives and dies with its receipt, including deleted anchors. */
 export function invalidateMemoryAnchors(snapshot, fromFloor = 0, reason = 'source_changed') {
+    invalidateCompletionRanges(snapshot.storySummary.summaryHistory || [], [
+        { from: fromFloor + 1, to: (snapshot.storySummary.lastSummarizedMesId ?? -1) + 1 },
+    ]);
     const affected = atom => atom && atom.floor >= fromFloor;
     const ids = new Set(snapshot.stateAtoms.filter(affected).map(atom => atom.atomId));
     let retired = 0;

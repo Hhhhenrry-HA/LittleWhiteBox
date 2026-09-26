@@ -2,25 +2,53 @@
 // Pure/session ports catch corruption and paid-trigger mistakes which retrieval tests do not exercise.
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 import { editMemory, restoreMaintenance, maintenanceImpact } from '../maintenance/domain.js';
-import { createMemorySession, MEMORY_PAGE_CHARS } from '../maintenance/session.js';
-import { createEvidenceReader, SOURCE_PAGE_CHARS } from '../maintenance/evidence.js';
+import { createMemorySession } from '../maintenance/session.js';
 import { projectMaintenanceReceipts } from '../maintenance/history.js';
 import { upgradeSummaryHistory, appendMaintenanceReceipt, createSummaryBaseline } from '../data/summary-history.js';
 import { buildSummaryUndo, applyExactSummaryHistoryUndo } from '../data/summary-undo.js';
 import { commitMemorySession } from '../maintenance/commit.js';
 import { createMemoryScheduler } from '../maintenance/scheduler.js';
-import { runMemoryAgent } from '../maintenance/runner.js';
 import { createMetadataConfirmation } from '../data/metadata-confirmation.js';
 import { EXT_ID } from '../../../core/constants.js';
 import { maintenanceFixture, joinedEventPatch } from './fixtures/memory-maintenance.js';
+import { memoryPolicy, SUMMARY_STANDARD } from '../data/memory-policy.js';
 import { projectSummaryEvent } from '../data/events.js';
 import { upgradeStoredEventMemoryRoles } from '../data/migrations/event-memory-role.js';
 
 const data = () => { const fixture = maintenanceFixture(); return { json: fixture.json, atoms: fixture.atoms }; };
 const merge = { kind: 'merge', collection: 'events', key: 'evt-1', removeIds: ['evt-2'], patch: joinedEventPatch };
-const receiptFor = changes => ({ version: 1, id: 'receipt', operations: [{ ...merge, changes, reason: '同一事件的后续', evidence: [{ floor: 22 }] }],
-    coverage: { reviewed: [], unreviewed: [], unresolved: [], missingAnchors: [] } });
+const receiptFor = changes => ({ version: 2, id: 'receipt', runId: 'run', policy: memoryPolicy(),
+    operations: [{ ...merge, changes }], coverage: { supplied: [], missingAnchors: [] } });
+
+// Stored batches compare against this value; changing generation wording makes
+// every existing record's writing standard unknown.
+test('summary generation rules keep the recorded writing-standard fingerprint', () => {
+    assert.equal(SUMMARY_STANDARD, 'c38678e33bf385a523b61c900de8a752926ebec689b0bac78b9756c855396513');
+});
+
+test('captured batched receipt migrates once without losing diffs, notes, supplied ranges or retirement', () => {
+    // Captured from the previous session/runner/commit code, not constructed with the current receipt model.
+    const receipt = JSON.parse(readFileSync(new URL('./fixtures/maintenance-receipt-v1.json', import.meta.url), 'utf8'));
+    const history = [{ ...createSummaryBaseline(1), maintenance: [receipt] }];
+    const upgraded = upgradeSummaryHistory(history);
+    const current = upgraded.value[0].maintenance[0];
+    assert.equal(upgraded.changed, true);
+    assert.equal(upgradeSummaryHistory(upgraded.value).changed, false);
+    assert.equal(current.version, 2);
+    assert.equal(Object.hasOwn(current, 'completion'), false);
+    assert.equal(Object.hasOwn(current, 'part'), false);
+    assert.equal(Object.hasOwn(current, 'mode'), false);
+    assert.deepEqual(current.operations, receipt.operations);
+    assert.deepEqual(current.coverage.supplied, receipt.coverage.supplied);
+    assert.equal(current.summary, receipt.summary);
+    const change = current.operations[0].changes[0];
+    assert.deepEqual(restoreMaintenance({ json: { facts: [change.after] }, atoms: [] }, [current]).json.facts, [change.before]);
+    const corrupt = structuredClone(history);
+    delete corrupt[0].maintenance[0].operations[0].changes[0].before;
+    assert.throws(() => upgradeSummaryHistory(corrupt), { code: 'invalid_history' });
+});
 
 test('cross-batch merge preserves oldest identity, redirects causes, leaves independent episode and anchors intact', () => {
     const before = data();
@@ -35,16 +63,25 @@ test('cross-batch merge preserves oldest identity, redirects causes, leaves inde
     assert.equal(before.json.events.length, 4);
 });
 
-test('invalid merge is atomic, refuses younger identity, dangling causes and excessive cause union', () => {
+test('merge selects the oldest identity regardless of model ordering; dangling causes are refused, a large cause union is kept', () => {
     const before = data();
-    assert.throws(() => editMemory(before, { ...merge, key: 'evt-2', removeIds: ['evt-1'] }, 23), { code: 'keep_oldest' });
+    assert.deepEqual(editMemory(before, { ...merge, key: 'evt-2', removeIds: ['evt-1'] }, 23), editMemory(before, merge, 23));
     assert.throws(() => editMemory(before, { kind: 'delete', collection: 'events', key: 'evt-2' }, 23), { code: 'invalid_reference' });
     for (let i = 5; i <= 8; i++) before.json.events.push({ ...before.json.events[2], id: `evt-${i}` });
     before.json.events[0].causedBy = ['evt-5', 'evt-6'];
     before.json.events[1].causedBy = ['evt-7', 'evt-8'];
     const snapshot = structuredClone(before);
-    assert.throws(() => editMemory(before, merge, 23), { code: 'cause_limit' });
+    assert.deepEqual(editMemory(before, merge, 23).memory.json.events[0].causedBy, ['evt-5', 'evt-6', 'evt-7', 'evt-8']);
     assert.deepEqual(before, snapshot);
+    const resolved = editMemory(before, { ...merge, patch: { ...joinedEventPatch, causedBy: ['evt-5', 'evt-7'] } }, 23);
+    assert.deepEqual(resolved.memory.json.events[0].causedBy, ['evt-5', 'evt-7']);
+});
+
+test('a rewritten event summary without a source marker keeps the span of the events it replaces', () => {
+    const result = editMemory(data(), { ...merge, patch: { summary: '石缝里找回东西后两人和好。' } }, 23);
+    assert.equal(result.completedMarker, '(#17-23)');
+    assert.equal(result.memory.json.events[0].summary, '石缝里找回东西后两人和好。 (#17-23)');
+    assert.throws(() => editMemory(data(), { kind: 'edit', collection: 'events', key: 'evt-1', patch: { summary: '越界 (#30)' } }, 23), { code: 'source_boundary' });
 });
 
 test('maintenance then batch undo restores the early episode, not a future ending or entire deletion', () => {
@@ -85,47 +122,14 @@ test('existing exact and boundary-only histories upgrade once; imported baseline
     assert.equal(projectMaintenanceReceipts(store).items[0].counts.merges, 1);
 });
 
-test('evidence is read-only, bounded, paged and append-safe; edits/swipes/search misses invalidate evidence', () => {
-    const fixture = maintenanceFixture();
-    fixture.chat[1].mes = '长'.repeat(SOURCE_PAGE_CHARS + 10);
-    const reader = createEvidenceReader(fixture.chat, 2);
-    const first = reader.read({ floor: 2 });
-    assert.equal(first.complete, false);
-    const next = reader.read(first.next);
-    assert.equal(next.text.length, 10);
-    assert.throws(() => reader.read({ floor: 4 }), { code: 'source_boundary' });
-    assert.throws(() => reader.evidence(['2:0:1']), { code: 'evidence_required' });
-    fixture.chat.push({ mes: '后续' });
-    assert.doesNotThrow(() => reader.assertCurrent(fixture.chat));
-    fixture.chat[1].swipe_id = 1;
-    assert.throws(() => reader.assertCurrent(fixture.chat), { code: 'conflict' });
-    const search = createEvidenceReader(fixture.chat, 2);
-    search.search({ query: '并不存在' });
-    fixture.chat[0].mes = '改写了被搜索过的原文';
-    assert.throws(() => search.assertCurrent(fixture.chat), { code: 'conflict' });
-});
-
 function correctedSession() {
     const fixture = maintenanceFixture();
     const session = createMemorySession(fixture);
-    session.runTool('ReadMemory', { collection: 'facts', key: 'f-1' });
-    const source = session.runTool('ReadSource', { floor: 2 });
-    session.runTool('EditMemory', { kind: 'edit', collection: 'facts', key: 'f-1', patch: { o: '夏实听说可能与看到机密有关，未证实' }, reason: '保留传闻的不确定性', references: [source.reference] });
-    session.runTool('FinishReview', { summary: '修正传闻，其他项目未审。' });
+    session.initial();
+    session.inputProvided();
+    session.runTool('EditMemory', { edits: [{ kind: 'edit', collection: 'facts', key: 'f-1', patch: { o: '夏实听说可能与看到机密有关，未证实' } }] });
     return { session, fixture };
 }
-
-test('reading is not reviewing; mutation requires read memory and actual cited evidence; missing anchors stay visible', () => {
-    const fixture = maintenanceFixture();
-    const session = createMemorySession(fixture);
-    const command = { kind: 'edit', collection: 'facts', key: 'f-1', patch: { o: '传闻' }, reason: '纠正', references: [] };
-    assert.throws(() => session.runTool('EditMemory', command), { code: 'read_first' });
-    session.runTool('ReadMemory', { collection: 'facts', key: 'f-1' });
-    assert.throws(() => session.runTool('EditMemory', command), { code: 'evidence_required' });
-    assert.equal(session.coverage().reviewed.length, 0);
-    assert.ok(session.coverage().missingAnchors.some(item => item.floor === 18));
-    assert.throws(() => session.runTool('WriteSource', {}), { code: 'invalid_operation' });
-});
 
 test('session accepts newly extracted anchors and later chat, but rejects edits to existing memory or another chat', () => {
     const { fixture, session } = correctedSession();
@@ -133,7 +137,7 @@ test('session accepts newly extracted anchors and later chat, but rejects edits 
     assert.doesNotThrow(() => session.assertCurrent(current));
     assert.throws(() => session.assertCurrent({ ...current, chatId: 'other' }), { code: 'conflict' });
     current.json.facts[0].o = '手改';
-    assert.throws(() => session.assertCurrent(current), { code: 'conflict' });
+    assert.throws(() => session.assertCurrent(current), { code: 'memory_updated' });
 });
 
 function commitPorts(fixture) {
@@ -154,11 +158,11 @@ test('maintenance constructs one atomic draft, preserves appended anchors and re
     const { fixture, session } = correctedSession();
     fixture.atoms.push({ atomId: 'new-extraction', floor: 17 });
     const ports = commitPorts(fixture);
-    const result = await commitMemorySession(session, { calls: [], summary: 'partial' }, ports);
+    const result = await commitMemorySession(session, { calls: [], runId: 'run' }, ports);
     assert.deepEqual(ports.order, ['commit']);
     assert.equal(ports.read().atoms.at(-1).atomId, 'new-extraction');
     assert.equal(ports.read().store.summaryHistory[0].maintenance[0].id, result.receipt.id);
-    assert.ok(result.receipt.coverage.unreviewed.length > 0);
+    assert.equal(result.receipt.coverage.supplied.length, 0);
 });
 
 test('maintenance rejects a changed source when the data commit validates after cache invalidation', async () => {
@@ -168,7 +172,7 @@ test('maintenance rejects a changed source when the data commit validates after 
         ports.read().store.json.facts[0].o = 'manual';
         validate();
     };
-    await assert.rejects(commitMemorySession(session, { calls: [], summary: 'partial' }, ports), { code: 'conflict' });
+    await assert.rejects(commitMemorySession(session, { calls: [], runId: 'run' }, ports), { code: 'memory_updated' });
     assert.equal(ports.read().store.json.facts[0].o, 'manual');
     assert.equal(ports.read().store.summaryHistory[0].maintenance.length, 0);
 });
@@ -178,7 +182,7 @@ test('cancellation during confirmed persistence remains a saved result, not an u
     const ports = commitPorts(fixture);
     const controller = new AbortController();
     ports.commit = async () => controller.abort();
-    const result = await commitMemorySession(session, { calls: [], summary: 'partial' }, ports, controller.signal);
+    const result = await commitMemorySession(session, { calls: [], runId: 'run' }, ports, controller.signal);
     assert.ok(result.receipt.id);
 });
 
@@ -198,29 +202,14 @@ test('readback verification detects swallowed saves and retries only read failur
     await assert.rejects(confirm({ storySummary: { value: 2 } }), { uncertain: true });
 });
 
-test('shared tool loop returns argument errors to the model and uses configured parameters without saving drafts', async () => {
-    const session = createMemorySession(maintenanceFixture());
-    let calls = 0;
-    const adapter = { chat: async task => {
-        assert.equal(task.reasoning.effort, 'low');
-        calls++;
-        if (calls === 2) assert.equal(JSON.parse(task.messages.at(-1).content).status, 'error');
-        return { toolCalls: [{ id: `call-${calls}`, name: calls === 1 ? 'EditMemory' : 'FinishReview',
-            arguments: JSON.stringify(calls === 1 ? {} : { summary: '无法完成，保留全部未审项目。' }) }] };
-    } };
-    await runMemoryAgent(session, { adapter, config: { reasoning: { effort: 'low' } } });
-    assert.equal(calls, 2);
-    assert.equal(session.operations.length, 0);
-    assert.ok(session.coverage().unreviewed.length);
-});
-
-test('scheduler is zero-call until trigger, serial, cancellation hands old scope to the newest batch, restart is idle', async () => {
+test('scheduler is zero-call until trigger, queues new batches, and restart is idle', async () => {
     let enabled = false;
     const tasks = [];
+    let resume;
     const scheduler = createMemoryScheduler({ enabled: () => enabled, run: async (task, signal) => {
         tasks.push(task);
-        if (tasks.length === 1) await new Promise(resolve => signal.addEventListener('abort', resolve, { once: true }));
-        if (signal.aborted) throw new Error('cancelled');
+        if (tasks.length === 1) await new Promise(resolve => { resume = resolve; });
+        assert.equal(signal.aborted, false);
         return { receipt: { id: 'r' } };
     } });
     scheduler.submitted({ chatId: 'a', cutoff: 19, start: 0 });
@@ -230,33 +219,33 @@ test('scheduler is zero-call until trigger, serial, cancellation hands old scope
     scheduler.submitted({ chatId: 'a', cutoff: 19, start: 0 });
     await Promise.resolve();
     scheduler.submitted({ chatId: 'a', cutoff: 39, start: 20 });
+    assert.equal(scheduler.snapshot('a').cutoff, 20);
+    resume();
     await scheduler.settled();
-    assert.deepEqual(tasks.map(task => [task.start, task.cutoff]), [[0, 19], [0, 39]]);
+    assert.deepEqual(tasks.map(task => [task.start, task.cutoff]), [[0, 19], [20, 39]]);
     const restarted = createMemoryScheduler({ enabled: () => true, run: () => assert.fail('reload called model') });
     assert.equal(restarted.snapshot('a').status, 'idle');
 });
 
-test('partial memory pages are not readable edit baselines until every segment has been delivered', () => {
-    const fixture = maintenanceFixture();
-    fixture.json.facts[0].o = '长'.repeat(MEMORY_PAGE_CHARS + 100);
-    const session = createMemorySession(fixture);
-    const page = session.runTool('ReadMemory', { collection: 'facts', key: 'f-1' });
-    assert.equal(page.items[0].value, undefined);
-    assert.ok(page.items[0].excerpt.length <= MEMORY_PAGE_CHARS);
-    assert.throws(() => session.runTool('ReviewMemory', { collection: 'facts', key: 'f-1', status: 'unresolved', reason: '未读完' }), { code: 'read_first' });
-    session.runTool('ReadMemory', { collection: 'facts', key: 'f-1', textOffset: page.items[0].nextTextOffset });
-    session.runTool('ReviewMemory', { collection: 'facts', key: 'f-1', status: 'unresolved', reason: '无法查证' });
-    assert.equal(session.coverage().unresolved.length, 1);
-});
-
-test('bad tool JSON shapes remain recoverable errors and cannot change internal floor identity', () => {
-    const session = createMemorySession(maintenanceFixture());
-    assert.throws(() => session.runTool('ReadMemory', null), { code: 'invalid_operation' });
-    assert.throws(() => session.runTool('ReadMemory', { query: {} }), { code: 'invalid_operation' });
-    session.initial();
-    const reference = session.runTool('ReadSource', { floor: 2 }).reference;
-    assert.throws(() => session.runTool('EditMemory', { kind: 'edit', collection: 'anchors', key: 'atom-1-0', patch: { floor: 999 }, reason: '尝试改楼层', references: [reference] }), { code: 'invalid_operation' });
-    assert.equal(session.operations.length, 0);
+test('new automatic batches coalesce only in the queue during thinking, saving or indexing', async () => {
+    for (const phaseAtNotification of ['running', 'saving', 'indexing']) {
+        const tasks = [];
+        let resume;
+        const scheduler = createMemoryScheduler({ enabled: () => true, run: async (task, signal, phase) => {
+            tasks.push(task);
+            phase(phaseAtNotification);
+            if (tasks.length === 1) await new Promise(resolve => { resume = resolve; });
+            assert.equal(signal.aborted, false);
+            return {};
+        } });
+        scheduler.submitted({ chatId: 'a', start: 0, cutoff: 19 });
+        await Promise.resolve();
+        scheduler.submitted({ chatId: 'a', start: 20, cutoff: 39 });
+        scheduler.submitted({ chatId: 'a', start: 40, cutoff: 59 });
+        resume();
+        await scheduler.settled();
+        assert.deepEqual(tasks.map(task => [task.start, task.cutoff]), [[0, 19], [20, 59]]);
+    }
 });
 
 test('alias corrections use the existing graph contract rather than creating identity cycles', () => {
@@ -265,92 +254,15 @@ test('alias corrections use the existing graph contract rather than creating ide
     assert.throws(() => editMemory(before, { kind: 'edit', collection: 'characterAliases', key: '乙', patch: { to: '甲' } }, 23), { code: 'invalid_alias' });
 });
 
-test('input and turn ceilings refuse a saveable draft; no implicit API retry occurs', async () => {
-    let calls = 0;
-    const session = createMemorySession(maintenanceFixture());
-    const adapter = { chat: async () => { calls++; return { toolCalls: [{ id: 'read', name: 'ReadMemory', arguments: '{}' }] }; } };
-    await assert.rejects(runMemoryAgent(session, { adapter, config: {}, limits: { turns: 1, inputChars: 100000 } }), { code: 'budget' });
-    assert.equal(session.finished, false);
-    assert.equal(calls, 1);
-    await assert.rejects(runMemoryAgent(createMemorySession(maintenanceFixture()), { adapter, config: {}, limits: { turns: 1, inputChars: 1 } }), { code: 'budget' });
-    assert.equal(calls, 1);
-});
-
-test('manual review ignores the automatic preference; disabling only auto does not cancel a manual run', async () => {
-    let calls = 0;
-    let release;
-    const scheduler = createMemoryScheduler({ enabled: () => false, run: async (_task, signal) => {
-        calls++;
-        await new Promise(resolve => { release = resolve; });
-        assert.equal(signal.aborted, false);
-        return { receipt: { id: 'manual' } };
-    } });
-    scheduler.review({ chatId: 'a', cutoff: 19 });
-    await Promise.resolve();
-    scheduler.cancel({ automaticOnly: true });
-    assert.equal(calls, 1);
-    release();
-    await scheduler.settled();
-    assert.equal(scheduler.snapshot('a').status, 'saved');
-});
-
 test('uncertain data commit reports receipt identity without claiming a successful maintenance', async () => {
     const { fixture, session } = correctedSession();
     const ports = commitPorts(fixture);
     ports.commit = async () => { throw Object.assign(new Error('unconfirmed'), { uncertain: true }); };
-    await assert.rejects(commitMemorySession(session, { calls: [], summary: 'partial' }, ports), error => error.uncertain && !!error.receiptId);
+    await assert.rejects(commitMemorySession(session, { calls: [], runId: 'run' }, ports), error => error.uncertain && !!error.receiptId);
 });
 
-// Regressions from review: successful-tool fixtures missed failed tools batched with FinishReview,
+// Regressions from review: successful-tool fixtures missed failed tools batched with submission,
 // load-time projection, HTTP browser capabilities and the pre-notification save window.
-test('a batched tool error must reach the model before finish, for both shared adapter loop protocols', async () => {
-    for (const supportsSessionToolLoop of [false, true]) {
-        const fixture = maintenanceFixture();
-        const session = createMemorySession(fixture);
-        const reference = `2:0:${fixture.chat[1].mes.length}`;
-        const edit = { kind: 'edit', collection: 'anchors', key: 'atom-1-0', reason: '保留传闻归属', references: [reference] };
-        const tools = commands => ({ toolCalls: commands.map(([name, args], index) => ({ id: `call-${index}`, name, arguments: JSON.stringify(args) })) });
-        let calls = 0;
-        const result = await runMemoryAgent(session, { config: {}, adapter: { supportsSessionToolLoop, chat: async request => {
-            calls++;
-            if (calls === 1) return tools([
-                ['ReadSource', { floor: 2 }],
-                ['EditMemory', { ...edit, collection: 'facts', key: 'f-1', patch: { o: '听说可能因为看到了机密，未证实' } }],
-                ['EditMemory', { ...edit, patch: { floor: 999 } }],
-                ['FinishReview', { summary: '已修复两侧' }],
-            ]);
-            assert.equal(session.finished, false);
-            assert.deepEqual(session.operations.map(operation => operation.collection), ['facts']);
-            const feedback = supportsSessionToolLoop ? request.toolResponses.map(item => item.response)
-                : request.messages.filter(message => message.role === 'tool').map(message => JSON.parse(message.content));
-            assert.deepEqual(feedback.filter(item => item.status === 'error').map(item => item.code), ['invalid_operation', 'finish_after_error']);
-            return tools([
-                ['EditMemory', { ...edit, patch: { semantic: '夏实听说自己可能因为看到机密而被回收，未经确证。', edges: [] } }],
-                ['FinishReview', { summary: '修正两侧传闻，其余未审。' }],
-            ]);
-        } } });
-        assert.equal(calls, 2);
-        assert.equal(session.finished, true);
-        assert.deepEqual(session.operations.map(operation => operation.collection), ['facts', 'anchors']);
-        const ports = commitPorts(fixture);
-        await commitMemorySession(session, result, ports);
-        assert.deepEqual(ports.read().store.json, session.memory.json);
-        assert.deepEqual(ports.read().atoms, session.memory.atoms);
-    }
-});
-
-test('a failed batched edit at the execution limit cannot authorize a partial save', async () => {
-    const fixture = maintenanceFixture();
-    const session = createMemorySession(fixture);
-    const adapter = { chat: async () => ({ toolCalls: [
-        { id: 'bad-edit', name: 'EditMemory', arguments: '{}' },
-        { id: 'finish', name: 'FinishReview', arguments: JSON.stringify({ summary: '已完成' }) },
-    ] }) };
-    await assert.rejects(runMemoryAgent(session, { adapter, config: {}, limits: { turns: 1, inputChars: 240000 } }), { code: 'budget' });
-    const ports = commitPorts(fixture);
-    await assert.rejects(commitMemorySession(session, { calls: [], summary: '已完成' }, ports), { code: 'incomplete_finish' });
-    assert.deepEqual(ports.order, []);
-});
 
 test('current-format reload preserves repeated maintenance and enclosing summary undo, but not actual edits', () => {
     const generated = data();
@@ -374,57 +286,37 @@ test('current-format reload preserves repeated maintenance and enclosing summary
     assert.throws(() => restoreMaintenance({ json: store.json, atoms: generated.atoms }, receipts), { code: 'conflict' });
 });
 
-test('receipt commits work without secure-context randomUUID and retain distinct history identities', async t => {
-    const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
-    const getRandomValues = crypto.getRandomValues.bind(crypto);
-    Object.defineProperty(globalThis, 'crypto', { configurable: true, value: { getRandomValues } });
-    t.after(() => Object.defineProperty(globalThis, 'crypto', descriptor));
-    const { fixture, session } = correctedSession();
-    const ports = commitPorts(fixture);
-    const first = await commitMemorySession(session, { calls: [], summary: 'partial' }, ports);
-    const next = createMemorySession(ports.read());
-    next.runTool('FinishReview', { summary: '无新修改' });
-    const second = await commitMemorySession(next, { calls: [], summary: '无新修改' }, ports);
-    assert.ok(first.receipt.id);
-    assert.notEqual(first.receipt.id, second.receipt.id);
-    assert.deepEqual(projectMaintenanceReceipts(ports.read().store).items.map(item => item.id), [second.receipt.id, first.receipt.id]);
-    assert.deepEqual(ports.order, ['commit', 'commit']);
-});
-
 test('conflict before the new summary save notification hands off scope without an immediate retry', async () => {
-    for (const mode of ['auto', 'manual']) {
-        const fixture = maintenanceFixture();
-        let current = { ...fixture, cutoff: 19 };
-        let completeOld;
-        const tasks = [];
-        const scheduler = createMemoryScheduler({ enabled: () => true, run: async task => {
-            tasks.push(task);
-            if (tasks.length === 1) {
-                const session = createMemorySession(current);
-                await new Promise(resolve => { completeOld = resolve; });
-                session.assertCurrent(current);
-            }
-            return { receipt: { id: 'saved' } };
-        } });
-        if (mode === 'manual') scheduler.review({ chatId: fixture.chatId, cutoff: 19 });
-        else scheduler.submitted({ chatId: fixture.chatId, start: 0, cutoff: 19 });
-        await Promise.resolve();
-        current = { ...current, cutoff: 23 };
-        completeOld();
-        await scheduler.settled();
-        assert.equal(tasks.length, 1);
-        assert.equal(scheduler.snapshot(fixture.chatId).code, 'conflict');
-        scheduler.submitted({ chatId: fixture.chatId, start: 20, cutoff: 23 });
-        await scheduler.settled();
-        assert.deepEqual(tasks.map(task => [task.start, task.cutoff, task.mode]), [[0, 19, mode], [0, 23, mode]]);
-        scheduler.submitted({ chatId: fixture.chatId, start: 24, cutoff: 39 });
-        await scheduler.settled();
-        assert.equal(tasks[2].start, 24);
-    }
+    const fixture = maintenanceFixture();
+    let current = { ...fixture, cutoff: 19 };
+    let completeOld;
+    const tasks = [];
+    const scheduler = createMemoryScheduler({ enabled: () => true, run: async task => {
+        tasks.push(task);
+        if (tasks.length === 1) {
+            const session = createMemorySession(current);
+            await new Promise(resolve => { completeOld = resolve; });
+            session.assertCurrent(current);
+        }
+        return { receipt: { id: 'saved' } };
+    } });
+    scheduler.submitted({ chatId: fixture.chatId, start: 0, cutoff: 19 });
+    await Promise.resolve();
+    current = { ...current, cutoff: 23 };
+    completeOld();
+    await scheduler.settled();
+    assert.equal(tasks.length, 1);
+    assert.equal(scheduler.snapshot(fixture.chatId).code, 'conflict');
+    scheduler.submitted({ chatId: fixture.chatId, start: 20, cutoff: 23 });
+    await scheduler.settled();
+    assert.deepEqual(tasks.map(task => [task.start, task.cutoff]), [[0, 19], [0, 23]]);
+    scheduler.submitted({ chatId: fixture.chatId, start: 24, cutoff: 39 });
+    await scheduler.settled();
+    assert.equal(tasks[2].start, 24);
 });
 
 test('abandoned conflict scopes do not survive cancellation, another chat, restart or uncertain saves', async () => {
-    for (const scenario of ['cancel', 'disable', 'other-chat', 'restart', 'uncertain', 'transport']) {
+    for (const scenario of ['cancel', 'other-chat', 'restart', 'uncertain', 'transport']) {
         const tasks = [];
         const options = { enabled: () => true, run: async task => {
             tasks.push(task);
@@ -437,10 +329,64 @@ test('abandoned conflict scopes do not survive cancellation, another chat, resta
         scheduler.submitted({ chatId: 'a', start: 0, cutoff: 19 });
         await scheduler.settled();
         if (scenario === 'cancel') scheduler.cancel();
-        if (scenario === 'disable') scheduler.cancel({ automaticOnly: true });
         if (scenario === 'restart') scheduler = createMemoryScheduler(options);
         scheduler.submitted({ chatId: scenario === 'other-chat' ? 'b' : 'a', start: 20, cutoff: 39 });
         await scheduler.settled();
         assert.equal(tasks[1].start, 20, scenario);
+    }
+});
+
+test('disabling maintenance cancels active work and discards pending triggers', async () => {
+    let enabled = true;
+    const tasks = [];
+    const scheduler = createMemoryScheduler({ enabled: () => enabled, run: async (task, signal) => {
+        tasks.push(task);
+        await new Promise(resolve => signal.addEventListener('abort', resolve, { once: true }));
+        return { status: 'cancelled' };
+    } });
+    scheduler.submitted({ chatId: 'chat', start: 0, cutoff: 19 });
+    await Promise.resolve();
+    scheduler.submitted({ chatId: 'chat', start: 20, cutoff: 23 });
+    enabled = false;
+    scheduler.cancel();
+    scheduler.submitted({ chatId: 'chat', start: 24, cutoff: 39 });
+    await scheduler.settled();
+    assert.equal(tasks.length, 1);
+    assert.equal(scheduler.snapshot('chat').status, 'cancelled');
+});
+
+test('regenerating the same cutoff queues a new run', async () => {
+    const tasks = [];
+    let resume;
+    const scheduler = createMemoryScheduler({ enabled: () => true, run: async (task, signal) => {
+        tasks.push(task);
+        if (tasks.length === 1) await new Promise(resolve => { resume = resolve; });
+        assert.equal(signal.aborted, false);
+        return { status: 'completed' };
+    } });
+    scheduler.submitted({ chatId: 'chat', start: 0, cutoff: 23 });
+    await Promise.resolve();
+    scheduler.submitted({ chatId: 'chat', start: 20, cutoff: 23 });
+    resume();
+    await scheduler.settled();
+    assert.deepEqual(tasks.map(task => [task.start, task.cutoff]), [[0, 23], [20, 23]]);
+    assert.equal(scheduler.snapshot('chat').status, 'completed');
+});
+
+test('queued batches start after the current run returns, including after its request limit', async () => {
+    for (const closed of [false, true]) {
+        let resume;
+        let calls = 0;
+        const scheduler = createMemoryScheduler({ enabled: () => true, run: async () => {
+            if (++calls === 1) {
+                await new Promise(resolve => { resume = resolve; });
+            }
+            return { status: closed ? 'completed' : 'turn_limit' };
+        } });
+        scheduler.submitted({ chatId: 'a', start: 0, cutoff: 19 });
+        await Promise.resolve();
+        scheduler.submitted({ chatId: 'a', start: 20, cutoff: 39 });
+        resume(); await scheduler.settled();
+        assert.equal(calls, 2);
     }
 });

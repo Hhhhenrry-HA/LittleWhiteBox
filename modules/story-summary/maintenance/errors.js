@@ -1,35 +1,50 @@
 // Stable error identifiers are the contract; their explanation lives here.
 const explanations = {
     invalid_operation: 'The operation does not match the editable record fields.',
+    invalid_arguments: 'The argument has an invalid type, value or range.',
+    invalid_field: 'This field is not editable.',
+    unknown_tool: 'This tool is not available.',
+    source_marker_missing: 'The event summary needs a source-floor marker (#X-Y).',
     record_missing: 'The selected memory record does not exist.',
-    read_first: 'Read the selected record before editing or reviewing it.',
-    evidence_required: 'Cite source passages returned by ReadSource before changing memory.',
     invalid_record: 'The edited record has invalid or missing business fields.',
+    fact_conflict: 'Two facts have the same subject and predicate. Keep their complete intended value in one record and delete the duplicate in the same edit list.',
     invalid_reference: 'Event causes must reference existing events, without self references or cycles.',
     invalid_alias: 'Identity aliases must have distinct names, unique sources and no cycles.',
-    cause_limit: 'The merge would exceed three direct causes. Read and resolve the causal relationships first.',
-    source_boundary: 'Source floors must be within this run’s fixed evidence boundary.',
-    keep_oldest: 'Keep the oldest event identity when joining episodes.',
+    source_boundary: 'Source floors must be between 1 and this review’s cutoff.',
     conflict: 'Source or memory changed after review began. This draft was not saved.',
-    budget: 'The review reached its execution budget. Its unfinished draft was not saved.',
     cancelled: 'The uncommitted review was cancelled.',
     not_configured: 'The shared Agent main preset needs a model and a provider endpoint.',
     no_boundary: 'There is no valid summary boundary to review.',
-    incomplete_finish: 'Finish requires an explicit review result; tool success alone is not completion.',
-    finish_after_error: 'A tool in this response failed. Read its result, correct it or report the unresolved work, then call FinishReview again.',
+    empty_response: 'The model returned neither a tool request nor a visible reply.',
+    pending_edit: 'The previous edit needs confirmed persistence before another tool can run.',
+    save_unavailable: 'Confirmed memory persistence is unavailable.',
+    input_limit: 'The complete input exceeds this run’s context limit.',
+    memory_updated: 'The listed records have changed and are outside this run\'s remaining work. Leave them unchanged in this run and continue with other memories. No changes in this request were saved; unrelated edits from the same list can be submitted separately.',
+    completion_memory_updated: 'The listed records changed during this run, so completion was not recorded and this range stays pending for the next run. Continue with other ranges.',
+    edit_failed: 'Completion was not recorded because an edit in this response failed. Handle the returned edit result before declaring completion.',
+    compaction_failed: 'Working history could not be summarized. The original conversation and confirmed saves are retained.',
+    turn_limit: 'The run has reached its model request limit, including summaries.',
     invalid_history: 'The maintenance history cannot be safely restored.',
 };
 
 export class MemoryMaintenanceError extends Error {
-    constructor(code, detail = '') {
+    constructor(code, detail = '', field) {
         super([explanations[code] || code, detail].filter(Boolean).join(' '));
         this.name = 'MemoryMaintenanceError';
         this.code = code;
+        if (field) this.field = field;
     }
 }
 
-export function requireMemory(condition, code, detail) {
-    if (!condition) throw new MemoryMaintenanceError(code, detail);
+export function requireMemory(condition, code, detail, field) {
+    if (!condition) throw new MemoryMaintenanceError(code, detail, field);
+}
+
+export function memoryUpdated(records, { completion = false } = {}) {
+    const error = new MemoryMaintenanceError('memory_updated');
+    if (completion) error.message = explanations.completion_memory_updated;
+    error.records = [...new Map(records.map(({ collection, key }) => [`${collection}:${key}`, { collection, key }])).values()];
+    return error;
 }
 
 export function memoryFailureCode(error) {

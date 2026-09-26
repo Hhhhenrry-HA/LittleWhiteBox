@@ -42,28 +42,34 @@ export async function runMemoryMaintenanceStorageCheck() {
         await saveStateVectors(fixture.chatId, fixture.atoms.map(atom => ({ atomId: atom.atomId, floor: atom.floor, vector: [1, 0], rVector: [0, 1] })), 'fixture');
         const session = createMemorySession(read());
         session.initial();
-        const references = [2, 18, 20, 22, 23].map(floor => session.runTool('ReadSource', { floor }).reference);
-        session.runTool('EditMemory', { kind: 'delete', collection: 'anchors', key: 'atom-1-0', reason: '无依据的确定说法', references: references.slice(0, 1) });
-        session.runTool('EditMemory', { kind: 'merge', collection: 'events', key: 'evt-1', removeIds: ['evt-2'], patch: joinedEventPatch, reason: '同一事件续接', references: references.slice(1) });
-        session.runTool('FinishReview', { summary: '固定数据安全样本' });
-        await commitMemorySession(session, { calls: [], summary: '固定样本' }, ports);
+        session.inputProvided();
+        session.runTool('EditMemory', { edits: [
+            { kind: 'delete', collection: 'anchors', key: 'atom-1-0' },
+            { kind: 'merge', collection: 'events', key: 'evt-1', removeIds: ['evt-2'], patch: joinedEventPatch },
+        ], note: '固定数据安全样本' });
+        await commitMemorySession(session, { calls: [], runId: 'storage-check' }, ports);
         assert.equal(getL0Index().byFloor['1'].status, 'empty');
         assert.equal(getL0Index().byFloor['1'].atoms, 0);
         assert.deepEqual((await getAllEventVectors(fixture.chatId)).map(item => item.eventId), ['evt-3']);
         assert.equal((await getAllStateVectors(fixture.chatId)).length, 3);
         assert.equal(getSummaryStore().summaryHistory[0].kind, 'baseline');
+        assert.equal(JSON.stringify(fixture.chat), source);
 
+        // A new run reads the edited source against the currently saved summary.
+        fixture.chat[0].mes += ' 请再核对传闻。';
+        const changedSource = JSON.stringify(fixture.chat);
         const next = createMemorySession(read());
         next.initial();
-        const reference = next.runTool('ReadSource', { floor: 2 }).reference;
-        next.runTool('EditMemory', { kind: 'edit', collection: 'facts', key: 'f-1', patch: { o: '夏实听说可能与机密有关，未证实' }, reason: '保留不确定性', references: [reference] });
-        next.runTool('FinishReview', { summary: '同批第二次维护' });
+        next.inputProvided();
+        next.runTool('EditMemory', { edits: [
+            { kind: 'edit', collection: 'facts', key: 'f-1', patch: { o: '夏实听说可能与机密有关，未证实' } },
+        ], note: '同批第二次维护' });
         const beforeFailure = structuredClone(chat_metadata);
         failSave = true;
-        await assert.rejects(commitMemorySession(next, { calls: [], summary: 'second' }, ports));
+        await assert.rejects(commitMemorySession(next, { calls: [], runId: 'storage-second' }, ports));
         assert.deepEqual(chat_metadata, beforeFailure);
         failSave = false;
-        await commitMemorySession(next, { calls: [], summary: 'second' }, ports);
+        await commitMemorySession(next, { calls: [], runId: 'storage-second' }, ports);
         assert.equal(getSummaryStore().summaryHistory[0].maintenance.length, 2);
         __setChatMetadata(structuredClone(chat_metadata));
         assert.equal(getSummaryStore().summaryHistory[0].maintenance.length, 2);
@@ -74,7 +80,7 @@ export async function runMemoryMaintenanceStorageCheck() {
         assert.deepEqual(getStateAtoms(), original.atoms);
         assert.equal(getL0Index().byFloor['1'].atoms, 1);
         assert.equal(getSummaryStore().summaryHistory[0].maintenance.length, 0);
-        assert.equal(JSON.stringify(fixture.chat), source);
+        assert.equal(JSON.stringify(fixture.chat), changedSource);
         return { passed: true, sameBatchReceipts: 2, importedBaselineUndo: true, oldVectorsInvalidated: true, sourceUntouched: true, confirmedSaveFailureRestored: true };
     } finally {
         __setReplayContext(previousContext);

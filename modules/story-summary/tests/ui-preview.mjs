@@ -3,7 +3,7 @@
 import http from 'node:http';
 import { readFileSync } from 'node:fs';
 
-const types = { html: 'text/html', css: 'text/css', js: 'text/javascript' };
+const types = { html: 'text/html', css: 'text/css', js: 'text/javascript', mjs: 'text/javascript' };
 const origin = 'http://127.0.0.1:18893';
 http.createServer((request, response) => {
     const pathname = new URL(request.url, origin).pathname;
@@ -16,7 +16,8 @@ http.createServer((request, response) => {
         response.writeHead(204).end();
         return;
     }
-    if ((!/^\/modules\/story-summary\/[a-zA-Z0-9_./-]+$/.test(pathname) && pathname !== '/core/iframe-messaging.js') || pathname.includes('..')) {
+    if ((!/^\/modules\/story-summary\/[a-zA-Z0-9_./-]+$/.test(pathname)
+        && !['/core/iframe-messaging.js', '/libs/js-sha256.mjs'].includes(pathname)) || pathname.includes('..')) {
         response.writeHead(404).end();
         return;
     }

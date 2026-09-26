@@ -16,7 +16,15 @@ export function atlasNoise(x: number, y: number, seed: number): number {
     const c = atlasRandom(ix, iy + 1, seed), d = atlasRandom(ix + 1, iy + 1, seed);
     return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
 }
-export function atlasFractal(x: number, y: number, seed: number): number {
-    return atlasNoise(x, y, seed) * .55 + atlasNoise(x * 2.07, y * 2.07, seed + 71) * .27
-        + atlasNoise(x * 4.13, y * 4.13, seed + 137) * .13 + atlasNoise(x * 8.23, y * 8.23, seed + 211) * .05;
+/** Fraction of a component kept at this sample spacing: full at four samples per period, gone at Nyquist. */
+export function atlasBand(footprintPerPeriod: number): number { return Math.min(1, Math.max(0, 2 - 4 * footprintPerPeriod)); }
+/** footprint is the sample spacing in noise units; octaves it cannot resolve settle to their mean instead of aliasing. */
+export function atlasFractal(x: number, y: number, seed: number, footprint = 0): number {
+    return .5 + octave(x, y, seed, footprint, 1, .55, 0) + octave(x, y, seed, footprint, 2.07, .27, 71)
+        + octave(x, y, seed, footprint, 4.13, .13, 137) + octave(x, y, seed, footprint, 8.23, .05, 211);
+}
+// A module function rather than a per-call closure: the fractal runs for every texel sample.
+function octave(x: number, y: number, seed: number, footprint: number, frequency: number, weight: number, offset: number): number {
+    const band = atlasBand(frequency * footprint);
+    return band ? (atlasNoise(x * frequency, y * frequency, seed + offset) - .5) * weight * band : 0;
 }

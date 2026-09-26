@@ -1,6 +1,8 @@
 // Story Summary - Character aliases
 // Identity vocabulary and deterministic canonicalization for story summaries.
 
+import { factKey } from './fact-predicates.js';
+
 function isPlainObject(value) {
     return !!value && typeof value === 'object' && !Array.isArray(value);
 }
@@ -397,10 +399,6 @@ function mergeArcs(arcs, resolver) {
     }
 
     return order.map(key => byKey.get(key));
-}
-
-function factKey(fact) {
-    return `${fact?.s || ''}::${fact?.p || ''}`;
 }
 
 function factLatestAt(fact) {

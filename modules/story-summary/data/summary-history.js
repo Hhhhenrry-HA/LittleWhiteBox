@@ -1,5 +1,6 @@
 import { normalizeSummaryUndo } from './summary-undo.js';
-import { validateMaintenanceReceipt } from '../maintenance/history.js';
+import { validateMaintenanceReceipt, upgradeMaintenanceReceipt } from '../maintenance/history.js';
+import { isMemoryPolicy } from './memory-policy.js';
 
 function valid(condition) {
     if (!condition) throw Object.assign(new Error('summary_history_invalid'), { code: 'summary_history_invalid' });
@@ -10,11 +11,12 @@ export function createSummaryBaseline(endMesId) {
     return { format: 2, kind: 'baseline', endMesId, maintenance: [] };
 }
 
-export function createSummaryBatch(previousEndMesId, endMesId, undo) {
+export function createSummaryBatch(previousEndMesId, endMesId, undo, policy) {
     const normalized = normalizeSummaryUndo(undo);
     valid(normalized && Number.isInteger(previousEndMesId) && previousEndMesId >= -1
         && Number.isInteger(endMesId) && previousEndMesId < endMesId);
-    return { format: 2, kind: 'batch', previousEndMesId, endMesId, undo: normalized, maintenance: [] };
+    valid(policy === undefined || isMemoryPolicy(policy));
+    return { format: 2, kind: 'batch', previousEndMesId, endMesId, undo: normalized, maintenance: [], ...(policy ? { policy: structuredClone(policy) } : {}) };
 }
 
 /**
@@ -37,9 +39,8 @@ export function upgradeSummaryHistory(history) {
         } else {
             valid(entry.format === 2 && ['baseline', 'batch'].includes(entry.kind) && Array.isArray(entry.maintenance));
             if (entry.kind === 'baseline') valid(!value.length && entry.undo == null && entry.previousEndMesId == null);
-            else createSummaryBatch(entry.previousEndMesId, entry.endMesId, entry.undo);
-            entry.maintenance.forEach(validateMaintenanceReceipt);
-            value.push(entry);
+            else createSummaryBatch(entry.previousEndMesId, entry.endMesId, entry.undo, entry.policy);
+            value.push({ ...entry, maintenance: entry.maintenance.map(upgradeMaintenanceReceipt) });
         }
     }
     // An exact imported/truncated history can name an earlier boundary without
@@ -51,9 +52,9 @@ export function upgradeSummaryHistory(history) {
     return { value, changed: JSON.stringify(value) !== JSON.stringify(history) };
 }
 
-export function appendMaintenanceReceipt(store, receipt) {
+export function appendMaintenanceReceipt(store, receipt, boundary = store.lastSummarizedMesId) {
     validateMaintenanceReceipt(receipt);
-    const batch = store.summaryHistory?.find(entry => entry.endMesId === store.lastSummarizedMesId);
+    const batch = store.summaryHistory?.find(entry => entry.endMesId === boundary);
     valid(batch);
     batch.maintenance.push(receipt);
 }

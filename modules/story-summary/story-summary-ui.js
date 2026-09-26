@@ -407,7 +407,7 @@ const UNANNOTATED_LABEL = '未标注';
         const btn = $('settings-save');
         if (btn) {
             btn.disabled = false;
-            btn.textContent = '保存';
+            btn.textContent = MEMORY_COPY.settingsSave;
         }
     }
 
@@ -1250,7 +1250,7 @@ const UNANNOTATED_LABEL = '未标注';
         const saveBtn = $('settings-save');
         if (saveBtn) {
             saveBtn.disabled = !settingsOpenedWithServerConfig;
-            saveBtn.textContent = settingsOpenedWithServerConfig ? '保存' : '等待配置...';
+            saveBtn.textContent = settingsOpenedWithServerConfig ? MEMORY_COPY.settingsSave : '等待配置...';
         }
 
         // Initialize sub-options visibility
@@ -1346,6 +1346,7 @@ const UNANNOTATED_LABEL = '未标注';
     }
 
     function closeSettings() {
+        memoryMaintenancePage.close();
         resetSettingsSaveUi();
         settingsOpenedWithServerConfig = false;
         $('settings-modal').classList.remove('active');
@@ -2554,6 +2555,7 @@ const UNANNOTATED_LABEL = '未标注';
                 if (d.payload) {
                     const p = d.payload;
                     const nextChatId = typeof p.chatId === 'string' ? p.chatId : '';
+                    memoryMaintenancePage.setChat(nextChatId);
                     if (nextChatId !== currentTimelineChatId) {
                         currentTimelineChatId = nextChatId;
                         timelineHasRenderedEvents = false;
@@ -2586,6 +2588,9 @@ const UNANNOTATED_LABEL = '未标注';
 
             case 'MEMORY_MAINTENANCE_RESULTS':
                 memoryMaintenancePage.render(d.payload);
+                break;
+            case 'MEMORY_MAINTENANCE_SOURCE_RESULT':
+                memoryMaintenancePage.renderSource(d.payload);
                 break;
 
             case 'SUMMARY_CLEARED': {
@@ -3020,6 +3025,8 @@ const UNANNOTATED_LABEL = '未标注';
 
     function init() {
         $('memory-agent-tab').textContent = MEMORY_COPY.tab;
+        $('settings-save').textContent = MEMORY_COPY.settingsSave;
+        $('settings-cancel').textContent = MEMORY_COPY.settingsClose;
         memoryMaintenancePage = createMemoryMaintenancePage($('tab-agent'), postMsg);
         loadConfig();
         tlPagingEnabled = localStorage.getItem(TL_PAGING_KEY) === '1';

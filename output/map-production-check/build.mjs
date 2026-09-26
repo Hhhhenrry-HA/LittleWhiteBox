@@ -30,6 +30,16 @@ for (const example of ATLAS_EXAMPLES) {
 fixtures['atlas-empty-places'] = compileAtlasIntent(createEmptyMapDomain(), { features: [
     { id: 'sand', map: null, role: 'surface', material: 'sand', form: 'dunes', geometry: { shape: 'rect', x: 0, y: 0, width: 1000, height: 600 } },
 ] }, { actorKey: 'player', displayName: '小白' }).domain;
+// Regional houses carried by a world-frame plain; the region has no boundary clip.
+fixtures['atlas-carrier'] = compileAtlasIntent(createEmptyMapDomain(), {
+    locations: [{ key: 'town', name: 'Town', scale: 'region' }],
+    maps: [{ map: 'town', mapping: { map: null, scale: 2, offset: [100, 50] } }],
+    features: [
+        { id: 'plain', map: null, role: 'surface', material: 'grass', geometry: { shape: 'rect', x: 0, y: 0, width: 400, height: 300 } },
+        { id: 'houses', map: 'town', role: 'structure', material: 'wood', form: 'compact', support: 'plain', geometry: { shape: 'rect', x: -70, y: 10, width: 40, height: 30 } },
+    ],
+}, { actorKey: 'player', displayName: '小白' }).domain;
+validateMapDomain(fixtures['atlas-carrier']);
 validateMapDomain(fixtures.regions);
 const geography = compileAtlasIntent(createEmptyMapDomain(), atlasGeographyInput, { actorKey: 'player', displayName: '小白' });
 if (geography.result.skipped.length) throw new Error(JSON.stringify(geography.result));

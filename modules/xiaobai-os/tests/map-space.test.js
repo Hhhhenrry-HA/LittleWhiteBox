@@ -371,3 +371,22 @@ for (const example of ATLAS_EXAMPLES) {
         assert.equal(view(reopened.map.readCurrent().map, 'west').scope.locations.length, 2);
     });
 }
+
+test('an unbounded region carries world supports as mask-only carriers', () => {
+    const result = compile(createEmptyMapDomain(), {
+        locations: [{ key: 'town', name: 'Town', scale: 'region' }],
+        maps: [{ map: 'town', mapping: { map: null, scale: 2, offset: [100, 50] } }],
+        features: [
+            { id: 'plain', map: null, role: 'surface', material: 'grass', geometry: { shape: 'rect', x: 0, y: 0, width: 400, height: 300 } },
+            { id: 'houses', map: 'town', role: 'structure', material: 'wood', form: 'compact', support: 'plain', geometry: { shape: 'rect', x: 10, y: 10, width: 40, height: 30 } },
+        ],
+    });
+    assert.equal(result.result.status, 'updated', JSON.stringify(result.result));
+    const town = view(result.domain, 'town');
+    assert.equal(town.clip, undefined);
+    assert.deepEqual(town.features.map(f => f.source.id), ['houses']);
+    assert.deepEqual(town.carriers.map(f => f.source.id), ['plain']);
+    const plain = town.carriers[0];
+    assert.deepEqual([plain.geometry.x, plain.geometry.y, plain.geometry.width, plain.geometry.height], [-50, -25, 200, 150]);
+    assert.deepEqual(view(result.domain).carriers, []);
+});
