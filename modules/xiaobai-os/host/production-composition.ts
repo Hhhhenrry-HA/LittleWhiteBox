@@ -69,6 +69,7 @@ import {
     subscribeWorldPromptEvents,
     subscribeXiaobaiOsChatChanged,
 } from './sillytavern-runtime-adapters.js';
+import { notifySillyTavernSuccess } from './notifications.js';
 
 const hostStylesheet = `${extensionFolderPath}/modules/xiaobai-os/host.css`;
 const frameSource = `${extensionFolderPath}/modules/xiaobai-os/shell/xiaobai-os.html`;
@@ -163,6 +164,7 @@ export function createProductionBootstrap(
         }),
         createProductionBankModule({
             userTransactions: () => composition.userTransactions,
+            notifyMaturity: notifySillyTavernSuccess,
         }),
         createProductionGameModule({ getChatIdentity: getSillyTavernChatIdentity, mainGeneration }),
         createProductionMapModule({
@@ -178,13 +180,7 @@ export function createProductionBootstrap(
             userTransactions: () => composition.userTransactions,
             mainGeneration,
             subscribePrompt: subscribeTaskPromptEvents,
-            notifyCompletion: ({ title, message }) => {
-                // Same global toast as /echo severity=success, without parsing task text as commands/macros.
-                const toastr = window.toastr as unknown as {
-                    success?(message: string, title: string, options: { escapeHtml: boolean; timeOut: number }): void;
-                } | undefined;
-                toastr?.success?.(message, title, { escapeHtml: true, timeOut: 8_000 });
-            },
+            notifyCompletion: notifySillyTavernSuccess,
         }),
         createProductionWorldModule({
             settings,

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createBankService } from '../apps/bank/application/service.js';
+import { createBankMaturityRuntime } from '../apps/bank/host/maturity-runtime.js';
 import { BANK_PARTITION } from '../apps/bank/partition.js';
 import { ensureEconomy, postAction, projectBalances } from '../domains/economy/ledger.js';
 import { USER_DOCUMENT_FILENAME } from '../kernel/user-document.js';
@@ -45,7 +46,8 @@ async function createHarness(randomValues = [], grant = 0) {
     let randomCalls = 0;
     const randomQueue = [...randomValues];
     let clock = 1_000;
-    const bank = createBankService(h.store(BANK_PARTITION), coordinator, economy, {
+    const store = h.store(BANK_PARTITION);
+    const bank = createBankService(store, coordinator, economy, {
         now: () => ++clock,
         createEventId: () => `bank-event-${++eventId}`,
         createPositionId: () => `bank-position-${++positionId}`,
@@ -65,6 +67,8 @@ async function createHarness(randomValues = [], grant = 0) {
 
     return {
         bank,
+        store,
+        switchStory: h.switchStory,
         coordinator,
         economy,
         foreign,
@@ -93,6 +97,134 @@ function bankTransactions(harness, actionId) {
         transaction.sourceDomain === 'bank' && transaction.actionId === actionId
     ));
 }
+
+test('confirmed deposit and fund maturities notify once without opening the OS or settling funds', async t => {
+    const h = await createHarness([0, 2_500], 1_000);
+    const notices = [];
+    const runtime = createBankMaturityRuntime({ store: h.store, notify: notice => notices.push(notice) });
+    t.after(() => runtime.stopBackground());
+    runtime.startBackground();
+    runtime.startBackground();
+    await h.bank.openDeposit(command(h.bank.readCurrent(), 'notice-deposit', {
+        productId: 'short-term', amount: 100,
+    }));
+    for (const actionId of ['notice-loss', 'notice-profit']) {
+        await h.bank.openFund(command(h.bank.readCurrent(), actionId, {
+            productId: 'steady-fund', amount: 200,
+        }));
+    }
+    const balance = h.bank.readCurrent().balance;
+    await h.addAssistant(9);
+    assert.equal(notices.length, 0);
+    await h.addAssistant(1);
+    assert.equal(notices.length, 1);
+    h.switchStory('b');
+    await runtime.handleChatChanged?.();
+    await h.bank.refreshCurrent();
+    assert.equal(notices.length, 1);
+    await h.addAssistant(10);
+    assert.equal(notices.length, 3);
+    const view = h.bank.readCurrent();
+    assert.equal(view.deposits[0].claimable, true);
+    assert.ok(view.investments.every(position => position.claimable));
+    assert.ok(view.investments[0].settlementAmount < view.investments[0].principal);
+    assert.ok(view.investments[1].settlementAmount > view.investments[1].principal);
+    assert.equal(view.balance, balance);
+    await h.bank.refreshCurrent();
+    await h.bank.settleDue(command(view, 'claim-notified-positions'));
+    assert.equal(notices.length, 3);
+    assert.equal(h.bank.readCurrent().deposits.length, 0);
+    assert.equal(h.bank.readCurrent().investments.length, 0);
+});
+
+test('loading or restarting with existing maturities stays silent, but subsequent maturities notify', async t => {
+    const h = await createHarness([0], 1_000);
+    await h.bank.openDeposit(command(h.bank.readCurrent(), 'old-deposit', {
+        productId: 'short-term', amount: 100,
+    }));
+    await h.bank.openFund(command(h.bank.readCurrent(), 'old-fund', {
+        productId: 'steady-fund', amount: 200,
+    }));
+    await h.addAssistant(10);
+    // Start before the persisted user document has been read, as on a fresh page.
+    const reopened = await userEconomyHarness({ files: h.state.files });
+    const store = reopened.store(BANK_PARTITION);
+    const notices = [];
+    const runtime = createBankMaturityRuntime({ store, notify: notice => notices.push(notice) });
+    t.after(() => runtime.stopBackground());
+    runtime.startBackground();
+    await store.read();
+    assert.equal(notices.length, 0);
+    runtime.stopBackground();
+    await h.addAssistant(10);
+    await store.read();
+    assert.equal(notices.length, 0);
+    runtime.startBackground();
+    await store.read();
+    assert.equal(notices.length, 0);
+    await h.bank.openDeposit(command(h.bank.readCurrent(), 'new-deposit', {
+        productId: 'short-term', amount: 100,
+    }));
+    await store.read();
+    await h.addAssistant(10);
+    await store.read();
+    await store.read();
+    assert.equal(notices.length, 1);
+});
+
+test('failed or uncertain maturity saves stay silent until confirmed recovery', async t => {
+    for (const mode of ['rejected', 'unknown']) {
+        await t.test(mode, async t => {
+            const h = await createHarness();
+            const notices = [];
+            const runtime = createBankMaturityRuntime({ store: h.store, notify: notice => notices.push(notice) });
+            t.after(() => runtime.stopBackground());
+            runtime.startBackground();
+            await h.bank.openDeposit(command(h.bank.readCurrent(), 'recover-maturity', {
+                productId: 'short-term', amount: 100,
+            }));
+            h.state.mode = mode;
+            await assert.rejects(h.addAssistant(10));
+            assert.equal(notices.length, 0);
+            assert.equal(h.bank.readCurrent().deposits[0].claimable, false);
+            h.state.mode = 'confirmed';
+            if (mode === 'unknown') {
+                h.state.persist(h.state.writes.at(-1));
+                assert.equal((await h.coordinator.retryPending({ readOnly: true })).status, 'confirmed');
+            }
+            await h.bank.confirmPending();
+            assert.equal(notices.length, 1);
+            assert.equal(h.bank.readCurrent().deposits[0].claimable, true);
+            await h.bank.refreshCurrent();
+            assert.equal(notices.length, 1);
+        });
+    }
+});
+
+test('a failed maturity notification neither interrupts other notices nor changes bank state', async t => {
+    const h = await createHarness([], 100);
+    let attempts = 0;
+    t.mock.method(console, 'warn', () => {});
+    const runtime = createBankMaturityRuntime({ store: h.store, notify: () => {
+        attempts++;
+        throw new Error('toast unavailable');
+    } });
+    t.after(() => runtime.stopBackground());
+    runtime.startBackground();
+    for (const actionId of ['first-notice', 'second-notice']) {
+        await h.bank.openDeposit(command(h.bank.readCurrent(), actionId, {
+            productId: 'short-term', amount: 100,
+        }));
+    }
+    await h.addAssistant(10);
+    assert.equal(attempts, 2);
+    assert.ok(h.bank.readCurrent().deposits.every(position => position.claimable));
+    assert.equal(h.bank.readCurrent().balance, 0);
+    await h.bank.refreshCurrent();
+    assert.equal(attempts, 2);
+    await h.bank.settleDue(command(h.bank.readCurrent(), 'claim-after-notice-failure'));
+    assert.equal(h.bank.readCurrent().balance, 212);
+});
 
 test('one global action replaces Bank and Economy once without parsing another partition', async () => {
     const harness = await createHarness();
