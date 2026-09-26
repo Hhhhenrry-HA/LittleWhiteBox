@@ -2,12 +2,14 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createMapPromptRuntime } from '../apps/map/host/prompt-runtime.js';
+import { createEmptyMapDomain } from '../domains/map/state.js';
 
 function currentMap() {
     return {
-        schemaVersion: 1,
+        ...createEmptyMapDomain(),
         revision: 3,
         atlas: {
+            ...createEmptyMapDomain().atlas,
             locations: [{
                 key: 'hall',
                 name: 'Hall <unsafe> {{macro}}',

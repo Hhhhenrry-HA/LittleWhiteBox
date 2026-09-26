@@ -152,19 +152,19 @@ function Ze(t) {
   });
 }
 var qe = Object.freeze({
-  administrator: () => import("./xiaobai-os-AdministratorApp-CkN2IJrL.js"),
+  administrator: () => import("./xiaobai-os-AdministratorApp-CbxUjU0o.js"),
   dice: () => import("./xiaobai-os-DiceApp-D3safTxs.js"),
   "agent-api": () => import("./xiaobai-os-AgentApiApp-PgQiLyDd.js"),
-  "fourth-wall": () => import("./xiaobai-os-FourthWallApp-Dnol7gy7.js"),
+  "fourth-wall": () => import("./xiaobai-os-FourthWallApp-DLeba59P.js"),
   wallet: () => import("./xiaobai-os-WalletApp-CzbAwwme.js"),
   shop: () => import("./xiaobai-os-ShopApp-DOKTz1s-.js"),
   bank: () => import("./xiaobai-os-BankApp-DyEIcJy8.js"),
   game: () => import("./xiaobai-os-GameApp-Bcj5wN4e.js"),
-  map: () => import("./xiaobai-os-MapApp-BJuh4r5W.js"),
+  map: () => import("./xiaobai-os-MapApp-C7WFKmA3.js"),
   messages: () => import("./xiaobai-os-MessagesApp-BBrIKZjn.js"),
   tasks: () => import("./xiaobai-os-TasksApp-BwTQ9U5-.js"),
   world: () => import("./xiaobai-os-WorldApp-BMNVlva7.js"),
-  learning: () => import("./xiaobai-os-LearningApp-SWaU3Xrg.js")
+  learning: () => import("./xiaobai-os-LearningApp-CkalR68X.js")
 }), he = Object.freeze(Fe.map((t) => {
   const i = qe[t.id];
   if (!i) throw new Error(`missing_shell_app:${t.id}`);

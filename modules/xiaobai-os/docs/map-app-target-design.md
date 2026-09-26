@@ -9,7 +9,7 @@ Map 是普通小白 OS 的独立世界探索与空间领域。存储分为 Atlas
 
 这里复用的是产品经验、语义和绘图规则。普通 OS 不 import`modules/tavern/**`，不使用 Tavern DB、Session、楼层、manager run、state document 或回滚协议。
 
-世界／地区升级统一见 [Atlas 通用空间地图最终设计](map-atlas-geography-design.md)，实施顺序与证据见 [施工文档](map-atlas-implementation-plan.md)。该目标尚未实现；下文明确标注的现行格式用于说明升级输入，不是新的绘制契约。题材覆盖与空间绘制只在最终设计定义，本文件不维护另一套自然／城市／太空规则。
+世界／地区升级统一见 [Atlas 通用空间地图最终设计](map-atlas-geography-design.md)，实施顺序与证据见 [施工文档](map-atlas-implementation-plan.md)。当前实现已接入该模型；确定性检查与未执行的真实模型验收分开记录。题材覆盖与空间绘制只在最终设计定义，本文件不维护另一套自然／城市／太空规则。
 
 ## 2. 开工检查结论
 
@@ -32,7 +32,7 @@ Map 是普通小白 OS 的独立世界探索与空间领域。存储分为 Atlas
 - 世界地图只展示、统计和搜索 `scale: region` 的地区；`world` 是世界容器，不计为地区，具体场景地点不得混入。
 - 地区图只展示、统计和搜索归属该地区的场景地点。归属取最近的 `region` 祖先，覆盖建筑、楼层、房间等嵌套地点，但不跨入另一个地区。是否已有 Scene 布局不影响地点被列出。
 - 「当前地区」跟随玩家所属地区；从地区详情也能查看其他地区，包括尚无场景地点的空地区。地区名称始终显示在路径、横幅和搜索弹窗中。没有记录所属地区时显示明确空态，不借用其他地区的地点。
-- 横幅数量和搜索共用当前浏览范围。搜索栏进入当前范围的全部项；横幅存在未到访项时默认打开同范围的未到访筛选，否则打开全部项。筛选和搜索不得扩大范围。现行范围实现为 `apps/map/ui/map-browse`；升级后的领域投影及地图可绘制子集见 [空间规格第 4 节](map-atlas-geography-design.md#4-统一投影与浏览行为)。
+- 横幅数量和搜索共用当前浏览范围。搜索栏进入当前范围的全部项；横幅存在未到访项时默认打开同范围的未到访筛选，否则打开全部项。筛选和搜索不得扩大范围。范围与可绘制子集由 `domains/map/space/projection` 统一派生；其规则见 [空间规格第 4 节](map-atlas-geography-design.md#4-统一投影与浏览行为)。
 - 地区归属与到访推导统一由 `domains/map/hierarchy` 提供，工具和 UI 共用：地点已到访或玩家正在其中，则其包含层级也已到访。只读派生，不回写存档；地区不会一边包含玩家、一边被计为未到访。
 - 「世界地图」始终回到世界层，「当前场景」始终打开玩家场景。查看其他场景后返回其所属地区，地区返回世界；地点详情和弹窗先关闭自身。
 
@@ -54,60 +54,11 @@ Map 是普通小白 OS 的独立世界探索与空间领域。存储分为 Atlas
 
 ## 4. 持久数据模型
 
-### 现行格式基线
+### 当前模型与旧格式入口
 
-以下 Atlas 结构描述升级前已保存的数据，用于识别需保留的事实；Atlas 升级的目标语义和旧数据保留要求只在 [第一版空间规格](map-atlas-geography-design.md) 定义。格式冻结与转换遵循其第 7 节，不能把这里的直接父级坐标写法带进新运行时。
+当前结构与字段由 [Map 类型](../domains/map/types.ts)及[空间类型](../domains/map/space/types.ts)定义；本节不另维护一份 Atlas schema。地点包含、源坐标框架、空间所有者与显示范围遵循[空间规格](map-atlas-geography-design.md)。
 
-```ts
-interface MapDomainV1 {
-    schemaVersion: 1;
-    revision: number;
-    atlas: MapAtlas;
-    scenes: Record<string, MapScene>;
-}
-
-interface MapAtlas {
-    locations: MapLocation[];
-    links: MapLink[];
-    actors: MapActorPosition[];
-}
-
-interface MapLocation {
-    key: string;
-    name: string;
-    scale: 'world' | 'region' | 'city' | 'district' | 'building' | 'floor' | 'room' | 'outdoor';
-    status: 'mentioned' | 'visited';
-    parent?: string;
-    sceneKey?: string;
-    brief?: string;
-    position?: [number, number]; // 所属父区域内的稳定坐标，北为较小 y
-    terrain?: 'urban' | 'plain' | 'forest' | 'water' | 'mountain' | 'desert' | 'snow';
-}
-
-interface MapLink {
-    id: string;
-    from: string;
-    to: string;
-    kind: 'door' | 'stairs' | 'elevator' | 'path' | 'road' | 'portal' | 'passage';
-    label?: string;
-    bidirectional: boolean;
-}
-
-interface MapActorPosition {
-    actorKey: string;
-    displayName: string;
-    locationKey: string;
-}
-
-interface MapScene {
-    key: string;
-    name: string;
-    status: 'uninitialized' | 'active';
-    viewBox: [number, number, number, number];
-    mood?: 'neutral' | 'warm' | 'cold' | 'dark' | 'mystic' | 'danger' | 'calm';
-    elements: MapElement[];
-}
-```
+受支持的升级前格式独立冻结在 [upgrades/v1](../domains/map/upgrades/v1/types.ts)，只经[读取入口](../domains/map/upgrades/read.ts)转换；业务与绘制只接收当前模型。缺少地貌是合法旧输入，不按某份存档的字段集合决定支持范围。
 
 玩家当前位置只以`atlas.actors`中`actorKey: "player"`的记录为准，UI 的“当前地点”由它派生；不再额外持久化第二个`activeLocationKey`。
 
@@ -245,7 +196,7 @@ sidecar replace 发出前，运行中切聊、关闭自动维护、Map revision 
 
 界面延续掌上 OS 的操作尺度和字体，深浅主题由 Map 局部 token 控制；Atlas 图面由空间内容决定，不把所有题材统一染成纸地图或绿灰地貌。不改 API 与四次元壁内部。
 
-Atlas 的空间绘制、稳定细节与遮罩遵循 [空间规格第 5 节](map-atlas-geography-design.md#5-绘制组合与稳定细节)；现行按地点生成的地貌色块不是空间几何。世界图导航与地点继续使用本地线图标，场景使用共享 Material Symbols 字体与闭合材质 token。
+Atlas 的空间绘制、稳定细节与遮罩遵循 [空间规格第 5 节](map-atlas-geography-design.md#5-绘制组合与稳定细节)；已移除按地点猜测生成地貌色块的路径。世界图导航与地点继续使用本地线图标，场景使用共享 Material Symbols 字体与闭合材质 token。
 
 UI 位于 `apps/map/ui`：
 - `MapApp` 拥有临时浏览状态，`use-map-state` 只拥有 Host 连接、状态与请求。

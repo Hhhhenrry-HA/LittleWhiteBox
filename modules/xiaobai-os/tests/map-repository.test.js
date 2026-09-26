@@ -6,9 +6,10 @@ import { createMapKernelHarness } from './map-kernel-harness.js';
 
 function mapDomain(revision, keys) {
     return {
-        schemaVersion: 1,
+        ...createEmptyMapDomain(),
         revision,
         atlas: {
+            ...createEmptyMapDomain().atlas,
             locations: keys.map(key => ({ key, name: key, scale: 'room', status: 'visited' })),
             links: [],
             actors: [],

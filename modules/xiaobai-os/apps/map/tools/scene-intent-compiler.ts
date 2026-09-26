@@ -13,7 +13,7 @@ import {
     MAP_TERRAIN_CATEGORY_ALIASES,
 } from '../../../domains/map/semantics.js';
 import type {
-    MapDomainV1,
+    MapDomain,
     MapElement,
     MapElementCategory,
     MapElementShape,
@@ -42,7 +42,7 @@ const ELEMENT_FIELDS = new Set(['id', 'cat', 'kind', 'shape', 'geo', 'label', 'a
 const GEO_FIELDS = new Set(['center', 'at', 'size', 'radius', 'points', 'curve', 'icon']);
 
 export interface SceneIntentCompileResult {
-    readonly domain: MapDomainV1;
+    readonly domain: MapDomain;
     readonly edits: readonly MapDomainEdit[];
     readonly result: MapToolResult;
 }
@@ -290,14 +290,14 @@ function compileElement(
     return { id, element };
 }
 
-function findLocation(domain: MapDomainV1, scene: string): MapLocation | undefined {
+function findLocation(domain: MapDomain, scene: string): MapLocation | undefined {
     return domain.atlas.locations.find(location => location.key === scene)
         || domain.atlas.locations.find(location => location.sceneKey === scene)
         || domain.atlas.locations.find(location => location.name === scene);
 }
 
 function actorMoveEdits(
-    domain: MapDomainV1,
+    domain: MapDomain,
     actorKey: string,
     displayName: string,
     locationKey: string,
@@ -320,7 +320,7 @@ function actorMoveEdits(
 }
 
 export function compileSceneIntent(
-    current: MapDomainV1,
+    current: MapDomain,
     value: unknown,
     player: AcceptedTurnPlayer,
 ): SceneIntentCompileResult {

@@ -1,9 +1,9 @@
 /* eslint-disable */
-import { n as $e } from "./xiaobai-os-message-markdown-p_WvGylV.js";
-import { E as le, G as Q, H as D, J as R, K as M, M as c, P as ne, Q as S, T as se, V as _, X as ee, Y as re, Z as Ce, b as O, f as P, g as p, h as B, i as G, k as oe, l as Ie, m as H, o as z, p as e, u as j, v as U, x as Z, y as Y, z as L } from "./xiaobai-os-runtime-dom.esm-bundler-BcM9c-Z9.js";
+import { E as le, G as Q, H as D, J as R, K as M, M as c, P as ne, Q as S, T as se, V as _, X as ee, Y as re, Z as $e, b as O, f as P, g as p, h as B, i as G, k as oe, l as Ce, m as H, o as z, p as e, u as j, v as U, x as Z, y as Y, z as L } from "./xiaobai-os-runtime-dom.esm-bundler-BcM9c-Z9.js";
 import { n as ie, r as ue } from "./xiaobai-os-app-navigation-sg-40eOk.js";
 import { t as J } from "./xiaobai-os-context-tokens-bfmDTbG3.js";
 import { t as de } from "./xiaobai-os-AppDialog-CI-E933W.js";
+import { n as Ie } from "./xiaobai-os-message-markdown-BzYeKWMY.js";
 var xe = { class: "fourth-wall-context" }, Se = ["aria-label", "aria-expanded"], Te = {
   key: 0,
   class: "fourth-wall-context-popover",
@@ -28,7 +28,7 @@ var xe = { class: "fourth-wall-context" }, Se = ["aria-label", "aria-expanded"],
     return (a, n) => (c(), p("div", xe, [e("button", {
       type: "button",
       class: ee(["fourth-wall-context-ring", { "is-warning": s.stats.usedTokens >= s.stats.trigger }]),
-      style: Ce({ "--context-fill": `${m.value * 360}deg` }),
+      style: $e({ "--context-fill": `${m.value * 360}deg` }),
       "aria-label": `上下文：约 ${o(s.stats.usedTokens)} / 158k`,
       "aria-expanded": d.value,
       title: "上下文",
@@ -245,7 +245,7 @@ function me(s, A = globalThis.document) {
     }];
   }
   const n = A.createElement("template");
-  return n.innerHTML = $e(d, { htmlFenceMode: "code" }), {
+  return n.innerHTML = Ie(d, { htmlFenceMode: "code" }), {
     nodes: Array.from(n.content.childNodes).flatMap((r) => a(r)),
     media: l
   };
@@ -738,7 +738,7 @@ var Oe = ["data-message-index"], He = ["src"], Le = {
       ref_key: "layer",
       ref: m,
       class: "fourth-wall-modal-backdrop",
-      onClick: a[6] || (a[6] = Ie((n) => i("close"), ["self"]))
+      onClick: a[6] || (a[6] = Ce((n) => i("close"), ["self"]))
     }, [e("section", $t, [
       e("header", null, [a[7] || (a[7] = e("strong", null, "提示词模板", -1)), e("button", {
         type: "button",

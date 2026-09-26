@@ -4,7 +4,7 @@ import { t as ze } from "./xiaobai-os-descriptor-DmDuv1pM.js";
 import { n as Oe, r as Pe } from "./xiaobai-os-app-navigation-sg-40eOk.js";
 import { t as De } from "./xiaobai-os-context-tokens-bfmDTbG3.js";
 import { t as he } from "./xiaobai-os-AppDialog-CI-E933W.js";
-import { t as xe } from "./xiaobai-os-MessageMarkdown-BCyY02k6.js";
+import { t as xe } from "./xiaobai-os-MessageMarkdown-C_jQgBbc.js";
 var O = Object.freeze({
   inputBudget: 158e3,
   summaryTrigger: 128e3,

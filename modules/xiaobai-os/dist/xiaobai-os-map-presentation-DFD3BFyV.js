@@ -3,10 +3,25 @@ var Q = {
   world: "世界地图",
   region: "当前地区",
   scene: "当前场景"
+}, tt = {
+  label: "地图缩放",
+  zoomIn: "放大地图",
+  zoomOut: "缩小地图",
+  fit: "全图"
 }, T = {
   visited: "已到访",
   unvisited: "未到访"
-}, $ = {
+}, at = {
+  position_unknown: "位置尚未记录",
+  mapping_unknown: "尚未确定在这张地图上的位置",
+  outside_map: "已记录的位置在本图范围之外"
+}, rt = {
+  empty: "这里还没有可绘制的位置或地貌",
+  emptyHint: "已记录的地点仍可从列表查看。",
+  current: "你在这里",
+  legend: "图面只绘制已记录的位置与地貌，点状底纹表示未记录范围；连接关系可在地点详情查看。",
+  placeLabel: (t) => `查看${t}`
+}, j = {
   world: {
     unit: "地区",
     search: "搜索地区",
@@ -23,7 +38,7 @@ var Q = {
     emptyHint: "可以查看其他地区，或更新地图补充。",
     notFound: "没有找到符合条件的场景"
   }
-}, tt = {
+}, et = {
   viewLabel: "地图视图",
   trailLabel: "当前查看位置",
   unknownRegion: "所属地区待确认",
@@ -43,16 +58,16 @@ var Q = {
   locationUpdateHint: "更新地图后，会根据剧情确认你所在的地方。",
   legend: "世界图展示地区，地区图展示所属场景；场景图展示一个地点的内部布局。地图不按实际比例。"
 };
-function N(t, r) {
-  return `${r} 个${$[t].unit}`;
+function N(t, a) {
+  return `${a} 个${j[t].unit}`;
 }
-function rt(t, r, n) {
-  return `${N(t, r)} · ${n} 个${T.unvisited}`;
+function nt(t, a, n) {
+  return `${N(t, a)} · ${n} 个${T.unvisited}`;
 }
-function at(t, r) {
-  return `查看${r === "all" ? "" : T[r]}${$[t].unit}`;
+function ot(t, a) {
+  return `查看${a === "all" ? "" : T[a]}${j[t].unit}`;
 }
-var et = Object.freeze([
+var it = Object.freeze([
   "wall",
   "road",
   "water",
@@ -68,14 +83,14 @@ var et = Object.freeze([
   "magic",
   "secret",
   "light"
-]), nt = Object.freeze([
+]), ct = Object.freeze([
   "rect",
   "circle",
   "path",
   "curve",
   "icon",
   "label"
-]), ot = Object.freeze([
+]), st = Object.freeze([
   "door",
   "stairs",
   "elevator",
@@ -94,7 +109,7 @@ var et = Object.freeze([
   "marker",
   "player",
   "actor"
-]), it = Object.freeze([
+]), ht = Object.freeze([
   "unknown",
   "wood",
   "stone",
@@ -117,7 +132,7 @@ var et = Object.freeze([
   "warm-light",
   "cold-light",
   "shadow"
-]), ct = Object.freeze([
+]), dt = Object.freeze([
   "confirmed",
   "inferred",
   "unknown"
@@ -201,8 +216,8 @@ var et = Object.freeze([
     ],
     hint: "light is a freestanding fixture; light regions use category light without an object icon."
   }
-]), I = Object.freeze(R.flatMap((t) => [...t.icons])), st = Object.freeze([
-  ...I,
+]), L = Object.freeze(R.flatMap((t) => [...t.icons])), lt = Object.freeze([
+  ...L,
   "stairs",
   "elevator",
   "portal",
@@ -221,7 +236,7 @@ var et = Object.freeze([
   "actor",
   "building",
   "water"
-]), ht = Object.freeze(/* @__PURE__ */ new Set([
+]), ut = Object.freeze(/* @__PURE__ */ new Set([
   "floor",
   "ground",
   "surface",
@@ -256,16 +271,16 @@ var et = Object.freeze([
   "cold-light": "#afced6",
   shadow: "#758079"
 });
-function B(t, r) {
-  return `url(#${r}-material-${t || "unknown"})`;
+function B(t, a) {
+  return `url(#${a}-material-${t || "unknown"})`;
 }
-function dt(t, r) {
-  return `url(#${r}-face-${t || "unknown"})`;
+function gt(t, a) {
+  return `url(#${a}-face-${t || "unknown"})`;
 }
-function lt(t) {
+function ft(t) {
   return `color-mix(in srgb, ${z[t]}, var(--map-surface) var(--scene-material-mix))`;
 }
-var D = /* @__PURE__ */ new Set([
+var Y = /* @__PURE__ */ new Set([
   "water",
   "terrain",
   "furniture",
@@ -274,7 +289,7 @@ var D = /* @__PURE__ */ new Set([
   "magic",
   "secret",
   "light"
-]), F = new Set(I), G = /* @__PURE__ */ new Set([
+]), F = new Set(L), D = /* @__PURE__ */ new Set([
   "chair",
   "table",
   "bed",
@@ -285,18 +300,18 @@ var D = /* @__PURE__ */ new Set([
   "tree",
   "rock"
 ]);
-function ut(t) {
-  return !!t.icon && G.has(t.icon);
+function pt(t) {
+  return !!t.icon && D.has(t.icon);
 }
 var _ = (t) => Number(t.toFixed(3)).toString(), m = (t) => t.geometry.points || [];
-function K(t) {
+function G(t) {
   return t.shape === "icon" || t.shape === "label" || t.category === "actor" || t.category === "door" || t.kind === "stairs" || t.icon === "stairs" || t.icon === "door-open";
 }
-function M(t) {
-  return m(t).length >= 3 && (t.closed ?? D.has(t.category));
+function y(t) {
+  return m(t).length >= 3 && (t.closed ?? Y.has(t.category));
 }
 function k(t) {
-  return t.category === "wall" || t.category === "grid" || t.icon === "fence" && ["path", "curve"].includes(t.shape) ? !1 : t.shape === "rect" || t.shape === "circle" ? !0 : (t.shape === "path" || t.shape === "curve") && M(t);
+  return t.category === "wall" || t.category === "grid" || t.icon === "fence" && ["path", "curve"].includes(t.shape) ? !1 : t.shape === "rect" || t.shape === "circle" ? !0 : (t.shape === "path" || t.shape === "curve") && y(t);
 }
 function H(t) {
   return ![
@@ -309,11 +324,11 @@ function H(t) {
     "door"
   ].includes(t.category));
 }
-function j(t, r, n) {
-  const a = t[n], i = t[(n + 1) % t.length], e = t[n - 1] || (r ? t[t.length - 1] : a), o = t[n + 2] || (r ? t[(n + 2) % t.length] : i), c = (s, l, g) => Math.max(Math.min(l, g), Math.min(Math.max(l, g), s));
-  return [[c(a[0] + (i[0] - e[0]) / 6, a[0], i[0]), c(a[1] + (i[1] - e[1]) / 6, a[1], i[1])], [c(i[0] - (o[0] - a[0]) / 6, a[0], i[0]), c(i[1] - (o[1] - a[1]) / 6, a[1], i[1])]];
+function x(t, a, n) {
+  const r = t[n], i = t[(n + 1) % t.length], e = t[n - 1] || (a ? t[t.length - 1] : r), o = t[n + 2] || (a ? t[(n + 2) % t.length] : i), c = (s, l, g) => Math.max(Math.min(l, g), Math.min(Math.max(l, g), s));
+  return [[c(r[0] + (i[0] - e[0]) / 6, r[0], i[0]), c(r[1] + (i[1] - e[1]) / 6, r[1], i[1])], [c(i[0] - (o[0] - r[0]) / 6, r[0], i[0]), c(i[1] - (o[1] - r[1]) / 6, r[1], i[1])]];
 }
-function gt(t) {
+function bt(t) {
   if (t.shape === "rect") {
     const { x: e, y: o, width: c, height: s } = t.geometry;
     return {
@@ -337,14 +352,14 @@ function gt(t) {
     points: [],
     closed: !1
   };
-  const r = m(t), n = M(t), a = (e) => e.map((o) => Number(_(o)));
-  if (t.shape === "path" || r.length < 2) return {
-    points: r.map(a),
+  const a = m(t), n = y(t), r = (e) => e.map((o) => Number(_(o)));
+  if (t.shape === "path" || a.length < 2) return {
+    points: a.map(r),
     closed: n
   };
-  const i = [a(r[0])];
-  for (let e = 0; e < r.length - (n ? 0 : 1); e += 1) {
-    const o = a(r[e]), c = a(r[(e + 1) % r.length]), [s, l] = j(r, n, e).map(a);
+  const i = [r(a[0])];
+  for (let e = 0; e < a.length - (n ? 0 : 1); e += 1) {
+    const o = r(a[e]), c = r(a[(e + 1) % a.length]), [s, l] = x(a, n, e).map(r);
     for (let g = 1; g <= 12; g += 1) {
       const h = g / 12, u = 1 - h;
       i.push([0, 1].map((d) => u ** 3 * o[d] + 3 * u ** 2 * h * s[d] + 3 * u * h ** 2 * l[d] + h ** 3 * c[d]));
@@ -355,7 +370,7 @@ function gt(t) {
     closed: n
   };
 }
-function ft(t) {
+function wt(t) {
   if (t.shape === "rect") {
     const { x: e, y: o, width: c, height: s } = t.geometry;
     return `M ${e} ${o} h ${c} v ${s} h ${-c} Z`;
@@ -364,16 +379,16 @@ function ft(t) {
     const { x: e, y: o, radius: c } = t.geometry;
     return `M ${e - c} ${o} a ${c} ${c} 0 1 0 ${c * 2} 0 a ${c} ${c} 0 1 0 ${-c * 2} 0 Z`;
   }
-  const r = m(t);
-  if (r.length < 2) return "";
-  const n = M(t);
-  if (t.shape === "path") return `M ${r.map(([e, o]) => `${_(e)} ${_(o)}`).join(" L ")}${n ? " Z" : ""}`;
-  const a = [`M ${r[0].map(_).join(" ")}`], i = r.length;
+  const a = m(t);
+  if (a.length < 2) return "";
+  const n = y(t);
+  if (t.shape === "path") return `M ${a.map(([e, o]) => `${_(e)} ${_(o)}`).join(" L ")}${n ? " Z" : ""}`;
+  const r = [`M ${a[0].map(_).join(" ")}`], i = a.length;
   for (let e = 0; e < i - (n ? 0 : 1); e += 1) {
-    const [o, c] = j(r, n, e), s = r[(e + 1) % i];
-    a.push(`C ${o.map(_).join(" ")}, ${c.map(_).join(" ")}, ${s.map(_).join(" ")}`);
+    const [o, c] = x(a, n, e), s = a[(e + 1) % i];
+    r.push(`C ${o.map(_).join(" ")}, ${c.map(_).join(" ")}, ${s.map(_).join(" ")}`);
   }
-  return a.join(" ") + (n ? " Z" : "");
+  return r.join(" ") + (n ? " Z" : "");
 }
 function O(t) {
   if (t.shape === "rect") return { ...t.geometry };
@@ -386,8 +401,8 @@ function O(t) {
       height: o * 2
     };
   }
-  const r = m(t);
-  if (!r.length) {
+  const a = m(t);
+  if (!a.length) {
     const { x: i, y: e } = t.geometry;
     return {
       x: i,
@@ -396,53 +411,53 @@ function O(t) {
       height: 0
     };
   }
-  const n = r.map((i) => i[0]), a = r.map((i) => i[1]);
+  const n = a.map((i) => i[0]), r = a.map((i) => i[1]);
   return {
     x: Math.min(...n),
-    y: Math.min(...a),
+    y: Math.min(...r),
     width: Math.max(...n) - Math.min(...n),
-    height: Math.max(...a) - Math.min(...a)
+    height: Math.max(...r) - Math.min(...r)
   };
 }
-function pt(t) {
+function _t(t) {
   if (!t.rotation) return;
-  const r = O(t);
-  return `rotate(${t.rotation} ${r.x + r.width / 2} ${r.y + r.height / 2})`;
+  const a = O(t);
+  return `rotate(${t.rotation} ${a.x + a.width / 2} ${a.y + a.height / 2})`;
 }
-function bt(t, r = 1) {
-  const n = O(t), a = [n.x + n.width / 2, n.y + n.height / 2];
-  if (t.shape === "label") return a;
-  if (K(t)) return [a[0], a[1] + 23 * r];
-  if ((t.category === "terrain" || t.category === "water") && k(t)) return a;
+function vt(t, a = 1) {
+  const n = O(t), r = [n.x + n.width / 2, n.y + n.height / 2];
+  if (t.shape === "label") return r;
+  if (G(t)) return [r[0], r[1] + 23 * a];
+  if ((t.category === "terrain" || t.category === "water") && k(t)) return r;
   if (t.shape === "path" || t.shape === "curve") {
-    const o = m(t), c = M(t), s = o.length - (c ? 0 : 1), l = Array.from({ length: s }, (w, p) => Math.hypot(o[(p + 1) % o.length][0] - o[p][0], o[(p + 1) % o.length][1] - o[p][1]));
+    const o = m(t), c = y(t), s = o.length - (c ? 0 : 1), l = Array.from({ length: s }, (w, p) => Math.hypot(o[(p + 1) % o.length][0] - o[p][0], o[(p + 1) % o.length][1] - o[p][1]));
     let g = l.reduce((w, p) => w + p, 0) / 2, h = 0;
     for (; h < l.length - 1 && g > l[h]; )
       g -= l[h], h += 1;
     const u = o[h], d = o[(h + 1) % o.length], f = l[h] ? g / l[h] : 0.5;
-    let E = u[0] + (d[0] - u[0]) * f, A = u[1] + (d[1] - u[1]) * f, S = d[0] - u[0], C = d[1] - u[1];
+    let E = u[0] + (d[0] - u[0]) * f, A = u[1] + (d[1] - u[1]) * f, S = d[0] - u[0], P = d[1] - u[1];
     if (t.shape === "curve") {
-      const [w, p] = j(o, c, h), b = 1 - f;
-      E = b ** 3 * u[0] + 3 * b ** 2 * f * w[0] + 3 * b * f ** 2 * p[0] + f ** 3 * d[0], A = b ** 3 * u[1] + 3 * b ** 2 * f * w[1] + 3 * b * f ** 2 * p[1] + f ** 3 * d[1], S = 3 * b ** 2 * (w[0] - u[0]) + 6 * b * f * (p[0] - w[0]) + 3 * f ** 2 * (d[0] - p[0]), C = 3 * b ** 2 * (w[1] - u[1]) + 6 * b * f * (p[1] - w[1]) + 3 * f ** 2 * (d[1] - p[1]);
+      const [w, p] = x(o, c, h), b = 1 - f;
+      E = b ** 3 * u[0] + 3 * b ** 2 * f * w[0] + 3 * b * f ** 2 * p[0] + f ** 3 * d[0], A = b ** 3 * u[1] + 3 * b ** 2 * f * w[1] + 3 * b * f ** 2 * p[1] + f ** 3 * d[1], S = 3 * b ** 2 * (w[0] - u[0]) + 6 * b * f * (p[0] - w[0]) + 3 * f ** 2 * (d[0] - p[0]), P = 3 * b ** 2 * (w[1] - u[1]) + 6 * b * f * (p[1] - w[1]) + 3 * f ** 2 * (d[1] - p[1]);
     }
-    const x = Math.hypot(S, C);
-    if (!x) return [E, A - 13 * r];
-    let y = -C / x, v = S / x;
-    return (v > 0 || v === 0 && y < 0) && (y = -y, v = -v), [E + y * 13 * r, A + v * 13 * r];
+    const C = Math.hypot(S, P);
+    if (!C) return [E, A - 13 * a];
+    let M = -P / C, v = S / C;
+    return (v > 0 || v === 0 && M < 0) && (M = -M, v = -v), [E + M * 13 * a, A + v * 13 * a];
   }
   const i = (t.rotation || 0) * Math.PI / 180, e = t.shape === "circle" ? n.height / 2 : (Math.abs(Math.sin(i)) * n.width + Math.abs(Math.cos(i)) * n.height) / 2;
-  return [a[0], a[1] + e + 13 * r];
+  return [r[0], r[1] + e + 13 * a];
 }
-function Y(t) {
-  let r = 2166136261;
-  for (const n of t) r = Math.imul(r ^ n.charCodeAt(0), 16777619);
-  return r >>> 0;
+function K(t) {
+  let a = 2166136261;
+  for (const n of t) a = Math.imul(a ^ n.charCodeAt(0), 16777619);
+  return a >>> 0;
 }
-function wt(t) {
-  const r = t.filter((a) => a.category === "terrain" && a.material === "forest" && k(a) && !H(a)).sort((a, i) => a.id < i.id ? -1 : a.id > i.id ? 1 : 0), n = /* @__PURE__ */ new Map();
-  for (let a = 0; a < r.length; a += 1) {
-    const i = r[a], e = O(i), o = Math.floor(256 / r.length) + (a < 256 % r.length ? 1 : 0), c = e.width && e.height ? Math.min(o, Math.max(1, Math.ceil(e.width * e.height / 2704))) : 0, s = Math.min(c, Math.max(1, Math.ceil(Math.sqrt(c * e.width / Math.max(1, e.height))))), l = Math.ceil(c / Math.max(1, s));
-    let g = Y(i.id);
+function mt(t) {
+  const a = t.filter((r) => r.category === "terrain" && r.material === "forest" && k(r) && !H(r)).sort((r, i) => r.id < i.id ? -1 : r.id > i.id ? 1 : 0), n = /* @__PURE__ */ new Map();
+  for (let r = 0; r < a.length; r += 1) {
+    const i = a[r], e = O(i), o = Math.floor(256 / a.length) + (r < 256 % a.length ? 1 : 0), c = e.width && e.height ? Math.min(o, Math.max(1, Math.ceil(e.width * e.height / 2704))) : 0, s = Math.min(c, Math.max(1, Math.ceil(Math.sqrt(c * e.width / Math.max(1, e.height))))), l = Math.ceil(c / Math.max(1, s));
+    let g = K(i.id);
     const h = () => (g = Math.imul(g, 1664525) + 1013904223 >>> 0, g / 4294967296), u = [];
     for (let d = 0; d < c; d += 1) u.push({
       x: e.x + (d % s + 0.5 + (h() - 0.5) * 0.35) * e.width / s,
@@ -454,7 +469,7 @@ function wt(t) {
   }
   return n;
 }
-var L = {
+var I = {
   chair: "椅",
   stool: "凳",
   bench: "长凳",
@@ -492,7 +507,7 @@ var L = {
   fire: "火",
   flag: "旗",
   sign: "牌"
-}, J = Object.freeze({
+}, W = Object.freeze({
   wall: {
     stroke: "var(--scene-edge)",
     fill: "none",
@@ -571,7 +586,7 @@ var L = {
     fill: "rgba(255, 210, 91, .22)",
     width: 1.5
   }
-}), W = Object.freeze({
+}), J = Object.freeze({
   wall: "墙体",
   road: "道路",
   water: "水域",
@@ -606,7 +621,7 @@ var L = {
   marker: "location_on",
   player: "person_pin_circle",
   actor: "person"
-}), q = Object.freeze({
+}), V = Object.freeze({
   door: "D",
   stairs: "S",
   elevator: "E",
@@ -625,7 +640,7 @@ var L = {
   marker: "+",
   player: "P",
   actor: "A"
-}), U = Object.freeze({
+}), q = Object.freeze({
   "door-open": "door_open",
   stairs: "stairs",
   elevator: "elevator",
@@ -681,7 +696,7 @@ var L = {
   "potted-plant": "potted_plant",
   flag: "flag",
   sign: "signpost"
-}), V = Object.freeze({
+}), U = Object.freeze({
   wall: "architecture",
   road: "route",
   water: "water_drop",
@@ -697,7 +712,7 @@ var L = {
   magic: "auto_awesome",
   secret: "visibility_off",
   light: "lightbulb"
-}), P = Object.freeze({
+}), $ = Object.freeze({
   terrain: 10,
   water: 20,
   grid: 25,
@@ -713,7 +728,7 @@ var L = {
   marker: 80,
   actor: 85,
   label: 90
-}), _t = Object.freeze({
+}), Mt = Object.freeze({
   neutral: {
     background: "#071019",
     glow: "rgba(59, 157, 219, .13)",
@@ -749,16 +764,16 @@ var L = {
     glow: "rgba(61, 189, 158, .13)",
     accent: "#69d8b8"
   }
-}), vt = Object.freeze({
+}), yt = Object.freeze({
   world: "世界",
-  region: $.world.unit,
+  region: j.world.unit,
   city: "城市",
   district: "街区",
   building: "建筑",
   floor: "楼层",
   room: "房间",
   outdoor: "户外"
-}), mt = Object.freeze({
+}), kt = Object.freeze({
   door: "门",
   stairs: "楼梯",
   elevator: "电梯",
@@ -767,56 +782,64 @@ var L = {
   portal: "传送门",
   passage: "通道"
 });
-function X(t, r) {
-  return t < r ? -1 : t > r ? 1 : 0;
+function X(t, a) {
+  return t < a ? -1 : t > a ? 1 : 0;
 }
-function yt(t, r) {
-  const n = J[t.category], a = k(t), i = a && (t.material || t.category === "water") ? B(t.material || "water", r) : "", e = t.certainty === "inferred" ? "8 6" : t.certainty === "unknown" ? "3 7" : n.dash;
+function Ot(t, a) {
+  const n = W[t.category], r = k(t), i = r && (t.material || t.category === "water") ? B(t.material || "water", a) : "", e = t.certainty === "inferred" ? "8 6" : t.certainty === "unknown" ? "3 7" : n.dash;
   return {
     ...n,
-    fill: a ? i || n.fill : "none",
+    fill: r ? i || n.fill : "none",
     opacity: t.certainty === "unknown" ? 0.48 : t.certainty === "inferred" ? 0.72 : 1,
     dash: e,
-    icon: t.icon ? U[t.icon] : t.kind ? Z[t.kind] : V[t.category],
-    fallback: t.kind ? q[t.kind] : t.icon && Object.hasOwn(L, t.icon) ? L[t.icon] : W[t.category].slice(0, 1),
-    z: P[t.category]
+    icon: t.icon ? q[t.icon] : t.kind ? Z[t.kind] : U[t.category],
+    fallback: t.kind ? V[t.kind] : t.icon && Object.hasOwn(I, t.icon) ? I[t.icon] : J[t.category].slice(0, 1),
+    z: $[t.category]
   };
 }
-function Mt(t) {
-  const r = (n) => {
+function Et(t) {
+  const a = (n) => {
     if (!k(n)) return 0;
-    const a = O(n);
-    return a.width * a.height;
+    const r = O(n);
+    return r.width * r.height;
   };
-  return [...t].sort((n, a) => P[n.category] - P[a.category] || r(a) - r(n) || X(n.id, a.id));
+  return [...t].sort((n, r) => $[n.category] - $[r.category] || a(r) - a(n) || X(n.id, r.id));
 }
 export {
-  tt as C,
-  N as D,
-  at as E,
-  rt as O,
-  $ as S,
-  T,
+  rt as A,
+  st as C,
+  j as D,
+  ht as E,
+  N as F,
+  nt as I,
+  Q as M,
+  T as N,
+  et as O,
+  ot as P,
+  it as S,
+  lt as T,
   z as _,
-  yt as a,
+  Ot as a,
   B as b,
-  ut as c,
+  pt as c,
   H as d,
   O as f,
-  pt as g,
-  ft as h,
-  vt as i,
+  _t as g,
+  wt as h,
+  yt as i,
+  tt as j,
+  at as k,
   k as l,
-  gt as m,
-  mt as n,
-  Mt as o,
-  bt as p,
-  _t as r,
-  wt as s,
-  W as t,
-  K as u,
-  lt as v,
-  Q as w,
-  it as x,
-  dt as y
+  bt as m,
+  kt as n,
+  Et as o,
+  vt as p,
+  Mt as r,
+  mt as s,
+  J as t,
+  G as u,
+  ft as v,
+  ct as w,
+  dt as x,
+  gt as y
 };

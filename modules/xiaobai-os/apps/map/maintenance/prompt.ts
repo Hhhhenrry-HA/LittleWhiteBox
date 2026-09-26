@@ -1,5 +1,6 @@
 import type { MaintenanceMode } from '../../../capabilities/maintenance/registry.js';
 import { sceneExamplesPrompt } from '../tools/scene-examples.js';
+import { MAP_ATLAS_SPATIAL_GUIDANCE } from '../tools/atlas-tool-contract.js';
 
 const SCOPE = [
     '# Map domain',
@@ -9,7 +10,7 @@ const SCOPE = [
 
 const WHAT_YOU_HAVE = [
     '## What you have',
-    '- `<map_atlas_state>`: the atlas at the start of this run. With `mode: "document"`, it contains all recorded locations (including `hasScene` and any recorded position/terrain), links and actors. With `mode: "summary"`, it contains only counts and the player position if known; read the needed collections with MapAtlasRead. Omission from a summary does not establish that a collection is empty.',
+    '- `<map_atlas_state>`: the atlas at the start of this run. Document mode contains locations, links, actors, maps and source spatial features. Summary mode contains only counts and the player position if known; read the needed collections with MapAtlasRead. Omission from a summary does not establish that a collection is empty.',
     '- If a `<current_map>` block appears in the current state, it is a bounded player-facing overview of this same atlas, not a complete inventory. Use the mode of `<map_atlas_state>` to determine which details still need reading.',
     '- The player\'s display name is in `<accepted_turn>`. Their atlas position is the `player` actor.',
     '- Scene layouts are not injected. Read one with MapSceneRead when you need it.',
@@ -24,7 +25,7 @@ const TWO_KINDS_OF_FACTS = [
 
 const TOOLS = [
     '## Tools',
-    '- MapAtlasRead: page locations, links or actors when the injected atlas was too large to inline, or to confirm a key before extending a region.',
+    '- MapAtlasRead: page source facts when the injected atlas was too large to inline, or confirm identities before extending a map.',
     '- MapSceneRead: the current layout of one place, in the same vocabulary MapSceneEdit accepts. Read it before editing an existing scene so you patch by real ids instead of inventing them.',
     '- MapAtlasEdit: establish destinations, positions, routes and world-level actor positions. Parents and endpoints may be created in the same call.',
     '- MapSceneEdit: draw or patch the layout of the current story place after its atlas entry exists.',
@@ -57,7 +58,7 @@ const WORLD_ATLAS = [
     '- Follow author geography first. Otherwise establish a small, varied, connected set of destinations appropriate to the world, each with a brief reason to visit. A home-and-office conversation should not yield only home and office unless the setting limits the world to those places.',
     '- Match scale, era, genre and restrictions; do not impose a generic fantasy continent or city. New geography is an opportunity to explore, not a quest or fabricated history.',
     '- Keys are stable identities: reuse them when names change and preserve positions and routes. Parent expresses containment, not traversability. Removing a location removes its descendants, routes, actor positions and scene; remove only for explicit correction, disappearance or destruction, never because someone left.',
-    '- Siblings share a coordinate plane inside their parent; north is smaller y. Avoid uniform rows. Give new destinations a position, landscape terrain and a brief; existing places missing these can be completed without changing identity or visits.',
+    '- Give new destinations positions in a chosen map, a landscape tag and a brief where the setting supports them. Keep established coordinates; missing spatial relations need evidence rather than a visual rearrangement.',
     '- Routes connect existing or same-call endpoints. Belonging to a place is not the same as having a road to it.',
     '- New unvisited places are `mentioned`. Only story evidence makes a place `visited` or moves an actor.',
 ].join('\n');
@@ -106,6 +107,7 @@ export function buildMapMaintenancePrompt(mode: MaintenanceMode): string {
         WHEN_TO_WRITE,
         CHOOSING_THE_SCENE,
         WORLD_ATLAS,
+        MAP_ATLAS_SPATIAL_GUIDANCE,
         SPATIAL_ORGANIZATION,
         READING_A_PLACE,
         WHAT_THE_APP_DRAWS,

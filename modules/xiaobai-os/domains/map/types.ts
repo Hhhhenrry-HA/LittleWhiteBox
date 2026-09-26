@@ -1,4 +1,5 @@
 import type { MAP_ICON_TOKENS } from './semantics.js';
+import type { MapFeature, MapFrame, MapPosition } from './space/types.js';
 
 export type MapLocationScale = 'world' | 'region' | 'city' | 'district' | 'building' | 'floor' | 'room' | 'outdoor';
 export type MapTerrain = 'urban' | 'plain' | 'forest' | 'water' | 'mountain' | 'desert' | 'snow';
@@ -132,8 +133,8 @@ export interface MapLocation {
     parent?: string;
     sceneKey?: string;
     brief?: string;
-    /** Stable map position within the parent region; north is smaller y. Not GPS or distance. */
-    position?: [number, number];
+    /** Source coordinates; containment never changes their meaning. */
+    position?: MapPosition;
     terrain?: MapTerrain;
 }
 
@@ -144,6 +145,7 @@ export interface MapLink {
     kind: MapLinkKind;
     label?: string;
     bidirectional: boolean;
+    feature?: string;
 }
 
 export interface MapActorPosition {
@@ -156,10 +158,12 @@ export interface MapAtlas {
     locations: MapLocation[];
     links: MapLink[];
     actors: MapActorPosition[];
+    frames: MapFrame[];
+    features: MapFeature[];
 }
 
-export interface MapDomainV1 {
-    schemaVersion: 1;
+export interface MapDomain {
+    schemaVersion: 2;
     revision: number;
     atlas: MapAtlas;
     scenes: Record<string, MapScene>;

@@ -10,6 +10,21 @@
 
 生成 bundle 和检查日志不提交；正式运行产物仍在 `modules/xiaobai-os/dist/`。
 
+Atlas 升级检查：
+
+- 构建后运行 `node output/map-production-check/serve.mjs`，只监听 `127.0.0.1:8765`。打开 `/output/map-production-check/dist/?scene=atlas-nature`；七类 Atlas 样例与纯地形零地点样例均来自正式工具输入。
+- `run-code --filename output/map-production-check/check-atlas.cjs`：七类 × 三种宽度 × 深浅主题，范围与零 Host 请求、纯地形、未知定位、远处地形全图、源符号稳定、触摸／键盘及卸载。
+- `run-code --filename output/map-production-check/check-atlas-composition.cjs`：生产 SVG 栅格化后的水陆与嵌套承载遮罩，以及 256 要素负载。不把桌面更新耗时当成实体手机帧率。
+- 上述样例、截图和自动回环均不是实际模型生成结果。真实模型及用户存档补测状态见 Atlas 施工文档。
+
+视觉修正验收：
+
+- `?scene=atlas-geography` 是 `atlas-geography.mjs` 中的海岸／山脉／河流／城市组合输入，经过正式工具编译。它用于检查内容尺度，不是模型生成或用户存档；原七类简单样例仍保留并验收。
+- `check-atlas-art.cjs` 检查连续满幅画布、初始视野与全图区别、三种宽度／深浅主题的全图与定位避让，以及只读浏览。截图为 `output/playwright/atlas-geography-*.png`。
+- `inspect-atlas-art.cjs` 生成七类材质的桌面／手机截图，供人工检查，不把截图生成等同于视觉通过。
+- `check-atlas-regressions.cjs` 复验细长地图全图后的缩放方向、长详情的真实定位避让、256 个横竖长条图集解码，以及不同 ID 的同材质跨河桥面像素。地形联动原子性、接边／重叠和最低分辨率材质保留由 Map 单测覆盖。
+- `check-atlas-controls.cjs` 检查长详情下五个地图按钮的真实命中、尺寸、鼠标／键盘操作和定位避让；覆盖 320／390px 窄屏、600／844px 矮横屏、桌面中嵌入的小窗口及深浅主题，另验 125% 缩放、原生触摸点击和错误提示。触摸检查从全图开始，避免在放大上限误判；等待实际视口变化，不把触摸事件发出当作操作完成。
+
 37 类验收（下列回调默认静态服务器为 `http://127.0.0.1:8765/`）：
 
 - `node output/map-production-check/check-2d-build.mjs`：真实二维组件及依赖独立构建，禁止引入 Three。

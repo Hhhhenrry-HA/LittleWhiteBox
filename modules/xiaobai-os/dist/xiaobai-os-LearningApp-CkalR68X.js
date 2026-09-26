@@ -1,7 +1,7 @@
 /* eslint-disable */
 import { C as ae, E as re, H as K, J as be, K as M, M as a, P as T, Q as u, R as me, T as W, X as Q, Y as s, a as ee, b as E, c as X, f as H, g as n, h as m, k as oe, l as Z, m as P, o as Y, p as t, q as ye, s as ne, u as S, v as N, y as R, z as B } from "./xiaobai-os-runtime-dom.esm-bundler-BcM9c-Z9.js";
 import { n as _, r as ue } from "./xiaobai-os-app-navigation-sg-40eOk.js";
-import { t as ke } from "./xiaobai-os-MessageMarkdown-BCyY02k6.js";
+import { t as ke } from "./xiaobai-os-MessageMarkdown-C_jQgBbc.js";
 var fe = ["disabled"], pe = {
   key: 0,
   class: "learning-choices"

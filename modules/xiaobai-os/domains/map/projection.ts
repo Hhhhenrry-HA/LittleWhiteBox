@@ -1,5 +1,5 @@
 import { parseMapDomain } from './invariants.js';
-import type { MapDomainV1, MapLink, MapLinkKind, MapLocation } from './types.js';
+import type { MapDomain, MapLink, MapLinkKind, MapLocation } from './types.js';
 
 export const MAX_MAP_PROMPT_CHARS = 800;
 
@@ -73,7 +73,7 @@ function routeOverview(link: MapLink, locationByKey: ReadonlyMap<string, MapLoca
 
 /** One bounded world projection for RP and other consumers, including places not yet visited. */
 export function buildMapPromptBlock(value: unknown): string {
-    let domain: MapDomainV1;
+    let domain: MapDomain;
     try {
         domain = parseMapDomain(value);
     } catch {
