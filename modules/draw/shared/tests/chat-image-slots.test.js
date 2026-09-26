@@ -188,10 +188,18 @@ test('uncertain save retains registered input but makes zero generation requests
     h.trigger(); await until(() => h.root.querySelector('[data-state="failed"]'));
     assert.equal(h.requests, 0);
     const card = h.root.querySelector('[data-slot-id]');
-    assert.equal((await api.getCardPreview(card.dataset)).status, 'pending');
+    assert.equal((await api.getCardPreview(card.dataset)).status, 'failed');
     assert.equal((await api.getCardPreview(card.dataset)).tags, 'retain');
     api.refreshChatMessageImages(); await tick();
     assert.equal(h.requests, 0);
+    const savedSource = h.message.mes;
+    const slotId = card.dataset.slotId;
+    h.saveMode = 'ok';
+    await api.redrawImageCard('novelai', card);
+    assert.equal(h.requests, 1);
+    assert.equal(h.message.mes, savedSource);
+    assert.equal(h.root.querySelector('.xb-nd-img').dataset.slotId, slotId);
+    assert.equal(h.root.querySelectorAll('img').length, 1);
 });
 
 test('edited tags persist for image and interrupted card, redraw reads the selected record rather than stale DOM', async t => {

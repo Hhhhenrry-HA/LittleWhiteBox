@@ -38,6 +38,7 @@ export const DRAW_SLOT_COPY = Object.freeze({
 });
 
 export const DRAW_SLOT_ERRORS = Object.freeze({
+    placement: { code: 'image_placement_unconfirmed', label: '图位保存未确认', desc: '聊天保存未确认，本次未提交绘图。TAG 已保留，请稍后重试。' },
     interrupted: { code: 'image_interrupted', label: '绘图已中断', desc: '未找到可接回的任务，可编辑 TAG 后重新生成。' },
     legacy: { code: 'legacy_image_unresolved', label: '旧图无法恢复', desc: '未找到可确认的旧图片，保留了原 TAG；重新生成将发起绘图请求。' },
 });

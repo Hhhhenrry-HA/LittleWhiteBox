@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { executePreparedSlots } from '../prepared-slot-executor.js';
+import { DRAW_SLOT_ERRORS } from '../image-record.js';
 
 function harness(overrides = {}) {
     const records = new Map(), selected = new Map(), activity = new Map(), order = [];
@@ -37,8 +38,24 @@ test('inputs persist before placement; one batch requests only after confirmed p
 for (const uncertain of [false, true]) test(`save ${uncertain ? 'uncertainty retains' : 'rejection removes'} staged records without requesting`, async () => {
     const error = Object.assign(new Error('save'), { uncertain });
     const h = harness({ commit: async () => { throw error; }, run: () => assert.fail('request forbidden') });
-    await assert.rejects(h.execute(), e => e === error);
+    await assert.rejects(h.execute(), e => uncertain
+        ? e.code === DRAW_SLOT_ERRORS.placement.code && e.cause === error && e.uncertain !== true
+        : e === error);
     assert.equal(h.records.size, uncertain ? 2 : 0);
+    if (uncertain) for (const record of h.records.values()) assert.equal(record.status, 'failed');
+    assert.equal(h.activity.size, 0);
+});
+
+test('backend placement uncertainty retains its journal-owned recovery state', async () => {
+    const error = Object.assign(new Error('save'), { uncertain: true });
+    const h = harness({ backend: true, commit: async () => { throw error; },
+        run: async callbacks => {
+            await callbacks.recoverable.commitPlacements();
+            assert.fail('submission must wait for confirmed placement');
+        } });
+    await assert.rejects(h.execute(), e => e === error);
+    assert.equal(h.records.size, 2);
+    for (const record of h.records.values()) assert.equal(record.status, 'pending');
     assert.equal(h.activity.size, 0);
 });
 

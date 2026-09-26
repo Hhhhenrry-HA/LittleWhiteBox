@@ -102,6 +102,17 @@ export async function executePreparedSlots({ items, backend, store, remove, sele
         onStateChange?.('success', output);
         return output;
     } catch (error) {
+        if (!backend && !committed && uncertain) {
+            // Chat persistence is uncertain, but image submission is not: the
+            // local transport has not run. Retain the input as a failed attempt,
+            // not as a backend job waiting for a recovery worker that cannot exist.
+            const problem = DRAW_SLOT_ERRORS.placement;
+            const failure = new Error(problem.desc, { cause: error });
+            failure.code = problem.code;
+            for (const item of items) await store({ ...item, status: PreviewStatus.FAILED,
+                errorType: problem.label, errorMessage: problem.desc });
+            throw failure;
+        }
         if (!committed && !uncertain) {
             for (const item of items) await remove(item.imgId);
         } else if (committed && !error?.detached && !isPendingJobLeaseLost(error)

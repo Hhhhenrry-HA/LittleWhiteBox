@@ -1,4 +1,5 @@
 import { getContext } from "../../../../../../extensions.js";
+import { DRAW_CAPSULE_COPY } from './draw-capsule-copy.js';
 import {
     getDisplayPreviewForSlot,
     getPreviewsBySlot,
@@ -88,7 +89,7 @@ export function toScenePlannerProgress(diagnostic = {}) {
 }
 
 export function formatScenePlannerProgress(progress = {}) {
-    return toScenePlannerProgress({ progress }).phase === 'correction' ? '纠错' : '分析';
+    return DRAW_CAPSULE_COPY[toScenePlannerProgress({ progress }).phase];
 }
 
 export function createPlaceholder(slotId) {

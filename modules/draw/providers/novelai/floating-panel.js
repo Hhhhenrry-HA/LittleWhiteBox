@@ -15,6 +15,7 @@ import {
 } from './novel-draw.js';
 import { registerToToolbar, removeFromToolbar } from '../../../../widgets/message-toolbar.js';
 import { formatScenePlannerProgress } from '../../shared/draw-common.js';
+import { DRAW_CAPSULE_COPY } from '../../shared/draw-capsule-copy.js';
 import {
     resolveCurrentDrawRunActivityTarget,
     subscribeDrawRunActivity,
@@ -589,7 +590,7 @@ function createFloorPanelElement(messageId) {
     const layerActive = createEl('div', 'nd-layer nd-layer-active');
     layerActive.append(
         createEl('span', 'nd-status-icon', '⏳'),
-        createEl('span', 'nd-status-text', '分析')
+        createEl('span', 'nd-status-text', DRAW_CAPSULE_COPY.analysis)
     );
 
     inner.append(layerIdle, layerActive);
@@ -695,7 +696,7 @@ function setFloorState(messageId, state, data = {}) {
             el.classList.add('working');
             if (!panelData.result.startTime) panelData.result.startTime = Date.now();
             if (statusIcon) { statusIcon.textContent = '↥'; statusIcon.className = 'nd-status-icon nd-spin'; }
-            if (statusText) statusText.textContent = '提交后台';
+            if (statusText) statusText.textContent = DRAW_CAPSULE_COPY.submitting;
             break;
         case FloatState.ACCEPTED:
             el.classList.add('working');
@@ -707,13 +708,13 @@ function setFloorState(messageId, state, data = {}) {
             el.classList.add('working');
             if (!panelData.result.startTime) panelData.result.startTime = Date.now();
             if (statusIcon) { statusIcon.textContent = '↻'; statusIcon.className = 'nd-status-icon nd-spin'; }
-            if (statusText) statusText.textContent = '确认中';
+            if (statusText) statusText.textContent = DRAW_CAPSULE_COPY.uncertain;
             break;
         case FloatState.QUEUED:
             el.classList.add('working');
             if (!panelData.result.startTime) panelData.result.startTime = Date.now();
             if (statusIcon) { statusIcon.textContent = '⌛'; statusIcon.className = 'nd-status-icon'; }
-            if (statusText) statusText.textContent = data.ahead > 0 ? `排队${data.ahead}` : '排队';
+            if (statusText) statusText.textContent = DRAW_CAPSULE_COPY.queued;
             panelData.result.total = data.total || panelData.result.total || 0;
             break;
         case FloatState.LLM:
@@ -736,17 +737,17 @@ function setFloorState(messageId, state, data = {}) {
         case FloatState.RECONNECTING:
             el.classList.add('working');
             if (statusIcon) { statusIcon.textContent = '↻'; statusIcon.className = 'nd-status-icon nd-spin'; }
-            if (statusText) statusText.textContent = '重连';
+            if (statusText) statusText.textContent = DRAW_CAPSULE_COPY.reconnecting;
             break;
         case FloatState.CANCELLING:
             el.classList.add('working');
             if (statusIcon) { statusIcon.textContent = '⏳'; statusIcon.className = 'nd-status-icon nd-spin'; }
-            if (statusText) statusText.textContent = '取消中';
+            if (statusText) statusText.textContent = DRAW_CAPSULE_COPY.cancelling;
             break;
         case FloatState.BACKEND_LEGACY:
             el.classList.add('working');
             if (statusIcon) { statusIcon.textContent = '↪'; statusIcon.className = 'nd-status-icon'; }
-            if (statusText) statusText.textContent = '兼容模式';
+            if (statusText) statusText.textContent = DRAW_CAPSULE_COPY.legacy;
             break;
         case FloatState.SUCCESS:
             el.classList.add('success');
@@ -767,7 +768,7 @@ function setFloorState(messageId, state, data = {}) {
         case FloatState.ERROR:
             el.classList.add('error');
             if (statusIcon) { statusIcon.textContent = '✗'; statusIcon.className = 'nd-status-icon'; }
-            if (statusText) statusText.textContent = data.error?.label || '错误';
+            if (statusText) statusText.textContent = DRAW_CAPSULE_COPY.error;
             panelData.result.error = data.error;
             panelData.autoResetTimer = setTimeout(() => setFloorState(messageId, FloatState.IDLE), AUTO_RESET_DELAY);
             break;
@@ -1218,6 +1219,7 @@ export function setStateForMessage(messageId, state, data = {}) {
     }
 
     if (floatingEl && messageId === findLastAIMessageId()) {
+        floatingMessageId = messageId;
         setFloatingState(state, data);
     }
 }
@@ -1320,7 +1322,7 @@ function setFloatingState(state, data = {}) {
             if (!floatingResult.startTime) floatingResult.startTime = Date.now();
             statusIcon.textContent = '↥';
             statusIcon.className = 'nd-status-icon nd-spin';
-            statusText.textContent = '提交后台';
+            statusText.textContent = DRAW_CAPSULE_COPY.submitting;
             break;
         case FloatState.ACCEPTED:
             floatingEl.classList.add('working');
@@ -1334,14 +1336,14 @@ function setFloatingState(state, data = {}) {
             if (!floatingResult.startTime) floatingResult.startTime = Date.now();
             statusIcon.textContent = '↻';
             statusIcon.className = 'nd-status-icon nd-spin';
-            statusText.textContent = '确认中';
+            statusText.textContent = DRAW_CAPSULE_COPY.uncertain;
             break;
         case FloatState.QUEUED:
             floatingEl.classList.add('working');
             if (!floatingResult.startTime) floatingResult.startTime = Date.now();
             statusIcon.textContent = '⌛';
             statusIcon.className = 'nd-status-icon';
-            statusText.textContent = data.ahead > 0 ? `排队${data.ahead}` : '排队';
+            statusText.textContent = DRAW_CAPSULE_COPY.queued;
             break;
         case FloatState.LLM:
             floatingEl.classList.add('working');
@@ -1367,19 +1369,19 @@ function setFloatingState(state, data = {}) {
             floatingEl.classList.add('working');
             statusIcon.textContent = '↻';
             statusIcon.className = 'nd-status-icon nd-spin';
-            statusText.textContent = '重连';
+            statusText.textContent = DRAW_CAPSULE_COPY.reconnecting;
             break;
         case FloatState.CANCELLING:
             floatingEl.classList.add('working');
             statusIcon.textContent = '⏳';
             statusIcon.className = 'nd-status-icon nd-spin';
-            statusText.textContent = '取消中';
+            statusText.textContent = DRAW_CAPSULE_COPY.cancelling;
             break;
         case FloatState.BACKEND_LEGACY:
             floatingEl.classList.add('working');
             statusIcon.textContent = '↪';
             statusIcon.className = 'nd-status-icon';
-            statusText.textContent = '兼容模式';
+            statusText.textContent = DRAW_CAPSULE_COPY.legacy;
             break;
         case FloatState.SUCCESS:
             floatingEl.classList.add('success');
@@ -1403,7 +1405,7 @@ function setFloatingState(state, data = {}) {
             floatingEl.classList.add('error');
             statusIcon.textContent = '✗';
             statusIcon.className = 'nd-status-icon';
-            statusText.textContent = data.error?.label || '错误';
+            statusText.textContent = DRAW_CAPSULE_COPY.error;
             floatingResult.error = data.error;
             floatingAutoResetTimer = setTimeout(() => setFloatingState(FloatState.IDLE), AUTO_RESET_DELAY);
             break;
@@ -1691,7 +1693,7 @@ function createFloatingButton() {
     const layerActive = createEl('div', 'nd-layer nd-layer-active');
     layerActive.append(
         createEl('span', 'nd-status-icon', '⏳'),
-        createEl('span', 'nd-status-text', '分析')
+        createEl('span', 'nd-status-text', DRAW_CAPSULE_COPY.analysis)
     );
     inner.append(layerIdle, layerActive);
     capsule.appendChild(inner);

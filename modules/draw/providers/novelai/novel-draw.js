@@ -133,6 +133,7 @@ import { createSceneSource, normalizeMessageSceneSourceText } from "../../shared
 import { createDrawImageSlotRegex, stripDrawImageSlots } from "../../shared/image-marker-syntax.js";
 import { ScenePlacementError, assertSceneSourceUnchanged } from "../../shared/scene-placement.js";
 import { submitPreparedChatImages, registerPreparedImageProvider } from "../../shared/prepared-chat-images.js";
+import { createImageCardRedrawProvider } from "../../shared/image-card-redraw-provider.js";
 import { redrawImageCard, removeChatImageSlot, restoreImageCard } from "../../shared/image-card-actions.js";
 import { persistCardTagEdits } from "../../shared/card-tag-editor.js";
 import { hasPreviewImage, DRAW_SLOT_COPY } from "../../shared/image-record.js";
@@ -4014,7 +4015,15 @@ export async function initNovelDraw() {
     // ════════════════════════════════════════════════════════════════════
 
     preparedImageDispose?.();
-    preparedImageDispose = registerPreparedImageProvider("novelai", runPreparedNovelSlots);
+    preparedImageDispose = registerPreparedImageProvider("novelai", createImageCardRedrawProvider({
+        execute: runPreparedNovelSlots,
+        createJob: createGenerationJob,
+        releaseJob: releaseGenerationJob,
+        ownsJob: job => generationJobs.get(job.key) === job,
+        getCurrentContext: getContext,
+        setStateForMessage: floatingPanel.setStateForMessage,
+        classifyError,
+    }));
     window.xiaobaixNovelDraw = {
         mountMessagePanel: floatingPanel.ensureNovelDrawPanel,
         releaseMessagePanel: floatingPanel.releaseNovelDrawPanel,
