@@ -107,10 +107,6 @@ function previewText(text, maxLen = DEBUG_RAW_PREVIEW_LEN) {
     return raw.length > maxLen ? `${raw.slice(0, maxLen)} ...(truncated)` : raw;
 }
 
-function clamp(v, min, max) {
-    return Math.max(min, Math.min(max, v));
-}
-
 function sanitizeActionPhrase(raw) {
     const text = String(raw || '')
         .normalize('NFKC')
@@ -123,14 +119,7 @@ function sanitizeActionPhrase(raw) {
     return content.length < 2 ? '' : text;
 }
 
-function calcAtomQuality(scene, edges, where) {
-    const sceneLen = String(scene || '').length;
-    const sceneScore = clamp(sceneLen / 80, 0, 1);
-    const edgeScore = clamp((edges?.length || 0) / 3, 0, 1);
-    const whereScore = where ? 1 : 0;
-    const quality = 0.55 * sceneScore + 0.35 * edgeScore + 0.10 * whereScore;
-    return Number(quality.toFixed(3));
-}
+import { calcAtomQuality } from './atom-quality.js';
 
 // ============================================================================
 // 清洗与构建

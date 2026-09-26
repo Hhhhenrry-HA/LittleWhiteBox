@@ -4,11 +4,15 @@
 import { EVENT_MEMORY_ROLES, projectEditedSummaryEvents } from './data/events.js';
 import { DEFAULT_SUMMARY_DELAY_FLOORS, normalizeSummaryDelayFloors } from './data/summary-delay.js';
 import { RELATION_TRENDS } from './data/fact-predicates.js';
+import { createMemoryMaintenancePage } from './maintenance/ui.js';
+import { MEMORY_COPY } from './maintenance/copy.js';
+import { DEFAULT_MEMORY_MAINTENANCE_ENABLED } from './maintenance/settings.js';
 
 const UNANNOTATED_LABEL = '未标注';
 
 (function () {
     'use strict';
+    let memoryMaintenancePage;
 
     function formatVectorPackageCounts(result) {
         return `${result.stateVectorCount} 锚点向量、${result.chunkCount} 片段向量、${result.eventCount} 事件向量`;
@@ -288,6 +292,7 @@ const UNANNOTATED_LABEL = '未标注';
     // ═══════════════════════════════════════════════════════════════════════════
 
     const config = {
+        memoryMaintenanceEnabled: DEFAULT_MEMORY_MAINTENANCE_ENABLED,
         api: { provider: 'st', url: '', key: '', model: '', modelCache: [] },
         gen: { temperature: null, top_p: null, top_k: null, presence_penalty: null, frequency_penalty: null },
         trigger: { enabled: false, interval: 20, delayFloors: DEFAULT_SUMMARY_DELAY_FLOORS, timing: 'before_user', role: 'system', useStream: true, maxPerRun: 100, wrapperHead: '', wrapperTail: '', forceInsertAtEnd: false },
@@ -542,6 +547,7 @@ const UNANNOTATED_LABEL = '未标注';
             const s = localStorage.getItem('summary_panel_config');
             if (s) {
                 const p = JSON.parse(s);
+                config.memoryMaintenanceEnabled = p.memoryMaintenanceEnabled === true;
                 Object.assign(config.api, p.api || {});
                 normalizeSummaryApiConfigUI(config.api);
                 config.api.modelCache = [];
@@ -561,6 +567,8 @@ const UNANNOTATED_LABEL = '未标注';
 
     function applyConfig(cfg) {
         if (!cfg) return;
+        config.memoryMaintenanceEnabled = cfg.memoryMaintenanceEnabled === true;
+        memoryMaintenancePage?.setEnabled(config.memoryMaintenanceEnabled);
         const currentApiKey = String(config.api?.key || '').trim();
         const currentInputKey = String($('api-key')?.value || '').trim();
         Object.assign(config.api, cfg.api || {});
@@ -1198,6 +1206,7 @@ const UNANNOTATED_LABEL = '未标注';
     }
 
     function openSettings() {
+        memoryMaintenancePage.setEnabled(config.memoryMaintenanceEnabled);
         $('api-provider').value = config.api.provider;
         $('api-url').value = config.api.url;
         $('api-key').value = config.api.key;
@@ -1266,6 +1275,7 @@ const UNANNOTATED_LABEL = '未标注';
     }
 
     function collectSettingsFormToConfig() {
+        config.memoryMaintenanceEnabled = memoryMaintenancePage.getEnabled();
         const pn = id => { const v = $(id).value; return v === '' ? null : parseFloat(v); };
         const provider = $('api-provider').value;
 
@@ -2574,6 +2584,10 @@ const UNANNOTATED_LABEL = '未标注';
                 break;
             }
 
+            case 'MEMORY_MAINTENANCE_RESULTS':
+                memoryMaintenancePage.render(d.payload);
+                break;
+
             case 'SUMMARY_CLEARED': {
                 const t = d.payload?.totalFloors || 0;
                 $('stat-events').textContent = 0;
@@ -2601,6 +2615,7 @@ const UNANNOTATED_LABEL = '未标注';
                 break;
 
             case 'PANEL_CONFIG_SAVE_RESULT': {
+                if ($('tab-agent').classList.contains('active')) memoryMaintenancePage.settingsSaved(d.success);
                 const pending = pendingConfigSaveRequests.get(d.requestId || '');
                 if (pending) {
                     pendingConfigSaveRequests.delete(d.requestId || '');
@@ -2787,6 +2802,7 @@ const UNANNOTATED_LABEL = '未标注';
                 if (targetId === 'tab-debug') {
                     postMsg('REQUEST_RECALL_LOG');
                 }
+                if (targetId === 'tab-agent') memoryMaintenancePage.open();
             };
         });
 
@@ -3003,6 +3019,8 @@ const UNANNOTATED_LABEL = '未标注';
     // ═══════════════════════════════════════════════════════════════════════════
 
     function init() {
+        $('memory-agent-tab').textContent = MEMORY_COPY.tab;
+        memoryMaintenancePage = createMemoryMaintenancePage($('tab-agent'), postMsg);
         loadConfig();
         tlPagingEnabled = localStorage.getItem(TL_PAGING_KEY) === '1';
 

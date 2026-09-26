@@ -1,0 +1,34 @@
+.memory-authorization { display: flex; align-items: center; gap: 10px; min-height: 44px; font-weight: 600; }
+#memory-agent-tab { font: inherit; background: transparent; border: 0; border-radius: 0; }
+.memory-authorization input { width: 18px; height: 18px; accent-color: var(--acc); }
+.memory-authorization small { margin-left: auto; font-weight: 400; opacity: .72; }
+#tab-agent .settings-hint { line-height: 1.65; color: var(--txt2); }
+.memory-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
+.memory-toolbar h3 { flex: 1; font-size: 14px; margin: 0; min-width: 170px; }
+#tab-agent button { min-height: 40px; }
+#tab-agent [hidden] { display: none !important; }
+.memory-state { line-height: 1.65; font-size: 13px; }
+.memory-state:empty { display: none; }
+.memory-index-state { display: flex; align-items: center; gap: 12px; font-size: 13px; line-height: 1.6; }
+.memory-index-state span { flex: 1; }
+.memory-empty { margin: 36px 0; text-align: center; opacity: .7; }
+.memory-receipt { border-bottom: 1px solid var(--bdr); }
+.memory-receipt > summary { cursor: pointer; min-height: 44px; padding: 14px 0; font-size: 13px; }
+.memory-receipt time { float: right; font-size: 11px; opacity: .7; }
+.memory-counts { display: block; margin-top: 7px; padding-left: 15px; opacity: .8; }
+.memory-receipt-body { padding: 0 0 16px; line-height: 1.65; overflow-wrap: anywhere; }
+.memory-coverage, .memory-gaps { font-size: 12px; }
+.memory-gaps summary { cursor: pointer; min-height: 32px; }
+.memory-operation { padding-top: 16px; }
+.memory-operation h4 { margin: 0; font-size: 13px; }
+.memory-comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.memory-comparison h5 { margin: 8px 0; font-size: 12px; opacity: .7; }
+.memory-comparison pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: 12px; margin: 0; padding: 10px; background: #8881; border-radius: 4px; }
+.memory-more { margin-top: 16px; }
+#tab-agent :focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+@media (max-width: 520px) {
+    .memory-comparison { grid-template-columns: minmax(0, 1fr); }
+    .memory-toolbar h3 { flex-basis: 100%; margin-bottom: 4px; }
+    .memory-receipt time { float: none; display: block; padding-left: 15px; margin-top: 5px; }
+    .memory-authorization { flex-wrap: wrap; }
+}

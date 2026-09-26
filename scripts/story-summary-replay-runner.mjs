@@ -134,6 +134,10 @@ function runtimeAliasPlugin() {
     return {
         name: 'story-summary-replay-alias',
         setup(buildApi) {
+            buildApi.onResolve({ filter: /metadata-confirmation\.js$/ }, (args) => {
+                if (!args.importer.endsWith(`${path.sep}data${path.sep}memory-commit.js`)) return null;
+                return { path: path.join(replayDir, 'shims', 'metadata-confirmation.js') };
+            });
             buildApi.onResolve({ filter: /extensions\.js$/ }, (args) => {
                 if (!args.importer) return null;
                 return { path: shimExtensions };
@@ -483,6 +487,8 @@ async function main() {
         console.log(`[story-summary-replay] rollback storage check: ${JSON.stringify(rollbackStorage)}`);
         const swipeRollback = await replayModule.runStorySummarySwipeRollbackCheck();
         console.log(`[story-summary-replay] swipe rollback check: ${JSON.stringify(swipeRollback)}`);
+        const maintenanceStorage = await replayModule.runStorySummaryMemoryMaintenanceStorageCheck();
+        console.log(`[story-summary-replay] memory maintenance storage check: ${JSON.stringify(maintenanceStorage)}`);
         console.log('[story-summary-replay] cancellation check completed');
         return;
     }

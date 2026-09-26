@@ -7,6 +7,7 @@ import { EVENT_MEMORY_ROLES } from "./events.js";
 import { DEFAULT_SUMMARY_DELAY_FLOORS, normalizeSummaryDelayFloors } from './summary-delay.js';
 import { ARC_PROGRESS_MAX } from '../generate/arc-progress.js';
 import { RELATION_TRENDS } from './fact-predicates.js';
+import { DEFAULT_MEMORY_MAINTENANCE_ENABLED } from '../maintenance/settings.js';
 
 const MODULE_ID = "summaryConfig";
 const SUMMARY_CONFIG_KEY = "storySummaryPanelConfig";
@@ -413,6 +414,7 @@ function normalizeVectorConfig(rawVector = null) {
 
 function createDefaultSummaryPanelConfig() {
     const defaults = {
+        memoryMaintenanceEnabled: DEFAULT_MEMORY_MAINTENANCE_ENABLED,
         api: { provider: "st", url: "", key: "", model: "", modelCache: [] },
         gen: { temperature: null, top_p: null, top_k: null, presence_penalty: null, frequency_penalty: null },
         trigger: {
@@ -452,6 +454,9 @@ function assertSummaryConfigPersisted(expected, actual) {
     if (!actual || typeof actual !== "object") {
         throw new Error("保存后读取配置失败");
     }
+    if (actual.memoryMaintenanceEnabled !== expected.memoryMaintenanceEnabled) {
+        throw new Error('memory_maintenance_setting_not_saved');
+    }
 
     const expectedApi = expected?.api || {};
     const actualApi = actual?.api || {};
@@ -486,6 +491,7 @@ function normalizeSummaryPanelConfig(rawConfig = null) {
         : {};
 
     const result = {
+        memoryMaintenanceEnabled: rawConfig.memoryMaintenanceEnabled === true,
         api: { ...defaults.api, ...(rawConfig.api || {}) },
         gen: { ...defaults.gen, ...(rawConfig.gen || {}) },
         trigger: { ...defaults.trigger, ...(rawConfig.trigger || {}) },

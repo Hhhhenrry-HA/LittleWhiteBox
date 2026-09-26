@@ -9,14 +9,14 @@ http.createServer((request, response) => {
     const pathname = new URL(request.url, origin).pathname;
     if (pathname === '/') {
         response.setHeader('Content-Type', 'text/html; charset=utf-8');
-        response.end('<!doctype html><html><body style="margin:0"><iframe id="summary" src="/modules/story-summary/story-summary.html" style="display:block;border:0;width:100vw;height:100vh"></iframe></body></html>');
+        response.end('<!doctype html><html><body style="margin:0"><iframe id="summary" src="/modules/story-summary/story-summary.html" style="display:block;border:0;width:100vw;height:100vh"></iframe><script type="module" src="/modules/story-summary/tests/maintenance-preview-host.js"></script></body></html>');
         return;
     }
     if (pathname === '/favicon.ico') {
         response.writeHead(204).end();
         return;
     }
-    if (!/^\/modules\/story-summary\/[a-zA-Z0-9_./-]+$/.test(pathname) || pathname.includes('..')) {
+    if ((!/^\/modules\/story-summary\/[a-zA-Z0-9_./-]+$/.test(pathname) && pathname !== '/core/iframe-messaging.js') || pathname.includes('..')) {
         response.writeHead(404).end();
         return;
     }

@@ -497,7 +497,7 @@ export function applyCharacterAliasUpdates(json, updates, floor) {
     };
 }
 
-function validateAliasGraph(aliases) {
+export function validateAliasGraph(aliases) {
     const edges = new Map();
     for (const alias of aliases) {
         const fromKey = normalizeAliasNameKey(alias.from);

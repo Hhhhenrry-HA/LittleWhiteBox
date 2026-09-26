@@ -9,8 +9,10 @@ import {
     getFacts,
     getSummaryStore,
     mergeNewData,
-    saveSummaryStoreImmediately,
+    isSummaryConsumable,
 } from "../data/store.js";
+import { commitSummaryMemory, readSummaryMemory } from '../data/memory-commit.js';
+import { memorySaveError } from '../data/memory-copy.js';
 import { formatCharacterAliasTableForAI } from "../data/character-aliases.js";
 import {
     generateSummary,
@@ -22,6 +24,7 @@ import { getSummarySourceEnd } from './source-boundary.js';
 import { normalizeSummaryDelayFloors } from '../data/summary-delay.js';
 import { prepareSummaryResult } from './summary-result.js';
 import { formatModelArcProgress } from './arc-progress.js';
+import { notifySummaryCommitted } from '../maintenance/notification.js';
 
 const MODULE_ID = 'summaryGenerator';
 const SUMMARY_SESSION_ID = 'xb9';
@@ -113,7 +116,7 @@ export async function runSummaryGeneration(mesId, config, callbacks = {}, runtim
     }
 
     const store = getSummaryStore();
-    if (store?.summaryInvalid === true) {
+    if (!isSummaryConsumable(store, getContext().chat?.length || 0)) {
         onError?.("总结历史无法安全回滚：请导出当前总结，修正后重新导入，或清空总结数据");
         return { success: false, error: "summary_invalid" };
     }
@@ -213,27 +216,29 @@ export async function runSummaryGeneration(mesId, config, callbacks = {}, runtim
 
     const mergeResult = mergeNewData(store?.json || {}, parsed, slice.endMesId, { returnMeta: true });
     const merged = mergeResult.json;
-    const previousStore = structuredClone(store);
-    store.lastSummarizedMesId = slice.endMesId;
-    store.json = merged;
-    delete store.pendingImportBoundary;
-    const committedUpdatedAt = Date.now();
-    store.updatedAt = committedUpdatedAt;
-    addSummarySnapshot(store, lastSummarized, slice.endMesId, mergeResult.undo);
+    const previous = readSummaryMemory();
+    const next = structuredClone(previous);
+    next.storySummary.lastSummarizedMesId = slice.endMesId;
+    next.storySummary.json = merged;
+    delete next.storySummary.pendingImportBoundary;
+    next.storySummary.updatedAt = Date.now();
+    addSummarySnapshot(next.storySummary, lastSummarized, slice.endMesId, mergeResult.undo);
 
     try {
-        await saveSummaryStoreImmediately(targetChatId);
+        await commitSummaryMemory(targetChatId, next, { previous, validate: () => {
+            const latest = buildIncrementalSlice(slice.endMesId, lastSummarized, maxPerRun, delayFloors);
+            if (isSummaryRunInactive(signal, targetChatId) || latest.endMesId !== slice.endMesId || latest.text !== slice.text) {
+                throw Object.assign(new Error('metadata_draft_conflict'), { code: 'metadata_draft_conflict' });
+            }
+        } });
     } catch (error) {
-        if (store.updatedAt === committedUpdatedAt) {
-            for (const key of Object.keys(store)) delete store[key];
-            Object.assign(store, previousStore);
-        }
         xbLog.error(MODULE_ID, '总结持久化失败', error);
-        onError?.(`总结未能保存：${formatErrorDetails(error, { includeStack: false })}`);
+        onError?.(memorySaveError(error));
         return { success: false, error };
     }
 
     xbLog.info(MODULE_ID, `总结完成，已更新至 ${slice.endMesId + 1} 楼`);
+    notifySummaryCommitted({ chatId: targetChatId, start: lastSummarized + 1, cutoff: slice.endMesId });
 
     if (parsed.factUpdates?.length) {
         xbLog.info(MODULE_ID, `Facts 更新: ${parsed.factUpdates.length} 条`);
