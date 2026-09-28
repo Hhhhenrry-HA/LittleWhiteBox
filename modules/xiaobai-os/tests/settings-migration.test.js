@@ -42,7 +42,7 @@ function createCurrentSettings(enabled = true) {
             messages: { imagePrompt: false, voicePrompt: false, syncNoticeEnabled: true },
             dice: { actionChecksEnabled: false, actionCheckFrequency: 'standard', actionCheckRule: 'd20', encountersEnabled: false },
             world: { subscribed: false, injectToStory: true },
-            game: { movingSoundEnabled: true },
+            game: { movingSoundEnabled: true, stackingSoundEnabled: true },
         },
     };
 }
@@ -61,7 +61,7 @@ test('enables a new OS entry without enabling automatic app features', async () 
         assert.deepEqual(current.apps.messages, { imagePrompt: false, voicePrompt: false, syncNoticeEnabled: true });
         assert.deepEqual(current.apps.dice, { actionChecksEnabled: false, actionCheckFrequency: 'standard', actionCheckRule: 'd20', encountersEnabled: false });
         assert.deepEqual(current.apps.world, { subscribed: false, injectToStory: true });
-        assert.deepEqual(current.apps.game, { movingSoundEnabled: true });
+        assert.deepEqual(current.apps.game, { movingSoundEnabled: true, stackingSoundEnabled: true });
         assert.deepEqual(repository.read(), current);
     }
 });

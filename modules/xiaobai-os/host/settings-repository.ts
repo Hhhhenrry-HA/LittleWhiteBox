@@ -63,6 +63,7 @@ export interface XiaobaiOsSettingsRepository {
     finishDiceSheetMigration: () => Promise<XiaobaiOsSettings>;
     setWorldPreference: (key: keyof WorldSettings, enabled: boolean) => Promise<XiaobaiOsSettings>;
     setGameMovingSound: (enabled: boolean) => Promise<XiaobaiOsSettings>;
+    setGameStackingSound: (enabled: boolean) => Promise<XiaobaiOsSettings>;
     mutateFourthWall: (
         action: (current: FourthWallGlobalSettings) => FourthWallGlobalSettings,
     ) => Promise<XiaobaiOsSettings>;
@@ -356,6 +357,11 @@ export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): Xia
         });
     }
 
+    function setGameStackingSound(enabled: boolean): Promise<XiaobaiOsSettings> {
+        if (typeof enabled !== 'boolean') { throw new TypeError('Game stacking sound must be a boolean'); }
+        return mutate(next => { next.apps.game.stackingSoundEnabled = enabled; return next; });
+    }
+
     function subscribe(listener: (settings: XiaobaiOsSettings) => void): () => void {
         if (typeof listener !== 'function') {
             throw new TypeError('settings listener must be a function');
@@ -387,6 +393,7 @@ export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): Xia
         finishDiceSheetMigration,
         setWorldPreference,
         setGameMovingSound,
+        setGameStackingSound,
         mutateFourthWall,
         subscribe,
         subscribeMutationInstalled,

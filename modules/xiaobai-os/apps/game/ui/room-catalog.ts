@@ -5,6 +5,7 @@ import LadderRecord from './rooms/ladder/LadderRecord.vue';
 import { gameInfo } from '../catalog.js';
 import type { GameKind } from '../types.js';
 import { MOVING_GAME } from '../moving/catalog.js';
+import { STACKING_GAME } from '../stacking/catalog.js';
 
 export const GAME_ROOMS = [
     { ...gameInfo('dice'), record: DiceRecord, artwork: new URL('./rooms/dice/art.svg', import.meta.url).href, load: () => import('./rooms/dice/DiceRoom.vue') },
@@ -16,6 +17,7 @@ export function gameRoom(kind: GameKind) {return GAME_ROOMS.find(room => room.id
 
 // Moving owns its Host protocol and view; it is not a wagering GameKind.
 export const GAME_ENTRIES = [
+    { ...STACKING_GAME, mode: 'standalone' as const, artwork: new URL('../stacking/art.svg', import.meta.url).href, load: () => import('../stacking/StackingRoom.vue') },
     { ...MOVING_GAME, mode: 'standalone' as const, artwork: new URL('../moving/art.svg', import.meta.url).href, load: () => import('../moving/MovingRoom.vue') },
     ...GAME_ROOMS.map(room => ({ ...room, mode: 'wager' as const })),
 ];
