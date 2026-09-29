@@ -94,6 +94,20 @@ async function seedImage(slotId, suffix, options = {}) {
     return imgId;
 }
 
+test('host-rendered slots have a card before asynchronous gallery hydration', async t => {
+    const { root } = mountMessage(t, 'Before[image:loading-slot]After');
+    const iframe = document.createElement('iframe');
+    root.append(iframe);
+    await seedImage('loading-slot', 'image');
+    const rendered = api.renderPreviewsForMessage(0, { content: root });
+    assert.ok(root.querySelector('.xb-nd-img'));
+    assert.equal(root.textContent.includes('[image:'), false);
+    assert.ok(root.contains(iframe));
+    await rendered;
+    assert.ok(root.querySelector('.xb-nd-img img'));
+    assert.ok(root.contains(iframe));
+});
+
 for (const savedReference of [false, true]) {
     test(`appending images preserves the selected history position (${savedReference ? 'saved reference' : 'gallery selection'})`, async t => {
         const slotId = savedReference ? 'saved-history' : 'selected-history';
@@ -213,16 +227,24 @@ test('a revoked content lease does not paint; remount reads the existing image w
     const slotId = 'leased-image';
     const { message, root } = mountMessage(t, `Before[image:${slotId}]After`);
     const imgId = await seedImage(slotId, 'image');
+    await api.renderPreviewsForMessage(0, { content: root, signal: AbortSignal.abort() });
+    assert.equal(root.querySelector('.xb-nd-img'), null);
     const controller = new AbortController();
     const pending = api.renderPreviewsForMessage(0, { content: root, signal: controller.signal });
+    const shell = root.querySelector('.xb-nd-img');
+    assert.ok(shell);
     controller.abort();
     await pending;
-    assert.equal(root.querySelector('.xb-nd-img'), null);
+    // The shell predates revocation; no asynchronous hydration may replace it.
+    assert.ok(root.querySelector('.xb-nd-img') === shell);
+    assert.equal(shell.querySelector('img'), null);
 
     const nextContent = root.cloneNode(true);
     root.replaceWith(nextContent);
+    const nextShell = nextContent.querySelector('.xb-nd-img');
     await api.renderPreviewsForMessage(0, { content: root, signal: new AbortController().signal });
-    assert.equal(nextContent.querySelector('.xb-nd-img'), null, 'stale content cannot write into its replacement');
+    assert.ok(nextContent.querySelector('.xb-nd-img') === nextShell, 'stale content cannot write into its replacement');
+    assert.equal(nextShell.querySelector('img'), null);
     await api.renderPreviewsForMessage(0, { content: nextContent, signal: new AbortController().signal });
     assert.equal(nextContent.querySelector('.xb-nd-img').dataset.imgId, imgId);
     assert.equal((await api.getPreviewsBySlot(slotId)).length, 1);

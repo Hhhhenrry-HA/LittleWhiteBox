@@ -359,12 +359,10 @@ export async function getStorageStats(chatId) {
 }
 
 export async function clearChatData(chatId) {
-    await Promise.all([
-        metaTable.delete(chatId),
-        chunksTable.where('chatId').equals(chatId).delete(),
-        chunkVectorsTable.where('chatId').equals(chatId).delete(),
-        eventVectorsTable.where('chatId').equals(chatId).delete(),
-    ]);
+    // This database contains only chat-owned vector caches, including L0.
+    await db.transaction('rw', db.tables, async () => {
+        await Promise.all(db.tables.map(table => table.where('chatId').equals(chatId).delete()));
+    });
     await clearRecallRuntime(chatId);
 }
 

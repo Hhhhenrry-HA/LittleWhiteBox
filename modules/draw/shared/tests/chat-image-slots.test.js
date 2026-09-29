@@ -170,7 +170,7 @@ function setup(t, source, { legacy = false } = {}) {
             await host.emit('GENERATION_ENDED');
             await host.emit('MESSAGE_RECEIVED', 0, type);
         },
-        generateTag() { root.querySelector('[data-action="generate-tag"]').click(); },
+        generateTag() { root.querySelector('[data-xb-draw-tag-action]').click(); },
         get saves() { return saves; }, get requests() { return responses; },
         set hold(value) { hold = value; }, finish() { for (const deliver of deliveries.splice(0)) deliver(); },
         set saveMode(value) { saveMode = value; }, set cacheReadsFail(value) { cacheReadsFail = value; },
@@ -205,17 +205,106 @@ test('received tags batch once without visibility, update swipe, and survive dup
 test('historical tags stay raw through reload; only an explicit action generates one occurrence', async t => {
     const h = setup(t, '[img: first] and [img: later]');
     api.initChatMessageImages();
-    await until(() => h.root.querySelectorAll('[data-action="generate-tag"]').length === 2);
+    await until(() => h.root.querySelectorAll('[data-xb-draw-tag-action]').length === 2);
     assert.equal(h.requests, 0);
     h.generateTag();
     await until(() => h.root.querySelectorAll('.xb-nd-img img').length === 1);
     assert.ok(h.message.mes.includes('[img: later]'));
     api.cleanupChatMessageImages(); h.format(); api.initChatMessageImages();
-    await until(() => h.root.querySelectorAll('[data-action="generate-tag"]').length === 1);
+    await until(() => h.root.querySelectorAll('[data-xb-draw-tag-action]').length === 1);
     assert.equal(h.requests, 1);
     h.generateTag();
     await until(() => h.requests === 2);
     await until(() => !h.message.mes.includes('[img:'));
+});
+
+test('native tag handoff never exposes markers or rebuilds live sibling content', async t => {
+    const h = setup(t, 'Before [img: first] middle [img: second] after');
+    h.hold = true;
+    api.initChatMessageImages();
+    await h.begin();
+    await until(() => h.root.querySelectorAll('[data-xb-draw-tag="streaming"]').length === 2);
+    const iframe = document.createElement('iframe');
+    h.root.append(iframe);
+    await tick();
+    const frames = [];
+    const observer = new MutationObserver(() => frames.push({
+        raw: /\[(?:img|image)\s*:/.test(h.root.textContent),
+        cards: h.root.querySelectorAll('.xb-nd-img').length,
+        sameFrame: h.root.contains(iframe),
+    }));
+    observer.observe(h.root, { childList: true, subtree: true, characterData: true });
+    t.after(() => observer.disconnect());
+    await h.receive();
+    await until(() => h.requests === 1);
+    await until(() => h.root.querySelectorAll('.xb-nd-img[data-slot-id]:not([data-slot-id=""])').length === 2);
+    h.finish();
+    await until(() => h.root.querySelectorAll('.xb-nd-img img').length === 2);
+    assert.ok(frames.length > 0);
+    assert.deepEqual(frames.filter(frame => frame.raw || frame.cards !== 2 || !frame.sameFrame), []);
+    assert.equal(h.requests, 1);
+});
+
+for (const retry of [false, true]) for (const saveMode of ['ok', 'uncertain']) {
+    test(`manual tag handoff keeps cards and live siblings through delayed ${saveMode} save (retry: ${retry})`, async t => {
+        const h = setup(t, '[img: same] and [img: same]');
+        api.initChatMessageImages();
+        if (retry) {
+            h.prepareBarrier = () => { throw new Error('preparation rejected'); };
+            await h.begin(); await h.receive();
+            await until(() => h.root.querySelectorAll('[data-xb-draw-tag="failed"]').length === 2);
+            h.prepareBarrier = async () => {};
+        } else await until(() => h.root.querySelectorAll('[data-xb-draw-tag-action]').length === 2);
+        const iframe = document.createElement('iframe');
+        h.root.append(iframe);
+        const gate = Promise.withResolvers();
+        h.onSave = () => gate.promise;
+        h.saveMode = saveMode;
+        const frames = [];
+        const observer = new MutationObserver(() => frames.push({
+            raw: /\[(?:img|image)\s*:/.test(h.root.textContent),
+            cards: h.root.querySelectorAll('.xb-nd-img').length,
+            sameFrame: h.root.contains(iframe),
+        }));
+        observer.observe(h.root, { childList: true, subtree: true, characterData: true });
+        t.after(() => { gate.resolve(); observer.disconnect(); });
+        h.generateTag();
+        await until(() => h.saves === 1);
+        api.refreshChatMessageImages();
+        await tick();
+        assert.equal(h.requests, 0, 'no supplier request before save confirmation');
+        assert.equal(h.root.querySelectorAll('.xb-nd-img').length, 2);
+        assert.equal(/\[(?:img|image)\s*:/.test(h.root.textContent), false);
+        gate.resolve();
+        if (saveMode === 'ok') await until(() => h.root.querySelector('.xb-nd-img img'));
+        else await until(() => h.root.querySelector('.xb-nd-img[data-state="failed"]'));
+        await until(() => h.jobs.size === 0);
+        assert.equal(h.requests, saveMode === 'ok' ? 1 : 0);
+        assert.equal(api.parseChatImageTags(h.message.mes).length, 1);
+        assert.equal(api.extractSlotIds(h.message.mes).size, 1);
+        assert.ok(frames.length > 0);
+        assert.deepEqual(frames.filter(frame => frame.raw || frame.cards !== 2 || !frame.sameFrame), []);
+    });
+}
+
+test('unchanged tag projections retain manual controls and use the current source on click', async t => {
+    const h = setup(t, '[img: first] and [img: second]');
+    api.initChatMessageImages();
+    await until(() => h.root.querySelectorAll('[data-xb-draw-tag-action]').length === 2);
+    const cards = [...h.root.querySelectorAll('.xb-nd-img')];
+    const button = cards[0].querySelector('button');
+    h.message.mes += ' appended prose';
+    h.root.append(document.createTextNode(' appended prose'));
+    await host.emit('MESSAGE_UPDATED', 0);
+    await tick();
+    assert.equal(h.root.querySelectorAll('.xb-nd-img').length, cards.length);
+    assert.ok([...h.root.querySelectorAll('.xb-nd-img')].every((card, index) => card === cards[index]));
+    assert.ok(cards[0].querySelector('button') === button);
+    button.click();
+    await until(() => h.requests === 1);
+    await until(() => h.root.querySelector('.xb-nd-img img'));
+    assert.equal(h.message.mes.endsWith(' appended prose'), true);
+    assert.deepEqual(host.errors, []);
 });
 
 test('content lease disposal does not cancel a claimed request', async t => {
@@ -242,7 +331,9 @@ test('DOM-only replacement restores owned images without a host message event or
 
 test('uncertain save retains registered input but makes zero generation requests', async t => {
     const h = setup(t, '[img: retain]'); h.saveMode = 'uncertain';
-    api.initChatMessageImages(); await until(() => h.root.querySelector('[data-action="generate-tag"]'));
+    api.initChatMessageImages(); await until(() => h.root.querySelector('[data-xb-draw-tag-action]'));
+    const iframe = document.createElement('iframe');
+    h.root.append(iframe);
     h.generateTag(); await until(() => h.root.querySelector('[data-state="failed"]'));
     assert.equal(h.requests, 0);
     const card = h.root.querySelector('[data-slot-id]');
@@ -258,6 +349,7 @@ test('uncertain save retains registered input but makes zero generation requests
     assert.equal(h.message.mes, savedSource);
     assert.equal(h.root.querySelector('.xb-nd-img').dataset.slotId, slotId);
     assert.equal(h.root.querySelectorAll('img').length, 1);
+    assert.ok(h.root.contains(iframe));
 });
 
 test('edited tags persist for image and interrupted card, redraw reads the selected record rather than stale DOM', async t => {
@@ -412,8 +504,14 @@ test('preparation storage failure keeps a raw retryable tag and never resubmits 
         if (failStorage && this.name === 'previews') this.transaction.abort();
         return result;
     });
-    api.initChatMessageImages(); await h.begin(); await h.receive();
+    api.initChatMessageImages(); await h.begin();
+    await until(() => h.root.querySelector('[data-xb-draw-tag="streaming"]'));
+    const card = h.root.querySelector('.xb-nd-img');
+    await h.receive();
     await until(() => h.root.querySelector('[data-xb-draw-tag="failed"]'));
+    assert.ok(h.root.querySelector('.xb-nd-img') === card);
+    assert.ok(card.querySelector('[data-xb-draw-tag-action]'));
+    assert.equal(h.root.textContent.includes('[img:'), false);
     assert.equal(h.message.mes, '[img: retry input]'); assert.equal(h.requests, 0);
     h.format(); api.refreshChatMessageImages(); await tick(); assert.equal(h.requests, 0);
     failStorage = false; h.generateTag();
@@ -440,7 +538,7 @@ test('DICE first listener removes a tail before tag adoption; editing later is n
     await h.receive(); await until(() => h.jobs.size === 0);
     assert.equal(h.submissions[0].tasks.length, 1);
     h.message.mes += ' [img: edited]'; h.format(); await host.emit('MESSAGE_EDITED');
-    await until(() => h.root.querySelector('[data-action="generate-tag"]'));
+    await until(() => h.root.querySelector('[data-xb-draw-tag-action]'));
     assert.equal(h.requests, 1);
     host.events.get('MESSAGE_RECEIVED').shift();
 });
@@ -644,7 +742,7 @@ for (const event of ['CHAT_CHANGED', 'MESSAGE_SWIPED']) test(`leaving and return
     assert.equal(h.requests, 0);
     assert.equal(api.parseChatImageTags(h.message.mes).length, 1);
     assert.equal(api.extractSlotIds(h.message.mes).size, 0);
-    await until(() => h.root.querySelector('[data-action="generate-tag"]'));
+    await until(() => h.root.querySelector('[data-xb-draw-tag-action]'));
 });
 
 test('stream tokens cannot resurrect a slot removed from the original continuation prefix', async t => {
@@ -961,7 +1059,7 @@ test('switching branch during save stops submission and preserves both branch te
     const h = setup(t, '[img: branch]');
     h.message.swipes.push('alternate');
     h.onSave = () => { h.message.swipe_id = 1; h.message.mes = 'alternate'; };
-    api.initChatMessageImages(); await until(() => h.root.querySelector('[data-action="generate-tag"]'));
+    api.initChatMessageImages(); await until(() => h.root.querySelector('[data-xb-draw-tag-action]'));
     h.generateTag(); await until(() => host.errors.length > 0);
     assert.equal(h.message.mes, 'alternate');
     assert.match(h.message.swipes[0], /^\[image:/);

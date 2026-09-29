@@ -24,6 +24,7 @@ import { createModuleEvents } from "../../core/event-manager.js";
 import { postToIframe, isTrustedMessage } from "../../core/iframe-messaging.js";
 import { createMessageButtonOwnership } from "../../core/message-button-ownership.js";
 import { STORY_SUMMARY_TOGGLE_EVENT } from './runtime-events.js';
+import { initChatDeletionLifecycle } from './chat-deletion-lifecycle.js';
 import { createMemoryMaintenanceHost } from './maintenance/host.js';
 import { initAfterAiGate, notifyAfterAiHint, registerAfterAiHandler } from "../../core/after-ai-gate.js";
 import { getDefaultApiPrefix, resolveApiBaseUrl } from "../../shared/common/openai-url-utils.js";
@@ -70,7 +71,9 @@ import {
     extractRelationshipsFromFacts,
 } from "./data/store.js";
 import { commitSummaryMemory, readSummaryMemory, readPublishedSummaryMemory, assertMemoryWritable, getMemoryCommitState } from './data/memory-commit.js';
-import { prepareImportedSummary } from './data/summary-import.js';
+import { prepareImportedSummary, readSummaryPackageData, SUMMARY_MEMORY_PACKAGE } from './data/summary-import.js';
+import { createFactIdAllocator } from './data/fact-identity.js';
+import { mergeEditedFactsWithTimestamps } from './data/fact-edits.js';
 import { memorySaveError } from './data/memory-copy.js';
 import { hasActiveAnchorHistoryFromFloor } from './data/anchor-invalidation.js';
 import { normalizeCharacterAliases, replaceCharacterAliases } from "./data/character-aliases.js";
@@ -122,6 +125,7 @@ import {
     clearEventVectors,
     deleteEventVectorsByIds,
     clearAllChunks,
+    clearChatData,
     saveChunks,
     saveChunkVectors,
     getStorageStats,
@@ -2374,31 +2378,9 @@ function cloneSummaryJsonForPortability(json) {
 }
 
 function extractSummaryImportJson(raw) {
-    if (!raw || typeof raw !== "object") {
-        throw new Error("文件内容不是有效 JSON 对象");
-    }
-
-    const candidate =
-        (raw.type === "LittleWhiteBoxStorySummaryMemory" && raw.data && typeof raw.data === "object" ? raw.data : null) ||
-        (raw.storySummary?.json && typeof raw.storySummary.json === "object" ? raw.storySummary.json : null) ||
-        (raw.json && typeof raw.json === "object" ? raw.json : null) ||
-        raw;
-
-    const hasSummaryShape =
-        Array.isArray(candidate.keywords) ||
-        Array.isArray(candidate.events) ||
-        Array.isArray(candidate.arcs) ||
-        Array.isArray(candidate.facts) ||
-        (candidate.characters && typeof candidate.characters === "object");
-
-    if (!hasSummaryShape) {
-        throw new Error("未识别到可导入的总结数据");
-    }
-
+    const candidate = readSummaryPackageData(raw);
     const json = cloneSummaryJsonForPortability(candidate);
-    json.facts = Array.isArray(candidate.facts)
-        ? candidate.facts.map(normalizePortableFact).filter((item) => item.s && item.p && item.o)
-        : [];
+    json.facts = candidate.facts.map(normalizePortableFact);
     return json;
 }
 
@@ -2409,8 +2391,7 @@ function buildSummaryExportPackage(store) {
         facts: json.facts.map(serializePortableFact),
     };
     return {
-        type: "LittleWhiteBoxStorySummaryMemory",
-        version: 1,
+        ...SUMMARY_MEMORY_PACKAGE,
         exportedAt: new Date().toISOString(),
         data,
         counts: {
@@ -2613,15 +2594,6 @@ export function getStorySummaryCommittedThrough() {
     return Number.isSafeInteger(through) && through >= 0 ? through : -1;
 }
 
-function getNextFactIdValue(facts) {
-    let max = 0;
-    for (const fact of facts || []) {
-        const match = String(fact?.id || "").match(/^f-(\d+)$/);
-        if (match) max = Math.max(max, Number.parseInt(match[1], 10) || 0);
-    }
-    return max + 1;
-}
-
 function mergeCharacterRelationshipsIntoFacts(existingFacts, relationships, floorHint = 0) {
     const safeFacts = Array.isArray(existingFacts) ? existingFacts : [];
     const safeRels = Array.isArray(relationships) ? relationships : [];
@@ -2636,7 +2608,7 @@ function mergeCharacterRelationshipsIntoFacts(existingFacts, relationships, floo
         oldRelationByKey.set(`${from}->${to}`, fact);
     }
 
-    let nextFactId = getNextFactIdValue(safeFacts);
+    const allocateFactId = createFactIdAllocator(safeFacts);
     const newRelationFacts = [];
 
     for (const rel of safeRels) {
@@ -2648,7 +2620,7 @@ function mergeCharacterRelationshipsIntoFacts(existingFacts, relationships, floo
         const oldFact = oldRelationByKey.get(key);
         const label = String(rel?.label || "").trim() || "未知";
         const trend = String(rel?.trend || "").trim();
-        const id = oldFact?.id || `f-${nextFactId++}`;
+        const id = oldFact?.id || allocateFactId();
 
         newRelationFacts.push({
             id,
@@ -2668,51 +2640,6 @@ function getCurrentFloorHint() {
     const { chat } = getContext();
     const lastFloor = (Array.isArray(chat) ? chat.length : 0) - 1;
     return Math.max(0, lastFloor);
-}
-
-function factKeyBySubjectPredicate(fact) {
-    const s = String(fact?.s || "").trim();
-    const p = String(fact?.p || "").trim();
-    return `${s}::${p}`;
-}
-
-function mergeEditedFactsWithTimestamps(existingFacts, editedFacts, floorHint = 0) {
-    const currentFacts = Array.isArray(existingFacts) ? existingFacts : [];
-    const incomingFacts = Array.isArray(editedFacts) ? editedFacts : [];
-    const oldMap = new Map(currentFacts.map((f) => [factKeyBySubjectPredicate(f), f]));
-
-    let nextFactId = getNextFactIdValue(currentFacts);
-    const merged = [];
-
-    for (const fact of incomingFacts) {
-        const s = String(fact?.s || "").trim();
-        const p = String(fact?.p || "").trim();
-        const o = String(fact?.o || "").trim();
-        if (!s || !p || !o) continue;
-
-        const key = `${s}::${p}`;
-        const oldFact = oldMap.get(key);
-        const since = oldFact?.since ?? fact?.since ?? floorHint;
-        const addedAt = oldFact?._addedAt ?? fact?._addedAt ?? floorHint;
-
-        const out = {
-            id: oldFact?.id || fact?.id || `f-${nextFactId++}`,
-            s,
-            p,
-            o,
-            since,
-            _addedAt: addedAt,
-        };
-        if (oldFact?._isState != null) out._isState = oldFact._isState;
-
-        const mergedTrend = fact?.trend ?? oldFact?.trend;
-        if (mergedTrend != null && String(mergedTrend).trim()) {
-            out.trend = String(mergedTrend).trim();
-        }
-        merged.push(out);
-    }
-
-    return merged;
 }
 
 function openPanelForMessage(mesId) {
@@ -3334,14 +3261,7 @@ async function handleFrameMessage(event) {
             break;
 
         case "VECTOR_LIST_BACKUPS":
-            (async () => {
-                try {
-                    const files = await fetchManifest();
-                    showBackupManagerModal(files);
-                } catch (e) {
-                    showBackupManagerModal([]);
-                }
-            })();
+            showBackupManagerModal();
             break;
 
         case "REQUEST_VECTOR_STATS":
@@ -4534,9 +4454,6 @@ async function registerEvents() {
         clearExtensionPrompt();
     });
 
-    // 聊天删除时清理对应的服务器向量备份
-    events.on(event_types.CHAT_DELETED, handleChatDeleted);
-    events.on(event_types.GROUP_CHAT_DELETED, handleChatDeleted);
 }
 
 async function unregisterEvents() {
@@ -4611,13 +4528,16 @@ async function deactivateCurrentChatStorySummary() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 聊天删除时自动清理服务器向量备份
+// 聊天删除时清理本地缓存和服务器向量备份
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleChatDeleted(chatId) {
     logRecallRuntimeCheckpoint("chatDeleted:clear-runtime", `chat=${chatId || "-"}`);
     clearWarningCooldownsForChat(chatId);
-    await clearRecallRuntime(chatId);
+    // Drain existing writes before deleting their cache, including when summary
+    // generation is disabled and the write coordinator has been shut down.
+    await waitForVectorWrites();
+    await clearChatData(chatId);
     try {
         const filename = getBackupFilename(chatId);
         await deleteServerBackup(filename, null);
@@ -4637,7 +4557,7 @@ function removeBackupManagerModal() {
     document.getElementById('lwb-backup-manager-modal')?.remove();
 }
 
-function showBackupManagerModal(initialFiles) {
+function showBackupManagerModal() {
     removeBackupManagerModal();
     const isNarrowViewport = window.matchMedia?.('(max-width: 640px)').matches || window.innerWidth <= 640;
 
@@ -4817,7 +4737,7 @@ function showBackupManagerModal(initialFiles) {
         }
     };
 
-    renderList(initialFiles);
+    btnRefresh.onclick();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -4841,6 +4761,7 @@ $(document).on(STORY_SUMMARY_TOGGLE_EVENT, async (_e, enabled) => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 jQuery(() => {
+    initChatDeletionLifecycle(handleChatDeleted);
     if (!getSettings().storySummary?.enabled) return;
     (async () => {
         try {

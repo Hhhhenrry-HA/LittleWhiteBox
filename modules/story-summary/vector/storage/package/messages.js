@@ -11,6 +11,7 @@ const ERRORS = {
     legacy_unverifiable: '旧包只有无法校验来源的向量，请在当前聊天重新生成',
     backup_missing: '服务器上没有找到此聊天的备份',
     server_failed: '服务器文件操作失败',
+    backup_manifest_read_failed: '备份清单读取失败，请检查服务器连接或清单内容后重试',
     backup_manifest_failed: '备份文件已上传，但备份清单更新失败；可按当前聊天恢复，请检查服务器连接',
 };
 

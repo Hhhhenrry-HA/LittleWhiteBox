@@ -55,14 +55,19 @@ export function parseChatImageTags(value) {
         start: match.index, end: match.index + match[0].length })).filter(item => item.tags);
 }
 
-export function findRenderedChatImageTags(root, candidates) {
+export function findRenderedChatImageTags(root, candidates, renderedTags = new Map()) {
     const document = root?.ownerDocument;
     if (!document) return { matched: [], unmatched: [] };
-    const walker = document.createTreeWalker(root, 4);
+    const walker = document.createTreeWalker(root, 5);
     const visible = [];
     while (walker.nextNode()) {
         const node = walker.currentNode;
         if (node.parentElement?.closest('code, pre, script, style, textarea, .xb-nd-img')) continue;
+        if (node.nodeType === 1) {
+            const rendered = renderedTags.get(node);
+            if (rendered) visible.push({ node, offset: 0, marker: rendered.candidate.marker });
+            continue;
+        }
         for (const match of (node.nodeValue || '').matchAll(TAG_PATTERN)) visible.push({ node, offset: match.index, marker: match[0] });
     }
     const matched = [], unmatched = [];

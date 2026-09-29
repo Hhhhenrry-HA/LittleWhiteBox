@@ -87,6 +87,36 @@ function rewriteZip(bytes, change) {
     return zipSync(files);
 }
 
+test('deleting a chat clears every local cache layer without touching another chat', async () => {
+    await seedCache();
+    const otherChat = [];
+    for (const table of db.tables) {
+        const rows = (await table.toArray()).map(row => ({ ...row, chatId: 'retained-chat' }));
+        assert.ok(rows.length > 0);
+        await table.bulkPut(rows);
+        otherChat.push(rows);
+    }
+    await mod.store.clearChatData(fixture.chatId);
+    assert.deepEqual(await cacheSnapshot(), otherChat);
+    // Deleting an already absent chat is also safe.
+    await mod.store.clearChatData(fixture.chatId);
+    assert.deepEqual(await cacheSnapshot(), otherChat);
+});
+
+test('a local chat-cache deletion failure rolls back all cache layers', async () => {
+    await seedCache();
+    const before = await cacheSnapshot();
+    const failure = new Error('storage deletion failed');
+    const failDelete = () => { throw failure; };
+    db.stateVectors.hook('deleting', failDelete);
+    try {
+        await assert.rejects(mod.store.clearChatData(fixture.chatId), error => error === failure);
+    } finally {
+        db.stateVectors.hook('deleting').unsubscribe(failDelete);
+    }
+    assert.deepEqual(await cacheSnapshot(), before);
+});
+
 test('current package contains only cache payloads and source digests, not chat/L0/L1 prose', async () => {
     const before = structuredClone(host.metadata);
     const bytes = await createBytes();
@@ -173,6 +203,90 @@ for (const cacheKind of ['all-layers', 'l0-only']) {
         }
     });
 }
+
+const otherBackup = { filename: 'LWB_VectorBackup_other.zip', serverPath: 'user/files/LWB_VectorBackup_other.zip',
+    size: 100, chatId: 'other-chat', backupTime: '2026-09-01T00:00:00.000Z' };
+
+for (const [failure, readFailure] of [
+    ['network', () => { throw new TypeError('connection lost'); }],
+    ['unauthorized', () => new Response(null, { status: 401 })],
+    ['server', () => new Response(null, { status: 500 })],
+    ['invalid-json', () => new Response('{')],
+    ['non-array', () => Response.json({})],
+    ['invalid-entry', () => Response.json([otherBackup, { filename: 'unexpected.zip' }])],
+]) {
+    for (const operation of ['backup', 'delete']) {
+        test(`${operation}: ${failure} reading the backup manifest cannot overwrite existing entries`, async () => {
+            if (operation === 'backup') await seedCache();
+            const original = JSON.stringify([otherBackup]);
+            let manifest = original;
+            let manifestWrites = 0;
+            let zipChanged = false;
+            globalThis.fetch = async (url, options) => {
+                if (!options?.body) return readFailure();
+                const request = JSON.parse(options.body);
+                if (url === '/api/files/delete' || request.name.endsWith('.zip')) zipChanged = true;
+                else {
+                    manifestWrites++;
+                    manifest = Buffer.from(request.data, 'base64').toString('utf8');
+                }
+                return Response.json({ path: `user/files/${request.name}` });
+            };
+            // Listing must distinguish an unreadable manifest from an empty one.
+            await assert.rejects(mod.io.fetchManifest(), error => error.code === 'backup_manifest_read_failed');
+            if (operation === 'backup') {
+                await assert.rejects(mod.io.backupToServer(), error =>
+                    error.code === 'backup_manifest_failed' && error.cause.code === 'backup_manifest_read_failed');
+            } else {
+                await assert.rejects(mod.io.deleteServerBackup(mod.io.getBackupFilename(fixture.chatId)),
+                    error => error.partial === true);
+            }
+            assert.equal(zipChanged, true);
+            assert.equal(manifestWrites, 0);
+            assert.equal(manifest, original);
+        });
+    }
+}
+
+for (const initial of ['missing', 'existing']) {
+    test(`server backup updates a ${initial} manifest without losing other chats`, async () => {
+        await seedCache();
+        let manifest = initial === 'existing' ? [otherBackup] : null;
+        globalThis.fetch = async (_url, options) => {
+            if (!options?.body) return manifest === null ? new Response(null, { status: 404 }) : Response.json(manifest);
+            const request = JSON.parse(options.body);
+            if (!request.name.endsWith('.zip')) manifest = JSON.parse(Buffer.from(request.data, 'base64').toString('utf8'));
+            return Response.json({ path: `user/files/${request.name}` });
+        };
+        if (initial === 'missing') assert.deepEqual(await mod.io.fetchManifest(), []);
+        const result = await mod.io.backupToServer();
+        const current = manifest.find(entry => entry.filename === result.filename);
+        assert.equal(current.chatId, fixture.chatId);
+        assert.equal(current.size, result.size);
+        if (initial === 'existing') assert.deepEqual(manifest.find(entry => entry.filename === otherBackup.filename), otherBackup);
+        assert.equal(manifest.length, initial === 'existing' ? 2 : 1);
+    });
+}
+
+test('backup manifest verification read failure is reported without retrying a destructive empty rewrite', async () => {
+    await seedCache();
+    let manifest = [otherBackup];
+    let reads = 0;
+    let manifestWrites = 0;
+    globalThis.fetch = async (_url, options) => {
+        if (!options?.body) return ++reads === 1 ? Response.json(manifest) : new Response(null, { status: 500 });
+        const request = JSON.parse(options.body);
+        if (!request.name.endsWith('.zip')) {
+            manifestWrites++;
+            manifest = JSON.parse(Buffer.from(request.data, 'base64').toString('utf8'));
+        }
+        return Response.json({ path: `user/files/${request.name}` });
+    };
+    await assert.rejects(mod.io.backupToServer(), error => error.code === 'backup_manifest_failed');
+    assert.equal(manifestWrites, 1);
+    assert.equal(manifest.length, 2);
+    assert.deepEqual(manifest[0], otherBackup);
+});
 
 test('export preserves a consistent source model independently of L1 metadata', async () => {
     await seedCache();

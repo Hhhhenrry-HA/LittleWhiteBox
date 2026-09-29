@@ -74,6 +74,10 @@ export async function submitPreparedChatImages({ ctx, message, messageId, source
     const ids = tasks.map(task => ({ ...createImageIdentifiers(),
         ...(task.placement?.mode === 'existing' ? { slotId: task.placement.slotId } : {}) }));
     const plannedText = nativeMessage ? null : placePreparedImageSlots(sourceText, tasks, ids);
+    const replacesTags = tasks.every(task => task.placement?.mode === 'replace');
+    const placeTags = () => commitChatImagePlacement({ message, swipeIndex, before: message.mes,
+        edits: tasks.map((task, index) => ({ ...task.placement, slotId: ids[index].slotId,
+            content: createPlaceholder(ids[index].slotId) })), owner: placementSource });
     const owner = {};
     const items = metadata.map((data, index) => ({ ...data, ...ids[index], messageId,
         chatId, characterName: message.name || '',
@@ -127,24 +131,20 @@ export async function submitPreparedChatImages({ ctx, message, messageId, source
             // MESSAGE_RECEIVED is inside the host's own save boundary. No extra
             // chat I/O here, and no await between ownership check and mutation.
             validateSource();
-            const before = message.mes;
-            const edits = tasks.map((task, index) => ({ ...task.placement, slotId: ids[index].slotId,
-                content: createPlaceholder(ids[index].slotId) }));
-            commitChatImagePlacement({ message, swipeIndex, before, edits, owner: placementSource });
+            placeTags();
             onPlacement?.();
             return true;
         } : () => withConfirmableChatMutation(ctx, async () => {
             validateSource();
-            setActiveMessageText(message, plannedText);
-            try {
-                // Floor and swipe indices may move during storage/save/readback.
-                // The persisted slot identities, not the old indices, confirm placement.
-                await saveChatAndConfirm({ ctx, verify: persisted =>
-                    items.every(item => findImageJobDeliverySlot(persisted, item.slotId)) });
-            } catch (error) {
-                if (error.saveAttempted === false && message.mes === plannedText) setActiveMessageText(message, sourceText);
-                throw error;
-            }
+            // Manual tags use the same synchronous text/card handoff as native
+            // tags. Persistence still gates transport, not the visible card.
+            if (replacesTags) placeTags();
+            else setActiveMessageText(message, plannedText);
+            // This save has no precondition: it confirms placement or reports
+            // uncertainty. Never restore raw tags over a possibly persisted slot.
+            // Confirm slot identities because floor/swipe indices may move.
+            await saveChatAndConfirm({ ctx, verify: persisted =>
+                items.every(item => findImageJobDeliverySlot(persisted, item.slotId)) });
             const live = getContext();
             const liveId = live.chat?.indexOf(message) ?? -1;
             if (String(live.chatId) !== chatId || liveId < 0
@@ -155,7 +155,10 @@ export async function submitPreparedChatImages({ ctx, message, messageId, source
                 throw error;
             }
             try {
-                await syncRenderedMessageFromState(liveId, { chatId, expectedMessage: message });
+                // Tags already own their card; redraws do not change the text.
+                // Only newly inserted scene placements require host formatting.
+                if (replacesTags || plannedText === sourceText) await render();
+                else await syncRenderedMessageFromState(liveId, { chatId, expectedMessage: message });
                 onPlacement?.();
             } catch (error) { console.error(DRAW_SLOT_COPY.renderFailed, error); }
             return true;

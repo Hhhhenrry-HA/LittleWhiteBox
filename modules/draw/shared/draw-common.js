@@ -352,9 +352,9 @@ function buildTagEditor(tags, failed) {
 // 未完成槽位的统一占位卡。label 由调用方按真实状态给出（等待生成 / 接回后台任务 /
 // 等待重新连接…），绝不伪造进度：chat 正文里只持久化 [image:slotId] 这个排版事实，
 // 状态文案永远是当前运行时和后端状态动态渲染出来的。
-export function buildPendingImageHtml({ slotId, messageId, index = 0, total = 0, label = '等待生成' }) {
+export function buildPendingImageHtml({ slotId, messageId, index = 0, total = 0, label = '等待生成', loading = false }) {
     const progress = total > 0 ? `${Math.max(1, Number(index) || 1)} / ${total}` : '';
-    return `<div class="xb-nd-img" data-slot-id="${escapeHtml(slotId)}" data-mesid="${escapeHtml(messageId)}" data-state="pending" style="margin:0.8em 0;text-align:center;position:relative;display:block;width:100%;border:1px dashed rgba(212,165,116,0.4);border-radius:14px;padding:18px;background:rgba(212,165,116,0.06);color:inherit;">
+    return `<div class="xb-nd-img" data-slot-id="${escapeHtml(slotId)}" data-mesid="${escapeHtml(messageId)}" data-state="pending"${loading ? ' data-xb-draw-loading' : ''} style="margin:0.8em 0;text-align:center;position:relative;display:block;width:100%;border:1px dashed rgba(212,165,116,0.4);border-radius:14px;padding:18px;background:rgba(212,165,116,0.06);color:inherit;">
 <div class="xb-nd-indicator" style="position:static;transform:none;display:inline-block;">🎨 ${escapeHtml(label)}${progress ? ` · ${progress}` : ''}</div>
 </div>`;
 }
@@ -395,6 +395,20 @@ export function extractSlotIds(mes) {
     const regex = createDrawImageSlotRegex();
     while ((match = regex.exec(mes)) !== null) ids.add(match[1]);
     return ids;
+}
+
+// Project an existing text slot immediately, before gallery I/O. This is only a
+// loading surface: it cannot create slots, claim requests or rebuild host text.
+function mountImageSlotShells(content, messageId, message) {
+    const replacements = [...extractSlotIds(message.mes)]
+        .filter(slotId => !content.querySelector(buildDrawSlotSelector(slotId)))
+        .map(slotId => {
+            const activity = getSlotActivity(slotId);
+            return { slotId, html: buildPendingImageHtml({ slotId, messageId, loading: true,
+                label: activity?.label || DRAW_SLOT_COPY.loading,
+                index: activity ? activity.index + 1 : 0, total: activity?.total || 0 }) };
+        });
+    replaceSceneSlotElements(content, replacements, { shouldReplaceExisting: () => false });
 }
 
 async function persistChatSilently() {
@@ -612,6 +626,7 @@ async function rebuildRenderedMessageFromState(messageId, {
     // Host-generated message markup.
     // eslint-disable-next-line no-unsanitized/property
     mesTextEl.innerHTML = formatted;
+    mountImageSlotShells(mesTextEl, messageId, message);
     await notifyMessageRewritten(messageId);
     return true;
 }
@@ -668,7 +683,8 @@ async function renderPreviewsForMessageNow(messageId, {
         return (await pendingSlotsPromise).get(slotId) || null;
     };
     for (const slotId of slotIds) {
-        if (!refreshSlots.has(slotId) && mesTextEl.querySelector(buildDrawSlotSelector(slotId))) continue;
+        const existing = mesTextEl.querySelector(buildDrawSlotSelector(slotId));
+        if (!refreshSlots.has(slotId) && existing && !existing.hasAttribute('data-xb-draw-loading')) continue;
         let replacementHtml;
         try {
             const displayData = await resolveRenderPreviewForSlot(message, messageId, slotId);
@@ -757,6 +773,11 @@ export function renderPreviewsForMessage(messageId, { refreshSlotIds = [], conte
     const message = ctx.chat?.[messageId];
     if (!message?.mes) return Promise.resolve();
     const expectedChatId = ctx.chatId;
+
+    const root = getMesTextElement(messageId);
+    if (!signal?.aborted && root && (!content || content === root) && !isMessageBeingEdited(messageId)) {
+        mountImageSlotShells(root, messageId, message);
+    }
 
     let queue = drawPreviewRenderQueues.get(message);
     if (!queue) {

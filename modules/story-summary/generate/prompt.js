@@ -1,15 +1,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Story Summary - Prompt Injection (v7 - L0 scene-based display)
+// Story Summary - Prompt Injection
 //
-// 命名规范：
-// - 存储层用 L0/L1/L2/L3（StateAtom/Chunk/Event/Fact）
-// - 装配层用语义名称：constraint/event/evidence/arc
-//
-// 架构变更（v5 → v6）：
-// - 同楼层多个 L0 共享一对 L1（EvidenceGroup per-floor）
-// - L0 展示文本直接使用 semantic 字段（v7: 场景摘要，纯自然语言）
-// - 仅负责"构建注入文本"，不负责写入 extension_prompts
-// - 注入发生在 story-summary.js：generate_interceptor 时写入 extension_prompts
+// 大总结是一份 JSON；召回把其中的 events 当作事件、facts 当作约束分别装配。
+// 本模块只构建注入文本，不写入 extension_prompts。
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { getContext } from "../../../../../../extensions.js";
@@ -53,7 +46,7 @@ const ARCS_MAX = 1500;
 const EVENT_BUDGET_MAX = 5000;
 const RELATED_EVENT_MAX = 500;
 const EVENT_EVIDENCE_MAX = 4000;
-const DISTANT_EVIDENCE_MAX = 1000;
+const DISTANT_EVIDENCE_MAX = 2000;
 const UNSUMMARIZED_EVIDENCE_MAX = 2000;
 const TOTAL_BUDGET_MAX = CONSTRAINT_MAX + ARCS_MAX + EVENT_BUDGET_MAX
     + EVENT_EVIDENCE_MAX + DISTANT_EVIDENCE_MAX + UNSUMMARIZED_EVIDENCE_MAX;
@@ -393,6 +386,11 @@ function buildL0DisplayText(l0) {
     return String(atom.semantic || l0.text || '').trim() || '（未知锚点）';
 }
 
+// Retrieval labels vary by route; every route refers to the same stored atom.
+function l0EvidenceId(l0) {
+    return `l0:${l0.atom.atomId}`;
+}
+
 /**
  * 格式化 L1 chunk 行
  * @param {object} chunk - L1 chunk 对象
@@ -611,7 +609,7 @@ function enumerateDirectEvidenceItems(
     for (const l0 of l0Selected || []) {
         const owner = findOwner(l0.floor);
         if (!owner) continue;
-        const id = `l0:${l0.id}`;
+        const id = l0EvidenceId(l0);
         if (seenL0Ids.has(id)) continue;
         seenL0Ids.add(id);
         l0Items.push({
@@ -692,8 +690,25 @@ function attachAdmittedEvidenceToEvents(admittedItems) {
 }
 
 function markEvidenceGroupUsed(group, usedEvidenceIds) {
-    for (const l0 of group?.l0Atoms || []) usedEvidenceIds.add(`l0:${l0.id}`);
+    for (const l0 of group?.l0Atoms || []) usedEvidenceIds.add(l0EvidenceId(l0));
     for (const chunk of group?.l1Chunks || []) usedEvidenceIds.add(`l1:${chunk.chunkId}`);
+}
+
+// Display already-admitted raw passages with their scene when available. The
+// preceding USER message belongs to that AI turn; admission and charges stay put.
+function groupScatteredEvidence(anchorGroups, rawGroups, chat) {
+    const byFloor = new Map(anchorGroups.map(group => [group.floor, {
+        ...group, l1Chunks: [...group.l1Chunks],
+    }]));
+    for (const group of rawGroups) {
+        const floor = chat[group.floor]?.is_user && byFloor.get(group.floor + 1)?.l0Atoms.length
+            ? group.floor + 1 : group.floor;
+        if (!byFloor.has(floor)) byFloor.set(floor, buildEvidenceGroup(floor));
+        byFloor.get(floor).l1Chunks.push(...group.l1Chunks);
+    }
+    return [...byFloor.values()]
+        .map(group => buildEvidenceGroup(group.floor, group.l0Atoms, group.l1Chunks))
+        .sort((a, b) => a.floor - b.floor);
 }
 
 function l1FallbackFromPairs(l1ByFloor) {
@@ -1326,7 +1341,7 @@ async function buildVectorPrompt(store, recallResult, causalById, focusCharacter
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // [Evidence - Distant] 零散历史（已总结范围，未被事件消费的 L0，独立预算）
+    // [Evidence - Distant] 已召回但未被事件消费的 L0，含已隐藏的未总结范围
     // ═══════════════════════════════════════════════════════════════════════
 
     const lastSummarized = store.lastSummarizedMesId ?? -1;
@@ -1335,21 +1350,18 @@ async function buildVectorPrompt(store, recallResult, causalById, focusCharacter
     const focusSetForEvidence = new Set((focusCharacters || []).map(normalize).filter(Boolean));
 
     const remainingL0 = l0Selected
-        .filter(l0 => !usedEvidenceIds.has(`l0:${l0.id}`))
+        .filter(l0 => !usedEvidenceIds.has(l0EvidenceId(l0)))
         .filter(l0 => shouldKeepEvidenceL0(l0, focusSetForEvidence))
         .sort((a, b) => (b.rerankScore || 0) - (a.rerankScore || 0));
 
-    // 远期：floor <= lastSummarized
-    const distantL0 = remainingL0.filter(l0 => l0.floor <= lastSummarized);
+    // Recent coverage is a budgeted supplement, not a reason to discard a
+    // recalled scene. Visible, unsummarized dialogue needs no extra scene copy.
+    const distantL0 = remainingL0.filter(l0 => l0.floor <= lastSummarized || l0.floor <= hiddenThrough);
 
     // Build distant groups once so trace and admission observe the same groups.
     const distantRanked = [];
     for (const [floor, l0s] of groupL0ByFloor(distantL0)) {
-        const group = buildEvidenceGroup(
-            floor,
-            l0s,
-            unusedL1PairChunks(l1ByFloor, floor, usedEvidenceIds),
-        );
+        const group = buildEvidenceGroup(floor, l0s);
         const bestScore = Math.max(...l0s.map(l0 => (l0.rerankScore ?? l0.similarity ?? 0)));
         distantRanked.push({ group, bestScore });
     }
@@ -1370,9 +1382,21 @@ async function buildVectorPrompt(store, recallResult, causalById, focusCharacter
         injectionStats.distantEvidence.units++;
     }
 
+    // Scenes precede raw details in this pool. A long passage cannot consume
+    // the budget before other recalled scenes have had their admission turn.
+    for (const group of acceptedDistantGroups) {
+        for (const chunk of unusedL1PairChunks(l1ByFloor, group.floor, usedEvidenceIds)) {
+            const cost = estimateTokens(formatL1Line(chunk, chunk.isUser === true));
+            if (!tryConsumeWholeItem(cost, distantEvidenceBudget)) break;
+            group.l1Chunks.push(chunk);
+            group.totalTokens += cost;
+            usedEvidenceIds.add(`l1:${chunk.chunkId}`);
+        }
+    }
+
     // Unowned L1 was already charged to eventEvidenceBudget. This section is
     // presentation only; the independent distant budget remains unchanged.
-    const scatteredGroups = [...unownedL1Groups, ...acceptedDistantGroups].sort((a, b) => a.floor - b.floor);
+    const scatteredGroups = groupScatteredEvidence(acceptedDistantGroups, unownedL1Groups, getContext().chat);
     for (const group of scatteredGroups) {
         const groupLines = formatEvidenceGroup(group);
         for (const line of groupLines) {
@@ -1428,7 +1452,7 @@ async function buildVectorPrompt(store, recallResult, causalById, focusCharacter
     if (recentEnd >= recentStart) {
         const recentAllL0 = getRecentWindowL0Atoms(recentStart, recentEnd);
         const recentL0 = recentAllL0
-            .filter(l0 => !usedEvidenceIds.has(`l0:${l0.id}`))
+            .filter(l0 => !usedEvidenceIds.has(l0EvidenceId(l0)))
             .filter(l0 => l0.floor >= recentStart && l0.floor <= recentEnd);
 
         if (recentL0.length) {

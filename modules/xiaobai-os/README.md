@@ -1,6 +1,6 @@
 # 小白 OS（普通酒馆）
 
-普通酒馆的小白 OS 是一项全新、独立功能。它可以与小白酒馆 Phone OS 使用相近的品牌和交互，但两者不共享数据库、会话、消息层级、领域模型或运行时代码。
+普通酒馆的小白 OS 是 SillyTavern 扩展中的独立功能。它与小白酒馆 Phone OS 不共享数据库、会话、消息层级、领域模型或运行时代码。
 
 ## 终态边界
 
@@ -20,7 +20,7 @@
 - 普通聊天内容不是 Economy 的数据源。Economy、Wallet、Game、Bank、Shop 不做剧情哈希、核对或回滚。
 - Map、Tasks 的自动维护由各自领域状态机处理，不向 Economy 添加全局剧情机制。
 
-底座唯一权威设计见 [OS Kernel 终态设计](./docs/os-kernel-target-design.md)，施工顺序见 [OS Kernel 施工方案](./docs/os-kernel-implementation-plan.md)。
+底座设计边界见 [OS Kernel 终态设计](./docs/os-kernel-target-design.md)；实际注册以 [Host APP catalog](./host/app-catalog.json) 和 [Shell APP catalog](./shell/app-catalog.json) 为准。施工过程与历史验收见 [OS Kernel 施工方案](./docs/os-kernel-implementation-plan.md)，不作为当前注册状态清单。
 
 ## 当前 APP
 
@@ -28,14 +28,20 @@
 - 钱包：Economy 的只读余额和流水界面。
 - 银行：定期存单与浮动理财；期限只读取当前已完成 Assistant 回复数量。
 - 游戏：目录式游艺室，大话骰、翻牌寻金、步步登高；各玩法独立入席、操作和揭晓，与聊天内容完全无关。
+- 推箱子：游戏目录中的独立玩法，不属于下注游戏。
 - 商店：固定商品、库存、效果激活和主 RP Prompt 投影；用回复消息收据记录有限效果实际作用次数。
 - Agent API：编辑 agent-core 的共享用户级配置。
 - 地图：独立 Atlas/Scene 与显式/自动维护。
 - 任务：任务大厅、招募、状态机、奖励托管与显式/自动维护。
+- 信息：联系人、私人通讯及线程摘要；文字、图片描述和语音文本共用私人信息楼层。
+- 世界：订阅、阅读和维护镜头外新闻；已保存的轻背景可注入主剧情，并作为地图、任务的只读素材。
+- 行动检定：独立检定 APP，处理原生生成期间的判定与揭晓。
+- 管理员：当前聊天的对话式管理入口。
+- 语伴：独立学习档案、课件和练习的语言学习 APP。
 
-不明物与宠物尚未进入设计，不注册占位入口。
+不明物与宠物不属于普通酒馆 OS 的已注册 APP。
 
-管理员 APP 已形成[终态设计稿](./docs/administrator-app-target-design.md)，定位为统一的对话管理入口；尚未实现，未注册桌面入口。
+各 APP 的产品边界见 [设计目录](./docs/)；具体可用能力以相应 APP 实现为准，设计文档中的计划、历史验证不等于运行时功能或实际模型质量证明。
 
 ### 四次元壁上下文与记忆
 
@@ -45,9 +51,9 @@
 
 用户要求保留的 V1 分区在打开时一次性写回 V2；旧 `9999` 改为 `20`，其他设置保留。正式线 `fw` 仍在首次 sidecar 写入时导入。仅精确匹配的旧默认提示词更新，用户自定义正文不改。删除功能时清理四次元壁目录、两处 catalog、分区和其设置，无独立记忆库或后端包。
 
-信息 APP 已接入桌面与独立 `messages` 分区：已知人物/手动补充、私人通讯、线程摘要、文字/图片/语音、共用真实「私人信息」楼层及保存恢复。图片输入为画面描述，语音输入为原文，共享画图/TTS 负责呈现，不含上传识图或录音转写。边界和验收见[终态设计](./docs/information-app-target-design.md)与[施工方案](./docs/information-app-implementation-plan.md)。本次不删除小白板或迁移旧短信。
+信息 APP 的图片输入为画面描述、语音输入为原文，共享画图/TTS 负责呈现；不提供上传识图或录音转写。边界和验收见[终态设计](./docs/information-app-target-design.md)与[施工方案](./docs/information-app-implementation-plan.md)。
 
-世界 APP 尚处于设计讨论，见[世界 APP 设计草案](./docs/world-app-target-design.md)。当前只讨论 APP 自身的轻背景与世界近况；OS 内联动、ENA 适配及小白板退场另行讨论，尚未实现或注册入口。
+世界 APP 的产品边界和实际施工记录分别见[产品设计](./docs/world-app-target-design.md)与[施工记录](./docs/world-app-implementation-plan.md)。世界新闻接入地图、任务的素材包；ENA 适配、小白板迁移与退场不属于当前实现。
 
 ## 数据与写入
 

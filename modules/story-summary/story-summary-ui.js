@@ -2467,7 +2467,6 @@ const UNANNOTATED_LABEL = '未标注';
                         const key = `${s}::${p}`;
                         const old = oldMap.get(key);
                         const fact = {
-                            id: old?.id || `f-${Date.now()}`,
                             s, p, o,
                             since: old?.since ?? 0,
                             _addedAt: old?._addedAt ?? 0,

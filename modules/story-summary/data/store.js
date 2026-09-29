@@ -1,5 +1,5 @@
 // Story Summary - Store
-// L2 (events/characters/arcs) + L3 (facts) 统一存储
+// 大总结以一份 JSON 保存 events、characters、arcs、facts 等；L3 Facts 是召回时的投影名称，不是另一份总结存储。
 
 import { getContext } from "../../../../../../extensions.js";
 import { chat_metadata } from "../../../../../../../script.js";
@@ -16,6 +16,7 @@ import {
     buildSummaryUndo,
 } from "./summary-undo.js";
 import { isRelationFact, parseRelationTarget, factKey } from "./fact-predicates.js";
+import { createFactIdAllocator } from './fact-identity.js';
 import { projectSummaryEvent, normalizeEventStringArray } from "./events.js";
 import { upgradeStoredEventMemoryRoles } from "./migrations/event-memory-role.js";
 import { upgradeSummaryHistory, createSummaryBatch } from './summary-history.js';
@@ -330,20 +331,6 @@ export function extractRelationshipsFromFacts(facts) {
         .filter(Boolean);
 }
 
-/**
- * 生成下一个 fact ID
- */
-function getNextFactId(existingFacts) {
-    let maxId = 0;
-    for (const f of existingFacts || []) {
-        const match = f.id?.match(/^f-(\d+)$/);
-        if (match) {
-            maxId = Math.max(maxId, parseInt(match[1], 10));
-        }
-    }
-    return maxId + 1;
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 // Facts 合并（KV 覆盖模型）
 // ═══════════════════════════════════════════════════════════════════════════
@@ -357,7 +344,7 @@ export function mergeFacts(existingFacts, updates, floor) {
         }
     }
 
-    let nextId = getNextFactId(existingFacts);
+    const allocateFactId = createFactIdAllocator(existingFacts);
 
     for (const u of updates || []) {
         if (!u.s || !u.p) continue;
@@ -373,7 +360,7 @@ export function mergeFacts(existingFacts, updates, floor) {
 
         const existing = map.get(key);
         const newFact = {
-            id: existing?.id || `f-${nextId++}`,
+            id: existing?.id || allocateFactId(),
             s: u.s.trim(),
             p: u.p.trim(),
             o: String(u.o).trim(),
@@ -427,7 +414,7 @@ export function migrateToFacts(json) {
     if (json.facts?.length) return json.facts;
 
     const facts = [];
-    let nextId = 1;
+    const allocateFactId = createFactIdAllocator();
 
     // 迁移 world（worldUpdate 的持久化结果）
     for (const w of json.world || []) {
@@ -447,7 +434,7 @@ export function migrateToFacts(json) {
         if (!s || !p) continue;
 
         facts.push({
-            id: `f-${nextId++}`,
+            id: allocateFactId(),
             s,
             p,
             o: w.content.trim(),
@@ -461,7 +448,7 @@ export function migrateToFacts(json) {
         if (!r.from || !r.to) continue;
 
         facts.push({
-            id: `f-${nextId++}`,
+            id: allocateFactId(),
             s: r.from,
             p: `对${r.to}的看法`,
             o: r.label || '未知',
@@ -485,7 +472,7 @@ function normalizeArcProgress(value) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 数据合并（L2 + L3）
+// 大总结数据合并
 // ═══════════════════════════════════════════════════════════════════════════
 
 export function mergeNewData(oldJson, parsed, endMesId, options = {}) {
@@ -493,17 +480,15 @@ export function mergeNewData(oldJson, parsed, endMesId, options = {}) {
     const merged = structuredClone(oldJson || {});
     const incoming = canonicalizeIncrementalSummaryData(parsed || {}, merged.characterAliases || []);
 
-    // L2 初始化
+    // 初始化大总结的各部分
     merged.keywords ||= [];
     merged.events ||= [];
     merged.characters ||= {};
     merged.characters.main ||= [];
     merged.arcs ||= [];
 
-    // L3 初始化（不再迁移，getSummaryStore 已处理）
     merged.facts ||= [];
 
-    // L2 数据合并
     if (incoming.keywords?.length) {
         merged.keywords = incoming.keywords.map(k => ({ ...k, _addedAt: endMesId }));
     }
@@ -559,7 +544,7 @@ export function mergeNewData(oldJson, parsed, endMesId, options = {}) {
     });
     merged.arcs = Array.from(arcMap.values());
 
-    // L3 factUpdates 合并
+    // facts 与其他大总结字段参与同一次合并及撤销差量。
     merged.facts = mergeFacts(merged.facts, incoming.factUpdates || [], endMesId);
 
     const aliasResult = applyCharacterAliasUpdates(merged, incoming.characterAliasUpdates || [], endMesId);
@@ -774,7 +759,7 @@ export async function clearSummaryData(chatId) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// L3 数据读取（供 prompt.js / recall.js 使用）
+// facts 数据读取（供提示词装配和召回使用）
 // ═══════════════════════════════════════════════════════════════════════════
 
 export function getFacts() {

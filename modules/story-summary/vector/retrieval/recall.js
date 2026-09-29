@@ -1,28 +1,10 @@
 ﻿// ═══════════════════════════════════════════════════════════════════════════
-// Story Summary - Recall Engine (v9 - Dense-Gated Lexical + Entity Bypass Tuning)
+// Story Summary - Recall Engine
 //
 // 命名规范：
-// - 存储层用 L0/L1/L2/L3（StateAtom/Chunk/Event/Fact）
-// - 召回层用语义名称：anchor/evidence/event/constraint
+// - 大总结以一份 JSON 保存；召回层把 events/facts 分别投影为 event/constraint
+// - L0/L1 分别为逐楼锚点与原文块
 //
-// v8 → v9 变更：
-// - recallEvents() 返回 { events, scoreMap }，event 向量只按候选临时取回给 MMR
-// - Lexical Event 合并前验 CONFIG.LEXICAL_EVENT_DENSE_MIN
-// - Lexical Floor 进入融合前验 dense similarity ≥ 0.50（CONFIG.LEXICAL_FLOOR_DENSE_MIN）
-// - Entity Bypass 阈值 0.85 → 0.80（CONFIG.EVENT_ENTITY_BYPASS_SIM）
-// - metrics 新增 lexical.eventFilteredByDense / lexical.floorFilteredByDense
-//
-// 架构：
-// 阶段 1: Query Build（确定性，无 LLM）
-// 阶段 2: Round 1 Dense Retrieval（batch embed 3 段 → 加权平均）
-// 阶段 3: Query Refinement（用已命中记忆产出 hints 段）
-// 阶段 4: Round 2 Dense Retrieval（复用 R1 vec + embed hints → 加权平均）
-// 阶段 5: Lexical Retrieval + Dense-Gated Event Merge
-// 阶段 6: Floor W-RRF Fusion + Rerank + L1 配对
-// 阶段 7: L1 配对组装（L0 → top-1 AI L1 + top-1 USER L1）
-// 阶段 7.5: PPR Diffusion
-// 阶段 8: L0 → L2 反向查找（后置，基于最终 l0Selected）
-// 阶段 9: Causation Trace
 // ═══════════════════════════════════════════════════════════════════════════
 
 import {

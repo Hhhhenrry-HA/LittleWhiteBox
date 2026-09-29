@@ -43,6 +43,16 @@ OpenAI 兼容、Responses、Anthropic 的免密请求不发送认证头；Google
 
 直连反代必须允许浏览器跨域。酒馆托管渠道仍遵守宿主协议：SillyTavern 1.18.0 的 Claude 转发强制要求密码，免密 Claude 反代应选择直连 Anthropic，不会自动替用户切换渠道。官方 API、Tavily 和图片生成供应商自身的鉴权要求不变。
 
+## 原生 Anthropic 提示缓存
+
+直连 Anthropic Messages 适配器对共享模型识别规则确认的 Claude 家族，统一在最后一个工具定义、系统提示块、最后一个可缓存的对话内容块上发送 `cache_control: { type: 'ephemeral' }`，使用供应商默认的 5 分钟缓存。DeepSeek 等其他 Anthropic 兼容模型及无法识别的模型别名保持原请求，不根据接口形状猜测缓存能力。思考块和签名不改动，输入历史不携带新增的断点状态；断点每次按最终请求构造，不存本地缓存、不增加重试、不改提示内容。
+
+缓存标记可在 `requestInspection.request.body` 中检查。流式与非流式结果都保留供应商原始 `usage`，各消费者的控制台统一输出 `[AgentCore][AnthropicUsage]`：`cache_creation_input_tokens` 是写入，`cache_read_input_tokens` 是命中读取，`input_tokens` 是不含缓存的输入。缺失字段保持缺失，不伪装成零或命中；日志不包含提示词、回复正文或密钥。
+
+发送标记不等于命中或省钱：重复前缀、模型最低长度与缓存有效期均须满足，首次缓存写入可能比普通输入贵。以 [Anthropic 缓存文档](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) 和供应商返回的实际用量为准，不根据本地分词估算账单。
+
+此策略由共用该适配器的 Agent App 复用，不代表所有 iframe 或所有协议都已支持缓存。酒馆托管 Claude 仍由宿主决定最终请求；OpenAI 自定义 → 中转 → Claude 仍取决于中转是否支持并保留 Claude 缓存协议。本插件不擅自改渠道、模型别名或中转计费，不把这两条路线标记为已启用。
+
 ## DeepSeek 思考与工具调用
 
 直连「OpenAI 兼容」仅在 DeepSeek 显式开启思考且携带原生工具时，将 `required` 或指定函数的 `tool_choice` 转为 `auto`，保留思考与工具定义。同一条件下，回放保留已有的 `reasoning_content`，包括较早轮次及未调用工具的文字回复；不生成或补写不存在的思考内容。DeepSeek 接口要求工具请求回传这些内容，且不支持思考模式下强制工具调用。关闭思考、跟随模型、`auto`、`none` 及其他模型的工具选择不受影响，不增加重试或改动功能自己的结果校验。

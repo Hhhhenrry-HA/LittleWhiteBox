@@ -14,6 +14,12 @@
     z-index: 3;
 }
 
+.xiaobai-os-mobile-brand { display: none; }
+
+@media (max-width: 760px), (pointer: coarse) and (max-height: 760px) {
+    .xiaobai-os-mobile-brand { background: #e1eee8; border-radius: 50%; display: block; width: 32px; height: 32px; object-fit: contain; padding: 3px; }
+}
+
 .xiaobai-os-desktop-toolbar button,
 .xiaobai-os-order-error button {
     background: rgb(255 255 255 / 12%);

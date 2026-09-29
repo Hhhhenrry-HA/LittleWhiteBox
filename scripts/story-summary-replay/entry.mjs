@@ -250,6 +250,15 @@ function createStreamingGenerationShim(summaryApiConfig) {
     };
 
     return {
+        async startRawGeneration(args) {
+            const sessionId = String(args.id);
+            sessions.set(sessionId, { isStreaming: true, text: '', error: null });
+            const completion = runRequest(args).then(text => {
+                sessions.set(sessionId, { isStreaming: false, text, error: null });
+                return text;
+            });
+            return { sessionId, stream: true, completion };
+        },
         async xbgenrawCommand(args) {
             const wantsStream = String(args?.nonstream || 'false') !== 'true';
             const sessionId = String(args?.id || `story-summary-replay-${Date.now()}`);
@@ -1021,6 +1030,9 @@ export async function runStorySummaryCancellationCheck() {
     const previousStreamingModule = globalThis.window.xiaobaixStreamingGeneration;
     const cancelledSessions = [];
     globalThis.window.xiaobaixStreamingGeneration = {
+        async startRawGeneration() {
+            return { sessionId: 'summary-cancel-check', completion: new Promise(() => {}) };
+        },
         async xbgenrawCommand() {
             return 'summary-cancel-check';
         },

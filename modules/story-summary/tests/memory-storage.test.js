@@ -113,6 +113,30 @@ async function maintain(commands) {
 const fixFact = { kind: 'edit', collection: 'facts', key: 'f-1', patch: { o: '未经证实的传闻' } };
 const fixAnchor = { kind: 'edit', collection: 'anchors', key: 'atom-1-0', patch: { semantic: '夏实说听说可能如此，自己没有确证。' } };
 
+for (const identityShape of ['portable', 'duplicate']) {
+    test(`imported ${identityShape} fact identities support maintenance and undo without changing their content`, async () => {
+        // The portable decoder supplies empty IDs; import is the identity boundary.
+        const facts = host.fixture.json.facts;
+        for (const fact of facts) fact.id = identityShape === 'portable' ? '' : 'f-8';
+        facts.at(-1).id = 'retained-identity';
+        const content = facts.map(({ id: _id, ...fact }) => fact);
+        const imported = await importFixture();
+        assert.equal(new Set(imported.facts.map(f => f.id)).size, facts.length);
+        assert.ok(imported.facts.every(f => f.id));
+        assert.equal(imported.facts.at(-1).id, 'retained-identity');
+        if (identityShape === 'duplicate') assert.equal(imported.facts[0].id, 'f-8');
+        assert.deepEqual(imported.facts.map(({ id: _id, _addedAt: _floor, ...fact }) => fact),
+            content.map(({ _addedAt: _floor, ...fact }) => fact));
+        assert.deepEqual(disk().storySummary.json.facts, imported.facts);
+
+        await maintain([{ ...fixFact, key: imported.facts[0].id }]);
+        assert.equal(ext().storySummary.json.facts[0].o, fixFact.patch.o);
+        assert.equal((await mod.rollbackSummaryOnce(host.context.chatId)).success, true);
+        assert.deepEqual(ext().storySummary.json.facts, imported.facts);
+        assert.deepEqual(disk().storySummary.json.facts, imported.facts);
+    });
+}
+
 function readMaintenanceState() {
     const store = mod.getSummaryStore();
     return { chatId: host.context.chatId, chat: host.context.chat, store, json: store.json,

@@ -84,7 +84,7 @@ node scripts/story-summary-replay-runner.mjs natural-capture `
 
 ```powershell
 node scripts/story-summary-replay-runner.mjs --preflight --config="C:\path\to\current-natural-baseline.json"
-# 仅在主人批准这一份聊天的 API 范围后执行；不会自动启动其余 jobs
+# 仅在获得这一份聊天的 API 调用授权后执行；不会自动启动其余 jobs
 node scripts/story-summary-replay-runner.mjs --config="C:\path\to\current-natural-baseline.json" --job=real-300 --allow-api
 ```
 
@@ -124,7 +124,7 @@ node scripts/story-summary-replay-runner.mjs --config="C:\path\to\prepared.json"
 不能用自动重发声称exactly-once。格式错误200保留原始响应，重复执行不会再次购买它。
 旧run若没有journal或缺失L0/Summary正文，不能追溯伪造或静默重新购买。旧300中断run仍禁止重开。
 
-只有主人明确接受某一个未知请求可能重复计费时，才使用四个精确批准参数：
+只有请求授权方明确接受某一个未知请求可能重复计费时，才使用四个精确批准参数：
 `--retry-unknown=<id> --retry-journal-sha256=<hash> --retry-source-manifest=<path> --retry-source-sha256=<hash>`，
 同时必须指定`--resume-prepared --allow-api`。哈希冻结批准时的原journal和invalid manifest；
 它们不是“忽略漂移”开关。输入/配置/产品源码/依赖/Node平台均不许变化；经审查的测评工具变动作为

@@ -44,7 +44,7 @@
 .game-categories button[aria-pressed="true"] { background: var(--game-ink); color: var(--game-paper); }
 .game-shelf { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 16px; }
 .game-tile { background: transparent; border: 0; border-radius: 14px; padding: 0; text-align: left; color: var(--game-ink); min-width: 0; transition: transform 180ms ease; }
-.game-tile-art { aspect-ratio: 1.15; background: #dbf8ef; border-radius: 16px; display: grid; place-items: center; overflow: hidden; }
+.game-tile-art { aspect-ratio: 1.15; background: #dbf8ef; border-radius: 16px; display: grid; place-items: center; overflow: hidden; position: relative; }
 .tone-claret .game-tile-art { background: #eee8ff; }
 .tone-amber .game-tile-art { background: #e1f3ff; }
 .tone-moving .game-tile-art { background: #e1eee8; }
@@ -52,6 +52,7 @@
 .game-app-standalone .game-header h1 { font-size: 15px; }
 .game-app-standalone .game-scroll { padding: 0; container-type: size; container-name: moving-frame; }
 .game-tile-art img { width: 100%; height: 100%; object-fit: contain; padding: 6px; transition: transform 250ms ease; }
+.game-tile-art .game-tile-mascot { position: absolute; width: 29%; height: 46%; left: 17%; bottom: 5%; padding: 0; pointer-events: none; }
 .game-tile-copy { padding: 12px 2px 0; }
 .game-tile h3 { font-size: 15px; font-weight: 600; }
 .game-tile-copy > span { display: flex; align-items: center; justify-content: space-between; color: var(--game-muted); font-size: 11px; margin-top: 5px; }
