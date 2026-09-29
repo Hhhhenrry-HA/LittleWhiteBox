@@ -108,7 +108,7 @@ export async function runDiagnosticsCheck() {
             const built = await buildVectorPromptForReplay(store, {
                 events: [{ event: timedEvent, _recallType: 'DIRECT', _evidenceEligible: true }],
                 l0Selected: [], l1ByFloor: new Map(), directEvidenceStatus: 'applied',
-            }, new Map(), ['小红'], { lastChunkFloor: 0 }, metrics);
+            }, ['小红'], { lastChunkFloor: 0 }, metrics);
             assert.ok(built.promptText.includes(event.title));
             assert.ok(clock > 100);
             assert.equal(metrics.timing.total, clock);

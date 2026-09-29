@@ -74,12 +74,10 @@ export function createMetrics() {
             inStore: 0,
             considered: 0,
             selected: 0,
-            byRecallType: { direct: 0, related: 0, causal: 0, lexical: 0, l0Linked: 0 },
+            byRecallType: { direct: 0, related: 0, lexical: 0, l0Linked: 0 },
             byOwnership: null,
             similarityDistribution: { min: 0, max: 0, mean: 0, median: 0 },
             entityFilter: null,
-            causalChainDepth: 0,
-            causalCount: 0,
             entitiesUsed: 0,
             focusTermsCount: 0,
             entityNames: [],
@@ -492,7 +490,6 @@ export function formatMetricsLog(metrics, { complete = true } = {}) {
     lines.push(`├─ by_recall_type:`);
     lines.push(`│   ├─ direct: ${m.event.byRecallType.direct}`);
     lines.push(`│   ├─ related: ${m.event.byRecallType.related}`);
-    lines.push(`│   ├─ causal: ${m.event.byRecallType.causal}`);
     if (m.event.byRecallType.l0Linked) {
         lines.push(`│   ├─ lexical: ${m.event.byRecallType.lexical}`);
         lines.push(`│   └─ l0_linked: ${m.event.byRecallType.l0Linked}`);
@@ -521,7 +518,6 @@ export function formatMetricsLog(metrics, { complete = true } = {}) {
         lines.push(`│   └─ batches: ${rerank.batchTotal || 0}, failed=${rerank.batchFailed || 0}`);
     }
 
-    lines.push(`├─ causal_chain: depth=${m.event.causalChainDepth}, count=${m.event.causalCount}`);
     if (m.event.byOwnership) {
         const bo = m.event.byOwnership;
         lines.push(`├─ by_ownership: focus=${bo.focus || 0}, other=${bo.other || 0}, unknown=${bo.unknown || 0}`);
@@ -596,7 +592,7 @@ export function formatMetricsLog(metrics, { complete = true } = {}) {
     }
     if (m.evidence.causalEvidence) {
         const causal = m.evidence.causalEvidence;
-        lines.push(`├─ causal_evidence: links=${causal.links}/${causal.candidates}, bodies=${causal.bodies}, tokens=${causal.tokens}/${causal.maxTokens}, per_event_max=${causal.perEventMaxTokens}`);
+        lines.push(`├─ causal_evidence: links=${causal.links}/${causal.candidates}, causes=${causal.causes}, consequences=${causal.consequences}, depth=${causal.depth}, bodies=${causal.bodies}/${causal.maxBodies}, tokens=${causal.tokens}/${causal.maxTokens}, per_event_max=${causal.perEventMaxTokens}`);
     }
     if (m.evidence.eventEvidenceBudgetMax > 0) {
         lines.push(`├─ event_evidence_budget: ${m.evidence.eventEvidenceBudgetUsed}/${m.evidence.eventEvidenceBudgetMax}`);

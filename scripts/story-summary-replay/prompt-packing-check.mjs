@@ -19,7 +19,7 @@ export async function runPromptPackingChecks(buildVectorPrompt, createMetrics, o
         const store = {
             lastSummarizedMesId: options.lastSummarizedMesId ?? 200,
             json: {
-                events: events.map(item => item.event),
+                events: [...events, ...causes].map(item => item.event),
                 facts: options.facts || [],
                 characters: { main: [] }, arcs: options.arcs || [], keywords: [], characterAliases: [],
             },
@@ -35,7 +35,7 @@ export async function runPromptPackingChecks(buildVectorPrompt, createMetrics, o
             l1ByFloor: options.l1ByFloor || new Map(),
             directEvidenceStatus: options.directEvidenceStatus || 'applied',
             directEvidenceL1: options.directEvidenceL1 || [],
-        }, new Map(causes.map(item => [item.event.id, item])), options.focusCharacters || ['角色'],
+        }, options.focusCharacters || ['角色'],
         { lastChunkFloor: options.lastChunkFloor ?? -1 }, createMetrics());
     };
     const evidence = text => [{ chunkId: 'raw', floor: 100, speaker: '角色', text }];
@@ -92,6 +92,10 @@ export async function runPromptPackingChecks(buildVectorPrompt, createMetrics, o
         const owner = event('evt-100', 'OWNER_BODY (#101)', ['evt-1']);
         const baseline = await build([owner]);
         const ordinary = await build([owner], [cause('evt-1', 'CAUSE_BODY')]);
+        const forward = await build([owner], [cause('evt-1', 'FORWARD_CAUSE'),
+            cause('evt-101', 'FOLLOWUP_EATEN', 0, ['evt-100']),
+            cause('evt-102', 'FOLLOWUP_PLAN', 0, ['evt-101']),
+            cause('evt-103', 'UNLINKED_OUTCOME')]);
         const oversized = await build([owner], [cause('evt-1', 'OVERSIZED_CAUSE', 5500)]);
         const full = await build([owner], [cause('evt-1', 'NO_ROOM_CAUSE', 200)], {
             directEvidenceL1: [...evidence(`RAW_KEPT ${'乙'.repeat(3820)}`),
@@ -141,7 +145,7 @@ export async function runPromptPackingChecks(buildVectorPrompt, createMetrics, o
         const droppedOwner = await build([
             event('evt-100', '甲'.repeat(5100)),
             event('evt-200', 'DROPPED_OWNER', ['evt-1']),
-        ], [cause('evt-1', 'UNOWNED_CAUSE')]);
+        ], [cause('evt-1', 'UNOWNED_CAUSE'), cause('evt-201', 'UNOWNED_CONSEQUENCE', 0, ['evt-200'])]);
         const related = await build([
             ...[1, 2, 3].map(i => ({
                 ...event(`evt-${i}`, `RELATED_${i} ${'甲'.repeat(300)}`), _recallType: 'RELATED',
@@ -328,6 +332,7 @@ export async function runPromptPackingChecks(buildVectorPrompt, createMetrics, o
                 stats: shared.injectionStats.causalEvidence,
                 ownerUnits: causeTrace(shared).map(item => item.unitId),
                 text: shared.promptText,
+                references: shared.evidenceTrace.causalEvidence.filter(item => item.admitted),
             },
             reused: {
                 bodyCopies: reused.promptText.split('ALREADY_RECALLED_CAUSE').length - 1,
@@ -335,6 +340,19 @@ export async function runPromptPackingChecks(buildVectorPrompt, createMetrics, o
                 eventTokens: reused.injectionStats.event.tokens,
                 baselineEventTokens: withoutEdge.injectionStats.event.tokens,
                 text: reused.promptText,
+                references: reused.evidenceTrace.causalEvidence.filter(item => item.admitted),
+            },
+            forward: {
+                rendered: ['FOLLOWUP_EATEN', 'FOLLOWUP_PLAN', 'UNLINKED_OUTCOME']
+                    .map(marker => forward.promptText.includes(marker)),
+                positions: ['FORWARD_CAUSE', 'FOLLOWUP_EATEN', 'FOLLOWUP_PLAN']
+                    .map(marker => forward.promptText.indexOf(marker)),
+                admitted: forward.evidenceTrace.causalEvidence.filter(item => item.admitted),
+                selectedMainEvents: forward.injectionStats.event.selected,
+                eventTokens: forward.injectionStats.event.tokens,
+                baselineEventTokens: baseline.injectionStats.event.tokens,
+                stats: forward.injectionStats.causalEvidence,
+                evidenceTokens: forward.metrics.evidence.eventEvidenceBudgetUsed,
             },
             fair: {
                 firstA: fair.promptText.includes('FIRST_A'),
@@ -353,6 +371,7 @@ export async function runPromptPackingChecks(buildVectorPrompt, createMetrics, o
                 relatedRendered: ['RELATED_1', 'RELATED_2', 'RELATED_3', 'DIRECT_AFTER_RELATED']
                     .map(marker => related.promptText.includes(marker)),
                 droppedOwnerCauseRendered: droppedOwner.promptText.includes('UNOWNED_CAUSE'),
+                droppedOwnerConsequenceRendered: droppedOwner.promptText.includes('UNOWNED_CONSEQUENCE'),
                 droppedOwnerLinks: droppedOwner.injectionStats.causalEvidence.links,
             },
             independentPools: {

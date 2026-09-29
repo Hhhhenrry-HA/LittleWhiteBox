@@ -95,16 +95,18 @@ test('shared direct causes render once with resolved references and no recursive
     assert.equal(shared.stats.links, 2);
     assert.deepEqual(shared.ownerUnits.sort(), ['event:evt-100', 'event:evt-200']);
     assert.equal(shared.grandparentRendered, false);
-    // These are references in the model-facing output, not source-string checks.
-    const reference = shared.text.match(/见(前因\d+)/u)?.[1];
-    assert.ok(reference && shared.text.includes(`├─ ${reference}`));
+    const sharedBody = shared.references.find(item => !item.reference);
+    const reference = shared.references.find(item => item.reference);
+    assert.equal(reference.label, sharedBody.label);
+    assert.equal(shared.text.split(sharedBody.label).length - 1, 2);
     assert.equal(reused.bodyCopies, 1);
     assert.equal(reused.stats.bodies, 0);
-    assert.equal(reused.stats.links, 1);
+    assert.equal(reused.stats.links, 2);
     assert.ok(reused.stats.tokens > 0);
     assert.equal(reused.eventTokens, reused.baselineEventTokens);
-    assert.ok(reused.text.includes('见[印象深的事]第1条'));
-    assert.equal(cyclic.stats.links, 2);
+    assert.deepEqual(new Set(reused.references.map(item => item.eventId)), new Set(['evt-1', 'evt-100']));
+    assert.ok(reused.references.every(item => item.reference && reused.text.includes(item.label)));
+    assert.equal(cyclic.stats.links, 4);
     assert.equal(cyclic.stats.bodies, 0);
 });
 
@@ -117,8 +119,21 @@ test('causal supplementation rotates across events until its boundary cause ente
     assert.equal(capped.stats.maxTokens, 1000);
     assert.equal(capped.stats.perEventMaxTokens, 400);
     assert.ok(capped.stats.tokens >= 1000);
-    assert.equal(capped.stats.bodies, 5);
+    assert.equal(capped.stats.bodies, capped.perOwnerLinks.length);
     assert.equal(new Set(capped.perOwnerLinks).size, capped.perOwnerLinks.length);
+});
+
+test('selected main events bring connected later records into the actual prompt without promoting them', async () => {
+    const { forward } = (await runAssemblyCheck()).packingChecks;
+    assert.deepEqual(forward.rendered, [true, true, false]);
+    assert.ok(forward.positions[0] < forward.positions[1] && forward.positions[1] < forward.positions[2]);
+    assert.equal(forward.selectedMainEvents, 1);
+    assert.equal(forward.eventTokens, forward.baselineEventTokens);
+    assert.equal(forward.stats.causes, 1);
+    assert.equal(forward.stats.consequences, 2);
+    assert.equal(forward.evidenceTokens, forward.stats.tokens);
+    assert.deepEqual(forward.admitted.find(item => item.eventId === 'evt-102').path,
+        ['evt-100', 'evt-101', 'evt-102']);
 });
 
 test('boundary facts and events stay whole without smaller replacements or orphaned causes', async () => {
@@ -130,6 +145,7 @@ test('boundary facts and events stay whole without smaller replacements or orpha
     assert.equal(packing.boundaryFactRenderedWhole, true);
     assert.deepEqual(packing.relatedRendered, [true, true, false, true]);
     assert.equal(packing.droppedOwnerCauseRendered, false);
+    assert.equal(packing.droppedOwnerConsequenceRendered, false);
     assert.equal(packing.droppedOwnerLinks, 0);
 });
 

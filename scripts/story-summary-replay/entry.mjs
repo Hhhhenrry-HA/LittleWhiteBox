@@ -1208,7 +1208,6 @@ export async function runStorySummaryPromptAssemblyCheck() {
                 directEvidenceL1,
                 directEvidenceContext: null,
             },
-            new Map(),
             [],
             { lastChunkFloor: -1 },
             metrics,
@@ -1939,15 +1938,9 @@ export async function runStorySummaryReplay({ rootDir, config, configPath }) {
                 const rerank = counted.value;
                 const afterEvents = rerank?.events || beforeEvents;
                 const rerankedRecall = { ...recallResult, events: afterEvents };
-                const causalById = new Map(
-                    (rerankedRecall.causalChain || [])
-                        .map(item => [item?.event?.id, item])
-                        .filter(item => item[0]),
-                );
                 const built = await modules.buildVectorPromptForReplay(
                     modules.getSummaryStore(),
                     rerankedRecall,
-                    causalById,
                     rerankedRecall.focusCharacters || [],
                     cloneJsonSafe(promptInput?.production?.meta || {}),
                     cloneJsonSafe(rerankedRecall.metrics || null),
@@ -2117,15 +2110,9 @@ export async function runStorySummaryReplay({ rootDir, config, configPath }) {
                     return { promptText: '', evidenceTrace: { final: [], prompt: [], eventEvidence: [] }, externalCalls: 0 };
                 }
                 const recallResult = deserializePromptRecallInput(productionInput?.recallResult || {});
-                const causalById = new Map(
-                    (recallResult.causalChain || [])
-                        .map(item => [item?.event?.id, item])
-                        .filter(item => item[0]),
-                );
                 const counted = await withExternalCallTrace(() => modules.buildVectorPromptForReplay(
                     modules.getSummaryStore(),
                     recallResult,
-                    causalById,
                     recallResult.focusCharacters || [],
                     cloneJsonSafe(productionInput?.meta || {}),
                     cloneJsonSafe(recallResult.metrics || null),

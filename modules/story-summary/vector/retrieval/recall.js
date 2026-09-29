@@ -126,8 +126,6 @@ const CONFIG = {
     MUST_KEEP_CLUSTER_WINDOW: 2,
 
     // 因果链
-    CAUSAL_CHAIN_MAX_DEPTH: 10,
-    CAUSAL_INJECT_MAX: 30,
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -411,7 +409,7 @@ async function recallEvents(queryVector, allEvents, vectorConfig, focusCharacter
 
     if (metrics) {
         metrics.event.selected = results.length;
-        metrics.event.byRecallType = { direct: directCount, related: relatedCount, causal: 0, lexical: 0, l0Linked: 0 };
+        metrics.event.byRecallType = { direct: directCount, related: relatedCount, lexical: 0, l0Linked: 0 };
         metrics.event.byOwnership = byOwnership;
         metrics.event.similarityDistribution = calcSimilarityStats(results.map(r => r.similarity));
     }
@@ -420,7 +418,7 @@ async function recallEvents(queryVector, allEvents, vectorConfig, focusCharacter
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// [Causation] 因果链追溯
+// Event identity lookup, also used by lexical recall.
 // ═══════════════════════════════════════════════════════════════════════════
 
 function buildEventIndex(allEvents) {
@@ -429,52 +427,6 @@ function buildEventIndex(allEvents) {
         if (e?.id) map.set(e.id, e);
     }
     return map;
-}
-
-function traceCausation(eventHits, eventIndex, maxDepth = CONFIG.CAUSAL_CHAIN_MAX_DEPTH) {
-    const out = new Map();
-    const idRe = /^evt-\d+$/;
-    let maxActualDepth = 0;
-
-    function visit(parentId, depth, chainFrom) {
-        if (depth > maxDepth) return;
-        if (!idRe.test(parentId)) return;
-
-        const ev = eventIndex.get(parentId);
-        if (!ev) return;
-
-        if (depth > maxActualDepth) maxActualDepth = depth;
-
-        const existed = out.get(parentId);
-        if (!existed) {
-            out.set(parentId, { event: ev, depth, chainFrom: [chainFrom] });
-        } else {
-            if (depth < existed.depth) existed.depth = depth;
-            if (!existed.chainFrom.includes(chainFrom)) existed.chainFrom.push(chainFrom);
-        }
-
-        for (const next of (ev.causedBy || [])) {
-            visit(String(next || '').trim(), depth + 1, chainFrom);
-        }
-    }
-
-    for (const r of eventHits || []) {
-        const rid = r?.event?.id;
-        if (!rid) continue;
-        for (const cid of (r.event?.causedBy || [])) {
-            visit(String(cid || '').trim(), 1, rid);
-        }
-    }
-
-    const results = Array.from(out.values())
-        .sort((a, b) => {
-            const refDiff = b.chainFrom.length - a.chainFrom.length;
-            if (refDiff !== 0) return refDiff;
-            return a.depth - b.depth;
-        })
-        .slice(0, CONFIG.CAUSAL_INJECT_MAX);
-
-    return { results, maxDepth: maxActualDepth };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1288,7 +1240,7 @@ export async function recallMemory(allEvents, vectorConfig, options = {}) {
         if (diagnostics) diagnostics.reason = '没有可用的查询内容';
         metrics.timing.total = Math.round(performance.now() - T0);
         return {
-            events: [], l0Selected: [], l1ByFloor: new Map(), causalChain: [],
+            events: [], l0Selected: [], l1ByFloor: new Map(),
             focusEntities: focusTerms,
             focusTerms,
             focusCharacters,
@@ -1352,7 +1304,7 @@ export async function recallMemory(allEvents, vectorConfig, options = {}) {
         if (diagnostics) diagnostics.reason = '查询向量无法合成';
         metrics.timing.total = Math.round(performance.now() - T0);
         return {
-            events: [], l0Selected: [], l1ByFloor: new Map(), causalChain: [],
+            events: [], l0Selected: [], l1ByFloor: new Map(),
             focusEntities: focusTerms,
             focusTerms,
             focusCharacters,
@@ -1772,29 +1724,6 @@ export async function recallMemory(allEvents, vectorConfig, options = {}) {
         signal,
     );
 
-    // ═══════════════════════════════════════════════════════════════════
-    // 阶段 9: Causation Trace
-    // ═══════════════════════════════════════════════════════════════════
-
-    const { results: causalMap, maxDepth: causalMaxDepth } = traceCausation(eventHits, eventIndex);
-
-    const recalledIdSet = new Set(eventHits.map(x => x?.event?.id).filter(Boolean));
-    const causalChain = causalMap
-        .filter(x => x?.event?.id && !recalledIdSet.has(x.event.id))
-        .map(x => ({
-            event: x.event,
-            similarity: 0,
-            _recallType: 'CAUSAL',
-            _causalDepth: x.depth,
-            chainFrom: x.chainFrom,
-        }));
-
-    if (metrics.event.byRecallType) {
-        metrics.event.byRecallType.causal = causalChain.length;
-    }
-    metrics.event.causalChainDepth = causalMaxDepth;
-    metrics.event.causalCount = causalChain.length;
-
     // Candidate packing always consumes relevance order. Normalize the base
     // order before L2 rerank; once reranked, keep that result
     // intact because cosine similarity and cross-encoder scores are not on
@@ -1878,7 +1807,7 @@ export async function recallMemory(allEvents, vectorConfig, options = {}) {
         xbLog.info(MODULE_ID, `[Recall v9] Floor Rerank: ${metrics.evidence.beforeRerank || 0} -> ${metrics.evidence.floorsSelected || 0} floors -> L0=${metrics.evidence.l0Collected || 0} (${metrics.timing.evidenceRerank || 0}ms)`);
         xbLog.info(MODULE_ID, `[Recall v9] L1: prefetchedAI=${metrics.evidence.l1PrefetchAiFloors || 0} totalFloors=${metrics.evidence.l1PrefetchWithContextFloors || 0} | ${metrics.evidence.l1Pulled || 0} pulled -> ${metrics.evidence.l1Attached || 0} attached (${metrics.evidence.l1CosineTime || 0}ms)`);
         xbLog.info(MODULE_ID, `[Recall v9] L1 breakdown: chunkDB=${metrics.evidence.l1ChunkFetchTime || 0}ms vectorDB=${metrics.evidence.l1VectorFetchTime || 0}ms cacheWarm=${!!metrics.evidence.l1CacheWarm} chunkCache=${metrics.evidence.l1ChunkCacheHits || 0}/${metrics.evidence.l1ChunkCacheMisses || 0} vectorCache=${metrics.evidence.l1VectorCacheHits || 0}/${metrics.evidence.l1VectorCacheMisses || 0} deserialize=${metrics.evidence.l1DeserializeTime || 0}ms score=${metrics.evidence.l1ScoreTime || 0}ms sort=${metrics.evidence.l1SortTime || 0}ms vectors=${metrics.evidence.l1VectorHits || 0} missing=${metrics.evidence.l1MissingVectors || 0}`);
-        xbLog.info(MODULE_ID, `[Recall v9] Events: ${eventHits.length} hits (l0Linked=+${l0LinkedCount}), ${causalChain.length} causal`);
+        xbLog.info(MODULE_ID, `[Recall v9] Events: ${eventHits.length} hits (l0Linked=+${l0LinkedCount})`);
         xbLog.info(MODULE_ID, `[Recall v9] Diffusion: ${metrics.diffusion?.seedCount || 0} seeds -> ${metrics.diffusion?.pprActivated || 0} activated -> ${metrics.diffusion?.finalCount || 0} final (${metrics.diffusion?.time || 0}ms | graph=${metrics.diffusion?.buildTime || 0}ms ppr=${metrics.diffusion?.pprTime || 0}ms post=${metrics.diffusion?.postVerifyTime || 0}ms)`);
     }
 
@@ -1892,7 +1821,6 @@ export async function recallMemory(allEvents, vectorConfig, options = {}) {
 
     return {
         events: eventHits,
-        causalChain,
         l0Selected,
         l1ByFloor,
         directEvidenceContext,
