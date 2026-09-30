@@ -26,14 +26,14 @@ function checkReadingWriting(path: string, materials: LearningMaterial[], exerci
     requireLearning(materials.length === 1, `${path}.materials`, 'A reading-writing unit reads exactly one article');
     const article = materials[0];
     const paragraphs = article.paragraphs.map(paragraph => paragraph.id);
-    requireLearning(JSON.stringify(explanations.map(entry => [entry.materialId, entry.paragraphId])) === JSON.stringify(paragraphs.map(id => [article.id, id])),
-        `${path}.explanations`, 'Explain every article paragraph once, in order');
+    requireLearning(explanations.every((entry, index) => entry.materialId === article.id && entry.paragraphId === paragraphs[index]),
+        `${path}.explanations`, 'Explanations follow the article from its first paragraph, once each');
     const summaries = exercises.filter(exercise => exercise.paragraphId !== undefined);
     requireLearning(summaries.every(exercise => openWriting(exercise) && exercise.materialIds.includes(article.id)), `${path}.exercises`, 'Paragraph summaries are open writing on the article');
     uniqueLearning(summaries.map(exercise => exercise.paragraphId!), `${path}.exercises`);
     requireLearning(summaries.length === paragraphs.length, `${path}.exercises`, 'Summarise every article paragraph once');
     const essays = exercises.filter(exercise => exercise.paragraphId === undefined);
-    requireLearning(essays.length === 1 && openWriting(essays[0]), `${path}.exercises`, 'A reading-writing unit ends with exactly one open essay');
+    requireLearning(essays.length <= 1 && essays.every(openWriting), `${path}.exercises`, 'A reading-writing unit has at most one open essay while preparation continues');
     for (const [index, attempt] of attempts.entries()) {
         if (attempt.revisesAttemptId === undefined) { continue; }
         const draft = attempts.slice(0, index).find(entry => entry.id === attempt.revisesAttemptId);

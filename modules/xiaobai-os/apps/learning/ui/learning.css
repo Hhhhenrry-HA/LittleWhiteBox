@@ -494,3 +494,6 @@
     .learning-write, .learning-review, .learning-settings-card, .learning-card { padding-inline: 12px; }
     .learning-steps li { font-size: 10px; }
 }
+.learning-source-choice, .learning-preparation { margin-block: 12px 20px; }
+.learning-source-choice p, .learning-preparation p { margin-block: 0 10px; }
+.learning-knowledge-pending { font-size: .85em; margin-block: 12px; }

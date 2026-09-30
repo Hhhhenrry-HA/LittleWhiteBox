@@ -1,6 +1,7 @@
 import { parseLearningData } from '../../../domains/learning/data.js';
 import { mergeLearningExposure } from '../../../domains/learning/merge-exposure.js';
-import type { LearningData } from '../../../domains/learning/types.js';
+import { mergeLearningSupplement } from '../../../domains/learning/preparation.js';
+import type { LearningData, LearningUnit } from '../../../domains/learning/types.js';
 import type { JsonUserFilePort } from '../../../kernel/contracts.js';
 import { XiaobaiOsStorageError } from '../../../storage/storage-port.js';
 import { createLearningId } from '../application/identity.js';
@@ -100,27 +101,45 @@ export function createLearningRepository(files: JsonUserFilePort, options: {
         // Freeze caller inputs before entering the queue; queued changes cannot mutate this intent.
         const baseline = expected === null ? null : parseLearningDocument(expected);
         const next = parseLearningData(data);
+        return enqueue(() => saveNow(baseline, next, isCurrent));
+    }
+
+    async function saveNow(baseline: LearningDocument | null, next: LearningData, isCurrent: () => boolean): Promise<SaveResult> {
+        if (!isCurrent()) { return { status: 'cancelled' }; }
+        if (pending || conflict) { throw new LearningStorageError('learning_resolve_pending_first'); }
+        await ensureLoaded();
+        const observed = confirmed ?? null;
+        if (!isCurrent()) { return { status: 'cancelled' }; }
+        const rebased = baseline?.revision !== observed?.revision || baseline?.commitId !== observed?.commitId
+            ? baseline && observed ? mergeLearningExposure(baseline.data, observed.data, next) : null : next;
+        if (!rebased) { return { status: 'cancelled' }; }
+        confirmed = observed;
+        if (JSON.stringify(observed?.data ?? { profiles: [] }) === JSON.stringify(rebased)) {
+            return { status: 'unchanged', document: structuredClone(observed) };
+        }
+        const candidate = parseLearningDocument({ schemaVersion: 2, revision: (observed?.revision ?? 0) + 1,
+            commitId: createId(), data: rebased });
+        if (candidate.commitId === observed?.commitId) { throw new LearningStorageError('learning_commit_id_reused'); }
+        if (new TextEncoder().encode(JSON.stringify(candidate)).byteLength > MAX_LEARNING_WRITE_BYTES) {
+            throw new LearningStorageError('learning_file_full');
+        }
+        if (!isCurrent()) { return { status: 'cancelled' }; }
+        return upload({ expected: observed, candidate });
+    }
+
+    function supplement(language: string, before: LearningUnit, prepared: LearningUnit, isCurrent: () => boolean): Promise<SaveResult> {
+        const original = structuredClone(before);
+        const additions = structuredClone(prepared);
         return enqueue(async () => {
             if (!isCurrent()) { return { status: 'cancelled' }; }
             if (pending || conflict) { throw new LearningStorageError('learning_resolve_pending_first'); }
             await ensureLoaded();
-            const observed = confirmed ?? null;
-            if (!isCurrent()) { return { status: 'cancelled' }; }
-            const rebased = baseline?.revision !== observed?.revision || baseline?.commitId !== observed?.commitId
-                ? baseline && observed ? mergeLearningExposure(baseline.data, observed.data, next) : null : next;
-            if (!rebased) { return { status: 'cancelled' }; }
-            confirmed = observed;
-            if (JSON.stringify(observed?.data ?? { profiles: [] }) === JSON.stringify(rebased)) {
-                return { status: 'unchanged', document: structuredClone(observed) };
-            }
-            const candidate = parseLearningDocument({ schemaVersion: 2, revision: (observed?.revision ?? 0) + 1,
-                commitId: createId(), data: rebased });
-            if (candidate.commitId === observed?.commitId) { throw new LearningStorageError('learning_commit_id_reused'); }
-            if (new TextEncoder().encode(JSON.stringify(candidate)).byteLength > MAX_LEARNING_WRITE_BYTES) {
-                throw new LearningStorageError('learning_file_full');
-            }
-            if (!isCurrent()) { return { status: 'cancelled' }; }
-            return upload({ expected: observed, candidate });
+            const data = structuredClone(confirmed?.data ?? { profiles: [] });
+            const profile = data.profiles.find(entry => entry.language === language);
+            const merged = profile?.unit && mergeLearningSupplement(original, profile.unit, additions);
+            if (!profile || !merged) { return { status: 'cancelled' }; }
+            profile.unit = merged;
+            return saveNow(confirmed ?? null, parseLearningData(data), isCurrent);
         });
     }
 
@@ -128,6 +147,7 @@ export function createLearningRepository(files: JsonUserFilePort, options: {
         snapshot,
         pendingCommitId: () => pending?.candidate.commitId ?? null,
         save,
+        supplement,
         read: () => enqueue(async () => {
             await ensureLoaded();
             return snapshot();

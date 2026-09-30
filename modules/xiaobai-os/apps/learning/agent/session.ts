@@ -23,6 +23,9 @@ import { parseLearningDelegation, type LearningDelegation } from '../application
 export type LearningAction =
     | { kind: 'profile' }
     | { kind: 'prepare'; replaceCurrent: boolean; unit?: 'reading-writing' | 'lesson'; prices?: Readonly<Record<RewardTier, number>> }
+    | { kind: 'reading-article'; replaceCurrent: boolean; source: 'web' | 'authored' }
+    | { kind: 'reading-notes'; unitId: string; paragraphIds: string[] }
+    | { kind: 'reading-essay'; unitId: string }
     | { kind: 'assess'; attemptId: string; review: boolean }
     | { kind: 'complete' }
     | { kind: 'explain' }
@@ -50,7 +53,7 @@ export function createLearningSession(repository: LearningRepository, options: {
     sources?: ReturnType<typeof createLearningSourceRegistry>;
     learnerMessage?: string;
     asOf?: string;
-    canDelegate?: () => boolean;
+    canDelegate?: (action: LearningDelegation['action']) => boolean;
 }) {
     const expected = confirmedLearning(repository);
     let saveExpected = expected;
@@ -152,9 +155,9 @@ export function createLearningSession(repository: LearningRepository, options: {
                 requireLearning(names.includes(name), 'tool', 'This tool is not available for the current learning action');
                 if (name === 'LearningRequest') {
                     requireLearning(action.kind === 'talk' || action.kind === 'explain', 'action', 'Only a learner-initiated conversation can request a workbench action');
-                    if (options.canDelegate && !options.canDelegate()) { return { ok: false, status: 'busy' }; }
                     const profile = staged.profiles.find(entry => entry.language === canonicalLanguage);
                     const requested = parseLearningDelegation(args, options.learnerMessage ?? '', profile?.unit?.id);
+                    if (options.canDelegate && !options.canDelegate(requested.action)) { return { ok: false, status: 'busy' }; }
                     requireLearning(!delegation || JSON.stringify(delegation.operation) === JSON.stringify(requested), 'action', 'This exchange already requested a different workbench action');
                     if (requested.action === 'prepare' && profile?.unit && !profile.completions.some(entry => entry.unitId === profile.unit!.id)) {
                         presentation = learningPresentation(profile.unit, { kind: 'replacement' }, options.learnerMessage,
@@ -214,7 +217,30 @@ export function createLearningSession(repository: LearningRepository, options: {
                 } else {
                     requireLearning(index >= 0, 'profile', 'Save the learner goal before preparing a lesson');
                     const profile = next.profiles[index];
-                    if (name === 'LearningPresent') {
+                    if (name === 'LearningArticle' && action.kind === 'reading-article') {
+                        const input = learningRecord(args, name, ['title', 'goal', 'tier', 'kind', 'sourceId', 'text']);
+                        requireLearning(input.kind === (action.source === 'web' ? 'adapted' : 'authored'), 'kind', 'Use the material source chosen in this request');
+                        requireLearning(!profile.unit || action.replaceCurrent, 'unit', 'Continue the saved article or confirm replacing it');
+                        profile.unit = revealKnownText(compileLesson({ kind: 'reading-writing', title: input.title, goal: input.goal, tier: input.tier,
+                            materials: [{ key: 'article', title: input.title, kind: input.kind, ...(input.sourceId ? { sourceId: input.sourceId } : {}), text: input.text }] }), profile);
+                        ids = [profile.unit.id];
+                    } else if ((name === 'LearningReadingNotes' && action.kind === 'reading-notes') || (name === 'LearningEssayTask' && action.kind === 'reading-essay')) {
+                        const unit = profile.unit;
+                        requireLearning(unit?.id === action.unitId && unit.kind === 'reading-writing' && canReadLearningScope(unit.scope, accessOsId), 'unitId', 'Use the current reading article');
+                        if (action.kind === 'reading-notes') {
+                            const input = learningRecord(args, name, ['explanations']);
+                            requireLearning(Array.isArray(input.explanations) && JSON.stringify(input.explanations.map(entry => entry?.paragraphId)) === JSON.stringify(action.paragraphIds),
+                                'explanations', 'Explain exactly the requested paragraphs, in order');
+                            profile.unit = compileLesson({ explanations: [...unit.explanations!.map(({ materialId, ...entry }) => ({ materialKey: materialId, ...entry })),
+                                ...input.explanations.map(entry => ({ ...entry, materialKey: unit.materials[0].id }))] }, unit, unit);
+                        } else {
+                            const input = learningRecord(args, name, ['prompt']);
+                            requireLearning(!unit.exercises.some(entry => !entry.paragraphId), 'prompt', 'The essay question is already saved');
+                            profile.unit = compileLesson({ exercises: [{ key: 'essay', skill: 'writing', materialKeys: [unit.materials[0].id],
+                                prompt: input.prompt, response: { kind: 'text' }, rule: { kind: 'semantic' } }] }, unit, unit);
+                        }
+                        ids = [unit.id];
+                    } else if (name === 'LearningPresent') {
                         const target = learningPresentation(profile.unit, args, options.learnerMessage, action.kind === 'prepare' ? action.unit : undefined);
                         requireLearning(target.kind === 'replacement' || profile.unit && canReadLearningScope(profile.unit.scope, accessOsId), 'unit', 'Choose a lesson available in this classroom');
                         nextPresentation = target;
@@ -331,6 +357,10 @@ export function createLearningSession(repository: LearningRepository, options: {
                 if (!guard()) { return { status: 'cancelled' as const }; }
                 if (snapshot.status !== 'ready') { return { status: snapshot.status === 'unconfirmed' ? 'unconfirmed' as const : 'conflict' as const }; }
                 return { status: 'unchanged' as const, document: snapshot.document ?? null };
+            }
+            if (action.kind === 'reading-notes' || action.kind === 'reading-essay') {
+                const unit = staged.profiles.find(entry => entry.language === canonicalLanguage)!.unit!;
+                return repository.supplement(canonicalLanguage, expected!.data.profiles.find(entry => entry.language === canonicalLanguage)!.unit!, unit, () => !invalid && guard());
             }
             return repository.save(saveExpected, staged, () => !invalid && guard());
         },

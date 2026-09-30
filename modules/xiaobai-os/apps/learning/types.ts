@@ -13,6 +13,8 @@ export interface LearningClientState extends LearningClassView {
     chatStorage: string;
     walletStorage: XiaobaiOsFileState;
     busy: boolean;
+    sourceChoice: boolean;
+    preparation: { phase: 'article' | 'notes' | 'essay'; running: boolean; message: string; unitId?: string } | null;
     chatBusy: boolean;
     companionBusy: boolean;
     chatMessage: string;

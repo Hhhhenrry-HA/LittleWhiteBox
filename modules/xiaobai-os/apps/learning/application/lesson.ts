@@ -1,4 +1,5 @@
 import { parseLearningUnit } from '../../../domains/learning/data.js';
+import { LEARNING_SUMMARY_PROMPT } from '../../../domains/learning/preparation.js';
 import { learningRecord, learningText } from '../../../domains/learning/profile.js';
 import { learningReviewTier, selectDueLearningItems } from '../../../domains/learning/schedule.js';
 import { LEARNING_LIMITS as L, type LearningLanguage, type LearningScope, type LearningUnit, type RewardTier } from '../../../domains/learning/types.js';
@@ -71,6 +72,15 @@ export function createLearningLessonCompiler(options: {
             const index = exercises.findIndex(entry => (entry as { id: string }).id === id);
             if (index >= 0) { exercises[index] = exercise; } else { exercises.push(exercise); }
         }
+        if (kind === 'reading-writing') {
+            for (const material of materials) {
+                for (const paragraph of material.paragraphs) {
+                    if (exercises.some(entry => (entry as { paragraphId?: string }).paragraphId === paragraph.id)) { continue; }
+                    exercises.push({ id: idFor('exercise', `summary:${paragraph.id}`), skill: 'writing', materialIds: [material.id],
+                        paragraphId: paragraph.id, prompt: LEARNING_SUMMARY_PROMPT, response: { kind: 'text' }, rule: { kind: 'semantic' }, hint: '' });
+                }
+            }
+        }
         let reviewTier: RewardTier | undefined;
         if (kind === 'review') {
             // The schedule, not the teacher, decides what is reviewed and how large the reward is.
@@ -97,6 +107,9 @@ export function createLearningLessonCompiler(options: {
             revealed: { answers: current?.revealed.answers.filter(id => !removeExercises.includes(id)) ?? [],
                 hints: current?.revealed.hints.filter(id => !removeExercises.includes(id)) ?? [] } });
         if (current) {
+            if (published?.kind === 'reading-writing') {
+                requireLearning(JSON.stringify(next.materials) === JSON.stringify(current.materials), 'materials', 'Published reading text stays fixed');
+            }
             const protectedExercises = new Set([...current.attempts.map(attempt => attempt.exerciseId),
                 ...(current.listening ?? []).map(record => record.exerciseId), ...(current.notes ?? []).map(note => note.exerciseId)]);
             const protectedMaterials = new Set(current.exercises.filter(exercise => protectedExercises.has(exercise.id)).flatMap(exercise => exercise.materialIds));

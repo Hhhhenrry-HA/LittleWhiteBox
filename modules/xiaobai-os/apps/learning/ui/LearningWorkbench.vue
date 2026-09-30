@@ -5,6 +5,7 @@ import type { LearningPresentation } from '../application/presentation.js';
 import LearningIcon from './LearningIcon.vue';
 import LearningReading from './LearningReading.vue';
 import LearningReview from './LearningReview.vue';
+import LearningPreparation from './LearningPreparation.vue';
 import { LEARNING_DISCARD_COPY, LEARNING_DUE_LABEL } from './learning-copy.js';
 import type { LearningSelection } from '../../../domains/learning/notes.js';
 
@@ -17,6 +18,7 @@ const emit = defineEmits<{
 }>();
 const reviewOpen = computed(() => !!props.state.review && props.state.review.stage.stage !== 'complete');
 const unit = computed(() => props.state.unit);
+const starting = computed(() => !unit.value || props.state.completions.some(entry => entry.unitId === unit.value?.id));
 const preparing = computed(() => props.state.busy && !props.state.pending);
 const copy = {
     start: '开始读写', reading: '读写练习', readingHint: '读一篇文章，写下你的看法', lesson: '专项练习', lessonHint: '练语法、词汇或听力',
@@ -37,6 +39,7 @@ const ask = (name: string, input: Record<string, unknown>, text: string) => emit
 
 <template>
     <div class="learning-workbench">
+        <LearningPreparation v-if="!state.sourceChoice || !starting" :state="state" :disabled="disabled" :pending="pending" @action="forward" />
         <div v-if="state.dueCount && !reviewOpen" class="learning-due">
             <span>{{ LEARNING_DUE_LABEL(state.dueCount) }}</span>
             <span v-if="state.pending?.purpose === 'review-prepare'" class="learning-working" role="status">
@@ -62,7 +65,7 @@ const ask = (name: string, input: Record<string, unknown>, text: string) => emit
             <div class="learning-row"><button type="button" :disabled="disabled" @click="emit('action', 'complete')">{{ copy.complete }}</button><button type="button" @click="emit('go', 'materials')">{{ copy.notes }}</button></div>
         </section>
 
-        <section v-if="!unit || state.completions.some(entry => entry.unitId === unit?.id)" class="learning-start">
+        <section v-if="starting" class="learning-start">
             <template v-if="state.blockedUnit">
                 <h1 tabindex="-1">当前课件在另一个故事中</h1>
                 <p class="learning-muted">回到那个故事可以继续；也可以放下它，在这里重新开始。</p>
@@ -72,7 +75,8 @@ const ask = (name: string, input: Record<string, unknown>, text: string) => emit
                 <h1 v-if="!unit" tabindex="-1">{{ state.teacher ? copy.reading : copy.selectFirst }}</h1>
                 <h2 v-else>{{ copy.next }}</h2>
                 <button v-if="state.teacher && !unit" type="button" class="learning-start-preference" :aria-label="`${copy.settings}：${settingSummary}`" @click="emit('go', 'settings')"><span><strong>{{ copy.settings }}</strong><small>{{ settingSummary }}</small></span><LearningIcon name="arrow" /></button>
-                <template v-if="state.teacher && !preparing">
+                <LearningPreparation v-if="state.sourceChoice" :state="state" :disabled="disabled" :pending="pending" @action="forward" />
+                <template v-if="state.teacher && !preparing && !state.sourceChoice">
                     <section class="learning-start-reading">
                         <LearningIcon name="workbook" />
                         <p>{{ copy.readingHint }}</p>

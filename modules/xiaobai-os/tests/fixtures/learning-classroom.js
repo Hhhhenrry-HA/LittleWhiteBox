@@ -67,6 +67,18 @@ export async function createClassroomFixture({ listening = false, lesson: lesson
             const message = request.messages.findLast(entry => entry.role === 'user');
             const input = JSON.parse(message.content.split('<learning_request>\n').at(-1).split('\n</learning_request>')[0]);
             const action = input.action;
+            if (action.kind === 'reading-article') {
+                return { toolCalls: [call('LearningArticle', { title: lessonInput.title, goal: lessonInput.goal, tier: lessonInput.tier,
+                    kind: 'authored', text: lessonInput.materials[0].text })] };
+            }
+            if (action.kind === 'reading-notes') {
+                return { toolCalls: [call('LearningReadingNotes', { explanations: action.paragraphIds.map(paragraphId => ({ paragraphId,
+                    explanation: '注意本段的主题句和连接方式，用自己的话概括作者的意思。', terms: [] })) })] };
+            }
+            if (action.kind === 'reading-essay') {
+                return { toolCalls: [call('LearningEssayTask', { prompt: 'Should cities plant more trees? Give your view in around 300 words.' })] };
+            }
+            if (action.kind === 'summary-review') { return { text: '抓住了主要意思，可以再补充作者给出的理由。' }; }
             if (action.kind === 'profile') {
                 if (flags.profileReply !== null) { return { text: flags.profileReply }; }
                 return { toolCalls: [call('LearningProfileEdit', { explanationLanguage: 'zh-CN', selfAssessment: '有高中基础，听力需要练习。', goal: { description: '备考英语四级，读懂新闻，写出清晰的短文。' } })] };
@@ -113,9 +125,10 @@ export async function createClassroomFixture({ listening = false, lesson: lesson
         getTtsFacade,
     });
     const context = () => ({ activationToken: 'fixture', isCurrent: () => active, post(type, payload) {
-        state = type === 'learning/media' ? { ...state, media: payload.media } : payload.state;
+        if (type === 'learning/media') { state = { ...state, media: payload.media }; }
+        else if (type === 'learning/state') { state = payload.state; }
         for (const listener of listeners) { listener({ type, payload }); }
-        if (!state.busy && !state.chatBusy) { for (const resolve of waiters) { resolve(); } waiters.clear(); }
+        if (!state.busy && !state.chatBusy && !state.preparation?.running) { for (const resolve of waiters) { resolve(); } waiters.clear(); }
         return true;
     } });
     state = await runtime.activate(context());
@@ -126,9 +139,11 @@ export async function createClassroomFixture({ listening = false, lesson: lesson
             return { result };
         } };
     async function command(name, input = {}) {
-        const response = await bridge.request(`learning/${name}`, { chatIdentity: chat, ...input });
+        // This fixture prepares the supplied lesson kind; production buttons supply their own kind.
+        const response = await bridge.request(`learning/${name}`, { chatIdentity: chat,
+            ...(['prepare', 'replace-lesson'].includes(name) ? { kind: lessonInput.kind ?? 'lesson' } : {}), ...input });
         state = response.result.state;
-        if (state.busy || state.chatBusy) { await new Promise(resolve => waiters.add(resolve)); }
+        if (state.busy || state.chatBusy || state.preparation?.running) { await new Promise(resolve => waiters.add(resolve)); }
         return structuredClone(state);
     }
     return { runtime, bridge, repository, store, coordinator, wallet, economy, flags, counts, failures, command, profile,

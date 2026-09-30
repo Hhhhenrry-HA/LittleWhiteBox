@@ -1,4 +1,5 @@
 import type { LearningAssessment, LearningAttempt, LearningUnit } from './types.js';
+import { learningPreparation } from './preparation.js';
 
 export type LearningUnitStage = 'lesson' | 'writing' | 'grading' | 'revising' | 'reviewing' | 'model' | 'answering' | 'complete';
 export type LearningExerciseStatus = 'writing' | 'grading' | 'revising' | 'reviewing' | 'done';
@@ -33,7 +34,7 @@ export function learningUnitStage(unit: LearningUnit): { stage: LearningUnitStag
         const stage = rows.some(row => !row.draft) ? 'answering' : rows.some(row => !row.draftAssessment) ? 'grading' : 'complete';
         return { stage, exercises: exercises(basic) };
     }
-    if (rows.some(row => !row.draft)) { return { stage: 'writing', exercises: exercises(basic) }; }
+    if (!learningPreparation(unit).ready || rows.some(row => !row.draft)) { return { stage: 'writing', exercises: exercises(basic) }; }
     if (rows.some(row => !row.draftAssessment)) { return { stage: 'grading', exercises: exercises(basic) }; }
     const revised = rows.some(row => row.revision);
     if (!revised && !unit.revisionSkipped && rows.some(row => learningNeedsRevision(row.draftAssessment))) {

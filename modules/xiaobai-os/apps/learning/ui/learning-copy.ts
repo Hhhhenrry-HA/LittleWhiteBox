@@ -12,6 +12,7 @@ export const LEARNING_PROCESS_COPY = {
     outcomes: { finished: '本次已完成', failed: '本次未完成', cancelled: '本次已停止', unconfirmed: '等待确认保存', conflict: '需要核对保存结果' },
     tools: { LearningRead: '查看学习记录', LearningContextRead: '查看相关资料', LearningSearch: '寻找文章', LearningExtract: '阅读原文',
         LearningProfileEdit: '调整学习目标', LearningLessonEdit: '准备练习', LearningRequest: '安排练习', LearningModelEssay: '准备范文',
+        LearningArticle: '整理阅读正文', LearningReadingNotes: '整理本段知识', LearningEssayTask: '准备写作题',
         LearningAssess: '批改作答', LearningHelp: '确认讲解范围', LearningPresent: '打开练习', LearningComplete: '整理学习收获' } as Record<string, string>,
     sections: { overview: '学习概况', training: '本次阅读材料', unit: '本次练习', materials: '阅读材料', exercises: '练习题', attempts: '你的作答',
         notes: '笔记', listening: '听力记录', items: '知识点', review: '到期复习', evidence: '学习记录', completions: '已完成练习', sources: '文章来源' } as Record<string, string>,

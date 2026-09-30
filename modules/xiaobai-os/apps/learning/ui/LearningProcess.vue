@@ -5,12 +5,14 @@ import { learningProgressMessage } from '../application/feedback.js';
 import MessageMarkdown from '../../../shell/app-src/components/MessageMarkdown.vue';
 import { learningProcessRounds, type LearningProcessTool } from './learning-process.js';
 import { LEARNING_PROCESS_COPY as copy, LEARNING_PROCESS_FIELD_LABELS as fields } from './learning-copy.js';
+import { LEARNING_PREPARATION_COPY } from '../application/preparation-copy.js';
 
 const props = withDefaults(defineProps<{ turn: LearningDialogueView; stoppable?: boolean; disabled?: boolean }>(), { stoppable: false, disabled: false });
 const emit = defineEmits<{ stop: [] }>();
 const rounds = computed(() => learningProcessRounds(props.turn));
 const tools = computed(() => rounds.value.flatMap(round => round.tools));
 const running = computed(() => props.turn.status === 'running');
+const preparationTitle = computed(() => LEARNING_PREPARATION_COPY.taskTitles[props.turn.purpose as keyof typeof LEARNING_PREPARATION_COPY.taskTitles]);
 const opened = ref<boolean | null>(null);
 const expanded = computed(() => opened.value ?? (running.value || props.turn.status === 'failed'));
 const body = ref<HTMLElement | null>(null);
@@ -56,7 +58,7 @@ watch(() => props.turn.messages, async () => {
     <section v-if="running || tools.length" class="learning-process" :class="{ 'is-running': running }" :aria-label="copy.title">
         <header class="learning-process-header">
             <button type="button" class="learning-process-toggle" :aria-expanded="expanded" @click="opened = !expanded">
-                <span aria-hidden="true">{{ expanded ? '⌄' : '›' }}</span><strong>{{ copy.title }}</strong>
+                <span aria-hidden="true">{{ expanded ? '⌄' : '›' }}</span><strong>{{ preparationTitle ?? copy.title }}</strong>
                 <small>{{ running && currentRound ? copy.round(currentRound) : copy.history(tools.length) }}</small>
             </button>
             <button v-if="running && stoppable" type="button" class="learning-process-stop" :disabled="disabled" :aria-label="copy.stop" @click="emit('stop')">■</button>
@@ -73,6 +75,6 @@ watch(() => props.turn.messages, async () => {
                 </ol>
             </template>
         </div>
-        <p class="learning-process-status" role="status" aria-live="polite"><span v-if="running" class="learning-working-dot" aria-hidden="true" />{{ status }}</p>
+        <p v-if="!preparationTitle || running || expanded" class="learning-process-status" role="status" aria-live="polite"><span v-if="running" class="learning-working-dot" aria-hidden="true" />{{ status }}</p>
     </section>
 </template>

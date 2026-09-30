@@ -14,8 +14,9 @@
 | SM-2 排程与质量映射 | [schedule.ts](../domains/learning/schedule.ts) | 唯一的到期日期和更新算法；熟练程度由 progress 单独按证据判断 |
 | 原生学习动作 | [application/service.ts](../apps/learning/application/service.ts)、[practice.ts](../apps/learning/application/practice.ts) | 按阶段保存原答、修订、反馈及清理，不让页面直接改文件 |
 | 保存确认 | [storage/repository.ts](../apps/learning/storage/repository.ts) | 当前宿主账号的 Learning 用户文件；确认、未知写入、冲突与精确恢复 |
-| 运行与桥接 | [host/runtime.ts](../apps/learning/host/runtime.ts) | 同一课堂的一条工作任务和一条交流任务；停止、身份、阶段推进、媒体及奖励协调 |
-| 对话、模型任务与历史 | [application/teaching.ts](../apps/learning/application/teaching.ts) | 两条运行共享公开历史，但不共享取消控制；任务输入、工具循环和历史整理 |
+| 运行与桥接 | [host/runtime.ts](../apps/learning/host/runtime.ts) | 原生操作、交流和读写准备分别运行；停止、身份、阶段推进、媒体及奖励协调 |
+| 对话、模型任务与历史 | [application/teaching.ts](../apps/learning/application/teaching.ts) | 独立取消边界与共享公开历史；任务输入、工具循环和历史整理 |
+| 读写准备 | [preparation.ts](../domains/learning/preparation.ts)、[preparation-tools.ts](../apps/learning/agent/preparation-tools.ts) | 完整性从已保存内容派生；正文、讲解批次、作文题各有窄工具，成功内容结束对应模型任务 |
 | 正文发布 | [application/publication.ts](../apps/learning/application/publication.ts) | 每段文字是否可以公开；UI、历史、摘要、笔记及朗读不各自重新判定 |
 | 公开课件 | [application/projection.ts](../apps/learning/application/projection.ts) | 工作台、注入资料与读取工具共用公开训练投影 |
 | 临时交互现场 | [ui/learning-session.ts](../apps/learning/ui/learning-session.ts) | 写作、修订、聊天、设置和专项答题草稿，以及选区、展开和编辑位置 |
@@ -36,7 +37,8 @@
 - 首次读取与明确刷新访问宿主文件，正常读和重开课堂复用已确认版本。缺文件与坏文件分开处理，错误不能初始化覆盖。
 - 仓库串行处理写入。明确上传成功确认候选；响应丢失才核实原候选，不把网络异常当作未落盘。
 - 未确认保存保留原确认视图和精确 commitId；核实、重试原候选、采用服务器版是不同动作。只有原依赖仍有效的等待保存正文可以接回。
-- 并行交流的帮助允许与工作任务保存合并，但只合并相同单元、相同题目及其实际材料的追加曝光事实。[merge-exposure.ts](../domains/learning/merge-exposure.ts)不合并目标、原答或任意课程修改。
+- 并行交流的帮助允许与工作任务保存合并，但只合并相同单元、相同题目及其实际材料的追加曝光事实。[merge-exposure.ts](../domains/learning/merge-exposure.ts)还保留等待原答落盘期间新增的读写讲解及作文题，不合并目标、原答或任意课程修改。
+- 后续读写准备在仓库写队列内，对最新确认的同一篇文章定向追加内容；已发布正文和既有题目必须相同。它不回放开始备课时的整份快照，因而不会覆盖并行提交的原答、帮助条件或笔记。退出或更换文章后迟到结果作废。
 - 宿主上传没有服务端 CAS。本实现不承诺多设备或多标签同时编辑；不增加锁文件、心跳或自动对账。
 - 整页重载只恢复服务器上的长期事实。未提交草稿和未保存模型候选不承诺恢复；页面关闭前对真实未提交编辑提示风险。
 
@@ -62,13 +64,16 @@
 - 复习提交后的阶段推进归 runtime，而非可能已卸载的复习组件。
 - 阶段请求只取得当前待评原答或修订，包括争议后重新待评的答案；已解决反馈不因恢复操作重复评估。
 - 原答先确认，再调用相应教学任务。未确认的用户输入不能成为已提交成绩。
+- 读写入口在模型会话之前检查共享 Tavily 配置；缺配置时暂存本次选择意图，等用户明确选原创或进入设置，不写入学习档案。继续已有文章不做联网检查或重新选材。
+- 读写准备拆为取正文、按顺序补知识、出作文题。正文由 lesson 编译器建立固定总结题；后续工具只接收所需内容，不能写原答或改正文。provider-loop 收到有效内容即结束该步，不追加收尾调用。补充任务使用当前训练事实，不重放先前备课的工具历史。
+- 准备任务不占用用户提交和交流的运行通道；暂停准备不取消并行聊天或总结审阅。运行标记和取材选择只在当前会话存在，恢复依据仅是保存内容中的缺口。
 
 ## 5. Prompt、资料与发布
 
 产品职责见产品设计 §14。代码归属如下：
 
 - [prompt.ts](../apps/learning/agent/prompt.ts)：唯一人物身份、共享课堂事实、当前任务指引及唯一收尾规则。普通聊天不装配备课或结课任务指令。
-- [tool-contract.ts](../apps/learning/agent/tool-contract.ts)：工具用途、返回值、字段及限制，数值引用领域常量。
+- [tool-contract.ts](../apps/learning/agent/tool-contract.ts)注册学习工具；独立读写准备工具位于 [preparation-tools.ts](../apps/learning/agent/preparation-tools.ts)。用途、返回值、字段及限制归对应工具所有，数值引用领域常量。
 - [context.ts](../apps/learning/agent/context.ts)：当前请求实际资料；[data-projection.ts](../apps/learning/agent/data-projection.ts)与 LearningRead 共享读取投影。
 - 人物表达复用 character-dialogue 的真实共享规则；提示词不进学习文件，不提供用户覆盖配置。
 - 历史整理仅消费已发布交流；当前工具续跑按 Agent Core 协议保留必要载荷，不将其当成已对用户说过的话。

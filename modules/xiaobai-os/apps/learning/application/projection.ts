@@ -1,6 +1,7 @@
 import { learningProgress } from '../../../domains/learning/progress.js';
 import { learningScheduleReason, selectDueLearningItems } from '../../../domains/learning/schedule.js';
 import { learningUnitStage } from '../../../domains/learning/stage.js';
+import { learningPreparation } from '../../../domains/learning/preparation.js';
 import { learningSpeechParts } from '../../../domains/learning/speech.js';
 import { canReadLearningScope, type LearningCompletion, type LearningData, type LearningItem, type LearningExercise, type LearningMaterial, type LearningUnit } from '../../../domains/learning/types.js';
 import type { LearningRewardStatus } from './rewards.js';
@@ -23,7 +24,7 @@ export function learningTrainingView(unit: LearningUnit) {
     return { id: unit.id, kind: unit.kind, title: unit.title, goal: unit.goal,
         materials, exercises: unit.exercises.map(exercise => learningExerciseView(exercise, unit)),
         explanations: (unit.explanations ?? []).filter(entry => materials.some(material => material.id === entry.materialId && !material.hidden)),
-        modelEssay: unit.modelEssay ?? null };
+        modelEssay: unit.modelEssay ?? null, preparation: learningPreparation(unit) };
 }
 
 /** The iframe receives a reading surface, never an unfiltered lesson or answer-key cache. */

@@ -15,7 +15,7 @@ import type { LearningPresentation, LearningActivityPresentation } from '../appl
 import type { LearningSelection } from '../../../domains/learning/notes.js';
 import LearningIcon from './LearningIcon.vue';
 import LearningProcess from './LearningProcess.vue';
-import { isLearningConversation } from '../agent/access.js';
+import { isLearningConversation, isLearningPreparation } from '../agent/access.js';
 import LearningConversation from './LearningConversation.vue';
 import { useLearningState } from './use-learning-state.js';
 import { provideLearningUiSession } from './learning-session.js';
@@ -88,7 +88,12 @@ watch([workVisible, chatVisible, reducedMotion], async ([work, chat, reduced], _
 function rememberWorkScroll() {
     if (workVisible.value && scroller.value) { scrolls[page.value] = scroller.value.scrollTop; }
 }
-const turnCount = computed(() => state.value.conversation.turns.length + state.value.conversation.removedTurns);
+const turnCount = computed(() => {
+    const { turns, removedTurns } = state.value.conversation;
+    let index = turns.length - 1;
+    while (index >= 0 && isLearningPreparation({ kind: turns[index].purpose ?? 'talk' })) { index--; }
+    return index < 0 ? 0 : removedTurns + index + 1;
+});
 const seenTurns = ref(turnCount.value);
 watch([turnCount, chatVisible], ([count, visible]) => { if (visible || count < seenTurns.value) { seenTurns.value = count; } }, { immediate: true });
 const unread = computed(() => turnCount.value > seenTurns.value);
@@ -96,6 +101,9 @@ const workProcess = computed(() => {
     const turns = state.value.conversation.turns;
     let index = turns.length - 1;
     while (index >= 0 && isLearningConversation({ kind: turns[index].purpose ?? 'talk' })) { index--; }
+    let running = turns.length - 1;
+    while (running >= 0 && (turns[running].status !== 'running' || isLearningConversation({ kind: turns[running].purpose ?? 'talk' }))) { running--; }
+    if (running >= 0) { index = running; }
     return index < 0 ? null : { turn: state.value.conversation.turns[index],
         key: `${state.value.chatIdentity}:${state.value.language}:${state.value.conversation.removedTurns + index}` };
 });
@@ -278,7 +286,7 @@ async function exportData() {
             <div class="learning-pane is-work" :inert="!workVisible" :aria-hidden="!workVisible">
                 <div ref="scroller" class="learning-scroll" @scroll.passive="rememberWorkScroll">
                     <template v-if="workMounted">
-                        <LearningProcess v-if="workProcess" :key="workProcess.key" :turn="workProcess.turn" stoppable :disabled="pending" @stop="request('cancel')" />
+                        <LearningProcess v-if="workProcess" :key="workProcess.key" :turn="workProcess.turn" stoppable :disabled="pending" @stop="request(isLearningPreparation({ kind: workProcess.turn.purpose ?? 'talk' }) ? 'cancel-preparation' : 'cancel')" />
                         <div v-if="state.busy && workProcess?.turn.status !== 'running'" class="learning-working" role="status"><span class="learning-working-dot" aria-hidden="true" /><span>{{ state.message || copy.working }}</span><button type="button" :disabled="pending" @click="request('cancel')">停止</button></div>
                         <LearningWorkbench
                             v-if="page === 'home'" :state="state" :disabled="!writable" :pending="pending"

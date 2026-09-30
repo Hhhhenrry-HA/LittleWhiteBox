@@ -1,6 +1,7 @@
 import { escapePromptData } from '../../../capabilities/maintenance/prompt-safety.js';
 import { CHARACTER_DIALOGUE_PROMPT } from '../../../domains/character-dialogue/prompt.js';
 import type { LearningAction } from './session.js';
+import { isLearningPreparation } from './access.js';
 
 const classroom = [
     '## Who is learning',
@@ -45,6 +46,14 @@ const assessment = [
 ].join('\n');
 
 const tasks: Record<LearningAction['kind'], string> = {
+    'reading-article': [
+        'Prepare a short readable article using the learner’s level, target, exam and interests. A manageable challenge lets them begin reading while the remaining teaching material is prepared.',
+        'The request chooses the source. For web, search once for a suitable article, extract its body and adapt it a little above the learner’s level, preserving its meaning. Search snippets help choose an article but do not support its adaptation.',
+        'For authored, the learner has chosen original teaching material. Write a short article suited to their interests and level.',
+        'Publish the complete reading text with LearningArticle. Paragraph explanations and the essay question belong to separate requests.',
+    ].join('\n'),
+    'reading-notes': 'Prepare concise teaching notes for action.paragraphIds in reading order, using the complete saved article in training. The learner can already read and write. Submit this batch with LearningReadingNotes.',
+    'reading-essay': 'Use the complete saved article in training to propose a meaningful writing question with LearningEssayTask. The learner’s own interpretation and reasons are the substance of the exercise.',
     talk: conversation,
     explain: conversation,
     companion: [
@@ -107,5 +116,7 @@ export function buildLearningSystemPrompt(name: string, action: LearningAction):
     'Use the injected facts first and read more when needed. A tool error calls for correction or an honest explanation, not a claim of success.',
     'Reply segments become visible after their response and associated tools finish. When offered, LearningHelp describes the assistance declaration needed before each reply.',
     'Tool activity shows safe execution progress; private tool data is not the learner’s reading surface. The workbench presents published questions, feedback and materials.',
-    'Finish with a reply addressed to the learner and no more tool calls, or silence for a companion opportunity. Describe supported outcomes; the app reports storage and payment status separately.',
+    isLearningPreparation(action)
+        ? 'This preparation request ends when its content tool succeeds. If unable to prepare it, describe the obstacle; the app reports saving separately.'
+        : 'Finish with a reply addressed to the learner and no more tool calls, or silence for a companion opportunity. Describe supported outcomes; the app reports storage and payment status separately.',
 ].join('\n'); }

@@ -76,7 +76,6 @@ test('reading-writing units keep one explained article, one summary per paragrap
     const second = { ...article, id: 'm2' };
     for (const [change, bad] of [
         ['two articles', { materials: [article, second] }],
-        ['missing explanation', { explanations: explanations.slice(0, 1) }],
         ['reordered explanations', { explanations: [...explanations].reverse() }],
         ['missing summary', { exercises: [writing('s1', 'p1'), writing('e1')] }],
         ['two essays', { exercises: [writing('s1', 'p1'), writing('s2', 'p2'), writing('e1'), writing('e2')] }],

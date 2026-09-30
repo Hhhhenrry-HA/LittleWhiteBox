@@ -1,5 +1,6 @@
 import type { LearningData, LearningLanguage, LearningUnit } from './types.js';
 import { exposeLearningContent, sameLearningExerciseContent } from './exposure.js';
+import { mergeLearningSupplement } from './preparation.js';
 
 type Exposure = { language: string; unit: LearningUnit; kind: 'answers' | 'hints' | 'transcripts'; id: string };
 const same = (left: unknown, right: unknown) => JSON.stringify(left) === JSON.stringify(right);
@@ -12,6 +13,7 @@ const same = (left: unknown, right: unknown) => JSON.stringify(left) === JSON.st
 export function mergeLearningExposure(baseline: LearningData, current: LearningData, candidate: LearningData): LearningData | null {
     const explained = structuredClone(baseline);
     const added: Exposure[] = [];
+    const supplements: { language: string; before: LearningUnit; prepared: LearningUnit }[] = [];
     for (const profile of current.profiles) {
         const before = explained.profiles.find(entry => entry.language === profile.language);
         if (!before) { return null; }
@@ -19,6 +21,13 @@ export function mergeLearningExposure(baseline: LearningData, current: LearningD
             const live = profile[slot];
             const old = before[slot];
             if (!live || !old || live.id !== old.id) { continue; }
+            if (slot === 'unit' && old.kind === 'reading-writing') {
+                const supplement = { ...structuredClone(old), explanations: live.explanations, exercises: live.exercises };
+                const merged = mergeLearningSupplement(old, old, supplement);
+                if (!merged) { return null; }
+                supplements.push({ language: profile.language, before: structuredClone(old), prepared: supplement });
+                old.explanations = merged.explanations; old.exercises = merged.exercises;
+            }
             for (const kind of ['answers', 'hints'] as const) {
                 for (const id of live.revealed[kind]) {
                     if (old.revealed[kind].includes(id)) { continue; }
@@ -38,6 +47,13 @@ export function mergeLearningExposure(baseline: LearningData, current: LearningD
     }
     if (!same(explained, current)) { return null; }
     const merged = structuredClone(candidate);
+    for (const entry of supplements) {
+        const profile = merged.profiles.find(profile => profile.language === entry.language);
+        if (!profile?.unit || profile.unit.id !== entry.before.id) { continue; }
+        const unit = mergeLearningSupplement(entry.before, profile.unit, entry.prepared);
+        if (!unit) { return null; }
+        profile.unit = unit;
+    }
     for (const exposure of added) {
         const profile = merged.profiles.find(entry => entry.language === exposure.language);
         if (!profile) { continue; }

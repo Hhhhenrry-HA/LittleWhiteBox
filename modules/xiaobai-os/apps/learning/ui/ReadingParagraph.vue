@@ -6,6 +6,8 @@ import { useLearningUnitSession } from './learning-session.js';
 import { LEARNING_SELECTION_LIMIT, type LearningSelection } from '../../../domains/learning/notes.js';
 import { LEARNING_SELECTION_COPY as copy } from './reading-selection.js';
 import LearningSelectionActions from './LearningSelectionActions.vue';
+import { LEARNING_PREPARATION_COPY as preparationCopy } from '../application/preparation-copy.js';
+import { LEARNING_SUMMARY_PROMPT } from '../../../domains/learning/preparation.js';
 
 type Unit = NonNullable<LearningClientState['unit']>;
 const props = defineProps<{
@@ -46,8 +48,9 @@ function selectParagraph() {
                 </li>
             </ul>
         </details>
+        <p v-else class="learning-muted learning-knowledge-pending">{{ state.preparation?.running ? preparationCopy.notes : preparationCopy.missingNotes }}</p>
         <LearningWriteBox
-            v-if="summary" :state="state" :unit="unit" :exercise="summary" :disabled="disabled" label="用你的话概括这一段" placeholder="写下这段的大意，不必逐句翻译"
+            v-if="summary" :state="state" :unit="unit" :exercise="summary" :disabled="disabled" :label="LEARNING_SUMMARY_PROMPT" placeholder="写下这段的大意，不必逐句翻译"
             @action="(name, input) => emit('action', name, input)"
         />
     </section>

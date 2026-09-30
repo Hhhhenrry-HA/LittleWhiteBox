@@ -9,6 +9,7 @@ import LearningCompanionControl from './LearningCompanionControl.vue';
 import { useLearningTextSelection } from './reading-selection.js';
 import type { LearningSelection } from '../../../domains/learning/notes.js';
 import { LEARNING_FLOW_COPY as flow } from './learning-copy.js';
+import { LEARNING_PREPARATION_COPY as preparationCopy } from '../application/preparation-copy.js';
 
 type Unit = NonNullable<LearningClientState['unit']>;
 const props = defineProps<{ state: LearningClientState; unit: Unit; disabled: boolean; pending: boolean }>();
@@ -84,12 +85,17 @@ function locate(exerciseId: string) {
                 <p class="learning-essay-prompt">{{ essay.prompt }}</p>
                 <LearningWriteBox :state="state" :unit="unit" :exercise="essay" :disabled="disabled" :label="copy.essayLabel" :placeholder="copy.essayPlaceholder" tone="essay" @action="action" />
             </section>
+            <section v-else class="learning-essay">
+                <h2>{{ copy.essay }}</h2>
+                <p class="learning-muted">{{ state.preparation?.running ? preparationCopy.essay : preparationCopy.missingEssay }}</p>
+            </section>
             <ol class="learning-steps" :aria-label="copy.progress">
                 <li v-for="([id, label], index) in steps" :key="id" :class="{ 'is-done': index < stepIndex, 'is-current': index === stepIndex }" :aria-current="index === stepIndex ? 'step' : undefined">{{ label }}</li>
             </ol>
             <div v-if="stage === 'writing'" class="learning-stage-bar is-writing">
                 <span>{{ copy.written }} {{ unit.stage.exercises.length - missing.length }} / {{ unit.stage.exercises.length }}</span>
-                <button type="button" @click="locate(missing[0])">{{ copy.next }}</button>
+                <button v-if="missing.length" type="button" @click="locate(missing[0])">{{ copy.next }}</button>
+                <span v-else class="learning-muted">{{ unit.preparation.essay ? preparationCopy.missingNotes : preparationCopy.missingEssay }}</span>
             </div>
             <div v-else-if="stage === 'grading'" class="learning-stage-bar">
                 <template v-if="state.pending?.purpose === 'grade'"><span class="learning-working-dot" aria-hidden="true" /><span>{{ flow.grading }}</span><button type="button" :disabled="pending" @click="emit('action', 'cancel')">{{ flow.stop }}</button></template>

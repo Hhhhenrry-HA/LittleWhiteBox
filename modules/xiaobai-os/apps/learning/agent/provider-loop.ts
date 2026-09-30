@@ -31,6 +31,8 @@ export async function runLearningProviderLoop(options: {
     onResponseComplete?: (message: LearningMessage) => boolean;
     onMessages?: () => void;
     allowSilence?: boolean;
+    /** A bounded preparation task ends on its accepted content, without a closing model round. */
+    completeOnTool?: (name: string, result: unknown) => boolean;
 }): Promise<LearningLoopResult> {
     const { signal, guard } = options;
     let agent = options.agent;
@@ -47,6 +49,7 @@ export async function runLearningProviderLoop(options: {
     let reminderSent = false;
     let pendingReminder = '';
     const finalReminder = 'The tool results are available. Reply to the learner with the outcome or the obstacle that needs their input.';
+    const stepComplete = { ok: false, message: 'This preparation step already has its content. Remaining calls were not executed.' };
     const cancelled = () => signal.aborted || !guard();
     let open = true;
     const stream = createStreamingMessageController({ state, minRenderIntervalMs: 80,
@@ -172,6 +175,7 @@ export async function runLearningProviderLoop(options: {
                     return { status: 'finished', messages: protocolMessages(), removedTurns };
                 }
                 responses = [];
+                let completed = false;
                 for (const call of calls) {
                     if (cancelled()) { return { status: 'cancelled' }; }
                     advance({ stage: 'tools', round, tool: call.name });
@@ -180,7 +184,7 @@ export async function runLearningProviderLoop(options: {
                     let args: unknown = null;
                     try { args = JSON.parse(call.arguments); } catch { /* The owning tool records an invalid proposal. */ }
                     let value: unknown;
-                    try { value = tools.has(call.name) ? await options.executeTool(call.name, args)
+                    try { value = completed ? stepComplete : tools.has(call.name) ? await options.executeTool(call.name, args)
                         : { ok: false, message: 'Choose a tool from the supplied definitions.', tools: [...tools] }; }
                     catch (error) {
                         if (cancelled()) { return { status: 'cancelled' }; }
@@ -193,9 +197,11 @@ export async function runLearningProviderLoop(options: {
                     stream.scheduleStreamRender();
                     responses.push({ id: call.id, name: call.name, response: value,
                         ...(Object.hasOwn(call, 'providerId') ? { providerId: call.providerId } : {}) });
+                    completed ||= options.completeOnTool?.(call.name, value) ?? false;
                 }
                 options.onResponseComplete?.(assistant!);
                 stream.scheduleStreamRender();
+                if (completed) { return { status: 'finished', messages: protocolMessages(), removedTurns }; }
                 const signature = JSON.stringify(calls.map((call, index) => ({ name: call.name, arguments: call.arguments, response: responses![index].response })));
                 repeated = signature === previousResult ? repeated + 1 : 1;
                 previousResult = signature;

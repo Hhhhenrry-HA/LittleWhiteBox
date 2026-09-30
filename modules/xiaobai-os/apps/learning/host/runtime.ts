@@ -27,6 +27,10 @@ import { sameLearningDocument } from '../storage/document.js';
 import type { LearningClientState } from '../types.js';
 import type { LearningTtsFacade } from './media-adapter.js';
 import type { LearningRewardPolicy } from '../reward-partition.js';
+import { isTavilyConfigured } from '../../../../agent-core/tavily-search.js';
+import { learningPreparation, LEARNING_READING_BATCH } from '../../../domains/learning/preparation.js';
+import { learningPreparationTool } from '../agent/preparation-tools.js';
+import { LEARNING_PREPARATION_COPY as prepCopy } from '../application/preparation-copy.js';
 
 export function createLearningRuntime(deps: {
     repository: LearningRepository; store: PartitionStore<LearningTeacherPreference>; files: XiaobaiOsFileControls;
@@ -41,6 +45,9 @@ export function createLearningRuntime(deps: {
     let language = 'en';
     let epoch = 0;
     let job: object | null = null;
+    let preparationJob: object | null = null;
+    let preparation: LearningClientState['preparation'] = null;
+    let sourceChoice: { input: Record<string, unknown>; unitId: string | null } | null = null;
     let chatJob: object | null = null;
     let chatKind = '';
     let chatProgress = '';
@@ -56,6 +63,8 @@ export function createLearningRuntime(deps: {
     let recordId = '';
     let offset = 0;
     const repository = deps.repository;
+    const preparationConcurrentActions = new Set(['submit', 'bookmark', 'say', 'play', 'save-note', 'delete-note']);
+    const canWork = (name: string) => !job && (!preparationJob || preparation?.phase !== 'article' && preparationConcurrentActions.has(name));
     const service = createLearningService(repository);
     const teacher = createLearningTeacherService(deps.store, { knownPeople: deps.people, playerName: deps.playerName });
     const rewards = createLearningRewards({ repository: deps.repository, store: deps.rewardStore, files: deps.rewardFiles, economy: deps.economy });
@@ -67,11 +76,14 @@ export function createLearningRuntime(deps: {
     }
     const teaching = createLearningTeaching({ repository, gateway: deps.agent, current, capture: deps.capture,
         onConversation: publish,
-        canDelegate: () => !job,
+        canDelegate: canWork,
         onProgress: (next, action) => {
-            const text = learningProgressMessage(next);
-            if (isLearningConversation(action)) { chatProgress = text; }
-            else { progress = text; }
+            // Preparation has its named process card; it must not replace a parallel user's status.
+            if (!learningPreparationTool(action)) {
+                const text = learningProgressMessage(next);
+                if (isLearningConversation(action)) { chatProgress = text; }
+                else { progress = text; }
+            }
             publish();
         } });
     const practice = createLearningPractice({ repository, teaching, current });
@@ -92,17 +104,19 @@ export function createLearningRuntime(deps: {
         return { ...view,
             chatIdentity, language, teacher: saved?.value?.teacher ?? null,
             candidates: teacher.candidates().map(person => ({ name: person.name, aliases: person.aliases })),
-            storage: loadFailed ? 'unloaded' : snapshot.status, chatStorage: deps.files.getFileState(), walletStorage: deps.rewardFiles.getFileState(), busy: !!job,
+            storage: loadFailed ? 'unloaded' : snapshot.status, chatStorage: deps.files.getFileState(), walletStorage: deps.rewardFiles.getFileState(), busy: !!job || !!preparationJob && preparation?.phase === 'article',
+            sourceChoice: !!sourceChoice, preparation,
             chatBusy: !!chatJob && chatKind !== 'companion', companionBusy: !!chatJob && chatKind === 'companion', chatMessage: chatProgress,
             message: job ? progress : message, reply, pending, remark, conversation: teaching.conversation(),
             walletOpen: deps.economy.isOpen(), media: speech.media.snapshot(), voices: speech.media.capabilities() };
     }
     function publish() { if (active()) { activation!.post('learning/state', { state: state() }); } }
     /** No learner job is running; a companion remark does not count, it gives way. */
-    function idle() { return !job && (!chatJob || chatKind === 'companion'); }
+    function idle() { return !job && !preparationJob && (!chatJob || chatKind === 'companion'); }
     function cancel() {
         epoch++; teaching.cancel(); speech.stop(); job = null; progress = ''; pending = null;
         chatJob = null; chatKind = ''; chatProgress = '';
+        preparationJob = null; preparation = null; sourceChoice = null;
         reply = null; replySelection = null; remark = null;
     }
     function cancelConversation() {
@@ -201,6 +215,79 @@ export function createLearningRuntime(deps: {
         requireLearning(classroom && profile?.unit && (profile.unit.scope.kind === 'public' || profile.unit.scope.osId === classroom.osId), 'unit', 'Select an available lesson');
         return profile.unit;
     }
+    function stopPreparation() {
+        teaching.cancel('preparation'); preparationJob = null;
+        if (preparation) { preparation = { ...preparation, running: false, message: prepCopy.stopped }; }
+    }
+    function startPreparation(article?: { source: 'web' | 'authored'; replaceCurrent: boolean; message: string }) {
+        if (preparationJob) { return; }
+        const token = {};
+        const owned = epoch;
+        const guard = () => active() && epoch === owned && preparationJob === token;
+        preparationJob = token;
+        sourceChoice = null;
+        preparation = { phase: article ? 'article' : 'notes', running: true, message: '' };
+        void deps.execution.run(async () => {
+            try {
+                if (article) {
+                    const result = await teaching.run({ action: { kind: 'reading-article', source: article.source, replaceCurrent: article.replaceCurrent }, message: article.message });
+                    if (!guard()) { return; }
+                    if (result.status !== 'finished') {
+                        preparation!.message = result.status === 'failed' ? result.message : prepCopy.stopped; return;
+                    }
+                    if (!result.appliedTools.includes('LearningArticle')) { preparation!.message = result.text || prepCopy.incomplete; return; }
+                }
+                const unitId = unit().id;
+                let notesFailure = '';
+                while (guard()) {
+                    const target = slot(unitId);
+                    const missing = learningPreparation(target);
+                    if (missing.ready) { preparation = null; return; }
+                    if (notesFailure && missing.essay) { preparation = { phase: 'notes', running: false, unitId, message: notesFailure }; return; }
+                    const phase = !notesFailure && missing.missing.length ? 'notes' : 'essay';
+                    preparation = { phase, running: true, unitId, message: '' }; publish();
+                    const task: LearningAction = phase === 'notes'
+                        ? { kind: 'reading-notes', unitId, paragraphIds: missing.missing.slice(0, LEARNING_READING_BATCH) }
+                        : { kind: 'reading-essay', unitId };
+                    const result = await teaching.run({ action: task, message: phase === 'notes' ? prepCopy.notesRequest : prepCopy.essayRequest });
+                    if (!guard()) { return; }
+                    if (result.status !== 'finished') {
+                        if (phase === 'notes' && result.status === 'failed' && repository.snapshot().status === 'ready') { notesFailure = result.message; continue; }
+                        preparation.message = result.status === 'failed' ? result.message : prepCopy.stopped; return;
+                    }
+                    if (!result.appliedTools.includes(learningPreparationTool(task)!)) {
+                        if (phase === 'notes') { notesFailure = result.text || prepCopy.incomplete; continue; }
+                        preparation.message = result.text || prepCopy.incomplete; return;
+                    }
+                    publish();
+                }
+            } catch (error) {
+                if (guard() && preparation) { preparation.message = reportLearningFailure('prepare', error instanceof LearningStorageError ? error.code : 'learning_action_failed', { stage: 'action', cause: error }); }
+            } finally {
+                if (preparationJob === token) {
+                    preparationJob = null;
+                    if (preparation) { preparation = { ...preparation, running: false }; }
+                    publish();
+                }
+            }
+        });
+        publish();
+    }
+    async function prepareReading(input: Record<string, unknown>, guard: () => boolean, source: 'web' | 'authored' = 'web') {
+        const profile = profileNow();
+        const replaceCurrent = input.replaceCurrent === true;
+        if (profile?.unit && !replaceCurrent) {
+            const target = unit();
+            if (target.kind === 'reading-writing' && !learningPreparation(target).ready) { startPreparation(); }
+            return;
+        }
+        if (source === 'web') {
+            const config = await deps.agent.loadConfig();
+            if (!guard()) { return; }
+            if (!isTavilyConfigured(config)) { sourceChoice = { input: structuredClone(input), unitId: profile?.unit?.id ?? null }; return; }
+        }
+        if (guard()) { startPreparation({ source, replaceCurrent, message: learningText(input.message, 'message', 4000) }); }
+    }
     function selection(value: unknown) {
         const lesson = unit();
         const selected = parseLearningSelection(value, lesson.materials);
@@ -233,6 +320,15 @@ export function createLearningRuntime(deps: {
         }
         requireLearning(!loadFailed, 'storage', 'Read the learning file first');
         confirmedLearning(repository);
+        if (name === 'choose-original') {
+            requireLearning(sourceChoice, 'source', 'Choose an article source first');
+            requireLearning((profileNow()?.unit?.id ?? null) === sourceChoice.unitId, 'unitId', 'The current article changed; choose again');
+            await prepareReading(sourceChoice.input, guard, 'authored'); return;
+        }
+        if (name === 'resume-preparation') {
+            requireLearning(unit().id === input.unitId && unit().kind === 'reading-writing', 'unitId', 'Continue the current reading article');
+            startPreparation(); return;
+        }
         if (name === 'teacher') {
             const before = await deps.store.read();
             const selected = input.teacher as LearningTeacherPreference['teacher'];
@@ -255,6 +351,9 @@ export function createLearningRuntime(deps: {
             // A completed unit is put aside by the next one without asking again.
             const finished = !!profile?.unit && profile.completions.some(entry => entry.unitId === profile.unit!.id);
             reply = null;
+            if (input.kind !== 'lesson') {
+                await prepareReading({ ...input, replaceCurrent: name === 'replace-lesson' || input.replaceCurrent === true || finished }, guard); return;
+            }
             await afterTeaching(await teaching.run({ action: { kind: 'prepare', replaceCurrent: name === 'replace-lesson' || input.replaceCurrent === true || finished,
                 ...(input.kind ? { unit: input.kind as 'reading-writing' | 'lesson' } : {}) },
                 message: learningText(input.message, 'message', 4000) }), guard, 'prepare'); return;
@@ -352,7 +451,7 @@ export function createLearningRuntime(deps: {
         if (name === 'talk' || name === 'explain' || name === 'companion') { return launchConversation(name, input); }
         yieldRemark();
         if (!active()) { return; }
-        if (job) { return 'busy' as const; }
+        if (!canWork(name)) { return 'busy' as const; }
         const owned = epoch;
         const token = {};
         const guard = () => active() && epoch === owned && job === token;
@@ -428,8 +527,8 @@ export function createLearningRuntime(deps: {
                         reply = { text: result.text, action: name, ...(exerciseId ? { exerciseId } : {}) }; replySelection = selected;
                     }
                     if (result.status === 'finished' && result.delegation) {
-                        if (!job) { launch(result.delegation.action, result.delegation.input, result.delegation.action === 'submit' ? answerBasis : undefined); }
-                        else { chatProgress = '当前训练操作尚未完成，这次委托没有执行。完成后可重新发起。'; }
+                        const rejected = launch(result.delegation.action, result.delegation.input, result.delegation.action === 'submit' ? answerBasis : undefined);
+                        if (rejected) { chatProgress = '当前训练操作尚未完成，这次委托没有执行。完成后可重新发起。'; }
                     }
                 }
             } catch (error) {
@@ -479,9 +578,13 @@ export function createLearningRuntime(deps: {
             else if (name === 'rate' && idle()) { speech.media.setRate(Number(input.value)); }
             else if (name === 'seek' && idle()) { speech.media.seek(Number(input.value)); }
             else if (name === 'tts-settings') { speech.media.openSettings(); }
+            else if (name === 'research-settings') { activation!.post('os/navigate', { appId: 'agent-api' }); }
+            else if (name === 'dismiss-source') { sourceChoice = null; }
+            else if (name === 'cancel-preparation') { stopPreparation(); }
             else if (name === 'cancel-chat') { cancelConversation(); publish(); }
             else if (name === 'cancel-companion') { yieldRemark(); publish(); }
             else if (name === 'cancel') {
+                stopPreparation();
                 teaching.cancel('work'); speech.stop(); job = null; progress = ''; pending = null;
                 message = '已停止训练操作；如果保存已经开始，仍需检查是否成功。'; publish();
             }

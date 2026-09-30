@@ -21,6 +21,7 @@ import { learningMessageView, type LearningDialogueView } from './message-view.j
 import { createLearningPublication } from './publication.js';
 import { isLearningConversation } from '../agent/access.js';
 import type { LearningDelegation } from './delegation.js';
+import { learningPreparationTool } from '../agent/preparation-tools.js';
 
 export interface LearningClassroom {
     language: string; osId: string; chatIdentity: string;
@@ -42,9 +43,9 @@ export function createLearningTeaching(options: {
     createId?: () => string; now?: () => string;
     onProgress?: (progress: LearningProgress, action: LearningAction) => void;
     onConversation?: () => void;
-    canDelegate?: () => boolean;
+    canDelegate?: (action: LearningDelegation['action']) => boolean;
 }) {
-    type Lane = 'work' | 'conversation';
+    type Lane = 'work' | 'conversation' | 'preparation';
     const active = new Map<Lane, { controller: AbortController; turn: LearningTurn | null }>();
     let dialogueKey = '';
     let turns: LearningTurn[] = [];
@@ -103,7 +104,8 @@ export function createLearningTeaching(options: {
         },
         async run(input: TeachingRequest): Promise<LearningTeachingResult> {
             const conversation = isLearningConversation(input.action);
-            const lane = conversation ? 'conversation' : 'work';
+            const preparationTool = learningPreparationTool(input.action);
+            const lane = conversation ? 'conversation' : preparationTool ? 'preparation' : 'work';
             if (active.has(lane)) { return { status: 'busy' }; }
             const classroom = structuredClone(options.current());
             if (!classroom?.chatIdentity || !classroom.osId) { return { status: 'cancelled' }; }
@@ -138,11 +140,11 @@ export function createLearningTeaching(options: {
                 if (request.action.kind === 'summary-review') { summaryReviews.set(request.action.attemptId, visible); }
                 // A companion remark saves nothing and has no help to declare; it is shown as soon as it arrives.
                 const remark = request.action.kind === 'companion';
-                publication = createLearningPublication(visible.messages, { declared: () => remark || (draft?.helpDeclared() ?? false),
-                    helpIsPublished: () => remark || (draft?.helpIsPublished() ?? false), current: guard });
+                publication = createLearningPublication(visible.messages, { declared: () => remark || !!preparationTool || (draft?.helpDeclared() ?? false),
+                    helpIsPublished: () => remark || !!preparationTool || (draft?.helpIsPublished() ?? false), current: guard });
                 controller.signal.addEventListener('abort', publication.discard, { once: true });
                 running.turn = visible;
-                const history = turns.filter(turn => turn.status !== 'running');
+                const history = preparationTool ? [] : turns.filter(turn => turn.status !== 'running');
                 let compactedCount = 0;
                 let summaryAtStart = historySummary;
                 turns.push(visible); options.onConversation?.();
@@ -157,6 +159,7 @@ export function createLearningTeaching(options: {
                 const agent = await options.gateway.openSession(config);
                 if (!guard()) { return { status: 'cancelled' }; }
                 if (conversation) { baseline = confirmedLearning(options.repository); }
+                if (preparationTool && input.action.kind !== 'reading-article') { baseline = confirmedLearning(options.repository); }
                 if (!sameLearningDocument(baseline, confirmedLearning(options.repository))) {
                     settle(visible, 'conflict', '学习记录已变化，本次请求未继续。请重新加载后再试。');
                     return { status: 'conflict' };
@@ -195,10 +198,11 @@ export function createLearningTeaching(options: {
                         compactedCount += count;
                     },
                     // Research is for choosing lesson material; stage purposes work on the saved unit.
-                    tools: [...learningTools(request.action), learningBackgroundTool,
-                        ...(research.available && request.action.kind === 'prepare' ? learningResearchTools() : [])],
+                    tools: [...learningTools(request.action), ...(preparationTool ? [] : [learningBackgroundTool]),
+                        ...(research.available && (request.action.kind === 'prepare' || request.action.kind === 'reading-article' && request.action.source === 'web') ? learningResearchTools() : [])],
                     signal: controller.signal, guard, onProgress: advance,
                     allowSilence: remark,
+                    completeOnTool: preparationTool ? (name, result) => name === preparationTool && (result as { ok?: boolean }).ok === true : undefined,
                     onResponseStart: publication.begin, onResponseComplete: publication.complete,
                     transcript: visible.messages, onMessages: options.onConversation,
                     executeTool: async (name, args) => {
@@ -206,7 +210,7 @@ export function createLearningTeaching(options: {
                         if (name === 'LearningContextRead') { return background.execute(args); }
                         const result = session.executeTool(name, args);
                         const mutation = result as { ok?: boolean; changed?: boolean };
-                        if (name === 'LearningLessonEdit' && mutation.ok && mutation.changed) {
+                        if ((name === 'LearningLessonEdit' || name === preparationTool) && mutation.ok && mutation.changed) {
                             publication!.discard();
                         }
                         if (name === 'LearningHelp' && mutation.ok) { await saveHelp(); }

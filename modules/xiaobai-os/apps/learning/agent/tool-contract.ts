@@ -1,6 +1,7 @@
 import { LEARNING_ANNOTATION_CATEGORIES, LEARNING_LIMITS as L, LEARNING_SKILLS } from '../../../domains/learning/types.js';
 import type { LearningAction } from './session.js';
 import { LEARNING_DELEGATED_ACTIONS } from '../application/delegation.js';
+import { learningPreparationTools, learningPreparationTool } from './preparation-tools.js';
 
 const text = (maxLength: number, description: string) => ({ type: 'string', maxLength, description });
 const nullableText = (maxLength: number, description: string) => ({ anyOf: [text(maxLength, description), { type: 'null' }], description: 'Omit to keep; null clears.' });
@@ -116,12 +117,12 @@ const tools = [
         description: [
             'Create or incrementally adapt the current unit when the learner requests concrete practice or materials, agrees to a proposed activity, or is continuing that activity. Discussing their level, goals or possible approaches does not by itself call for a lesson.',
             'kind is chosen when a unit is created and stays with it. lesson is focused practice that you wrap up with LearningComplete.',
-            'reading-writing is one article read paragraph by paragraph, prepared in one call: exactly one material; explanations covering every paragraph in order; one open-writing summary exercise per paragraph, each naming its paragraphId; and exactly one open-writing essay without paragraphId.',
+            'reading-writing is one article read paragraph by paragraph. The app supplies a summary exercise for each paragraph. Explanations and the final essay may be added after the article is published.',
             'Each paragraph explanation covers useful vocabulary, reusable writing phrases and structures, grammar and coherence at this learner’s level. The final essay asks for a viewpoint, reflection or reasoned response grounded in the article, around 300 words (characters for Chinese or Japanese); state the unit in its prompt.',
             'review asks exactly one question per due item listed in the request, each naming its itemId. The app sets a review’s reward from its item count.',
             'Paragraph IDs are p1, p2, … following the blank-line-separated paragraphs of the material text.',
             'Create only what the current activity needs. A short explanation or conversational example can stay in your reply without becoming saved reading material.',
-            'A first unit needs title, goal, tier (except review) and at least one complete exercise; materials may be empty for a lesson or review. After that, omitted fields and unmentioned materials/exercises stay unchanged.',
+            'A first unit needs title, goal, tier (except review) and at least one complete exercise; reading-writing receives its summary exercises from the app. Materials may be empty for a lesson or review. After that, omitted fields and unmentioned materials/exercises stay unchanged.',
             'Each supplied material or exercise is a complete upsert. Use its saved ID as key to update it, or a new local key to add it. Local keys remain usable through this teacher turn; later turns use the IDs returned by LearningRead.',
             'Answered exercises, played listening exercises and materials supporting learner evidence keep their original content. Add a corrected or easier alternative with a new key. Unused content can be removed by ID; every remaining exercise must retain its required materials.',
             'Use newLesson:true to begin another lesson after the previous completion has been saved in an earlier turn. For an unfinished lesson, LearningPresent with kind:replacement requests learner confirmation; a prepare action with replaceCurrent:true then authorizes a fresh lesson. Otherwise adapt the current lesson; published rewards and objectives attached to saved answers stay fixed.',
@@ -203,11 +204,12 @@ const tools = [
     } },
 ];
 
-const ALL_TOOLS = tools.map(tool => tool.function.name);
+const ALL_TOOLS = [...tools, ...learningPreparationTools].map(tool => tool.function.name);
 
 /** The same allowlist is used in the provider request and at execution. */
 export function learningToolNamesFor(action?: LearningAction): string[] {
     switch (action?.kind) {
+    case 'reading-article': case 'reading-notes': case 'reading-essay': return [learningPreparationTool(action)!];
     case undefined: return [...ALL_TOOLS];
     case 'prepare': return ['LearningRead', 'LearningLessonEdit', 'LearningHelp', 'LearningPresent'];
     case 'review-prepare': return ['LearningRead', 'LearningLessonEdit', 'LearningHelp'];
@@ -225,5 +227,5 @@ export function learningToolNamesFor(action?: LearningAction): string[] {
 
 export function learningTools(action?: LearningAction) {
     const names = learningToolNamesFor(action);
-    return structuredClone(tools.filter(tool => names.includes(tool.function.name)));
+    return structuredClone([...tools, ...learningPreparationTools].filter(tool => names.includes(tool.function.name)));
 }

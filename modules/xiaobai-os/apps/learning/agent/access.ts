@@ -1,6 +1,10 @@
 import type { LearningAction } from './session.js';
 import type { LearningLanguage } from '../../../domains/learning/types.js';
 
+export function isLearningPreparation(action: Pick<LearningAction, 'kind'>) {
+    return action.kind === 'reading-article' || action.kind === 'reading-notes' || action.kind === 'reading-essay';
+}
+
 /** Conversation has its own run; only a requested workbench action can change training facts. */
 export function isLearningConversation(action: Pick<LearningAction, 'kind'>) {
     return action.kind === 'talk' || action.kind === 'explain' || action.kind === 'companion';
