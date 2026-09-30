@@ -62,6 +62,29 @@ async function harness(handler, { session = false, search = false, beforeWrite }
         reopen: () => createLearningRepository(files).read() };
 }
 
+test('paragraph feedback stays bound to its saved answer across chat, later submissions and rewrites', async () => {
+    const material = { key: 'article', title: 'Trees', kind: 'authored', text: 'Trees cool streets.\n\nTrees need care.' };
+    const reading = { ...lesson([material]), kind: 'reading-writing',
+        explanations: ['p1', 'p2'].map(paragraphId => ({ materialKey: 'article', paragraphId, explanation: 'Main idea.', terms: [] })),
+        exercises: ['p1', 'p2', null].map((paragraphId, index) => ({ ...lesson().exercises[0], key: `q${index}`, ...(paragraphId ? { paragraphId } : {}) })) };
+    const h = await harness((_request, index) => index === 1 ? { toolCalls: [call('LearningLessonEdit', reading)] } : { text: `response-${index}` });
+    await h.teaching.run({ action, message: 'Prepare.' });
+    const unit = h.read().unit;
+    const practice = createLearningPractice({ repository: h.repository, teaching: h.teaching, current: h.current, createId: h.createId, now: h.now });
+    const submit = (exerciseId, text) => practice.submit({ unitId: unit.id, exerciseId, answer: { kind: 'text', text }, replays: 0, slowPlayback: false });
+    const first = await submit(unit.exercises[0].id, 'Shade cools the road.');
+    assert.equal(first.status, 'saved');
+    const feedback = () => h.teaching.conversation().summaryReviews;
+    assert.deepEqual(feedback(), [{ attemptId: first.attemptId, text: first.teaching.text }]);
+    await h.teaching.run({ action: { kind: 'talk' }, message: 'A question.' });
+    const second = await submit(unit.exercises[1].id, 'Trees need water.');
+    assert.deepEqual(feedback(), [{ attemptId: first.attemptId, text: first.teaching.text }, { attemptId: second.attemptId, text: second.teaching.text }]);
+    const rewritten = await submit(unit.exercises[0].id, 'A tree gives shade.');
+    assert.deepEqual(feedback().map(entry => entry.attemptId), [second.attemptId, rewritten.attemptId]);
+    await createLearningService(h.repository).abandonUnit('en', () => true);
+    assert.deepEqual(feedback(), []);
+});
+
 for (const responseLost of [false, true]) {
     test(`stopping an already-sent save never resurrects unpublished teaching (response lost: ${responseLost})`, async () => {
         let release; let started; let block = false;
@@ -156,7 +179,7 @@ for (const outcome of ['confirmed', 'unconfirmed', 'failed', 'cancelled']) {
             return { text: '试试用自己的话表达。' };
         });
         if (outcome === 'unconfirmed') { h.interruptSave(); }
-        const result = await h.teaching.run({ action: { kind: 'talk' }, message: '开始学习。' });
+        const result = await h.teaching.run({ action, message: '开始学习。' });
         assert.equal(result.status, outcome === 'confirmed' ? 'finished' : outcome);
         const turns = h.teaching.conversation().turns;
         if (outcome === 'confirmed') {
@@ -180,32 +203,28 @@ for (const outcome of ['confirmed', 'unconfirmed', 'failed', 'cancelled']) {
     });
 }
 
-test('a conversational answer can await feedback; provider failure leaves the previous lesson intact', async () => {
-    let phase = 'prepare'; let step = 0; let original;
+test('a conversational submission delegates only after a complete reply; provider failure leaves the lesson intact', async () => {
+    let phase = 'prepare'; let step = 0;
     const h = await harness(request => {
         if (phase === 'prepare') { return ++step === 1 ? { toolCalls: [call('LearningLessonEdit', lesson())] } : { text: 'Summarise the main point.' }; }
-        if (++step === 1) { return { toolCalls: [call('LearningAnswer', { exerciseId: h.read().unit.exercises[0].id })] }; }
+        if (++step === 1) { return { toolCalls: [call('LearningRequest', { action: 'submit', exerciseId: h.read().unit.exercises[0].id, instruction: 'Submit this:' })] }; }
         if (phase === 'failed') { throw Object.assign(new Error('fixture'), { status: 401 }); }
-        if (phase === 'missing') { return { text: '答对了。' }; }
-        if (step === 2) {
-            const id = results(request).find(entry => entry.name === 'LearningAnswer').response.ids[0];
-            return { toolCalls: [call('LearningAssess', { attemptId: id, verdict: 'partial', understanding: '意思清楚', expression: '动词需要调整', guidance: '试试 trees cool…' })] };
-        }
-        return { text: '意思清楚，接着调整这个动词。' };
+        return { text: '我会提交你的原答。' };
     });
-    await h.teaching.run({ action, message: '开始' }); original = structuredClone(h.read().unit);
-    const input = { action: { kind: 'talk' }, message: 'Trees makes streets cool.' };
+    await h.teaching.run({ action, message: '开始' });
+    const original = structuredClone(h.read().unit);
+    const input = { action: { kind: 'talk' }, message: 'Submit this: Trees makes streets cool.' };
     phase = 'failed'; step = 0;
-    assert.equal((await h.teaching.run(input)).status, 'failed');
+    const failed = await h.teaching.run(input);
+    assert.equal(failed.status, 'failed');
+    assert.equal(failed.delegation, undefined);
     assert.deepEqual(h.read().unit, original);
-    phase = 'missing'; step = 0;
-    assert.equal((await h.teaching.run(input)).status, 'finished');
-    assert.equal(h.read().unit.attempts.length, 1);
-    assert.equal(h.read().unit.assessments.length, 0);
     phase = 'success'; step = 0;
-    assert.equal((await h.teaching.run(input)).status, 'finished');
-    assert.equal(h.read().unit.attempts.length, 2);
-    assert.equal(h.read().unit.attempts[0].answer.text, input.message);
+    const finished = await h.teaching.run(input);
+    assert.equal(finished.status, 'finished');
+    assert.equal(finished.delegation.action, 'submit');
+    assert.equal(finished.delegation.input.answer.text, input.message);
+    assert.deepEqual(h.read().unit, original);
     assert.equal(h.teaching.conversation().turns.at(-1).user, input.message);
 });
 
@@ -492,7 +511,7 @@ test('a substantive tool turn can exceed 32000 serialized characters and eight r
     h.teaching.cancel();
     assert.equal(h.teaching.conversation().turns.length, 1);
     phase = 'talk'; round = 0;
-    assert.equal((await h.teaching.run({ action: { kind: 'talk' }, message: '有点难，给我一个简单的铺垫。' })).status, 'finished');
+    assert.equal((await h.teaching.run({ action, message: '有点难，给我一个简单的铺垫。' })).status, 'finished');
     assert.equal(h.read().unit.id, previous.id);
     assert.deepEqual(h.read().unit.materials, previous.materials);
     assert.equal(h.read().unit.exercises.length, 2);
@@ -532,9 +551,9 @@ test('extracted source identities and complete long paragraphs survive into a fo
         }
         return { text: '用这一段开始。' };
     }, { search: true });
-    assert.equal((await h.teaching.run({ action: { kind: 'talk' }, message: '先找一篇文章看看。' })).status, 'finished');
+    assert.equal((await h.teaching.run({ action, message: '先找一篇文章看看。' })).status, 'finished');
     phase = 'lesson'; step = 0;
-    assert.equal((await h.teaching.run({ action: { kind: 'talk' }, message: '就用刚才那篇的短段落出题。' })).status, 'finished');
+    assert.equal((await h.teaching.run({ action, message: '就用刚才那篇的短段落出题。' })).status, 'finished');
     assert.equal(network, 2);
     assert.equal(h.read().unit.materials[0].paragraphs[0].text, 'Trees cool streets.');
 });

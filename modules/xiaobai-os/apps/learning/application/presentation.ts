@@ -9,14 +9,16 @@ export interface LearningActivityPresentation {
     id: string;
     title: string;
 }
-export type LearningPresentation = LearningActivityPresentation | { unitId: string; kind: 'replacement'; id: string; title: string; message: string };
+export type LearningPresentation = LearningActivityPresentation | {
+    unitId: string; kind: 'replacement'; id: string; title: string; message: string; unitKind?: 'reading-writing' | 'lesson';
+};
 
-export function learningPresentation(unit: LearningUnit | null, args: unknown, learnerMessage = ''): LearningPresentation {
+export function learningPresentation(unit: LearningUnit | null, args: unknown, learnerMessage = '', unitKind?: 'reading-writing' | 'lesson'): LearningPresentation {
     const input = learningRecord(args, 'LearningPresent', ['kind', 'id']);
     const kind = learningEnum(input.kind, 'kind', ['material', 'exercise', 'replacement']);
     if (kind === 'replacement') {
         requireLearning(unit && learnerMessage.trim(), 'unit', 'Choose a current lesson to put aside');
-        return { unitId: unit.id, kind, id: unit.id, title: '换一课', message: learnerMessage };
+        return { unitId: unit.id, kind, id: unit.id, title: '换一课', message: learnerMessage, ...(unitKind ? { unitKind } : {}) };
     }
     const id = learningId(input.id, 'id');
     const item = kind === 'exercise' ? unit?.exercises.find(entry => entry.id === id) : unit?.materials.find(entry => entry.id === id);

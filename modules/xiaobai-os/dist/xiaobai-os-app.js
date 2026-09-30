@@ -1,7 +1,7 @@
 /* eslint-disable */
-import { $ as Q, E as pe, F as y, H as be, I as ye, L as ke, M as ue, O as fe, Q as D, R as ve, U as xe, W as te, X as le, Y as k, _ as S, b as Y, et as ne, f as Ae, g as G, h as W, j as _e, l as ae, m as c, n as Oe, p as ie, q as ce, r as Se, t as Ee, tt as N, u as de, x as V, y as he, z as Pe } from "./xiaobai-os-runtime-dom.esm-bundler-DuiaxqDz.js";
+import { $ as D, E as pe, F as y, H as be, I as ye, L as ke, M as ue, O as fe, R as ve, U as xe, W as te, X as le, Y as k, _ as S, b as Y, et as J, f as Ae, g as G, h as W, j as _e, l as ae, m as c, n as Oe, nt as N, p as ie, q as ce, r as Se, t as Ee, tt as ne, u as de, x as V, y as he, z as Pe } from "./xiaobai-os-runtime-dom.esm-bundler-DgjJUtuO.js";
 import { t as Re } from "./xiaobai-os-descriptor-DmDuv1pM.js";
-import { t as Ie } from "./xiaobai-os-app-navigation-CKmHuh0u.js";
+import { t as Ie } from "./xiaobai-os-app-navigation-DS43A6sJ.js";
 import { t as me } from "./xiaobai-os-assets-BT5gX6Sf.js";
 import { n as Le, t as re } from "./xiaobai-os-frame-bridge-5XxFerhp.js";
 var se = [
@@ -153,19 +153,19 @@ function Ze(t) {
   });
 }
 var Ne = Object.freeze({
-  administrator: () => import("./xiaobai-os-AdministratorApp-XCk-nQId.js"),
-  dice: () => import("./xiaobai-os-DiceApp-DvDzqfhk.js"),
-  "agent-api": () => import("./xiaobai-os-AgentApiApp-DQqlXkZc.js"),
-  "fourth-wall": () => import("./xiaobai-os-FourthWallApp-BMZja7qm.js"),
-  wallet: () => import("./xiaobai-os-WalletApp-C4Pk7UXA.js"),
-  shop: () => import("./xiaobai-os-ShopApp-CI2ockjI.js"),
-  bank: () => import("./xiaobai-os-BankApp-N29vt14g.js"),
-  game: () => import("./xiaobai-os-GameApp-BFoaCzXe.js"),
-  map: () => import("./xiaobai-os-MapApp-Dz4cIAjd.js"),
-  messages: () => import("./xiaobai-os-MessagesApp-byeH9swH.js"),
-  tasks: () => import("./xiaobai-os-TasksApp-BZvY-w7Q.js"),
-  world: () => import("./xiaobai-os-WorldApp-BkSYg6zS.js"),
-  learning: () => import("./xiaobai-os-LearningApp-DtIAs-Mc.js")
+  administrator: () => import("./xiaobai-os-AdministratorApp-DiN_Z6zH.js"),
+  dice: () => import("./xiaobai-os-DiceApp-BGSJfHKO.js"),
+  "agent-api": () => import("./xiaobai-os-AgentApiApp-2hdPSQ0-.js"),
+  "fourth-wall": () => import("./xiaobai-os-FourthWallApp-CGZ8PWHk.js"),
+  wallet: () => import("./xiaobai-os-WalletApp-snfY2EuR.js"),
+  shop: () => import("./xiaobai-os-ShopApp-oFIKiw2h.js"),
+  bank: () => import("./xiaobai-os-BankApp-BqlM9b4b.js"),
+  game: () => import("./xiaobai-os-GameApp-rAPPFXtC.js"),
+  map: () => import("./xiaobai-os-MapApp-BXKssdjw.js"),
+  messages: () => import("./xiaobai-os-MessagesApp-CO22CVed.js"),
+  tasks: () => import("./xiaobai-os-TasksApp-ChLA_z_r.js"),
+  world: () => import("./xiaobai-os-WorldApp-B0rm2Taa.js"),
+  learning: () => import("./xiaobai-os-LearningApp-BRO0Y-j2.js")
 }), ge = Object.freeze(qe.map((t) => {
   const i = Ne[t.id];
   if (!i) throw new Error(`missing_shell_app:${t.id}`);
@@ -239,14 +239,14 @@ var Ke = /* @__PURE__ */ V({
     const e = i;
     return _e((l) => (e("failed", l), !1)), (l, w) => ve(l.$slots, "default");
   }
-}), Qe = We;
-function Je(t) {
+}), Je = We;
+function Qe(t) {
   if (!Array.isArray(t)) return [];
   const i = new Set(se);
   return [...new Set(t.filter((e) => typeof e == "string" && i.has(e)))];
 }
 function we(t) {
-  return [.../* @__PURE__ */ new Set([...Je(t), ...se])];
+  return [.../* @__PURE__ */ new Set([...Qe(t), ...se])];
 }
 function oe(t, i) {
   const e = new Map(t.map((l) => [l.id, l]));
@@ -465,8 +465,8 @@ var at = {
       }[o.key];
       if (Z === void 0) return;
       o.preventDefault();
-      const j = r.value.indexOf(u), J = Math.max(0, Math.min(r.value.length - 1, j + Z));
-      J !== j && (F(u, J), A.value = u, C(u), O([...r.value]));
+      const j = r.value.indexOf(u), Q = Math.max(0, Math.min(r.value.length - 1, j + Z));
+      Q !== j && (F(u, Q), A.value = u, C(u), O([...r.value]));
     }
     function T(o) {
       o.key === " " && o.target instanceof Element && o.target.closest("[data-app-id]") && o.preventDefault();
@@ -476,7 +476,7 @@ var at = {
     }), (o, g) => (y(), S("main", {
       ref_key: "root",
       ref: E,
-      class: Q(["xiaobai-os-home", { "is-editing": p.value }]),
+      class: J(["xiaobai-os-home", { "is-editing": p.value }]),
       onPointerdown: g[1] || (g[1] = (...u) => D(P) && D(P)(...u)),
       onKeydown: L,
       onKeyup: T,
@@ -522,7 +522,7 @@ var at = {
         default: te(() => [(y(!0), S(de, null, ke(z.value, (u) => (y(), S("button", {
           key: u.id,
           type: "button",
-          class: Q(["xiaobai-os-app-tile", { "is-lifted": D(b)?.id === u.id }]),
+          class: J(["xiaobai-os-app-tile", { "is-lifted": D(b)?.id === u.id }]),
           "data-app-id": u.id,
           "aria-label": u.name,
           "aria-keyshortcuts": p.value ? "ArrowUp ArrowDown ArrowLeft ArrowRight Space" : "F2 Space",
@@ -570,7 +570,7 @@ var at = {
   ],
   setup(t) {
     return (i, e) => (y(), S("nav", {
-      class: Q(["xiaobai-os-navigation", { "is-home": t.isHome }]),
+      class: J(["xiaobai-os-navigation", { "is-home": t.isHome }]),
       "aria-label": "系统导航"
     }, [
       c("button", {
@@ -610,7 +610,7 @@ var at = {
   props: { isHome: { type: Boolean } },
   setup(t) {
     return (i, e) => (y(), S("header", {
-      class: Q(["xiaobai-os-system-bar", { "is-home": t.isHome }]),
+      class: J(["xiaobai-os-system-bar", { "is-home": t.isHome }]),
       "aria-label": "系统栏"
     }, [c("span", _t, [c("img", {
       src: D(me),
@@ -699,7 +699,7 @@ var at = {
           ref: E,
           owner: `${t.activeApp.id}:${t.appRenderKey}`
         }, {
-          default: te(() => [Y(Qe, { onFailed: r[3] || (r[3] = (m) => p.$emit("renderFailed", m)) }, {
+          default: te(() => [Y(Je, { onFailed: r[3] || (r[3] = (m) => p.$emit("renderFailed", m)) }, {
             default: te(() => [(y(), W(Pe(t.activeComponent), {
               bridge: t.bridge,
               "initial-state": t.activeState
@@ -886,7 +886,7 @@ var at = {
     function j() {
       O += 1, b = null, i.post("os/close"), i.clearAppSession();
     }
-    function J(a) {
+    function Q(a) {
       if (a.key === "Escape") {
         a.preventDefault(), d.value ? Z() : l.value?.back() || j();
         return;
@@ -904,12 +904,12 @@ var at = {
     }), (a, h) => (y(), S("main", {
       ref_key: "root",
       ref: e,
-      class: Q(["xiaobai-os-shell", `theme-${E.value}`]),
+      class: J(["xiaobai-os-shell", `theme-${E.value}`]),
       role: "dialog",
       "aria-modal": "true",
       "aria-label": "小白 OS",
       tabindex: "-1",
-      onKeydown: J,
+      onKeydown: Q,
       onClick: ae(j, ["self"])
     }, [C.value ? (y(), S("div", Bt, N(C.value), 1)) : G("", !0), w.value ? (y(), W($t, {
       key: 2,

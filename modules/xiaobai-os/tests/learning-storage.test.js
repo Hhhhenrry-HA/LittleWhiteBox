@@ -6,9 +6,9 @@ import { createLearningRepository } from '../apps/learning/storage/repository.js
 import { LEARNING_FILENAME, parseLearningDocument } from '../apps/learning/storage/document.js';
 
 const profile = (language = 'en', description = '读懂英文报道') => ({
-    language, explanationLanguage: 'zh-CN', selfAssessment: '不确定',
+    language, explanationLanguage: 'zh-CN', selfAssessment: '不确定', level: null, interests: null,
     goal: { description, exam: null, targetLevel: null, targetDate: null },
-    unit: null, items: [], completions: [],
+    unit: null, review: null, items: [], completions: [],
 });
 const data = (...profiles) => ({ profiles });
 
@@ -68,7 +68,7 @@ test('invalid files and failed reads are not converted into empty writable profi
 });
 
 test('stored documents validate facts, not prompt budgets, and reject unsupported data', () => {
-    const document = { schemaVersion: 1, revision: 1, commitId: 'one', data: data(profile()) };
+    const document = { schemaVersion: 2, revision: 1, commitId: 'one', data: data(profile()) };
     document.data.profiles[0].goal.description = '<>&'.repeat(250);
     assert.deepEqual(parseLearningDocument(document), document);
     for (const bad of [
@@ -194,4 +194,72 @@ test('slow learning uploads wait for the actual ACK without a timed retry or rea
     release(new Response('{}'));
     assert.equal((await saving).status, 'confirmed');
     assert.equal(state.requests.length, 2);
+});
+
+// A v1 file as the first release wrote it: one lesson unit, several skill books and a paid completion.
+const v1Evidence = {
+    unitId: 'old-unit', scope: { kind: 'public' },
+    exercise: { id: 'q1', skill: 'grammar', materialIds: [], prompt: 'Correct the verb.', response: { kind: 'text' }, rule: { kind: 'semantic' }, hint: '' },
+    materials: [],
+    attempt: { id: 'a1', exerciseId: 'q1', answer: { kind: 'text', text: 'He went home.' }, submittedAt: '2026-08-01T08:00:00.000Z',
+        help: { answer: false, hint: false, feedback: false, transcript: false, replays: 0, slowPlayback: false }, scope: { kind: 'public' } },
+    assessment: { attemptId: 'a1', verdict: 'correct', understanding: '', expression: '', guidance: '正确。', scope: { kind: 'public' } },
+};
+const v1Profile = () => ({
+    language: 'en', explanationLanguage: 'zh-CN', selfAssessment: '初学', goal: { description: '读新闻', exam: null, targetLevel: 'B2', targetDate: null },
+    unit: { id: 'old-unit', title: '旧课' },
+    items: [
+        { id: 'g1', label: 'past simple', scope: { kind: 'public' }, skill: 'grammar', evidence: [v1Evidence] },
+        { id: 'r1', label: 'main idea', scope: { kind: 'public' }, skill: 'reading', evidence: [] },
+        { id: 'v1', label: 'shade', scope: { kind: 'public' }, skill: 'vocabulary', evidence: [] },
+    ],
+    completions: [{ unitId: 'older', completedAt: '2026-08-01T08:00:00.000Z' }],
+});
+const v1Document = () => ({ schemaVersion: 1, revision: 3, commitId: 'v1-commit', data: { profiles: [v1Profile()] } });
+
+test('a v1 file upgrades once: settings and grammar/vocabulary books stay, each due at the upgrade time', () => {
+    const upgradedAt = '2026-09-30T08:00:00.000Z';
+    const document = parseLearningDocument(v1Document(), () => upgradedAt);
+    assert.equal(document.schemaVersion, 2);
+    assert.equal(document.revision, 3);
+    const [profile] = document.data.profiles;
+    assert.deepEqual([profile.selfAssessment, profile.goal.targetLevel, profile.level, profile.interests], ['初学', 'B2', null, null]);
+    assert.deepEqual([profile.unit, profile.review, profile.completions], [null, null, []]);
+    assert.deepEqual(profile.items.map(item => item.id), ['g1', 'v1']);
+    assert.deepEqual(profile.items[0].evidence, [v1Evidence]);
+    for (const item of profile.items) {
+        assert.deepEqual(item.schedule, { ef: 2.5, repetitions: 0, intervalDays: 0, dueAt: upgradedAt, lastAttemptId: null, lastQuality: null });
+    }
+    assert.deepEqual(parseLearningDocument(document), document);
+    assert.throws(() => parseLearningDocument({ ...v1Document(), schemaVersion: 3 }));
+    assert.throws(() => parseLearningDocument({ ...v1Document(), data: { profiles: [{ ...v1Profile(), mood: 'x' }] } }), /mood/);
+    // A v2 file is not upgraded: missing v2 fields are an error, not a silent default.
+    assert.throws(() => parseLearningDocument({ ...v1Document(), schemaVersion: 2 }));
+});
+
+test('rereading a v1 file gives the same document, and the next save writes v2', async () => {
+    const { state } = harness();
+    state.file = v1Document();
+    let tick = 0;
+    const files = createSillyTavernUserJsonFilePort({ fetch: async (url, options) => {
+        if (options.method === 'POST') {
+            state.file = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(JSON.parse(options.body).data), char => char.charCodeAt(0))));
+            state.uploads.push(state.file);
+            return new Response('{}');
+        }
+        return new Response(JSON.stringify(state.file));
+    } });
+    const repository = createLearningRepository(files, { createId: () => 'commit-v2', now: () => new Date(Date.UTC(2026, 8, 30, 8, tick++)).toISOString() });
+    const first = (await repository.read()).document;
+    assert.equal(first.data.profiles[0].items[0].schedule.dueAt, '2026-09-30T08:00:00.000Z');
+    const again = await repository.refresh();
+    assert.equal(again.status, 'ready');
+    assert.deepEqual(again.document, first);
+    assert.equal(state.uploads.length, 0);
+    const data = structuredClone(first.data);
+    data.profiles[0].interests = '城市';
+    assert.equal((await repository.save(first, data, () => true)).status, 'confirmed');
+    assert.equal(state.file.schemaVersion, 2);
+    assert.equal(state.file.revision, 4);
+    assert.equal(state.file.data.profiles[0].interests, '城市');
 });

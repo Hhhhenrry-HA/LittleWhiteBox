@@ -8,12 +8,61 @@ import { runLearningProviderLoop } from '../apps/learning/agent/provider-loop.js
 import { summariseLearningHistory, LEARNING_SUMMARY_TRIGGER_TOKENS } from '../apps/learning/agent/history-compaction.js';
 import { readLearning } from '../apps/learning/agent/data-projection.js';
 import { createClassroomFixture } from './fixtures/learning-classroom.js';
+import { createLearningTeaching } from '../apps/learning/application/teaching.js';
 
 const readRequest = message => JSON.parse(message.content.split('<learning_request>\n').at(-1).split('\n</learning_request>')[0]);
 const overflow = () => Object.assign(new Error('maximum context length exceeded'), { status: 400, code: 'context_length_exceeded' });
 const turn = (name, content = name.repeat(300)) => ({ user: name, teacher: content, status: 'finished', message: '',
     messages: [{ role: 'user', content: name }, { role: 'assistant', content }] });
 const bigHistory = () => [turn('earlier', 'Detailed classroom exchange. '.repeat(LEARNING_SUMMARY_TRIGGER_TOKENS / 5)), turn('recent-a'), turn('recent-b')];
+
+test('concurrent work and chat compaction preserve both live turns and adopt the shared prefix only once', async t => {
+    const h = await createClassroomFixture(); t.after(h.dispose); await h.openLesson();
+    const held = [];
+    const overflowed = new Set();
+    let mode = 'seed';
+    let summariesReady;
+    const ready = new Promise(resolve => { summariesReady = resolve; });
+    const teaching = createLearningTeaching({ repository: h.repository,
+        current: () => ({ language: 'en', osId: h.profile().unit.originOsId, chatIdentity: 'concurrent-fixture', teacher: { name: 'Lin', note: '' } }),
+        capture: async () => ({ teacherDetails: '', snapshot: { characters: [], player: { displayName: 'Learner', persona: '' },
+            storyEvents: '', recentMessages: [], worldInfo: { before: '', after: '', depth: [] } } }),
+        gateway: { loadConfig: async () => ({}), openSession: async () => ({ providerConfig: {}, supportsSessionToolLoop: false,
+            run: declaredTeacher(async request => {
+                if (!request.tools.length) {
+                    const source = JSON.parse(request.messages[0].content);
+                    if (mode === 'probe') { assert.equal(source.summary, 'Adopted memory.'); return { text: 'Updated memory.' }; }
+                    return new Promise(resolve => { held.push({ source, resolve }); if (held.length === 2) { summariesReady(); } });
+                }
+                const input = readRequest(request.messages.findLast(message => message.role === 'user' && message.content.includes('<learning_request>')));
+                const key = `${mode}:${input.action.kind}`;
+                if (mode !== 'seed' && !overflowed.has(key)) { overflowed.add(key); throw overflow(); }
+                return { text: 'A complete published response. '.repeat(30) };
+            }),
+        }) },
+    });
+    t.after(() => { for (const entry of held) { entry.resolve({ text: 'Stopped test.' }); } teaching.reset(); });
+    for (let index = 0; index < 3; index++) {
+        assert.equal((await teaching.run({ action: { kind: 'talk' }, message: `seed-${index}` })).status, 'finished');
+    }
+    mode = 'concurrent';
+    const work = teaching.run({ action: { kind: 'prepare' }, message: 'work' });
+    const chat = teaching.run({ action: { kind: 'talk' }, message: 'chat' });
+    await ready;
+    assert.deepEqual(held[0].source, held[1].source);
+    assert.equal(held[0].source.exchanges.length, 1);
+    held[1].resolve({ text: 'Adopted memory.' });
+    // Wait for the winning run's published finish before releasing the stale summary.
+    assert.equal((await Promise.race([work, chat])).status, 'finished');
+    held[0].resolve({ text: 'Stale memory.' });
+    assert.deepEqual((await Promise.all([work, chat])).map(result => result.status), ['finished', 'finished']);
+    const history = teaching.conversation();
+    assert.equal(history.removedTurns, 1);
+    assert.deepEqual(history.turns.map(entry => entry.user), ['seed-1', 'seed-2', 'work', 'chat']);
+    assert.ok(history.turns.every(entry => entry.status === 'finished'));
+    mode = 'probe';
+    assert.equal((await teaching.run({ action: { kind: 'talk' }, message: 'probe' })).status, 'finished');
+});
 
 test('summary input contains published exchanges, never discarded teaching or private tool results', async () => {
     const history = turn('question', 'Published answer.');
@@ -89,8 +138,8 @@ test('identity/core settings form a stable prefix, while one latest user message
     const first = buildLearningContext(input);
     assert.deepEqual(first.prefix.map(message => message.role), ['system']);
     assert.deepEqual(first.messages.map(message => message.role), ['user']);
-    assert.ok(buildLearningSystemPrompt('林老师').includes('【林老师】'));
-    assert.notEqual(buildLearningSystemPrompt('林老师'), buildLearningSystemPrompt('小王'));
+    assert.notEqual(buildLearningSystemPrompt('林老师', input.action), buildLearningSystemPrompt('小王', input.action));
+    assert.notEqual(buildLearningSystemPrompt('林老师', input.action), buildLearningSystemPrompt('林老师', { kind: 'companion' }));
     const reference = JSON.parse(first.prefix[0].content.split('<teacher_reference>\n')[1].split('\n</teacher_reference>')[0]);
     assert.equal(reference.characters[0].description, context.snapshot.characters[0].description);
     assert.ok(first.messages[0].content.startsWith(`[学生本轮发言]\n${input.message}`));

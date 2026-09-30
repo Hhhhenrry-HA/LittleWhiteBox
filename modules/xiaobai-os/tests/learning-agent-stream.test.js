@@ -36,7 +36,7 @@ for (const toolMode of ['native', 'tagged-json']) {
             h.flags.teacherResponse = (request, round) => round === 1
                 ? { toolCalls: [call('LearningProfileEdit', { goal: { description: '正常结束才保存' } }), call('LearningHelp', { exerciseIds: [], materialIds: [] })] }
                 : adapter.chat(request);
-            await h.command('talk', { message: '修改目标。' });
+            await h.command('profile', { message: '修改目标。' });
             const turn = h.state().conversation.turns.at(-1);
             assert.equal(requests, 1);
             assert.equal(turn.status, ending === 'stop' ? 'finished' : 'failed');
@@ -66,7 +66,7 @@ for (const completeArguments of [false, true]) {
             return { toolCalls: [search] };
         };
         const waiting = nextState(h, state => state.conversation.turns.at(-1)?.messages.some(entry => entry.streaming && entry.toolCalls?.some(tool => tool.name === 'LearningSearch')));
-        const running = h.command('talk', { message: '找一点练习材料。' });
+        const running = h.command('prepare', { message: '找一点练习材料。' });
         assert.ok(!JSON.stringify((await waiting).conversation).includes(secret));
         await h.command('cancel'); gate.resolve(); await running;
         assert.ok(!JSON.stringify(h.state().conversation).includes(secret));
@@ -88,7 +88,7 @@ for (const restore of [false, true]) {
             update('A completely different listening passage.'),
             ...(restore ? [update(material.paragraphs.map(entry => entry.text).join('\n\n'))] : []),
         ] } : { text: '可以继续练习。' });
-        await h.command('talk', { message: '调整这段听力。' });
+        await h.command('prepare', { message: '调整这段听力。' });
         assert.equal(h.state().conversation.turns.at(-1).status, 'finished');
         assert.equal(h.profile().unit.materials[0].transcriptRevealed, restore);
         h.flags.teacherResponse = declaredTeacher(() => ({ text: '收到。' }));
@@ -110,16 +110,15 @@ function nextState(h, predicate) {
 
 // Protect the user-visible stream at the real host/iframe boundary, not just a callback's existence.
 test('completed response batches stay visible while later text and saving are pending', async t => {
-    const h = await createClassroomFixture(); t.after(h.dispose); await h.openLesson();
     const first = deferred(); const last = deferred();
-    t.after(() => { first.resolve(); last.resolve(); });
+    const h = await createClassroomFixture(); t.after(() => { first.resolve(); last.resolve(); return h.dispose(); }); await h.openLesson();
     h.flags.userFailure = true;
     h.flags.teacherResponse = async (request, round) => {
         if (round === 1) { return { toolCalls: [call('LearningHelp', { exerciseIds: [], materialIds: [] })] }; }
         if (round === 2) {
             request.onStreamProgress({ text: '先看一下你的学习目标。' });
             await first.promise;
-            return { text: '先看一下你的学习目标。', toolCalls: [call('LearningLessonEdit', { tier: 'invalid' }),
+            return { text: '先看一下你的学习目标。', toolCalls: [{ ...call('LearningProfileEdit', { goal: { invalid: true } }), id: 'invalid-profile' },
                 call('LearningProfileEdit', { goal: { description: '练习新闻阅读' } })] };
         }
         request.onStreamProgress({ text: '可以，从一则短新闻开始。' });
@@ -128,7 +127,7 @@ test('completed response batches stay visible while later text and saving are pe
     };
     const pending = nextState(h, state => state.conversation.turns.at(-1)?.messages.at(-1)?.streaming
         && state.conversation.turns.at(-1)?.messages.some(entry => entry.toolName === 'LearningHelp'));
-    const running = h.command('talk', { message: '想换个学习目标。' });
+    const running = h.command('profile', { message: '想换个学习目标。' });
     assert.ok(!JSON.stringify((await pending).conversation).includes('先看一下你的学习目标。'));
     const tools = nextState(h, state => state.conversation.turns.at(-1)?.messages.at(-1)?.streaming
         && state.conversation.turns.at(-1)?.messages.some(entry => entry.content === '先看一下你的学习目标。'));
@@ -159,8 +158,8 @@ test('completed response batches stay visible while later text and saving are pe
 for (const mode of ['cancel', 'failure']) {
     test(`completed text survives ${mode}; unfinished text and late callbacks remain private`, async t => {
         t.mock.method(console, 'error', () => {});
-        const h = await createClassroomFixture(); t.after(h.dispose); await h.openLesson();
-        const gate = deferred(); t.after(gate.resolve);
+        const gate = deferred();
+        const h = await createClassroomFixture(); t.after(() => { gate.resolve(); return h.dispose(); }); await h.openLesson();
         let late;
         h.flags.teacherResponse = async (request, round) => {
             if (round === 1) { return { toolCalls: [call('LearningHelp', { exerciseIds: [], materialIds: [] })] }; }
@@ -175,7 +174,7 @@ for (const mode of ['cancel', 'failure']) {
             && state.conversation.turns.at(-1)?.messages.some(entry => entry.content === '已经收到你的问题。'));
         const running = h.command('talk', { message: '帮我看看。' });
         await streamed;
-        if (mode === 'cancel') { await h.command('cancel'); }
+        if (mode === 'cancel') { await h.command('cancel-chat'); }
         gate.resolve(); await running;
         const index = h.state().conversation.turns.length - 1;
         const interrupted = h.state().conversation.turns[index];
@@ -240,7 +239,7 @@ for (const finishReason of ['length', 'max_tokens', 'max_output_tokens', 'MAX_TO
 
 for (const ending of ['incomplete', 'failed', 'eof', 'completed']) {
 test(`real Responses SDK ${ending} respects the classroom commit boundary`, async t => {
-    t.mock.method(console, 'error', () => {});
+    const logs = t.mock.method(console, 'error', () => {});
     const h = await createClassroomFixture(); t.after(h.dispose); await h.openLesson();
     const before = structuredClone(h.profile());
     const adapter = new OpenAIResponsesAdapter({ apiKey: 'test-key', baseUrl: 'https://api.openai.com/v1', model: 'gpt-5.6' });
@@ -271,11 +270,13 @@ test(`real Responses SDK ${ending} respects the classroom commit boundary`, asyn
         fetch: async () => { requests++; return new Response(wire, { headers: { 'content-type': 'text/event-stream' } }); } });
     h.flags.teacherResponse = (request, round) => round === 1
         ? { toolCalls: [call('LearningProfileEdit', { goal: { description: '不应保存的修改' } }), call('LearningHelp', { exerciseIds: [], materialIds: [] })] } : adapter.chat(request);
-    await h.command('talk', { message: '调整目标' });
+    await h.command('profile', { message: '调整目标' });
     const turn = h.state().conversation.turns.at(-1);
     assert.equal(turn.status, ending === 'completed' ? 'finished' : 'failed');
-    if (ending === 'incomplete') { assert.match(turn.message, /learning_response_truncated/); }
-    if (ending === 'failed' || ending === 'eof') { assert.match(turn.message, /provider-failed/); }
+    if (ending !== 'completed') {
+        assert.ok(turn.message);
+        assert.equal(logs.mock.calls.at(-1).arguments[1].reason, ending === 'incomplete' ? 'learning_response_truncated' : 'provider-failed');
+    }
     assert.equal(turn.messages.at(-1).content, ending === 'completed' ? '回复还没写完' : '');
     assert.equal(requests, 1, 'Termination failures must not retry');
     if (ending === 'completed') { assert.equal(h.profile().goal.description, '不应保存的修改'); }
@@ -317,9 +318,9 @@ for (const interruption of ['abort', 'obsolete', 'failure']) {
 for (const ending of ['finished', 'cancelled', 'failed']) {
     test(`classroom reasoning stays private during streaming and after ${ending}`, async t => {
         t.mock.method(console, 'error', () => {});
-        const h = await createClassroomFixture({ listening: true }); t.after(h.dispose); await h.openLesson();
+        const gate = deferred();
+        const h = await createClassroomFixture({ listening: true }); t.after(() => { gate.resolve(); return h.dispose(); }); await h.openLesson();
         const before = structuredClone(h.profile());
-        const gate = deferred(); t.after(gate.resolve);
         const secret = '正确答案是 a。' + before.unit.materials[0].paragraphs.map(p => p.text).join('\n');
         h.flags.teacherResponse = declaredTeacher(async request => {
             request.onStreamProgress({ thoughts: [{ label: '推理', text: secret }] });
@@ -337,7 +338,7 @@ for (const ending of ['finished', 'cancelled', 'failed']) {
             assert.ok(!JSON.stringify(state.conversation).includes(secret));
         };
         assertPrivate(await streamed);
-        if (ending === 'cancelled') { await h.command('cancel'); }
+        if (ending === 'cancelled') { await h.command('cancel-chat'); }
         gate.resolve(); await running;
         assertPrivate(h.state());
         assert.equal(h.state().conversation.turns.at(-1).status, ending);
@@ -350,8 +351,8 @@ for (const ending of ['finished', 'cancelled', 'failed']) {
 }
 
 test('tool argument drafts are visible before execution and match the resulting tool message', async t => {
-    const h = await createClassroomFixture(); t.after(h.dispose); await h.openLesson();
-    const gate = deferred(); t.after(gate.resolve);
+    const gate = deferred();
+    const h = await createClassroomFixture(); t.after(() => { gate.resolve(); return h.dispose(); }); await h.openLesson();
     h.flags.teacherResponse = declaredTeacher(async (request, round) => {
         if (round > 1) { return { text: '目标更新好了。' }; }
         request.onStreamProgress({ toolCalls: [call('LearningProfileEdit', { goal: { description: '新闻阅读' } })], toolCallDraft: true });
@@ -359,7 +360,7 @@ test('tool argument drafts are visible before execution and match the resulting 
         return { toolCalls: [call('LearningProfileEdit', { goal: { description: '新闻阅读' } })] };
     });
     const streamed = nextState(h, state => state.conversation.turns.at(-1)?.messages.some(entry => entry.streaming && entry.toolCalls?.length));
-    const running = h.command('talk', { message: '帮我调整目标。' });
+    const running = h.command('profile', { message: '帮我调整目标。' });
     const draft = (await streamed).conversation.turns.at(-1).messages.find(entry => entry.toolCalls?.length).toolCalls[0];
     assert.equal(draft.name, 'LearningProfileEdit');
     assert.deepEqual(JSON.parse(draft.arguments), {});
@@ -379,11 +380,14 @@ test('tool details retain results without revealing exercise keys or hidden list
     h.flags.teacherResponse = declaredTeacher((request, round) => {
         if (round === 1) { return { toolCalls: [call('LearningRead', { section: 'unit' })] }; }
         const result = JSON.parse(request.messages.findLast(entry => entry.role === 'tool').content);
-        assert.deepEqual(result.data.exercises[0].rule, h.profile().unit.exercises[0].rule);
-        assert.deepEqual(result.data.materials[0].paragraphs, h.profile().unit.materials[0].paragraphs);
+        assert.equal(result.data.exercises[0].rule, undefined);
+        assert.equal(result.data.exercises[0].solution, null);
+        assert.deepEqual(result.data.materials[0].paragraphs, []);
         return { text: '资料已经读完。' };
     });
     await h.command('talk', { message: '看看当前进度。' });
+    assert.equal(h.state().conversation.turns.at(-1).status, 'finished');
+    assert.deepEqual(h.failures, []);
     const result = JSON.parse(h.state().conversation.turns.at(-1).messages.find(entry => entry.role === 'tool').content);
     assert.equal(result.data.exercisesCount, 1);
     assert.equal(result.data.materialsCount, 1);
@@ -393,8 +397,8 @@ test('tool details retain results without revealing exercise keys or hidden list
 for (const mode of ['cancel', 'failure']) {
     test(`published help remains recorded after ${mode}, without publishing other draft edits`, async t => {
         t.mock.method(console, 'error', () => {});
-        const h = await createClassroomFixture({ listening: true }); t.after(h.dispose); await h.openLesson();
-        const gate = deferred(); t.after(gate.resolve);
+        const gate = deferred();
+        const h = await createClassroomFixture({ listening: true }); t.after(() => { gate.resolve(); return h.dispose(); }); await h.openLesson();
         const before = structuredClone(h.profile());
         const exercise = before.unit.exercises[0];
         h.flags.teacherResponse = async (request, round) => {
@@ -408,7 +412,7 @@ for (const mode of ['cancel', 'failure']) {
         };
         const streamed = nextState(h, state => state.conversation.turns.at(-1)?.messages.at(-1)?.streaming
             && state.conversation.turns.at(-1)?.messages.some(entry => entry.content === '这句听力原文的意思是…'));
-        const running = h.command('talk', { message: '讲讲这道听力题。' }); await streamed;
+        const running = h.command('profile', { message: '调整目标，同时讲讲这道听力题。' }); await streamed;
         if (mode === 'cancel') { await h.command('cancel'); }
         gate.resolve(); await running;
         assert.deepEqual(h.profile().goal, before.goal);
@@ -448,7 +452,7 @@ test('unconfirmed help blocks further disclosure without saving unrelated edits 
         return { text: secret, toolCalls: [call('LearningProfileEdit', { goal: { description: '未保存的目标' } }),
             call('LearningHelp', { exerciseIds: [before.unit.exercises[0].id], materialIds: [] })] };
     };
-    await h.command('talk', { message: '给我一点提示。' });
+    await h.command('profile', { message: '调整目标，同时给我一点提示。' });
     assert.equal(h.state().storage, 'unconfirmed');
     assert.ok(!JSON.stringify(h.state().conversation).includes(secret));
     assert.deepEqual(h.profile(), before);
@@ -526,7 +530,7 @@ for (const ending of ['cancel', 'failure', 'undeclared']) {
         const waiting = nextState(h, state => state.conversation.turns.at(-1)?.messages.some(entry => entry.streaming));
         const running = h.command('talk', { message: '给一点提示' });
         assert.ok(!JSON.stringify((await waiting).conversation).includes(secret));
-        if (ending === 'cancel') { await h.command('cancel'); }
+        if (ending === 'cancel') { await h.command('cancel-chat'); }
         gate.resolve(); await running;
         assert.ok(!JSON.stringify(h.state().conversation).includes(secret));
         assert.equal(h.state().conversation.turns.at(-1).status, ending === 'cancel' ? 'cancelled' : 'failed');
@@ -640,7 +644,7 @@ test(`a prior empty declaration cannot release a response before its new help is
     const run = h.command('talk', { message: '先看看目标，再讲解这道听力题。' });
     assert.ok(!JSON.stringify((await pending).conversation).includes(secret));
     assert.deepEqual(h.profile().unit.revealed.hints, []);
-    if (ending === 'cancelled') { await h.command('cancel'); }
+    if (ending === 'cancelled') { await h.command('cancel-chat'); }
     gate.resolve(); await run;
     assert.equal(JSON.stringify(h.state().conversation).includes(secret), ending === 'completed');
     assert.equal(h.state().conversation.turns.at(-1).status,
@@ -712,7 +716,7 @@ test('extracted article body stays model-side when that source becomes an unseen
     assert.equal(h.profile().unit.attempts[0].help.transcript, false);
 });
 
-for (const size of ['short', 'recovered', 'over-speech-limit', 'over-note-limit']) {
+for (const size of ['short', 'over-speech-limit', 'over-note-limit']) {
     test(`notes and narration use the complete visible turn (${size})`, async t => {
         t.mock.method(console, 'error', () => {});
         const spoken = [];
@@ -729,17 +733,11 @@ for (const size of ['short', 'recovered', 'over-speech-limit', 'over-note-limit'
             if (round === 1) { return { toolCalls: [call('LearningHelp', { exerciseIds: [exerciseId], materialIds: [] })] }; }
             if (round === 2) {
                 request.onStreamProgress({ text: explanation, thoughts: [{ label: 'private', text: 'Not part of the note.' }] });
-                return { text: explanation, toolCalls: [call('LearningRead', { section: 'unit' }), call('LearningProfileEdit', { selfAssessment: '继续加强阅读。' })] };
+                return { text: explanation, toolCalls: [call('LearningRead', { section: 'unit' })] };
             }
-            if (size === 'recovered') { h.flags.userFailure = true; }
             return { text: closing };
         };
         await h.command('explain', { exerciseId, message: '解释一下这个表达。' });
-        if (size === 'recovered') {
-            assert.equal(h.state().storage, 'unconfirmed');
-            const requests = h.counts.provider; h.flags.userFailure = false;
-            await h.command('retry-save'); assert.equal(h.counts.provider, requests);
-        }
         const full = `${explanation}\n\n${closing}`;
         assert.equal(h.state().reply.text, full);
         assert.equal(h.state().conversation.turns.at(-1).teacher, full);

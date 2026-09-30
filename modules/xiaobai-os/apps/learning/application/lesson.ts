@@ -1,6 +1,7 @@
 import { parseLearningUnit } from '../../../domains/learning/data.js';
 import { learningRecord, learningText } from '../../../domains/learning/profile.js';
-import { LEARNING_LIMITS as L, type LearningScope, type LearningUnit, type RewardTier } from '../../../domains/learning/types.js';
+import { learningReviewTier, selectDueLearningItems } from '../../../domains/learning/schedule.js';
+import { LEARNING_LIMITS as L, type LearningLanguage, type LearningScope, type LearningUnit, type RewardTier } from '../../../domains/learning/types.js';
 import { learningArray, learningEnum, learningId, learningIds, learningInteger, requireLearning, uniqueLearning } from '../../../domains/learning/validation.js';
 import { compileLearningMaterial, type createLearningSourceRegistry } from '../materials/lesson-sources.js';
 
@@ -13,8 +14,12 @@ export function createLearningLessonCompiler(options: {
     const ids = new Map<string, string>();
     const prices = { ...options.prices };
     for (const [tier, price] of Object.entries(prices)) { learningInteger(price, `prices.${tier}`, 1); }
-    return (args: unknown, current: LearningUnit | null = null, published: LearningUnit | null = null): LearningUnit => {
-        const input = learningRecord(args, 'LearningLessonEdit', ['title', 'goal', 'tier', 'materials', 'exercises', 'removeMaterials', 'removeExercises']);
+    /** A review needs the profile and clock that decide which items are due. */
+    return (args: unknown, current: LearningUnit | null = null, published: LearningUnit | null = null,
+        context: { profile: LearningLanguage; now: string } | null = null): LearningUnit => {
+        const input = learningRecord(args, 'LearningLessonEdit', ['kind', 'title', 'goal', 'tier', 'materials', 'exercises', 'removeMaterials', 'removeExercises', 'explanations']);
+        const kind = learningEnum(input.kind ?? current?.kind ?? 'lesson', 'kind', ['reading-writing', 'review', 'lesson']);
+        requireLearning(!current || kind === current.kind, 'kind', 'A unit keeps its kind; start a new unit for another kind of practice');
         const idFor = (kind: 'material' | 'exercise', key: string) => {
             const records = kind === 'material' ? current?.materials : current?.exercises;
             if (records?.some(record => record.id === key)) { return key; }
@@ -48,7 +53,7 @@ export function createLearningLessonCompiler(options: {
         };
         const exercises: unknown[] = structuredClone(current?.exercises ?? []).filter(exercise => !removeExercises.includes(exercise.id));
         const rawExercises = learningArray(input.exercises ?? [], 'exercises', (raw, path) => {
-            const item = learningRecord(raw, path, ['key', 'skill', 'materialKeys', 'prompt', 'response', 'rule', 'hint']);
+            const item = learningRecord(raw, path, ['key', 'skill', 'materialKeys', 'prompt', 'response', 'rule', 'hint', 'paragraphId', 'itemId']);
             return { key: learningId(item.key, `${path}.key`), raw: item };
         });
         uniqueLearning(rawExercises.map(exercise => exercise.key), 'exercises.key');
@@ -61,13 +66,30 @@ export function createLearningLessonCompiler(options: {
                 response = { kind: 'evidence', materialId: materialId(learningId(selection.materialKey, 'response.materialKey')) };
             }
             const exercise = { id, skill: raw.skill, materialIds: learningIds(raw.materialKeys, 'materialKeys').map(materialId),
-                prompt: raw.prompt, response, rule: raw.rule, hint: raw.hint ?? '' };
+                prompt: raw.prompt, response, rule: raw.rule, hint: raw.hint ?? '',
+                ...(raw.paragraphId === undefined ? {} : { paragraphId: raw.paragraphId }), ...(raw.itemId === undefined ? {} : { itemId: raw.itemId }) };
             const index = exercises.findIndex(entry => (entry as { id: string }).id === id);
             if (index >= 0) { exercises[index] = exercise; } else { exercises.push(exercise); }
         }
-        const tier = learningEnum(input.tier ?? current?.reward.tier, 'tier', ['short', 'regular', 'deep']);
+        let reviewTier: RewardTier | undefined;
+        if (kind === 'review') {
+            // The schedule, not the teacher, decides what is reviewed and how large the reward is.
+            requireLearning(context, 'kind', "A review is prepared from the learner's due items");
+            const due = published ? published.exercises.map(exercise => exercise.itemId!) : selectDueLearningItems(context.profile, context.now, options.osId).map(item => item.id);
+            const chosen = exercises.map(exercise => (exercise as { itemId?: unknown }).itemId);
+            requireLearning(due.length > 0 && chosen.length === due.length && due.every(id => chosen.includes(id)), 'exercises', 'Ask exactly one question for each due item');
+            reviewTier = learningReviewTier(due.length);
+        }
+        const tier = reviewTier ?? learningEnum(input.tier ?? current?.reward.tier, 'tier', ['short', 'regular', 'deep']);
         requireLearning(!published || tier === published.reward.tier, 'tier', 'A published lesson keeps its reward; adapt the practice within it');
-        const next = parseLearningUnit({ ...current, id: current?.id ?? unitId,
+        const explanations = input.explanations === undefined ? current?.explanations : learningArray(input.explanations, 'explanations', (raw, path) => {
+            const { materialKey, ...entry } = learningRecord(raw, path, ['materialKey', 'paragraphId', 'explanation', 'terms']);
+            return { materialId: materialId(learningId(materialKey, `${path}.materialKey`)), ...entry };
+        });
+        const writing = kind === 'reading-writing' ? { explanations: explanations ?? [], modelEssay: current?.modelEssay ?? null,
+            revisionSkipped: current?.revisionSkipped ?? false } : {};
+        requireLearning(kind === 'reading-writing' || input.explanations === undefined, 'explanations', 'Only reading-writing units explain paragraphs');
+        const next = parseLearningUnit({ ...current, ...writing, id: current?.id ?? unitId, kind,
             title: learningText(input.title ?? current?.title, 'title', L.name), goal: input.goal ?? current?.goal,
             originOsId: current?.originOsId ?? options.osId, scope: current?.scope ?? options.scope,
             reward: published?.reward ?? { tier, amount: prices[tier] }, materials, exercises,

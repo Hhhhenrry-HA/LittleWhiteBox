@@ -58,10 +58,10 @@ test('profile failures identify their stage, log one bounded diagnostic and neve
             const h = await setup(mode);
             const result = await h.teaching.run({ action: { kind: 'profile' }, message: privateText });
             assert.equal(result.status, 'failed'); assert.equal(result.reason, reason);
-            assert.ok(result.message.includes(reason));
+            assert.ok(result.message);
             assert.equal(logs.mock.calls.length, 1);
             const diagnostic = logs.mock.calls[0].arguments[1];
-            assert.equal(diagnostic.action, 'profile'); assert.equal(diagnostic.stage, stage);
+            assert.equal(diagnostic.action, 'profile'); assert.equal(diagnostic.stage, stage); assert.equal(diagnostic.reason, reason);
             if (tool) { assert.equal(diagnostic.tool, tool); assert.equal(diagnostic.round, 3); }
             if (mode === 'provider') { assert.equal(diagnostic.httpStatus, 400); }
             assert.ok(!JSON.stringify([result, logs.mock.calls.map(call => call.arguments)]).includes(privateText));
@@ -100,7 +100,7 @@ test('corrected proposals and cancellation do not emit terminal failure logs or 
     assert.equal(cancelled.counts().writes, 0); assert.equal(logs.mock.calls.length, 0);
 });
 
-test('classroom publishes real progress, exposes the error code and allows explicit retry with no automatic requests', async t => {
+test('classroom publishes failure feedback, retains the diagnostic code and allows explicit retry with no automatic requests', async t => {
     const logs = t.mock.method(console, 'error', () => {});
     const h = await createClassroomFixture(); t.after(h.dispose);
     await h.command('teacher', { teacher: { name: 'Teacher', note: '' } });
@@ -110,7 +110,8 @@ test('classroom publishes real progress, exposes the error code and allows expli
     h.flags.providerFailure = true;
     const failed = await h.command('profile', { message: '高中基础，希望读懂新闻。' });
     assert.equal(failed.busy, false); assert.equal(failed.profile, null);
-    assert.ok(failed.message.includes('provider-auth')); assert.equal(logs.mock.calls.length, 1);
+    assert.ok(failed.message); assert.equal(logs.mock.calls.length, 1);
+    assert.equal(logs.mock.calls[0].arguments[1].reason, 'provider-auth');
     assert.ok(states.some(state => state.busy));
     assert.equal(states.at(-1).busy, false);
     assert.equal(h.counts.provider, 1);

@@ -1,4 +1,5 @@
 import { parseLearningData } from '../../../domains/learning/data.js';
+import { mergeLearningExposure } from '../../../domains/learning/merge-exposure.js';
 import type { LearningData } from '../../../domains/learning/types.js';
 import type { JsonUserFilePort } from '../../../kernel/contracts.js';
 import { XiaobaiOsStorageError } from '../../../storage/storage-port.js';
@@ -21,8 +22,13 @@ interface PendingWrite {
 /** One instance per host session; closing the OS must not discard an uncertain upload. */
 export function createLearningRepository(files: JsonUserFilePort, options: {
     createId?: () => string;
+    now?: () => string;
 } = {}) {
     const createId = options.createId ?? createLearningId;
+    const now = options.now ?? (() => new Date().toISOString());
+    // A v1 file is upgraded on every read until the first save; one stamp keeps those reads identical, not a false conflict.
+    let upgradedAt: string | undefined;
+    const upgradeClock = () => (upgradedAt ??= now());
     let confirmed: LearningDocument | null | undefined;
     let pending: PendingWrite | null = null;
     let conflict = false;
@@ -39,7 +45,7 @@ export function createLearningRepository(files: JsonUserFilePort, options: {
         try { raw = await files.read(LEARNING_FILENAME); }
         catch { throw new LearningStorageError('learning_read_failed'); }
         if (raw === null) { return null; }
-        try { return parseLearningDocument(raw); }
+        try { return parseLearningDocument(raw, upgradeClock); }
         catch { throw new LearningStorageError('learning_file_invalid'); }
     }
 
@@ -100,15 +106,15 @@ export function createLearningRepository(files: JsonUserFilePort, options: {
             await ensureLoaded();
             const observed = confirmed ?? null;
             if (!isCurrent()) { return { status: 'cancelled' }; }
-            if (baseline?.revision !== observed?.revision || baseline?.commitId !== observed?.commitId) {
-                return { status: 'cancelled' };
-            }
+            const rebased = baseline?.revision !== observed?.revision || baseline?.commitId !== observed?.commitId
+                ? baseline && observed ? mergeLearningExposure(baseline.data, observed.data, next) : null : next;
+            if (!rebased) { return { status: 'cancelled' }; }
             confirmed = observed;
-            if (JSON.stringify(observed?.data ?? { profiles: [] }) === JSON.stringify(next)) {
+            if (JSON.stringify(observed?.data ?? { profiles: [] }) === JSON.stringify(rebased)) {
                 return { status: 'unchanged', document: structuredClone(observed) };
             }
-            const candidate = parseLearningDocument({ schemaVersion: 1, revision: (observed?.revision ?? 0) + 1,
-                commitId: createId(), data: next });
+            const candidate = parseLearningDocument({ schemaVersion: 2, revision: (observed?.revision ?? 0) + 1,
+                commitId: createId(), data: rebased });
             if (candidate.commitId === observed?.commitId) { throw new LearningStorageError('learning_commit_id_reused'); }
             if (new TextEncoder().encode(JSON.stringify(candidate)).byteLength > MAX_LEARNING_WRITE_BYTES) {
                 throw new LearningStorageError('learning_file_full');

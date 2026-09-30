@@ -92,7 +92,7 @@ export async function createClassroomFixture({ listening = false, lesson: lesson
             const original = request.messages.find(entry => entry.role === 'user' && entry.content.includes('<learning_request>'));
             const input = original ? JSON.parse(original.content.split('<learning_request>\n').at(-1).split('\n</learning_request>')[0]) : null;
             return { exerciseIds: input?.action.kind === 'explain' && input.focus ? [input.focus.exercise.id] : [],
-                materialIds: input?.action.kind === 'explain' ? (input.focus?.materials ?? []).filter(material => !material.transcriptRevealed).map(material => material.id) : [] };
+                materialIds: input?.action.kind === 'explain' ? (input.training?.materials ?? []).filter(material => material.hidden && input.focus?.exercise?.materialIds.includes(material.id)).map(material => material.id) : [] };
         });
         let customRound = 0;
         return { supportsSessionToolLoop: false, providerConfig: {}, run: async request => {
@@ -115,7 +115,7 @@ export async function createClassroomFixture({ listening = false, lesson: lesson
     const context = () => ({ activationToken: 'fixture', isCurrent: () => active, post(type, payload) {
         state = type === 'learning/media' ? { ...state, media: payload.media } : payload.state;
         for (const listener of listeners) { listener({ type, payload }); }
-        if (!state.busy) { for (const resolve of waiters) { resolve(); } waiters.clear(); }
+        if (!state.busy && !state.chatBusy) { for (const resolve of waiters) { resolve(); } waiters.clear(); }
         return true;
     } });
     state = await runtime.activate(context());
@@ -128,7 +128,7 @@ export async function createClassroomFixture({ listening = false, lesson: lesson
     async function command(name, input = {}) {
         const response = await bridge.request(`learning/${name}`, { chatIdentity: chat, ...input });
         state = response.result.state;
-        if (state.busy) { await new Promise(resolve => waiters.add(resolve)); }
+        if (state.busy || state.chatBusy) { await new Promise(resolve => waiters.add(resolve)); }
         return structuredClone(state);
     }
     return { runtime, bridge, repository, store, coordinator, wallet, economy, flags, counts, failures, command, profile,

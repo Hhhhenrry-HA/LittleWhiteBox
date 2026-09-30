@@ -16,43 +16,32 @@ const batches = computed(() => {
         const status = group.message.streaming ? 'generating' : result?.streaming ? 'running'
             : result?.content ? (result.error || failed(result.content) ? 'failed' : 'done') : props.running && !group.message.error ? 'pending' : 'cancelled';
         return { call, result, status };
-    }) }));
+    }).filter(tool => tool.status !== 'done') }));
 });
 const labels: Record<string, string> = {
-    LearningRead: '读取学习记录', LearningContextRead: '查看背景资料', LearningSearch: '搜索教材', LearningExtract: '读取原文',
-    LearningProfileEdit: '更新学习目标', LearningLessonEdit: '编排课件', LearningAnswer: '记录原答',
-    LearningAssess: '评估作答', LearningHelp: '确认讲解范围', LearningPresent: '安排学习活动', LearningComplete: '总结本课',
+    LearningRead: '查看学习记录', LearningContextRead: '查看相关资料', LearningSearch: '寻找文章', LearningExtract: '阅读原文',
+    LearningProfileEdit: '调整学习目标', LearningLessonEdit: '准备练习', LearningRequest: '安排练习', LearningModelEssay: '准备范文',
+    LearningAssess: '批改作答', LearningHelp: '准备讲解', LearningPresent: '打开练习', LearningComplete: '整理学习收获',
 };
-const statuses: Record<string, string> = { generating: '生成参数中', pending: '待执行', running: '执行中', done: '已完成', failed: '失败', cancelled: '未执行' };
+const statuses: Record<string, string> = { generating: '准备中', pending: '准备中', running: '进行中', failed: '未完成', cancelled: '已停止' };
+const copy = { thinking: '正在想…', request: '准备学习内容' };
 function failed(content: string) {
     try { return JSON.parse(content)?.ok === false; } catch { return false; }
-}
-function format(value: string) {
-    try { return JSON.stringify(JSON.parse(value), null, 2); } catch { return value; }
-}
-function problem(result?: string) {
-    if (!result) { return ''; }
-    try {
-        const value = JSON.parse(result);
-        return (value.errors?.map((entry: { message: string }) => entry.message).join('；') || value.message || value.error || '工具返回失败，展开查看结果。') as string;
-    } catch { return result; }
 }
 </script>
 
 <template>
     <div class="learning-messages">
         <template v-for="(batch, index) in batches" :key="index">
-            <p v-if="batch.message.hasReasoning && batch.message.streaming && !batch.message.content && !batch.tools.length" class="learning-reasoning" role="status">正在思考…</p>
+            <p v-if="batch.message.hasReasoning && batch.message.streaming && !batch.message.content && !batch.tools.length" class="learning-reasoning" role="status">{{ copy.thinking }}</p>
             <div v-if="batch.message.content" class="learning-output" :class="{ 'is-streaming': batch.message.streaming }">
                 <MessageMarkdown v-if="batch.message.content" class="learning-markdown" :text="batch.message.content" />
             </div>
-            <div v-for="tool in batch.tools" :key="tool.call.id" class="learning-tool-entry" :class="`is-${tool.status}`">
-                <details>
-                    <summary><span class="learning-tool-name">{{ labels[tool.call.name] || tool.call.name }}<code>{{ tool.call.name }}</code></span><span class="learning-tool-status">{{ statuses[tool.status] }}</span></summary>
-                    <div class="learning-tool-details"><h3>参数摘要</h3><pre>{{ format(tool.call.arguments) }}</pre><template v-if="tool.result?.content"><h3>结果摘要</h3><pre>{{ format(tool.result.content) }}</pre></template></div>
-                </details>
-                <p v-if="tool.status === 'failed'" class="learning-tool-error">{{ problem(tool.result?.content) }}</p>
-            </div>
+            <ul v-if="batch.tools.length" class="learning-tool-details" role="status">
+                <li v-for="tool in batch.tools" :key="tool.call.id" :class="{ 'is-failed': tool.status === 'failed' }">
+                    <span class="learning-tool-name">{{ labels[tool.call.name] || copy.request }}</span><span class="learning-tool-status">{{ statuses[tool.status] }}</span>
+                </li>
+            </ul>
         </template>
     </div>
 </template>

@@ -9,6 +9,7 @@ import { learningSpeechParts } from '../domains/learning/speech.js';
 import { createLearningPractice } from '../apps/learning/application/practice.js';
 import { independentLearningSuccess } from '../domains/learning/progress.js';
 import { MAX_LEARNING_WRITE_BYTES } from '../apps/learning/storage/document.js';
+import { declaredTeacher } from './fixtures/learning-reply.js';
 
 test('unconfirmed global rewards block learning deletion until the saved wallet is explicitly adopted', async t => {
     t.mock.method(console, 'error', () => {});
@@ -201,7 +202,7 @@ test('shared material carries real listening, replay and slow-play facts across 
     assert.equal(combinedAttempt.help.replays, 2); assert.equal(combinedAttempt.help.slowPlayback, true);
     assert.deepEqual(h.profile().unit.attempts.find(entry => entry.id === attempt.id), attempt);
     // Representative evidence must keep all voices even after the original lesson is removed.
-    const assessed = await h.command('complete');
+    const assessed = await h.command('assess', { attemptId: combinedAttempt.id, message: '记录这次听力表现。' });
     assert.equal(assessed.storage, 'ready');
     await h.command('abandon'); await h.reenter();
     assert.deepEqual(h.profile().items.flatMap(item => item.evidence).find(entry => entry.attempt.id === combinedAttempt.id).attempt, combinedAttempt);
@@ -592,10 +593,12 @@ test('confirming an owned teacher save restores the reply and activity once with
             const h = await createClassroomFixture(); sub.after(h.dispose); await h.openLesson();
             const turns = h.state().conversation.turns;
             const unit = h.profile().unit;
-            h.flags.talkTools = [{ name: 'LearningProfileEdit', args: { selfAssessment: '想加强阅读。' } },
-                { name: 'LearningPresent', args: { kind: 'exercise', id: unit.exercises[0].id } }];
+            h.flags.teacherResponse = declaredTeacher((_request, round) => round === 1 ? { toolCalls: [
+                { id: 'edit', name: 'LearningLessonEdit', arguments: JSON.stringify({ title: '加强阅读' }) },
+                { id: 'present', name: 'LearningPresent', arguments: JSON.stringify({ kind: 'exercise', id: unit.exercises[0].id }) },
+            ] } : { text: '试试这道阅读练习。' });
             h.flags.userFailure = true;
-            assert.equal((await h.command('talk', { message: '给我阅读练习。' })).storage, 'unconfirmed');
+            assert.equal((await h.command('prepare', { message: '给我阅读练习。' })).storage, 'unconfirmed');
             assert.deepEqual(h.state().conversation.turns.slice(0, -1), turns);
             assert.equal(h.state().conversation.turns.at(-1).status, 'unconfirmed');
             assert.ok(h.state().conversation.turns.at(-1).teacher);
@@ -627,8 +630,10 @@ test('abandoning an uncertain reply or adopting a different commit never revives
         await t.test(exit, async sub => {
             const h = await createClassroomFixture(); sub.after(h.dispose); await h.openLesson();
             h.flags.userFailure = true;
-            h.flags.talkTools = [{ name: 'LearningProfileEdit', args: { selfAssessment: '未确认的自评。' } }];
-            await h.command('talk', { message: 'PRIVATE_REPLY' });
+            h.flags.teacherResponse = declaredTeacher((_request, round) => round === 1 ? { toolCalls: [
+                { id: 'edit', name: 'LearningProfileEdit', arguments: JSON.stringify({ selfAssessment: '未确认的自评。' }) },
+            ] } : { text: 'PRIVATE_REPLY' });
+            await h.command('profile', { message: 'PRIVATE_REPLY' });
             const calls = h.counts.provider;
             if (exit === 'adopt-server') {
                 const external = h.repository.snapshot().document;

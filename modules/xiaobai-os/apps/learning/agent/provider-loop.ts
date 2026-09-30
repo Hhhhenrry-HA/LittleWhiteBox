@@ -30,6 +30,7 @@ export async function runLearningProviderLoop(options: {
     onResponseStart?: (message: LearningMessage) => void;
     onResponseComplete?: (message: LearningMessage) => boolean;
     onMessages?: () => void;
+    allowSilence?: boolean;
 }): Promise<LearningLoopResult> {
     const { signal, guard } = options;
     let agent = options.agent;
@@ -157,6 +158,7 @@ export async function runLearningProviderLoop(options: {
                 if (!calls.length) {
                     const text = assistant!.content.trim();
                     if (!text && !assistant!.thoughts?.length) { state.messages.splice(state.messages.indexOf(assistant!), 1); }
+                    if (!text && options.allowSilence) { return { status: 'finished', messages: protocolMessages(), removedTurns }; }
                     if (!text && state.messages.some(message => message.role === 'tool') && !reminderSent) {
                         reminderSent = true;
                         responses = undefined;
