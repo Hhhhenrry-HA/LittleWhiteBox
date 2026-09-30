@@ -13,6 +13,7 @@ import ContactAvatar from './ContactAvatar.vue';
 import { emptyDraft, type MessageDraft } from './draft.js';
 import { createMessageId } from '../application/identity.js';
 import { messageSyncCopy } from '../sync-copy.js';
+import { MESSAGES_LAYOUT_COPY as layoutCopy } from './layout-copy.js';
 import './messages.css';
 
 const props = defineProps<XiaobaiOsAppProps>();
@@ -87,6 +88,7 @@ function apply(next: MessagesClientState) {
 }
 const unsubscribe = props.bridge.subscribe(event => {if (event.type === 'messages/state') {apply((event.payload as { state: MessagesClientState }).state);}});
 function select(id: string) {
+    if (id === selected.value) { return; }
     selected.value = id; error.value = ''; page.value = emptyPage(id); void readThread();
 }
 function back() {selected.value = ''; threadRequest++; threadError.value = ''; page.value = emptyPage();}
@@ -242,17 +244,20 @@ onUnmounted(() => {alive = false; threadRequest++; unsubscribe();});
         <div v-if="state.generationActive" class="messages-notice">故事正在继续，稍后就能发送消息。</div>
         <p v-if="(error && !syncDialog) || state.error" class="messages-error" role="alert">{{ (!syncDialog && error) || state.error }}</p>
         <div v-if="threadError" class="messages-banner" role="alert"><span>{{ threadError }}</span><button :disabled="loading" @click="readThread()">重新加载</button></div>
-        <Conversation
-            v-if="contact" :key="contact.id" ref="conversation" v-model:draft="draft" :context-state="state"
-            :contact="contact" :page="page" :bridge="bridge" :chat-identity="state.chatIdentity" :disabled="disabled"
-            :send-disabled="disabled || !!outgoing" :busy="state.busy" :outgoing="pendingBubble"
-            :send-failure="state.sendFailure" :send-error="sendError" :working="working" :pending-save="needsSave"
-            :retry-disabled="working || state.operationPending || !!state.busy || state.generationActive || state.fileState === 'conflict'"
-            :loading="loading" :load-more="() => readThread(true)" :media="state.media" :waiting-for="waitingFor"
-            @back="back" @details="open('detail')" @send="send" @retry="retry" @discard="discard"
-            @delete-message="confirmMessageDelete" @regenerate="regenerate" @latest="readThread(false, true)"
-        />
-        <ContactList v-show="!contact" :contacts="state.contacts" :busy-contact-id="state.busy?.contactId ?? ''" :drafts="drafts" @select="select" @add="open('add')" @settings="open('settings')" />
+        <div class="messages-layout" :class="{ 'has-conversation': !!contact, 'is-empty': !state.contacts.length }">
+            <ContactList :contacts="state.contacts" :active-contact-id="selected" :busy-contact-id="state.busy?.contactId ?? ''" :drafts="drafts" @select="select" @add="open('add')" @settings="open('settings')" />
+            <Conversation
+                v-if="contact" :key="contact.id" ref="conversation" v-model:draft="draft" :context-state="state"
+                :contact="contact" :page="page" :bridge="bridge" :chat-identity="state.chatIdentity" :disabled="disabled"
+                :send-disabled="disabled || !!outgoing" :busy="state.busy" :outgoing="pendingBubble"
+                :send-failure="state.sendFailure" :send-error="sendError" :working="working" :pending-save="needsSave"
+                :retry-disabled="working || state.operationPending || !!state.busy || state.generationActive || state.fileState === 'conflict'"
+                :loading="loading" :load-more="() => readThread(true)" :media="state.media" :waiting-for="waitingFor"
+                @back="back" @details="open('detail')" @send="send" @retry="retry" @discard="discard"
+                @delete-message="confirmMessageDelete" @regenerate="regenerate" @latest="readThread(false, true)"
+            />
+            <div v-else class="messages-selection"><MessageIcon name="message" /><p>{{ layoutCopy.chooseConversation }}</p></div>
+        </div>
         <AppDialog v-if="dialogOpen" class="messages-dialog" aria-labelledby="messages-dialog-title" :busy="working && !syncDialog" @close="backDialog">
             <header><ContactAvatar v-if="mode === 'detail' && contact" :identity="contact.id" :name="contact.name" small /><h2 id="messages-dialog-title">{{ mode === 'settings' ? '信息设置' : mode === 'add' ? '新的对话' : mode === 'detail' ? contact?.name : mode === 'delete' ? '删除联系人？' : mode === 'delete-message' ? '删除这条消息？' : mode === 'sync' ? messageSyncCopy.title : mode === 'adopt' ? '使用已保存版本？' : '在当前位置补记？' }}</h2><button ref="dialogClose" class="messages-icon-button" aria-label="关闭" :disabled="working && !syncDialog" @click="cancelDialog"><MessageIcon name="close" /></button></header>
             <p v-if="error || (syncDialog && state.syncNotice.error)" class="messages-error" role="alert">{{ error || state.syncNotice.error }}</p>

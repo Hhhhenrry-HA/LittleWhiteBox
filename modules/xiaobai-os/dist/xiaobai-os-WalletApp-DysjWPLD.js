@@ -1,6 +1,6 @@
 /* eslint-disable */
-import { $ as v, F as s, L as I, M as K, O as X, R as H, W as N, Y as M, Z as ee, _ as i, b as g, et as x, g as b, h as W, m as e, nt as n, p as C, u as B, x as k, y as L } from "./xiaobai-os-runtime-dom.esm-bundler-DgjJUtuO.js";
-import { t as R } from "./xiaobai-os-AppDialog-D2VlSK_V.js";
+import { F as s, G as N, L as I, M as J, O as K, Q as ee, R as H, X as M, _ as i, b as g, et as v, g as b, h as W, m as e, p as C, rt as n, tt as x, u as B, x as k, y as L } from "./xiaobai-os-runtime-dom.esm-bundler-BeaorYpU.js";
+import { t as R } from "./xiaobai-os-AppDialog-CwwXWjcp.js";
 var te = {
   class: "wallet-icon",
   viewBox: "0 0 24 24",
@@ -32,7 +32,7 @@ var te = {
     };
     return (a, l) => (s(), i("svg", te, [e("path", { d: o[t.name] || o.receipt }, null, 8, ae)]));
   }
-}), $ = le, w = {
+}), $ = le, y = {
   scope: "全局账本",
   pageInactive: "钱包页面已关闭，请重新打开。",
   unavailable: "钱包数据暂时无法读取，请稍后重试。",
@@ -56,7 +56,7 @@ var te = {
     return (o, a) => (s(), i("header", ne, [
       e("span", se, [g($, { name: "wallet" })]),
       a[1] || (a[1] = e("h1", { class: "wallet-ui-title" }, "钱包", -1)),
-      e("span", re, n(v(w).scope), 1),
+      e("span", re, n(v(y).scope), 1),
       e("button", {
         type: "button",
         class: "wallet-icon-button",
@@ -106,7 +106,7 @@ var te = {
 }), be = pe, he = {
   class: "wallet-ui-notice-icon",
   "aria-hidden": "true"
-}, ge = { class: "wallet-ui-notice-copy" }, ye = { key: 0 }, we = /* @__PURE__ */ k({
+}, ge = { class: "wallet-ui-notice-copy" }, we = { key: 0 }, ye = /* @__PURE__ */ k({
   __name: "WalletNotice",
   props: {
     title: {},
@@ -119,11 +119,11 @@ var te = {
       role: "status"
     }, [e("span", he, [H(o.$slots, "icon", {}, () => [a[0] || (a[0] = L("!", -1))])]), e("div", ge, [
       e("strong", null, n(t.title), 1),
-      t.message ? (s(), i("p", ye, n(t.message), 1)) : b("", !0),
+      t.message ? (s(), i("p", we, n(t.message), 1)) : b("", !0),
       H(o.$slots, "default")
     ])], 2));
   }
-}), _e = we, $e = { class: "wallet-ui-empty" }, ke = {
+}), _e = ye, $e = { class: "wallet-ui-empty" }, ke = {
   key: 0,
   class: "wallet-ui-empty-icon",
   "aria-hidden": "true"
@@ -195,10 +195,10 @@ var Te = {
   key: 0,
   class: "wallet-load-error",
   role: "alert"
-}, Ze = ["disabled"], qe = {
+}, qe = ["disabled"], Fe = {
   key: 2,
   class: "wallet-ledger-end"
-}, Fe = /* @__PURE__ */ k({
+}, Ze = /* @__PURE__ */ k({
   __name: "WalletTransactionList",
   props: {
     transactions: {},
@@ -231,18 +231,18 @@ var Te = {
       month: "long",
       day: "numeric"
     }), h = C(() => {
-      const y = [];
+      const w = [];
       for (const m of o.transactions) {
         if (a.value !== "all" && m.direction !== a.value) continue;
-        const d = c.format(m.createdAt), _ = y.at(-1);
-        _?.date === d ? _.transactions.push(m) : y.push({
+        const d = c.format(m.createdAt), _ = w.at(-1);
+        _?.date === d ? _.transactions.push(m) : w.push({
           date: d,
           transactions: [m]
         });
       }
-      return y;
+      return w;
     });
-    return (y, m) => (s(), i("div", null, [
+    return (w, m) => (s(), i("div", null, [
       e("div", Le, [(s(), i(B, null, I(l, (d) => e("button", {
         key: d.id,
         type: "button",
@@ -268,19 +268,19 @@ var Te = {
         }, [e("h3", null, n(d.date), 1), e("ol", De, [(s(!0), i(B, null, I(d.transactions, (_) => (s(), W(Ne, {
           key: _.id,
           transaction: _,
-          onOpen: m[0] || (m[0] = (f) => y.$emit("open", f))
+          onOpen: m[0] || (m[0] = (f) => w.$emit("open", f))
         }, null, 8, ["transaction"]))), 128))])]))), 128)),
         e("div", Ie, [t.error ? (s(), i("p", He, n(t.error), 1)) : b("", !0), t.hasMore ? (s(), i("button", {
           key: 1,
           type: "button",
           class: "wallet-ui-text-button",
           disabled: t.loadingMore,
-          onClick: m[1] || (m[1] = (d) => y.$emit("loadMore"))
-        }, [L(n(t.loadingMore ? "正在读取…" : "查看更早的账单"), 1), g($, { name: "next" })], 8, Ze)) : t.transactions.length ? (s(), i("span", qe, "已显示全部账目")) : b("", !0)])
+          onClick: m[1] || (m[1] = (d) => w.$emit("loadMore"))
+        }, [L(n(t.loadingMore ? "正在读取…" : "查看更早的账单"), 1), g($, { name: "next" })], 8, qe)) : t.transactions.length ? (s(), i("span", Fe, "已显示全部账目")) : b("", !0)])
       ], 64))
     ]));
   }
-}), ze = Fe, Re = { class: "wallet-row-mark" }, Oe = {
+}), ze = Ze, Re = { class: "wallet-row-mark" }, Oe = {
   key: 0,
   class: "wallet-receipt-note"
 }, Qe = {
@@ -322,39 +322,39 @@ var Te = {
           t.transaction.note ? (s(), i("div", Oe, [l[7] || (l[7] = e("dt", null, "备注", -1)), e("dd", null, n(t.transaction.note), 1)])) : b("", !0)
         ]),
         t.transaction.direction === "transfer" ? (s(), i("p", Qe, "这笔资金在系统账户之间流转，不是你的收入或支出。")) : b("", !0),
-        e("footer", null, "小白 OS · " + n(v(w).scope), 1)
+        e("footer", null, "小白 OS · " + n(v(y).scope), 1)
       ]),
       _: 1
     }));
   }
-}), Ye = Ue, je = { class: "wallet-ui-app wallet-app" }, Ge = { class: "wallet-ui-scroll" }, Pe = ["disabled"], Je = ["disabled"], Ke = ["disabled"], Xe = {
+}), Ge = Ue, je = { class: "wallet-ui-app wallet-app" }, Pe = { class: "wallet-ui-scroll" }, Xe = { class: "wallet-overview" }, Ye = ["disabled"], Je = ["disabled"], Ke = ["disabled"], et = {
   class: "wallet-ledger",
   "aria-labelledby": "wallet-ledger-title"
-}, et = { class: "wallet-ui-section-title" }, tt = { id: "wallet-adopt-title" }, at = { class: "wallet-adopt-actions" }, lt = ["disabled"], nt = ["disabled"], z = 35e3, st = /* @__PURE__ */ k({
+}, tt = { class: "wallet-ui-section-title" }, at = { id: "wallet-adopt-title" }, lt = { class: "wallet-adopt-actions" }, nt = ["disabled"], st = ["disabled"], z = 35e3, rt = /* @__PURE__ */ k({
   __name: "WalletApp",
   props: {
     bridge: {},
     initialState: {}
   },
   setup(t) {
-    const o = t, a = M(structuredClone(ee(o.initialState))), l = M(!1), c = M(!1), h = M(""), y = M(""), m = M(null), d = M(!1);
+    const o = t, a = M(structuredClone(ee(o.initialState))), l = M(!1), c = M(!1), h = M(""), w = M(""), m = M(null), d = M(!1);
     let _ = () => {
     }, f = 0;
     const T = C(() => [
       "unconfirmed",
       "conflict",
       "blocked"
-    ].includes(a.value.status)), S = C(() => l.value || a.value.status === "loading" || a.value.status === "saving"), Z = C(() => S.value || T.value || a.value.status === "conflict"), Y = C(() => !!(a.value.message || h.value)), j = C(() => h.value || a.value.status === "conflict" || a.value.status === "blocked" ? "danger" : T.value ? "warning" : "info"), G = C(() => a.value.status === "conflict" ? "账本有变化" : a.value.status === "blocked" ? w.blockedTitle : "保存情况");
+    ].includes(a.value.status)), S = C(() => l.value || a.value.status === "loading" || a.value.status === "saving"), q = C(() => S.value || T.value || a.value.status === "conflict"), G = C(() => !!(a.value.message || h.value)), j = C(() => h.value || a.value.status === "conflict" || a.value.status === "blocked" ? "danger" : T.value ? "warning" : "info"), P = C(() => a.value.status === "conflict" ? "账本有变化" : a.value.status === "blocked" ? y.blockedTitle : "保存情况");
     function A(u) {
-      return (u instanceof Error ? u.message : String(u)) === "host_request_timeout" ? "暂时没收到结果，请稍后重新加载。" : w.unavailable;
+      return (u instanceof Error ? u.message : String(u)) === "host_request_timeout" ? "暂时没收到结果，请稍后重新加载。" : y.unavailable;
     }
     function E() {
       return { activationId: a.value.activationId };
     }
     function V(u) {
-      a.value = structuredClone(u), l.value = !1, c.value = !1, h.value = "", y.value = "";
+      a.value = structuredClone(u), l.value = !1, c.value = !1, h.value = "", w.value = "";
     }
-    async function q() {
+    async function F() {
       if (S.value || T.value || a.value.status === "conflict") return;
       const u = ++f;
       l.value = !0, h.value = "";
@@ -367,7 +367,7 @@ var Te = {
         u === f && (l.value = !1);
       }
     }
-    async function F(u = !1) {
+    async function Z(u = !1) {
       if (S.value) return;
       const r = ++f;
       l.value = !0, h.value = "";
@@ -380,96 +380,92 @@ var Te = {
         r === f && (l.value = !1);
       }
     }
-    async function P() {
+    async function X() {
       const u = a.value.nextCursor;
       if (!u || c.value || S.value) return;
       const r = f;
-      c.value = !0, y.value = "";
+      c.value = !0, w.value = "";
       try {
         const p = await o.bridge.request("wallet/load-more", {
           ...E(),
           beforeSequence: u
         });
         if (r !== f) return;
-        const J = new Set(a.value.transactions.map((D) => D.id));
-        a.value.transactions.push(...p.result.transactions.filter((D) => !J.has(D.id))), a.value.nextCursor = p.result.nextCursor, a.value.hasMore = p.result.hasMore;
+        const Y = new Set(a.value.transactions.map((D) => D.id));
+        a.value.transactions.push(...p.result.transactions.filter((D) => !Y.has(D.id))), a.value.nextCursor = p.result.nextCursor, a.value.hasMore = p.result.hasMore;
       } catch {
-        r === f && (y.value = "更多流水暂时无法读取，请稍后重试。");
+        r === f && (w.value = "更多流水暂时无法读取，请稍后重试。");
       } finally {
         r === f && (c.value = !1);
       }
     }
-    return K(() => {
+    return J(() => {
       _ = o.bridge.subscribe((u) => {
         u.type === "wallet/state" && (f += 1, V(u.payload.state)), u.type === "wallet/error" && (h.value = A(u.payload?.message || ""));
       });
-    }), X(() => {
+    }), K(() => {
       f += 1, _();
     }), (u, r) => (s(), i("main", je, [
       g(ue, {
         refreshing: l.value,
-        disabled: Z.value,
-        onRefresh: q
+        disabled: q.value,
+        onRefresh: F
       }, null, 8, ["refreshing", "disabled"]),
-      e("div", Ge, [
-        g(be, {
-          balance: a.value.balance,
-          currency: a.value.currency,
-          status: a.value.status
-        }, null, 8, [
-          "balance",
-          "currency",
-          "status"
-        ]),
-        Y.value ? (s(), W(_e, {
+      e("div", Pe, [e("div", Xe, [g(be, {
+        balance: a.value.balance,
+        currency: a.value.currency,
+        status: a.value.status
+      }, null, 8, [
+        "balance",
+        "currency",
+        "status"
+      ]), G.value ? (s(), W(_e, {
+        key: 0,
+        class: "wallet-notice",
+        tone: j.value,
+        title: P.value,
+        message: h.value || a.value.message
+      }, {
+        default: N(() => [T.value ? (s(), i("button", {
           key: 0,
-          class: "wallet-notice",
-          tone: j.value,
-          title: G.value,
-          message: h.value || a.value.message
-        }, {
-          default: N(() => [T.value ? (s(), i("button", {
-            key: 0,
-            type: "button",
-            class: "wallet-ui-text-button",
-            disabled: l.value,
-            onClick: r[0] || (r[0] = (p) => F())
-          }, n(l.value ? v(w).checking : v(w).checkSave), 9, Pe)) : b("", !0), T.value ? (s(), i("button", {
-            key: 1,
-            type: "button",
-            class: "wallet-ui-text-button",
-            disabled: l.value,
-            onClick: r[1] || (r[1] = (p) => d.value = !0)
-          }, n(v(w).adopt), 9, Je)) : h.value ? (s(), i("button", {
-            key: 2,
-            type: "button",
-            class: "wallet-ui-text-button",
-            disabled: Z.value,
-            onClick: q
-          }, n(l.value ? "正在读取…" : "重新加载"), 9, Ke)) : b("", !0)]),
-          _: 1
-        }, 8, [
-          "tone",
-          "title",
-          "message"
-        ])) : b("", !0),
-        e("section", Xe, [e("div", et, [r[7] || (r[7] = e("h2", { id: "wallet-ledger-title" }, "收支账单", -1)), e("small", null, "共 " + n(a.value.transactionCount) + " 笔", 1)]), g(ze, {
-          transactions: a.value.transactions,
-          "has-more": a.value.hasMore,
-          "loading-more": c.value,
-          loading: a.value.status === "loading",
-          error: y.value,
-          onLoadMore: P,
-          onOpen: r[2] || (r[2] = (p) => m.value = p)
-        }, null, 8, [
-          "transactions",
-          "has-more",
-          "loading-more",
-          "loading",
-          "error"
-        ])])
-      ]),
-      m.value ? (s(), W(Ye, {
+          type: "button",
+          class: "wallet-ui-text-button",
+          disabled: l.value,
+          onClick: r[0] || (r[0] = (p) => Z())
+        }, n(l.value ? v(y).checking : v(y).checkSave), 9, Ye)) : b("", !0), T.value ? (s(), i("button", {
+          key: 1,
+          type: "button",
+          class: "wallet-ui-text-button",
+          disabled: l.value,
+          onClick: r[1] || (r[1] = (p) => d.value = !0)
+        }, n(v(y).adopt), 9, Je)) : h.value ? (s(), i("button", {
+          key: 2,
+          type: "button",
+          class: "wallet-ui-text-button",
+          disabled: q.value,
+          onClick: F
+        }, n(l.value ? "正在读取…" : "重新加载"), 9, Ke)) : b("", !0)]),
+        _: 1
+      }, 8, [
+        "tone",
+        "title",
+        "message"
+      ])) : b("", !0)]), e("section", et, [e("div", tt, [r[7] || (r[7] = e("h2", { id: "wallet-ledger-title" }, "收支账单", -1)), e("small", null, "共 " + n(a.value.transactionCount) + " 笔", 1)]), g(ze, {
+        transactions: a.value.transactions,
+        "has-more": a.value.hasMore,
+        "loading-more": c.value,
+        loading: a.value.status === "loading",
+        error: w.value,
+        onLoadMore: X,
+        onOpen: r[2] || (r[2] = (p) => m.value = p)
+      }, null, 8, [
+        "transactions",
+        "has-more",
+        "loading-more",
+        "loading",
+        "error"
+      ])])]),
+      m.value ? (s(), W(Ge, {
         key: 0,
         transaction: m.value,
         onClose: r[3] || (r[3] = (p) => m.value = null)
@@ -482,23 +478,23 @@ var Te = {
         onClose: r[6] || (r[6] = (p) => d.value = !1)
       }, {
         default: N(() => [
-          e("h2", tt, n(v(w).adoptQuestion), 1),
-          e("p", null, n(v(w).adoptNotice), 1),
-          e("div", at, [e("button", {
+          e("h2", at, n(v(y).adoptQuestion), 1),
+          e("p", null, n(v(y).adoptNotice), 1),
+          e("div", lt, [e("button", {
             type: "button",
             disabled: l.value,
             onClick: r[4] || (r[4] = (p) => d.value = !1)
-          }, n(v(w).cancel), 9, lt), e("button", {
+          }, n(v(y).cancel), 9, nt), e("button", {
             type: "button",
             disabled: l.value,
-            onClick: r[5] || (r[5] = (p) => F(!0))
-          }, n(v(w).confirm), 9, nt)])
+            onClick: r[5] || (r[5] = (p) => Z(!0))
+          }, n(v(y).confirm), 9, st)])
         ]),
         _: 1
       }, 8, ["busy"])) : b("", !0)
     ]));
   }
-}), ot = st;
+}), ut = rt;
 export {
-  ot as default
+  ut as default
 };

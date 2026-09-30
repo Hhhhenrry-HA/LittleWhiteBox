@@ -63,11 +63,11 @@ export function useAppBack(handler: () => boolean, enabled: () => boolean = () =
     return () => navigation ? navigation.stack.back() : back();
 }
 
-/** Locally modal: APP content is covered, but OS Back/Home remain available. */
-export function useAppLayer(element: Ref<HTMLElement | null>, back: () => void): void {
+/** APP-local layer; a docked panel keeps Back handling without blocking its neighbours. */
+export function useAppLayer(element: Ref<HTMLElement | null>, back: () => void, modal: () => boolean = () => true): void {
     const navigation = inject(appNavigationKey, null);
     useAppBack(() => { back(); return true; }, () => !!element.value);
-    watch(element, async (layer, _, cleanup) => {
+    watch(() => modal() ? element.value : null, async (layer, _, cleanup) => {
         if (!layer) { return; }
         const origin = document.activeElement instanceof HTMLElement ? document.activeElement : null;
         if (navigation) { navigation.layers.value = [...navigation.layers.value, layer]; }

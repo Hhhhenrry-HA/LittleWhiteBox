@@ -1,11 +1,11 @@
 /* eslint-disable */
-import { $, F as i, H as L, L as B, M, O as N, Y as A, _ as r, b as G, g as S, h as k, m as e, nt as m, p, u as D, x as T, y as h } from "./xiaobai-os-runtime-dom.esm-bundler-DgjJUtuO.js";
-import { a as V, c as C, i as I, l as O, o as w, s as F } from "./xiaobai-os-room-catalog-QHNJMc-N.js";
-import { n as H, t as U } from "./xiaobai-os-GameResult-D-XWz8DW.js";
-var Y = ["aria-label"], j = {
+import { F as i, L as B, M as L, O as M, U as N, X as A, _ as r, b as G, et as $, g as S, h as k, m as e, p, rt as m, u as D, x as T, y as h } from "./xiaobai-os-runtime-dom.esm-bundler-BeaorYpU.js";
+import { a as V, c as C, i as I, l as O, o as w, s as F } from "./xiaobai-os-room-catalog-BxdlQpsj.js";
+import { n as U, t as X } from "./xiaobai-os-GameResult-6Pavxea9.js";
+var j = ["aria-label"], q = {
   class: "dice-call-dice",
   "aria-hidden": "true"
-}, q = /* @__PURE__ */ T({
+}, z = /* @__PURE__ */ T({
   __name: "DiceCall",
   props: {
     bid: {},
@@ -18,21 +18,21 @@ var Y = ["aria-label"], j = {
       "aria-label": a.speaker + "叫" + $(w)(a.bid)
     }, [
       e("h3", null, m(a.speaker) + "叫：" + m($(w)(a.bid)), 1),
-      e("div", j, [(i(!0), r(D, null, B(a.bid.count, (b) => (i(), k(C, {
+      e("div", q, [(i(!0), r(D, null, B(a.bid.count, (b) => (i(), k(C, {
         key: b,
         value: a.bid.face,
         animate: !1
       }, null, 8, ["value"]))), 128))]),
       n[0] || (n[0] = e("p", null, "叫的是两个人合起来的数量", -1))
-    ], 8, Y));
+    ], 8, j));
   }
-}), E = q, z = {
+}), E = z, H = {
   class: "dice-table",
   "aria-label": "大话骰牌桌"
 }, J = { class: "dice-stake" }, K = { class: "dice-opponent" }, P = {
   key: 1,
   class: "dice-first-call"
-}, Q = { class: "dice-own-hand" }, W = { class: "game-dice-row" }, X = {
+}, Q = { class: "dice-own-hand" }, W = { class: "game-dice-row" }, Y = {
   key: 2,
   class: "dice-builder"
 }, Z = { class: "dice-builder-label" }, x = { class: "dice-number-picker" }, _ = ["disabled"], ee = ["disabled"], ae = {
@@ -57,7 +57,7 @@ var Y = ["aria-label"], j = {
   emits: ["bid", "challenge"],
   setup(a, { emit: c }) {
     const n = a, b = c, u = A(n.game.legalBids[0]?.count || 1), d = A(n.game.legalBids[0]?.face || 2), t = p(() => n.game.bids.at(-1)), s = p(() => [...new Set(n.game.legalBids.map((y) => y.count))]), o = p(() => V(n.game.legalBids, u.value));
-    L(() => n.game.legalBids, () => {
+    N(() => n.game.legalBids, () => {
       s.value.includes(u.value) || (u.value = s.value[0] || 1), o.value.includes(d.value) || (d.value = o.value[0] || 2);
     }, { immediate: !0 });
     function g(y) {
@@ -70,7 +70,7 @@ var Y = ["aria-label"], j = {
         face: d.value
       });
     }
-    return (y, l) => (i(), r("section", z, [
+    return (y, l) => (i(), r("section", H, [
       e("p", J, "本局筹码 ¤ " + m(a.game.bet), 1),
       e("div", K, [
         l[5] || (l[5] = e("span", {
@@ -98,7 +98,7 @@ var Y = ["aria-label"], j = {
         }, null, 8, ["value", "delay"]))), 128))]),
         l[9] || (l[9] = e("p", null, [e("span", { class: "dice-wild-dot" }), h("一点百搭，开盅时也算你叫的点数")], -1))
       ]),
-      a.game.legalActions.includes("bid") ? (i(), r("div", X, [
+      a.game.legalActions.includes("bid") ? (i(), r("div", Y, [
         e("div", Z, [l[10] || (l[10] = e("strong", null, "这一口，你叫", -1)), e("span", null, "至少 " + m(u.value) + " 颗", 1)]),
         e("div", x, [
           e("button", {
@@ -184,7 +184,7 @@ var Y = ["aria-label"], j = {
     function s() {
       n.value = !0, b.value = !0, u.forEach(clearTimeout);
     }
-    return M(() => {
+    return L(() => {
       if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
         s();
         return;
@@ -195,7 +195,7 @@ var Y = ["aria-label"], j = {
       }, o.countAt), setTimeout(() => {
         b.value = !0;
       }, o.verdictAt));
-    }), N(() => u.forEach(clearTimeout)), (o, g) => (i(), r("section", me, [
+    }), M(() => u.forEach(clearTimeout)), (o, g) => (i(), r("section", me, [
       G(E, {
         bid: a.detail.finalBid,
         speaker: a.detail.finalBid.by === "player" ? "你" : "对方"
@@ -229,7 +229,7 @@ var Y = ["aria-label"], j = {
         h("，" + m(d.value ? "够数" : "不够") + "。", 1),
         e("small", null, "包含 " + m(t.value) + " 颗百搭的一点 · " + m(a.detail.challenger === "player" ? "你开的盅" : "对方开的盅"), 1)
       ])) : S("", !0),
-      b.value ? (i(), k(U, {
+      b.value ? (i(), k(X, {
         key: 1,
         record: a.record,
         "balance-after": a.balanceAfter,
@@ -311,7 +311,7 @@ var Y = ["aria-label"], j = {
       "game",
       "disabled-reason",
       "busy"
-    ])) : (i(), k(H, {
+    ])) : (i(), k(U, {
       key: 3,
       kind: "dice",
       minimum: 50,

@@ -157,7 +157,7 @@ onBeforeUnmount(() => { windowRequest++; unsubscribe(); if (tokenTimer) { clearT
 </script>
 
 <template>
-    <div class="administrator-app">
+    <div class="administrator-app" :class="{ 'has-details': !!details }">
         <header class="admin-header"><h1>{{ C.title }}</h1><AdministratorContext :usage="state.context" :draft-tokens="state.live ? 0 : draftTokens" /><button type="button" class="admin-icon-button" :title="C.clear" :aria-label="C.clear" :disabled="busy || state.unsaved" @click="clearOpen = true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 10v7m4-7v7" /></svg></button></header>
         <div v-if="state.corrupted" class="admin-notice" role="alert">{{ C.corrupted }}<button type="button" :disabled="busy" @click="clearOpen = true">{{ C.clear }}</button></div>
         <div ref="list" class="admin-conversation" @scroll.passive="scrolled">

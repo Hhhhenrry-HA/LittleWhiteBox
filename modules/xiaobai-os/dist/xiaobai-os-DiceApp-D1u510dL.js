@@ -1,7 +1,7 @@
 /* eslint-disable */
-import { $ as l, F as d, H as ie, L as q, M as le, O as se, W as ne, X as Q, Y as R, _ as u, et as Y, g, h as X, m as e, nt as n, p as P, u as j, x as J, y as D } from "./xiaobai-os-runtime-dom.esm-bundler-DgjJUtuO.js";
+import { F as d, G as ie, L as q, M as le, O as se, U as ne, X as R, Z as Q, _ as u, et as l, g, h as Z, m as e, p as L, rt as n, tt as X, u as j, x as J, y as D } from "./xiaobai-os-runtime-dom.esm-bundler-BeaorYpU.js";
 import { n as re } from "./xiaobai-os-frame-bridge-BfVuKvnh.js";
-import { t as oe } from "./xiaobai-os-AppDialog-D2VlSK_V.js";
+import { t as oe } from "./xiaobai-os-AppDialog-CwwXWjcp.js";
 function m(t, i) {
   return {
     label: t,
@@ -30,7 +30,7 @@ var A = {
     "印象",
     "影响"
   ])
-}, Z = {
+}, W = {
   athletics: m("运动", [
     "攀爬",
     "游泳",
@@ -89,8 +89,8 @@ var A = {
   ])
 }, N = {
   ...A,
-  ...Z
-}, ce = Object.keys(A), de = Object.keys(Z), x = {
+  ...W
+}, ce = Object.keys(A), de = Object.keys(W), x = {
   max: 80,
   step: 5
 }, _ = {
@@ -122,30 +122,30 @@ var A = {
       20
     ]
   }
-}, V = {
+}, G = {
   invalid: "dice_coc7_sheet_invalid",
   missing: "dice_coc7_sheet_missing"
 };
-function z(t) {
+function H(t) {
   return _[t].allocation.reduce((i, a) => i + a, 0);
 }
 function M(t, i) {
-  return z(i) - Object.values(t[i]).reduce((a, c) => a + c, 0);
+  return H(i) - Object.values(t[i]).reduce((a, c) => a + c, 0);
 }
 function B(t, i) {
   return Object.hasOwn(A, i) ? t.attributes[i] : t.skills[i];
 }
-function W(t, i) {
+function Y(t, i) {
   return !!t && typeof t == "object" && !Array.isArray(t) && Object.keys(t).length === i.length && i.every((a) => Object.hasOwn(t, a));
 }
-function G(t) {
+function z(t) {
   const i = () => {
-    throw new TypeError(V.invalid);
+    throw new TypeError(G.invalid);
   };
-  if (!W(t, Object.keys(_))) return i();
+  if (!Y(t, Object.keys(_))) return i();
   for (const c of Object.keys(_)) {
     const o = t[c];
-    if (!W(o, _[c].ids) || !Object.values(o).every((h) => typeof h == "number" && Number.isInteger(h) && h >= _[c].min && h <= x.max && h % x.step === 0) || Object.values(o).reduce((h, w) => h + w, 0) > z(c)) return i();
+    if (!Y(o, _[c].ids) || !Object.values(o).every((h) => typeof h == "number" && Number.isInteger(h) && h >= _[c].min && h <= x.max && h % x.step === 0) || Object.values(o).reduce((h, w) => h + w, 0) > H(c)) return i();
   }
   const a = t;
   return {
@@ -158,28 +158,28 @@ function ue(t) {
   try {
     return {
       kind: "ready",
-      sheet: G(t)
+      sheet: z(t)
     };
   } catch (i) {
-    if (!(i instanceof TypeError) || i.message !== V.invalid) throw i;
+    if (!(i instanceof TypeError) || i.message !== G.invalid) throw i;
     return { kind: "invalid" };
   }
 }
-function U(t, i) {
+function P(t, i) {
   return Object.fromEntries(_[t].ids.map((a) => [a, i()]));
 }
 function ve() {
   return {
-    attributes: U("attributes", () => _.attributes.min),
-    skills: U("skills", () => _.skills.min)
+    attributes: P("attributes", () => _.attributes.min),
+    skills: P("skills", () => _.skills.min)
   };
 }
-function H(t, i, a) {
+function V(t, i, a) {
   const c = Object.hasOwn(A, i) ? "attributes" : "skills", o = B(t, i) + a * x.step;
   return (a === -1 || a === 1) && o >= _[c].min && o <= x.max && (a < 0 || M(t, c) >= x.step);
 }
 function be(t, i, a) {
-  if (!H(t, i, a)) throw new TypeError(V.invalid);
+  if (!V(t, i, a)) throw new TypeError(G.invalid);
   const c = Object.hasOwn(A, i) ? "attributes" : "skills";
   return {
     ...t,
@@ -192,13 +192,13 @@ function be(t, i, a) {
 function he(t = Math.random) {
   const i = (a) => {
     const c = [..._[a].allocation];
-    return U(a, () => {
+    return P(a, () => {
       const o = t();
       if (!Number.isFinite(o) || o < 0 || o >= 1) throw new TypeError("dice_random_invalid");
       return c.splice(Math.floor(o * c.length), 1)[0];
     });
   };
-  return G({
+  return z({
     attributes: i("attributes"),
     skills: i("skills")
   });
@@ -269,19 +269,19 @@ var ye = {
   key: 0,
   role: "alert",
   class: "coc-error"
-}, Le = ["disabled"], Pe = {
+}, Ue = ["disabled"], Le = {
   key: 2,
   class: "coc-reset-confirm",
   role: "group",
   "aria-labelledby": "coc-reset-question"
-}, Ue = { id: "coc-reset-question" }, He = { class: "coc-draft-actions" }, Ve = ["disabled"], ze = ["disabled"], Ge = {
+}, Pe = { id: "coc-reset-question" }, Ve = { class: "coc-draft-actions" }, Ge = ["disabled"], He = ["disabled"], ze = {
   key: 3,
   class: "coc-draft-actions"
 }, Ke = ["disabled"], Qe = {
   key: 0,
   class: "coc-saved",
   role: "status"
-}, Ye = ["disabled"], We = ["disabled"], Xe = /* @__PURE__ */ J({
+}, Xe = ["disabled"], Ye = ["disabled"], Ze = /* @__PURE__ */ J({
   __name: "Coc7Sheet",
   props: {
     sheet: {},
@@ -294,13 +294,13 @@ var ye = {
   },
   emits: ["confirmed"],
   setup(t, { emit: i }) {
-    const a = t, c = i, o = P(() => a.busy || a.blocked), h = Q(null), w = Q(), I = R(!1), C = R(""), O = R(!1), f = P(() => h.value ?? a.sheet ?? ve()), F = P(() => ue(f.value).kind === "ready"), $ = Object.keys(_).map((k) => ({
+    const a = t, c = i, o = L(() => a.busy || a.blocked), h = Q(null), w = Q(), I = R(!1), C = R(""), O = R(!1), f = L(() => h.value ?? a.sheet ?? ve()), F = L(() => ue(f.value).kind === "ready"), $ = Object.keys(_).map((k) => ({
       id: k,
       label: r[k],
       ids: _[k].ids,
-      budget: z(k)
+      budget: H(k)
     }));
-    ie([
+    ne([
       w,
       () => a.sheet,
       () => a.invalid,
@@ -311,7 +311,7 @@ var ye = {
       const k = w.value;
       w.value = void 0;
       const v = a.sheet;
-      !a.invalid && (k === null ? v === null : v !== null && $.every((b) => b.ids.every((y) => B(v, y) === B(k, y)))) && (L(), c("confirmed"));
+      !a.invalid && (k === null ? v === null : v !== null && $.every((b) => b.ids.every((y) => B(v, y) === B(k, y)))) && (U(), c("confirmed"));
     });
     function s(k) {
       w.value = void 0, h.value = k, C.value = "", O.value = !1;
@@ -331,14 +331,14 @@ var ye = {
           C.value = r.invalidAllocation;
           return;
         }
-        await K(G(f.value));
+        await K(z(f.value));
       }
     }
-    function L() {
+    function U() {
       w.value = void 0, h.value = null, C.value = "", O.value = !1;
     }
     async function K(k) {
-      await a.save(k) ? L() : (a.blocked && (w.value = k), C.value = k === null ? r.resetFailed : r.saveFailed);
+      await a.save(k) ? U() : (a.blocked && (w.value = k), C.value = k === null ? r.resetFailed : r.saveFailed);
     }
     async function ae() {
       o.value || await K(null);
@@ -366,7 +366,7 @@ var ye = {
           r: "3.5"
         }), e("path", { d: "M5 21v-2a7 7 0 0 1 14 0v2M3 3h3M18 3h3M3 3v4M21 3v4" })], -1)),
         e("span", null, n(l(r).title), 1),
-        e("small", { class: Y({ "needs-repair": t.invalid }) }, n(h.value ? l(r).unsaved : t.invalid ? l(r).repair : t.sheet ? l(r).saved : l(r).unassigned), 3),
+        e("small", { class: X({ "needs-repair": t.invalid }) }, n(h.value ? l(r).unsaved : t.invalid ? l(r).repair : t.sheet ? l(r).saved : l(r).unassigned), 3),
         v[5] || (v[5] = e("svg", {
           class: "coc-entry-arrow",
           viewBox: "0 0 16 16",
@@ -377,14 +377,14 @@ var ye = {
         }, [e("path", { d: "m6 3 5 5-5 5" })], -1))
       ], 8, fe),
       t.invalid ? (d(), u("p", pe, n(l(r).repairNotice), 1)) : g("", !0),
-      I.value ? (d(), X(oe, {
+      I.value ? (d(), Z(oe, {
         key: 1,
         class: "coc-dialog",
         "aria-labelledby": "coc-sheet-title",
         busy: t.busy,
         onClose: S
       }, {
-        default: ne(() => [e("section", ke, [
+        default: ie(() => [e("section", ke, [
           e("header", me, [e("div", null, [e("h2", _e, n(l(r).title), 1), e("small", null, n(l(r).scope), 1)]), e("button", {
             type: "button",
             class: "coc-close",
@@ -405,7 +405,7 @@ var ye = {
             "data-budget": b.id
           }, [
             e("span", null, [D(n(b.label), 1), e("small", null, n(l(r).remaining), 1)]),
-            e("strong", { class: Y({ complete: l(M)(f.value, b.id) === 0 }) }, n(l(M)(f.value, b.id)), 3),
+            e("strong", { class: X({ complete: l(M)(f.value, b.id) === 0 }) }, n(l(M)(f.value, b.id)), 3),
             e("small", null, n(l(r).allocated) + " " + n(b.budget - l(M)(f.value, b.id)) + " / " + n(b.budget), 1)
           ], 8, we))), 128))]),
           e("div", Se, [
@@ -428,7 +428,7 @@ var ye = {
                 type: "button",
                 "data-step": "decrease",
                 "aria-label": l(r).decrease + l(N)[y].label,
-                disabled: o.value || !l(H)(f.value, y, -1),
+                disabled: o.value || !l(V)(f.value, y, -1),
                 onClick: (te) => p(y, -1)
               }, "−", 8, Be),
               e("output", { "aria-labelledby": "coc-label-" + y }, n(l(B)(f.value, y)), 9, Ae),
@@ -436,7 +436,7 @@ var ye = {
                 type: "button",
                 "data-step": "increase",
                 "aria-label": l(r).increase + l(N)[y].label,
-                disabled: o.value || !l(H)(f.value, y, 1),
+                disabled: o.value || !l(V)(f.value, y, 1),
                 onClick: (te) => p(y, 1)
               }, "+", 8, Fe)
             ], 8, qe)], 8, je))), 128))])], 8, Ee))), 128)),
@@ -457,23 +457,23 @@ var ye = {
               "data-sheet-action": "check-save",
               disabled: t.busy,
               onClick: v[2] || (v[2] = (b) => t.checkSave?.())
-            }, n(l(r).checkSave), 9, Le)) : g("", !0),
-            O.value && !t.blocked ? (d(), u("div", Pe, [
-              e("p", Ue, n(l(r).resetQuestion), 1),
+            }, n(l(r).checkSave), 9, Ue)) : g("", !0),
+            O.value && !t.blocked ? (d(), u("div", Le, [
+              e("p", Pe, n(l(r).resetQuestion), 1),
               e("p", null, n(l(r).resetNotice), 1),
-              e("div", He, [e("button", {
+              e("div", Ve, [e("button", {
                 type: "button",
                 "data-sheet-action": "cancel-reset",
                 disabled: t.busy,
                 onClick: v[3] || (v[3] = (b) => O.value = !1)
-              }, n(l(r).cancelReset), 9, Ve), e("button", {
+              }, n(l(r).cancelReset), 9, Ge), e("button", {
                 type: "button",
                 class: "primary",
                 "data-sheet-action": "confirm-reset",
                 disabled: o.value,
                 onClick: ae
-              }, n(t.busy ? l(r).resetting : l(r).confirmReset), 9, ze)])
-            ])) : t.blocked ? g("", !0) : (d(), u("div", Ge, [
+              }, n(t.busy ? l(r).resetting : l(r).confirmReset), 9, He)])
+            ])) : t.blocked ? g("", !0) : (d(), u("div", ze, [
               e("button", {
                 type: "button",
                 class: "coc-random",
@@ -487,15 +487,15 @@ var ye = {
                 type: "button",
                 "data-sheet-action": "cancel",
                 disabled: t.busy,
-                onClick: L
-              }, n(l(r).cancel), 9, Ye)) : g("", !0),
+                onClick: U
+              }, n(l(r).cancel), 9, Xe)) : g("", !0),
               e("button", {
                 type: "button",
                 class: "primary",
                 "data-sheet-action": "save",
                 disabled: o.value || !h.value && !!t.sheet || !F.value,
                 onClick: E
-              }, n(t.busy ? l(r).saving : l(r).save), 9, We)
+              }, n(t.busy ? l(r).saving : l(r).save), 9, Ye)
             ]))
           ])
         ])]),
@@ -507,7 +507,7 @@ var ye = {
   const a = t.__vccOpts || t;
   for (const [c, o] of i) a[c] = o;
   return a;
-}, Je = /* @__PURE__ */ ee(Xe, [["__scopeId", "data-v-86b8f0c7"]]), Ze = { class: "dice-app" }, ea = {
+}, Je = /* @__PURE__ */ ee(Ze, [["__scopeId", "data-v-86b8f0c7"]]), We = { class: "dice-app" }, ea = {
   "aria-labelledby": "dice-action-label",
   class: "dice-feature"
 }, aa = { class: "dice-switch-row" }, ta = ["aria-checked", "disabled"], ia = { class: "dice-sr" }, la = ["disabled"], sa = { class: "dice-frequency-options" }, na = ["aria-pressed", "onClick"], ra = {
@@ -583,7 +583,7 @@ var ye = {
     function F() {
       (o.value?.type === "dice/set-coc7-sheet" || o.value?.type === "dice/confirm-sheet-save") && (o.value = null);
     }
-    return ($, s) => (d(), u("main", Ze, [
+    return ($, s) => (d(), u("main", We, [
       e("section", ea, [
         e("div", aa, [s[3] || (s[3] = e("h1", { id: "dice-action-label" }, "行动检定", -1)), e("button", {
           type: "button",
@@ -630,7 +630,7 @@ var ye = {
           }, n(S.label), 9, da)), 64))]),
           e("p", ua, n(h[a.value.actionCheckFrequency].description), 1)
         ], 8, oa)) : g("", !0),
-        a.value.coc7Sheet.kind === "invalid" || a.value.actionChecksEnabled && a.value.actionCheckRule === "coc7" ? (d(), X(Je, {
+        a.value.coc7Sheet.kind === "invalid" || a.value.actionChecksEnabled && a.value.actionCheckRule === "coc7" ? (d(), Z(Je, {
           key: 2,
           sheet: a.value.coc7Sheet.kind === "ready" ? a.value.coc7Sheet.sheet : null,
           invalid: a.value.coc7Sheet.kind === "invalid",
@@ -682,7 +682,7 @@ var ye = {
       o.value ? (d(), u("section", fa, [e("p", null, n(o.value.message), 1)])) : g("", !0)
     ]));
   }
-}), ga = /* @__PURE__ */ ee(ka, [["__scopeId", "data-v-839ca5e6"]]);
+}), ga = /* @__PURE__ */ ee(ka, [["__scopeId", "data-v-c149f2ce"]]);
 export {
   ga as default
 };

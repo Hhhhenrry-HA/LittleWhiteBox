@@ -1,7 +1,7 @@
 /* eslint-disable */
-import { $ as r, B as Se, E as Ce, F as n, G as Be, H as ne, L as D, M as Me, O as je, R as Fe, W as $e, Y as V, Z as We, _ as i, b as w, c as Ae, et as N, g as b, h as W, l as he, m as t, nt as v, o as Ne, p as M, s as Re, tt as be, u as S, v as Ye, x as U, y as E } from "./xiaobai-os-runtime-dom.esm-bundler-DgjJUtuO.js";
-import { n as Xe } from "./xiaobai-os-app-navigation-DS43A6sJ.js";
-import { t as Ie } from "./xiaobai-os-AppDialog-D2VlSK_V.js";
+import { E as Ce, F as n, G as Me, K as Se, L as D, M as $e, O as Be, Q as Fe, R as Ne, U as ne, V as je, X as V, _ as i, b as w, c as Ae, et as r, g as b, h as N, l as he, m as t, nt as be, o as We, p as M, rt as v, s as Re, tt as W, u as S, v as Ye, x as U, y as E } from "./xiaobai-os-runtime-dom.esm-bundler-BeaorYpU.js";
+import { n as Xe } from "./xiaobai-os-app-navigation-dPaaNhS6.js";
+import { t as Ie } from "./xiaobai-os-AppDialog-CwwXWjcp.js";
 import { C as L, D as Ge, E as Je, O as et, S as Ke, T as ye, a as tt, b as at, c as lt, d as nt, f as Ee, g as st, h as ot, i as Te, l as it, n as rt, o as ut, p as Ve, r as Oe, s as ct, u as qe, v as me, w as ee, x as dt, y as vt } from "./xiaobai-os-map-presentation-DJztEHLW.js";
 var pt = { class: "map-viewport" }, mt = ["viewBox", "aria-label"], yt = {
   class: "map-viewport-controls",
@@ -18,7 +18,7 @@ var pt = { class: "map-viewport" }, mt = ["viewBox", "aria-label"], yt = {
   setup(a) {
     const s = a, o = V(null), l = V([...s.viewBox]), c = V([0, 0]), g = M(() => c.value[0] && c.value[1] ? Math.max(l.value[2] / c.value[0], l.value[3] / c.value[1]) : 1);
     let m;
-    Me(() => {
+    $e(() => {
       m = new ResizeObserver((y) => {
         const C = y[0].contentRect;
         c.value = [C.width, C.height];
@@ -89,10 +89,10 @@ var pt = { class: "map-viewport" }, mt = ["viewBox", "aria-label"], yt = {
         K = !1;
       }, 0));
     }
-    function z(y) {
+    function Q(y) {
       K && (y.preventDefault(), y.stopPropagation());
     }
-    return ne(() => s.resetKey, I, { immediate: !0 }), ne(() => s.focusSequence, Y, { flush: "post" }), je(() => {
+    return ne(() => s.resetKey, I, { immediate: !0 }), ne(() => s.focusSequence, Y, { flush: "post" }), Be(() => {
       m?.disconnect(), R && clearTimeout(R);
     }), (y, C) => (n(), i("div", pt, [(n(), i("svg", {
       ref_key: "svg",
@@ -107,8 +107,8 @@ var pt = { class: "map-viewport" }, mt = ["viewBox", "aria-label"], yt = {
       onPointermove: q,
       onPointerup: O,
       onPointercancel: O,
-      onClickCapture: z
-    }, [Fe(y.$slots, "default", { unitScale: g.value })], 40, mt)), t("div", yt, [
+      onClickCapture: Q
+    }, [Ne(y.$slots, "default", { unitScale: g.value })], 40, mt)), t("div", yt, [
       t("button", {
         type: "button",
         "aria-label": "放大地图",
@@ -126,7 +126,7 @@ var pt = { class: "map-viewport" }, mt = ["viewBox", "aria-label"], yt = {
       }, "全图")
     ])]));
   }
-}), ze = ft, ht = {
+}), Qe = ft, ht = {
   class: "map-icon",
   viewBox: "0 0 24 24",
   fill: "none",
@@ -280,18 +280,18 @@ var xt = {
   },
   emits: ["select"],
   setup(a) {
-    const s = a, o = M(() => wt(s.atlas, s.scope)), l = M(() => ge(s.atlas, s.currentLocationKey, s.scope.locations)), c = M(() => o.value.nodes.find((u) => u.location.key === s.focusKey)), g = "map-arrow-" + Se();
+    const s = a, o = M(() => wt(s.atlas, s.scope)), l = M(() => ge(s.atlas, s.currentLocationKey, s.scope.locations)), c = M(() => o.value.nodes.find((u) => u.location.key === s.focusKey)), g = "map-arrow-" + je();
     function m(u, p) {
       return u === "water" ? "water" : u === "forest" ? "tree" : u === "mountain" ? "mountain" : ["world", "region"].includes(p) ? "globe" : p === "outdoor" ? "compass" : "building";
     }
-    return (u, p) => (n(), W(ze, {
+    return (u, p) => (n(), N(Qe, {
       "view-box": o.value.viewBox,
       "reset-key": `${a.scope.kind}:${a.scope.region?.key || ""}`,
       label: a.label,
       "focus-point": c.value ? [c.value.x, c.value.y] : void 0,
       "focus-sequence": a.focusSequence
     }, {
-      default: $e(({ unitScale: f }) => [
+      default: Me(({ unitScale: f }) => [
         t("defs", null, [t("marker", {
           id: g,
           viewBox: "0 0 10 10",
@@ -307,14 +307,14 @@ var xt = {
         t("g", xt, [(n(!0), i(S, null, D(o.value.nodes, (e) => (n(), i("g", {
           key: e.location.key,
           transform: `translate(${e.x} ${e.y})`,
-          class: N(`is-${e.location.terrain || "urban"}`)
+          class: W(`is-${e.location.terrain || "urban"}`)
         }, [...p[1] || (p[1] = [t("path", { d: "M-108-20Q-100-100-32-94T87-56Q127-13 99 48T21 99Q-57 113-90 65T-108-20Z" }, null, -1), t("path", {
           class: "map-contour",
           d: "M-133-22Q-124-126-39-116T110-70Q156-17 124 60T26 123Q-71 139-112 81T-133-22Z"
         }, null, -1)])], 10, _t))), 128))]),
         t("g", Ct, [(n(!0), i(S, null, D(o.value.routes, (e) => (n(), i("g", {
           key: e.link.id,
-          class: N({
+          class: W({
             "is-path": e.link.kind === "path",
             "is-portal": e.link.kind === "portal"
           })
@@ -336,7 +336,7 @@ var xt = {
         ], 2))), 128))]),
         (n(!0), i(S, null, D(o.value.nodes, (e) => (n(), i("g", {
           key: e.location.key,
-          class: N(["map-place", {
+          class: W(["map-place", {
             "is-selected": e.location.key === a.selectedLocationKey,
             "is-current": e.location.key === l.value,
             "is-unvisited": e.location.status !== "visited"
@@ -376,7 +376,7 @@ var xt = {
     ]));
   }
 }), Rt = Lt, pe;
-async function Qe() {
+async function ze() {
   if (!pe) {
     const a = [
       "..",
@@ -395,7 +395,7 @@ async function Qe() {
   }
   document.fonts.add(await pe);
 }
-var It = ["id"], Kt = ["stop-color", "stop-opacity"], Et = ["stop-color", "stop-opacity"], Tt = ["stop-color", "stop-opacity"], Ot = ["id"], zt = ["fill", "fill-opacity"], Qt = {
+var It = ["id"], Kt = ["stop-color", "stop-opacity"], Et = ["stop-color", "stop-opacity"], Tt = ["stop-color", "stop-opacity"], Ot = ["id"], Qt = ["fill", "fill-opacity"], zt = {
   fill: "none",
   stroke: "var(--scene-shadow)",
   "stroke-width": ".65",
@@ -416,12 +416,12 @@ var It = ["id"], Kt = ["stop-color", "stop-opacity"], Et = ["stop-color", "stop-
   stroke: "var(--scene-highlight)",
   "stroke-width": "1.3",
   opacity: "1"
-}, Wt = {
+}, Nt = {
   key: 5,
   d: "M5 32 37 0M12 32 44 0",
   stroke: "var(--scene-highlight)",
   "stroke-width": "2.2"
-}, Nt = {
+}, Wt = {
   key: 6,
   d: "M8 15l-2-4m2 4 3-3M36 26l-1-4m1 4 3-3"
 }, Yt = {
@@ -491,11 +491,11 @@ var It = ["id"], Kt = ["stop-color", "stop-opacity"], Et = ["stop-color", "stop-
           height: "32",
           fill: r(me)(l),
           "fill-opacity": l === "glass" ? 0.4 : 1
-        }, null, 8, zt),
-        t("g", Qt, [l === "wood" ? (n(), i(S, { key: 0 }, [o[0] || (o[0] = t("path", { d: "M0 0H48M0 16H48M19 0V16M37 16V32" }, null, -1)), o[1] || (o[1] = t("path", {
+        }, null, 8, Qt),
+        t("g", zt, [l === "wood" ? (n(), i(S, { key: 0 }, [o[0] || (o[0] = t("path", { d: "M0 0H48M0 16H48M19 0V16M37 16V32" }, null, -1)), o[1] || (o[1] = t("path", {
           d: "M3 7Q12 4 26 8T47 7M2 26q10-4 25 0t23-1",
           opacity: ".5"
-        }, null, -1))], 64)) : l === "stone" ? (n(), i("path", Dt)) : l === "tile" ? (n(), i("path", Zt)) : l === "marble" ? (n(), i("path", Ut)) : l === "water" ? (n(), i("path", Ft)) : l === "glass" ? (n(), i("path", Wt)) : l === "grass" || l === "forest" ? (n(), i("path", Nt)) : l === "dirt" || l === "sand" ? (n(), i("path", Yt)) : l === "metal" ? (n(), i("path", Xt)) : [
+        }, null, -1))], 64)) : l === "stone" ? (n(), i("path", Dt)) : l === "tile" ? (n(), i("path", Zt)) : l === "marble" ? (n(), i("path", Ut)) : l === "water" ? (n(), i("path", Ft)) : l === "glass" ? (n(), i("path", Nt)) : l === "grass" || l === "forest" ? (n(), i("path", Wt)) : l === "dirt" || l === "sand" ? (n(), i("path", Yt)) : l === "metal" ? (n(), i("path", Xt)) : [
           "carpet",
           "fabric",
           "bed-sheet",
@@ -608,7 +608,7 @@ var It = ["id"], Kt = ["stop-color", "stop-opacity"], Et = ["stop-color", "stop-
     unitScale: {}
   },
   setup(a) {
-    const s = a, o = M(() => Ee(s.element)), l = M(() => Math.min(o.value.width, o.value.height) / s.unitScale >= 12), c = M(() => s.element.shape === "circle"), g = M(() => s.element.material), m = M(() => vt(g.value, s.prefix)), u = M(() => at(g.value, s.prefix)), p = `scene-object-${Se()}`;
+    const s = a, o = M(() => Ee(s.element)), l = M(() => Math.min(o.value.width, o.value.height) / s.unitScale >= 12), c = M(() => s.element.shape === "circle"), g = M(() => s.element.material), m = M(() => vt(g.value, s.prefix)), u = M(() => at(g.value, s.prefix)), p = `scene-object-${je()}`;
     return (f, e) => (n(), i("svg", {
       x: o.value.x,
       y: o.value.y,
@@ -774,14 +774,14 @@ var It = ["id"], Kt = ["stop-color", "stop-opacity"], Et = ["stop-color", "stop-
   props: { scene: {} },
   setup(a) {
     const s = a, o = V(!1);
-    Me(() => {
-      Qe().then(() => {
+    $e(() => {
+      ze().then(() => {
         o.value = !0;
       }).catch(() => {
         o.value = !1;
       });
     });
-    const l = `xiaobai-map-scene-${Se()}`, c = M(() => Oe[s.scene.mood || "neutral"]), g = M(() => ct(s.scene.elements)), m = M(() => ut(s.scene.elements).map((u, p) => ({
+    const l = `xiaobai-map-scene-${je()}`, c = M(() => Oe[s.scene.mood || "neutral"]), g = M(() => ct(s.scene.elements)), m = M(() => ut(s.scene.elements).map((u, p) => ({
       element: u,
       bounds: Ee(u),
       path: ot(u),
@@ -792,22 +792,22 @@ var It = ["id"], Kt = ["stop-color", "stop-opacity"], Et = ["stop-color", "stop-
       object: nt(u) && !qe(u),
       marker: qe(u) && u.shape !== "label"
     })));
-    return (u, p) => (n(), W(ze, {
+    return (u, p) => (n(), N(Qe, {
       class: "map-scene-viewport",
       style: be({ "--scene-glow": c.value.glow }),
       "view-box": a.scene.viewBox,
       "reset-key": a.scene.key,
       label: `${a.scene.name} 场景地图`
     }, {
-      default: $e(({ unitScale: f }) => [
+      default: Me(({ unitScale: f }) => [
         w(ia, { prefix: l }),
         (n(!0), i(S, null, D(m.value, (e) => (n(), i("g", {
           key: e.element.id,
-          class: N(["map-scene-element", [`is-${e.element.category}`, `is-${e.element.certainty || "confirmed"}`]]),
+          class: W(["map-scene-element", [`is-${e.element.category}`, `is-${e.element.certainty || "confirmed"}`]]),
           "data-element": e.element.id,
           opacity: e.presentation.opacity
         }, [t("g", { transform: e.transform }, [
-          e.object ? (n(), W(ga, {
+          e.object ? (n(), N(ga, {
             key: 0,
             element: e.element,
             prefix: l,
@@ -861,7 +861,7 @@ var It = ["id"], Kt = ["stop-color", "stop-opacity"], Et = ["stop-color", "stop-
             transform: `translate(${e.bounds.x + e.bounds.width / 2} ${e.bounds.y + e.bounds.height / 2})`,
             "aria-hidden": "true"
           }, [t("text", {
-            class: N(o.value ? "map-material-symbol" : "map-symbol-fallback"),
+            class: W(o.value ? "map-material-symbol" : "map-symbol-fallback"),
             style: be({
               fontSize: `${Math.min(22 * f, Math.min(e.bounds.width, e.bounds.height) * 0.65)}px`,
               fill: "var(--scene-edge)",
@@ -901,7 +901,7 @@ var It = ["id"], Kt = ["stop-color", "stop-opacity"], Et = ["stop-color", "stop-
           style: be({ "--scene-unit-scale": f })
         }, [(n(!0), i(S, null, D(m.value, (e) => (n(), i(S, { key: e.element.id }, [e.element.label ? (n(), i("text", {
           key: 0,
-          class: N(["map-scene-label", { "is-primary": e.element.shape === "label" }]),
+          class: W(["map-scene-label", { "is-primary": e.element.shape === "label" }]),
           x: r(Ve)(e.element, f)[0],
           y: r(Ve)(e.element, f)[1]
         }, v(e.element.label), 11, Ia)) : b("", !0)], 64))), 128))], 4)
@@ -921,7 +921,7 @@ var It = ["id"], Kt = ["stop-color", "stop-opacity"], Et = ["stop-color", "stop-
 }, Oa = {
   class: "map-viewport-controls",
   "aria-label": "三维视角"
-}, za = /* @__PURE__ */ U({
+}, Qa = /* @__PURE__ */ U({
   __name: "MapScene3D",
   props: {
     scene: {},
@@ -932,19 +932,19 @@ var It = ["id"], Kt = ["stop-color", "stop-opacity"], Et = ["stop-color", "stop-
   setup(a, { emit: s }) {
     const o = a, l = s, c = V(null), g = V(null), m = V(!0);
     let u, p = !1;
-    return Me(async () => {
+    return $e(async () => {
       p = !0;
       try {
         const { createThreeRuntime: f } = await import("./xiaobai-os-three-runtime-CKh2C5ny.js");
         if (!p) return;
-        u = f(c.value, g.value, { fallback: (e) => l("fallback", e) }), u.setScene(o.scene), u.walls(o.lowWalls), u.labels(o.showLabels), m.value = !1, Qe().then(() => {
+        u = f(c.value, g.value, { fallback: (e) => l("fallback", e) }), u.setScene(o.scene), u.walls(o.lowWalls), u.labels(o.showLabels), m.value = !1, ze().then(() => {
           p && u?.symbols(!0);
         }).catch(() => {
         });
       } catch {
         p && l("fallback", "当前设备无法打开三维，已切换二维。");
       }
-    }), ne(() => o.scene, (f) => u?.setScene(f)), ne(() => o.lowWalls, (f) => u?.walls(f)), ne(() => o.showLabels, (f) => u?.labels(f)), je(() => {
+    }), ne(() => o.scene, (f) => u?.setScene(f)), ne(() => o.lowWalls, (f) => u?.walls(f)), ne(() => o.showLabels, (f) => u?.labels(f)), Be(() => {
       p = !1, u?.dispose(), u = void 0;
     }), (f, e) => (n(), i("div", {
       ref_key: "host",
@@ -978,11 +978,11 @@ var It = ["id"], Kt = ["stop-color", "stop-opacity"], Et = ["stop-color", "stop-
       ])
     ], 4));
   }
-}), Qa = za, Da = ["aria-label"], Za = { class: "map-scene-toolbar" }, Ua = {
+}), za = Qa, Da = ["aria-label"], Za = { class: "map-scene-toolbar" }, Ua = {
   class: "map-render-switch",
   role: "group",
   "aria-label": "场景显示方式"
-}, Fa = ["aria-pressed"], Wa = ["aria-pressed", "disabled"], Na = ["aria-pressed"], Ya = ["aria-pressed"], Xa = { class: "map-scene-stage" }, Ga = /* @__PURE__ */ U({
+}, Fa = ["aria-pressed"], Na = ["aria-pressed", "disabled"], Wa = ["aria-pressed"], Ya = ["aria-pressed"], Xa = { class: "map-scene-stage" }, Ga = /* @__PURE__ */ U({
   __name: "MapSceneView",
   props: {
     scene: {},
@@ -1005,20 +1005,20 @@ var It = ["id"], Kt = ["stop-color", "stop-opacity"], Et = ["stop-color", "stop-
         "aria-pressed": a.mode === "3d",
         disabled: a.threeUnavailable,
         onClick: m[1] || (m[1] = (u) => o("update:mode", "3d"))
-      }, "三维", 8, Wa)]),
+      }, "三维", 8, Na)]),
       a.mode === "3d" ? (n(), i("button", {
         key: 0,
         type: "button",
         "aria-pressed": l.value,
         onClick: m[2] || (m[2] = (u) => l.value = !l.value)
-      }, "低墙", 8, Na)) : b("", !0),
+      }, "低墙", 8, Wa)) : b("", !0),
       a.mode === "3d" ? (n(), i("button", {
         key: 1,
         type: "button",
         "aria-pressed": c.value,
         onClick: m[3] || (m[3] = (u) => c.value = !c.value)
       }, "名称", 8, Ya)) : b("", !0)
-    ]), t("div", Xa, [Be(w(Ea, { scene: a.scene }, null, 8, ["scene"]), [[Re, a.mode === "2d"]]), a.mode === "3d" ? (n(), W(Qa, {
+    ]), t("div", Xa, [Se(w(Ea, { scene: a.scene }, null, 8, ["scene"]), [[Re, a.mode === "2d"]]), a.mode === "3d" ? (n(), N(za, {
       key: 0,
       scene: a.scene,
       "low-walls": l.value,
@@ -1062,12 +1062,12 @@ var tl = { class: "map-dialog-header" }, al = { key: 0 }, ll = { class: "map-set
     "refresh"
   ],
   setup(a) {
-    return (s, o) => (n(), W(Ie, {
+    return (s, o) => (n(), N(Ie, {
       class: "map-dialog map-settings",
       "aria-labelledby": "map-settings-title",
       onClose: o[5] || (o[5] = (l) => s.$emit("close"))
     }, {
-      default: $e(() => [
+      default: Me(() => [
         t("header", tl, [o[6] || (o[6] = t("div", null, [t("small", null, "让地图跟上你的故事"), t("h2", { id: "map-settings-title" }, "地图设置")], -1)), t("button", {
           type: "button",
           class: "map-round-button",
@@ -1076,7 +1076,7 @@ var tl = { class: "map-dialog-header" }, al = { key: 0 }, ll = { class: "map-set
         }, [w(_, { name: "close" })])]),
         a.status || a.notice || a.maintenanceMessage ? (n(), i("section", {
           key: 0,
-          class: N(["map-settings-feedback", { "is-error": a.notice ? a.noticeError : a.maintenanceError }]),
+          class: W(["map-settings-feedback", { "is-error": a.notice ? a.noticeError : a.maintenanceError }]),
           role: "status"
         }, [t("strong", null, v(a.notice ? a.notice === a.maintenanceMessage ? "最近一次更新" : "操作提示" : a.status || "最近一次更新"), 1), a.notice || a.maintenanceMessage ? (n(), i("p", al, v(a.notice || a.maintenanceMessage), 1)) : b("", !0)], 2)) : b("", !0),
         t("div", ll, [
@@ -1170,21 +1170,21 @@ var bl = { class: "map-search-input" }, kl = ["aria-label", "placeholder"], gl =
         name: ye.visited
       }
     ]), m = M(() => hl(s.scope, o.value, l.value));
-    return (u, p) => (n(), W(Ie, {
+    return (u, p) => (n(), N(Ie, {
       class: "map-dialog map-search-dialog",
       "aria-label": c.value.search,
       onClose: p[2] || (p[2] = (f) => u.$emit("close"))
     }, {
-      default: $e(() => [
+      default: Me(() => [
         t("header", bl, [
           w(_, { name: "search" }),
-          Be(t("input", {
+          Se(t("input", {
             "onUpdate:modelValue": p[0] || (p[0] = (f) => o.value = f),
             type: "search",
             "aria-label": c.value.search,
             placeholder: c.value.search,
             autofocus: ""
-          }, null, 8, kl), [[Ne, o.value]]),
+          }, null, 8, kl), [[We, o.value]]),
           t("button", {
             type: "button",
             onClick: p[1] || (p[1] = (f) => u.$emit("close"))
@@ -1297,15 +1297,15 @@ var bl = { class: "map-search-input" }, kl = ["aria-label", "placeholder"], gl =
       ])
     ]));
   }
-}), zl = Ol;
+}), Ql = Ol;
 function ue(a) {
   return !!a && typeof a == "object" && !Array.isArray(a);
 }
 function Le(a) {
   return a.maintenanceStatus === "maintaining" || a.maintenanceStatus === "rebuilding";
 }
-function Ql(a) {
-  const s = V(structuredClone(We(a.initialState))), o = V(null), l = V(""), c = V(!1);
+function zl(a) {
+  const s = V(structuredClone(Fe(a.initialState))), o = V(null), l = V(""), c = V(!1);
   let g = !1, m = 0, u = 0, p = () => {
   };
   const f = M(() => s.value.status === "unconfirmed" || s.value.writeState === "unconfirmed"), e = M(() => o.value !== null || ["loading", "saving"].includes(s.value.status) || ["maintaining", "rebuilding"].includes(s.value.maintenanceStatus || "")), h = M(() => e.value ? "正在更新地图，请稍候" : f.value ? "请先检查上一次是否保存成功" : s.value.status === "conflict" ? "存档有变化，请先选择要保留的版本" : s.value.status !== "ready" ? s.value.message || "地图暂时不可更新" : s.value.chatIdentity ? "" : "请先打开一个聊天"), A = M(() => s.value.maintenanceStatus === "rebuilding" || o.value === "rebuild" ? "正在绘制世界…" : s.value.maintenanceStatus === "maintaining" || o.value === "maintain" ? "正在更新地图…" : o.value === "confirm" ? "正在检查保存…" : e.value ? "请稍候…" : ""), K = M(() => s.value.message || l.value), R = M(() => s.value.message ? [
@@ -1332,15 +1332,15 @@ function Ql(a) {
         ...Y
       }, 35e3);
       if (!g || F !== m || s.value.chatIdentity !== q) return;
-      const z = ue(O) ? O.result : void 0, y = ue(z) && ue(z.state) ? z.state : z;
-      G === u && ue(y) && y.chatIdentity === q && X(y), (H === "maintain" || H === "rebuild") && ue(z) && typeof z.message == "string" && z.message && (l.value = z.message), H === "refresh" && s.value.status === "ready" && (l.value = "已加载保存的地图。"), H === "settings" && (l.value = s.value.autoMaintenance ? "自动更新已开启。" : "自动更新已关闭。"), H === "confirm" && s.value.status === "ready" && (l.value = "已确认保存成功。"), H === "adopt" && ue(z) && z.adoption === "adopted" && (l.value = "已使用当前聊天里保存的 OS 存档。");
+      const Q = ue(O) ? O.result : void 0, y = ue(Q) && ue(Q.state) ? Q.state : Q;
+      G === u && ue(y) && y.chatIdentity === q && X(y), (H === "maintain" || H === "rebuild") && ue(Q) && typeof Q.message == "string" && Q.message && (l.value = Q.message), H === "refresh" && s.value.status === "ready" && (l.value = "已加载保存的地图。"), H === "settings" && (l.value = s.value.autoMaintenance ? "自动更新已开启。" : "自动更新已关闭。"), H === "confirm" && s.value.status === "ready" && (l.value = "已确认保存成功。"), H === "adopt" && ue(Q) && Q.adoption === "adopted" && (l.value = "已使用当前聊天里保存的 OS 存档。");
     } catch (O) {
       g && F === m && s.value.chatIdentity === q && (l.value = I(O, H), c.value = !0);
     } finally {
       g && F === m && (o.value = null);
     }
   }
-  return Me(() => {
+  return $e(() => {
     g = !0, p = a.bridge.subscribe(($) => {
       if ($.type === "map/state") {
         const H = $.payload.state;
@@ -1348,7 +1348,7 @@ function Ql(a) {
         u += 1, X(H);
       } else $.type === "map/error" && (u += 1, c.value = !0, l.value = $.payload.message || "地图暂时无法读取，请重新打开。");
     });
-  }), je(() => {
+  }), Be(() => {
     g = !1, m += 1, p();
   }), {
     state: s,
@@ -1383,10 +1383,10 @@ function Ql(a) {
 var Dl = { class: "map-top" }, Zl = { class: "map-search-bar" }, Ul = ["disabled"], Fl = {
   key: 1,
   class: "map-search-entry"
-}, Wl = {
+}, Nl = {
   key: 0,
   class: "map-view-row"
-}, Nl = ["aria-label"], Yl = ["aria-pressed"], Xl = ["aria-pressed"], Gl = ["aria-pressed"], Jl = {
+}, Wl = ["aria-label"], Yl = ["aria-pressed"], Xl = ["aria-pressed"], Gl = ["aria-pressed"], Jl = {
   key: 0,
   class: "map-scene-tools"
 }, en = ["aria-expanded"], tn = ["aria-label"], an = ["aria-current"], ln = { "aria-current": "page" }, nn = {
@@ -1431,26 +1431,26 @@ var Dl = { class: "map-top" }, Zl = { class: "map-search-bar" }, Ul = ["disabled
     initialState: {}
   },
   setup(a) {
-    const { state: s, activeRequest: o, busy: l, disabledReason: c, requiresConfirmation: g, status: m, notice: u, isError: p, dismissNotice: f, refresh: e, confirmSave: h, adopt: A, setAuto: K, update: R, rebuild: X } = Ql(a), I = V(""), T = () => el(s.value.map) === "scene" ? {
+    const { state: s, activeRequest: o, busy: l, disabledReason: c, requiresConfirmation: g, status: m, notice: u, isError: p, dismissNotice: f, refresh: e, confirmSave: h, adopt: A, setAuto: K, update: R, rebuild: X } = zl(a), I = V(""), T = () => el(s.value.map) === "scene" ? {
       kind: "scene",
       key: ""
     } : { kind: "world" }, $ = V(T()), H = V("3d"), Y = V(!1), F = V("");
     let G = !1;
-    const q = M(() => $.value.kind === "scene"), O = M(() => $.value.kind === "scene" ? $.value.key : ""), z = V(""), y = V(0), C = V(!1), B = V(null), P = V(!1), j = M(() => s.value.map?.atlas), Z = M(() => j.value?.actors.find((x) => x.actorKey === "player")?.locationKey || ""), se = M(() => j.value?.locations.find((x) => x.key === Z.value)), oe = M(() => j.value?.locations.find((x) => x.key === (O.value || Z.value))), He = M(() => q.value && oe.value?.sceneKey ? s.value.map?.scenes[oe.value.sceneKey] : void 0), J = M(() => {
+    const q = M(() => $.value.kind === "scene"), O = M(() => $.value.kind === "scene" ? $.value.key : ""), Q = V(""), y = V(0), C = V(!1), B = V(null), P = V(!1), j = M(() => s.value.map?.atlas), Z = M(() => j.value?.actors.find((x) => x.actorKey === "player")?.locationKey || ""), se = M(() => j.value?.locations.find((x) => x.key === Z.value)), oe = M(() => j.value?.locations.find((x) => x.key === (O.value || Z.value))), He = M(() => q.value && oe.value?.sceneKey ? s.value.map?.scenes[oe.value.sceneKey] : void 0), J = M(() => {
       if (!j.value || $.value.kind === "world") return;
       const x = $.value.key || Z.value;
       return ke(j.value, x);
-    }), Q = M(() => fl(j.value || {
+    }), z = M(() => fl(j.value || {
       locations: [],
       links: [],
       actors: []
-    }, $.value.kind === "world" ? null : J.value?.key || "")), ae = M(() => Q.value.locations.find((x) => x.key === I.value)), ce = M(() => Q.value.kind === "world" ? ee.world : J.value?.name || L.unknownRegion), we = M(() => Ke[Q.value.kind]), Pe = M(() => Q.value.unvisited ? "unvisited" : "all");
+    }, $.value.kind === "world" ? null : J.value?.key || "")), ae = M(() => z.value.locations.find((x) => x.key === I.value)), ce = M(() => z.value.kind === "world" ? ee.world : J.value?.name || L.unknownRegion), we = M(() => Ke[z.value.kind]), Pe = M(() => z.value.unvisited ? "unvisited" : "all");
     ne(() => s.value, (x, d) => {
       const k = x.chatIdentity !== d.chatIdentity;
       (k || !x.map?.atlas.locations.some((_e) => _e.key === I.value)) && (I.value = ""), k && (G = !1);
       const le = $.value.kind === "world" ? "" : $.value.key, Ue = le && !x.map?.atlas.locations.some((_e) => _e.key === le);
       (k || !d.map?.atlas.locations.length && x.map?.atlas.locations.length && !G || Ue) && ($.value = T()), k && (C.value = !1, B.value = null, P.value = !1);
-    }), ne(Q, (x, d) => {
+    }), ne(z, (x, d) => {
       x.locations.some((k) => k.key === I.value) || (I.value = ""), (x.kind !== d.kind || x.region?.key !== d.region?.key || !j.value) && (I.value = "", B.value = null, P.value = !1);
     });
     function xe(x) {
@@ -1477,7 +1477,7 @@ var Dl = { class: "map-top" }, Zl = { class: "map-search-bar" }, Ul = ["disabled
           }
           await Ce();
         }
-        I.value = x, B.value = null, P.value = !1, await Ce(), z.value = j.value ? ge(j.value, x, Q.value.locations) : x, y.value += 1;
+        I.value = x, B.value = null, P.value = !1, await Ce(), Q.value = j.value ? ge(j.value, x, z.value.locations) : x, y.value += 1;
       }
     }
     async function De() {
@@ -1505,7 +1505,7 @@ var Dl = { class: "map-top" }, Zl = { class: "map-search-bar" }, Ul = ["disabled
     function Ze(x) {
       Y.value || (Y.value = !0, H.value = "2d", F.value = x);
     }
-    return Xe(() => P.value ? (P.value = !1, !0) : q.value ? (ie(O.value && J.value?.key || ""), !0) : I.value ? (I.value = "", !0) : $.value.kind === "region" ? (re(), !0) : !1), (x, d) => (n(), i("main", { class: N(["map-app", {
+    return Xe(() => P.value ? (P.value = !1, !0) : q.value ? (ie(O.value && J.value?.key || ""), !0) : I.value ? (I.value = "", !0) : $.value.kind === "region" ? (re(), !0) : !1), (x, d) => (n(), i("main", { class: W(["map-app", {
       "has-view-switch": j.value?.locations.length,
       "is-scene-view": q.value
     }]) }, [
@@ -1526,7 +1526,7 @@ var Dl = { class: "map-top" }, Zl = { class: "map-search-bar" }, Ul = ["disabled
             onClick: d[1] || (d[1] = (k) => C.value = !0)
           }, [w(_, { name: "more" })])
         ]),
-        j.value?.locations.length ? (n(), i("div", Wl, [t("nav", {
+        j.value?.locations.length ? (n(), i("div", Nl, [t("nav", {
           class: "map-view-switch",
           "aria-label": r(L).viewLabel
         }, [
@@ -1545,7 +1545,7 @@ var Dl = { class: "map-top" }, Zl = { class: "map-search-bar" }, Ul = ["disabled
             "aria-pressed": q.value,
             onClick: d[3] || (d[3] = (k) => ve())
           }, [w(_, { name: "layers" }), E(v(r(ee).scene), 1)], 8, Gl)
-        ], 8, Nl), q.value ? (n(), i("div", Jl, [O.value ? (n(), i("button", {
+        ], 8, Wl), q.value ? (n(), i("div", Jl, [O.value ? (n(), i("button", {
           key: 0,
           type: "button",
           class: "map-round-button",
@@ -1576,7 +1576,7 @@ var Dl = { class: "map-top" }, Zl = { class: "map-search-bar" }, Ul = ["disabled
         }, [w(_, { name: "close" })])])) : b("", !0),
         r(u) || r(g) || r(s).status === "conflict" ? (n(), i("aside", {
           key: 4,
-          class: N(["map-notice", { "is-error": r(p) }]),
+          class: W(["map-notice", { "is-error": r(p) }]),
           role: "status"
         }, [t("p", null, v(r(u) || (r(g) ? "还不确定是否保存成功，请先检查保存。" : "服务器上的存档与当前内容不同。")), 1), r(g) ? (n(), i("button", {
           key: 0,
@@ -1600,15 +1600,15 @@ var Dl = { class: "map-top" }, Zl = { class: "map-search-bar" }, Ul = ["disabled
           onClick: d[10] || (d[10] = (...k) => r(f) && r(f)(...k))
         }, [w(_, { name: "close" })]))], 2)) : b("", !0)
       ]),
-      t("div", { class: N(["map-canvas", { "has-detail": ae.value && !q.value }]) }, [r(s).map && j.value?.locations.length ? (n(), i(S, { key: 0 }, [
-        Q.value.locations.length ? Be((n(), W(Rt, {
+      t("div", { class: W(["map-canvas", { "has-detail": ae.value && !q.value }]) }, [r(s).map && j.value?.locations.length ? (n(), i(S, { key: 0 }, [
+        z.value.locations.length ? Se((n(), N(Rt, {
           key: 0,
           atlas: r(s).map.atlas,
-          scope: Q.value,
+          scope: z.value,
           label: ce.value,
           "current-location-key": Z.value,
           "selected-location-key": I.value,
-          "focus-key": z.value,
+          "focus-key": Q.value,
           "focus-sequence": y.value,
           onSelect: d[11] || (d[11] = (k) => de(k))
         }, null, 8, [
@@ -1620,7 +1620,7 @@ var Dl = { class: "map-top" }, Zl = { class: "map-search-bar" }, Ul = ["disabled
           "focus-key",
           "focus-sequence"
         ])), [[Re, !q.value]]) : b("", !0),
-        q.value ? (n(), i(S, { key: 1 }, [He.value?.status === "active" ? (n(), W(Ja, {
+        q.value ? (n(), i(S, { key: 1 }, [He.value?.status === "active" ? (n(), N(Ja, {
           key: 0,
           mode: H.value,
           "onUpdate:mode": d[12] || (d[12] = (k) => H.value = k),
@@ -1650,7 +1650,7 @@ var Dl = { class: "map-top" }, Zl = { class: "map-search-bar" }, Ul = ["disabled
             r(c) && !r(l) ? (n(), i("p", vn, v(r(c)), 1)) : b("", !0)
           ], 64))
         ]))], 64)) : b("", !0),
-        !q.value && !Q.value.locations.length ? (n(), i("div", pn, [
+        !q.value && !z.value.locations.length ? (n(), i("div", pn, [
           w(_, { name: "pin" }),
           t("h2", null, v($.value.kind === "region" && !J.value ? r(L).unknownRegion : we.value.empty), 1),
           t("p", null, v($.value.kind === "region" && !J.value ? r(L).unknownRegionHint : we.value.emptyHint), 1),
@@ -1687,7 +1687,7 @@ var Dl = { class: "map-top" }, Zl = { class: "map-search-bar" }, Ul = ["disabled
       ]))], 2),
       j.value?.locations.length && !q.value ? (n(), i("div", {
         key: 0,
-        class: N(["map-floating-tools", { "has-detail": ae.value }])
+        class: W(["map-floating-tools", { "has-detail": ae.value }])
       }, [t("button", {
         type: "button",
         class: "map-round-button",
@@ -1712,7 +1712,7 @@ var Dl = { class: "map-top" }, Zl = { class: "map-search-bar" }, Ul = ["disabled
         d[32] || (d[32] = t("p", null, "路线连接已记录的地点；箭头表示单向通行。", -1)),
         t("small", null, v(r(L).legend), 1)
       ])) : b("", !0),
-      ae.value && r(s).map && !q.value ? (n(), W(zl, {
+      ae.value && r(s).map && !q.value ? (n(), N(Ql, {
         key: ae.value.key,
         location: ae.value,
         map: r(s).map,
@@ -1729,17 +1729,17 @@ var Dl = { class: "map-top" }, Zl = { class: "map-search-bar" }, Ul = ["disabled
         key: 3,
         type: "button",
         class: "map-region-card",
-        "aria-label": r(Je)(Q.value.kind, Pe.value),
+        "aria-label": r(Je)(z.value.kind, Pe.value),
         "aria-describedby": "map-browse-summary",
         onClick: d[22] || (d[22] = (k) => B.value = Pe.value)
       }, [
-        t("span", wn, [w(_, { name: Q.value.kind === "world" ? "globe" : "compass" }, null, 8, ["name"])]),
-        t("span", xn, [t("strong", null, v(ce.value), 1), t("small", null, v(r(et)(Q.value.kind, Q.value.locations.length, Q.value.unvisited)), 1)]),
+        t("span", wn, [w(_, { name: z.value.kind === "world" ? "globe" : "compass" }, null, 8, ["name"])]),
+        t("span", xn, [t("strong", null, v(ce.value), 1), t("small", null, v(r(et)(z.value.kind, z.value.locations.length, z.value.unvisited)), 1)]),
         t("span", _n, [w(_, { name: "next" })])
       ], 8, $n)) : q.value && j.value?.locations.length ? (n(), i("footer", Cn, [w(_, { name: "layers" }), t("span", null, [t("strong", null, v(oe.value?.name || "当前位置待确认"), 1), t("small", null, v(O.value ? "正在查看场景图 · 不会移动人物" : "当前位置的场景图"), 1)])])) : b("", !0),
-      B.value && j.value ? (n(), W(jl, {
+      B.value && j.value ? (n(), N(jl, {
         key: 5,
-        scope: Q.value,
+        scope: z.value,
         title: ce.value,
         "initial-filter": B.value,
         onClose: d[23] || (d[23] = (k) => B.value = null),
@@ -1749,7 +1749,7 @@ var Dl = { class: "map-top" }, Zl = { class: "map-search-bar" }, Ul = ["disabled
         "title",
         "initial-filter"
       ])) : b("", !0),
-      C.value ? (n(), W(yl, {
+      C.value ? (n(), N(yl, {
         key: 6,
         "auto-maintenance": r(s).autoMaintenance,
         busy: r(l),

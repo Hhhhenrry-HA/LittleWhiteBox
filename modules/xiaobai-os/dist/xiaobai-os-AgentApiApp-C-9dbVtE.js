@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { E as _t, F as Ne, G as It, J as $t, M as Dt, O as Rt, Y as ye, Z as st, _ as qe, et as Bt, g as Lt, m as w, nt as we, p as Oe, s as Kt, x as jt } from "./xiaobai-os-runtime-dom.esm-bundler-DgjJUtuO.js";
+import { E as _t, F as Ne, K as It, M as $t, O as Dt, Q as st, X as ye, Y as Rt, _ as qe, g as Bt, m as w, p as we, rt as Oe, s as Lt, tt as Kt, x as jt } from "./xiaobai-os-runtime-dom.esm-bundler-BeaorYpU.js";
 import { a as ce, i as xe, n as Ft, o as Ht, r as ct, t as zt } from "./xiaobai-os-reasoning-capabilities-jekAYzl_.js";
 var Jt = "https://api.tavily.com";
 function Gt(t = "") {
@@ -58,13 +58,13 @@ function _e(t, a) {
     }
   };
 }
-var gt = "openai-compatible", $e = "默认", mt = "default", Wt = "deny", z = 32e3, Yt = Object.freeze([{
+var gt = "openai-compatible", $e = "默认", mt = "default", Wt = "deny", z = 32e3, Xt = Object.freeze([{
   value: "default",
   label: "默认权限"
 }, {
   value: "full",
   label: "完全权限"
-}]), Xt = Object.freeze([{
+}]), Yt = Object.freeze([{
   value: "deny",
   label: "禁止"
 }, {
@@ -190,7 +190,7 @@ function Re(t = {}, a) {
     permissionMode: t.permissionMode
   } } : {};
 }
-function Zt(t = {}, a) {
+function Qt(t = {}, a) {
   const n = {}, i = Re(t, a);
   return Object.entries(i).forEach(([o, d]) => {
     if (!d || typeof d != "object") return;
@@ -202,7 +202,7 @@ function Zt(t = {}, a) {
     };
   }), Object.keys(n).length || (n[$e] = _()), n;
 }
-function Qt(t, a) {
+function Zt(t, a) {
   const n = P(a);
   return t[n] ? n : Object.keys(t)[0];
 }
@@ -269,7 +269,7 @@ function na(t = {}, a, n) {
   };
 }
 function ke(t = {}) {
-  const a = P(t.currentPresetName || t.presetDraftName || "默认"), n = Zt(t, a), i = Qt(n, t.currentPresetName), o = ea(n, t.delegatePresetName, i), d = n[i] || _(), u = n[o] || d, p = vt(t.delegateConfig, u), m = ta(t, n, i, o), v = na(t, a, i);
+  const a = P(t.currentPresetName || t.presetDraftName || "默认"), n = Qt(t, a), i = Zt(n, t.currentPresetName), o = ea(n, t.delegatePresetName, i), d = n[i] || _(), u = n[o] || d, p = vt(t.delegateConfig, u), m = ta(t, n, i, o), v = na(t, a, i);
   return {
     workspaceFileName: String(t.workspaceFileName || ""),
     updatedAt: Number(t.updatedAt) || 0,
@@ -857,7 +857,7 @@ function ja(t = {}) {
     const s = a.config?.presets || {}, l = P(e || r || "默认");
     return s[l] ? l : r && s[r] ? r : Object.keys(s)[0] || "默认";
   }
-  function Y(e, r) {
+  function X(e, r) {
     const s = O(e, $e), l = r && typeof r == "object" ? r : _(), c = l.provider || "openai-compatible", S = U(l.modelConfigs || {}), x = S[c] || {}, k = Se(c, x);
     return {
       delegatePresetName: s,
@@ -875,7 +875,7 @@ function ja(t = {}) {
       delegateToolMode: x.toolMode || "native"
     };
   }
-  function Q(e = "openai-compatible", r = {}) {
+  function Z(e = "openai-compatible", r = {}) {
     const s = U(r || {})[e] || {}, l = Se(e, s);
     return {
       baseUrl: String(s.baseUrl || ""),
@@ -904,7 +904,7 @@ function ja(t = {}) {
     };
   }
   function R(e, r, s = a.config) {
-    const l = P(e || "默认"), c = r && typeof r == "object" ? r : _(), S = c.provider || "openai-compatible", x = U(c.modelConfigs || {}), k = Q(S, x), A = O(s?.delegatePresetName, l), h = Y(A, s?.delegateConfig && typeof s.delegateConfig == "object" ? s.delegateConfig : (s?.presets || {})[A] || c);
+    const l = P(e || "默认"), c = r && typeof r == "object" ? r : _(), S = c.provider || "openai-compatible", x = U(c.modelConfigs || {}), k = Z(S, x), A = O(s?.delegatePresetName, l), h = X(A, s?.delegateConfig && typeof s.delegateConfig == "object" ? s.delegateConfig : (s?.presets || {})[A] || c);
     return {
       currentPresetName: l,
       presetDraftName: l,
@@ -950,7 +950,7 @@ function ja(t = {}) {
       sendTemperature: e.querySelector("#xb-assistant-delegate-send-temperature")?.checked ?? !!(s.delegateSendTemperature ?? !0),
       reasoning: G,
       toolMode: re(c) ? e.querySelector("#xb-assistant-delegate-tool-mode")?.value || s.delegateToolMode || "native" : void 0
-    }, X = {
+    }, Y = {
       ...U(s.modelConfigs || {}),
       [l]: {
         ...U(s.modelConfigs || {})[l] || {},
@@ -968,7 +968,7 @@ function ja(t = {}) {
       currentPresetName: s.currentPresetName,
       presetDraftName: P(e.querySelector("#xb-assistant-preset-name")?.value),
       provider: l,
-      modelConfigs: X,
+      modelConfigs: Y,
       baseUrl: C.baseUrl,
       model: C.model,
       apiKey: C.apiKey,
@@ -1165,8 +1165,8 @@ function ja(t = {}) {
       baseUrl: x,
       model: k,
       reasoning: A
-    }), C = G.reasoningMode, E = G.reasoningEffort, X = G.reasoningBudgetTokens, H = e.querySelector(`${c}-mode`), te = e.querySelector(`${c}-capability`), ae = e.querySelector(`${c}-effort-wrap`), se = e.querySelector(`${c}-effort`), ne = e.querySelector(`${c}-budget-wrap`), Z = e.querySelector(`${c}-budget`);
-    H && (K(H, Ft(h)), H.value = C), te && (te.textContent = h.unsupportedReason || `能力配置：${h.profileId}`), se && (K(se, zt(h)), se.value = E), ae && (ae.style.display = C === "on" && h.intensity.kind === "effort" ? "" : "none"), Z && h.intensity.kind === "budget" && (Z.min = h.intensity.allowAuto ? "-1" : String(h.intensity.min), Z.max = String(h.intensity.max), Z.value = String(X)), ne && (ne.style.display = C === "on" && h.intensity.kind === "budget" ? "" : "none");
+    }), C = G.reasoningMode, E = G.reasoningEffort, Y = G.reasoningBudgetTokens, H = e.querySelector(`${c}-mode`), te = e.querySelector(`${c}-capability`), ae = e.querySelector(`${c}-effort-wrap`), se = e.querySelector(`${c}-effort`), ne = e.querySelector(`${c}-budget-wrap`), Q = e.querySelector(`${c}-budget`);
+    H && (K(H, Ft(h)), H.value = C), te && (te.textContent = h.unsupportedReason || `能力配置：${h.profileId}`), se && (K(se, zt(h)), se.value = E), ae && (ae.style.display = C === "on" && h.intensity.kind === "effort" ? "" : "none"), Q && h.intensity.kind === "budget" && (Q.min = h.intensity.allowAuto ? "-1" : String(h.intensity.min), Q.max = String(h.intensity.max), Q.value = String(Y)), ne && (ne.style.display = C === "on" && h.intensity.kind === "budget" ? "" : "none");
   }
   function F(e) {
     const r = e.querySelector("#xb-assistant-runtime");
@@ -1181,18 +1181,18 @@ function ja(t = {}) {
   function He(e) {
     if (!a.config) return;
     Fe(e);
-    const r = y(), s = r.provider || "openai-compatible", l = q(s), c = r.delegateProvider || "openai-compatible", S = q(c, "delegate"), x = e.querySelector("#xb-assistant-provider"), k = e.querySelector("#xb-assistant-base-url"), A = e.querySelector("#xb-assistant-model"), h = e.querySelector("#xb-assistant-api-key"), G = e.querySelector("#xb-assistant-temperature"), C = e.querySelector("#xb-assistant-send-temperature"), E = e.querySelector("#xb-assistant-tool-mode-wrap"), X = e.querySelector("#xb-assistant-tool-mode"), H = e.querySelector("#xb-assistant-permission-mode"), te = e.querySelector("#xb-assistant-jsapi-permission"), ae = e.querySelector("#xb-assistant-model-pulled"), se = e.querySelector("#xb-assistant-max-tokens"), ne = e.querySelector("#xb-assistant-preset-select"), Z = e.querySelector("#xb-assistant-preset-name"), Ce = e.querySelector("#xb-assistant-delegate-preset-select"), Ge = e.querySelector("#xb-assistant-delegate-provider"), Ve = e.querySelector("#xb-assistant-delegate-base-url"), We = e.querySelector("#xb-assistant-delegate-model"), Ye = e.querySelector("#xb-assistant-delegate-api-key"), Xe = e.querySelector("#xb-assistant-tavily-api-key"), Me = e.querySelector("#xb-assistant-delegate-model-pulled"), Ze = e.querySelector("#xb-assistant-delegate-max-tokens"), Qe = e.querySelector("#xb-assistant-delegate-tool-mode-wrap"), Ee = e.querySelector("#xb-assistant-delegate-tool-mode");
-    if (!ne || !Z) return;
+    const r = y(), s = r.provider || "openai-compatible", l = q(s), c = r.delegateProvider || "openai-compatible", S = q(c, "delegate"), x = e.querySelector("#xb-assistant-provider"), k = e.querySelector("#xb-assistant-base-url"), A = e.querySelector("#xb-assistant-model"), h = e.querySelector("#xb-assistant-api-key"), G = e.querySelector("#xb-assistant-temperature"), C = e.querySelector("#xb-assistant-send-temperature"), E = e.querySelector("#xb-assistant-tool-mode-wrap"), Y = e.querySelector("#xb-assistant-tool-mode"), H = e.querySelector("#xb-assistant-permission-mode"), te = e.querySelector("#xb-assistant-jsapi-permission"), ae = e.querySelector("#xb-assistant-model-pulled"), se = e.querySelector("#xb-assistant-max-tokens"), ne = e.querySelector("#xb-assistant-preset-select"), Q = e.querySelector("#xb-assistant-preset-name"), Ce = e.querySelector("#xb-assistant-delegate-preset-select"), Ge = e.querySelector("#xb-assistant-delegate-provider"), Ve = e.querySelector("#xb-assistant-delegate-base-url"), We = e.querySelector("#xb-assistant-delegate-model"), Xe = e.querySelector("#xb-assistant-delegate-api-key"), Ye = e.querySelector("#xb-assistant-tavily-api-key"), Me = e.querySelector("#xb-assistant-delegate-model-pulled"), Qe = e.querySelector("#xb-assistant-delegate-max-tokens"), Ze = e.querySelector("#xb-assistant-delegate-tool-mode-wrap"), Ee = e.querySelector("#xb-assistant-delegate-tool-mode");
+    if (!ne || !Q) return;
     const et = (a.config.presetNames || []).map((V) => ({
       value: V,
       label: V
     }));
-    K(ne, et), ne.value = r.currentPresetName || a.config.currentPresetName || "默认", Ce && (K(Ce, et), Ce.value = O(r.delegatePresetName, r.currentPresetName)), Z.value = r.presetDraftName || r.currentPresetName || "默认", x && (x.value = s), k && (k.value = r.baseUrl || ""), A && (A.value = r.model || ""), h && (h.value = r.apiKey || ""), se && (se.value = String(N(r.maxTokens))), G && (G.value = String($(r.temperature, 1))), C && (C.checked = !!(r.sendTemperature ?? !0)), Xe && (Xe.value = r.tavilyApiKey || ""), E && (E.style.display = re(s) ? "" : "none"), X && (K(X, ot), X.value = r.toolMode || "native"), H && (K(H, Yt), H.value = ie(r.permissionMode)), te && (K(te, Xt), te.value = W(r.jsApiPermission)), L(e), ae && (K(ae, l.map((V) => ({
+    K(ne, et), ne.value = r.currentPresetName || a.config.currentPresetName || "默认", Ce && (K(Ce, et), Ce.value = O(r.delegatePresetName, r.currentPresetName)), Q.value = r.presetDraftName || r.currentPresetName || "默认", x && (x.value = s), k && (k.value = r.baseUrl || ""), A && (A.value = r.model || ""), h && (h.value = r.apiKey || ""), se && (se.value = String(N(r.maxTokens))), G && (G.value = String($(r.temperature, 1))), C && (C.checked = !!(r.sendTemperature ?? !0)), Ye && (Ye.value = r.tavilyApiKey || ""), E && (E.style.display = re(s) ? "" : "none"), Y && (K(Y, ot), Y.value = r.toolMode || "native"), H && (K(H, Xt), H.value = ie(r.permissionMode)), te && (K(te, Yt), te.value = W(r.jsApiPermission)), L(e), ae && (K(ae, l.map((V) => ({
       value: V,
       label: V
-    })), "手动填写"), ae.value = l.includes(r.model) ? r.model : ""), Ge && (Ge.value = c), Ve && (Ve.value = r.delegateBaseUrl || ""), We && (We.value = r.delegateModel || ""), Ye && (Ye.value = r.delegateApiKey || "");
+    })), "手动填写"), ae.value = l.includes(r.model) ? r.model : ""), Ge && (Ge.value = c), Ve && (Ve.value = r.delegateBaseUrl || ""), We && (We.value = r.delegateModel || ""), Xe && (Xe.value = r.delegateApiKey || "");
     const tt = e.querySelector("#xb-assistant-delegate-temperature"), at = e.querySelector("#xb-assistant-delegate-send-temperature");
-    Ze && (Ze.value = String(N(r.delegateMaxTokens))), tt && (tt.value = String($(r.delegateTemperature, 1))), at && (at.checked = !!(r.delegateSendTemperature ?? !0)), Qe && (Qe.style.display = re(c) ? "" : "none"), Ee && (K(Ee, ot), Ee.value = r.delegateToolMode || "native"), L(e, "delegate"), Me && (K(Me, S.map((V) => ({
+    Qe && (Qe.value = String(N(r.delegateMaxTokens))), tt && (tt.value = String($(r.delegateTemperature, 1))), at && (at.checked = !!(r.delegateSendTemperature ?? !0)), Ze && (Ze.style.display = re(c) ? "" : "none"), Ee && (K(Ee, ot), Ee.value = r.delegateToolMode || "native"), L(e, "delegate"), Me && (K(Me, S.map((V) => ({
       value: V,
       label: V
     })), "手动填写"), Me.value = S.includes(r.delegateModel) ? r.delegateModel : ""), je(e, "#xb-assistant-model-pull-status", D(s)), je(e, "#xb-assistant-delegate-model-pull-status", D(c, "delegate")), F(e);
@@ -1321,7 +1321,7 @@ function ja(t = {}) {
       a.configDraft = {
         ...c,
         provider: s,
-        ...Q(s, c.modelConfigs)
+        ...Z(s, c.modelConfigs)
       }, v(), n?.();
     }), e.querySelector("#xb-assistant-preset-select")?.addEventListener("change", (r) => {
       const s = P(r.currentTarget.value), l = (a.config?.presets || {})[s] || _(), c = f(e);
@@ -1401,7 +1401,7 @@ function ja(t = {}) {
       const s = O(r.currentTarget?.value, a.configDraft?.currentPresetName || a.config?.currentPresetName || "默认"), l = (a.config?.presets || {})[s] || _();
       a.configDraft = {
         ...f(e),
-        ...Y(s, l)
+        ...X(s, l)
       }, v(), n?.();
     }), e.querySelectorAll("[data-config-page]").forEach((r) => {
       r.addEventListener("click", (s) => {
@@ -1506,7 +1506,7 @@ function Ha(t = {}) {
   };
 }
 function za(t = {}) {
-  const { configSave: a = {}, runtimeText: n = "", inlineToastText: i = "", showInlineToast: o = !0, showAssistantPermissions: d = !0, showDelegateSettings: u = !0, showTavilySettings: p = !0, activePage: m = "main", delegatePresetHint: v = "DelegateRun 分身会使用这里的独立 API 配置；可以和主助手使用不同 Provider、Base URL、模型和 Tool 调用格式。", isBusy: g = !1, canDeletePreset: D = !0, configLoadError: B = "" } = t, I = String(B || "").trim(), q = Ha(a), O = Fa(a), Y = g || I || String(a?.status || "") === "saving" ? "disabled" : "", Q = g || !D ? "disabled" : "", ee = m === "delegate" ? "delegate" : "main", R = ee === "main", y = ee === "delegate", J = d ? `
+  const { configSave: a = {}, runtimeText: n = "", inlineToastText: i = "", showInlineToast: o = !0, showAssistantPermissions: d = !0, showDelegateSettings: u = !0, showTavilySettings: p = !0, activePage: m = "main", delegatePresetHint: v = "DelegateRun 分身会使用这里的独立 API 配置；可以和主助手使用不同 Provider、Base URL、模型和 Tool 调用格式。", isBusy: g = !1, canDeletePreset: D = !0, configLoadError: B = "" } = t, I = String(B || "").trim(), q = Ha(a), O = Fa(a), X = g || I || String(a?.status || "") === "saving" ? "disabled" : "", Z = g || !D ? "disabled" : "", ee = m === "delegate" ? "delegate" : "main", R = ee === "main", y = ee === "delegate", J = d ? `
             <label>
                 <span>斜杠命令权限</span>
                 <select id="xb-assistant-permission-mode"></select>
@@ -1524,7 +1524,7 @@ function za(t = {}) {
                 <div class="xb-assistant-preset-row">
                     <select id="xb-assistant-delegate-preset-select" class="xb-assistant-preset-field" aria-label="已存预设"></select>
                     <div class="xb-assistant-preset-tools is-single" aria-label="分身 API 预设操作">
-                        <button id="xb-assistant-delegate-save" type="button" class="xb-assistant-icon-button ${q.className}" title="${q.title}" aria-label="${q.title}" ${Y}>${ue(O)}</button>
+                        <button id="xb-assistant-delegate-save" type="button" class="xb-assistant-icon-button ${q.className}" title="${q.title}" aria-label="${q.title}" ${X}>${ue(O)}</button>
                     </div>
                 </div>
                 <label>
@@ -1610,8 +1610,8 @@ function za(t = {}) {
                 <div class="xb-assistant-preset-tools" aria-label="API 预设操作">
                     <button id="xb-assistant-new-preset" type="button" class="xb-assistant-icon-button" title="新增预设" aria-label="新增预设" ${g ? "disabled" : ""}>${ue("add")}</button>
                     <button id="xb-assistant-rename-preset" type="button" class="xb-assistant-icon-button" title="重命名预设" aria-label="重命名预设" ${g ? "disabled" : ""}>${ue("rename")}</button>
-                    <button id="xb-assistant-save" type="button" class="xb-assistant-icon-button ${q.className}" title="${q.title}" aria-label="${q.title}" ${Y}>${ue(O)}</button>
-                    <button id="xb-assistant-delete-preset" type="button" class="xb-assistant-icon-button" title="删除预设" aria-label="删除预设" ${Q}>${ue("delete")}</button>
+                    <button id="xb-assistant-save" type="button" class="xb-assistant-icon-button ${q.className}" title="${q.title}" aria-label="${q.title}" ${X}>${ue(O)}</button>
+                    <button id="xb-assistant-delete-preset" type="button" class="xb-assistant-icon-button" title="删除预设" aria-label="删除预设" ${Z}>${ue("delete")}</button>
                 </div>
             </div>
             <label>
@@ -1705,14 +1705,14 @@ var Ja = { class: "agent-api-app" }, Ga = { class: "agent-api-scroll" }, Va = { 
   key: 0,
   class: "agent-api-state",
   "aria-live": "polite"
-}, Ya = {
+}, Xa = {
   key: 1,
   class: "agent-api-state is-error",
   role: "alert"
-}, Xa = {
+}, Ya = {
   class: "agent-api-panel xb-agent-settings-surface",
   "aria-label": "API 设置"
-}, Za = { "aria-live": "polite" }, Qa = ["disabled"], ut = 13e4, es = /* @__PURE__ */ jt({
+}, Qa = { "aria-live": "polite" }, Za = ["disabled"], ut = 13e4, es = /* @__PURE__ */ jt({
   __name: "AgentApiApp",
   props: {
     bridge: {},
@@ -1722,7 +1722,7 @@ var Ja = { class: "agent-api-app" }, Ga = { class: "agent-api-scroll" }, Va = { 
     const a = t, n = structuredClone(st(a.initialState)), i = ye(n), o = ye(null), d = ye("idle"), u = ye("连接尚未测试");
     let p = () => {
     }, m = null, v = 0;
-    const g = $t({
+    const g = Rt({
       config: null,
       configDraft: null,
       configDirty: !1,
@@ -1736,7 +1736,7 @@ var Ja = { class: "agent-api-app" }, Ga = { class: "agent-api-scroll" }, Va = { 
       modelOptionsByProvider: {},
       pullStateByProvider: {},
       inlineToastText: ""
-    }), D = Oe(() => i.value.status === "ready" && g.config !== null), B = Oe(() => Object.keys(g.config?.presets || {}).length), I = Oe(() => d.value === "testing");
+    }), D = we(() => i.value.status === "ready" && g.config !== null), B = we(() => Object.keys(g.config?.presets || {}).length), I = we(() => d.value === "testing");
     function q(b) {
       const T = b instanceof Error ? b.message : String(b || "unknown_error");
       return T === "host_request_timeout" ? "暂时没收到结果，请检查网络后重试。" : T === "app_inactive" ? "页面已经关闭。" : T;
@@ -1750,7 +1750,7 @@ var Ja = { class: "agent-api-app" }, Ga = { class: "agent-api-scroll" }, Va = { 
         }, g.inlineToastText = "", y();
       }, 1800);
     }
-    async function Y(b) {
+    async function X(b) {
       const T = b.payload || {};
       g.configSave = {
         status: "saving",
@@ -1775,7 +1775,7 @@ var Ja = { class: "agent-api-app" }, Ga = { class: "agent-api-scroll" }, Va = { 
       }
       y(), O();
     }
-    async function Q() {
+    async function Z() {
       const b = ++v;
       try {
         const T = await a.bridge.request("agent-api/reload", {}, 35e3);
@@ -1796,7 +1796,7 @@ var Ja = { class: "agent-api-app" }, Ga = { class: "agent-api-scroll" }, Va = { 
     const R = ja({
       state: g,
       render: y,
-      saveConfig: Y,
+      saveConfig: X,
       pullModels: ee,
       describeError: q
     });
@@ -1826,26 +1826,26 @@ var Ja = { class: "agent-api-app" }, Ga = { class: "agent-api-scroll" }, Va = { 
         d.value = "error", u.value = q(M);
       }
     }
-    return Dt(() => {
+    return $t(() => {
       p = a.bridge.subscribe((b) => {
         b.type === "agent-api/state" && J(b.payload.state);
       }), J(n);
-    }), Rt(() => {
+    }), Dt(() => {
       v += 1, p(), m && clearTimeout(m);
     }), (b, T) => (Ne(), qe("main", Ja, [w("div", Ga, [w("div", Va, [
       T[2] || (T[2] = w("header", { class: "agent-api-header" }, [w("h1", null, "API 设置"), w("p", null, "与小白助手等功能共用主预设")], -1)),
-      i.value.status === "loading" ? (Ne(), qe("section", Wa, " 正在加载设置 ")) : i.value.status === "error" ? (Ne(), qe("section", Ya, [w("div", null, [T[1] || (T[1] = w("strong", null, "设置暂时无法加载", -1)), w("span", null, we(i.value.message), 1)]), w("button", {
+      i.value.status === "loading" ? (Ne(), qe("section", Wa, " 正在加载设置 ")) : i.value.status === "error" ? (Ne(), qe("section", Xa, [w("div", null, [T[1] || (T[1] = w("strong", null, "设置暂时无法加载", -1)), w("span", null, Oe(i.value.message), 1)]), w("button", {
         type: "button",
-        onClick: T[0] || (T[0] = (M) => Q())
-      }, "重新加载")])) : Lt("", !0),
-      It(w("section", Xa, [w("div", {
+        onClick: T[0] || (T[0] = (M) => Z())
+      }, "重新加载")])) : Bt("", !0),
+      It(w("section", Ya, [w("div", {
         ref_key: "panelRoot",
         ref: o
-      }, null, 512), w("div", { class: Bt(["agent-api-connection", `is-${d.value}`]) }, [w("p", Za, we(u.value), 1), w("button", {
+      }, null, 512), w("div", { class: Kt(["agent-api-connection", `is-${d.value}`]) }, [w("p", Qa, Oe(u.value), 1), w("button", {
         type: "button",
         disabled: !D.value || I.value,
         onClick: f
-      }, we(I.value ? "测试中…" : "测试当前连接"), 9, Qa)], 2)], 512), [[Kt, D.value]])
+      }, Oe(I.value ? "测试中…" : "测试当前连接"), 9, Za)], 2)], 512), [[Lt, D.value]])
     ])])]));
   }
 }), rs = es;

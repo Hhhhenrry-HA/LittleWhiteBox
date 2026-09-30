@@ -1,7 +1,7 @@
 /* eslint-disable */
-import { F as m, G as p, L as c, M as $, Y as C, _ as r, et as g, g as v, m as a, nt as i, o as f, p as b, u as y, x as k, y as x } from "./xiaobai-os-runtime-dom.esm-bundler-DgjJUtuO.js";
-import { r as G } from "./xiaobai-os-room-catalog-QHNJMc-N.js";
-var h = { class: "game-entry-art" }, N = ["src"], L = { class: "game-entry-rules" }, R = {
+import { F as r, K as p, L as c, M as $, X as C, _ as m, g as v, m as a, o as f, p as b, rt as i, tt as g, u as y, x as k, y as x } from "./xiaobai-os-runtime-dom.esm-bundler-BeaorYpU.js";
+import { r as h } from "./xiaobai-os-room-catalog-BxdlQpsj.js";
+var G = { class: "game-entry-art" }, N = ["src"], L = { class: "game-entry-rules" }, R = {
   key: 0,
   class: "game-entry-blocked"
 }, B = {
@@ -38,26 +38,26 @@ var h = { class: "game-entry-art" }, N = ["src"], L = { class: "game-entry-rules
   },
   emits: ["start", "resume"],
   setup(e) {
-    const s = e, n = C(s.initial), d = b(() => G(s.kind)), u = b(() => s.disabledReason || (!Number.isSafeInteger(n.value) || n.value < s.minimum || n.value > s.maximum || n.value % s.step !== 0 ? `请选择 ${s.minimum}–${s.maximum}，每次 ${s.step} 小白币。` : s.balance < n.value ? "小白币不够，换个小一点的筹码吧。" : ""));
-    return (o, t) => (m(), r("section", { class: g(["game-entry", "is-" + d.value.tone]) }, [
-      a("div", h, [a("img", {
+    const s = e, n = C(s.initial), d = b(() => h(s.kind)), u = b(() => s.disabledReason || (!Number.isSafeInteger(n.value) || n.value < s.minimum || n.value > s.maximum || n.value % s.step !== 0 ? `请选择 ${s.minimum}–${s.maximum}，每次 ${s.step} 小白币。` : s.balance < n.value ? "小白币不够，换个小一点的筹码吧。" : ""));
+    return (o, t) => (r(), m("section", { class: g(["game-entry", "is-" + d.value.tone]) }, [
+      a("div", G, [a("img", {
         src: d.value.artwork,
         alt: ""
       }, null, 8, N)]),
-      a("ol", L, [(m(!0), r(y, null, c(e.rules, (l) => (m(), r("li", { key: l }, i(l), 1))), 128))]),
-      e.otherGame ? (m(), r("div", R, [a("p", null, "还有一局" + i(e.otherGame) + "没结束，可以先逛逛，玩完再来。", 1), a("button", {
+      a("ol", L, [(r(!0), m(y, null, c(e.rules, (l) => (r(), m("li", { key: l }, i(l), 1))), 128))]),
+      e.otherGame ? (r(), m("div", R, [a("p", null, "还有一局" + i(e.otherGame) + "没结束，可以先逛逛，玩完再来。", 1), a("button", {
         type: "button",
         class: "game-primary-action",
         onClick: t[0] || (t[0] = (l) => o.$emit("resume"))
-      }, "继续那一局")])) : (m(), r("div", B, [
+      }, "继续那一局")])) : (r(), m("div", B, [
         a("h3", null, i(e.minimum === e.maximum ? "本局入场" : "本局筹码"), 1),
-        e.minimum !== e.maximum ? (m(), r("div", S, [(m(!0), r(y, null, c(e.chips, (l) => (m(), r("button", {
+        e.minimum !== e.maximum ? (r(), m("div", S, [(r(!0), m(y, null, c(e.chips, (l) => (r(), m("button", {
           key: l,
           type: "button",
           "aria-pressed": n.value === l,
-          onClick: (U) => n.value = l
+          onClick: (K) => n.value = l
         }, [a("span", null, i(l), 1)], 8, z))), 128))])) : v("", !0),
-        e.minimum !== e.maximum ? (m(), r("label", E, [
+        e.minimum !== e.maximum ? (r(), m("label", E, [
           t[3] || (t[3] = a("span", null, "自选", -1)),
           p(a("input", {
             "onUpdate:modelValue": t[1] || (t[1] = (l) => n.value = l),
@@ -81,11 +81,11 @@ var h = { class: "game-entry-art" }, N = ["src"], L = { class: "game-entry-rules
           disabled: !!u.value,
           onClick: t[2] || (t[2] = (l) => o.$emit("start", n.value))
         }, " 下注 " + i(n.value || "—") + " · 开始 ", 9, T),
-        u.value ? (m(), r("p", w, i(u.value), 1)) : v("", !0)
+        u.value ? (r(), m("p", w, i(u.value), 1)) : v("", !0)
       ]))
     ], 2));
   }
-}), q = A, D = { class: "game-result-net" }, F = ["disabled"], I = /* @__PURE__ */ k({
+}), j = A, D = { class: "game-result-net" }, F = ["disabled"], I = /* @__PURE__ */ k({
   __name: "GameResult",
   props: {
     record: {},
@@ -101,7 +101,7 @@ var h = { class: "game-entry-art" }, N = ["src"], L = { class: "game-entry-rules
     const n = e, d = s;
     $(() => d("revealed"));
     const u = b(() => (n.record.net > 0 ? "+" : "") + n.record.net.toLocaleString("zh-CN"));
-    return (o, t) => (m(), r("section", {
+    return (o, t) => (r(), m("section", {
       class: g(["game-result", "is-" + e.record.outcomeTone]),
       "aria-label": "本局结算"
     }, [
@@ -121,8 +121,8 @@ var h = { class: "game-entry-art" }, N = ["src"], L = { class: "game-entry-rules
       }, "回大厅")])
     ], 2));
   }
-}), H = I;
+}), q = I;
 export {
-  q as n,
-  H as t
+  j as n,
+  q as t
 };

@@ -1,7 +1,7 @@
 /* eslint-disable */
-import { $ as D, E as pe, F as y, H as be, I as ye, L as ke, M as ue, O as fe, R as ve, U as xe, W as te, X as le, Y as k, _ as S, b as Y, et as J, f as Ae, g as G, h as W, j as _e, l as ae, m as c, n as Oe, nt as N, p as ie, q as ce, r as Se, t as Ee, tt as ne, u as de, x as V, y as he, z as Pe } from "./xiaobai-os-runtime-dom.esm-bundler-DgjJUtuO.js";
+import { E as pe, F as y, G as te, I as be, J as ce, L as ye, M as ue, O as fe, R as ve, U as ke, W as xe, X as k, Z as le, _ as S, b as Y, et as D, f as Ae, g as G, h as W, j as _e, l as ae, m as c, n as Oe, nt as ne, p as ie, r as Se, rt as N, t as Ee, tt as J, u as de, x as V, y as he, z as Pe } from "./xiaobai-os-runtime-dom.esm-bundler-BeaorYpU.js";
 import { t as Re } from "./xiaobai-os-descriptor-DmDuv1pM.js";
-import { t as Ie } from "./xiaobai-os-app-navigation-DS43A6sJ.js";
+import { t as Ie } from "./xiaobai-os-app-navigation-dPaaNhS6.js";
 import { t as me } from "./xiaobai-os-assets-BT5gX6Sf.js";
 import { n as re, r as Le } from "./xiaobai-os-frame-bridge-BfVuKvnh.js";
 var se = [
@@ -131,12 +131,12 @@ var se = [
     ...ze,
     icon: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='12'%20y1='0'%20x2='76'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%234099ff'/%3e%3cstop%20offset='1'%20stop-color='%232260f1'/%3e%3c/linearGradient%3e%3cclipPath%20id='tile'%3e%3crect%20width='88'%20height='88'%20rx='22'/%3e%3c/clipPath%3e%3c/defs%3e%3cg%20clip-path='url(%23tile)'%3e%3crect%20width='88'%20height='88'%20fill='url(%23bg)'/%3e%3cpath%20d='M23%2017h32a9%209%200%200%201%209%209v25a9%209%200%200%201-9%209H37L23%2070V60a9%209%200%200%201-9-9V26a9%209%200%200%201%209-9Z'%20fill='%23fff'/%3e%3cpath%20d='m27%2048%2010-23%2010%2023m-17-7h14'%20stroke='%232773f5'%20stroke-width='3.5'%20stroke-linecap='round'%20stroke-linejoin='round'/%3e%3crect%20x='48'%20y='48'%20width='29'%20height='29'%20rx='9'%20fill='%2390ecff'/%3e%3cpath%20d='M54%2058h17m-9-4v4m5%200c-1%208-6%2011-12%2014m2-12c2%205%207%2010%2013%2012'%20stroke='%231952aa'%20stroke-width='2'%20stroke-linecap='round'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href
   }
-], qe = Object.freeze(se.map((t) => {
+], Ze = Object.freeze(se.map((t) => {
   const i = Fe.find((e) => e.id === t);
   if (!i) throw new Error(`missing_shell_app:${t}`);
   return Object.freeze(i);
 }));
-function Ze(t) {
+function qe(t) {
   let i = null, e = null;
   return Object.freeze({
     load() {
@@ -153,23 +153,23 @@ function Ze(t) {
   });
 }
 var Ne = Object.freeze({
-  administrator: () => import("./xiaobai-os-AdministratorApp-DiN_Z6zH.js"),
-  dice: () => import("./xiaobai-os-DiceApp-CbXHO_pk.js"),
-  "agent-api": () => import("./xiaobai-os-AgentApiApp-2hdPSQ0-.js"),
-  "fourth-wall": () => import("./xiaobai-os-FourthWallApp-CGZ8PWHk.js"),
-  wallet: () => import("./xiaobai-os-WalletApp-snfY2EuR.js"),
-  shop: () => import("./xiaobai-os-ShopApp-COGpAntb.js"),
-  bank: () => import("./xiaobai-os-BankApp-BqlM9b4b.js"),
-  game: () => import("./xiaobai-os-GameApp-rAPPFXtC.js"),
-  map: () => import("./xiaobai-os-MapApp-BXKssdjw.js"),
-  messages: () => import("./xiaobai-os-MessagesApp-CO22CVed.js"),
-  tasks: () => import("./xiaobai-os-TasksApp-ChLA_z_r.js"),
-  world: () => import("./xiaobai-os-WorldApp-DCm2uPwh.js"),
-  learning: () => import("./xiaobai-os-LearningApp-DyoDLp2J.js")
-}), ge = Object.freeze(qe.map((t) => {
+  administrator: () => import("./xiaobai-os-AdministratorApp-Dno0yOWo.js"),
+  dice: () => import("./xiaobai-os-DiceApp-D1u510dL.js"),
+  "agent-api": () => import("./xiaobai-os-AgentApiApp-C-9dbVtE.js"),
+  "fourth-wall": () => import("./xiaobai-os-FourthWallApp-DHpuvgte.js"),
+  wallet: () => import("./xiaobai-os-WalletApp-DysjWPLD.js"),
+  shop: () => import("./xiaobai-os-ShopApp-BbXA5nHo.js"),
+  bank: () => import("./xiaobai-os-BankApp-DLFpWTZP.js"),
+  game: () => import("./xiaobai-os-GameApp-Bml6w5Ni.js"),
+  map: () => import("./xiaobai-os-MapApp-32-VYlqB.js"),
+  messages: () => import("./xiaobai-os-MessagesApp-Cyj2jcDB.js"),
+  tasks: () => import("./xiaobai-os-TasksApp-DRA0qbDj.js"),
+  world: () => import("./xiaobai-os-WorldApp-DepEVuUz.js"),
+  learning: () => import("./xiaobai-os-LearningApp-Dvp5YZvx.js")
+}), ge = Object.freeze(Ze.map((t) => {
   const i = Ne[t.id];
   if (!i) throw new Error(`missing_shell_app:${t.id}`);
-  const e = Ze(i);
+  const e = qe(i);
   return Object.freeze({
     ...t,
     load: e.load,
@@ -196,16 +196,16 @@ var Ke = /* @__PURE__ */ V({
   props: { owner: {} },
   setup(t, { expose: i }) {
     const e = t, l = k(null), w = le([]), E = Ve();
-    return ye(Ie, {
+    return be(Ie, {
       root: l,
       layers: w,
       stack: E
     }), xe((p) => {
-      const r = w.value.at(-1);
-      if (!r || !l.value?.contains(r)) return;
+      const n = w.value.at(-1);
+      if (!n || !l.value?.contains(n)) return;
       const m = /* @__PURE__ */ new Set();
       function d() {
-        let v = r;
+        let v = n;
         for (; v.parentElement && v !== l.value; ) {
           for (const f of v.parentElement.children) f !== v && f instanceof HTMLElement && !f.inert && (f.inert = !0, m.add(f));
           v = v.parentElement;
@@ -213,7 +213,7 @@ var Ke = /* @__PURE__ */ V({
       }
       d();
       const x = new MutationObserver(d);
-      let A = r;
+      let A = n;
       for (; A.parentElement && A !== l.value; )
         x.observe(A.parentElement, { childList: !0 }), A = A.parentElement;
       p(() => {
@@ -225,7 +225,7 @@ var Ke = /* @__PURE__ */ V({
       get owner() {
         return e.owner;
       }
-    }), (p, r) => (y(), S("div", {
+    }), (p, n) => (y(), S("div", {
       ref_key: "root",
       ref: l,
       class: "xiaobai-os-app-route",
@@ -264,8 +264,8 @@ function tt(t) {
   const i = le(null);
   let e = null, l, w = 0;
   function E() {
-    const n = t.root.value;
-    if (!e || !i.value || !n) return;
+    const r = t.root.value;
+    if (!e || !i.value || !r) return;
     const s = e;
     i.value = {
       id: s.id,
@@ -273,14 +273,14 @@ function tt(t) {
       y: s.y - s.offsetY,
       width: s.width
     };
-    const R = n.getBoundingClientRect(), U = 42, q = s.y < R.top + U ? -8 : s.y > R.bottom - U ? 8 : 0;
-    q && (n.scrollTop += q);
-    const L = n.querySelector(".xiaobai-os-app-grid");
+    const R = r.getBoundingClientRect(), U = 42, Z = s.y < R.top + U ? -8 : s.y > R.bottom - U ? 8 : 0;
+    Z && (r.scrollTop += Z);
+    const L = r.querySelector(".xiaobai-os-app-grid");
     if (L) {
       const T = L.getBoundingClientRect();
       let o = 0, g = 1 / 0;
       [...L.querySelectorAll("[data-app-id]")].forEach((u, $) => {
-        const H = T.left + u.offsetLeft + u.offsetWidth / 2 - s.x, Z = T.top + u.offsetTop + u.offsetHeight / 2 - s.y, j = H * H + Z * Z;
+        const H = T.left + u.offsetLeft + u.offsetWidth / 2 - s.x, q = T.top + u.offsetTop + u.offsetHeight / 2 - s.y, j = H * H + q * q;
         j < g && (g = j, o = $);
       }), t.move(s.id, o);
     }
@@ -288,7 +288,7 @@ function tt(t) {
   function p() {
     E(), w = requestAnimationFrame(p);
   }
-  function r() {
+  function n() {
     e && (clearTimeout(l), t.start(e.id), e.pointerId !== null && t.root.value?.setPointerCapture(e.pointerId), i.value = {
       id: e.id,
       x: e.x - e.offsetX,
@@ -296,15 +296,15 @@ function tt(t) {
       width: e.width
     }, w = requestAnimationFrame(p));
   }
-  function m(n, s, R, U, q) {
+  function m(r, s, R, U, Z) {
     if (e || t.disabled()) return;
-    const L = n instanceof Element ? n.closest("[data-app-id]") : null;
+    const L = r instanceof Element ? r.closest("[data-app-id]") : null;
     if (!L?.dataset.appId) return;
     const T = L.getBoundingClientRect();
     e = {
       id: L.dataset.appId,
       pointerId: U,
-      touchId: q,
+      touchId: Z,
       x: s,
       y: R,
       startX: s,
@@ -312,42 +312,42 @@ function tt(t) {
       width: T.width,
       offsetX: s - T.left,
       offsetY: R - T.top
-    }, window.addEventListener("pointermove", v), window.addEventListener("pointerup", f), window.addEventListener("pointercancel", z), window.addEventListener("blur", O), t.editing.value ? r() : l = setTimeout(r, 420);
+    }, window.addEventListener("pointermove", v), window.addEventListener("pointerup", f), window.addEventListener("pointercancel", z), window.addEventListener("blur", O), t.editing.value ? n() : l = setTimeout(n, 420);
   }
-  function d(n, s) {
-    e && (e.x = n, e.y = s, !i.value && Math.hypot(n - e.startX, s - e.startY) > 8 && (e.touchId !== null ? x(!0) : r()));
+  function d(r, s) {
+    e && (e.x = r, e.y = s, !i.value && Math.hypot(r - e.startX, s - e.startY) > 8 && (e.touchId !== null ? x(!0) : n()));
   }
-  function x(n) {
-    clearTimeout(l), cancelAnimationFrame(w), !n && i.value && E(), window.removeEventListener("pointermove", v), window.removeEventListener("pointerup", f), window.removeEventListener("pointercancel", z), window.removeEventListener("blur", O), e?.pointerId !== null && e?.pointerId !== void 0 && t.root.value?.hasPointerCapture(e.pointerId) && t.root.value.releasePointerCapture(e.pointerId);
+  function x(r) {
+    clearTimeout(l), cancelAnimationFrame(w), !r && i.value && E(), window.removeEventListener("pointermove", v), window.removeEventListener("pointerup", f), window.removeEventListener("pointercancel", z), window.removeEventListener("blur", O), e?.pointerId !== null && e?.pointerId !== void 0 && t.root.value?.hasPointerCapture(e.pointerId) && t.root.value.releasePointerCapture(e.pointerId);
     const s = !!i.value;
-    e = null, i.value = null, s && t.finish(n);
+    e = null, i.value = null, s && t.finish(r);
   }
-  function A(n) {
-    n.pointerType === "touch" || n.button !== 0 || !n.isPrimary || m(n.target, n.clientX, n.clientY, n.pointerId, null);
+  function A(r) {
+    r.pointerType === "touch" || r.button !== 0 || !r.isPrimary || m(r.target, r.clientX, r.clientY, r.pointerId, null);
   }
-  function v(n) {
-    e?.pointerId === n.pointerId && d(n.clientX, n.clientY);
+  function v(r) {
+    e?.pointerId === r.pointerId && d(r.clientX, r.clientY);
   }
-  function f(n) {
-    e?.pointerId === n.pointerId && x(!1);
+  function f(r) {
+    e?.pointerId === r.pointerId && x(!1);
   }
-  function z(n) {
-    e?.pointerId === n.pointerId && x(!0);
+  function z(r) {
+    e?.pointerId === r.pointerId && x(!0);
   }
-  function C(n) {
-    if (n.touches.length !== 1) {
+  function C(r) {
+    if (r.touches.length !== 1) {
       x(!0);
       return;
     }
-    const s = n.changedTouches[0];
-    m(n.target, s.clientX, s.clientY, null, s.identifier), i.value && n.cancelable && n.preventDefault();
+    const s = r.changedTouches[0];
+    m(r.target, s.clientX, s.clientY, null, s.identifier), i.value && r.cancelable && r.preventDefault();
   }
-  function X(n) {
-    const s = [...n.touches].find((R) => R.identifier === e?.touchId);
-    s && (i.value && n.cancelable && n.preventDefault(), d(s.clientX, s.clientY));
+  function X(r) {
+    const s = [...r.touches].find((R) => R.identifier === e?.touchId);
+    s && (i.value && r.cancelable && r.preventDefault(), d(s.clientX, s.clientY));
   }
-  function F(n) {
-    [...n.changedTouches].some((s) => s.identifier === e?.touchId) && (i.value && n.cancelable && n.preventDefault(), x(!1));
+  function F(r) {
+    [...r.changedTouches].some((s) => s.identifier === e?.touchId) && (i.value && r.cancelable && r.preventDefault(), x(!1));
   }
   function O() {
     x(!0);
@@ -393,20 +393,20 @@ var at = {
   },
   emits: ["openApp"],
   setup(t, { expose: i, emit: e }) {
-    const l = t, w = e, E = k(null), p = k(!1), r = k([]), m = k(!1), d = k(""), x = k(""), A = k("");
+    const l = t, w = e, E = k(null), p = k(!1), n = k([]), m = k(!1), d = k(""), x = k(""), A = k("");
     let v = [], f = null;
-    const z = ie(() => p.value ? oe(l.apps, r.value) : l.apps);
+    const z = ie(() => p.value ? oe(l.apps, n.value) : l.apps);
     function C(o) {
       pe(() => E.value?.querySelector(`[data-app-id="${o}"]`)?.focus({ preventScroll: !0 }));
     }
     function X(o) {
-      p.value || (r.value = l.apps.map((g) => g.id)), p.value = !0, A.value = o;
+      p.value || (n.value = l.apps.map((g) => g.id)), p.value = !0, A.value = o;
     }
     function F(o, g) {
-      const u = r.value.indexOf(o);
+      const u = n.value.indexOf(o);
       if (u < 0 || u === g) return;
-      const $ = [...r.value];
-      $.splice(u, 1), $.splice(g, 0, o), r.value = $;
+      const $ = [...n.value];
+      $.splice(u, 1), $.splice(g, 0, o), n.value = $;
     }
     async function O(o) {
       m.value = !0, d.value = "", f = o;
@@ -418,20 +418,20 @@ var at = {
         m.value = !1;
       }
     }
-    const { floating: b, pointerDown: P, cancel: n } = tt({
+    const { floating: b, pointerDown: P, cancel: r } = tt({
       root: E,
       editing: p,
       disabled: () => m.value || !!d.value,
       start(o) {
-        X(o), v = [...r.value];
+        X(o), v = [...n.value];
       },
       move: F,
       finish(o) {
-        o ? r.value = v : r.value.some((g, u) => g !== v[u]) && O([...r.value]), C(A.value);
+        o ? n.value = v : n.value.some((g, u) => g !== v[u]) && O([...n.value]), C(A.value);
       }
     }), s = ie(() => l.apps.find((o) => o.id === b.value?.id));
     function R() {
-      m.value || (n(), p.value = !1, C(A.value));
+      m.value || (r(), p.value = !1, C(A.value));
     }
     i({
       get editing() {
@@ -440,14 +440,14 @@ var at = {
       finishEditing: R
     });
     async function U() {
-      n(), r.value = oe(l.apps, []).map((o) => o.id), await O(null);
+      r(), n.value = oe(l.apps, []).map((o) => o.id), await O(null);
     }
-    function q(o) {
+    function Z(o) {
       p.value ? A.value = o.id : w("openApp", o);
     }
     function L(o) {
       if (o.key === "Escape" && p.value) {
-        o.preventDefault(), o.stopPropagation(), b.value ? n() : R();
+        o.preventDefault(), o.stopPropagation(), b.value ? r() : R();
         return;
       }
       const g = o.target instanceof Element ? o.target.closest("[data-app-id]") : null, u = g?.dataset.appId;
@@ -457,22 +457,22 @@ var at = {
         return;
       }
       if (!p.value) return;
-      const $ = g?.parentElement, H = $ ? getComputedStyle($).gridTemplateColumns.split(" ").length : 4, Z = {
+      const $ = g?.parentElement, H = $ ? getComputedStyle($).gridTemplateColumns.split(" ").length : 4, q = {
         ArrowLeft: -1,
         ArrowRight: 1,
         ArrowUp: -H,
         ArrowDown: H
       }[o.key];
-      if (Z === void 0) return;
+      if (q === void 0) return;
       o.preventDefault();
-      const j = r.value.indexOf(u), Q = Math.max(0, Math.min(r.value.length - 1, j + Z));
-      Q !== j && (F(u, Q), A.value = u, C(u), O([...r.value]));
+      const j = n.value.indexOf(u), Q = Math.max(0, Math.min(n.value.length - 1, j + q));
+      Q !== j && (F(u, Q), A.value = u, C(u), O([...n.value]));
     }
     function T(o) {
       o.key === " " && o.target instanceof Element && o.target.closest("[data-app-id]") && o.preventDefault();
     }
-    return be(() => l.apps.map((o) => o.id).sort().join(","), () => {
-      n(), r.value = l.apps.map((o) => o.id);
+    return ke(() => l.apps.map((o) => o.id).sort().join(","), () => {
+      r(), n.value = l.apps.map((o) => o.id);
     }), (o, g) => (y(), S("main", {
       ref_key: "root",
       ref: E,
@@ -519,7 +519,7 @@ var at = {
         class: "xiaobai-os-app-grid",
         "aria-label": "应用"
       }, {
-        default: te(() => [(y(!0), S(de, null, ke(z.value, (u) => (y(), S("button", {
+        default: te(() => [(y(!0), S(de, null, ye(z.value, (u) => (y(), S("button", {
           key: u.id,
           type: "button",
           class: J(["xiaobai-os-app-tile", { "is-lifted": D(b)?.id === u.id }]),
@@ -527,7 +527,7 @@ var at = {
           "aria-label": u.name,
           "aria-keyshortcuts": p.value ? "ArrowUp ArrowDown ArrowLeft ArrowRight Space" : "F2 Space",
           style: ne({ "--app-accent": u.accent }),
-          onClick: ($) => q(u)
+          onClick: ($) => Z(u)
         }, [c("span", pt, [c("img", {
           src: u.icon,
           alt: "",
@@ -654,10 +654,7 @@ var at = {
     return i({
       back: () => l.value && w.value?.editing ? (w.value.finishEditing(), !0) : !e.appLoading && !e.appFailure && E.value?.owner === `${e.activeApp?.id}:${e.appRenderKey}` && E.value.back(),
       finishHomeEditing: () => w.value?.finishEditing()
-    }), (p, r) => (y(), S("div", Pt, [r[9] || (r[9] = c("span", {
-      class: "xiaobai-os-side-key",
-      "aria-hidden": "true"
-    }, null, -1)), c("div", Rt, [
+    }), (p, n) => (y(), S("div", Pt, [c("div", Rt, [
       Y(Et, { "is-home": l.value }, null, 8, ["is-home"]),
       c("div", {
         class: "xiaobai-os-stage",
@@ -673,13 +670,13 @@ var at = {
           apps: t.apps,
           "character-avatar": t.characterAvatar,
           "save-app-order": t.saveAppOrder,
-          onOpenApp: r[0] || (r[0] = (m) => p.$emit("openApp", m))
+          onOpenApp: n[0] || (n[0] = (m) => p.$emit("openApp", m))
         }, null, 8, [
           "apps",
           "character-avatar",
           "save-app-order"
         ])) : t.appFailure ? (y(), S("section", It, [
-          r[7] || (r[7] = c("span", {
+          n[7] || (n[7] = c("span", {
             class: "xiaobai-os-app-failure-mark",
             "aria-hidden": "true"
           }, "!", -1)),
@@ -688,18 +685,18 @@ var at = {
           c("div", Lt, [t.appFailure.retryable ? (y(), S("button", {
             key: 0,
             type: "button",
-            onClick: r[1] || (r[1] = (m) => p.$emit("retry"))
+            onClick: n[1] || (n[1] = (m) => p.$emit("retry"))
           }, "重试")) : G("", !0), c("button", {
             type: "button",
-            onClick: r[2] || (r[2] = (m) => p.$emit("reload"))
+            onClick: n[2] || (n[2] = (m) => p.$emit("reload"))
           }, "重新打开 OS")])
-        ])) : t.appLoading ? (y(), S("div", Mt, [r[8] || (r[8] = c("span", { "aria-hidden": "true" }, null, -1)), he(" 正在打开" + N(t.activeApp?.name), 1)])) : t.activeApp && t.activeComponent ? (y(), W(Ye, {
+        ])) : t.appLoading ? (y(), S("div", Mt, [n[8] || (n[8] = c("span", { "aria-hidden": "true" }, null, -1)), he(" 正在打开" + N(t.activeApp?.name), 1)])) : t.activeApp && t.activeComponent ? (y(), W(Ye, {
           key: `app:${t.activeApp.id}:${t.appRenderKey}`,
           ref_key: "navigation",
           ref: E,
           owner: `${t.activeApp.id}:${t.appRenderKey}`
         }, {
-          default: te(() => [Y(Je, { onFailed: r[3] || (r[3] = (m) => p.$emit("renderFailed", m)) }, {
+          default: te(() => [Y(Je, { onFailed: n[3] || (n[3] = (m) => p.$emit("renderFailed", m)) }, {
             default: te(() => [(y(), W(Pe(t.activeComponent), {
               bridge: t.bridge,
               "initial-state": t.activeState
@@ -713,9 +710,9 @@ var at = {
       Y(At, {
         "is-home": l.value,
         "can-back": !l.value || !!w.value?.editing,
-        onBack: r[4] || (r[4] = (m) => p.$emit("back")),
-        onHome: r[5] || (r[5] = (m) => p.$emit("home")),
-        onClose: r[6] || (r[6] = (m) => p.$emit("close"))
+        onBack: n[4] || (n[4] = (m) => p.$emit("back")),
+        onHome: n[5] || (n[5] = (m) => p.$emit("home")),
+        onClose: n[6] || (n[6] = (m) => p.$emit("close"))
       }, null, 8, ["is-home", "can-back"])
     ])]));
   }
@@ -730,20 +727,20 @@ var at = {
 }, Tt = /* @__PURE__ */ V({
   __name: "App",
   setup(t) {
-    const i = Le(), e = k(null), l = k(null), w = k(!1), E = k("light"), p = k(/* @__PURE__ */ new Set()), r = k([]), m = k(""), d = k(null), x = le(null), A = k(null), v = k(!1), f = k(null), z = k(0), C = k("");
+    const i = Le(), e = k(null), l = k(null), w = k(!1), E = k("light"), p = k(/* @__PURE__ */ new Set()), n = k([]), m = k(""), d = k(null), x = le(null), A = k(null), v = k(!1), f = k(null), z = k(0), C = k("");
     let X = null, F = () => {
     }, O = 0, b = null;
-    const P = ie(() => oe(ge, r.value).filter((a) => p.value.has(a.id)));
-    async function n(a) {
-      const h = a === null ? [] : et(r.value, a);
-      r.value = (await i.request("os/set-app-order", { appOrder: h })).appOrder;
+    const P = ie(() => oe(ge, n.value).filter((a) => p.value.has(a.id)));
+    async function r(a) {
+      const h = a === null ? [] : et(n.value, a);
+      n.value = (await i.request("os/set-app-order", { appOrder: h })).appOrder;
     }
     function s(a) {
       const h = new Set(a.map((B) => String(B.id))), _ = d.value && !h.has(d.value.id), I = b && !h.has(b.appId);
       p.value = h, !(!_ && !I) && (O += 1, b = null, d.value = null, x.value = null, A.value = null, v.value = !1, f.value = null, i.clearAppSession());
     }
     function R(a) {
-      O += 1, b = null, E.value = a.theme === "dark" ? "dark" : "light", r.value = a.appOrder ?? [], s(a.apps || []), m.value = String(a.chat?.characterAvatar || ""), d.value = null, x.value = null, A.value = null, v.value = !1, f.value = null, i.clearAppSession(), w.value = !0, a.initialAppId && U(a.initialAppId);
+      O += 1, b = null, E.value = a.theme === "dark" ? "dark" : "light", n.value = a.appOrder ?? [], s(a.apps || []), m.value = String(a.chat?.characterAvatar || ""), d.value = null, x.value = null, A.value = null, v.value = !1, f.value = null, i.clearAppSession(), w.value = !0, a.initialAppId && U(a.initialAppId);
     }
     function U(a) {
       if (!a) {
@@ -753,8 +750,8 @@ var at = {
       const h = P.value.find((_) => _.id === a);
       h && d.value?.id !== h.id && L(h);
     }
-    function q(a) {
-      if (a.type === "os/app-order-changed" && (r.value = a.payload.appOrder), a.type === "os/init" && R(a.payload || {}), a.type === "os/navigate" && w.value) {
+    function Z(a) {
+      if (a.type === "os/app-order-changed" && (n.value = a.payload.appOrder), a.type === "os/init" && R(a.payload || {}), a.type === "os/navigate" && w.value) {
         const I = a.payload;
         (I?.appId === null || typeof I?.appId == "string") && U(I.appId);
       }
@@ -880,7 +877,7 @@ var at = {
       }
       O += 1, b = null, i.post("app/deactivate", { appId: d.value?.id || "" }), i.clearAppSession(), d.value = null, x.value = null, A.value = null, v.value = !1, f.value = null;
     }
-    function Z() {
+    function q() {
       l.value?.back() || H();
     }
     function j() {
@@ -888,7 +885,7 @@ var at = {
     }
     function Q(a) {
       if (a.key === "Escape") {
-        a.preventDefault(), d.value ? Z() : l.value?.back() || j();
+        a.preventDefault(), d.value ? q() : l.value?.back() || j();
         return;
       }
       if (a.key !== "Tab" || !e.value) return;
@@ -898,7 +895,7 @@ var at = {
       a.shiftKey && document.activeElement === _ ? (a.preventDefault(), I.focus()) : !a.shiftKey && document.activeElement === I && (a.preventDefault(), _.focus());
     }
     return ue(async () => {
-      X = document.activeElement instanceof HTMLElement ? document.activeElement : null, F = i.subscribe(q), i.start(), window.addEventListener("error", g), window.addEventListener("unhandledrejection", u), await pe(), e.value?.focus();
+      X = document.activeElement instanceof HTMLElement ? document.activeElement : null, F = i.subscribe(Z), i.start(), window.addEventListener("error", g), window.addEventListener("unhandledrejection", u), await pe(), e.value?.focus();
     }), fe(() => {
       O += 1, b = null, window.removeEventListener("error", g), window.removeEventListener("unhandledrejection", u), F(), i.dispose(), X?.focus();
     }), (a, h) => (y(), S("main", {
@@ -924,9 +921,9 @@ var at = {
       "app-render-key": z.value,
       bridge: D(i),
       "character-avatar": m.value,
-      "save-app-order": n,
+      "save-app-order": r,
       onOpenApp: L,
-      onBack: Z,
+      onBack: q,
       onHome: H,
       onClose: j,
       onRenderFailed: o,

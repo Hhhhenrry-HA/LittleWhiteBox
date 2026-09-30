@@ -1,6 +1,6 @@
 /* eslint-disable */
-import { C as c, F as u, R as f, T as _, Y as m, c as v, f as h, h as y, l as t, m as l, p as g, x as b } from "./xiaobai-os-runtime-dom.esm-bundler-DgjJUtuO.js";
-import { r as A, t as k } from "./xiaobai-os-app-navigation-DS43A6sJ.js";
+import { C as c, F as u, R as f, T as _, X as m, c as v, f as h, h as y, l as t, m as l, p as g, x as b } from "./xiaobai-os-runtime-dom.esm-bundler-BeaorYpU.js";
+import { r as A, t as k } from "./xiaobai-os-app-navigation-dPaaNhS6.js";
 var w = ["onKeydown"], B = /* @__PURE__ */ b({
   inheritAttrs: !1,
   __name: "AppDialog",

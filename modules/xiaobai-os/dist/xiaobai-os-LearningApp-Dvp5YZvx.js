@@ -1,8 +1,8 @@
 /* eslint-disable */
-import { $ as r, C as _t, E as re, F as t, G as te, H, I as ea, J as he, L as D, M as xe, O as Ce, Q as ge, V as ta, W as aa, X as na, Y as G, Z as ia, _ as i, a as Ue, b as W, c as ye, et as le, g as m, h as Y, i as la, l as ie, m as a, nt as s, o as oe, p as L, tt as St, u as E, w as gt, x as Q, y as F, z as sa } from "./xiaobai-os-runtime-dom.esm-bundler-DgjJUtuO.js";
-import { n as Ve, r as At } from "./xiaobai-os-app-navigation-DS43A6sJ.js";
+import { $ as ge, C as _t, E as re, F as t, G as ea, H as ta, I as aa, K as te, L as D, M as xe, O as Ce, Q as na, U as H, X as G, Y as he, Z as ia, _ as i, a as Ue, b as W, c as ye, et as r, g as m, h as Y, i as la, l as ie, m as a, nt as St, o as oe, p as L, rt as s, tt as le, u as E, w as gt, x as Q, y as F, z as sa } from "./xiaobai-os-runtime-dom.esm-bundler-BeaorYpU.js";
+import { n as Ve, r as At } from "./xiaobai-os-app-navigation-dPaaNhS6.js";
 import { n as ra, t as oa } from "./xiaobai-os-frame-bridge-BfVuKvnh.js";
-import { t as et } from "./xiaobai-os-MessageMarkdown-bs_FqyUr.js";
+import { t as et } from "./xiaobai-os-MessageMarkdown-C9TgJeVY.js";
 var Qe = /* @__PURE__ */ new WeakMap(), mt = [
   "select",
   "input",
@@ -822,7 +822,7 @@ function gn(e, c, l, n) {
 }
 function mn(e) {
   const c = cn();
-  return ea(jt, c), H([
+  return aa(jt, c), H([
     () => e.value.chatIdentity,
     () => e.value.language,
     () => e.value.teacher?.name
@@ -2401,7 +2401,7 @@ var $s = ["aria-label"], ws = [
           class: "learning-reading-material"
         }, [
           (t(), Y(sa(K === 0 ? "h1" : "h2"), { tabindex: "-1" }, {
-            default: aa(() => [F(s(V.material.title), 1)]),
+            default: ea(() => [F(s(V.material.title), 1)]),
             _: 2
           }, 1024)),
           a("p", Ls, [V.material.provenance.kind === "authored" ? (t(), i(E, { key: 0 }, [F(s(g.authored), 1)], 64)) : (t(), i(E, { key: 1 }, [F(s(V.material.provenance.kind === "adapted" ? g.adapted : g.original) + " ", 1), a("a", {
@@ -3399,7 +3399,7 @@ ${y.value.selection.quote}` : q,
   }
 }), No = To;
 function Bo(e) {
-  const c = na(structuredClone(ia(e.initialState))), l = G(!1), n = G(null), o = L(() => n.value ? Nt[n.value] : ""), v = L(() => n.value === "unknown" || n.value === "rejected");
+  const c = ia(structuredClone(na(e.initialState))), l = G(!1), n = G(null), o = L(() => n.value ? Nt[n.value] : ""), v = L(() => n.value === "unknown" || n.value === "rejected");
   let d = !1, b = 0, C = () => {
   };
   const f = (y) => !l.value && pe(y, c.value), k = L(() => f("submit")), $ = L(() => f("talk"));

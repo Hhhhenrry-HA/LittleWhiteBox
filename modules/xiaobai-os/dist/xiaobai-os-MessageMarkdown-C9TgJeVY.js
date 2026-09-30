@@ -1,6 +1,6 @@
 /* eslint-disable */
 import { n as d, t as m } from "./xiaobai-os-message-markdown-p_WvGylV.js";
-import { F as f, H as p, Y as h, _ as b, x as k } from "./xiaobai-os-runtime-dom.esm-bundler-DgjJUtuO.js";
+import { F as f, U as p, X as h, _ as b, x as k } from "./xiaobai-os-runtime-dom.esm-bundler-BeaorYpU.js";
 var _ = /* @__PURE__ */ k({
   __name: "MessageMarkdown",
   props: { text: {} },
