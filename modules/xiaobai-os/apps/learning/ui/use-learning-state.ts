@@ -3,6 +3,7 @@ import type { XiaobaiOsAppProps } from '../../../shell/app-contract.js';
 import { FrameRequestError, HostRequestError } from '../../../shell/app-src/frame-bridge.js';
 import type { LearningClientState } from '../types.js';
 import { LEARNING_REQUEST_COPY } from './learning-copy.js';
+import { learningActionAvailable, learningActionBusy } from '../application/action-availability.js';
 
 export function useLearningState(props: XiaobaiOsAppProps) {
     const state = shallowRef(structuredClone(toRaw(props.initialState as LearningClientState)));
@@ -13,10 +14,12 @@ export function useLearningState(props: XiaobaiOsAppProps) {
     let mounted = false;
     let pushed = 0;
     let unsubscribe = () => {};
-    const writable = computed(() => !pending.value && !state.value.busy && state.value.storage === 'ready');
-    const canChat = computed(() => !pending.value && !state.value.chatBusy && state.value.storage === 'ready');
+    const canRequest = (action: string) => !pending.value && learningActionAvailable(action, state.value);
+    const writable = computed(() => canRequest('submit'));
+    const canChat = computed(() => canRequest('talk'));
     async function request(action: string, extra: Record<string, unknown> = {}) {
         if (pending.value) { return; }
+        if (learningActionBusy(action, state.value)) { localIssue.value = 'busy'; return; }
         pending.value = true; localIssue.value = null;
         const identity = state.value.chatIdentity;
         const version = pushed;
@@ -52,5 +55,5 @@ export function useLearningState(props: XiaobaiOsAppProps) {
         });
     });
     onBeforeUnmount(() => { mounted = false; unsubscribe(); });
-    return { state, pending, writable, canChat, localIssue, localMessage, needsRefresh, request };
+    return { state, pending, writable, canChat, canRequest, localIssue, localMessage, needsRefresh, request };
 }

@@ -1,6 +1,7 @@
 /** Preparation labels and request messages have one owner, shared by host and view. */
 export const LEARNING_PREPARATION_COPY = {
     noWeb: '还没连接联网取材。你可以去设置，或先读一篇语伴原创。',
+    unavailable: '这次没能准备好文章，可以重新找一篇，或改读语伴原创。', retry: '重新找一篇',
     settings: '设置联网取材', original: '读语伴原创', existing: '继续已有课文', dismiss: '暂不开始',
     notes: '正在整理本段知识…', essay: '正在准备写作题…',
     stopped: '准备已暂停，已保存的内容都在。', incomplete: '这部分还没准备好，已保存的内容不受影响。',

@@ -64,14 +64,21 @@ function send() {
     session.sent = { text: message.value, user: focus.value?.selection ? `${sent}\n\n${focus.value.selection.quote}` : sent,
         after: props.state.conversation.turns.length + props.state.conversation.removedTurns };
     session.following = true;
-    emit('action', focus.value ? 'explain' : 'talk', { message: sent, ...(focus.value ?? {}) });
+    emit('action', focus.value ? 'explain' : 'talk', { message: sent, ...(focus.value ?? session.study ?? {}) });
 }
 watch([() => props.state.conversation.turns, () => props.state.chatBusy], follow);
 function available(target: LearningPresentation) {
     if (target.kind === 'replacement') { return !props.disabled && props.state.currentUnitId === target.unitId; }
-    return props.state.unit?.id === target.unitId && (target.kind === 'exercise' ? props.state.unit.exercises : props.state.unit.materials).some(entry => entry.id === target.id);
+    const unit = [props.state.unit, props.state.review].find(entry => entry?.id === target.unitId);
+    return !!unit && (target.kind === 'exercise' ? unit.exercises : unit.materials).some(entry => entry.id === target.id);
 }
-defineExpose({ async ask(exerciseId?: string, selection?: LearningSelection) { focus.value = { exerciseId, selection }; await nextTick(); composer.value?.focus(); },
+// Notes are read back in the lesson workspace; a review reply must not be saved into that lesson.
+const replyUnit = computed(() => props.state.unit?.id === props.state.reply?.unitId ? props.state.unit : null);
+defineExpose({ async ask(exerciseId?: string, selection?: LearningSelection, unitId = props.state.unit?.id) {
+    focus.value = { unitId, exerciseId, selection };
+    session.study = unitId ? { unitId, exerciseId } : null;
+    await nextTick(); composer.value?.focus();
+},
     focusHeading: () => heading.value?.focus({ preventScroll: true }) });
 </script>
 
@@ -85,7 +92,7 @@ defineExpose({ async ask(exerciseId?: string, selection?: LearningSelection) { f
                 <LearningMessages :turn="turn" :disabled="pending" @stop="emit('action', isLearningConversation({ kind: turn.purpose ?? 'talk' }) ? 'cancel-chat' : isLearningPreparation({ kind: turn.purpose ?? 'talk' }) ? 'cancel-preparation' : 'cancel')" />
                 <p v-if="turn.message" class="learning-turn-notice" :class="{ 'is-error': turn.status === 'failed' }" role="status">{{ turn.message }}</p>
                 <button v-if="turn.presentation" type="button" class="learning-activity-link" :disabled="!available(turn.presentation)" @click="emit('present', turn.presentation)"><LearningIcon :name="turn.presentation.kind === 'material' ? 'book' : 'records'" /><span>{{ turn.presentation.title }}</span><LearningIcon name="arrow" /></button>
-                <div v-if="position === conversationTurns.length - 1 && state.reply?.text === turn.teacher" class="learning-conversation-tools"><button v-if="[...turn.teacher].length <= 1000" type="button" :disabled="disabled" @click="emit('action', 'say-reply')"><LearningIcon name="sound" />听语伴说</button><button v-if="state.reply.exerciseId && [...turn.teacher].length <= 4000" type="button" :disabled="disabled || state.unit?.notes.some(note => note.text === turn.teacher)" @click="emit('action', 'save-note')">保存笔记</button></div>
+                <div v-if="position === conversationTurns.length - 1 && state.reply?.text === turn.teacher" class="learning-conversation-tools"><button v-if="[...turn.teacher].length <= 1000" type="button" :disabled="disabled" @click="emit('action', 'say-reply')"><LearningIcon name="sound" />听语伴说</button><button v-if="state.reply.exerciseId && replyUnit && [...turn.teacher].length <= 4000" type="button" :disabled="disabled || replyUnit.notes.some(note => note.text === turn.teacher)" @click="emit('action', 'save-note', { unitId: replyUnit.id })">保存笔记</button></div>
             </div>
             <div v-if="state.chatBusy && !state.conversation.turns.some(turn => turn.status === 'running' && isLearningConversation({ kind: turn.purpose ?? 'talk' }))" class="learning-working" role="status"><span class="learning-working-dot" aria-hidden="true" /><span>{{ state.chatMessage }}</span></div>
             <p v-else-if="!state.chatBusy && state.chatMessage" class="learning-turn-notice is-error" role="status">{{ state.chatMessage }}</p>
@@ -95,7 +102,7 @@ defineExpose({ async ask(exerciseId?: string, selection?: LearningSelection) { f
             <div class="learning-composer-surface">
                 <div v-if="focus" class="learning-composer-quote"><span>{{ focus.selection?.quote ?? '请教这道题' }}</span><button type="button" aria-label="取消引用" @click="focus = null">×</button></div>
                 <div class="learning-composer-row">
-                    <textarea ref="composer" v-model="message" v-remember-editor="session" rows="1" :maxlength="focus?.selection ? 1800 : focus?.exerciseId ? 2000 : 4000" aria-label="和语伴说" placeholder="和语伴说…" @keydown.ctrl.enter.prevent="send" @keydown.meta.enter.prevent="send" />
+                    <textarea ref="composer" v-model="message" v-remember-editor="session" rows="1" :disabled="state.chatStorage !== 'ready'" :maxlength="focus?.selection ? 1800 : focus?.exerciseId ? 2000 : 4000" aria-label="和语伴说" placeholder="和语伴说…" @keydown.ctrl.enter.prevent="send" @keydown.meta.enter.prevent="send" />
                     <button :type="state.chatBusy ? 'button' : 'submit'" :class="state.chatBusy ? 'learning-composer-stop' : 'learning-primary'" :disabled="state.chatBusy ? pending : disabled || !message.trim()" :aria-label="state.chatBusy ? '停止回复' : '发送给语伴'" :title="state.chatBusy ? '停止回复' : '发送给语伴'" @click.prevent="state.chatBusy ? emit('action', 'cancel-chat') : send()"><LearningIcon :name="state.chatBusy ? 'stop' : 'send'" /></button>
                 </div>
             </div>

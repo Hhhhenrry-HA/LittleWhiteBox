@@ -116,6 +116,9 @@ function focus(data: LearningData, language: string, osId: string, action: Learn
     const profile = data.profiles.find(entry => entry.language === language);
     const current = profile?.[learningReadUnit(action, profile)];
     const unit = current && canReadLearningScope(current.scope, osId) ? current : null;
+    if ((action.kind === 'talk' || action.kind === 'explain') && action.unitId) {
+        requireLearning(unit?.id === action.unitId, 'unitId', 'Select the current available unit');
+    }
     if (action.kind === 'assess') {
         const attempt = unit?.attempts.find(entry => entry.id === action.attemptId);
         const archived = action.review ? profile?.items.flatMap(item => item.evidence).find(entry => entry.attempt.id === action.attemptId) : null;
@@ -142,7 +145,10 @@ function focus(data: LearningData, language: string, osId: string, action: Learn
         const exercise = unit?.exercises.find(entry => entry.id === exerciseId);
         requireLearning(unit && exercise, 'exerciseId', 'Select an available exercise');
         const training = learningTrainingView(unit);
-        return { unitId: unit.id, exercise: training.exercises.find(entry => entry.id === exercise.id) };
+        const attempt = unit.attempts.filter(entry => entry.exerciseId === exercise.id && canReadLearningScope(entry.scope, osId)).at(-1);
+        const assessment = unit.assessments.find(entry => entry.attemptId === attempt?.id && canReadLearningScope(entry.scope, osId));
+        return { unitId: unit.id, exercise: training.exercises.find(entry => entry.id === exercise.id),
+            attempt: attempt ? answerView(attempt) : null, assessment: feedbackView(assessment) };
     }
     return null;
 }

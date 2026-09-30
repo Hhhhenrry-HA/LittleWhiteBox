@@ -10,16 +10,16 @@ export interface LearningClientState extends LearningClassView {
     teacher: { name: string; note: string } | null;
     candidates: { name: string; aliases: string[] }[];
     storage: 'unloaded' | 'ready' | 'unconfirmed' | 'conflict';
-    chatStorage: string;
+    chatStorage: XiaobaiOsFileState;
     walletStorage: XiaobaiOsFileState;
     busy: boolean;
-    sourceChoice: boolean;
+    sourceChoice: 'unconfigured' | 'unavailable' | null;
     preparation: { phase: 'article' | 'notes' | 'essay'; running: boolean; message: string; unitId?: string } | null;
     chatBusy: boolean;
     companionBusy: boolean;
     chatMessage: string;
     message: string;
-    reply: { text: string; action: LearningAction['kind']; exerciseId?: string } | null;
+    reply: { text: string; action: LearningAction['kind']; unitId?: string; exerciseId?: string } | null;
     /** A stage request the app started for a unit (grading, revision review, model essay, review preparation or grading). */
     pending: { purpose: 'grade' | 'revision-review' | 'model-essay' | 'review-assess' | 'review-prepare'; unitId?: string } | null;
     /** The companion's latest unprompted remark while reading; it is not saved. */

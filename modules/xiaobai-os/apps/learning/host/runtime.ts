@@ -31,6 +31,7 @@ import { isTavilyConfigured } from '../../../../agent-core/tavily-search.js';
 import { learningPreparation, LEARNING_READING_BATCH } from '../../../domains/learning/preparation.js';
 import { learningPreparationTool } from '../agent/preparation-tools.js';
 import { LEARNING_PREPARATION_COPY as prepCopy } from '../application/preparation-copy.js';
+import { learningActionBusy } from '../application/action-availability.js';
 
 export function createLearningRuntime(deps: {
     repository: LearningRepository; store: PartitionStore<LearningTeacherPreference>; files: XiaobaiOsFileControls;
@@ -47,7 +48,7 @@ export function createLearningRuntime(deps: {
     let job: object | null = null;
     let preparationJob: object | null = null;
     let preparation: LearningClientState['preparation'] = null;
-    let sourceChoice: { input: Record<string, unknown>; unitId: string | null } | null = null;
+    let sourceChoice: { reason: NonNullable<LearningClientState['sourceChoice']>; input: Record<string, unknown>; unitId: string | null } | null = null;
     let chatJob: object | null = null;
     let chatKind = '';
     let chatProgress = '';
@@ -63,8 +64,9 @@ export function createLearningRuntime(deps: {
     let recordId = '';
     let offset = 0;
     const repository = deps.repository;
-    const preparationConcurrentActions = new Set(['submit', 'bookmark', 'say', 'play', 'save-note', 'delete-note']);
-    const canWork = (name: string) => !job && (!preparationJob || preparation?.phase !== 'article' && preparationConcurrentActions.has(name));
+    const activity = () => ({ busy: !!job || !!preparationJob && preparation?.phase === 'article',
+        chatBusy: !!chatJob && chatKind !== 'companion', preparation });
+    const canWork = (name: string) => !learningActionBusy(name, activity());
     const service = createLearningService(repository);
     const teacher = createLearningTeacherService(deps.store, { knownPeople: deps.people, playerName: deps.playerName });
     const rewards = createLearningRewards({ repository: deps.repository, store: deps.rewardStore, files: deps.rewardFiles, economy: deps.economy });
@@ -104,15 +106,15 @@ export function createLearningRuntime(deps: {
         return { ...view,
             chatIdentity, language, teacher: saved?.value?.teacher ?? null,
             candidates: teacher.candidates().map(person => ({ name: person.name, aliases: person.aliases })),
-            storage: loadFailed ? 'unloaded' : snapshot.status, chatStorage: deps.files.getFileState(), walletStorage: deps.rewardFiles.getFileState(), busy: !!job || !!preparationJob && preparation?.phase === 'article',
-            sourceChoice: !!sourceChoice, preparation,
-            chatBusy: !!chatJob && chatKind !== 'companion', companionBusy: !!chatJob && chatKind === 'companion', chatMessage: chatProgress,
+            storage: loadFailed ? 'unloaded' : snapshot.status, chatStorage: deps.files.getFileState(), walletStorage: deps.rewardFiles.getFileState(),
+            sourceChoice: sourceChoice?.reason ?? null, ...activity(),
+            companionBusy: !!chatJob && chatKind === 'companion', chatMessage: chatProgress,
             message: job ? progress : message, reply, pending, remark, conversation: teaching.conversation(),
             walletOpen: deps.economy.isOpen(), media: speech.media.snapshot(), voices: speech.media.capabilities() };
     }
     function publish() { if (active()) { activation!.post('learning/state', { state: state() }); } }
     /** No learner job is running; a companion remark does not count, it gives way. */
-    function idle() { return !job && !preparationJob && (!chatJob || chatKind === 'companion'); }
+    function idle() { return !learningActionBusy('language', activity()); }
     function cancel() {
         epoch++; teaching.cancel(); speech.stop(); job = null; progress = ''; pending = null;
         chatJob = null; chatKind = ''; chatProgress = '';
@@ -163,7 +165,8 @@ export function createLearningRuntime(deps: {
         if (!guard()) { return; }
         if (result.status === 'failed') { message = result.message; return; }
         if (result.status !== 'finished') { saved(result); return; }
-        reply = { text: result.text, action, ...(exerciseId ? { exerciseId } : {}) }; replySelection = selection;
+        const target = [profileNow()?.unit, profileNow()?.review].find(unit => unit?.exercises.some(exercise => exercise.id === exerciseId));
+        reply = { text: result.text, action, ...(exerciseId ? { exerciseId, unitId: target?.id } : {}) }; replySelection = selection;
     }
     function profileNow() { return confirmedLearning(repository)?.data.profiles.find(entry => entry.language === language) ?? null; }
     /** The current lesson or review group with this id, when this story may read it. */
@@ -205,7 +208,8 @@ export function createLearningRuntime(deps: {
         const recovered = teaching.recoverConfirmed();
         if (recovered) {
             const { result, request } = recovered;
-            reply = { text: result.text, action: request.action.kind, ...(request.exerciseId ? { exerciseId: request.exerciseId } : {}) };
+            const target = [profileNow()?.unit, profileNow()?.review].find(unit => unit?.exercises.some(exercise => exercise.id === request.exerciseId));
+            reply = { text: result.text, action: request.action.kind, ...(request.exerciseId ? { exerciseId: request.exerciseId, unitId: target?.id } : {}) };
             replySelection = request.selection ?? null;
         }
     }
@@ -267,6 +271,9 @@ export function createLearningRuntime(deps: {
                 if (preparationJob === token) {
                     preparationJob = null;
                     if (preparation) { preparation = { ...preparation, running: false }; }
+                    if (article && preparation?.phase === 'article' && repository.snapshot().status === 'ready') {
+                        sourceChoice = { reason: 'unavailable', input: { message: article.message, replaceCurrent: article.replaceCurrent }, unitId: profileNow()?.unit?.id ?? null };
+                    }
                     publish();
                 }
             }
@@ -284,7 +291,7 @@ export function createLearningRuntime(deps: {
         if (source === 'web') {
             const config = await deps.agent.loadConfig();
             if (!guard()) { return; }
-            if (!isTavilyConfigured(config)) { sourceChoice = { input: structuredClone(input), unitId: profile?.unit?.id ?? null }; return; }
+            if (!isTavilyConfigured(config)) { sourceChoice = { reason: 'unconfigured', input: structuredClone(input), unitId: profile?.unit?.id ?? null }; return; }
         }
         if (guard()) { startPreparation({ source, replaceCurrent, message: learningText(input.message, 'message', 4000) }); }
     }
@@ -296,6 +303,15 @@ export function createLearningRuntime(deps: {
         return selected;
     }
     async function action(name: string, input: Record<string, unknown>, guard: () => boolean, answerBasis?: LearningAttemptBasis) {
+        if (name === 'verify-teacher' || name === 'adopt-teacher') {
+            const before = deps.store.peekCurrent()?.value?.teacher;
+            const result = name === 'verify-teacher' ? await deps.files.retryPending({ readOnly: true }) : await deps.files.adoptServerState();
+            saved(result);
+            if (deps.files.getFileState() !== 'ready') { message = ''; }
+            const after = await deps.store.read();
+            if (guard() && JSON.stringify(before) !== JSON.stringify(after.value?.teacher)) { teaching.reset(); reply = null; replySelection = null; }
+            return;
+        }
         if (name === 'read' || name === 'verify' || name === 'retry-save' || name === 'adopt-server') {
             const before = repository.snapshot();
             if (name === 'verify') { saved(await repository.verify()); }
@@ -320,10 +336,10 @@ export function createLearningRuntime(deps: {
         }
         requireLearning(!loadFailed, 'storage', 'Read the learning file first');
         confirmedLearning(repository);
-        if (name === 'choose-original') {
+        if (name === 'choose-original' || name === 'retry-source') {
             requireLearning(sourceChoice, 'source', 'Choose an article source first');
             requireLearning((profileNow()?.unit?.id ?? null) === sourceChoice.unitId, 'unitId', 'The current article changed; choose again');
-            await prepareReading(sourceChoice.input, guard, 'authored'); return;
+            await prepareReading(sourceChoice.input, guard, name === 'choose-original' ? 'authored' : 'web'); return;
         }
         if (name === 'resume-preparation') {
             requireLearning(unit().id === input.unitId && unit().kind === 'reading-writing', 'unitId', 'Continue the current reading article');
@@ -334,6 +350,7 @@ export function createLearningRuntime(deps: {
             const selected = input.teacher as LearningTeacherPreference['teacher'];
             if (JSON.stringify(current()?.teacher) === JSON.stringify(selected)) { return; }
             if (saved(await teacher.select(before.identityKey, input.teacher as LearningTeacherPreference['teacher'], guard))) { teaching.reset(); reply = null; }
+            if (deps.files.getFileState() !== 'ready') { message = ''; }
             return;
         }
         if (name === 'profile') {
@@ -509,12 +526,13 @@ export function createLearningRuntime(deps: {
             try {
                 const answerBasis = { document: confirmedLearning(repository), submittedAt: new Date().toISOString() };
                 const exerciseId = input.exerciseId === undefined ? undefined : learningText(input.exerciseId, 'exerciseId', 128);
+                const unitId = name !== 'companion' && input.unitId !== undefined ? slot(learningText(input.unitId, 'unitId', 128)).id : undefined;
                 const selected = name === 'explain' && input.selection ? selection(input.selection) : null;
                 if (name === 'explain') { requireLearning(exerciseId || selected, 'selection', 'Select a question or passage'); }
                 const materialId = name === 'companion' && input.materialId !== undefined ? learningText(input.materialId, 'materialId', 128) : undefined;
                 const paragraphId = name === 'companion' && input.paragraphId !== undefined ? learningText(input.paragraphId, 'paragraphId', 128) : undefined;
                 const text = name === 'companion' ? '' : learningText(input.message, 'message', selected ? 1800 : 4000);
-                const result = await teaching.run({ action: name === 'companion' ? { kind: name, materialId, paragraphId } : { kind: name },
+                const result = await teaching.run({ action: name === 'companion' ? { kind: name, materialId, paragraphId } : { kind: name, ...(unitId ? { unitId } : {}) },
                     exerciseId, selection: selected, message: selected ? `${text}\n\n${selected.quote}` : text, ...(name === 'companion' ? { displayMessage: '' } : {}) });
                 if (!guard()) { return; }
                 if (name === 'companion') {
@@ -524,7 +542,7 @@ export function createLearningRuntime(deps: {
                 } else {
                     chatProgress = result.status === 'failed' ? result.message : '';
                     if (result.status === 'finished') {
-                        reply = { text: result.text, action: name, ...(exerciseId ? { exerciseId } : {}) }; replySelection = selected;
+                        reply = { text: result.text, action: name, unitId: unitId ?? profileNow()?.unit?.id, ...(exerciseId ? { exerciseId } : {}) }; replySelection = selected;
                     }
                     if (result.status === 'finished' && result.delegation) {
                         const rejected = launch(result.delegation.action, result.delegation.input, result.delegation.action === 'submit' ? answerBasis : undefined);
@@ -571,6 +589,7 @@ export function createLearningRuntime(deps: {
                 'unitId', 'exerciseId', 'answer', 'attemptId', 'review', 'selection', 'kind', 'id', 'voice', 'materialId', 'partKey', 'openWallet', 'offset', 'value',
                 'paragraphId', 'termText', 'revisions']);
             if (!active() || input.chatIdentity !== chatIdentity) { return { state: state() }; }
+            if (learningActionBusy(name, activity())) { return { state: state(), rejected: 'busy' }; }
             if (name === 'pause') { speech.media.pause(); }
             // A companion remark never touches playback, so the player stays usable while it runs.
             else if (name === 'resume' && idle()) { speech.media.resume(); }
@@ -579,7 +598,7 @@ export function createLearningRuntime(deps: {
             else if (name === 'seek' && idle()) { speech.media.seek(Number(input.value)); }
             else if (name === 'tts-settings') { speech.media.openSettings(); }
             else if (name === 'research-settings') { activation!.post('os/navigate', { appId: 'agent-api' }); }
-            else if (name === 'dismiss-source') { sourceChoice = null; }
+            else if (name === 'dismiss-source') { sourceChoice = null; preparation = null; }
             else if (name === 'cancel-preparation') { stopPreparation(); }
             else if (name === 'cancel-chat') { cancelConversation(); publish(); }
             else if (name === 'cancel-companion') { yieldRemark(); publish(); }

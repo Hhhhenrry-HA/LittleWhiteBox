@@ -17,8 +17,8 @@ async function until(check) {
         await new Promise(resolve => setImmediate(resolve));
     }
 }
-async function setup() {
-    const h = await createClassroomFixture();
+async function setup(options) {
+    const h = await createClassroomFixture(options);
     await h.command('teacher', { teacher: { name: '林老师', note: '' } });
     await h.command('settings', { value: { level: 'B1', targetLevel: 'B2' } });
     return h;
@@ -52,13 +52,31 @@ test('missing research configuration offers a choice before any model request; c
     try {
         await h.command('prepare', { kind: 'reading-writing', message: '开始读写。' });
         assert.equal(h.counts.provider, 0);
-        assert.equal(h.state().sourceChoice, true);
+        assert.equal(h.state().sourceChoice, 'unconfigured');
         assert.equal(h.state().unit, null);
         await h.command('talk', { message: '你好。' });
         assert.ok(h.counts.provider > 0);
         assert.equal(h.state().unit, null);
         await h.command('dismiss-source');
-        assert.equal(h.state().sourceChoice, false);
+        assert.equal(h.state().sourceChoice, null);
+    } finally { await h.dispose(); }
+});
+
+test('failed web preparation offers an explicit new search or original without starting either automatically', async () => {
+    const h = await setup({ agentConfig: { tavilyApiKey: 'offline-fixture-no-network' } });
+    const requests = teacher(h, async data => data.action.kind === 'reading-article' && data.action.source === 'web' ? { text: 'No usable source.' } : null);
+    try {
+        await h.command('prepare', { kind: 'reading-writing', message: 'Start reading.' });
+        assert.equal(h.state().sourceChoice, 'unavailable');
+        assert.equal(h.state().unit, null);
+        assert.equal(requests.length, 1);
+        await h.command('retry-source');
+        assert.equal(h.state().sourceChoice, 'unavailable');
+        assert.equal(requests.length, 2);
+        await h.command('choose-original');
+        assert.equal(h.state().sourceChoice, null);
+        assert.equal(h.state().unit.preparation.ready, true);
+        assert.deepEqual(requests.filter(action => action.kind === 'reading-article').map(action => action.source), ['web', 'web', 'authored']);
     } finally { await h.dispose(); }
 });
 

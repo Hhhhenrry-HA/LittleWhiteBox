@@ -23,8 +23,9 @@ export const fixtureLesson = {
 
 export async function createClassroomFixture({ listening = false, lesson: lessonInput = fixtureLesson, getTtsFacade = () => undefined, agentConfig = {} } = {}) {
     let chat = 'runtime-a'; let envelope = null; let userFile = null; let walletFile = null; let serial = 0;
-    const flags = { userFailure: false, userRejected: false, heldUser: null, ledgerFailure: false, ledgerUnknown: false, heldLedger: null, providerFailure: false, providerGate: null, prepareReply: null, profileReply: null, talkTools: null, teacherResponse: null };
-    const counts = { provider: 0, userWrites: 0, ledgerWrites: 0 };
+    const flags = { userFailure: false, userRejected: false, heldUser: null, ledgerFailure: false, ledgerUnknown: false, heldLedger: null, teacherReceiptLost: false, teacherWriteApplied: true,
+        providerFailure: false, providerGate: null, prepareReply: null, profileReply: null, talkTools: null, teacherResponse: null };
+    const counts = { provider: 0, userWrites: 0, ledgerWrites: 0, teacherWrites: 0 };
     const failures = [];
     const reference = () => ({ identityKey: `storage-${chat}`, binding: { kind: 'character', ownerLocator: 'fixture.png', chatId: chat },
         reference: envelope ? { formatVersion: 1, osId: envelope.osId } : null });
@@ -34,7 +35,10 @@ export async function createClassroomFixture({ listening = false, lesson: lesson
     const coordinator = createTransactionCoordinator({ partitions, capabilityBinder: capabilities, createId: () => `ledger-${++serial}`,
         chatReferences: { capture: reference, isCurrent: captured => captured.identityKey === reference().identityKey, install: async () => ({ status: 'confirmed' }) },
         storage: { read: async () => structuredClone(envelope), delete: async () => 'missing', replace: async ({ candidate }) => {
-            envelope = structuredClone(candidate); return { status: 'confirmed' };
+            counts.teacherWrites++;
+            if (flags.teacherWriteApplied) { envelope = structuredClone(candidate); }
+            return flags.teacherReceiptLost ? { status: 'unconfirmed', observed: null,
+                error: { code: 'storage_unconfirmed', message: 'fixture receipt lost', retryable: true } } : { status: 'confirmed' };
         } },
     });
     const wallet = createUserTransactions({ partitions, binder: capabilities, references: { capture: reference },

@@ -28,8 +28,8 @@ export type LearningAction =
     | { kind: 'reading-essay'; unitId: string }
     | { kind: 'assess'; attemptId: string; review: boolean }
     | { kind: 'complete' }
-    | { kind: 'explain' }
-    | { kind: 'talk' }
+    | { kind: 'explain'; unitId?: string }
+    | { kind: 'talk'; unitId?: string }
     /** A reply on one paragraph summary; its grade waits for the unified grading. */
     | { kind: 'summary-review'; attemptId: string }
     | { kind: 'grade'; unitId: string }
@@ -241,8 +241,10 @@ export function createLearningSession(repository: LearningRepository, options: {
                         }
                         ids = [unit.id];
                     } else if (name === 'LearningPresent') {
-                        const target = learningPresentation(profile.unit, args, options.learnerMessage, action.kind === 'prepare' ? action.unit : undefined);
-                        requireLearning(target.kind === 'replacement' || profile.unit && canReadLearningScope(profile.unit.scope, accessOsId), 'unit', 'Choose a lesson available in this classroom');
+                        const input = learningRecord(args, name, ['kind', 'id']);
+                        const unit = input.kind === 'replacement' ? profile.unit : profile[unitKey];
+                        const target = learningPresentation(unit, args, options.learnerMessage, action.kind === 'prepare' ? action.unit : undefined);
+                        requireLearning(target.kind === 'replacement' || unit && canReadLearningScope(unit.scope, accessOsId), 'unit', 'Choose a lesson available in this classroom');
                         nextPresentation = target;
                         ids = [target.id];
                     } else if (name === 'LearningLessonEdit' && action.kind === 'review-prepare') {
@@ -319,7 +321,8 @@ export function createLearningSession(repository: LearningRepository, options: {
                 next = parseLearningData(next);
                 // Reject the particular edit that breaks a live reference, while the model can still repair it.
                 if (nextPresentation) {
-                    const unit = next.profiles.find(profile => profile.language === canonicalLanguage)?.unit ?? null;
+                    const profile = next.profiles.find(profile => profile.language === canonicalLanguage);
+                    const unit = [profile?.unit, profile?.review].find(entry => entry?.id === nextPresentation!.unitId) ?? null;
                     requireLearning(unit?.id === nextPresentation.unitId, 'presentation', 'Present content from the current lesson');
                     nextPresentation = learningPresentation(unit, { kind: nextPresentation.kind, id: nextPresentation.id }, options.learnerMessage,
                         nextPresentation.kind === 'replacement' ? nextPresentation.unitKind : undefined);

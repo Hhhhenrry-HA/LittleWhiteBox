@@ -34,7 +34,7 @@ test('each language selection reaches the mounted UI on its first request, witho
 });
 
 test('learning requests snapshot nested reactive quotes, settings and answer collections at the wire boundary', async t => {
-    const initial = { chatIdentity: 'a', storage: 'ready' };
+    const initial = { chatIdentity: 'a', storage: 'ready', chatStorage: 'ready' };
     const delivered = [];
     const ui = mountState(t, initial, {
         subscribe: () => () => {},
@@ -80,7 +80,7 @@ for (const [error, issue, needsRefresh] of [
     [new HostRequestError({ error: 'app_request_failed' }), 'rejected', true],
 ]) {
     test(`request failure ${issue} offers the matching recovery without auto-resending`, async t => {
-        const initial = { chatIdentity: 'a', storage: 'ready' };
+        const initial = { chatIdentity: 'a', storage: 'ready', chatStorage: 'ready' };
         let publish;
         let calls = 0;
         const ui = mountState(t, initial, {
@@ -97,3 +97,25 @@ for (const [error, issue, needsRefresh] of [
         assert.equal(calls, 1);
     });
 }
+
+test('context controls and Host dispatch agree while a conversation is running', async t => {
+    let release;
+    const h = await createClassroomFixture(); t.after(async () => { release?.(); await h.dispose(); });
+    await h.command('teacher', { teacher: { name: '林老师', note: '' } });
+    const ui = mountState(t, h.state(), h.bridge);
+    h.flags.providerGate = new Promise(resolve => { release = resolve; });
+    await ui.request('talk', { message: 'Explain this slowly.' });
+    assert.equal(ui.state.value.chatBusy, true);
+    for (const [action, extra] of [['language', { language: 'ja' }], ['teacher', { teacher: { name: 'A new companion', note: '' } }], ['forget-conversation', {}]]) {
+        assert.equal(ui.canRequest(action), false);
+        const response = await h.bridge.request(`learning/${action}`, { chatIdentity: h.state().chatIdentity, ...extra });
+        assert.equal(response.result.rejected, 'busy');
+        assert.equal(response.result.state.language, 'en');
+        assert.equal(response.result.state.teacher.name, '林老师');
+        assert.equal(response.result.state.chatBusy, true);
+    }
+    await ui.request('cancel-chat');
+    assert.equal(ui.canRequest('language'), true);
+    await ui.request('language', { language: 'ja' });
+    assert.equal(ui.state.value.language, 'ja');
+});

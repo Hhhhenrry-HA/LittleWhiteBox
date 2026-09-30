@@ -8,7 +8,7 @@ import LearningPlayer from './LearningPlayer.vue';
 import LearningSetup from './LearningSetup.vue';
 import LearningSettingsCard from './LearningSettingsCard.vue';
 import LearningCompanionControl from './LearningCompanionControl.vue';
-import { LEARNING_CONFIRM_COPY, LEARNING_DISCARD_COPY, LEARNING_VOICE_COPY, LEARNING_REQUEST_COPY } from './learning-copy.js';
+import { LEARNING_CONFIRM_COPY, LEARNING_DISCARD_COPY, LEARNING_VOICE_COPY, LEARNING_REQUEST_COPY, LEARNING_TEACHER_STORAGE_COPY as teacherStorageCopy } from './learning-copy.js';
 import { LEARNING_REWARD_COPY, LEARNING_STORAGE_COPY } from '../application/feedback.js';
 import LearningWorkbench from './LearningWorkbench.vue';
 import type { LearningPresentation, LearningActivityPresentation } from '../application/presentation.js';
@@ -18,7 +18,7 @@ import LearningProcess from './LearningProcess.vue';
 import { isLearningConversation, isLearningPreparation } from '../agent/access.js';
 import LearningConversation from './LearningConversation.vue';
 import { useLearningState } from './use-learning-state.js';
-import { provideLearningUiSession } from './learning-session.js';
+import { learningContextNeedsConfirmation, provideLearningUiSession } from './learning-session.js';
 import { LEARNING_PANE_MIN_WIDTH, LEARNING_PANE_TRANSITION_MS } from './layout.js';
 import { useLearningCompanion } from './use-learning-companion.js';
 import './learning.css';
@@ -32,8 +32,14 @@ const copy = {
     verifyWallet: '查看钱包状态', adoptWallet: '使用已保存钱包', adoptWalletWarning: '这次尚未保存成功的钱包修改将被放弃，改用已保存的钱包。',
     voiceDisabled: '还没有开启语音，文字学习不受影响。',
 };
-const { state, pending, writable, canChat, localMessage, needsRefresh, request } = useLearningState(props);
+const { state, pending, writable, canChat, canRequest, localMessage, needsRefresh, request: sendRequest } = useLearningState(props);
 const uiSession = provideLearningUiSession(state);
+async function request(name: string, input: Record<string, unknown> = {}, discardConfirmed = false) {
+    if (!discardConfirmed && learningContextNeedsConfirmation(uiSession, state.value, name, input)) {
+        askConfirm(name, input, name === 'teacher' ? LEARNING_DISCARD_COPY.companion : LEARNING_DISCARD_COPY.context); return;
+    }
+    return sendRequest(name, input);
+}
 type Page = 'home' | 'books' | 'materials' | 'harvest' | 'settings' | 'profile';
 const page = ref<Page>(state.value.teacher ? 'home' : 'profile');
 const trail: Page[] = [];
@@ -87,7 +93,23 @@ watch([workVisible, chatVisible, reducedMotion], async ([work, chat, reduced], _
 }, { immediate: true });
 function rememberWorkScroll() {
     if (workVisible.value && scroller.value) { scrolls[page.value] = scroller.value.scrollTop; }
+    void rememberStudy();
 }
+async function rememberStudy(event?: Event) {
+    const target = event?.target instanceof Element ? event.target : null;
+    await nextTick();
+    if (!workVisible.value || page.value !== 'home' || !scroller.value) { return; }
+    const bounds = scroller.value.getBoundingClientRect();
+    const current = target?.closest<HTMLElement>('[data-learning-unit-id]')
+        ?? [...scroller.value.querySelectorAll<HTMLElement>('[data-learning-unit-id]')].find(element => {
+            const rect = element.getBoundingClientRect();
+            return rect.bottom > bounds.top + 48 && rect.top < bounds.bottom;
+        });
+    if (current?.dataset.learningUnitId) {
+        uiSession.chat.study = { unitId: current.dataset.learningUnitId, exerciseId: current.dataset.exerciseId };
+    }
+}
+watch([scroller, page, workVisible], () => { void rememberStudy(); }, { flush: 'post' });
 const turnCount = computed(() => {
     const { turns, removedTurns } = state.value.conversation;
     let index = turns.length - 1;
@@ -109,6 +131,7 @@ const workProcess = computed(() => {
 });
 async function showChat() {
     if (!state.value.teacher) { return; }
+    await rememberStudy();
     rememberWorkScroll(); view.value = 'chat'; chatMounted.value = true;
     await nextTick();
     if (view.value === 'chat') { conversation.value?.focusHeading(); }
@@ -167,6 +190,13 @@ async function present(target: LearningPresentation, automatic = false) {
         askConfirm('replace-lesson', { unitId: target.unitId, message: target.message, kind: target.unitKind }, copy.replaceWarning);
         return;
     }
+    if (state.value.review?.id === target.unitId) {
+        if (automatic) { if (!workVisible.value || page.value !== 'home') { workUnread.value = true; } return; }
+        const local = uiSession.unit(target.unitId).review;
+        if (target.kind === 'exercise') { local.index = state.value.review.exercises.findIndex(entry => entry.id === target.id); }
+        local.expanded = true;
+        await openReview(); return;
+    }
     if (state.value.unit?.id !== target.unitId) { return; }
     // Reading-writing units live on the workbench itself; only lesson activities open as a sheet.
     if (state.value.unit.kind === 'reading-writing') {
@@ -180,9 +210,9 @@ async function present(target: LearningPresentation, automatic = false) {
     activity.value = target;
 }
 function closeActivity() { activity.value = null; void request('stop'); }
-async function askTeacher(exerciseId?: string, selection?: LearningSelection) {
+async function askTeacher(exerciseId?: string, selection?: LearningSelection, unitId?: string) {
     closeActivity(); rememberWorkScroll(); view.value = 'chat'; chatMounted.value = true;
-    await nextTick(); await conversation.value?.ask(exerciseId, selection);
+    await nextTick(); await conversation.value?.ask(exerciseId, selection, unitId);
 }
 async function go(next: Page, returning = false) {
     if (next !== page.value && !returning) {
@@ -204,6 +234,7 @@ async function go(next: Page, returning = false) {
         if (heading) { heading.tabIndex = -1; heading.focus({ preventScroll: true }); }
     }
 }
+function openProfile() { uiSession.setup.step = 0; void go('profile'); }
 async function openReview() {
     await go('home');
     if (scroller.value) { scroller.value.scrollTop = 0; }
@@ -211,7 +242,7 @@ async function openReview() {
     if (heading) { heading.tabIndex = -1; heading.focus({ preventScroll: true }); }
 }
 /** Navigation follows an explicit workbench action, never an unsolicited model update. */
-async function workAction(name: string, input: Record<string, unknown> = {}) {
+async function workAction(name: string, input: Record<string, unknown> = {}, discardConfirmed = false) {
     if (name === 'prepare' && !state.value.profile) {
         uiSession.setup.step = state.value.teacher ? 2 : 0;
         await go('profile'); return;
@@ -223,7 +254,7 @@ async function workAction(name: string, input: Record<string, unknown> = {}) {
         await go('home');
         if (scroller.value) { scroller.value.scrollTop = 0; }
     }
-    await request(name, input);
+    await request(name, input, discardConfirmed);
 }
 // The bridge acknowledges starting a save, not finishing it. Follow the session's confirmed-save retirement.
 watch(() => uiSession.settings.submitted, (next, previous) => {
@@ -282,9 +313,16 @@ async function exportData() {
                 <button v-if="state.storage === 'unloaded' || needsRefresh" type="button" :disabled="pending" @click="request('read')">{{ LEARNING_REQUEST_COPY.refresh }}</button>
             </div>
         </div>
+        <div v-if="['unconfirmed', 'conflict', 'failed'].includes(state.chatStorage)" class="learning-notice" role="status" aria-live="polite">
+            {{ state.chatStorage === 'unconfirmed' ? teacherStorageCopy.unconfirmed : state.chatStorage === 'conflict' ? teacherStorageCopy.conflict : teacherStorageCopy.failed }}
+            <div class="learning-row">
+                <button type="button" :disabled="!canRequest('verify-teacher')" @click="request('verify-teacher')">{{ teacherStorageCopy.verify }}</button>
+                <button v-if="state.chatStorage !== 'failed'" type="button" :disabled="!canRequest('adopt-teacher')" @click="askConfirm('adopt-teacher', {}, teacherStorageCopy.adoptWarning)">{{ teacherStorageCopy.adopt }}</button>
+            </div>
+        </div>
         <div class="learning-stage" :class="{ 'is-wide': wide, 'is-chat': !wide && view === 'chat' }">
             <div class="learning-pane is-work" :inert="!workVisible" :aria-hidden="!workVisible">
-                <div ref="scroller" class="learning-scroll" @scroll.passive="rememberWorkScroll">
+                <div ref="scroller" class="learning-scroll" @scroll.passive="rememberWorkScroll" @click="rememberStudy" @focusin="rememberStudy">
                     <template v-if="workMounted">
                         <LearningProcess v-if="workProcess" :key="workProcess.key" :turn="workProcess.turn" stoppable :disabled="pending" @stop="request(isLearningPreparation({ kind: workProcess.turn.purpose ?? 'talk' }) ? 'cancel-preparation' : 'cancel')" />
                         <div v-if="state.busy && workProcess?.turn.status !== 'running'" class="learning-working" role="status"><span class="learning-working-dot" aria-hidden="true" /><span>{{ state.message || copy.working }}</span><button type="button" :disabled="pending" @click="request('cancel')">停止</button></div>
@@ -292,9 +330,9 @@ async function exportData() {
                             v-if="page === 'home'" :state="state" :disabled="!writable" :pending="pending"
                             @action="workAction" @confirm="askConfirm" @present="present" @go="go" @ask="askTeacher" @record="openRecord"
                         />
-                        <LearningSetup v-if="page === 'profile'" :state="state" :disabled="!writable" @action="request" />
+                        <LearningSetup v-if="page === 'profile'" :state="state" :disabled="!canRequest('language')" @action="request" />
                         <section v-if="page === 'materials'" class="learning-materials-page"><h1>课件与笔记</h1><p v-if="!state.unit" class="learning-empty-note">{{ state.blockedUnit ? '当前课件在另一个故事中' : '还没有课件' }}</p><template v-if="state.unit"><p class="learning-materials-title">{{ state.unit.title }}</p><button v-for="material in state.unit.materials" :key="material.id" type="button" class="learning-activity-link" @click="present({ unitId: state.unit.id, kind: 'material', id: material.id, title: material.title })"><LearningIcon name="book" /><span>{{ material.title }}</span><LearningIcon name="arrow" /></button><button v-for="exercise in state.unit.exercises" :key="exercise.id" type="button" class="learning-activity-link" @click="present({ unitId: state.unit.id, kind: 'exercise', id: exercise.id, title: exercise.prompt })"><LearningIcon name="records" /><span>{{ exercise.prompt }}</span><LearningIcon name="arrow" /></button><section v-if="state.unit.notes.length" class="learning-notes"><article v-for="note in state.unit.notes" :key="note.id"><blockquote v-if="note.selection">{{ note.selection.quote }}</blockquote><p>{{ note.text }}</p><button type="button" :disabled="!writable" @click="request('delete-note', { id: note.id })">删除笔记</button></article></section></template></section>
-                        <LearningBooks v-if="page === 'books'" :state="state" :disabled="!writable" @action="workAction" @review="openReview" @remove="askConfirm" />
+                        <LearningBooks v-if="page === 'books'" :state="state" :disabled="!canRequest('start-review')" @action="workAction" @review="openReview" @remove="askConfirm" />
                         <section v-if="page === 'harvest'" class="learning-harvest-page">
                             <div class="learning-page-heading"><h1>我的收获</h1></div>
                             <p v-if="!state.completions.length" class="learning-empty-note">还没有完成的课程</p>
@@ -310,13 +348,13 @@ async function exportData() {
                         </section>
                         <section v-if="page === 'settings'" class="learning-settings-page">
                             <h1>学习设置</h1>
-                            <label>当前语言<select :value="state.language" :disabled="!writable" @change="request('language', { language: ($event.target as HTMLSelectElement).value })"><option v-for="code in [...new Set([state.language, ...state.languages])]" :key="code" :value="code">{{ new Intl.DisplayNames(['zh-CN'], { type: 'language' }).of(code) }}</option></select></label>
-                            <button type="button" @click="go('profile')">更换语言和语伴 →</button>
+                            <label>当前语言<select :value="state.language" :disabled="!canRequest('language')" @change="request('language', { language: ($event.target as HTMLSelectElement).value }); ($event.target as HTMLSelectElement).value = state.language"><option v-for="code in [...new Set([state.language, ...state.languages])]" :key="code" :value="code">{{ new Intl.DisplayNames(['zh-CN'], { type: 'language' }).of(code) }}</option></select></label>
+                            <button type="button" @click="openProfile">更换语言和语伴 →</button>
                             <LearningCompanionControl />
                             <section>
                                 <h2>训练设置</h2>
                                 <p v-if="state.profile?.goal.description" class="learning-settings-goal">{{ state.profile.goal.description }}</p>
-                                <LearningSettingsCard :state="state" :disabled="!writable" @action="request" />
+                                <LearningSettingsCard :state="state" :disabled="!canRequest('settings')" @action="request" />
                             </section>
                             <section>
                                 <h2>语伴的声音</h2><p v-if="!state.voices.enabled" class="learning-muted">{{ copy.voiceDisabled }}</p>
@@ -324,23 +362,23 @@ async function exportData() {
                                     <label>音色<select v-model="voice"><option v-for="item in state.voices.voices" :key="item.id" :value="item.id" :disabled="!item.available">{{ item.name }}{{ item.available ? '' : '（暂不可用）' }}</option></select></label>
                                     <label>发音语言<input v-model="voiceLanguage" type="text" maxlength="80" placeholder="en / ja"></label>
                                     <label>语速<select v-model="speed"><option :value="0.75">0.75×</option><option :value="1">1×</option><option :value="1.25">1.25×</option></select></label>
-                                    <button type="submit" :disabled="!writable || !state.profile">保存声音设置</button>
+                                    <button type="submit" :disabled="!canRequest('voice') || !state.profile">保存声音设置</button>
                                 </form><button type="button" @click="request('tts-settings')">{{ state.voices.enabled ? LEARNING_VOICE_COPY.settings : LEARNING_VOICE_COPY.enable }}</button><small>已听过的题保留原声音，新偏好用于之后的题目。</small>
                             </section>
                             <section>
                                 <h2>学习数据</h2>
-                                <button type="button" :disabled="pending || state.busy" @click="askConfirm('forget-conversation', {}, '清空和当前语伴的对话？目标、课件、学习记录和奖励都会保留。')">清空对话记录</button>
-                                <button type="button" :disabled="!writable" @click="exportData">导出学习数据</button><button type="button" :disabled="pending || state.busy" @click="request('read')">重新加载</button>
-                                <button v-if="state.unit || state.blockedUnit" type="button" :disabled="!writable" @click="askConfirm('abandon', {}, LEARNING_DISCARD_COPY.lesson)">放下当前练习</button>
-                                <button type="button" class="learning-danger" :disabled="!writable || !state.profile" @click="askConfirm('delete-language', {}, '删除当前语言的全部学习数据？未领取奖励也将放弃，已到账流水保留。')">删除当前语言</button>
-                                <button type="button" class="learning-danger" :disabled="!writable" @click="askConfirm('clear', {}, '清空所有语言的目标、课程和记录？未领取奖励也将放弃。已到账流水不撤销。')">清空全部学习数据</button>
+                                <button type="button" :disabled="!canRequest('forget-conversation')" @click="askConfirm('forget-conversation', {}, '清空和当前语伴的对话？目标、课件、学习记录和奖励都会保留。')">清空对话记录</button>
+                                <button type="button" :disabled="!canRequest('export')" @click="exportData">导出学习数据</button><button type="button" :disabled="!canRequest('read')" @click="request('read')">重新加载</button>
+                                <button v-if="state.unit || state.blockedUnit" type="button" :disabled="!canRequest('abandon')" @click="askConfirm('abandon', {}, LEARNING_DISCARD_COPY.lesson)">放下当前练习</button>
+                                <button type="button" class="learning-danger" :disabled="!canRequest('delete-language') || !state.profile" @click="askConfirm('delete-language', {}, '删除当前语言的全部学习数据？未领取奖励也将放弃，已到账流水保留。')">删除当前语言</button>
+                                <button type="button" class="learning-danger" :disabled="!canRequest('clear')" @click="askConfirm('clear', {}, '清空所有语言的目标、课程和记录？未领取奖励也将放弃。已到账流水不撤销。')">清空全部学习数据</button>
                             </section>
                         </section>
                     </template>
                 </div>
             </div>
             <div v-if="state.teacher" class="learning-pane is-chat" :inert="!chatVisible" :aria-hidden="!chatVisible">
-                <LearningConversation v-if="chatMounted" ref="conversation" :state="state" :disabled="!canChat" :pending="pending" @action="request" @present="present" @profile="go('profile')" />
+                <LearningConversation v-if="chatMounted" ref="conversation" :state="state" :disabled="!canChat" :pending="pending" @action="request" @present="present" @profile="openProfile" />
             </div>
             <button v-if="!wide && view === 'work' && state.teacher" type="button" class="learning-float is-companion" :aria-label="unread ? `和${state.teacher.name}聊天，有新消息` : `和${state.teacher.name}聊天`" @click="showChat">
                 <span class="learning-person-initial">{{ [...state.teacher.name][0] }}</span><span v-if="unread" class="learning-unread-dot" aria-hidden="true" />
@@ -358,7 +396,7 @@ async function exportData() {
         <div v-if="confirm" ref="confirmLayer" class="learning-confirm-shade" @keydown.esc.stop.prevent="confirm = null">
             <section role="alertdialog" aria-labelledby="learning-confirm-title" class="learning-confirm">
                 <h2 id="learning-confirm-title">{{ LEARNING_CONFIRM_COPY[confirm.action].title }}</h2><p>{{ confirm.text }}</p>
-                <div class="learning-row"><button autofocus type="button" @click="confirm = null">{{ copy.cancel }}</button><button type="button" class="learning-primary" :disabled="pending || state.busy" @click="workAction(confirm.action, confirm.input); confirm = null">{{ LEARNING_CONFIRM_COPY[confirm.action].accept }}</button></div>
+                <div class="learning-row"><button autofocus type="button" @click="confirm = null">{{ ['language', 'teacher'].includes(confirm.action) ? LEARNING_DISCARD_COPY.keepEditing : copy.cancel }}</button><button type="button" class="learning-primary" :disabled="!canRequest(confirm.action)" @click="workAction(confirm.action, confirm.input, true); confirm = null">{{ LEARNING_CONFIRM_COPY[confirm.action].accept }}</button></div>
             </section>
         </div>
     </section>

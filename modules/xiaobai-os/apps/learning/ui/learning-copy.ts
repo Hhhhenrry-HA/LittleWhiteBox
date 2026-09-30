@@ -9,6 +9,14 @@ export const LEARNING_REQUEST_COPY = {
     refresh: '查看最新状态',
 };
 
+export const LEARNING_TEACHER_STORAGE_COPY = {
+    unconfirmed: '还没确认语伴设置是否保存成功。先核实一下，不必重新选择。',
+    conflict: '语伴设置有另一份已保存的版本，请先核对。',
+    failed: '语伴设置暂时无法读取，请重试。',
+    verify: '核实语伴设置', adopt: '使用已保存设置',
+    adoptWarning: '放弃这次尚未确认的更换，使用已保存的语伴设置。学习记录会保留。',
+};
+
 export const LEARNING_PROCESS_COPY = {
     title: '学习动态', stop: '停止本次操作', round: (count: number) => `第 ${count} 轮`,
     history: (count: number) => `${count} 个步骤`, received: (count: number) => `已收到 ${count} 字，正在整理`,
@@ -47,13 +55,17 @@ export const LEARNING_FLOW_COPY = {
     optionalSettings: '讲解语言与兴趣', saveSettings: '保存设置',
 };
 
+const contextSwitchConfirmation = { title: '还有内容没提交', accept: '放弃并切换' };
 export const LEARNING_CONFIRM_COPY: Record<string, { title: string; accept: string }> = {
+    language: contextSwitchConfirmation,
+    teacher: contextSwitchConfirmation,
     'replace-lesson': { title: '换一篇练习？', accept: '换一篇' },
     abandon: { title: '放下这次练习？', accept: '放下练习' },
     'abandon-review': { title: '放下这组复习？', accept: '放下复习' },
     'skip-revision': { title: '跳过修改？', accept: '查看范文' },
     'adopt-server': { title: '使用已保存的学习记录？', accept: '使用已保存记录' },
     'adopt-wallet': { title: '使用已保存的钱包？', accept: '使用已保存钱包' },
+    'adopt-teacher': { title: '使用已保存的语伴设置？', accept: '使用已保存设置' },
     'forget-conversation': { title: '清空这段对话？', accept: '清空对话' },
     'delete-language': { title: '删除这门语言的学习数据？', accept: '删除学习数据' },
     clear: { title: '清空所有学习数据？', accept: '清空学习数据' },
@@ -62,6 +74,15 @@ export const LEARNING_CONFIRM_COPY: Record<string, { title: string; accept: stri
 };
 
 export const LEARNING_DISCARD_COPY = {
+    context: '切换后，尚未提交的输入会丢失。已提交的作答和学习记录会保留。',
+    companion: '切换语伴会清空尚未发送的聊天内容，当前练习和作答会保留。',
+    keepEditing: '继续编辑',
     lesson: '本次练习的材料、作答和笔记会删除；已收入学习本的记录和已获得的奖励会保留。',
     review: '这组已答的题会删除，复习时间安排不变。',
+};
+
+export const LEARNING_REVIEW_COPY = {
+    answer: '你的作答', saved: '已保存，答完这组再一起看看。', ready: '这组答完了', grade: '批改这组',
+    ask: '问语伴',
+    verdicts: { correct: '答对了', partial: '对了一部分', incorrect: '还没想起来', disputed: '等待复核' },
 };

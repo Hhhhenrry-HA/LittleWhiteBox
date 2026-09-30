@@ -10,6 +10,7 @@ import { useLearningTextSelection } from './reading-selection.js';
 import type { LearningSelection } from '../../../domains/learning/notes.js';
 import { LEARNING_FLOW_COPY as flow } from './learning-copy.js';
 import { LEARNING_PREPARATION_COPY as preparationCopy } from '../application/preparation-copy.js';
+import { learningActionAvailable } from '../application/action-availability.js';
 
 type Unit = NonNullable<LearningClientState['unit']>;
 const props = defineProps<{ state: LearningClientState; unit: Unit; disabled: boolean; pending: boolean }>();
@@ -99,11 +100,11 @@ function locate(exerciseId: string) {
             </div>
             <div v-else-if="stage === 'grading'" class="learning-stage-bar">
                 <template v-if="state.pending?.purpose === 'grade'"><span class="learning-working-dot" aria-hidden="true" /><span>{{ flow.grading }}</span><button type="button" :disabled="pending" @click="emit('action', 'cancel')">{{ flow.stop }}</button></template>
-                <template v-else><span>{{ flow.gradeReady }}</span><button type="button" class="learning-primary" :disabled="disabled" @click="emit('action', 'grade', { unitId: unit.id })">{{ flow.grade }}</button></template>
+                <template v-else><span>{{ flow.gradeReady }}</span><button type="button" class="learning-primary" :disabled="disabled || !learningActionAvailable('grade', state)" @click="emit('action', 'grade', { unitId: unit.id })">{{ flow.grade }}</button></template>
             </div>
             <button v-else type="button" class="learning-primary" @click="show('feedback')">{{ flow.feedback }}</button>
         </template>
-        <LearningGrading v-else :view="currentView" :state="state" :unit="unit" :disabled="disabled" :pending="pending" @action="action" @confirm="(name, input, text) => emit('confirm', name, input, text)" @record="id => emit('record', id)" />
+        <LearningGrading v-else :view="currentView" :state="state" :unit="unit" :disabled="disabled || !learningActionAvailable('grade', state)" :pending="pending" @action="action" @confirm="(name, input, text) => emit('confirm', name, input, text)" @record="id => emit('record', id)" />
         <button v-if="currentView === 'feedback' && stage === 'complete'" type="button" class="learning-primary" @click="show('model')">{{ flow.viewModel }}</button>
     </article>
 </template>

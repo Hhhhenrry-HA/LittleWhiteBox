@@ -1,11 +1,29 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { computed } from 'vue';
-import { createLearningUiSession, hasLearningUnsavedInput, learningSettingsInput } from '../apps/learning/ui/learning-session.js';
+import { createLearningUiSession, hasLearningUnsavedInput, learningContextNeedsConfirmation, learningSettingsInput } from '../apps/learning/ui/learning-session.js';
 import { createLearningAnswerDraft } from '../apps/learning/ui/answer-draft.js';
 import { createLearningCompanionScheduler } from '../apps/learning/application/companion.js';
 
 const stateWith = (unit, turns = []) => ({ unit, review: null, conversation: { turns, removedTurns: 0 } });
+test('identity changes ask before discarding work, but navigation and saving the selected teacher do not', () => {
+    const session = createLearningUiSession();
+    const unit = { id: 'article', exercises: [], attempts: [], assessments: [], stage: { stage: 'writing' } };
+    const state = { ...stateWith(unit), language: 'en', teacher: { name: 'Companion', note: '' } };
+    session.unit('article').writing.essay = { text: 'My unfinished essay.', submitted: null, rewriting: false };
+    assert.equal(learningContextNeedsConfirmation(session, state, 'language', { language: 'ja' }), true);
+    assert.equal(learningContextNeedsConfirmation(session, state, 'language', { language: 'en' }), false);
+    assert.equal(learningContextNeedsConfirmation(session, state, 'teacher', { teacher: { name: 'Another', note: '' } }), false);
+    session.chat.text = 'An unsent thought.';
+    assert.equal(learningContextNeedsConfirmation(session, state, 'teacher', { teacher: { name: 'Another', note: '' } }), true);
+    assert.equal(learningContextNeedsConfirmation(session, state, 'records', {}), false);
+    // The course belongs to the language, not to its companion. Resolving a teacher save keeps current work.
+    session.reset(true, true);
+    assert.equal(session.unit('article').writing.essay.text, 'My unfinished essay.');
+    session.reset();
+    Object.assign(session.setup, { step: 1, name: 'Another', note: 'Manual selection' });
+    assert.equal(learningContextNeedsConfirmation(session, state, 'teacher', { teacher: { name: 'Another', note: 'Manual selection' } }), false);
+});
 test('a review first opened from another page reacts to an answer without remounting', () => {
     const session = createLearningUiSession();
     const local = computed(() => session.unit('new-review').review);

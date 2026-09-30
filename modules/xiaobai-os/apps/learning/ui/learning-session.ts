@@ -26,7 +26,8 @@ interface UnitSession {
     activityDrafts: Record<string, { response: string; value: LearningAnswerDraft; submitted?: { before: string | undefined } }>;
     review: { index: number | null; drafts: Record<string, LearningAnswerDraft>; openReason: string; expanded: boolean; seenBefore: boolean | null };
 }
-const emptyChat = () => ({ text: '', cursor: undefined as LearningEditorDraft['cursor'], focus: null as { exerciseId?: string; selection?: LearningSelection } | null,
+const emptyChat = () => ({ text: '', cursor: undefined as LearningEditorDraft['cursor'], focus: null as { unitId?: string; exerciseId?: string; selection?: LearningSelection } | null,
+    study: null as { unitId: string; exerciseId?: string } | null,
     sent: null as { text: string; user: string; after: number } | null, scroll: 0, following: true });
 
 /** Only unsaved interaction state lives here. No storage, model requests or copies of course content. */
@@ -46,9 +47,12 @@ export function createLearningUiSession() {
             // Read through the reactive owner, including on first creation.
             return units[id];
         },
-        reset(keepSetup = false) {
-            for (const id of Object.keys(units)) { delete units[id]; }
-            Object.assign(chat, emptyChat()); settings.open = false; settings.submitted = null; companion.enabled = false;
+        reset(keepSetup = false, keepWork = false) {
+            if (!keepWork) {
+                for (const id of Object.keys(units)) { delete units[id]; }
+                settings.open = false; settings.submitted = null;
+            }
+            Object.assign(chat, emptyChat()); companion.enabled = false;
             if (!keepSetup) { Object.assign(setup, { step: 0, name: '', note: '' }); }
             Object.assign(books, { tab: 'grammar', reason: '' });
         },
@@ -120,12 +124,23 @@ export function hasLearningUnsavedInput(session: LearningUiSession, state: Learn
     return false;
 }
 
+export function learningContextNeedsConfirmation(session: LearningUiSession, state: LearningClientState, action: string, input: Record<string, unknown>) {
+    if (action === 'teacher') {
+        return (input.teacher as LearningClientState['teacher'])?.name !== state.teacher?.name && !!session.chat.text.trim();
+    }
+    return action === 'language' && input.language !== state.language && hasLearningUnsavedInput(session, state);
+}
+
 export function provideLearningUiSession(state: Ref<LearningClientState>) {
     const session = createLearningUiSession();
     provide(key, session);
-    watch([() => state.value.chatIdentity, () => state.value.language, () => state.value.teacher?.name], (next, previous) => session.reset(next[0] === previous[0]));
+    watch([() => state.value.chatIdentity, () => state.value.language, () => state.value.teacher?.name], (next, previous) =>
+        session.reset(next[0] === previous[0], next[0] === previous[0] && next[1] === previous[1]));
     watch(() => state.value, value => session.reconcile(value), { immediate: true });
-    watch(() => state.value.currentUnitId, () => { session.chat.focus = null; });
+    watch(() => [state.value.unit?.id, state.value.review?.id], ids => {
+        if (session.chat.focus?.unitId && !ids.includes(session.chat.focus.unitId)) { session.chat.focus = null; }
+        if (session.chat.study && !ids.includes(session.chat.study.unitId)) { session.chat.study = null; }
+    });
     watch(() => hasLearningUnsavedInput(session, state.value), (dirty, _, cleanup) => {
         if (!dirty) { return; }
         const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };

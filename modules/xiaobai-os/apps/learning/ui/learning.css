@@ -458,7 +458,8 @@
 .learning-card > .learning-primary { justify-self: end; }
 .learning-review-results { list-style: none; margin: 0; padding: 0; display: grid; }
 .learning-review-results li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 10px 0; border-bottom: 1px solid var(--learn-rule); }
-.learning-review-results li > span { flex: 1; min-width: 0; }
+.learning-review-result { flex: 1; min-width: 0; text-align: start; }
+.learning-review-ask { justify-self: end; color: var(--learn-blue); }
 .learning-review-results strong { display: block; font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }
 .learning-app .learning-chip { flex-shrink: 0; min-height: 32px; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 500; color: var(--learn-green); background: var(--learn-green-tint); font-variant-numeric: tabular-nums; }
 .learning-app .learning-chip-reason { flex-basis: 100%; padding: 8px 10px; border-radius: 8px; background: var(--learn-tint); color: var(--learn-ink); animation: learning-rise 220ms ease-out; }

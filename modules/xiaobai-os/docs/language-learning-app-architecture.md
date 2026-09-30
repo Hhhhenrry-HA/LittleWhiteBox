@@ -15,6 +15,7 @@
 | 原生学习动作 | [application/service.ts](../apps/learning/application/service.ts)、[practice.ts](../apps/learning/application/practice.ts) | 按阶段保存原答、修订、反馈及清理，不让页面直接改文件 |
 | 保存确认 | [storage/repository.ts](../apps/learning/storage/repository.ts) | 当前宿主账号的 Learning 用户文件；确认、未知写入、冲突与精确恢复 |
 | 运行与桥接 | [host/runtime.ts](../apps/learning/host/runtime.ts) | 原生操作、交流和读写准备分别运行；停止、身份、阶段推进、媒体及奖励协调 |
+| 动作可用性 | [application/action-availability.ts](../apps/learning/application/action-availability.ts) | UI 与 Host 共用忙碌判定；冲突动作禁用且明确拒绝，不落入未知动作分支 |
 | 对话、模型任务与历史 | [application/teaching.ts](../apps/learning/application/teaching.ts) | 独立取消边界与共享公开历史；任务输入、工具循环和历史整理 |
 | 读写准备 | [preparation.ts](../domains/learning/preparation.ts)、[preparation-tools.ts](../apps/learning/agent/preparation-tools.ts) | 完整性从已保存内容派生；正文、讲解批次、作文题各有窄工具，成功内容结束对应模型任务 |
 | 正文发布 | [application/publication.ts](../apps/learning/application/publication.ts) | 每段文字是否可以公开；UI、历史、摘要、笔记及朗读不各自重新判定 |
@@ -37,6 +38,7 @@
 - 首次读取与明确刷新访问宿主文件，正常读和重开课堂复用已确认版本。缺文件与坏文件分开处理，错误不能初始化覆盖。
 - 仓库串行处理写入。明确上传成功确认候选；响应丢失才核实原候选，不把网络异常当作未落盘。
 - 未确认保存保留原确认视图和精确 commitId；核实、重试原候选、采用服务器版是不同动作。只有原依赖仍有效的等待保存正文可以接回。
+- 语伴偏好属于聊天 sidecar，其保存状态和恢复入口独立于 Learning 用户文件。核实使用文件协调器的只读恢复，采用服务器设置是明确动作；确认语伴改变后才清理对应交流，同一语言的工作草稿保留。
 - 并行交流的帮助允许与工作任务保存合并，但只合并相同单元、相同题目及其实际材料的追加曝光事实。[merge-exposure.ts](../domains/learning/merge-exposure.ts)还保留等待原答落盘期间新增的读写讲解及作文题，不合并目标、原答或任意课程修改。
 - 后续读写准备在仓库写队列内，对最新确认的同一篇文章定向追加内容；已发布正文和既有题目必须相同。它不回放开始备课时的整份快照，因而不会覆盖并行提交的原答、帮助条件或笔记。退出或更换文章后迟到结果作废。
 - 宿主上传没有服务端 CAS。本实现不承诺多设备或多标签同时编辑；不增加锁文件、心跳或自动对账。
@@ -93,6 +95,7 @@ LearningHelp 是模型对帮助范围的声明，不是独立语义审查器。�
 - 读写在 LearningReading / LearningGrading 直接完成。专项题保留原生控件；LearningActivity 只在打开时挂载，不承担主读写流程。
 - 原文引用由 reading-selection 校验 UTF-16 偏移与精确原句，兼容无空格语言和跨码元字符；打开引用不发送模型请求，不覆盖已有聊天草稿。
 - 写作、修订、设置、聊天与专项草稿由轻会话保存；保存回执只退休匹配的提交，不清空等待期间的新输入。
+- 当前学习单元及复习题定位同属轻会话。LearningApp 从工作区的滚动、交互及切换取得定位；显式引用覆盖默认定位，重视图卸载不丢失追问目标。Host 校验目标仍是本故事可读的当前课或复习组，再由 access/context 选择同一公开投影。
 - 段落审阅由 teaching 按原答 ID 保留已发布对话对象的引用，工作台投影与聊天使用同一份内容；历史压缩不清掉当前作答的审阅。原答删除／重写、课程退出及会话重置时清理对应引用，不增加存储实体。
 - Reading 的当前查看页属于轻会话；主动工作台动作由 LearningApp 导向对应结果或复习题组，不把模型状态更新当作强制导航命令。复核显示实际 revision，原稿标记始终只代表原稿。
 - learning-editor 在重挂载时恢复光标和编辑器滚动，不自动聚焦软键盘。页面与消息滚动在返回时恢复；看旧消息不会被新回包拉到底部。

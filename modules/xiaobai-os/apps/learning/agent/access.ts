@@ -16,5 +16,6 @@ export function learningReadAudience(action: LearningAction): 'public' | 'teachi
 
 export function learningReadUnit(action: LearningAction, profile?: LearningLanguage): 'unit' | 'review' {
     return action.kind === 'review-prepare' || action.kind === 'review-assess'
+        || (action.kind === 'talk' || action.kind === 'explain') && !!action.unitId && profile?.review?.id === action.unitId
         || action.kind === 'assess' && profile?.review?.attempts.some(attempt => attempt.id === action.attemptId) ? 'review' : 'unit';
 }
