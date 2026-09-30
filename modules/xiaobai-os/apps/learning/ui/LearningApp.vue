@@ -14,6 +14,8 @@ import LearningWorkbench from './LearningWorkbench.vue';
 import type { LearningPresentation, LearningActivityPresentation } from '../application/presentation.js';
 import type { LearningSelection } from '../../../domains/learning/notes.js';
 import LearningIcon from './LearningIcon.vue';
+import LearningProcess from './LearningProcess.vue';
+import { isLearningConversation } from '../agent/access.js';
 import LearningConversation from './LearningConversation.vue';
 import { useLearningState } from './use-learning-state.js';
 import { provideLearningUiSession } from './learning-session.js';
@@ -90,7 +92,13 @@ const turnCount = computed(() => state.value.conversation.turns.length + state.v
 const seenTurns = ref(turnCount.value);
 watch([turnCount, chatVisible], ([count, visible]) => { if (visible || count < seenTurns.value) { seenTurns.value = count; } }, { immediate: true });
 const unread = computed(() => turnCount.value > seenTurns.value);
-const startVisible = computed(() => !state.value.unit || state.value.completions.some(entry => entry.unitId === state.value.unit?.id));
+const workProcess = computed(() => {
+    const turns = state.value.conversation.turns;
+    let index = turns.length - 1;
+    while (index >= 0 && isLearningConversation({ kind: turns[index].purpose ?? 'talk' })) { index--; }
+    return index < 0 ? null : { turn: state.value.conversation.turns[index],
+        key: `${state.value.chatIdentity}:${state.value.language}:${state.value.conversation.removedTurns + index}` };
+});
 async function showChat() {
     if (!state.value.teacher) { return; }
     rememberWorkScroll(); view.value = 'chat'; chatMounted.value = true;
@@ -270,7 +278,8 @@ async function exportData() {
             <div class="learning-pane is-work" :inert="!workVisible" :aria-hidden="!workVisible">
                 <div ref="scroller" class="learning-scroll" @scroll.passive="rememberWorkScroll">
                     <template v-if="workMounted">
-                        <div v-if="state.busy && (page !== 'home' || !state.pending && !startVisible)" class="learning-working" role="status"><span class="learning-working-dot" aria-hidden="true" /><span>{{ state.message || copy.working }}</span><button type="button" :disabled="pending" @click="request('cancel')">停止</button></div>
+                        <LearningProcess v-if="workProcess" :key="workProcess.key" :turn="workProcess.turn" stoppable :disabled="pending" @stop="request('cancel')" />
+                        <div v-if="state.busy && workProcess?.turn.status !== 'running'" class="learning-working" role="status"><span class="learning-working-dot" aria-hidden="true" /><span>{{ state.message || copy.working }}</span><button type="button" :disabled="pending" @click="request('cancel')">停止</button></div>
                         <LearningWorkbench
                             v-if="page === 'home'" :state="state" :disabled="!writable" :pending="pending"
                             @action="workAction" @confirm="askConfirm" @present="present" @go="go" @ask="askTeacher" @record="openRecord"

@@ -7,6 +7,7 @@ import type { LearningSelection } from '../../../domains/learning/notes.js';
 import { LEARNING_OPENING_MESSAGES } from '../agent/opening-prompts.js';
 import LearningIcon from './LearningIcon.vue';
 import LearningMessages from './LearningMessages.vue';
+import { isLearningConversation } from '../agent/access.js';
 import { useLearningUiSession } from './learning-session.js';
 import { rememberLearningEditor as vRememberEditor } from './learning-editor.js';
 
@@ -78,13 +79,13 @@ defineExpose({ async ask(exerciseId?: string, selection?: LearningSelection) { f
             <p v-if="state.conversation.removedTurns" class="learning-history-notice">{{ copy.history }}</p>
             <div v-for="(turn, index) in state.conversation.turns" :key="index" class="learning-conversation-turn">
                 <p v-if="turn.user && !internalRequests.has(turn.purpose)" class="learning-conversation-user">{{ turn.user }}</p>
-                <LearningMessages :messages="turn.messages" :running="turn.status === 'running'" />
+                <LearningMessages :turn="turn" :disabled="pending" @stop="emit('action', isLearningConversation({ kind: turn.purpose ?? 'talk' }) ? 'cancel-chat' : 'cancel')" />
                 <p v-if="turn.message" class="learning-turn-notice" :class="{ 'is-error': turn.status === 'failed' }" role="status">{{ turn.message }}</p>
                 <button v-if="turn.presentation" type="button" class="learning-activity-link" :disabled="!available(turn.presentation)" @click="emit('present', turn.presentation)"><LearningIcon :name="turn.presentation.kind === 'material' ? 'book' : 'records'" /><span>{{ turn.presentation.title }}</span><LearningIcon name="arrow" /></button>
                 <div v-if="index === state.conversation.turns.length - 1 && state.reply?.text === turn.teacher" class="learning-conversation-tools"><button v-if="[...turn.teacher].length <= 1000" type="button" :disabled="disabled" @click="emit('action', 'say-reply')"><LearningIcon name="sound" />听语伴说</button><button v-if="state.reply.exerciseId && [...turn.teacher].length <= 4000" type="button" :disabled="disabled || state.unit?.notes.some(note => note.text === turn.teacher)" @click="emit('action', 'save-note')">保存笔记</button></div>
             </div>
-            <div v-if="state.chatBusy" class="learning-working" role="status"><span class="learning-working-dot" aria-hidden="true" /><span>{{ state.chatMessage }}</span></div>
-            <p v-else-if="state.chatMessage" class="learning-turn-notice is-error" role="status">{{ state.chatMessage }}</p>
+            <div v-if="state.chatBusy && !state.conversation.turns.some(turn => turn.status === 'running' && isLearningConversation({ kind: turn.purpose ?? 'talk' }))" class="learning-working" role="status"><span class="learning-working-dot" aria-hidden="true" /><span>{{ state.chatMessage }}</span></div>
+            <p v-else-if="!state.chatBusy && state.chatMessage" class="learning-turn-notice is-error" role="status">{{ state.chatMessage }}</p>
             <div v-if="!state.conversation.turns.length && !state.chatBusy" class="learning-conversation-empty"><LearningIcon name="chat" /><p>{{ state.teacher ? copy.empty : copy.select }}</p><button v-if="!state.teacher" class="learning-primary" type="button" @click="emit('profile')">{{ copy.select }}</button><button v-else type="button" :disabled="disabled" @click="emit('action', 'talk', { message: state.profile ? LEARNING_OPENING_MESSAGES.returning : LEARNING_OPENING_MESSAGES.initial })">{{ copy.opening }}</button></div>
         </div>
         <form v-if="state.teacher" class="learning-conversation-compose" @submit.prevent="send">

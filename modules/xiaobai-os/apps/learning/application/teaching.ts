@@ -118,7 +118,7 @@ export function createLearningTeaching(options: {
             let visible: LearningTurn | null = null;
             let progress: LearningProgress = { stage: 'context' };
             const advance = (next: LearningProgress) => {
-                if (guard()) { progress = next; options.onProgress?.(next, input.action); }
+                if (guard()) { progress = next; if (visible) { visible.progress = next; } options.onProgress?.(next, input.action); }
             };
             const failure = (reason: string, details: LearningFailureDetails = progress): LearningTeachingResult => {
                 const message = reportLearningFailure(input.action.kind, reason, details);
@@ -134,7 +134,7 @@ export function createLearningTeaching(options: {
                 if (storage.status === 'unconfirmed' || storage.status === 'conflict') { return { status: storage.status }; }
                 if (storage.status === 'unloaded') { return failure('learning_read_failed'); }
                 let baseline = confirmedLearning(options.repository);
-                visible = { user: request.displayMessage ?? request.message, teacher: '', status: 'running', message: '', messages: [], purpose: request.action.kind };
+                visible = { user: request.displayMessage ?? request.message, teacher: '', status: 'running', message: '', messages: [], purpose: request.action.kind, progress };
                 if (request.action.kind === 'summary-review') { summaryReviews.set(request.action.attemptId, visible); }
                 // A companion remark saves nothing and has no help to declare; it is shown as soon as it arrives.
                 const remark = request.action.kind === 'companion';

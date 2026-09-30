@@ -8,6 +8,7 @@ import { readLearning } from './data-projection.js';
 import type { LearningAction } from './session.js';
 import { createLearningBackground } from './background.js';
 import type { LearningPresentation } from '../application/presentation.js';
+import type { LearningProgress } from '../application/feedback.js';
 import type { LearningMessage } from './messages.js';
 import { learningExerciseView, learningTrainingView } from '../application/projection.js';
 import { learningReadAudience, learningReadUnit } from './access.js';
@@ -18,6 +19,8 @@ export interface LearningDialogue {
     /** The request purpose; a companion remark has no learner message of its own. */
     purpose?: LearningAction['kind'];
     messages: LearningMessage[];
+    /** Live execution metadata, scoped to this run and never stored as learning data. */
+    progress?: LearningProgress;
     status: 'running' | 'finished' | 'failed' | 'cancelled' | 'unconfirmed' | 'conflict';
     message: string;
 }

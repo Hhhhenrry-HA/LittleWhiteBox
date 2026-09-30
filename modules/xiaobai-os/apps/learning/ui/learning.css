@@ -63,12 +63,26 @@
 .learning-output.is-streaming .learning-markdown > :last-child::after { content: ' ▍'; color: var(--learn-blue); }
 .learning-markdown { --markdown-rule: var(--learn-rule); --markdown-muted: var(--learn-muted); --markdown-tint: var(--learn-tint); --markdown-accent: var(--learn-blue); font-size: 15px; line-height: 1.85; }
 .learning-reasoning { color: var(--learn-muted); font-size: 13px; margin-bottom: 8px; }
-.learning-tool-name { min-width: 0; flex: 1; overflow-wrap: anywhere; }
-.learning-tool-status { color: var(--learn-muted); font-size: 12px; flex-shrink: 0; }
-.learning-tool-details .is-failed .learning-tool-status, .learning-tool-error { color: var(--learn-danger); }
-.learning-tool-details { padding: 4px 0 12px; margin: 0; list-style: none; }
-.learning-tool-details li { display: flex; align-items: baseline; gap: 10px; padding: 4px 0; font-size: 13px; }
-.learning-tool-error, .learning-turn-notice { font-size: 13px; line-height: 1.7; }
+.learning-process { min-width: 0; border: 1px solid var(--learn-rule); border-radius: 12px; background: var(--learn-page); overflow: hidden; }
+.learning-scroll > .learning-process { max-width: 720px; margin: 0 auto 20px; }
+.learning-process-header { display: flex; align-items: center; gap: 4px; padding: 0 8px; background: var(--learn-tint); }
+.learning-app .learning-process-toggle { display: flex; align-items: center; flex: 1; min-width: 0; gap: 8px; padding: 8px 4px; text-align: left; font-size: 13px; }
+.learning-process-toggle strong { font-weight: 500; }
+.learning-process-toggle small { margin-left: auto; color: var(--learn-muted); font-size: 12px; }
+.learning-app .learning-process-stop { min-width: 44px; color: var(--learn-blue); }
+.learning-process-body { max-height: min(300px, 45dvh); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding: 4px 12px; }
+.learning-process-narration { font-size: 13px; padding: 8px 0; }
+.learning-process-steps { list-style: none; padding: 0; margin: 0; }
+.learning-process-steps li { display: flex; align-items: baseline; gap: 8px; padding: 10px 0; font-size: 13px; }
+.learning-process-steps li > div { min-width: 0; flex: 1; overflow-wrap: anywhere; }
+.learning-process-steps li > div > small { display: block; color: var(--learn-muted); font-size: 12px; line-height: 1.7; margin-top: 3px; }
+.learning-process-dot { width: 16px; text-align: center; flex-shrink: 0; color: var(--learn-muted); }
+.learning-process-result { color: var(--learn-muted); font-size: 12px; flex-shrink: 0; }
+.learning-process-steps [data-status=done] .learning-process-dot { color: var(--learn-green); }
+.learning-process-steps [data-status=failed] .learning-process-dot, .learning-process-steps [data-status=failed] .learning-process-result { color: var(--learn-danger); }
+.learning-process-steps [data-status=running] .learning-process-dot, .learning-process-steps [data-status=preparing] .learning-process-dot { color: var(--learn-blue); }
+.learning-app .learning-process-status { display: flex; align-items: center; gap: 8px; padding: 9px 12px; font-size: 12px; color: var(--learn-muted); line-height: 1.6; }
+.learning-turn-notice { font-size: 13px; line-height: 1.7; }
 .learning-turn-notice { color: var(--learn-muted); border-left: 2px solid var(--learn-rule); padding-left: 12px; }
 .learning-turn-notice.is-error { color: var(--learn-danger); border-color: var(--learn-danger); }
 
@@ -292,9 +306,6 @@
 .learning-start-secondary > span { flex: 1; min-width: 0; }
 .learning-start-secondary strong { font-size: 14px; font-weight: 500; }
 .learning-start-secondary > .learning-icon { color: var(--learn-muted); }
-.learning-start-preparing { display: grid; justify-items: start; gap: 18px; padding: 24px; border-left: 3px solid var(--learn-blue); background: var(--learn-tint); font-size: 14px; }
-.learning-start-preparing > .learning-icon { width: 40px; height: 40px; color: var(--learn-blue); animation: learning-breathe 1.5s ease-in-out infinite alternate; }
-.learning-start-preparing > button { color: var(--learn-blue); padding-left: 0; }
 .learning-lesson { display: grid; gap: 10px; }
 .learning-settings-card { border: 1px solid var(--learn-rule); border-radius: 14px; padding: 6px 16px 10px; background: var(--learn-page); }
 .learning-settings-card dl { margin: 0; display: grid; }

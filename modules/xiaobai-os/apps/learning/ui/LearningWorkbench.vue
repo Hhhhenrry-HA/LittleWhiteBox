@@ -20,7 +20,7 @@ const unit = computed(() => props.state.unit);
 const preparing = computed(() => props.state.busy && !props.state.pending);
 const copy = {
     start: '开始读写', reading: '读写练习', readingHint: '读一篇文章，写下你的看法', lesson: '专项练习', lessonHint: '练语法、词汇或听力',
-    select: '选择语伴', selectFirst: '先选一位语伴', next: '接下来', preparing: '正在准备学习材料…', stop: '停止',
+    select: '选择语伴', selectFirst: '先选一位语伴', next: '接下来',
     settings: '学习设置', complete: '完成练习', notes: '笔记', review: '开始复习',
 };
 const settingSummary = computed(() => [
@@ -72,8 +72,7 @@ const ask = (name: string, input: Record<string, unknown>, text: string) => emit
                 <h1 v-if="!unit" tabindex="-1">{{ state.teacher ? copy.reading : copy.selectFirst }}</h1>
                 <h2 v-else>{{ copy.next }}</h2>
                 <button v-if="state.teacher && !unit" type="button" class="learning-start-preference" :aria-label="`${copy.settings}：${settingSummary}`" @click="emit('go', 'settings')"><span><strong>{{ copy.settings }}</strong><small>{{ settingSummary }}</small></span><LearningIcon name="arrow" /></button>
-                <div v-if="preparing" class="learning-start-preparing" role="status"><LearningIcon name="book" /><span>{{ state.message || copy.preparing }}</span><button type="button" :disabled="pending" @click="emit('action', 'cancel')">{{ copy.stop }}</button></div>
-                <template v-else-if="state.teacher">
+                <template v-if="state.teacher && !preparing">
                     <section class="learning-start-reading">
                         <LearningIcon name="workbook" />
                         <p>{{ copy.readingHint }}</p>
@@ -81,7 +80,7 @@ const ask = (name: string, input: Record<string, unknown>, text: string) => emit
                     </section>
                     <button type="button" class="learning-start-secondary" :disabled="disabled" @click="prepare('lesson')"><LearningIcon name="records" /><span><strong>{{ copy.lesson }}</strong><small>{{ copy.lessonHint }}</small></span><LearningIcon name="arrow" /></button>
                 </template>
-                <button v-else type="button" class="learning-primary" @click="emit('go', 'profile')">{{ copy.select }}</button>
+                <button v-else-if="!state.teacher" type="button" class="learning-primary" @click="emit('go', 'profile')">{{ copy.select }}</button>
             </template>
         </section>
     </div>

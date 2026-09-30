@@ -70,8 +70,9 @@ export function createLearningRuntime(deps: {
         canDelegate: () => !job,
         onProgress: (next, action) => {
             const text = learningProgressMessage(next);
-            if (isLearningConversation(action)) { if (text !== chatProgress) { chatProgress = text; publish(); } return; }
-            if (text !== progress) { progress = text; publish(); }
+            if (isLearningConversation(action)) { chatProgress = text; }
+            else { progress = text; }
+            publish();
         } });
     const practice = createLearningPractice({ repository, teaching, current });
     const speech = createLearningSpeech({ repository, current, getFacade: deps.getTtsFacade,
@@ -494,7 +495,11 @@ export function createLearningRuntime(deps: {
                 const rejected = launch(name, input);
                 if (rejected) { return { state: state(), rejected }; }
             }
-            return { state: state() };
+            // Cancellation can push an intermediate snapshot during a synchronous command.
+            // Publish its settled state too; clients may already have superseded the request acknowledgement.
+            const result = { state: state() };
+            activation!.post('learning/state', result);
+            return result;
         },
     };
 }

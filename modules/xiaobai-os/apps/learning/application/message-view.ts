@@ -3,17 +3,27 @@ import type { LearningDialogue } from '../agent/context.js';
 import type { LearningMessage } from '../agent/messages.js';
 import { learningToolNames } from '../agent/session.js';
 
-export type LearningMessageView = Pick<AgentMessage, 'role' | 'content' | 'streaming' | 'error' | 'toolCallId' | 'toolName' | 'toolCalls'> & { hasReasoning: boolean };
+export type LearningMessageView = Pick<AgentMessage, 'role' | 'content' | 'streaming' | 'error' | 'toolCallId' | 'toolName' | 'toolCalls'> & { hasReasoning: boolean; receivedChars: number };
 export type LearningDialogueView = Omit<LearningDialogue, 'messages'> & { messages: LearningMessageView[] };
 
 const toolNames = new Set([...learningToolNames(), 'LearningSearch', 'LearningExtract', 'LearningContextRead']);
 const toolName = (name: string) => toolNames.has(name) ? name : '未知工具';
+const sections = new Set(['overview', 'training', 'unit', 'materials', 'exercises', 'attempts', 'notes', 'listening', 'items', 'review', 'evidence', 'completions', 'sources']);
+export const LEARNING_PROCESS_FIELDS = ['language', 'explanationLanguage', 'goal', 'title', 'kind', 'tier', 'materials', 'materialKeys', 'exercises', 'paragraphId', 'explanations', 'response', 'options', 'rule', 'answer', 'attemptId', 'unitId', 'verdict', 'annotations', 'exerciseIds', 'materialIds', 'instruction', 'action'] as const;
 
 /** One positive projection for every tool. Even titles, URLs, keys and errors can contain teaching text. */
 function toolMetadata(value: unknown): unknown {
     if (!value || typeof value !== 'object' || Array.isArray(value)) { return {}; }
     const source = value as Record<string, unknown>;
     const result: Record<string, unknown> = {};
+    if (typeof source.section === 'string' && sections.has(source.section)) { result.section = source.section; }
+    if (Array.isArray(source.errors)) {
+        result.errorFields = [...new Set(source.errors.flatMap(error => {
+            if (!error || typeof error.path !== 'string') { return []; }
+            const field = error.path.split('.').reverse().find((part: string) => (LEARNING_PROCESS_FIELDS as readonly string[]).includes(part));
+            return field ? [field] : [];
+        }))];
+    }
     for (const key of ['ok', 'changed', 'omitted', 'newLesson', 'review', 'textComplete']) {
         if (typeof source[key] === 'boolean') { result[key] = source[key]; }
     }
@@ -24,7 +34,8 @@ function toolMetadata(value: unknown): unknown {
         if (Array.isArray(source[key])) { result[key + 'Count'] = source[key].length; }
     }
     for (const key of ['data', 'unit']) {
-        if (source[key] && typeof source[key] === 'object') { result[key] = toolMetadata(source[key]); }
+        if (Array.isArray(source[key])) { result[key + 'Count'] = source[key].length; }
+        else if (source[key] && typeof source[key] === 'object') { result[key] = toolMetadata(source[key]); }
     }
     return result;
 }
@@ -42,6 +53,7 @@ export function learningMessageView(message: LearningMessage): LearningMessageVi
         content: message.role === 'tool' ? describePayload(message.content, message.streaming)
             : message.contentVisibility ? '' : message.content,
         streaming: message.streaming, error: message.error, hasReasoning: !!message.thoughts?.length,
+        receivedChars: message.role === 'assistant' && message.contentVisibility !== 'private' ? [...message.content].length : 0,
         toolCallId: message.toolCallId,
         ...(message.toolName ? { toolName: toolName(message.toolName) } : {}),
         ...(message.toolCalls ? { toolCalls: message.toolCalls.map(({ id, name, arguments: args }) => ({

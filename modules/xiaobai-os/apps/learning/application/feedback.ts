@@ -39,7 +39,7 @@ export interface LearningFailureDetails extends LearningProgress {
 const stages: Record<LearningProgress['stage'], string> = {
     context: '翻看学习资料', config: '连接语伴', session: '准备学习内容',
     summary: '整理之前聊过的内容',
-    provider: '回复你', tools: '整理学习内容', save: '保存学习内容', action: '准备学习内容',
+    provider: '组织回复', tools: '整理学习内容', save: '保存学习内容', action: '准备学习内容',
 };
 
 export function learningProgressMessage(progress: LearningProgress): string {
