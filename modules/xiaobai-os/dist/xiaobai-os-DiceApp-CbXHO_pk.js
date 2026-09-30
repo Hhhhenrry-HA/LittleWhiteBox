@@ -1,6 +1,6 @@
 /* eslint-disable */
 import { $ as l, F as d, H as ie, L as q, M as le, O as se, W as ne, X as Q, Y as R, _ as u, et as Y, g, h as X, m as e, nt as n, p as P, u as j, x as J, y as D } from "./xiaobai-os-runtime-dom.esm-bundler-DgjJUtuO.js";
-import { t as re } from "./xiaobai-os-frame-bridge-5XxFerhp.js";
+import { n as re } from "./xiaobai-os-frame-bridge-BfVuKvnh.js";
 import { t as oe } from "./xiaobai-os-AppDialog-D2VlSK_V.js";
 function m(t, i) {
   return {

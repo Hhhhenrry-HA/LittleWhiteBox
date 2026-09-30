@@ -8,7 +8,7 @@ import LearningPlayer from './LearningPlayer.vue';
 import LearningSetup from './LearningSetup.vue';
 import LearningSettingsCard from './LearningSettingsCard.vue';
 import LearningCompanionControl from './LearningCompanionControl.vue';
-import { LEARNING_CONFIRM_COPY, LEARNING_DISCARD_COPY, LEARNING_VOICE_COPY } from './learning-copy.js';
+import { LEARNING_CONFIRM_COPY, LEARNING_DISCARD_COPY, LEARNING_VOICE_COPY, LEARNING_REQUEST_COPY } from './learning-copy.js';
 import { LEARNING_REWARD_COPY, LEARNING_STORAGE_COPY } from '../application/feedback.js';
 import LearningWorkbench from './LearningWorkbench.vue';
 import type { LearningPresentation, LearningActivityPresentation } from '../application/presentation.js';
@@ -32,7 +32,7 @@ const copy = {
     verifyWallet: '查看钱包状态', adoptWallet: '使用已保存钱包', adoptWalletWarning: '这次尚未保存成功的钱包修改将被放弃，改用已保存的钱包。',
     voiceDisabled: '还没有开启语音，文字学习不受影响。',
 };
-const { state, pending, writable, canChat, localMessage, request } = useLearningState(props);
+const { state, pending, writable, canChat, localMessage, needsRefresh, request } = useLearningState(props);
 const uiSession = provideLearningUiSession(state);
 type Page = 'home' | 'books' | 'materials' | 'harvest' | 'settings' | 'profile';
 const page = ref<Page>(state.value.teacher ? 'home' : 'profile');
@@ -273,13 +273,13 @@ async function exportData() {
             <label v-if="wide && state.teacher" class="learning-layout-control"><LearningIcon name="workbook" /><input v-model.number="workShare" type="range" :min="shareMin" :max="shareMax" step="1" aria-label="阅读区宽度比例"><LearningIcon name="chat" /></label>
             <details ref="menu" class="learning-menu" @toggle="menuOpen = !!menu?.open" @keydown.esc.stop.prevent="menu!.open = false"><summary aria-label="学习资料与设置"><LearningIcon name="more" /></summary><nav aria-label="学习资料与设置"><button v-for="[id, label] in ([['books', '语法本与生词本'], ['materials', '课件与笔记'], ['harvest', '我的收获'], ['settings', '设置']] as const)" :key="id" type="button" @click="go(id)">{{ label }}</button></nav></details>
         </header>
-        <div v-if="!state.busy && (state.message || localMessage || state.storage !== 'ready')" class="learning-notice" role="status" aria-live="polite">
+        <div v-if="localMessage || !state.busy && (state.message || state.storage !== 'ready')" class="learning-notice" role="status" aria-live="polite">
             {{ localMessage || state.message || (state.storage === 'unconfirmed' ? LEARNING_STORAGE_COPY.unconfirmed : state.storage === 'conflict' ? LEARNING_STORAGE_COPY.conflict : LEARNING_STORAGE_COPY.unloaded) }}
             <div class="learning-row">
                 <button v-if="state.storage === 'unconfirmed' || state.storage === 'conflict'" type="button" :disabled="pending" @click="request('verify')">{{ copy.verify }}</button>
                 <button v-if="state.storage === 'unconfirmed'" type="button" :disabled="pending" @click="request('retry-save')">{{ copy.retry }}</button>
                 <button v-if="state.storage === 'conflict'" type="button" :disabled="pending" @click="askConfirm('adopt-server', {}, copy.adoptWarning)">{{ copy.adopt }}</button>
-                <button v-if="state.storage === 'unloaded' || localMessage" type="button" :disabled="pending" @click="request('read')">重新加载</button>
+                <button v-if="state.storage === 'unloaded' || needsRefresh" type="button" :disabled="pending" @click="request('read')">{{ LEARNING_REQUEST_COPY.refresh }}</button>
             </div>
         </div>
         <div class="learning-stage" :class="{ 'is-wide': wide, 'is-chat': !wide && view === 'chat' }">

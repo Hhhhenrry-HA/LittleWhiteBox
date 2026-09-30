@@ -1,7 +1,7 @@
 /* eslint-disable */
 import { $ as t, B as K, E as W, F as r, G as D, L as P, M as J, O as U, X as R, Y as _, Z as M, _ as s, b as L, c as G, et as A, g as $, l as H, m as a, nt as k, p as h, s as X, tt as Y, u as O, v as Z, x as E, y as Q } from "./xiaobai-os-runtime-dom.esm-bundler-DgjJUtuO.js";
 import { n as ee } from "./xiaobai-os-app-navigation-DS43A6sJ.js";
-import { t as te } from "./xiaobai-os-frame-bridge-5XxFerhp.js";
+import { n as te } from "./xiaobai-os-frame-bridge-BfVuKvnh.js";
 var ae = { class: "world-article" }, le = { tabindex: "-1" }, re = {
   key: 0,
   class: "world-article-update",

@@ -1,7 +1,7 @@
 /* eslint-disable */
 import { $ as w, B as m1, E as n1, F as a, G as B, J as f1, L as S, M as p1, O as T1, W as b1, Y as x, Z as y1, _ as i, b as f, et as K, g as p, h as Q, l as k1, m as e, nt as r, o as r1, p as y, s as W, tt as g1, u as L, v as H, x as I, y as Z } from "./xiaobai-os-runtime-dom.esm-bundler-DgjJUtuO.js";
 import { n as Z1 } from "./xiaobai-os-app-navigation-DS43A6sJ.js";
-import { t as $1 } from "./xiaobai-os-frame-bridge-5XxFerhp.js";
+import { n as $1 } from "./xiaobai-os-frame-bridge-BfVuKvnh.js";
 import { t as M1 } from "./xiaobai-os-AppDialog-D2VlSK_V.js";
 var w1 = {
   class: "shop-icon",

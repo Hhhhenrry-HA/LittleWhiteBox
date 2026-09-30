@@ -1,6 +1,14 @@
 /** Shared user-facing wording; action IDs and saved state never depend on these labels. */
 import type { LEARNING_PROCESS_FIELDS } from '../application/message-view.js';
 
+export const LEARNING_REQUEST_COPY = {
+    busy: '上一件事还没做完，等它完成后再试一次吧。这次没有开始。',
+    notSent: '这次没有发出去，输入的内容还在。请再试一次。',
+    rejected: '这次操作未能完成，请查看最新状态后再继续。',
+    unknown: '还没收到确认，操作可能仍在继续。请先查看最新状态，不要重复发送。',
+    refresh: '查看最新状态',
+};
+
 export const LEARNING_PROCESS_COPY = {
     title: '学习动态', stop: '停止本次操作', round: (count: number) => `第 ${count} 轮`,
     history: (count: number) => `${count} 个步骤`, received: (count: number) => `已收到 ${count} 字，正在整理`,
