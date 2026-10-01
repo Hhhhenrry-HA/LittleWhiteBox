@@ -1,5 +1,6 @@
 import type { LearningAction } from './session.js';
-import type { LearningLanguage, LearningScope } from '../../../domains/learning/types.js';
+import { canReadLearningScope, type LearningLanguage, type LearningScope } from '../../../domains/learning/types.js';
+import { combineLearningScope, requireLearning } from '../../../domains/learning/validation.js';
 
 export function isLearningPreparation(action: Pick<LearningAction, 'kind'>) {
     return action.kind === 'reading-article' || action.kind === 'reading-notes' || action.kind === 'reading-essay';
@@ -12,7 +13,17 @@ export function isLearningConversation(action: Pick<LearningAction, 'kind'>) {
 
 /** Public lesson preparation cannot copy story-private assets; existing work retains its original access. */
 export function learningAccessOsId(action: LearningAction, inputScope: LearningScope, osId: string): string | null {
-    return inputScope.kind === 'public' && (action.kind === 'prepare' || isLearningPreparation(action)) ? null : osId;
+    return inputScope.kind === 'public' && (action.kind === 'prepare' || action.kind === 'review-prepare' || isLearningPreparation(action)) ? null : osId;
+}
+
+/** Review output inherits the selected items and the evidence the teacher can use for them. */
+export function learningReviewScope(profile: LearningLanguage | undefined, itemIds: string[], osId: string): LearningScope {
+    return itemIds.reduce<LearningScope>((scope, id) => {
+        const item = profile?.items.find(item => item.id === id);
+        requireLearning(item && canReadLearningScope(item.scope, osId), 'itemIds', 'Select available review items');
+        return item.evidence.filter(evidence => canReadLearningScope(evidence.scope, osId))
+            .reduce((scope, evidence) => combineLearningScope(scope, evidence.scope), combineLearningScope(scope, item.scope));
+    }, { kind: 'public' });
 }
 
 export function learningReadAudience(action: LearningAction): 'public' | 'teaching' {

@@ -1,9 +1,11 @@
 import { canReadLearningScope, type LearningData } from '../../../domains/learning/types.js';
 import { learningReferenceScopes } from './conversation-references.js';
 import type { PartitionStore } from '../../../kernel/contracts.js';
-import { emptyLearningMemory, parseLearningMemory, pruneLearningMemory, type LearningActor, type LearningConversationMemory,
-    type LearningWorkbenchHistory } from '../domain/conversation.js';
+import { combineLearningScope } from '../../../domains/learning/validation.js';
+import { emptyLearningMemory, parseLearningMemory, pruneLearningMemory, type LearningActor, type LearningConversationMemory } from '../domain/conversation.js';
 import type { LearningStoredCompanions } from '../partition.js';
+import type { LearningStoredWorkbench } from '../workbench-partition.js';
+import { upgradeLearningMemory, type LearningStoredMemory } from '../upgrade/memory-v1.js';
 
 export interface LearningConversationPort {
     read(): Promise<LearningConversationMemory>;
@@ -15,18 +17,14 @@ export function createLearningConversationStorage(options: {
     data(): LearningData | undefined;
     osId(): string | null;
     companions: PartitionStore<LearningStoredCompanions>;
-    workbench: PartitionStore<LearningWorkbenchHistory>;
+    workbench: PartitionStore<LearningStoredWorkbench>;
 }) {
-    function accessible(references: string[]) {
-        const scopes = learningReferenceScopes(options.data());
-        return references.every(id => { const scope = scopes.get(id); return scope && canReadLearningScope(scope, options.osId()); });
-    }
-    function retain(memory: LearningConversationMemory, readable: boolean): LearningConversationMemory {
-        const scopes = learningReferenceScopes(options.data());
-        const keep = (references: string[]) => references.every(id => scopes.has(id)) && accessible(references) === readable;
-        return { exchanges: memory.exchanges.filter(exchange => keep(exchange.references)),
-            ...(keep(memory.summaryReferences) ? { summary: memory.summary, summaryReferences: memory.summaryReferences, archivedCount: memory.archivedCount }
-                : { summary: '', summaryReferences: [], archivedCount: 0 }) };
+    const upgrade = (memory: LearningStoredMemory) => upgradeLearningMemory(memory, learningReferenceScopes(options.data()));
+    function retain(stored: LearningStoredMemory, readable: boolean): LearningConversationMemory {
+        const memory = upgrade(stored);
+        return { ...emptyLearningMemory(), exchanges: memory.exchanges.filter(exchange => canReadLearningScope(exchange.scope, options.osId()) === readable),
+            ...(canReadLearningScope(memory.summaryScope, options.osId()) === readable ? { summary: memory.summary, summaryReferences: memory.summaryReferences,
+                summaryScope: memory.summaryScope, archivedCount: memory.archivedCount } : {}) };
     }
     function port(actor: LearningActor, language: string, sessionId: string | null): LearningConversationPort {
         const identity = actor === 'companion' ? options.companions.peekBinding()?.identityKey : options.workbench.peekBinding()?.identityKey;
@@ -38,6 +36,7 @@ export function createLearningConversationStorage(options: {
                     return structuredClone({ exchanges: memories.flatMap(memory => memory.exchanges),
                         summary: memories.map(memory => memory.summary).filter(Boolean).join('\n\n'),
                         summaryReferences: [...new Set(memories.flatMap(memory => memory.summaryReferences))],
+                        summaryScope: memories.reduce((scope, memory) => combineLearningScope(scope, memory.summaryScope), emptyLearningMemory().summaryScope),
                         archivedCount: memories.reduce((sum, memory) => sum + memory.archivedCount, 0) });
                 }
                 const state = await options.companions.read();
@@ -89,7 +88,9 @@ export function createLearningConversationStorage(options: {
                 const state = transaction.currentOrInitial();
                 if (clearAll) { state.conversations = []; }
                 else if (language) { state.conversations = state.conversations.filter(entry => entry.language !== language); }
-                for (const entry of state.conversations) { for (const memory of entry.memories) { pruneLearningMemory(memory, references); } }
+                for (const entry of state.conversations) {
+                    entry.memories = entry.memories.map(stored => { const memory = upgrade(stored); pruneLearningMemory(memory, references); return memory; });
+                }
                 transaction.replace(state);
             }, { commitGuard: guard });
             if (workbench.status !== 'confirmed' && workbench.status !== 'unchanged') { return workbench; }
@@ -98,7 +99,7 @@ export function createLearningConversationStorage(options: {
                 if (!('schemaVersion' in state)) { throw new Error('learning_companion_unavailable'); }
                 for (const session of state.sessions) {
                     if (clearAll) { session.memory = emptyLearningMemory(); }
-                    else { pruneLearningMemory(session.memory, references); }
+                    else { const memory = upgrade(session.memory); pruneLearningMemory(memory, references); session.memory = memory; }
                 }
                 transaction.replace(state);
             }, { commitGuard: guard });

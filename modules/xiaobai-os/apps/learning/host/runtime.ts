@@ -12,7 +12,8 @@ import type { XiaobaiOsExecutionScope } from '../../../kernel/execution-scope.js
 import type { XiaobaiOsAppActivationContext, XiaobaiOsAppRuntime } from '../../../types.js';
 import type { LearningTeacherContext } from '../agent/context.js';
 import type { LearningAction } from '../agent/session.js';
-import { parseLearningActor, type LearningActor, type LearningWorkbenchHistory } from '../domain/conversation.js';
+import { parseLearningActor, type LearningActor } from '../domain/conversation.js';
+import type { LearningStoredWorkbench } from '../workbench-partition.js';
 import type { LearningStoredCompanions } from '../partition.js';
 import { createLearningConversationStorage } from '../application/conversation-storage.js';
 import { LEARNING_CONVERSATION_COPY as conversationCopy } from '../application/conversation-copy.js';
@@ -40,7 +41,7 @@ import { learningActionBusy } from '../application/action-availability.js';
 
 export function createLearningRuntime(deps: {
     repository: LearningRepository; store: PartitionStore<LearningStoredCompanions>; files: XiaobaiOsFileControls;
-    workbenchStore: PartitionStore<LearningWorkbenchHistory>; workbenchFiles: XiaobaiOsFileControls;
+    workbenchStore: PartitionStore<LearningStoredWorkbench>; workbenchFiles: XiaobaiOsFileControls;
     rewardStore: PartitionStore<LearningRewardPolicy>; rewardFiles: XiaobaiOsFileControls;
     agent: AgentCapability; economy: EconomyReadCapability; execution: XiaobaiOsExecutionScope;
     chatIdentity(): string; playerName(): string; people(): KnownPerson[];
@@ -69,6 +70,8 @@ export function createLearningRuntime(deps: {
     let companionReply: LearningClientState['reply'] = null;
     let companionSelection: LearningSelection | null = null;
     let pendingCleanup: { commitId: string; before: LearningDocument | null; language?: string; clearAll: boolean } | null = null;
+    // A lost clear receipt belongs to this conversation, not to the next language or companion.
+    const pendingConversationClears = new Map<LearningActor, string>();
     let recordId = '';
     let offset = 0;
     const repository = deps.repository;
@@ -106,6 +109,18 @@ export function createLearningRuntime(deps: {
     const teaching = persona('workbench');
     const companion = persona('companion');
     const runner = (actor: LearningActor) => actor === 'workbench' ? teaching : companion;
+    const conversationKey = (actor: LearningActor) => JSON.stringify(actor === 'workbench' ? current() : companionCurrent());
+    async function restoreConversation(actor: LearningActor, adopted = false) {
+        const pendingKey = pendingConversationClears.get(actor);
+        if (adopted || pendingKey === conversationKey(actor)) {
+            runner(actor).reset();
+            if (actor === 'workbench') { reply = null; replySelection = null; } else { companionReply = null; companionSelection = null; }
+            chats[actor].progress = '';
+        }
+        pendingConversationClears.delete(actor);
+        await runner(actor).hydrate();
+        await runner(actor).verifyHistory();
+    }
     const practice = createLearningPractice({ repository, teaching, current });
     const speech = createLearningSpeech({ repository, current, getFacade: deps.getTtsFacade,
         onState: media => { if (active()) { activation!.post('learning/media', { media }); } }, onSave: () => publish(),
@@ -338,8 +353,7 @@ export function createLearningRuntime(deps: {
             const result = name === 'verify-teacher' ? await deps.files.retryPending({ readOnly: true }) : await deps.files.adoptServerState();
             if (deps.files.getFileState() !== 'ready') { return; }
             await teacher.read();
-            if (guard() && (result.status === 'adopted' || JSON.stringify(before) !== JSON.stringify(teacher.selected()?.person))) { companion.reset(); companionReply = null; companionSelection = null; }
-            if (guard()) { await companion.hydrate(); await companion.verifyHistory(); }
+            if (guard()) { await restoreConversation('companion', result.status === 'adopted' || JSON.stringify(before) !== JSON.stringify(teacher.selected()?.person)); }
             return;
         }
         if (name === 'read' || name === 'verify' || name === 'retry-save' || name === 'adopt-server') {
@@ -360,24 +374,32 @@ export function createLearningRuntime(deps: {
         }
         if (name === 'verify-wallet' || name === 'adopt-wallet') {
             saved(await (name === 'verify-wallet' ? deps.rewardFiles.retryPending() : deps.rewardFiles.adoptServerState()));
+            if (guard() && pendingConversationClears.has('workbench') && deps.workbenchFiles.getFileState() === 'ready') {
+                await restoreConversation('workbench', name === 'adopt-wallet');
+            }
             await deps.economy.refresh();
             if (guard()) { await payPending(guard); }
             return;
         }
         if (name === 'verify-workbench' || name === 'adopt-workbench') {
             const result = name === 'verify-workbench' ? await deps.workbenchFiles.retryPending({ readOnly: true }) : await deps.workbenchFiles.adoptServerState();
-            if (name === 'adopt-workbench' && result.status === 'adopted') { teaching.reset(); await teaching.hydrate(); }
-            else { await teaching.verifyHistory(); }
+            if (guard() && deps.workbenchFiles.getFileState() === 'ready') { await restoreConversation('workbench', result.status === 'adopted'); }
             return;
         }
         if (name === 'forget-conversation') {
             const actor = parseLearningActor(input.target);
             cancelConversation(actor);
+            const key = conversationKey(actor);
             const cleared = await histories.clear(actor, language, teacher.selected()?.id ?? null, guard);
-            if (cleared.status === 'confirmed' || cleared.status === 'unchanged') { runner(actor).reset();
-                if (actor === 'workbench') { reply = null; replySelection = null; } else { companionReply = null; companionSelection = null; }
-                await runner(actor).hydrate(); }
-            else { chats[actor].progress = conversationCopy.memoryClearFailed; }
+            if (!guard()) { return; }
+            if (cleared.status === 'confirmed' || cleared.status === 'unchanged') { await restoreConversation(actor, true); }
+            else {
+                if (cleared.status === 'unconfirmed' || cleared.status === 'conflict') {
+                    pendingConversationClears.set(actor, key); runner(actor).forgetHistory();
+                    if (actor === 'workbench') { reply = null; replySelection = null; } else { companionReply = null; companionSelection = null; }
+                }
+                chats[actor].progress = conversationCopy.memoryClearFailed;
+            }
             return;
         }
         requireLearning(!loadFailed, 'storage', 'Read the learning file first');

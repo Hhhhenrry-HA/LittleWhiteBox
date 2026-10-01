@@ -1,6 +1,6 @@
 import { learningReferencedIds, learningReferenceScopes } from '../application/conversation-references.js';
 import { safePromptJson } from '../../../capabilities/maintenance/prompt-safety.js';
-import { canReadLearningScope, LEARNING_LIMITS as L, type LearningAssessment, type LearningAttempt, type LearningData, type LearningUnit } from '../../../domains/learning/types.js';
+import { canReadLearningScope, LEARNING_LIMITS as L, type LearningAssessment, type LearningAttempt, type LearningData, type LearningScope, type LearningUnit } from '../../../domains/learning/types.js';
 import { learningAnswerParagraphs } from '../../../domains/learning/facts.js';
 import { requireLearning } from '../../../domains/learning/validation.js';
 import type { LearningSelection } from '../../../domains/learning/notes.js';
@@ -21,6 +21,7 @@ export interface LearningDialogue {
     user: string; teacher: string; presentation?: LearningPresentation;
     id?: string;
     references?: string[];
+    scope: LearningScope;
     /** The request purpose; a companion remark has no learner message of its own. */
     purpose?: LearningAction['kind'];
     messages: LearningMessage[];

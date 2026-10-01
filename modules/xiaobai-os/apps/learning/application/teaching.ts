@@ -1,8 +1,9 @@
-import { learningReferencedIds, learningReferenceScopes } from './conversation-references.js';
+import { learningConversationScope, learningReferencedIds, learningReferenceScopes } from './conversation-references.js';
 import type { XiaobaiOsAgentGateway } from '../../../capabilities/agent/gateway.js';
 import type { LearningSelection } from '../../../domains/learning/notes.js';
 import { classifyProviderFailure } from '../../../capabilities/agent/provider-failure.js';
-import { requireLearning } from '../../../domains/learning/validation.js';
+import { combineLearningScope, requireLearning } from '../../../domains/learning/validation.js';
+import { canReadLearningScope, type LearningScope } from '../../../domains/learning/types.js';
 import type { LearningActor, LearningConversationMemory } from '../domain/conversation.js';
 import type { LearningConversationPort } from './conversation-storage.js';
 import { learningHistoryPrompt } from '../agent/history-prompt.js';
@@ -26,7 +27,7 @@ import { confirmedLearning, type LearningRepository } from './service.js';
 import { reportLearningFailure, type LearningFailureDetails, type LearningProgress } from './feedback.js';
 import { learningMessageView, type LearningDialogueView } from './message-view.js';
 import { createLearningPublication } from './publication.js';
-import { isLearningConversation, learningAccessOsId, learningReadUnit } from '../agent/access.js';
+import { isLearningConversation, learningAccessOsId, learningReadUnit, learningReviewScope } from '../agent/access.js';
 import type { LearningDelegation } from './delegation.js';
 import { learningPreparationTool } from '../agent/preparation-tools.js';
 
@@ -64,6 +65,7 @@ export function createLearningTeaching(options: {
     let removedTurns = 0;
     let historySummary = '';
     let summaryReferences: string[] = [];
+    let summaryScope: LearningScope = { kind: 'public' };
     let loading: Promise<void> | null = null;
     // Only this exact commit can publish pending text and enable the corresponding activity.
     let awaitingSave: { commitId: string; turn: LearningTurn; presentation: LearningDialogue['presentation']; result: Extract<LearningTeachingResult, { status: 'finished' }>;
@@ -73,7 +75,7 @@ export function createLearningTeaching(options: {
     function reset() {
         for (const run of active.values()) { run.controller.abort(); }
         active.clear(); turns = []; dialogueKey = ''; removedTurns = 0; historySummary = ''; awaitingSave = null;
-        summaryReviews.clear(); summaryReferences = []; loading = null;
+        summaryReviews.clear(); summaryReferences = []; summaryScope = { kind: 'public' }; loading = null;
         sources = createLearningSourceRegistry(); cache = createLearningResearchCache();
     }
     function settle(turn: LearningTurn, status: LearningDialogue['status'], message = '') {
@@ -87,10 +89,10 @@ export function createLearningTeaching(options: {
         reset(); dialogueKey = key;
         const restore = options.memory().read().then(memory => {
             if (dialogueKey !== key || JSON.stringify(options.current()) !== key) { return; }
-            historySummary = memory.summary; summaryReferences = memory.summaryReferences; removedTurns = memory.archivedCount;
+            historySummary = memory.summary; summaryReferences = memory.summaryReferences; summaryScope = memory.summaryScope; removedTurns = memory.archivedCount;
             turns = memory.exchanges.flatMap(exchange => {
                 const turn: LearningTurn = { id: exchange.id, user: exchange.user, teacher: exchange.reply,
-                    references: exchange.references, purpose: exchange.replyTo ? 'summary-review' : 'talk', status: 'finished', message: '',
+                    references: exchange.references, scope: exchange.scope, purpose: exchange.replyTo ? 'summary-review' : 'talk', status: 'finished', message: '',
                     messages: [{ role: 'assistant', content: exchange.reply }] };
                 if (exchange.replyTo) { summaryReviews.set(exchange.replyTo, turn); }
                 return exchange.summarized ? [] : [turn];
@@ -100,22 +102,13 @@ export function createLearningTeaching(options: {
         try { await restore; } catch (error) { if (dialogueKey === key) { dialogueKey = ''; } throw error; }
         finally { if (loading === restore) { loading = null; } }
     }
-    function refreshReferences() {
-        const snapshot = options.repository.snapshot();
-        if (snapshot.status !== 'ready') { return; }
-        const scopes = learningReferenceScopes(snapshot.document?.data);
-        const valid = (references: string[]) => references.every(id => scopes.has(id));
-        turns = turns.filter(turn => turn.status !== 'finished' || valid(turn.references ?? []));
-        for (const [id, turn] of summaryReviews) { if (!scopes.has(id) || !valid(turn.references ?? [])) { summaryReviews.delete(id); } }
-        if (!valid(summaryReferences)) { historySummary = ''; summaryReferences = []; removedTurns = 0; }
-    }
     function memory(): LearningConversationMemory {
         const retained = [...new Set([...turns, ...summaryReviews.values()])];
-        return { summary: historySummary, summaryReferences, archivedCount: removedTurns,
+        return { summary: historySummary, summaryReferences, summaryScope, archivedCount: removedTurns,
             exchanges: retained.filter(turn => turn.status === 'finished' && turn.teacher.trim()).map(turn => ({
                 id: turn.id!, user: isLearningConversation({ kind: turn.purpose ?? 'talk' }) ? turn.user : '',
                 reply: turn.teacher, replyTo: [...summaryReviews].find(([, review]) => review === turn)?.[0] ?? null,
-                summarized: !turns.includes(turn), references: turn.references ?? [],
+                summarized: !turns.includes(turn), references: turn.references ?? [], scope: turn.scope,
             })) };
     }
     async function persist(guard: () => boolean, turn: LearningTurn) {
@@ -135,6 +128,12 @@ export function createLearningTeaching(options: {
             options.onConversation?.();
         },
         reset,
+        forgetHistory() {
+            reset();
+            // An explicit clear retires the local history too. While its receipt is unknown,
+            // later work must not reconstruct a save candidate from the pre-clear exchanges.
+            dialogueKey = JSON.stringify(options.current());
+        },
         async recoverConfirmed() {
             const saved = options.repository.snapshot();
             if (!awaitingSave || saved.status !== 'ready') { return null; }
@@ -161,7 +160,6 @@ export function createLearningTeaching(options: {
             }
         },
         conversation(): { turns: LearningDialogueView[]; removedTurns: number; summaryReviews: { attemptId: string; text: string }[] } {
-            refreshReferences();
             const classroom = options.current();
             const attempts = options.repository.snapshot().document?.data.profiles.find(profile => profile.language === classroom?.language)?.unit?.attempts ?? [];
             for (const id of summaryReviews.keys()) { if (!attempts.some(attempt => attempt.id === id)) { summaryReviews.delete(id); } }
@@ -176,7 +174,6 @@ export function createLearningTeaching(options: {
             const conversation = isLearningConversation(input.action);
             requireLearning(options.actor === 'workbench' || conversation, 'action', 'The companion can request workbench operations, not perform teaching tasks');
             await hydrate();
-            refreshReferences();
             const preparationTool = learningPreparationTool(input.action);
             const lane = conversation ? 'conversation' : preparationTool ? 'preparation' : 'work';
             if (active.has(lane)) { return { status: 'busy' }; }
@@ -214,7 +211,8 @@ export function createLearningTeaching(options: {
                 if (!conversation && (storage.status === 'unconfirmed' || storage.status === 'conflict')) { return { status: storage.status }; }
                 if (!conversation && storage.status === 'unloaded') { return failure('learning_read_failed'); }
                 let baseline = conversation ? storage.document ?? null : confirmedLearning(options.repository);
-                visible = { id: (options.createId ?? createLearningId)(), references: [], user: request.displayMessage ?? request.message, teacher: '', status: 'running', message: '', messages: [], purpose: request.action.kind, progress };
+                visible = { id: (options.createId ?? createLearningId)(), references: [], scope: { kind: 'story', osId: classroom.osId },
+                    user: request.displayMessage ?? request.message, teacher: '', status: 'running', message: '', messages: [], purpose: request.action.kind, progress };
                 if (request.action.kind === 'summary-review') { summaryReviews.set(request.action.attemptId, visible); }
                 const remark = request.action.kind === 'companion';
                 publication = createLearningPublication(visible.messages, { transactional: !conversation && request.action.kind !== 'summary-review', current: guard });
@@ -243,22 +241,24 @@ export function createLearningTeaching(options: {
                 const sourceUnit = profile?.[learningReadUnit(request.action, profile)];
                 const newMaterial = request.action.kind === 'reading-article' || request.action.kind === 'prepare' && (!sourceUnit || request.action.replaceCurrent === true);
                 const inputScope = options.actor === 'companion' ? { kind: 'story' as const, osId: classroom.osId }
-                    : !newMaterial && sourceUnit ? sourceUnit.scope : { kind: 'public' as const };
+                    : conversation ? { kind: 'public' as const }
+                    : request.action.kind === 'review-prepare' ? learningReviewScope(profile, request.action.itemIds, classroom.osId)
+                        : !newMaterial && sourceUnit ? sourceUnit.scope : { kind: 'public' as const };
                 const accessOsId = learningAccessOsId(request.action, inputScope, classroom.osId);
                 const scopes = learningReferenceScopes(baseline?.data);
-                const allowedHistory = (references: string[]) => conversation || references.every(id => {
-                    const scope = scopes.get(id);
-                    return scope?.kind === 'public' || scope?.kind === 'story' && inputScope.kind === 'story' && scope.osId === inputScope.osId;
-                });
-                const history = preparationTool ? [] : turns.filter(turn => turn.status !== 'running' && allowedHistory(turn.references ?? []));
-                let summaryAtStart = allowedHistory(summaryReferences) ? historySummary : '';
-                visible.references = [...new Set([newMaterial ? undefined : sourceUnit?.id, request.exerciseId,
+                const allowedHistory = (scope: LearningScope) => conversation || canReadLearningScope(scope, inputScope.kind === 'story' ? inputScope.osId : null);
+                const history = preparationTool ? [] : turns.filter(turn => turn.status !== 'running' && allowedHistory(turn.scope));
+                let summaryAtStart = allowedHistory(summaryScope) ? historySummary : '';
+                visible.references = [...new Set([newMaterial || !sourceUnit || !canReadLearningScope(sourceUnit.scope, accessOsId) ? undefined : sourceUnit.id, request.exerciseId,
                     ...('attemptId' in request.action ? [request.action.attemptId] : [])].filter((id): id is string => !!id))];
                 draft = createLearningSession(options.repository, { ...classroom, action: request.action,
                     inputScope, sources, learnerMessage: request.message,
                     createId: options.createId, now: options.now, asOf, canDelegate: options.canDelegate });
                 const { prefix, messages, turn, references, taskReferences } = buildLearningContext({ ...classroom, ...request, osId: accessOsId, actor: options.actor, context, asOf,
                     data: baseline?.data ?? { profiles: [] } });
+                visible.scope = learningConversationScope(references, scopes, inputScope);
+                visible.scope = history.reduce((scope, turn) => combineLearningScope(scope, turn.scope), visible.scope);
+                if (summaryAtStart) { visible.scope = combineLearningScope(visible.scope, summaryScope); }
                 if (conversation) { visible.references = [...new Set([...visible.references!, ...references, ...summaryReferences, ...history.flatMap(turn => turn.references ?? [])])]; }
                 else { visible.references = [...new Set([...visible.references!, ...taskReferences])]; }
                 visible.messages.push(turn);
@@ -271,6 +271,7 @@ export function createLearningTeaching(options: {
                         // or replace a newer summary with one produced from an older history snapshot.
                         if (summaryAtStart === historySummary && compacted.every((turn, index) => turns[index] === turn)) {
                             summaryReferences = [...new Set([...summaryReferences, ...compacted.flatMap(turn => turn.references ?? [])])];
+                            summaryScope = compacted.reduce((scope, turn) => combineLearningScope(scope, turn.scope), summaryScope);
                             turns.splice(0, count); removedTurns += count; historySummary = summary; summaryAtStart = summary;
                             options.onConversation?.();
                         }
@@ -288,7 +289,11 @@ export function createLearningTeaching(options: {
                         if (name === 'LearningSearch' || name === 'LearningExtract') { return research.executeTool(name, args); }
                         if (name === 'LearningContextRead') { return background!.execute(args); }
                         const result = session.executeTool(name, args);
-                        if (name === 'LearningRead') { visible!.references = [...new Set([...visible!.references!, ...learningReferencedIds(result, learningReferenceScopes(baseline?.data), classroom.osId)])]; }
+                        if (name === 'LearningRead') {
+                            const readReferences = learningReferencedIds(result, scopes, accessOsId);
+                            visible!.references = [...new Set([...visible!.references!, ...readReferences])];
+                            visible!.scope = learningConversationScope(readReferences, scopes, visible!.scope);
+                        }
                         const mutation = result as { ok?: boolean; changed?: boolean };
                         if ((name === 'LearningLessonEdit' || name === preparationTool) && mutation.ok && mutation.changed) {
                             publication!.discard();

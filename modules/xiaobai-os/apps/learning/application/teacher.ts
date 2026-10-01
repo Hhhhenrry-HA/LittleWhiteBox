@@ -1,15 +1,15 @@
 import { parseTeacherPreference, type LearningTeacherPreference } from '../../../domains/learning/profile.js';
 import { selectKnownPeople, type KnownPerson } from '../../../host/prompt-context/known-people.js';
 import type { PartitionStore } from '../../../kernel/contracts.js';
-import type { LearningStoredCompanions } from '../partition.js';
-import { emptyLearningCompanions, emptyLearningMemory, selectedLearningCompanion, type LearningCompanionState } from '../domain/conversation.js';
+import type { LearningStoredCompanions, LearningCompanionConfiguration } from '../partition.js';
+import { emptyLearningCompanions, emptyLearningMemory, selectedLearningCompanion } from '../domain/conversation.js';
 import { createLearningId } from './identity.js';
 
 export function createLearningTeacherService(store: PartitionStore<LearningStoredCompanions>, sources: {
     knownPeople(): KnownPerson[];
     playerName(): string;
 }) {
-    const current = (): LearningCompanionState | null => {
+    const current = (): LearningCompanionConfiguration | null => {
         const value = store.peekCurrent()?.value;
         return value && 'schemaVersion' in value ? value : null;
     };

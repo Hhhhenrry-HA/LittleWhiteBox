@@ -143,8 +143,8 @@ test('workbench private exchanges and summaries survive another story without be
     const storage = createLearningConversationStorage({ data: () => h.repository.snapshot().document.data,
         osId: () => osId, companions: h.store, workbench: h.workbenchStore });
     const port = storage.port('workbench', 'en', null);
-    const privateMemory = { exchanges: [{ id: 'private-dialogue', user: 'Private question', reply: 'Private reply', replyTo: null, summarized: false, references: [unit.id] }],
-        summary: 'Private summary', summaryReferences: [unit.id], archivedCount: 3 };
+    const privateMemory = { exchanges: [{ id: 'private-dialogue', user: 'Private question', reply: 'Private reply', replyTo: null, summarized: false, references: [unit.id], scope: unit.scope }],
+        summary: 'Private summary', summaryReferences: [unit.id], summaryScope: unit.scope, archivedCount: 3 };
     await port.save(privateMemory, () => true);
     osId = 'another-story';
     assert.deepEqual(await port.read(), emptyLearningMemory());

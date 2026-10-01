@@ -12,7 +12,7 @@ import { confirmedLearning, type LearningRepository } from '../application/servi
 import { createLearningSourceRegistry } from '../materials/lesson-sources.js';
 import { readLearning } from './data-projection.js';
 import { learningToolNamesFor } from './tool-contract.js';
-import { isLearningConversation, learningAccessOsId, learningReadAudience, learningReadUnit } from './access.js';
+import { isLearningConversation, learningAccessOsId, learningReadAudience, learningReadUnit, learningReviewScope } from './access.js';
 import { parseLearningDelegation, type LearningDelegation } from '../application/delegation.js';
 
 /**
@@ -55,7 +55,9 @@ export function createLearningSession(repository: LearningRepository, options: {
 }) {
     const expected = isLearningConversation(options.action) ? repository.snapshot().document ?? null : confirmedLearning(repository);
     const action = structuredClone(options.action);
-    const inputScope = structuredClone(options.inputScope);
+    const inputScope = action.kind === 'review-prepare'
+        ? learningReviewScope(expected?.data.profiles.find(profile => profile.language === options.language), action.itemIds, options.osId)
+        : structuredClone(options.inputScope);
     requireLearning(inputScope.kind === 'public' || inputScope.osId === options.osId, 'scope', 'Use the current story identity');
     const accessOsId = learningAccessOsId(action, inputScope, options.osId);
     const createId = options.createId ?? createLearningId;

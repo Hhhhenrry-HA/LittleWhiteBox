@@ -1,4 +1,10 @@
 import { canReadLearningScope, type LearningData, type LearningScope } from '../../../domains/learning/types.js';
+import { combineLearningScope } from '../../../domains/learning/validation.js';
+
+/** Access provenance is retained with the exchange; source IDs remain only deletion/attachment references. */
+export function learningConversationScope(references: string[], scopes: ReadonlyMap<string, LearningScope>, initial: LearningScope = { kind: 'public' }): LearningScope {
+    return references.reduce((scope, id) => scopes.has(id) ? combineLearningScope(scope, scopes.get(id)!) : scope, initial);
+}
 
 /** Access and deletion follow the existing coursework, never a copied long-term article. */
 export function learningReferenceScopes(data: LearningData | undefined): Map<string, LearningScope> {
