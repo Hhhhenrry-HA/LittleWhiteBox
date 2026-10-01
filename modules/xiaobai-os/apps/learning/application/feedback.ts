@@ -37,7 +37,7 @@ export interface LearningFailureDetails extends LearningProgress {
 }
 
 const stages: Record<LearningProgress['stage'], string> = {
-    context: '翻看学习资料', config: '连接语伴', session: '准备学习内容',
+    context: '翻看学习资料', config: '连接 AI', session: '准备学习内容',
     summary: '整理之前聊过的内容',
     provider: '组织回复', tools: '整理学习内容', save: '保存学习内容', action: '准备学习内容',
 };
@@ -51,15 +51,14 @@ export function learningTeachingFailure(reason: string): string {
     if (provider) { return provider; }
     switch (reason) {
         case 'learning_context_failed': return '没能打开学习资料，请重试。';
-        case 'learning_config_failed': return '暂时连不上语伴，请检查 AI 连接设置后重试。';
+        case 'learning_config_failed': return '暂时连不上 AI，请检查 AI 连接设置后重试。';
         case 'learning_session_failed': return '这次没能开始，请重试。';
         case 'learning_protocol_failed': return '这次回复没能整理成学习内容，尚未保存，请重试。';
         case 'learning_tool_failed': return '整理学习内容时出了问题，这次内容没有保存，请重试。';
         case 'learning_save_failed': return '保存学习内容时出了问题。请先重新加载，确认哪些内容已保存。';
         case 'learning_context_full': return '这次要看的内容太多了。已保存的练习和作答不变；可以分几次说，或在 AI 设置中换用能阅读更长内容的模型。';
         case 'learning_summary_failed': return '没能整理之前的聊天，原对话和已保存的学习内容都还在。请重试。';
-        case 'learning_empty_response': return '语伴没有返回有效回复，已有内容未改，可以重试。';
-        case 'learning_help_undeclared': return '这次讲解没能对应到练习，暂未展示或保存。请再试一次。';
+        case 'learning_empty_response': return '没有收到有效回复，已有内容未改，可以重试。';
         case 'learning_response_truncated': return '这次回复太长，中途停下了。已显示的文字还在，但新的学习内容尚未保存；可以一次少问一点，或在 AI 设置中调高回复长度。';
         case 'learning_stalled': return '这次回复卡住了，已经停止。已保存的内容不变，可以换个说法再试。';
         case 'learning_file_invalid': return '学习文件暂时无法读取，请检查文件；不会覆盖已有内容。';

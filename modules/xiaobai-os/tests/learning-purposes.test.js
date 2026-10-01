@@ -11,7 +11,6 @@ import { learningScheduleAt, newLearningSchedule } from '../domains/learning/sch
 import { assessLearning } from '../domains/learning/assessment.js';
 import { createSillyTavernUserJsonFilePort } from '../storage/sillytavern-file-storage.js';
 import { createClassroomFixture } from './fixtures/learning-classroom.js';
-import { declaredTeacher } from './fixtures/learning-reply.js';
 
 const scope = { kind: 'public' };
 const T0 = '2026-09-01T08:00:00.000Z';
@@ -63,7 +62,7 @@ function harness() {
 }
 
 test('each request offers only the tools its step needs', () => {
-    assert.deepEqual(names({ kind: 'summary-review', unitId: 'u1', attemptId: 'a1' }).sort(), ['LearningHelp', 'LearningRead']);
+    assert.deepEqual(names({ kind: 'summary-review', unitId: 'u1', attemptId: 'a1' }).sort(), ['LearningRead']);
     // A companion remark writes nothing, not even a help declaration.
     assert.deepEqual(names({ kind: 'companion' }), ['LearningRead']);
     for (const kind of ['grade', 'revision-review', 'review-assess']) {
@@ -71,11 +70,11 @@ test('each request offers only the tools its step needs', () => {
         assert.ok(offered.includes('LearningAssess'), kind);
         assert.ok(!offered.includes('LearningLessonEdit') && !offered.includes('LearningComplete') && !offered.includes('LearningModelEssay'), kind);
     }
-    assert.deepEqual(names({ kind: 'model-essay', unitId: 'u1' }).sort(), ['LearningHelp', 'LearningModelEssay', 'LearningRead']);
+    assert.deepEqual(names({ kind: 'model-essay', unitId: 'u1' }).sort(), ['LearningModelEssay', 'LearningRead']);
     assert.ok(names({ kind: 'review-prepare', itemIds: ['i1'], asOf: T0 }).includes('LearningLessonEdit'));
     assert.ok(!names({ kind: 'talk' }).includes('LearningModelEssay'));
     for (const action of [{ kind: 'talk' }, { kind: 'prepare' }, { kind: 'summary-review', unitId: 'u1', attemptId: 'a1' }, { kind: 'model-essay', unitId: 'u1' }]) {
-        assert.ok(names(action).includes('LearningHelp'), action.kind);
+        assert.ok(!names(action).includes('LearningHelp'), action.kind);
     }
 });
 
@@ -113,7 +112,6 @@ test('grading, revision review and review assessment each accept only the answer
     const marked = grade.executeTool('LearningAssess', h.assess('a3', { verdict: 'partial',
         annotations: [{ category: 'grammar', severity: 'error', paragraphIndex: 1, quote: 'is go', explanation: '过去时', suggestion: 'went' }] }));
     assert.equal(marked.ok, true, JSON.stringify(marked));
-    assert.equal(grade.executeTool('LearningHelp', { exerciseIds: [], materialIds: [] }).ok, true);
     assert.equal((await grade.commit(() => true)).status, 'confirmed');
     assert.equal(learningUnitStage(h.read().unit).stage, 'revising');
 
@@ -124,7 +122,6 @@ test('grading, revision review and review assessment each accept only the answer
     const review = h.session({ kind: 'revision-review', unitId: 'u1' });
     assert.equal(review.executeTool('LearningAssess', h.assess('a3')).ok, false);
     assert.equal(review.executeTool('LearningAssess', h.assess(revision.id, { resolvedAnnotationIds: [noteId] })).ok, true);
-    assert.equal(review.executeTool('LearningHelp', { exerciseIds: [], materialIds: [] }).ok, true);
     await review.commit(() => true);
     assert.equal(learningUnitStage(h.read().unit).stage, 'model');
 
@@ -134,7 +131,6 @@ test('grading, revision review and review assessment each accept only the answer
 
     const essay = h.session({ kind: 'model-essay', unitId: 'u1' });
     assert.equal(essay.executeTool('LearningModelEssay', { unitId: 'u1', text: 'Parks keep cities cool.', level: 'B1' }).ok, true);
-    assert.equal(essay.executeTool('LearningHelp', { exerciseIds: [], materialIds: [] }).ok, true);
     await essay.commit(() => true);
     assert.equal(learningUnitStage(h.read().unit).stage, 'complete');
     assert.deepEqual(h.read().completions.map(entry => entry.unitId), ['u1']);
@@ -157,7 +153,6 @@ test('a prepared review asks about exactly the items that were due when the lear
     const run = h.session(action);
     assert.equal(run.executeTool('LearningLessonEdit', { title: '复习', goal: '回忆', exercises: [choice('q1', 'i1'), choice('q3', 'i3')] }).ok, false);
     assert.equal(run.executeTool('LearningLessonEdit', { title: '复习', goal: '回忆', exercises: [choice('q1', 'i1'), choice('q2', 'i2')] }).ok, true);
-    assert.equal(run.executeTool('LearningHelp', { exerciseIds: [], materialIds: [] }).ok, true);
     assert.equal((await run.commit(() => true)).status, 'confirmed');
     assert.deepEqual(h.read().review.exercises.map(exercise => exercise.itemId), ['i1', 'i2']);
     assert.equal(h.read().unit, null);
@@ -176,7 +171,7 @@ test('a unit completed by its facts is paid automatically, exactly once', async 
     assert.equal((await h.repository.save(document, data, () => true)).status, 'confirmed');
     assert.equal(learningUnitStage(h.profile().unit).stage, 'model');
     const before = h.economy.getPlayerBalance();
-    h.flags.teacherResponse = declaredTeacher((request, step) => step === 1
+    h.flags.teacherResponse = ((request, step) => step === 1
         ? { toolCalls: [{ id: 'essay', name: 'LearningModelEssay', arguments: JSON.stringify({ unitId: 'u1', text: 'Parks keep cities cool.', level: 'B1' }) }] }
         : { text: '范文先写要点，再给例子。' });
     const after = await h.command('grade', { unitId: 'u1' });
@@ -223,7 +218,6 @@ test('a workbench step re-judges disputed feedback without a separate review fla
     assert.equal(grade.executeTool('LearningAssess', h.assess('a2', { verdict: 'partial', review: true })).ok, false);
     const ordinary = h.session({ kind: 'assess', attemptId: 'a2', review: false });
     assert.equal(ordinary.executeTool('LearningAssess', h.assess('a2', { verdict: 'partial', review: true })).ok, false);
-    assert.equal(grade.executeTool('LearningHelp', { exerciseIds: [], materialIds: [] }).ok, true);
     assert.equal((await grade.commit(() => true)).status, 'confirmed');
     assert.equal(h.read().unit.assessments.find(entry => entry.attemptId === 'a1').verdict, 'partial');
 });
@@ -307,12 +301,9 @@ test('review reads, focused assessment and help all belong to the review rather 
         assert.equal(run.executeTool('LearningRead', {}).data.unit.id, 'rv');
         assert.equal(run.executeTool('LearningRead', { section: 'exercises' }).data[0].id, 'r1');
         assert.deepEqual(action.kind === 'review-assess' ? request.focus.answers.map(entry => entry.attempt.id) : [request.focus.attempt.id], ['b1']);
-        assert.equal(run.executeTool('LearningHelp', { exerciseIds: ['s1'], materialIds: [] }).ok, false);
-        assert.equal(run.executeTool('LearningHelp', { exerciseIds: ['r1'], materialIds: [] }).ok, true);
-        assert.ok(['confirmed', 'unchanged'].includes((await run.saveHelp(() => true)).status));
-        assert.equal(run.helpIsPublished(), true);
+        await h.service.reveal('en', 'rv', 'hints', 'r1', 'story-a', () => true);
         assert.deepEqual(h.read().unit.revealed.hints, []);
-        assert.deepEqual(h.read().review.revealed.hints, ['r1']);
+        assert.deepEqual(h.read().review.revealed.hints, []);
         assert.equal(h.read().review.attempts[0].help.hint, false);
     }
 });
@@ -327,7 +318,7 @@ test('submitting a semantic review answer grades it without any mounted review c
         exercises: [{ ...writing('r1'), skill: 'vocabulary', materialIds: [], itemId: 'i1' }], attempts: [], assessments: [], revealed: { answers: [], hints: [] } };
     assert.equal((await h.repository.save(document, data, () => true)).status, 'confirmed');
     const purposes = [];
-    h.flags.teacherResponse = declaredTeacher((request, step) => {
+    h.flags.teacherResponse = ((request, step) => {
         const input = learningRequestOf(request); purposes.push(input.action.kind);
         return step === 1 ? { toolCalls: input.focus.answers.map(({ attempt }) => ({ id: attempt.id, name: 'LearningAssess', arguments: JSON.stringify({
             attemptId: attempt.id, verdict: 'correct', understanding: 'Correct meaning.', expression: 'Clear.', guidance: 'Good use.', signal: 'clean',
@@ -376,7 +367,7 @@ test('a companion remark needs no help declaration, gives way to the learner and
     const h = await createClassroomFixture(); t.after(h.dispose);
     await h.openLesson();
     let hold = null;
-    const teacher = declaredTeacher(() => ({ text: '可以，我们慢慢来。' }));
+    const teacher = (() => ({ text: '可以，我们慢慢来。' }));
     h.flags.teacherResponse = async (request, round) => {
         if (learningRequestOf(request)?.action.kind !== 'companion') { return teacher(request, round); }
         assert.ok(!request.tools.some(tool => tool.function.name === 'LearningHelp'));
@@ -387,7 +378,7 @@ test('a companion remark needs no help declaration, gives way to the learner and
     await until(h.state, state => state.remark?.text === '这段写得真轻快。');
     let release;
     hold = new Promise(resolve => { release = resolve; });
-    await h.command('companion', {});
+    await h.bridge.request('learning/companion', { chatIdentity: h.state().chatIdentity });
     const talking = h.command('talk', { message: '这里的 shade 是什么意思？' });
     release();
     const talked = await talking;

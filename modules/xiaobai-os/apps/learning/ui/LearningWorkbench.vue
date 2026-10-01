@@ -16,6 +16,7 @@ const emit = defineEmits<{
     action: [name: string, input?: Record<string, unknown>]; confirm: [name: string, input: Record<string, unknown>, text: string];
     present: [target: LearningPresentation]; go: [page: 'books' | 'materials' | 'profile' | 'settings'];
     ask: [exerciseId: string | undefined, selection?: LearningSelection, unitId?: string];
+    assistant: [exerciseId: string, unitId: string];
     record: [id: string];
 }>();
 const reviewOpen = computed(() => !!props.state.review && props.state.review.stage.stage !== 'complete');
@@ -55,7 +56,7 @@ const ask = (name: string, input: Record<string, unknown>, text: string) => emit
         </div>
         <LearningReview v-if="state.review" :state="state" :review="state.review" :disabled="disabled" :pending="pending" @action="forward" @confirm="ask" @ask="(id, unitId) => emit('ask', id, undefined, unitId)" />
 
-        <LearningReading v-if="unit?.kind === 'reading-writing'" :data-learning-unit-id="unit.id" :state="state" :unit="unit" :disabled="disabled" :pending="pending" @action="forward" @confirm="ask" @ask="(id, selection) => emit('ask', id, selection, unit!.id)" @record="id => emit('record', id)" />
+        <LearningReading v-if="unit?.kind === 'reading-writing'" :data-learning-unit-id="unit.id" :state="state" :unit="unit" :disabled="disabled" :pending="pending" @action="forward" @confirm="ask" @ask="(id, selection) => emit('ask', id, selection, unit!.id)" @assistant="id => emit('assistant', id, unit!.id)" @record="id => emit('record', id)" />
         <section v-else-if="unit" class="learning-lesson" :data-learning-unit-id="unit.id">
             <p class="learning-eyebrow">专项小课 · 完成可得 {{ unit.reward.amount }} 小白币</p>
             <h1 tabindex="-1">{{ unit.title }}</h1>
@@ -74,11 +75,11 @@ const ask = (name: string, input: Record<string, unknown>, text: string) => emit
                 <button type="button" :disabled="blocked('abandon')" @click="ask('abandon', {}, LEARNING_DISCARD_COPY.lesson)">放下并重新开始</button>
             </template>
             <template v-else>
-                <h1 v-if="!unit" tabindex="-1">{{ state.teacher ? copy.reading : copy.selectFirst }}</h1>
+                <h1 v-if="!unit" tabindex="-1">{{ copy.reading }}</h1>
                 <h2 v-else>{{ copy.next }}</h2>
-                <button v-if="state.teacher && !unit" type="button" class="learning-start-preference" :aria-label="`${copy.settings}：${settingSummary}`" @click="emit('go', 'settings')"><span><strong>{{ copy.settings }}</strong><small>{{ settingSummary }}</small></span><LearningIcon name="arrow" /></button>
+                <button v-if="!unit" type="button" class="learning-start-preference" :aria-label="`${copy.settings}：${settingSummary}`" @click="emit('go', 'settings')"><span><strong>{{ copy.settings }}</strong><small>{{ settingSummary }}</small></span><LearningIcon name="arrow" /></button>
                 <LearningPreparation v-if="state.sourceChoice" :state="state" :disabled="disabled" :pending="pending" @action="forward" />
-                <template v-if="state.teacher && !preparing && !state.sourceChoice">
+                <template v-if="!preparing && !state.sourceChoice">
                     <section class="learning-start-reading">
                         <LearningIcon name="workbook" />
                         <p>{{ copy.readingHint }}</p>
@@ -86,7 +87,6 @@ const ask = (name: string, input: Record<string, unknown>, text: string) => emit
                     </section>
                     <button type="button" class="learning-start-secondary" :disabled="blocked('prepare')" @click="prepare('lesson')"><LearningIcon name="records" /><span><strong>{{ copy.lesson }}</strong><small>{{ copy.lessonHint }}</small></span><LearningIcon name="arrow" /></button>
                 </template>
-                <button v-else-if="!state.teacher" type="button" class="learning-primary" @click="emit('go', 'profile')">{{ copy.select }}</button>
             </template>
         </section>
     </div>

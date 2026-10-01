@@ -1,3 +1,4 @@
+import { requireLearning } from '../../../domains/learning/validation.js';
 import type { LearningAnswer } from '../../../domains/learning/types.js';
 import { confirmedLearning, createLearningService, type LearningRepository } from './service.js';
 import { learningAnswerText } from './answer-text.js';
@@ -23,8 +24,11 @@ export function createLearningPractice(options: {
             const guard = () => isCurrent() && JSON.stringify(options.current()) === key;
             submitting = true;
             try {
+                const original = confirmedLearning(options.repository)?.data.profiles.find(profile => profile.language === classroom.language);
+                const sourceUnit = [original?.unit, original?.review].find(unit => unit?.id === input.unitId);
+                requireLearning(sourceUnit, 'unitId', 'Select an available current unit');
                 const pending = service.prepareAttempt({ ...input, language: classroom.language, osId: classroom.osId,
-                    scope: { kind: 'story', osId: classroom.osId } }, basis);
+                    scope: sourceUnit.scope }, basis);
                 const saved = await pending.save(guard);
                 if (!guard()) { return { status: 'cancelled' }; }
                 if (saved.status !== 'confirmed' && saved.status !== 'unchanged') { return { status: saved.status }; }

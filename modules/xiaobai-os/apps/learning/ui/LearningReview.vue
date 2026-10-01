@@ -77,7 +77,7 @@ const item = (id?: string) => [...props.state.books.grammar, ...props.state.book
                     <small v-else>{{ copy.saved }}</small>
                     <button v-if="answered < review.exercises.length" type="button" class="learning-primary" @click="next">下一张</button>
                 </template>
-                <button type="button" class="learning-review-ask" data-action="ask" :disabled="pending || !learningActionAvailable('explain', state)" @click="emit('ask', exercise.id, review.id)">{{ copy.ask }}</button>
+                <button type="button" class="learning-review-ask" data-action="ask" :disabled="pending || !learningActionAvailable('talk', state)" @click="emit('ask', exercise.id, review.id)">{{ copy.ask }}</button>
             </div>
         </template>
         <div v-if="stage === 'grading'" class="learning-working" role="status">

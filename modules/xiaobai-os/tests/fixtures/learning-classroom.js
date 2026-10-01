@@ -7,7 +7,7 @@ import { XiaobaiOsPartitionRegistry } from '../../kernel/partition-registry.js';
 import { createTransactionCoordinator } from '../../kernel/transaction-coordinator.js';
 import { XiaobaiOsExecutionScope } from '../../kernel/execution-scope.js';
 import { XiaobaiOsStorageError } from '../../storage/storage-port.js';
-import { declaredTeacher } from './learning-reply.js';
+import { LEARNING_WORKBENCH_PARTITION } from '../../apps/learning/workbench-partition.js';
 import { createUserTransactions } from '../../kernel/user-transactions.js';
 import { LEARNING_REWARDS_PARTITION } from '../../apps/learning/reward-partition.js';
 
@@ -25,13 +25,14 @@ export async function createClassroomFixture({ listening = false, lesson: lesson
     let chat = 'runtime-a'; let envelope = null; let userFile = null; let walletFile = null; let serial = 0;
     const flags = { userFailure: false, userRejected: false, heldUser: null, ledgerFailure: false, ledgerUnknown: false, heldLedger: null, teacherReceiptLost: false, teacherWriteApplied: true,
         providerFailure: false, providerGate: null, prepareReply: null, profileReply: null, talkTools: null, teacherResponse: null };
-    const counts = { provider: 0, userWrites: 0, ledgerWrites: 0, teacherWrites: 0 };
+    const requests = [];
+    const counts = { captures: 0, provider: 0, userWrites: 0, ledgerWrites: 0, teacherWrites: 0 };
     const failures = [];
     const reference = () => ({ identityKey: `storage-${chat}`, binding: { kind: 'character', ownerLocator: 'fixture.png', chatId: chat },
         reference: envelope ? { formatVersion: 1, osId: envelope.osId } : null });
     const capabilities = createCapabilityRegistry(createEconomyCapabilityRegistrations());
     const partitions = new XiaobaiOsPartitionRegistry(); partitions.register(LEARNING_PARTITION); partitions.register(ECONOMY_PARTITION);
-    partitions.register(LEARNING_REWARDS_PARTITION);
+    partitions.register(LEARNING_REWARDS_PARTITION); partitions.register(LEARNING_WORKBENCH_PARTITION);
     const coordinator = createTransactionCoordinator({ partitions, capabilityBinder: capabilities, createId: () => `ledger-${++serial}`,
         chatReferences: { capture: reference, isCurrent: captured => captured.identityKey === reference().identityKey, install: async () => ({ status: 'confirmed' }) },
         storage: { read: async () => structuredClone(envelope), delete: async () => 'missing', replace: async ({ candidate }) => {
@@ -65,7 +66,7 @@ export async function createClassroomFixture({ listening = false, lesson: lesson
     const call = (name, args) => ({ id: name, name, arguments: JSON.stringify(args) });
     const gateway = { loadConfig: async () => agentConfig, openSession: async () => {
         let round = 0;
-        const respond = declaredTeacher(async request => {
+        const respond = async request => {
             round++;
             if (round > 1) { return { text: '你已经抓住关键了。语言不用一次学完，今天多会一点点就很好。' }; }
             const message = request.messages.findLast(entry => entry.role === 'user');
@@ -93,7 +94,6 @@ export async function createClassroomFixture({ listening = false, lesson: lesson
                 if (listening) { lesson.exercises[0].skill = 'listening'; }
                 return { toolCalls: [call('LearningLessonEdit', lesson)] };
             }
-            if (action.kind === 'explain') { return { text: '“do more than” 表示“不仅仅”。树木不只是好看，还能提供荫凉。试着用这个结构，写一句自己的话。' }; }
             if (action.kind === 'talk') {
                 return flags.talkTools ? { toolCalls: flags.talkTools.map(entry => call(entry.name, entry.args)) }
                     : { text: '可以，我们先放慢一点。你最想弄清楚哪一部分？' };
@@ -104,15 +104,10 @@ export async function createClassroomFixture({ listening = false, lesson: lesson
                 ...(action.kind === 'assess' && (!input.focus?.assessment || action.review) ? { verdict: 'correct', understanding: '抓住了文章的中心。', expression: '', guidance: '下次试着用自己的句子说明原因。' } : {}),
                 items: [{ label: '抓住段落中心观点' }] }),
             call('LearningComplete', { unitId: unit.id, attemptIds: [attempt.id], summary: '读懂了树荫与城市生活的关系，也练习了辨认文章主旨。' })] };
-        }, request => {
-            const original = request.messages.find(entry => entry.role === 'user' && entry.content.includes('<learning_request>'));
-            const input = original ? JSON.parse(original.content.split('<learning_request>\n').at(-1).split('\n</learning_request>')[0]) : null;
-            return { exerciseIds: input?.action.kind === 'explain' && input.focus ? [input.focus.exercise.id] : [],
-                materialIds: input?.action.kind === 'explain' ? (input.training?.materials ?? []).filter(material => material.hidden && input.focus?.exercise?.materialIds.includes(material.id)).map(material => material.id) : [] };
-        });
+        };
         let customRound = 0;
         return { supportsSessionToolLoop: false, providerConfig: {}, run: async request => {
-            counts.provider++;
+            counts.provider++; requests.push({ systemPrompt: request.systemPrompt, messages: structuredClone(request.messages), tools: request.tools.map(tool => tool.function.name) });
             if (flags.providerGate) { await flags.providerGate; }
             if (flags.providerFailure) { throw Object.assign(new Error('fixture secret must stay hidden'), { status: 401 }); }
             return flags.teacherResponse ? flags.teacherResponse(request, ++customRound) : respond(request);
@@ -122,17 +117,17 @@ export async function createClassroomFixture({ listening = false, lesson: lesson
     const listeners = new Set(); const waiters = new Set();
     const execution = new XiaobaiOsExecutionScope(error => failures.push(error));
     const economy = capabilities.require(ECONOMY_READ_CAPABILITY);
-    const runtime = createLearningRuntime({ repository, store, files: coordinator, rewardStore, rewardFiles: wallet, economy, agent: gateway, execution,
+    const runtime = createLearningRuntime({ repository, store, files: coordinator, workbenchStore: wallet.createStore(LEARNING_WORKBENCH_PARTITION, []), workbenchFiles: wallet, rewardStore, rewardFiles: wallet, economy, agent: gateway, execution,
         chatIdentity: () => chat, playerName: () => '小白', people: () => [{ name: '林老师', aliases: [], text: '温和而认真的老师' }],
-        capture: async () => ({ teacherDetails: '熟悉你，也认真对待你的目标。', snapshot: { player: { displayName: '小白', persona: '' },
-            characters: [], storyEvents: '一起看过城里的夏天。', recentMessages: [], worldInfo: { before: '', after: '', depth: [] } } }),
+        capture: async () => { counts.captures++; return ({ teacherDetails: '熟悉你，也认真对待你的目标。', snapshot: { player: { displayName: '小白', persona: '' },
+            characters: [], storyEvents: '一起看过城里的夏天。', recentMessages: [], worldInfo: { before: '', after: '', depth: [] } } }); },
         getTtsFacade,
     });
     const context = () => ({ activationToken: 'fixture', isCurrent: () => active, post(type, payload) {
         if (type === 'learning/media') { state = { ...state, media: payload.media }; }
         else if (type === 'learning/state') { state = payload.state; }
         for (const listener of listeners) { listener({ type, payload }); }
-        if (!state.busy && !state.chatBusy && !state.preparation?.running) { for (const resolve of waiters) { resolve(); } waiters.clear(); }
+        if (!state.busy && !state.chatBusy && !state.workbenchBusy && !state.companionBusy && !state.preparation?.running) { for (const resolve of waiters) { resolve(); } waiters.clear(); }
         return true;
     } });
     state = await runtime.activate(context());
@@ -145,12 +140,14 @@ export async function createClassroomFixture({ listening = false, lesson: lesson
     async function command(name, input = {}) {
         // This fixture prepares the supplied lesson kind; production buttons supply their own kind.
         const response = await bridge.request(`learning/${name}`, { chatIdentity: chat,
+            ...(['talk', 'cancel-chat', 'forget-conversation', 'say-reply', 'save-note'].includes(name) ? { target: 'companion' } : {}),
             ...(['prepare', 'replace-lesson'].includes(name) ? { kind: lessonInput.kind ?? 'lesson' } : {}), ...input });
         state = response.result.state;
-        if (state.busy || state.chatBusy || state.preparation?.running) { await new Promise(resolve => waiters.add(resolve)); }
+        if (state.busy || state.chatBusy || state.workbenchBusy || state.companionBusy || state.preparation?.running) { await new Promise(resolve => waiters.add(resolve)); }
         return structuredClone(state);
     }
     return { runtime, bridge, repository, store, coordinator, wallet, economy, flags, counts, failures, command, profile,
+        requests, workbenchStore: wallet.createStore(LEARNING_WORKBENCH_PARTITION, []),
         state: () => structuredClone(state),
         async openLesson() { await command('teacher', { teacher: { name: '林老师', note: '' } }); await command('profile', { message: '想备考四级，当前高中基础。' }); await command('prepare', { message: '开始一课。' }); return state; },
         async reenter() { runtime.deactivate(); active = true; state = await runtime.activate(context()); return state; },

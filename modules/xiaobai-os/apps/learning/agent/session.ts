@@ -1,10 +1,9 @@
 import { assessLearning } from '../../../domains/learning/assessment.js';
 import { completeLearning, saveLearningModelEssay } from '../../../domains/learning/completion.js';
 import { parseLearningData } from '../../../domains/learning/data.js';
-import { exposeLearningContent, sameLearningExerciseContent } from '../../../domains/learning/exposure.js';
 import { learningRecord, LearningValidationError, parseLearningLanguageTag, parseLearningProfile } from '../../../domains/learning/profile.js';
 import { canReadLearningScope, type LearningData, type LearningLanguage, type LearningScope, type LearningUnit, type RewardTier } from '../../../domains/learning/types.js';
-import { learningId, learningIds, learningInteger, requireLearning } from '../../../domains/learning/validation.js';
+import { learningId, learningInteger, requireLearning } from '../../../domains/learning/validation.js';
 import { LEARNING_REWARD_PRICES } from '../../../domains/learning/reward.js';
 import { createLearningLessonCompiler } from '../application/lesson.js';
 import { createLearningId } from '../application/identity.js';
@@ -13,7 +12,7 @@ import { confirmedLearning, type LearningRepository } from '../application/servi
 import { createLearningSourceRegistry } from '../materials/lesson-sources.js';
 import { readLearning } from './data-projection.js';
 import { learningToolNamesFor } from './tool-contract.js';
-import { isLearningConversation, learningReadAudience, learningReadUnit } from './access.js';
+import { isLearningConversation, learningAccessOsId, learningReadAudience, learningReadUnit } from './access.js';
 import { parseLearningDelegation, type LearningDelegation } from '../application/delegation.js';
 
 /**
@@ -28,7 +27,6 @@ export type LearningAction =
     | { kind: 'reading-essay'; unitId: string }
     | { kind: 'assess'; attemptId: string; review: boolean }
     | { kind: 'complete' }
-    | { kind: 'explain'; unitId?: string }
     | { kind: 'talk'; unitId?: string }
     /** A reply on one paragraph summary; its grade waits for the unified grading. */
     | { kind: 'summary-review'; attemptId: string }
@@ -55,12 +53,11 @@ export function createLearningSession(repository: LearningRepository, options: {
     asOf?: string;
     canDelegate?: (action: LearningDelegation['action']) => boolean;
 }) {
-    const expected = confirmedLearning(repository);
-    let saveExpected = expected;
+    const expected = isLearningConversation(options.action) ? repository.snapshot().document ?? null : confirmedLearning(repository);
     const action = structuredClone(options.action);
     const inputScope = structuredClone(options.inputScope);
     requireLearning(inputScope.kind === 'public' || inputScope.osId === options.osId, 'scope', 'Use the current story identity');
-    const accessOsId = inputScope.kind === 'story' ? options.osId : null;
+    const accessOsId = learningAccessOsId(action, inputScope, options.osId);
     const createId = options.createId ?? createLearningId;
     const now = options.now ?? (() => new Date().toISOString());
     const asOf = options.asOf ?? now();
@@ -70,7 +67,6 @@ export function createLearningSession(repository: LearningRepository, options: {
     let invalid = false;
     let sealed = false;
     let presentation: LearningPresentation | null = null;
-    let help: { exerciseIds: string[]; materialIds: string[] } | null = null;
     let delegation: { operation: LearningDelegation; confirmation: boolean } | null = null;
     const applied = new Set<string>();
     const names = learningToolNamesFor(action);
@@ -96,65 +92,13 @@ export function createLearningSession(repository: LearningRepository, options: {
         appliedTools: () => [...applied],
         delegation: () => delegation && !delegation.confirmation ? structuredClone(delegation.operation) : null,
         presentation: () => presentation ? structuredClone(presentation) : null,
-        helpDeclared: () => help !== null,
-        helpIsPublished() {
-            if (!help) { return false; }
-            const proposed = staged.profiles.find(entry => entry.language === canonicalLanguage)?.[unitKey];
-            const published = saveExpected?.data.profiles.find(entry => entry.language === canonicalLanguage)?.[unitKey];
-            return help.exerciseIds.every(id => published?.revealed.hints.includes(id) && sameLearningExerciseContent(published, proposed, id))
-                && help.materialIds.every(id => published?.materials.some(entry => entry.id === id && entry.transcriptRevealed
-                    && JSON.stringify(entry.paragraphs) === JSON.stringify(proposed?.materials.find(material => material.id === id)?.paragraphs)));
-        },
-        markExplained(exerciseId: string) {
-            active();
-            const profile = staged.profiles.find(profile => profile.language === canonicalLanguage);
-            const unit = profile?.[unitKey];
-            requireLearning(unit && canReadLearningScope(unit.scope, accessOsId)
-                && unit.exercises.some(exercise => exercise.id === exerciseId), 'exerciseId', 'Select an available exercise');
-            exposeLearningContent(profile!, 'hints', exerciseId, unit);
-        },
-        async saveHelp(guard: () => boolean) {
-            active();
-            if (isLearningConversation(action)) {
-                // A workbench save may have completed since the message arrived. Record the help against
-                // the current file, but only for the identical content actually read by this conversation.
-                saveExpected = confirmedLearning(repository);
-                const live = saveExpected?.data.profiles.find(entry => entry.language === canonicalLanguage)?.[unitKey];
-                const read = staged.profiles.find(entry => entry.language === canonicalLanguage)?.[unitKey];
-                requireLearning((help?.exerciseIds ?? []).every(id => sameLearningExerciseContent(live, read, id))
-                    && (help?.materialIds ?? []).every(id => live?.id === read?.id && live?.materials.some(material => material.id === id
-                        && JSON.stringify(material.paragraphs) === JSON.stringify(read?.materials.find(entry => entry.id === id)?.paragraphs))),
-                'help', 'The content changed while this reply was being prepared; use the current material in a new exchange');
-            }
-            const data = structuredClone(saveExpected?.data ?? { profiles: [] });
-            const profile = data.profiles.find(entry => entry.language === canonicalLanguage);
-            const proposed = staged.profiles.find(entry => entry.language === canonicalLanguage)?.[unitKey];
-            const published = profile?.[unitKey];
-            // Only exposure of already-published content survives an interrupted teaching turn.
-            if (profile && published && proposed?.id === published.id) {
-                for (const kind of ['answers', 'hints'] as const) {
-                    for (const id of proposed.revealed[kind]) {
-                        if (sameLearningExerciseContent(published, proposed, id)) { exposeLearningContent(profile, kind, id, published); }
-                    }
-                }
-                for (const material of proposed.materials) {
-                    const original = published.materials.find(entry => entry.id === material.id);
-                    if (material.transcriptRevealed && original && JSON.stringify(material.paragraphs) === JSON.stringify(original.paragraphs)) {
-                        exposeLearningContent(profile, 'transcripts', material.id, published);
-                    }
-                }
-            }
-            const result = await repository.save(saveExpected, data, () => !invalid && guard());
-            if (result.status === 'confirmed' || result.status === 'unchanged') { saveExpected = result.document; }
-            return result;
-        },
         executeTool(name: string, args: unknown): unknown {
             active();
             let nextPresentation = presentation;
             try {
                 requireLearning(names.includes(name), 'tool', 'This tool is not available for the current learning action');
                 if (name === 'LearningRequest') {
-                    requireLearning(action.kind === 'talk' || action.kind === 'explain', 'action', 'Only a learner-initiated conversation can request a workbench action');
+                    requireLearning(action.kind === 'talk', 'action', 'Only a learner-initiated conversation can request a workbench action');
                     const profile = staged.profiles.find(entry => entry.language === canonicalLanguage);
                     const requested = parseLearningDelegation(args, options.learnerMessage ?? '', profile?.unit?.id);
                     if (options.canDelegate && !options.canDelegate(requested.action)) { return { ok: false, status: 'busy' }; }
@@ -169,23 +113,6 @@ export function createLearningSession(repository: LearningRepository, options: {
                     delegation = { operation: requested, confirmation: false };
                     applied.add(name);
                     return { ok: true, status: 'requested' };
-                }
-                if (name === 'LearningHelp') {
-                    const input = learningRecord(args, name, ['exerciseIds', 'materialIds']);
-                    const exerciseIds = learningIds(input.exerciseIds, 'exerciseIds');
-                    const materialIds = learningIds(input.materialIds, 'materialIds');
-                    const next = structuredClone(staged);
-                    const profile = next.profiles.find(entry => entry.language === canonicalLanguage);
-                    const unit = profile?.[unitKey];
-                    requireLearning(!exerciseIds.length && !materialIds.length || unit && canReadLearningScope(unit.scope, accessOsId), 'unit', 'Select the unit available to this request');
-                    for (const id of exerciseIds) { exposeLearningContent(profile!, 'hints', id, unit); }
-                    for (const id of materialIds) { exposeLearningContent(profile!, 'transcripts', id, unit); }
-                    const changed = JSON.stringify(next) !== JSON.stringify(staged);
-                    staged = next;
-                    help = { exerciseIds: [...new Set([...(help?.exerciseIds ?? []), ...exerciseIds])],
-                        materialIds: [...new Set([...(help?.materialIds ?? []), ...materialIds])] };
-                    applied.add(name);
-                    return { ok: true, changed, ids: [...exerciseIds, ...materialIds], errors: [] };
                 }
                 if (name === 'LearningRead') {
                     const audience = learningReadAudience(action);
@@ -268,7 +195,7 @@ export function createLearningSession(repository: LearningRepository, options: {
                         'newLesson', 'Finish and save the current lesson before beginning another, or use LearningPresent with kind:replacement to ask the learner to confirm putting it aside');
                         requireLearning(startNew || !profile.unit || canReadLearningScope(profile.unit.scope, accessOsId),
                             'unit', 'This lesson belongs to another story. LearningPresent with kind:replacement asks the learner to confirm starting another');
-                        const confirmed = saveExpected?.data.profiles.find(entry => entry.language === canonicalLanguage);
+                        const confirmed = expected?.data.profiles.find(entry => entry.language === canonicalLanguage);
                         const current = startNew ? null : profile.unit;
                         requireLearning(!current || current.scope.kind === inputScope.kind, 'unit',
                             'This shared lesson cannot acquire private story details. Ask the learner to start a new lesson in this classroom');
@@ -338,14 +265,11 @@ export function createLearningSession(repository: LearningRepository, options: {
                 }
                 const changed = JSON.stringify(next) !== JSON.stringify(staged);
                 staged = next;
-                if (name === 'LearningLessonEdit' && changed) { help = null; }
                 presentation = nextPresentation;
                 applied.add(name);
                 return { ok: true, changed, ids, errors: [] };
             } catch (error) {
                 if (!(error instanceof LearningValidationError)) { invalid = true; throw error; }
-                // An unsuccessful replacement declaration cannot leave an older scope authorizing new text.
-                if (name === 'LearningHelp') { help = null; }
                 const issue = { path: error.path, message: error.message };
                 return { ok: false, changed: false, ids: [], errors: [issue] };
             }
@@ -353,19 +277,15 @@ export function createLearningSession(repository: LearningRepository, options: {
         async commit(guard: () => boolean) {
             active();
             sealed = true;
-            // Conversation help has already passed its own save boundary. Replaying its old snapshot here
-            // would race the workbench and could overwrite an assessment that finished while we were chatting.
+            // Read-only conversation never commits a stale copy of learning facts.
             if (isLearningConversation(action)) {
-                const snapshot = repository.snapshot();
-                if (!guard()) { return { status: 'cancelled' as const }; }
-                if (snapshot.status !== 'ready') { return { status: snapshot.status === 'unconfirmed' ? 'unconfirmed' as const : 'conflict' as const }; }
-                return { status: 'unchanged' as const, document: snapshot.document ?? null };
+                return { status: guard() ? 'unchanged' as const : 'cancelled' as const, document: repository.snapshot().document ?? null };
             }
             if (action.kind === 'reading-notes' || action.kind === 'reading-essay') {
                 const unit = staged.profiles.find(entry => entry.language === canonicalLanguage)!.unit!;
                 return repository.supplement(canonicalLanguage, expected!.data.profiles.find(entry => entry.language === canonicalLanguage)!.unit!, unit, () => !invalid && guard());
             }
-            return repository.save(saveExpected, staged, () => !invalid && guard());
+            return repository.save(expected, staged, () => !invalid && guard());
         },
         invalidate() { invalid = true; },
     };

@@ -4,7 +4,7 @@ import { useAppBack } from '../../../shell/app-src/navigation/app-navigation.js'
 import type { LearningClientState } from '../types.js';
 import LearningIcon from './LearningIcon.vue';
 import LearningSettingsCard from './LearningSettingsCard.vue';
-import { LEARNING_FLOW_COPY as copy } from './learning-copy.js';
+import { LEARNING_FLOW_COPY as copy, LEARNING_DIALOGUE_COPY as dialogueCopy } from './learning-copy.js';
 import { useLearningUiSession } from './learning-session.js';
 defineProps<{ state: LearningClientState; disabled: boolean }>();
 const emit = defineEmits<{ action: [name: string, input: Record<string, unknown>] }>();
@@ -37,8 +37,8 @@ useAppBack(() => { if (!step.value) { return false; } void go(step.value - 1); r
                     <button type="submit" :disabled="disabled || !name.trim()">选这位</button>
                 </form>
             </details>
-            <div class="learning-setup-actions"><button type="button" :disabled="disabled" @click="go(0)">上一步</button><button type="button" class="learning-primary" :disabled="disabled || !state.teacher" @click="go(2)">{{ copy.setupContinue }}<LearningIcon name="arrow" /></button></div>
+            <div class="learning-setup-actions"><button type="button" :disabled="disabled" @click="go(0)">上一步</button><button type="button" class="learning-primary" :disabled="disabled" @click="go(2)">{{ state.teacher ? copy.setupContinue : dialogueCopy.skipCompanion }}<LearningIcon name="arrow" /></button></div>
         </template>
-        <LearningSettingsCard v-else onboarding :state="state" :disabled="disabled || !state.teacher" @action="(name, input) => emit('action', name, input ?? {})" />
+        <LearningSettingsCard v-else onboarding :state="state" :disabled="disabled" @action="(name, input) => emit('action', name, input ?? {})" />
     </section>
 </template>

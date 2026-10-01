@@ -61,7 +61,7 @@ test('conversation acknowledgement finds its own turn even when the workbench ap
     const session = createLearningUiSession();
     Object.assign(session.chat, { text: 'An unsent follow-up.', focus: { exerciseId: 'q1' }, scroll: 340, following: false,
         sent: { text: 'Explain this.', user: 'Explain this.\n\nQuoted passage.', after: 0 } });
-    session.reconcile(stateWith(null, [{ purpose: 'explain', user: 'Explain this.\n\nQuoted passage.' }, { purpose: 'prepare', user: 'Prepare.' }]));
+    session.reconcile(stateWith(null, [{ purpose: 'talk', user: 'Explain this.\n\nQuoted passage.' }, { purpose: 'prepare', user: 'Prepare.' }]));
     assert.equal(session.chat.sent, null);
     assert.equal(session.chat.text, 'An unsent follow-up.');
     assert.deepEqual([session.chat.scroll, session.chat.following], [340, false]);

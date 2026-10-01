@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { learningMemory } from './fixtures/learning-memory.js';
 import { createLearningTeaching } from '../apps/learning/application/teaching.js';
 import { runLearningProviderLoop } from '../apps/learning/agent/provider-loop.js';
 import { reportLearningFailure } from '../apps/learning/application/feedback.js';
@@ -21,7 +22,7 @@ async function setup(mode) {
         createId: () => { if (mode === 'save') { throw fault(); } return 'saved-1'; },
     });
     await repository.read();
-    const teaching = createLearningTeaching({ repository, current: () => classroom, onProgress: value => progress.push(value),
+    const teaching = createLearningTeaching({ actor: 'workbench', memory: (() => { const port = learningMemory(); return () => port; })(), repository, current: () => classroom, onProgress: value => progress.push(value),
         capture: async () => { if (mode === 'context') { throw fault(); } return context; },
         gateway: {
             loadConfig: async () => { if (mode === 'config') { throw fault(); } return {}; },
@@ -34,8 +35,7 @@ async function setup(mode) {
                     if (mode === 'unknown') { return { toolCalls: [call('NotProvided')] }; }
                     if (mode === 'limit') { return { toolCalls: Array.from({ length: 17 }, () => call('LearningRead')) }; }
                     if (mode === 'cancel') { teaching.cancel(); throw fault(); }
-                    if (requests === 1) { return { toolCalls: [call('LearningProfileEdit', mode === 'invalid' || mode === 'corrected' ? {} : profile),
-                        call('LearningHelp', { exerciseIds: [], materialIds: [] })] }; }
+                    if (requests === 1) { return { toolCalls: [call('LearningProfileEdit', mode === 'invalid' || mode === 'corrected' ? {} : profile)] }; }
                     if (mode === 'corrected' && requests === 2) { return { toolCalls: [call('LearningProfileEdit', profile)] }; }
                     return { text: '已记住你的目标。' };
                 } };
@@ -47,7 +47,7 @@ async function setup(mode) {
 
 test('profile failures identify their stage, log one bounded diagnostic and never publish incomplete goals', async t => {
     for (const [mode, reason, stage, tool] of [
-        ['context', 'learning_context_failed', 'context'], ['config', 'learning_config_failed', 'config'],
+        ['config', 'learning_config_failed', 'config'],
         ['session', 'learning_session_failed', 'session'], ['provider', 'provider-request', 'provider'],
         ['protocol', 'learning_protocol_failed', 'provider'], ['unknown', 'learning_stalled', 'tools', 'NotProvided'],
         ['limit', 'learning_stalled', 'tools', 'LearningRead'],
@@ -94,7 +94,7 @@ test('corrected proposals and cancellation do not emit terminal failure logs or 
     const h = await setup('corrected');
     assert.equal((await h.teaching.run({ action: { kind: 'profile' }, message: '开始' })).status, 'finished');
     assert.equal(h.repository.snapshot().document.data.profiles[0].goal.description, profile.goal.description);
-    assert.deepEqual(h.progress.map(value => value.stage), ['context', 'config', 'session', 'provider', 'tools', 'tools', 'provider', 'tools', 'provider', 'save']);
+    assert.deepEqual(h.progress.map(value => value.stage), ['context', 'config', 'session', 'provider', 'tools', 'provider', 'tools', 'provider', 'save']);
     const cancelled = await setup('cancel');
     assert.equal((await cancelled.teaching.run({ action: { kind: 'profile' }, message: '开始' })).status, 'cancelled');
     assert.equal(cancelled.counts().writes, 0); assert.equal(logs.mock.calls.length, 0);
@@ -110,7 +110,7 @@ test('classroom publishes failure feedback, retains the diagnostic code and allo
     h.flags.providerFailure = true;
     const failed = await h.command('profile', { message: '高中基础，希望读懂新闻。' });
     assert.equal(failed.busy, false); assert.equal(failed.profile, null);
-    assert.ok(failed.message); assert.equal(logs.mock.calls.length, 1);
+    assert.equal(failed.message, ''); assert.ok(failed.workbenchConversation.turns.at(-1).message); assert.equal(logs.mock.calls.length, 1);
     assert.equal(logs.mock.calls[0].arguments[1].reason, 'provider-auth');
     assert.ok(states.some(state => state.busy));
     assert.equal(states.at(-1).busy, false);
@@ -133,7 +133,7 @@ test('LAN HTTP can save a profile, prepare, answer, keep a note and finish a les
     assert.equal(opened.storage, 'ready');
     assert.ok(opened.profile); assert.ok(opened.unit);
     const unit = h.profile().unit;
-    await h.command('explain', { exerciseId: unit.exercises[0].id, message: '请解释这段话。' });
+    await h.command('talk', { exerciseId: unit.exercises[0].id, message: '请解释这段话。' });
     await h.command('save-note');
     assert.equal(h.profile().unit.notes.length, 1);
     await h.command('submit', { unitId: unit.id, exerciseId: unit.exercises[0].id, answer: { kind: 'choice', ids: ['a'] } });

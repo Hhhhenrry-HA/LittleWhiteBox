@@ -8,13 +8,14 @@ import LearningPlayer from './LearningPlayer.vue';
 import LearningSetup from './LearningSetup.vue';
 import LearningSettingsCard from './LearningSettingsCard.vue';
 import LearningCompanionControl from './LearningCompanionControl.vue';
-import { LEARNING_CONFIRM_COPY, LEARNING_DISCARD_COPY, LEARNING_VOICE_COPY, LEARNING_REQUEST_COPY, LEARNING_TEACHER_STORAGE_COPY as teacherStorageCopy } from './learning-copy.js';
+import { LEARNING_DIALOGUE_COPY as dialogueCopy, LEARNING_CONFIRM_COPY, LEARNING_DISCARD_COPY, LEARNING_VOICE_COPY, LEARNING_REQUEST_COPY, LEARNING_TEACHER_STORAGE_COPY as teacherStorageCopy } from './learning-copy.js';
 import { LEARNING_REWARD_COPY, LEARNING_STORAGE_COPY } from '../application/feedback.js';
 import LearningWorkbench from './LearningWorkbench.vue';
 import type { LearningPresentation, LearningActivityPresentation } from '../application/presentation.js';
 import type { LearningSelection } from '../../../domains/learning/notes.js';
 import LearningIcon from './LearningIcon.vue';
 import LearningProcess from './LearningProcess.vue';
+import { learningTurnNotice } from './learning-notice.js';
 import { isLearningConversation, isLearningPreparation } from '../agent/access.js';
 import LearningConversation from './LearningConversation.vue';
 import { useLearningState } from './use-learning-state.js';
@@ -41,12 +42,15 @@ async function request(name: string, input: Record<string, unknown> = {}, discar
     return sendRequest(name, input);
 }
 type Page = 'home' | 'books' | 'materials' | 'harvest' | 'settings' | 'profile';
-const page = ref<Page>(state.value.teacher ? 'home' : 'profile');
+const page = ref<Page>(state.value.profile ? 'home' : 'profile');
 const trail: Page[] = [];
 const menu = ref<HTMLDetailsElement | null>(null);
 const menuOpen = ref(false);
 useAppBack(() => { if (!menu.value?.open) { return false; } menu.value.open = false; return true; }, () => menuOpen.value);
 const conversation = ref<InstanceType<typeof LearningConversation> | null>(null);
+const assistant = ref<InstanceType<typeof LearningConversation> | null>(null);
+const assistantOpen = ref(false);
+const assistantButton = ref<HTMLButtonElement | null>(null);
 const activity = ref<LearningActivityPresentation | null>(null);
 const scroller = ref<HTMLElement | null>(null);
 const scrolls: Partial<Record<Page, number>> = {};
@@ -54,7 +58,7 @@ const scrolls: Partial<Record<Page, number>> = {};
 // Workbench on the left, companion on the right. Narrow screens show one pane at a time and slide between them.
 const root = ref<HTMLElement | null>(null);
 const width = ref(0);
-const wide = computed(() => width.value >= 760);
+const wide = computed(() => width.value >= 760 && !!state.value.teacher);
 const view = ref<'work' | 'chat'>('work');
 const workMounted = ref(true);
 const chatMounted = ref(false);
@@ -92,7 +96,7 @@ watch([workVisible, chatVisible, reducedMotion], async ([work, chat, reduced], _
     else { retirement = setTimeout(retire, LEARNING_PANE_TRANSITION_MS); }
 }, { immediate: true });
 function rememberWorkScroll() {
-    if (workVisible.value && scroller.value) { scrolls[page.value] = scroller.value.scrollTop; }
+    if (workVisible.value && scroller.value && !assistantOpen.value) { scrolls[page.value] = scroller.value.scrollTop; }
     void rememberStudy();
 }
 async function rememberStudy(event?: Event) {
@@ -120,14 +124,14 @@ const seenTurns = ref(turnCount.value);
 watch([turnCount, chatVisible], ([count, visible]) => { if (visible || count < seenTurns.value) { seenTurns.value = count; } }, { immediate: true });
 const unread = computed(() => turnCount.value > seenTurns.value);
 const workProcess = computed(() => {
-    const turns = state.value.conversation.turns;
+    const turns = state.value.workbenchConversation.turns;
     let index = turns.length - 1;
     while (index >= 0 && isLearningConversation({ kind: turns[index].purpose ?? 'talk' })) { index--; }
     let running = turns.length - 1;
     while (running >= 0 && (turns[running].status !== 'running' || isLearningConversation({ kind: turns[running].purpose ?? 'talk' }))) { running--; }
     if (running >= 0) { index = running; }
-    return index < 0 ? null : { turn: state.value.conversation.turns[index],
-        key: `${state.value.chatIdentity}:${state.value.language}:${state.value.conversation.removedTurns + index}` };
+    return index < 0 ? null : { turn: state.value.workbenchConversation.turns[index],
+        key: `${state.value.chatIdentity}:${state.value.language}:${state.value.workbenchConversation.removedTurns + index}` };
 });
 async function showChat() {
     if (!state.value.teacher) { return; }
@@ -173,13 +177,13 @@ watch(() => state.value.unit, unit => {
     const target = activity.value;
     if (target && (unit?.id !== target.unitId || !(target.kind === 'exercise' ? unit.exercises : unit.materials).some(entry => entry.id === target.id))) { closeActivity(); }
 });
-watch(() => {
-    const target = state.value.conversation.turns.at(-1)?.presentation;
-    return target ? `${state.value.conversation.turns.length + state.value.conversation.removedTurns}:${target.unitId}:${target.kind}:${target.id}` : '';
+for (const actor of ['conversation', 'workbenchConversation'] as const) { watch(() => {
+    const target = state.value[actor].turns.at(-1)?.presentation;
+    return target ? `${state.value[actor].turns.length + state.value[actor].removedTurns}:${target.unitId}:${target.kind}:${target.id}` : '';
 }, key => {
-    const target = state.value.conversation.turns.at(-1)?.presentation;
+    const target = state.value[actor].turns.at(-1)?.presentation;
     if (key && target) { void present(target, true); }
-});
+}); }
 // A reading-writing piece the companion points at while the learner is elsewhere only lights a dot on the way back.
 const workUnread = ref(false);
 watch([workVisible, page], ([visible, current]) => { if (visible && current === 'home') { workUnread.value = false; } });
@@ -210,11 +214,26 @@ async function present(target: LearningPresentation, automatic = false) {
     activity.value = target;
 }
 function closeActivity() { activity.value = null; void request('stop'); }
+async function openAssistant(exerciseId?: string, unitId?: string) {
+    if (!assistantOpen.value) { rememberWorkScroll(); }
+    assistantOpen.value = true;
+    await showWork(); await nextTick();
+    if (exerciseId) { await assistant.value?.ask(exerciseId, undefined, unitId); }
+    else { assistant.value?.focusHeading(); }
+}
+async function closeAssistant() {
+    assistantOpen.value = false;
+    await nextTick();
+    if (scroller.value) { scroller.value.scrollTop = scrolls[page.value] ?? 0; }
+    assistantButton.value?.focus({ preventScroll: true });
+}
 async function askTeacher(exerciseId?: string, selection?: LearningSelection, unitId?: string) {
+    if (!state.value.teacher) { await openAssistant(exerciseId, unitId); if (selection) { await assistant.value?.ask(exerciseId, selection, unitId); } return; }
     closeActivity(); rememberWorkScroll(); view.value = 'chat'; chatMounted.value = true;
     await nextTick(); await conversation.value?.ask(exerciseId, selection, unitId);
 }
 async function go(next: Page, returning = false) {
+    assistantOpen.value = false;
     if (next !== page.value && !returning) {
         if (next === 'home') { trail.length = 0; }
         else {
@@ -244,7 +263,7 @@ async function openReview() {
 /** Navigation follows an explicit workbench action, never an unsolicited model update. */
 async function workAction(name: string, input: Record<string, unknown> = {}, discardConfirmed = false) {
     if (name === 'prepare' && !state.value.profile) {
-        uiSession.setup.step = state.value.teacher ? 2 : 0;
+        uiSession.setup.step = 2;
         await go('profile'); return;
     }
     if (name === 'start-review') { await openReview(); }
@@ -272,6 +291,7 @@ watch(() => state.value.busy, busy => {
 });
 const back = useAppBack(() => {
     if (menu.value?.open) { menu.value.open = false; return true; }
+    if (assistantOpen.value && workVisible.value) { void closeAssistant(); return true; }
     if (!wide.value && view.value === 'chat') { showWork(); return true; }
     if (page.value === 'home' || !trail.length && page.value === 'profile' && !state.value.teacher) { return false; }
     void go(trail.pop() ?? 'home', true); return true;
@@ -286,7 +306,7 @@ async function openRecord(id: string) {
 const { bubble, dismiss: dismissBubble } = useLearningCompanion({ root, state, pending, preference: uiSession.companion,
     reading: computed(() => workVisible.value && page.value === 'home' && state.value.unit?.kind === 'reading-writing'
         && ['writing', 'grading', 'complete'].includes(state.value.unit.stage.stage)),
-    blocked: computed(() => !!activity.value || !!confirm.value || menuOpen.value), request });
+    blocked: computed(() => assistantOpen.value || !!activity.value || !!confirm.value || menuOpen.value), request });
 async function exportData() {
     const result = await request('export');
     if (!result?.document) { return; }
@@ -302,6 +322,7 @@ async function exportData() {
             <button v-if="page !== 'home' && (state.teacher || trail.length) && (wide || view === 'work')" type="button" class="learning-toolbar-back" aria-label="返回上一页" @click="back"><LearningIcon name="back" /></button>
             <button type="button" class="learning-wordmark" @click="go('home')"><span class="learning-brand-mark" aria-hidden="true">a<span>あ</span></span>语伴<span v-if="workUnread && (wide || view === 'work')" class="learning-unread-dot" aria-hidden="true" /></button>
             <label v-if="wide && state.teacher" class="learning-layout-control"><LearningIcon name="workbook" /><input v-model.number="workShare" type="range" :min="shareMin" :max="shareMax" step="1" aria-label="阅读区宽度比例"><LearningIcon name="chat" /></label>
+            <button ref="assistantButton" type="button" class="learning-assistant-button" :aria-label="dialogueCopy.assistant" :aria-expanded="assistantOpen" @click="assistantOpen ? closeAssistant() : openAssistant()"><LearningIcon name="chat" /><span>{{ dialogueCopy.assistant }}</span></button>
             <details ref="menu" class="learning-menu" @toggle="menuOpen = !!menu?.open" @keydown.esc.stop.prevent="menu!.open = false"><summary aria-label="学习资料与设置"><LearningIcon name="more" /></summary><nav aria-label="学习资料与设置"><button v-for="[id, label] in ([['books', '语法本与生词本'], ['materials', '课件与笔记'], ['harvest', '我的收获'], ['settings', '设置']] as const)" :key="id" type="button" @click="go(id)">{{ label }}</button></nav></details>
         </header>
         <div v-if="localMessage || !state.busy && (state.message || state.storage !== 'ready')" class="learning-notice" role="status" aria-live="polite">
@@ -320,15 +341,22 @@ async function exportData() {
                 <button v-if="state.chatStorage !== 'failed'" type="button" :disabled="!canRequest('adopt-teacher')" @click="askConfirm('adopt-teacher', {}, teacherStorageCopy.adoptWarning)">{{ teacherStorageCopy.adopt }}</button>
             </div>
         </div>
+        <div v-if="['unconfirmed', 'conflict', 'failed'].includes(state.workbenchStorage)" class="learning-notice" role="status">
+            {{ dialogueCopy.assistantStorage }}
+            <button type="button" :disabled="pending" @click="request('verify-workbench')">{{ dialogueCopy.verify }}</button>
+            <button v-if="state.workbenchStorage === 'conflict'" type="button" :disabled="pending" @click="askConfirm('adopt-workbench', {}, dialogueCopy.adoptConfirm)">{{ dialogueCopy.adopt }}</button>
+        </div>
         <div class="learning-stage" :class="{ 'is-wide': wide, 'is-chat': !wide && view === 'chat' }">
             <div class="learning-pane is-work" :inert="!workVisible" :aria-hidden="!workVisible">
-                <div ref="scroller" class="learning-scroll" @scroll.passive="rememberWorkScroll" @click="rememberStudy" @focusin="rememberStudy">
-                    <template v-if="workMounted">
+                <LearningConversation v-if="workMounted && assistantOpen" ref="assistant" target="workbench" :state="state" :disabled="!canRequest('workbench-talk')" :pending="pending" @action="request" @present="present" @close="closeAssistant" />
+                <div v-show="!assistantOpen" ref="scroller" class="learning-scroll" @scroll.passive="rememberWorkScroll" @click="rememberStudy" @focusin="rememberStudy">
+                    <template v-if="workMounted && !assistantOpen">
                         <LearningProcess v-if="workProcess" :key="workProcess.key" :turn="workProcess.turn" stoppable :disabled="pending" @stop="request(isLearningPreparation({ kind: workProcess.turn.purpose ?? 'talk' }) ? 'cancel-preparation' : 'cancel')" />
+                        <p v-if="workProcess && !isLearningPreparation({ kind: workProcess.turn.purpose ?? 'talk' }) && learningTurnNotice(workProcess.turn, state.workbenchStorage, state.storage)" class="learning-turn-notice" :class="{ 'is-error': workProcess.turn.status === 'failed' }" role="status">{{ learningTurnNotice(workProcess.turn, state.workbenchStorage, state.storage) }}</p>
                         <div v-if="state.busy && workProcess?.turn.status !== 'running'" class="learning-working" role="status"><span class="learning-working-dot" aria-hidden="true" /><span>{{ state.message || copy.working }}</span><button type="button" :disabled="pending" @click="request('cancel')">停止</button></div>
                         <LearningWorkbench
                             v-if="page === 'home'" :state="state" :disabled="!writable" :pending="pending"
-                            @action="workAction" @confirm="askConfirm" @present="present" @go="go" @ask="askTeacher" @record="openRecord"
+                            @action="workAction" @confirm="askConfirm" @present="present" @go="go" @ask="askTeacher" @assistant="openAssistant" @record="openRecord"
                         />
                         <LearningSetup v-if="page === 'profile'" :state="state" :disabled="!canRequest('language')" @action="request" />
                         <section v-if="page === 'materials'" class="learning-materials-page"><h1>课件与笔记</h1><p v-if="!state.unit" class="learning-empty-note">{{ state.blockedUnit ? '当前课件在另一个故事中' : '还没有课件' }}</p><template v-if="state.unit"><p class="learning-materials-title">{{ state.unit.title }}</p><button v-for="material in state.unit.materials" :key="material.id" type="button" class="learning-activity-link" @click="present({ unitId: state.unit.id, kind: 'material', id: material.id, title: material.title })"><LearningIcon name="book" /><span>{{ material.title }}</span><LearningIcon name="arrow" /></button><button v-for="exercise in state.unit.exercises" :key="exercise.id" type="button" class="learning-activity-link" @click="present({ unitId: state.unit.id, kind: 'exercise', id: exercise.id, title: exercise.prompt })"><LearningIcon name="records" /><span>{{ exercise.prompt }}</span><LearningIcon name="arrow" /></button><section v-if="state.unit.notes.length" class="learning-notes"><article v-for="note in state.unit.notes" :key="note.id"><blockquote v-if="note.selection">{{ note.selection.quote }}</blockquote><p>{{ note.text }}</p><button type="button" :disabled="!writable" @click="request('delete-note', { id: note.id })">删除笔记</button></article></section></template></section>
@@ -367,7 +395,8 @@ async function exportData() {
                             </section>
                             <section>
                                 <h2>学习数据</h2>
-                                <button type="button" :disabled="!canRequest('forget-conversation')" @click="askConfirm('forget-conversation', {}, '清空和当前语伴的对话？目标、课件、学习记录和奖励都会保留。')">清空对话记录</button>
+                                <button type="button" :disabled="!canRequest('forget-conversation')" @click="askConfirm('forget-conversation', { target: 'companion' }, dialogueCopy.clearCompanionConfirm)">{{ dialogueCopy.clearCompanion }}</button>
+                                <button type="button" :disabled="!canRequest('forget-conversation')" @click="askConfirm('forget-conversation', { target: 'workbench' }, dialogueCopy.clearAssistantConfirm)">{{ dialogueCopy.clearAssistant }}</button>
                                 <button type="button" :disabled="!canRequest('export')" @click="exportData">导出学习数据</button><button type="button" :disabled="!canRequest('read')" @click="request('read')">重新加载</button>
                                 <button v-if="state.unit || state.blockedUnit" type="button" :disabled="!canRequest('abandon')" @click="askConfirm('abandon', {}, LEARNING_DISCARD_COPY.lesson)">放下当前练习</button>
                                 <button type="button" class="learning-danger" :disabled="!canRequest('delete-language') || !state.profile" @click="askConfirm('delete-language', {}, '删除当前语言的全部学习数据？未领取奖励也将放弃，已到账流水保留。')">删除当前语言</button>
@@ -378,7 +407,7 @@ async function exportData() {
                 </div>
             </div>
             <div v-if="state.teacher" class="learning-pane is-chat" :inert="!chatVisible" :aria-hidden="!chatVisible">
-                <LearningConversation v-if="chatMounted" ref="conversation" :state="state" :disabled="!canChat" :pending="pending" @action="request" @present="present" @profile="openProfile" />
+                <LearningConversation v-if="chatMounted" ref="conversation" target="companion" :state="state" :disabled="!canChat" :pending="pending" @action="request" @present="present" @profile="openProfile" />
             </div>
             <button v-if="!wide && view === 'work' && state.teacher" type="button" class="learning-float is-companion" :aria-label="unread ? `和${state.teacher.name}聊天，有新消息` : `和${state.teacher.name}聊天`" @click="showChat">
                 <span class="learning-person-initial">{{ [...state.teacher.name][0] }}</span><span v-if="unread" class="learning-unread-dot" aria-hidden="true" />

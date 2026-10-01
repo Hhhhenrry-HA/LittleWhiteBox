@@ -28,7 +28,8 @@ export async function runLearningProviderLoop(options: {
     onProgress?: (progress: LearningProgress) => void;
     transcript?: LearningMessage[];
     onResponseStart?: (message: LearningMessage) => void;
-    onResponseComplete?: (message: LearningMessage) => boolean;
+    onResponseComplete?: (message: LearningMessage) => void;
+    summaryPrompt: string;
     onMessages?: () => void;
     allowSilence?: boolean;
     /** A bounded preparation task ends on its accepted content, without a closing model round. */
@@ -82,7 +83,7 @@ export async function runLearningProviderLoop(options: {
         // Prefer keeping recent exchanges verbatim, but a short oldest exchange alone may not shrink.
         for (let count = Math.max(1, history.length - LEARNING_PRESERVED_TURNS); count <= history.length; count++) {
             const next = await summariseLearningHistory({ summary, turns: history.slice(0, count),
-                openSession: options.reopen!, signal, guard: () => !cancelled() });
+                systemPrompt: options.summaryPrompt, openSession: options.reopen!, signal, guard: () => !cancelled() });
             if (cancelled()) { return false; }
             // Compare complete teacher requests, preserving the real latest-user/tool replay boundary.
             if (contextTokens(replay(next, history.slice(count))) >= contextTokens()) { continue; }
@@ -170,7 +171,7 @@ export async function runLearningProviderLoop(options: {
                         continue;
                     }
                     if (!text) { return failure('learning_empty_response'); }
-                    if (options.onResponseComplete?.(assistant!) === false) { return failure('learning_help_undeclared'); }
+                    options.onResponseComplete?.(assistant!);
                     stream.scheduleStreamRender();
                     return { status: 'finished', messages: protocolMessages(), removedTurns };
                 }

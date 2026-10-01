@@ -9,7 +9,7 @@ import { createLearningService } from '../apps/learning/application/service.js';
 const call = (name, args) => ({ id: name, name, arguments: JSON.stringify(args) });
 const input = request => JSON.parse(request.messages.findLast(entry => entry.role === 'user' && entry.content.includes('<learning_request>'))
     .content.split('<learning_request>\n')[1].split('\n</learning_request>')[0]);
-const send = (h, action, extra = {}) => h.bridge.request(`learning/${action}`, { chatIdentity: h.state().chatIdentity, ...extra });
+const send = (h, action, extra = {}) => h.bridge.request(`learning/${action}`, { chatIdentity: h.state().chatIdentity, target: 'companion', ...extra });
 async function until(check) {
     const deadline = Date.now() + 3000;
     while (!check()) {
@@ -36,7 +36,7 @@ function teacher(h, intercept = async () => null) {
         case 'reading-notes': return { toolCalls: [call('LearningReadingNotes', { explanations: data.action.paragraphIds.map(paragraphId => ({
             paragraphId, explanation: '用主题句组织段落，注意连接词。', terms: [] })) })] };
         case 'reading-essay': return { toolCalls: [call('LearningEssayTask', { prompt: 'Should cities plant more trees? Write about 300 words.' })] };
-        default: return round === 1 ? { toolCalls: [call('LearningHelp', { exerciseIds: [], materialIds: [] })] } : { text: '我在，继续说。' };
+        default: return { text: '我在，继续说。' };
         }
     };
     return requests;
@@ -195,8 +195,7 @@ test('an explicit chat submission uses the same available answer path while supp
     teacher(h, async (data, request) => {
         if (data.action.kind === 'reading-notes') { await held; }
         if (data.action.kind === 'talk' && !request.messages.some(message => message.role === 'tool')) {
-            return { toolCalls: [call('LearningRequest', { action: 'submit', instruction: answer, exerciseId: data.training.exercises[0].id }),
-                call('LearningHelp', { exerciseIds: [], materialIds: [] })] };
+            return { toolCalls: [call('LearningRequest', { action: 'submit', instruction: answer, exerciseId: data.training.exercises[0].id })] };
         }
     });
     try {

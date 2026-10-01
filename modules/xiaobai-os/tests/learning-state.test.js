@@ -48,7 +48,7 @@ test('learning requests snapshot nested reactive quotes, settings and answer col
     session.unit('lesson').selection = selection;
     session.chat.focus = { exerciseId: 'q1', selection: session.unit('lesson').selection };
     // Same shallow spread as the quote composer. Its nested selection is still a Proxy.
-    await ui.request('explain', { message: '为什么？', ...session.chat.focus });
+    await ui.request('talk', { message: '为什么？', ...session.chat.focus });
     await ui.request('say', { selection: session.unit('lesson').selection });
     const value = reactive({ exam: null, level: 'B1', targetLevel: 'B2', explanationLanguage: 'zh-CN', interests: null });
     await ui.request('settings', { value });
@@ -60,7 +60,7 @@ test('learning requests snapshot nested reactive quotes, settings and answer col
     await ui.request('submit-revision', { unitId: 'lesson', revisions });
     assert.equal(ui.localIssue.value, null);
     assert.deepEqual(delivered, [
-        { type: 'learning/explain', payload: { chatIdentity: 'a', message: '为什么？', exerciseId: 'q1', selection } },
+        { type: 'learning/talk', payload: { chatIdentity: 'a', message: '为什么？', exerciseId: 'q1', selection } },
         { type: 'learning/say', payload: { chatIdentity: 'a', selection } },
         { type: 'learning/settings', payload: { chatIdentity: 'a', value: { ...value } } },
         { type: 'learning/submit', payload: { chatIdentity: 'a', unitId: 'lesson', exerciseId: 'q1', answer: { kind: 'choice', ids: ['a', 'b'] } } },
@@ -87,7 +87,7 @@ for (const [error, issue, needsRefresh] of [
             subscribe: listener => { publish = listener; return () => {}; },
             request: async () => { calls++; throw error; },
         });
-        await ui.request('explain', { message: 'Why?' });
+        await ui.request('talk', { message: 'Why?' });
         assert.equal(ui.localIssue.value, issue);
         assert.equal(ui.needsRefresh.value, needsRefresh);
         assert.equal(ui.pending.value, false);
@@ -104,7 +104,7 @@ test('context controls and Host dispatch agree while a conversation is running',
     await h.command('teacher', { teacher: { name: '林老师', note: '' } });
     const ui = mountState(t, h.state(), h.bridge);
     h.flags.providerGate = new Promise(resolve => { release = resolve; });
-    await ui.request('talk', { message: 'Explain this slowly.' });
+    await ui.request('talk', { target: 'companion', message: 'Explain this slowly.' });
     assert.equal(ui.state.value.chatBusy, true);
     for (const [action, extra] of [['language', { language: 'ja' }], ['teacher', { teacher: { name: 'A new companion', note: '' } }], ['forget-conversation', {}]]) {
         assert.equal(ui.canRequest(action), false);
@@ -114,7 +114,7 @@ test('context controls and Host dispatch agree while a conversation is running',
         assert.equal(response.result.state.teacher.name, '林老师');
         assert.equal(response.result.state.chatBusy, true);
     }
-    await ui.request('cancel-chat');
+    await ui.request('cancel-chat', { target: 'companion' });
     assert.equal(ui.canRequest('language'), true);
     await ui.request('language', { language: 'ja' });
     assert.equal(ui.state.value.language, 'ja');

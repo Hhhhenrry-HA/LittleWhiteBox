@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { learningMemory } from './fixtures/learning-memory.js';
 import { createLearningTeaching } from '../apps/learning/application/teaching.js';
 import { createLearningService } from '../apps/learning/application/service.js';
 import { createLearningPractice } from '../apps/learning/application/practice.js';
@@ -12,7 +13,6 @@ import { createLearningSourceRegistry } from '../apps/learning/materials/lesson-
 import { createLearningResearch } from '../apps/learning/materials/research.js';
 import { runLearningProviderLoop } from '../apps/learning/agent/provider-loop.js';
 import { safePromptJson } from '../capabilities/maintenance/prompt-safety.js';
-import { declaredTeacher } from './fixtures/learning-reply.js';
 
 const prices = { short: 17, regular: 29, deep: 41 }; // Protocol fixture, not a pricing decision.
 const action = { kind: 'prepare', replaceCurrent: false, prices };
@@ -50,10 +50,10 @@ async function harness(handler, { session = false, search = false, beforeWrite }
     const profile = createLearningSession(repository, { language: 'en', osId: 'story-a', inputScope: { kind: 'public' }, action: { kind: 'profile' }, createId, now });
     assert.equal(profile.executeTool('LearningProfileEdit', { explanationLanguage: 'zh-CN', selfAssessment: '初学', goal: { description: '阅读和表达' } }).ok, true);
     await profile.commit(() => true);
-    const teaching = createLearningTeaching({ repository, createId, now, current: () => current,
+    const teaching = createLearningTeaching({ actor: 'workbench', memory: (() => { const port = learningMemory(); return () => port; })(), repository, createId, now, current: () => current,
         capture: async () => { captures++; return structuredClone(context); }, gateway: {
             loadConfig: async () => search ? config : {}, openSession: async () => ({ providerConfig: {}, supportsSessionToolLoop: session,
-                run: declaredTeacher(async request => { requests.push(structuredClone({ ...request, signal: undefined, onStreamProgress: undefined })); return handler(request, requests.length); }) }),
+                run: (async request => { requests.push(structuredClone({ ...request, signal: undefined, onStreamProgress: undefined })); return handler(request, requests.length); }) }),
         } });
     const read = () => repository.snapshot().document.data.profiles[0];
     return { repository, teaching, requests, read, now, createId, captures: () => captures,
@@ -96,10 +96,6 @@ for (const responseLost of [false, true]) {
                 const draft = lesson(); draft.exercises[0].skill = 'listening';
                 return { toolCalls: [call('LearningLessonEdit', draft)] };
             }
-            if (round === 2) {
-                const ids = results(request).find(entry => entry.name === 'LearningLessonEdit').response.ids;
-                return { toolCalls: [call('LearningHelp', { exerciseIds: [ids[2]], materialIds: [ids[1]] })] };
-            }
             return { text: secret };
         }, { beforeWrite: async () => { if (block) { started(); await gate; } } });
         if (responseLost) { h.interruptSave(); }
@@ -113,14 +109,14 @@ for (const responseLost of [false, true]) {
         assert.equal((await running).status, 'cancelled');
         if (responseLost) { h.confirmSave(); await h.repository.verify(); }
         assert.ok(h.read().unit, 'A write already sent may persist; stopping cannot pretend to roll it back');
-        assert.equal(h.teaching.recoverConfirmed(), null, 'Storage recovery does not authorize stopped reply publication');
+        assert.equal(await h.teaching.recoverConfirmed(), null, 'Storage recovery does not authorize stopped reply publication');
         assert.equal(h.teaching.conversation().turns.at(-1).status, 'cancelled');
         assert.ok(!JSON.stringify(h.teaching.conversation()).includes(secret));
     });
 }
 
 for (const session of [false, true]) {
-    test(`one character teacher searches, extracts and saves the actual article (${session ? 'session' : 'ordinary'} continuation)`, async t => {
+    test(`the independent workbench searches, extracts and saves the actual article (${session ? 'session' : 'ordinary'} continuation)`, async t => {
         const http = [];
         t.mock.method(globalThis, 'fetch', async (url, options) => {
             http.push({ url, body: JSON.parse(options.body) });
@@ -130,7 +126,7 @@ for (const session of [false, true]) {
         const h = await harness((request, round) => {
             if (round === 1) {
                 const data = request.messages.map(message => message.content).join('\n');
-                assert.ok(data.includes('林老师') && data.includes('你们一起走过溪谷'));
+                assert.ok(!data.includes('林老师') && !data.includes('你们一起走过溪谷'));
                 assert.ok(request.tools.some(tool => tool.function.name === 'LearningSearch'));
                 return { toolCalls: [call('LearningSearch', { query: 'BBC urban trees beginner reading', maxResults: 2 })] };
             }
@@ -150,10 +146,10 @@ for (const session of [false, true]) {
         assert.equal(h.requests.length, 0);
         const result = await h.teaching.run({ action, message: '找篇适合我的 BBC 短文。' });
         assert.equal(result.status, 'finished', JSON.stringify(result));
-        assert.deepEqual(result.appliedTools, ['LearningLessonEdit', 'LearningHelp']);
+        assert.deepEqual(result.appliedTools, ['LearningLessonEdit']);
         assert.deepEqual(http.map(request => request.url), ['https://tavily.example.com/search', 'https://tavily.example.com/extract']);
         assert.equal(http[0].body.query, 'BBC urban trees beginner reading');
-        assert.equal(h.captures(), 1);
+        assert.equal(h.captures(), 0);
         assert.equal(h.read().unit.materials[0].paragraphs[0].text, 'Trees cool streets.');
         assert.equal(h.read().unit.materials[0].provenance.kind, 'original');
         assert.equal((await h.reopen()).document.data.profiles[0].unit.id, h.read().unit.id);
@@ -194,9 +190,9 @@ for (const outcome of ['confirmed', 'unconfirmed', 'failed', 'cancelled']) {
                 h.confirmSave(); await h.repository.verify();
                 assert.ok(h.read().unit);
                 const calls = h.requests.length;
-                assert.equal(h.teaching.recoverConfirmed().result.text, '试试用自己的话表达。');
+                assert.equal((await h.teaching.recoverConfirmed()).result.text, '试试用自己的话表达。');
                 assert.equal(h.teaching.conversation().turns.at(-1).presentation.id, h.read().unit.exercises[0].id);
-                assert.equal(h.teaching.recoverConfirmed(), null);
+                assert.equal(await h.teaching.recoverConfirmed(), null);
                 assert.equal(h.requests.length, calls);
             }
         }
@@ -267,7 +263,7 @@ test('unknown save outcome retains the teacher reply and recovery only reads the
     h.interruptSave();
     assert.deepEqual(await h.teaching.run({ action, message: '开始' }), { status: 'unconfirmed' });
     assert.equal(h.read().unit, null);
-    assert.equal(h.teaching.conversation().turns.at(-1).teacher, '新课程。');
+    assert.equal(h.teaching.conversation().turns.at(-1).teacher, '');
     assert.equal(h.teaching.conversation().turns.at(-1).status, 'unconfirmed');
     const calls = h.requests.length;
     assert.equal((await h.teaching.run({ action, message: '重试' })).status, 'unconfirmed');
@@ -355,29 +351,29 @@ test('article paging is cached, bounded, keeps real text and consumes no extra r
     assert.equal((await second.executeTool('LearningExtract', { candidateIds: [id] })).ok, false);
 });
 
-test('cross-card teaching drops prior conversation and private lesson, but keeps the user goal', async () => {
+test('workbench teaching retains public coursework and its own dialogue across cards', async () => {
     let phase = 'lesson';
     let step = 0;
     const h = await harness(request => {
         if (phase === 'lesson') { return ++step === 1 ? { toolCalls: [call('LearningLessonEdit', lesson())] } : { text: 'PRIVATE_CLASSROOM_REPLY' }; }
         const data = request.messages.map(message => message.content).join('\n');
-        assert.ok(!data.includes('PRIVATE_CLASSROOM_REPLY'));
-        assert.ok(!data.includes('Trees cool streets.'));
+        assert.ok(data.includes('PRIVATE_CLASSROOM_REPLY'));
+        assert.ok(data.includes('Trees cool streets.'));
         assert.ok(data.includes('阅读和表达'));
         return { text: '在这里可以开始新的练习。' };
     });
     await h.teaching.run({ action, message: '开始' });
-    phase = 'explain';
+    phase = 'talk';
     h.setCurrent({ ...classroom, osId: 'story-b', chatIdentity: 'chat-b' });
-    assert.equal((await h.teaching.run({ action: { kind: 'explain' }, message: '我的目标是什么？' })).status, 'finished');
-    assert.equal(h.read().unit.scope.osId, 'story-a');
+    assert.equal((await h.teaching.run({ action: { kind: 'talk' }, message: '我的目标是什么？' })).status, 'finished');
+    assert.deepEqual(h.read().unit.scope, { kind: 'public' });
 });
 
 test('current focus is complete and every background character remains accessible through the indexed reader', async () => {
     const h = await harness((_request, step) => step === 1 ? { toolCalls: [call('LearningLessonEdit', lesson())] } : { text: '开始' });
     await h.teaching.run({ action, message: '开始' });
     const data = h.repository.snapshot().document.data;
-    const { messages } = buildLearningContext({ data, ...classroom, context, action: { kind: 'explain' }, message: '请解释', exerciseId: h.read().unit.exercises[0].id });
+    const { messages } = buildLearningContext({ data, ...classroom, context, action: { kind: 'talk' }, message: '请解释', exerciseId: h.read().unit.exercises[0].id });
     assert.ok(messages[0].content.includes('Summarise the main point.'));
     const long = '<&树'.repeat(20000);
     const source = createLearningBackground({ ...context, snapshot: { ...context.snapshot, storyEvents: long } });
@@ -452,7 +448,7 @@ test('fixed-key submissions save before the teacher continues; continuation can 
     assert.equal(h.read().completions.length, 1);
 });
 
-test('a displayed explanation records assistance before later practice, without rewriting earlier attempts', async () => {
+test('ordinary discussion does not invent hint exposure or change answer conditions', async () => {
     let step = 0;
     const h = await harness(() => ++step === 1 ? { toolCalls: [call('LearningLessonEdit', lesson())] } : { text: 'Think about what trees do to the temperature.' });
     await h.teaching.run({ action, message: '开始' });
@@ -461,10 +457,10 @@ test('a displayed explanation records assistance before later practice, without 
         answer: { kind: 'text', text: 'Trees help.' }, scope: { kind: 'story', osId: 'story-a' }, replays: 0, slowPlayback: false };
     const service = createLearningService(h.repository, h);
     await service.prepareAttempt(input).save(() => true);
-    assert.equal((await h.teaching.run({ action: { kind: 'explain' }, exerciseId: input.exerciseId, message: '给一点提示。' })).status, 'finished');
+    assert.equal((await h.teaching.run({ action: { kind: 'talk' }, exerciseId: input.exerciseId, message: '给一点提示。' })).status, 'finished');
     await service.prepareAttempt(input).save(() => true);
     assert.equal(h.read().unit.attempts[0].help.hint, false);
-    assert.equal(h.read().unit.attempts[1].help.hint, true);
+    assert.equal(h.read().unit.attempts[1].help.hint, false);
 });
 
 test('research failures do not leak transport errors, impose a two-query quota or silently retry', async t => {

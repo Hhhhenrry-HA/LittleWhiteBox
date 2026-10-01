@@ -19,7 +19,7 @@ export function useLearningState(props: XiaobaiOsAppProps) {
     const canChat = computed(() => canRequest('talk'));
     async function request(action: string, extra: Record<string, unknown> = {}) {
         if (pending.value) { return; }
-        if (learningActionBusy(action, state.value)) { localIssue.value = 'busy'; return; }
+        if (learningActionBusy(action === 'talk' && extra.target === 'workbench' ? 'workbench-talk' : action, state.value)) { localIssue.value = 'busy'; return; }
         pending.value = true; localIssue.value = null;
         const identity = state.value.chatIdentity;
         const version = pushed;

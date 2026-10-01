@@ -1,6 +1,13 @@
+import { learningReferencedIds, learningReferenceScopes } from './conversation-references.js';
 import type { XiaobaiOsAgentGateway } from '../../../capabilities/agent/gateway.js';
 import type { LearningSelection } from '../../../domains/learning/notes.js';
 import { classifyProviderFailure } from '../../../capabilities/agent/provider-failure.js';
+import { requireLearning } from '../../../domains/learning/validation.js';
+import type { LearningActor, LearningConversationMemory } from '../domain/conversation.js';
+import type { LearningConversationPort } from './conversation-storage.js';
+import { learningHistoryPrompt } from '../agent/history-prompt.js';
+import { createLearningId } from './identity.js';
+import { LEARNING_CONVERSATION_COPY as copy } from './conversation-copy.js';
 import { learningText, LearningValidationError, type LearningTeacherPreference } from '../../../domains/learning/profile.js';
 import { buildLearningContext, type LearningDialogue, type LearningTeacherContext } from '../agent/context.js';
 import { createLearningBackground, learningBackgroundTool } from '../agent/background.js';
@@ -19,25 +26,28 @@ import { confirmedLearning, type LearningRepository } from './service.js';
 import { reportLearningFailure, type LearningFailureDetails, type LearningProgress } from './feedback.js';
 import { learningMessageView, type LearningDialogueView } from './message-view.js';
 import { createLearningPublication } from './publication.js';
-import { isLearningConversation } from '../agent/access.js';
+import { isLearningConversation, learningAccessOsId, learningReadUnit } from '../agent/access.js';
 import type { LearningDelegation } from './delegation.js';
 import { learningPreparationTool } from '../agent/preparation-tools.js';
 
 export interface LearningClassroom {
     language: string; osId: string; chatIdentity: string;
-    teacher: NonNullable<LearningTeacherPreference['teacher']>;
+    teacher: LearningTeacherPreference['teacher'];
+    sessionId?: string;
 }
 export type LearningTeachingResult =
     | { status: 'finished'; text: string; changed: boolean; appliedTools: string[]; delegation?: LearningDelegation }
     | { status: 'unconfirmed' | 'conflict' | 'cancelled' | 'busy' }
-    | { status: 'failed'; reason: string; message: string };
+    | { status: 'failed'; reason: string; message: string; displayed: boolean };
 interface TeachingRequest {
     action: LearningAction; message: string; exerciseId?: string; displayMessage?: string; selection?: LearningSelection | null;
 }
 
-/** One workbench run and one conversation may coexist; their public history has one owner. */
+/** One persona owns its history. Workbench requests and private companionship use separate instances. */
 export function createLearningTeaching(options: {
     repository: LearningRepository; gateway: XiaobaiOsAgentGateway;
+    actor: LearningActor;
+    memory: () => LearningConversationPort;
     current: () => LearningClassroom | null;
     capture: (name: string, chatIdentity: string) => Promise<LearningTeacherContext>;
     createId?: () => string; now?: () => string;
@@ -53,6 +63,8 @@ export function createLearningTeaching(options: {
     const summaryReviews = new Map<string, LearningTurn>();
     let removedTurns = 0;
     let historySummary = '';
+    let summaryReferences: string[] = [];
+    let loading: Promise<void> | null = null;
     // Only this exact commit can publish pending text and enable the corresponding activity.
     let awaitingSave: { commitId: string; turn: LearningTurn; presentation: LearningDialogue['presentation']; result: Extract<LearningTeachingResult, { status: 'finished' }>;
         request: TeachingRequest; publication: ReturnType<typeof createLearningPublication> } | null = null;
@@ -61,23 +73,69 @@ export function createLearningTeaching(options: {
     function reset() {
         for (const run of active.values()) { run.controller.abort(); }
         active.clear(); turns = []; dialogueKey = ''; removedTurns = 0; historySummary = ''; awaitingSave = null;
-        summaryReviews.clear();
+        summaryReviews.clear(); summaryReferences = []; loading = null;
         sources = createLearningSourceRegistry(); cache = createLearningResearchCache();
     }
     function settle(turn: LearningTurn, status: LearningDialogue['status'], message = '') {
-        turn.status = status; turn.message = message;
+        turn.status = status; turn.message = message; delete turn.notice;
+    }
+    async function hydrate() {
+        const classroom = options.current();
+        if (!classroom) { reset(); return; }
+        const key = JSON.stringify(classroom);
+        if (key === dialogueKey) { if (loading) { await loading; } return; }
+        reset(); dialogueKey = key;
+        const restore = options.memory().read().then(memory => {
+            if (dialogueKey !== key || JSON.stringify(options.current()) !== key) { return; }
+            historySummary = memory.summary; summaryReferences = memory.summaryReferences; removedTurns = memory.archivedCount;
+            turns = memory.exchanges.flatMap(exchange => {
+                const turn: LearningTurn = { id: exchange.id, user: exchange.user, teacher: exchange.reply,
+                    references: exchange.references, purpose: exchange.replyTo ? 'summary-review' : 'talk', status: 'finished', message: '',
+                    messages: [{ role: 'assistant', content: exchange.reply }] };
+                if (exchange.replyTo) { summaryReviews.set(exchange.replyTo, turn); }
+                return exchange.summarized ? [] : [turn];
+            });
+        });
+        loading = restore;
+        try { await restore; } catch (error) { if (dialogueKey === key) { dialogueKey = ''; } throw error; }
+        finally { if (loading === restore) { loading = null; } }
+    }
+    function refreshReferences() {
+        const snapshot = options.repository.snapshot();
+        if (snapshot.status !== 'ready') { return; }
+        const scopes = learningReferenceScopes(snapshot.document?.data);
+        const valid = (references: string[]) => references.every(id => scopes.has(id));
+        turns = turns.filter(turn => turn.status !== 'finished' || valid(turn.references ?? []));
+        for (const [id, turn] of summaryReviews) { if (!scopes.has(id) || !valid(turn.references ?? [])) { summaryReviews.delete(id); } }
+        if (!valid(summaryReferences)) { historySummary = ''; summaryReferences = []; removedTurns = 0; }
+    }
+    function memory(): LearningConversationMemory {
+        const retained = [...new Set([...turns, ...summaryReviews.values()])];
+        return { summary: historySummary, summaryReferences, archivedCount: removedTurns,
+            exchanges: retained.filter(turn => turn.status === 'finished' && turn.teacher.trim()).map(turn => ({
+                id: turn.id!, user: isLearningConversation({ kind: turn.purpose ?? 'talk' }) ? turn.user : '',
+                reply: turn.teacher, replyTo: [...summaryReviews].find(([, review]) => review === turn)?.[0] ?? null,
+                summarized: !turns.includes(turn), references: turn.references ?? [],
+            })) };
+    }
+    async function persist(guard: () => boolean, turn: LearningTurn) {
+        try {
+            const saved = await options.memory().save(memory(), guard);
+            if (guard() && saved.status !== 'confirmed' && saved.status !== 'unchanged') { turn.message = copy.historySaveFailed; turn.notice = 'history-save'; }
+        } catch { if (guard()) { turn.message = copy.historySaveFailed; turn.notice = 'history-save'; } }
     }
     return {
+        hydrate,
         cancel(lane?: Lane) {
             for (const [key, run] of active) {
                 if (lane && key !== lane) { continue; }
                 run.controller.abort(); active.delete(key);
-                if (run.turn) { settle(run.turn, 'cancelled', '已停止。已展示的内容保留；本次教学草稿未确认保存。'); }
+                if (run.turn) { settle(run.turn, 'cancelled', copy.stopped); }
             }
             options.onConversation?.();
         },
         reset,
-        recoverConfirmed() {
+        async recoverConfirmed() {
             const saved = options.repository.snapshot();
             if (!awaitingSave || saved.status !== 'ready') { return null; }
             const recovered = awaitingSave;
@@ -88,10 +146,22 @@ export function createLearningTeaching(options: {
             recovered.turn.teacher = learningReplyText(recovered.turn.messages);
             recovered.result.text = recovered.turn.teacher;
             settle(recovered.turn, 'finished');
+            const key = dialogueKey;
+            await persist(() => key === dialogueKey && key === JSON.stringify(options.current()), recovered.turn);
             options.onConversation?.();
             return { result: recovered.result, request: recovered.request };
         },
+        async verifyHistory() {
+            const key = dialogueKey;
+            const saved = await options.memory().read();
+            if (key !== dialogueKey || key !== JSON.stringify(options.current())) { return; }
+            for (const turn of turns) {
+                if (saved.exchanges.some(exchange => exchange.id === turn.id && exchange.reply === turn.teacher)
+                    && turn.notice === 'history-save') { turn.message = ''; delete turn.notice; }
+            }
+        },
         conversation(): { turns: LearningDialogueView[]; removedTurns: number; summaryReviews: { attemptId: string; text: string }[] } {
+            refreshReferences();
             const classroom = options.current();
             const attempts = options.repository.snapshot().document?.data.profiles.find(profile => profile.language === classroom?.language)?.unit?.attempts ?? [];
             for (const id of summaryReviews.keys()) { if (!attempts.some(attempt => attempt.id === id)) { summaryReviews.delete(id); } }
@@ -104,6 +174,9 @@ export function createLearningTeaching(options: {
         },
         async run(input: TeachingRequest): Promise<LearningTeachingResult> {
             const conversation = isLearningConversation(input.action);
+            requireLearning(options.actor === 'workbench' || conversation, 'action', 'The companion can request workbench operations, not perform teaching tasks');
+            await hydrate();
+            refreshReferences();
             const preparationTool = learningPreparationTool(input.action);
             const lane = conversation ? 'conversation' : preparationTool ? 'preparation' : 'work';
             if (active.has(lane)) { return { status: 'busy' }; }
@@ -114,7 +187,12 @@ export function createLearningTeaching(options: {
             const controller = new AbortController();
             const running = { controller, turn: null as LearningTurn | null };
             active.set(lane, running);
-            const guard = () => active.get(lane) === running && !controller.signal.aborted && JSON.stringify(options.current()) === key;
+            const materialKey = () => {
+                const profile = options.repository.snapshot().document?.data.profiles.find(profile => profile.language === classroom.language);
+                return JSON.stringify([profile?.unit?.id, profile?.review?.id]);
+            };
+            const materialAtStart = materialKey();
+            const guard = () => (!conversation || materialAtStart === materialKey()) && active.get(lane) === running && !controller.signal.aborted && JSON.stringify(options.current()) === key;
             let draft: ReturnType<typeof createLearningSession> | null = null;
             let publication: ReturnType<typeof createLearningPublication> | null = null;
             let visible: LearningTurn | null = null;
@@ -126,79 +204,80 @@ export function createLearningTeaching(options: {
                 const message = reportLearningFailure(input.action.kind, reason, details);
                 publication?.discard();
                 if (visible) { settle(visible, 'failed', message); }
-                return { status: 'failed', reason, message };
+                return { status: 'failed', reason, message, displayed: !!visible };
             };
             try {
                 advance(progress);
                 const request = structuredClone(input);
                 learningText(request.message, 'message', 4000, request.action.kind === 'companion');
                 const storage = options.repository.snapshot();
-                if (storage.status === 'unconfirmed' || storage.status === 'conflict') { return { status: storage.status }; }
-                if (storage.status === 'unloaded') { return failure('learning_read_failed'); }
-                let baseline = confirmedLearning(options.repository);
-                visible = { user: request.displayMessage ?? request.message, teacher: '', status: 'running', message: '', messages: [], purpose: request.action.kind, progress };
+                if (!conversation && (storage.status === 'unconfirmed' || storage.status === 'conflict')) { return { status: storage.status }; }
+                if (!conversation && storage.status === 'unloaded') { return failure('learning_read_failed'); }
+                let baseline = conversation ? storage.document ?? null : confirmedLearning(options.repository);
+                visible = { id: (options.createId ?? createLearningId)(), references: [], user: request.displayMessage ?? request.message, teacher: '', status: 'running', message: '', messages: [], purpose: request.action.kind, progress };
                 if (request.action.kind === 'summary-review') { summaryReviews.set(request.action.attemptId, visible); }
-                // A companion remark saves nothing and has no help to declare; it is shown as soon as it arrives.
                 const remark = request.action.kind === 'companion';
-                publication = createLearningPublication(visible.messages, { declared: () => remark || !!preparationTool || (draft?.helpDeclared() ?? false),
-                    helpIsPublished: () => remark || !!preparationTool || (draft?.helpIsPublished() ?? false), current: guard });
+                publication = createLearningPublication(visible.messages, { transactional: !conversation && request.action.kind !== 'summary-review', current: guard });
                 controller.signal.addEventListener('abort', publication.discard, { once: true });
                 running.turn = visible;
-                const history = preparationTool ? [] : turns.filter(turn => turn.status !== 'running');
                 let compactedCount = 0;
-                let summaryAtStart = historySummary;
                 turns.push(visible); options.onConversation?.();
-                const context = await options.capture(classroom.teacher.name, classroom.chatIdentity);
+                const context = options.actor === 'companion' ? await options.capture(classroom.teacher!.name, classroom.chatIdentity) : null;
                 if (!guard()) { return { status: 'cancelled' }; }
                 const asOf = options.now?.() ?? new Date().toISOString();
-                const background = createLearningBackground(context);
+                const background = context ? createLearningBackground(context) : null;
                 advance({ stage: 'config' });
                 const config = await options.gateway.loadConfig();
                 if (!guard()) { return { status: 'cancelled' }; }
                 advance({ stage: 'session' });
                 const agent = await options.gateway.openSession(config);
                 if (!guard()) { return { status: 'cancelled' }; }
-                if (conversation) { baseline = confirmedLearning(options.repository); }
+                if (conversation) { baseline = options.repository.snapshot().document ?? null; }
                 if (preparationTool && input.action.kind !== 'reading-article') { baseline = confirmedLearning(options.repository); }
-                if (!sameLearningDocument(baseline, confirmedLearning(options.repository))) {
-                    settle(visible, 'conflict', '学习记录已变化，本次请求未继续。请重新加载后再试。');
+                if (!conversation && !sameLearningDocument(baseline, confirmedLearning(options.repository))) {
+                    settle(visible, 'conflict', copy.changed);
                     return { status: 'conflict' };
                 }
                 const research = createLearningResearch(config, { sources, cache, signal: controller.signal, createId: options.createId, now: options.now });
-                // One story-aware teacher for every action, including web research. Free-form derivatives retain this story scope.
+                const profile = baseline?.data.profiles.find(entry => entry.language === classroom.language);
+                const sourceUnit = profile?.[learningReadUnit(request.action, profile)];
+                const newMaterial = request.action.kind === 'reading-article' || request.action.kind === 'prepare' && (!sourceUnit || request.action.replaceCurrent === true);
+                const inputScope = options.actor === 'companion' ? { kind: 'story' as const, osId: classroom.osId }
+                    : !newMaterial && sourceUnit ? sourceUnit.scope : { kind: 'public' as const };
+                const accessOsId = learningAccessOsId(request.action, inputScope, classroom.osId);
+                const scopes = learningReferenceScopes(baseline?.data);
+                const allowedHistory = (references: string[]) => conversation || references.every(id => {
+                    const scope = scopes.get(id);
+                    return scope?.kind === 'public' || scope?.kind === 'story' && inputScope.kind === 'story' && scope.osId === inputScope.osId;
+                });
+                const history = preparationTool ? [] : turns.filter(turn => turn.status !== 'running' && allowedHistory(turn.references ?? []));
+                let summaryAtStart = allowedHistory(summaryReferences) ? historySummary : '';
+                visible.references = [...new Set([newMaterial ? undefined : sourceUnit?.id, request.exerciseId,
+                    ...('attemptId' in request.action ? [request.action.attemptId] : [])].filter((id): id is string => !!id))];
                 draft = createLearningSession(options.repository, { ...classroom, action: request.action,
-                    inputScope: { kind: 'story', osId: classroom.osId }, sources, learnerMessage: request.message,
+                    inputScope, sources, learnerMessage: request.message,
                     createId: options.createId, now: options.now, asOf, canDelegate: options.canDelegate });
-                const { prefix, messages, turn } = buildLearningContext({ ...classroom, ...request, context, asOf,
+                const { prefix, messages, turn, references, taskReferences } = buildLearningContext({ ...classroom, ...request, osId: accessOsId, actor: options.actor, context, asOf,
                     data: baseline?.data ?? { profiles: [] } });
+                if (conversation) { visible.references = [...new Set([...visible.references!, ...references, ...summaryReferences, ...history.flatMap(turn => turn.references ?? [])])]; }
+                else { visible.references = [...new Set([...visible.references!, ...taskReferences])]; }
                 visible.messages.push(turn);
                 const session = draft;
-                let helpError: unknown;
-                async function saveHelp() {
-                    try {
-                        const helpSave = await session.saveHelp(guard);
-                        if (helpSave.status !== 'confirmed' && helpSave.status !== 'unchanged') { throw new LearningStorageError('learning_resolve_pending_first'); }
-                    } catch (error) { helpError = error; throw error; }
-                }
-                if (request.exerciseId && request.action.kind === 'explain') {
-                    session.markExplained(request.exerciseId);
-                    advance({ stage: 'save' });
-                    await saveHelp();
-                }
-                const outcome = await runLearningProviderLoop({ agent, systemPrompt: buildLearningSystemPrompt(classroom.teacher.name, request.action), prefix, messages,
-                    history, historySummary: summaryAtStart, reopen: () => options.gateway.openSession(config),
+                const outcome = await runLearningProviderLoop({ agent, systemPrompt: buildLearningSystemPrompt(options.actor, classroom.teacher?.name ?? '', request.action), prefix, messages,
+                    summaryPrompt: learningHistoryPrompt(options.actor), history, historySummary: summaryAtStart, reopen: () => options.gateway.openSession(config),
                     onCompact: (count, summary) => {
                         const compacted = history.slice(compactedCount, compactedCount + count);
                         // Another lane may have already compacted this prefix. Never remove its running turn
                         // or replace a newer summary with one produced from an older history snapshot.
                         if (summaryAtStart === historySummary && compacted.every((turn, index) => turns[index] === turn)) {
+                            summaryReferences = [...new Set([...summaryReferences, ...compacted.flatMap(turn => turn.references ?? [])])];
                             turns.splice(0, count); removedTurns += count; historySummary = summary; summaryAtStart = summary;
                             options.onConversation?.();
                         }
                         compactedCount += count;
                     },
                     // Research is for choosing lesson material; stage purposes work on the saved unit.
-                    tools: [...learningTools(request.action), ...(preparationTool ? [] : [learningBackgroundTool]),
+                    tools: [...learningTools(request.action), ...(background ? [learningBackgroundTool] : []),
                         ...(research.available && (request.action.kind === 'prepare' || request.action.kind === 'reading-article' && request.action.source === 'web') ? learningResearchTools() : [])],
                     signal: controller.signal, guard, onProgress: advance,
                     allowSilence: remark,
@@ -207,17 +286,20 @@ export function createLearningTeaching(options: {
                     transcript: visible.messages, onMessages: options.onConversation,
                     executeTool: async (name, args) => {
                         if (name === 'LearningSearch' || name === 'LearningExtract') { return research.executeTool(name, args); }
-                        if (name === 'LearningContextRead') { return background.execute(args); }
+                        if (name === 'LearningContextRead') { return background!.execute(args); }
                         const result = session.executeTool(name, args);
+                        if (name === 'LearningRead') { visible!.references = [...new Set([...visible!.references!, ...learningReferencedIds(result, learningReferenceScopes(baseline?.data), classroom.osId)])]; }
                         const mutation = result as { ok?: boolean; changed?: boolean };
                         if ((name === 'LearningLessonEdit' || name === preparationTool) && mutation.ok && mutation.changed) {
                             publication!.discard();
                         }
-                        if (name === 'LearningHelp' && mutation.ok) { await saveHelp(); }
+                        if (name !== 'LearningProfileEdit' && mutation.ok && result && typeof result === 'object' && 'ids' in result && Array.isArray(result.ids)) {
+                            visible!.references = [...new Set([...visible!.references!, ...result.ids.filter((id): id is string => typeof id === 'string')])];
+                        }
+                        if (name === 'LearningRead' && args && typeof args === 'object' && 'id' in args && typeof args.id === 'string') { visible!.references!.push(args.id); }
                         return result;
                     } });
                 if (outcome.status === 'cancelled') { return outcome; }
-                if (helpError) { return failure(helpError instanceof LearningStorageError ? helpError.code : 'learning_save_failed', { stage: 'save', cause: helpError }); }
                 if (outcome.status === 'failed') { return failure(outcome.reason, outcome.details); }
                 const appliedTools = session.appliedTools();
                 visible.teacher = learningReplyText(visible.messages);
@@ -228,14 +310,15 @@ export function createLearningTeaching(options: {
                 const delegation = session.delegation();
                 const result = { status: 'finished' as const, text: visible.teacher, changed: saved.status !== 'unchanged', appliedTools,
                     ...(delegation ? { delegation } : {}) };
-                const commitId = saved.commitId;
+                const commitId = 'commitId' in saved ? saved.commitId : undefined;
                 if (commitId && guard() && (saved.status === 'unconfirmed' || saved.status === 'conflict')) {
                     awaitingSave = { commitId, turn: visible, presentation: presentation ?? undefined, result, request, publication };
                 }
                 if (!guard()) { return { status: 'cancelled' }; }
                 if (saved.status !== 'confirmed' && saved.status !== 'unchanged') {
-                    settle(visible, saved.status, saved.status === 'unconfirmed' ? '回复已收到，学习修改尚未确认保存，请检查保存。'
-                        : saved.status === 'conflict' ? '回复已收到，学习记录有冲突，请检查保存。' : '已停止，本次教学草稿未保存。');
+                    settle(visible, saved.status, saved.status === 'unconfirmed' ? copy.learningSaveUnconfirmed
+                        : saved.status === 'conflict' ? copy.learningSaveConflict : copy.workStopped);
+                    visible.notice = 'learning-save';
                     return { status: saved.status };
                 }
                 visible.presentation = presentation ?? undefined;
@@ -243,6 +326,7 @@ export function createLearningTeaching(options: {
                 visible.teacher = learningReplyText(visible.messages);
                 result.text = visible.teacher;
                 settle(visible, 'finished');
+                if (visible.teacher.trim()) { await persist(guard, visible); }
                 return result;
             } catch (error) {
                 if (!guard()) { return { status: 'cancelled' }; }
@@ -259,7 +343,7 @@ export function createLearningTeaching(options: {
                 if (publication) { controller.signal.removeEventListener('abort', publication.discard); }
                 if (awaitingSave?.turn !== visible) { publication?.discard(); }
                 draft?.invalidate();
-                if (visible?.status === 'running') { settle(visible, 'cancelled', '已停止，本次教学草稿未保存。'); }
+                if (visible?.status === 'running') { settle(visible, 'cancelled', conversation ? copy.stopped : copy.workStopped); }
                 // An unfinished remark is not part of the conversation the next request continues from.
                 if (visible && visible.purpose === 'companion' && (visible.status !== 'finished' || !visible.teacher.trim())) {
                     const index = turns.indexOf(visible);

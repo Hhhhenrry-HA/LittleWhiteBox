@@ -9,7 +9,7 @@ export function learningTurnMessages(turn: LearningTurn): Record<string, unknown
     const text = learningReplyText(turn.messages);
     // Completed classroom exchanges are not a continuation of their private tool protocol.
     // Current saved records supply the facts; the active loop retains its own exact wire messages.
-    return [{ role: 'user', content: turn.user }, ...(text ? [{ role: 'assistant', content: text }] : [])];
+    return [...(turn.user ? [{ role: 'user', content: turn.user }] : []), ...(text ? [{ role: 'assistant', content: text }] : [])];
 }
 
 /** An interrupted draft is not a saved tool result. Retain the visible exchange without replaying uncommitted writes. */
@@ -31,5 +31,5 @@ export function isLearningContextOverflow(error: unknown): boolean {
 }
 
 export function learningHistoryMessage(summary: string) {
-    return { role: 'system', content: `Earlier classroom exchanges, summarised as reference data.\n<classroom_history>\n${safePromptJson({ summary })}\n</classroom_history>` };
+    return { role: 'system', content: `Your earlier exchanges, summarised as reference data.\n<conversation_memory>\n${safePromptJson({ summary })}\n</conversation_memory>` };
 }

@@ -26,7 +26,7 @@ interface UnitSession {
     activityDrafts: Record<string, { response: string; value: LearningAnswerDraft; submitted?: { before: string | undefined } }>;
     review: { index: number | null; drafts: Record<string, LearningAnswerDraft>; openReason: string; expanded: boolean; seenBefore: boolean | null };
 }
-const emptyChat = () => ({ text: '', cursor: undefined as LearningEditorDraft['cursor'], focus: null as { unitId?: string; exerciseId?: string; selection?: LearningSelection } | null,
+const emptyChat = () => ({ text: '', cursor: undefined as LearningEditorDraft['cursor'], focus: null as { unitId?: string; exerciseId?: string; selection?: LearningSelection; help?: boolean } | null,
     study: null as { unitId: string; exerciseId?: string } | null,
     sent: null as { text: string; user: string; after: number } | null, scroll: 0, following: true });
 
@@ -34,13 +34,14 @@ const emptyChat = () => ({ text: '', cursor: undefined as LearningEditorDraft['c
 export function createLearningUiSession() {
     const units = reactive<Record<string, UnitSession>>({});
     const chat = reactive(emptyChat());
+    const workbenchChat = reactive(emptyChat());
     const settings = reactive({ open: false, form: { exam: '', level: '', targetLevel: '', explanationLanguage: 'zh-CN', interests: '' },
         submitted: null as { value: Settings; form: SettingsForm } | null });
     const companion = reactive({ enabled: false });
     const setup = reactive({ step: 0, name: '', note: '' });
     const books = reactive({ tab: 'grammar' as 'grammar' | 'vocabulary' | 'growth' | 'all', reason: '' });
     return {
-        units, chat, settings, companion, setup, books,
+        units, chat, workbenchChat, settings, companion, setup, books,
         unit(id: string) {
             units[id] ??= { reading: { view: null, scrolls: {} }, writing: {}, edits: {}, expanded: {}, selection: null, activities: {}, activityDrafts: {},
                 review: { index: null, drafts: {}, openReason: '', expanded: false, seenBefore: null } };
@@ -51,6 +52,7 @@ export function createLearningUiSession() {
             if (!keepWork) {
                 for (const id of Object.keys(units)) { delete units[id]; }
                 settings.open = false; settings.submitted = null;
+                Object.assign(workbenchChat, emptyChat());
             }
             Object.assign(chat, emptyChat()); companion.enabled = false;
             if (!keepSetup) { Object.assign(setup, { step: 0, name: '', note: '' }); }
@@ -89,11 +91,13 @@ export function createLearningUiSession() {
                     draft.submitted = null;
                 }
             }
-            const sent = chat.sent;
-            if (sent && state.conversation.turns.some((turn, index) => index + state.conversation.removedTurns >= sent.after
-                && (turn.purpose === 'talk' || turn.purpose === 'explain') && turn.user === sent.user)) {
-                if (chat.text === sent.text) { chat.text = ''; chat.focus = null; }
-                chat.sent = null;
+            for (const [draft, conversation] of [[chat, state.conversation], [workbenchChat, state.workbenchConversation]] as const) {
+                const sent = draft.sent;
+                if (sent && conversation.turns.some((turn, index) => index + conversation.removedTurns >= sent.after
+                    && turn.purpose === 'talk' && turn.user === sent.user)) {
+                    if (draft.text === sent.text) { draft.text = ''; draft.focus = null; }
+                    draft.sent = null;
+                }
             }
         },
     };
@@ -103,7 +107,7 @@ const key: InjectionKey<LearningUiSession> = Symbol('learning-ui-session');
 
 /** A loss warning is derived from actual edits, not another dirty flag to synchronize. */
 export function hasLearningUnsavedInput(session: LearningUiSession, state: LearningClientState): boolean {
-    if (session.chat.text.trim()) { return true; }
+    if (session.chat.text.trim() || session.workbenchChat.text.trim()) { return true; }
     if (session.settings.open && Object.entries(learningSettingsInput(session.settings.form))
         .some(([key, value]) => state.profile?.settings[key as keyof Settings] !== value)) { return true; }
     if (session.setup.step === 1 && session.setup.name.trim()
@@ -134,12 +138,14 @@ export function learningContextNeedsConfirmation(session: LearningUiSession, sta
 export function provideLearningUiSession(state: Ref<LearningClientState>) {
     const session = createLearningUiSession();
     provide(key, session);
-    watch([() => state.value.chatIdentity, () => state.value.language, () => state.value.teacher?.name], (next, previous) =>
+    watch([() => state.value.chatIdentity, () => state.value.language, () => state.value.companionSessionId], (next, previous) =>
         session.reset(next[0] === previous[0], next[0] === previous[0] && next[1] === previous[1]));
     watch(() => state.value, value => session.reconcile(value), { immediate: true });
     watch(() => [state.value.unit?.id, state.value.review?.id], ids => {
-        if (session.chat.focus?.unitId && !ids.includes(session.chat.focus.unitId)) { session.chat.focus = null; }
-        if (session.chat.study && !ids.includes(session.chat.study.unitId)) { session.chat.study = null; }
+        for (const draft of [session.chat, session.workbenchChat]) {
+            if (draft.focus?.unitId && !ids.includes(draft.focus.unitId)) { draft.focus = null; }
+            if (draft.study && !ids.includes(draft.study.unitId)) { draft.study = null; }
+        }
     });
     watch(() => hasLearningUnsavedInput(session, state.value), (dirty, _, cleanup) => {
         if (!dirty) { return; }

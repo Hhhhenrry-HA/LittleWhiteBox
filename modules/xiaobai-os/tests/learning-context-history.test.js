@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { declaredTeacher } from './fixtures/learning-reply.js';
+import { learningMemory } from './fixtures/learning-memory.js';
 import { OpenAIResponsesAdapter } from '../../agent-core/adapters/openai-responses.js';
 import { buildLearningContext } from '../apps/learning/agent/context.js';
 import { buildLearningSystemPrompt } from '../apps/learning/agent/prompt.js';
@@ -23,12 +23,12 @@ test('concurrent work and chat compaction preserve both live turns and adopt the
     let mode = 'seed';
     let summariesReady;
     const ready = new Promise(resolve => { summariesReady = resolve; });
-    const teaching = createLearningTeaching({ repository: h.repository,
+    const teaching = createLearningTeaching({ actor: 'workbench', memory: (() => { const port = learningMemory(); return () => port; })(), repository: h.repository,
         current: () => ({ language: 'en', osId: h.profile().unit.originOsId, chatIdentity: 'concurrent-fixture', teacher: { name: 'Lin', note: '' } }),
         capture: async () => ({ teacherDetails: '', snapshot: { characters: [], player: { displayName: 'Learner', persona: '' },
             storyEvents: '', recentMessages: [], worldInfo: { before: '', after: '', depth: [] } } }),
         gateway: { loadConfig: async () => ({}), openSession: async () => ({ providerConfig: {}, supportsSessionToolLoop: false,
-            run: declaredTeacher(async request => {
+            run: (async request => {
                 if (!request.tools.length) {
                     const source = JSON.parse(request.messages[0].content);
                     if (mode === 'probe') { assert.equal(source.summary, 'Adopted memory.'); return { text: 'Updated memory.' }; }
@@ -133,13 +133,13 @@ test('identity/core settings form a stable prefix, while one latest user message
         player: { displayName: '学生', persona: '当前故事人物' }, storyEvents: '已经约好下次去海边', recentMessages: [],
         worldInfo: { before: '世界设定'.repeat(2000), after: '', depth: [] },
     } };
-    const input = { data, context, language: 'en', osId: h.profile().unit.originOsId, teacher: { name: '林老师', note: '' },
+    const input = { actor: 'companion', data, context, language: 'en', osId: h.profile().unit.originOsId, teacher: { name: '林老师', note: '' },
         action: { kind: 'talk' }, message: '哈喽，今天想练写作。', asOf: '2026-09-07T10:00:00Z' };
     const first = buildLearningContext(input);
     assert.deepEqual(first.prefix.map(message => message.role), ['system']);
     assert.deepEqual(first.messages.map(message => message.role), ['user']);
-    assert.notEqual(buildLearningSystemPrompt('林老师', input.action), buildLearningSystemPrompt('小王', input.action));
-    assert.notEqual(buildLearningSystemPrompt('林老师', input.action), buildLearningSystemPrompt('林老师', { kind: 'companion' }));
+    assert.notEqual(buildLearningSystemPrompt('companion', '林老师', input.action), buildLearningSystemPrompt('companion', '小王', input.action));
+    assert.notEqual(buildLearningSystemPrompt('companion', '林老师', input.action), buildLearningSystemPrompt('companion', '林老师', { kind: 'companion' }));
     const reference = JSON.parse(first.prefix[0].content.split('<teacher_reference>\n')[1].split('\n</teacher_reference>')[0]);
     assert.equal(reference.characters[0].description, context.snapshot.characters[0].description);
     assert.ok(first.messages[0].content.startsWith(`[学生本轮发言]\n${input.message}`));
@@ -371,7 +371,7 @@ test('classroom summary survives APP reentry, but never becomes an asset or surv
     const h = await createClassroomFixture(); t.after(h.dispose); await h.openLesson();
     const saved = h.repository.snapshot().document;
     const requests = []; let summaries = 0; let largeReplies = 3;
-    h.flags.teacherResponse = declaredTeacher(request => {
+    h.flags.teacherResponse = (request => {
         if (!request.tools.length) { summaries++; return { text: 'CLASSROOM_MEMORY: learner wants concrete examples.' }; }
         requests.push(structuredClone({ ...request, signal: undefined, onStreamProgress: undefined }));
         return { text: largeReplies-- > 0 ? 'A detailed teaching discussion. '.repeat(8000) : '继续举例。' };

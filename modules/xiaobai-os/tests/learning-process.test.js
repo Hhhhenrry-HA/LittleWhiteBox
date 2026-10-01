@@ -39,11 +39,10 @@ test('live rounds reach the view even when their general progress label has not 
     t.after(off);
     h.flags.teacherResponse = async (_request, round) => round < 3
         ? { toolCalls: [call(`read-${round}`, 'LearningRead', { section: round === 1 ? 'overview' : 'items' })] }
-        : round === 3 ? { toolCalls: [call('help', 'LearningHelp', { exerciseIds: [], materialIds: [] })] }
-            : { text: '已查看你的学习情况。' };
+        : { text: '已查看你的学习情况。' };
     await h.command('talk', { message: '看看我最近的学习情况。' });
-    assert.deepEqual([...new Set(published)], [1, 2, 3, 4]);
+    assert.deepEqual([...new Set(published)], [1, 2, 3]);
     const turn = h.state().conversation.turns.at(-1);
     assert.equal(turn.status, 'finished');
-    assert.deepEqual(learningProcessRounds(turn).flatMap(round => round.tools.map(tool => tool.status)), ['done', 'done', 'done']);
+    assert.deepEqual(learningProcessRounds(turn).flatMap(round => round.tools.map(tool => tool.status)), ['done', 'done']);
 });

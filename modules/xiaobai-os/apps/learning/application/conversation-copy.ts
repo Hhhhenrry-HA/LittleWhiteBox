@@ -1,0 +1,12 @@
+export const LEARNING_CONVERSATION_COPY = {
+    workbench: '学习助手', companion: '语伴',
+    historyLoadFailed: '暂时没能打开对话记录，请重新加载。学习内容保留。',
+    historySaveFailed: '回复已收到，但这段对话还没有保存。请检查保存状态，回复不需要重新生成。',
+    stopped: '已停止回复，已收到的内容保留。',
+    workStopped: '已停止。已保存的学习内容保留。',
+    changed: '学习内容已变化，这次操作没有继续。',
+    delegatedBusy: '当前训练操作尚未完成，这次委托没有执行。',
+    memoryClearFailed: '对话记录尚未确认清理，请检查保存状态。',
+    learningSaveUnconfirmed: '学习修改尚未确认保存，请检查保存。',
+    learningSaveConflict: '学习记录有冲突，请检查保存。',
+} as const;

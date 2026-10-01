@@ -10,11 +10,11 @@ export const LEARNING_REQUEST_COPY = {
 };
 
 export const LEARNING_TEACHER_STORAGE_COPY = {
-    unconfirmed: '还没确认语伴设置是否保存成功。先核实一下，不必重新选择。',
-    conflict: '语伴设置有另一份已保存的版本，请先核对。',
-    failed: '语伴设置暂时无法读取，请重试。',
-    verify: '核实语伴设置', adopt: '使用已保存设置',
-    adoptWarning: '放弃这次尚未确认的更换，使用已保存的语伴设置。学习记录会保留。',
+    unconfirmed: '搭子的对话与设置尚未确认保存，已收到的回复保留。',
+    conflict: '搭子的对话与设置有另一份已保存的版本，请先核对。',
+    failed: '暂时没能打开搭子的对话与设置，请检查保存。',
+    verify: '检查搭子记录', adopt: '使用已保存记录',
+    adoptWarning: '放弃尚未确认的对话或设置，使用已保存的搭子记录？文章与作文会保留。',
 };
 
 export const LEARNING_PROCESS_COPY = {
@@ -29,7 +29,7 @@ export const LEARNING_PROCESS_COPY = {
     tools: { LearningRead: '查看学习记录', LearningContextRead: '查看相关资料', LearningSearch: '寻找文章', LearningExtract: '阅读原文',
         LearningProfileEdit: '调整学习目标', LearningLessonEdit: '准备练习', LearningRequest: '安排练习', LearningModelEssay: '准备范文',
         LearningArticle: '整理阅读正文', LearningReadingNotes: '整理本段知识', LearningEssayTask: '准备写作题',
-        LearningAssess: '批改作答', LearningHelp: '确认讲解范围', LearningPresent: '打开练习', LearningComplete: '整理学习收获' } as Record<string, string>,
+        LearningAssess: '批改作答', LearningPresent: '打开练习', LearningComplete: '整理学习收获' } as Record<string, string>,
     sections: { overview: '学习概况', training: '本次阅读材料', unit: '本次练习', materials: '阅读材料', exercises: '练习题', attempts: '你的作答',
         notes: '笔记', listening: '听力记录', items: '知识点', review: '到期复习', evidence: '学习记录', completions: '已完成练习', sources: '文章来源' } as Record<string, string>,
 };
@@ -65,7 +65,8 @@ export const LEARNING_CONFIRM_COPY: Record<string, { title: string; accept: stri
     'skip-revision': { title: '跳过修改？', accept: '查看范文' },
     'adopt-server': { title: '使用已保存的学习记录？', accept: '使用已保存记录' },
     'adopt-wallet': { title: '使用已保存的钱包？', accept: '使用已保存钱包' },
-    'adopt-teacher': { title: '使用已保存的语伴设置？', accept: '使用已保存设置' },
+    'adopt-workbench': { title: '使用已保存的教学对话？', accept: '使用已保存记录' },
+    'adopt-teacher': { title: '使用已保存的搭子记录？', accept: '使用已保存记录' },
     'forget-conversation': { title: '清空这段对话？', accept: '清空对话' },
     'delete-language': { title: '删除这门语言的学习数据？', accept: '删除学习数据' },
     clear: { title: '清空所有学习数据？', accept: '清空学习数据' },
@@ -86,3 +87,15 @@ export const LEARNING_REVIEW_COPY = {
     ask: '问语伴',
     verdicts: { correct: '答对了', partial: '对了一部分', incorrect: '还没想起来', disputed: '等待复核' },
 };
+export const LEARNING_DIALOGUE_COPY = {
+    send: '发送', stop: '停止回复',
+    assistant: '学习助手', assistantEmpty: '想调整学习安排，还是问问这次的批改？',
+    assistantPlaceholder: '问学习助手…', closeAssistant: '回到读写', askAssessment: '问问这次批改',
+    clearAssistant: '清空教学对话', clearCompanion: '清空搭子对话',
+    clearAssistantConfirm: '清空当前语言的教学对话？文章、作文和学习记录都会保留。',
+    clearCompanionConfirm: '清空和当前搭子的对话？文章、作文和学习记录都会保留。',
+    assistantStorage: '学习助手的记录暂不可用，请检查保存。已收到的回复保留。',
+    verify: '检查保存', adopt: '使用已保存记录',
+    adoptConfirm: '放弃本次尚未保存的对话，使用服务器上的记录？',
+    skipCompanion: '先自己学', listen: '听这段回复', saveNote: '保存笔记',
+} as const;

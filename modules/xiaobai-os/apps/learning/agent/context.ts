@@ -1,7 +1,10 @@
+import { learningReferencedIds, learningReferenceScopes } from '../application/conversation-references.js';
 import { safePromptJson } from '../../../capabilities/maintenance/prompt-safety.js';
 import { canReadLearningScope, LEARNING_LIMITS as L, type LearningAssessment, type LearningAttempt, type LearningData, type LearningUnit } from '../../../domains/learning/types.js';
 import { learningAnswerParagraphs } from '../../../domains/learning/facts.js';
 import { requireLearning } from '../../../domains/learning/validation.js';
+import type { LearningSelection } from '../../../domains/learning/notes.js';
+import type { LearningActor } from '../domain/conversation.js';
 import type { LearningTeacherPreference } from '../../../domains/learning/profile.js';
 import type { PromptContextSnapshot } from '../../../host/prompt-context/types.js';
 import { readLearning } from './data-projection.js';
@@ -16,6 +19,8 @@ import { learningUnitStage, type LearningExerciseStatus } from '../../../domains
 
 export interface LearningDialogue {
     user: string; teacher: string; presentation?: LearningPresentation;
+    id?: string;
+    references?: string[];
     /** The request purpose; a companion remark has no learner message of its own. */
     purpose?: LearningAction['kind'];
     messages: LearningMessage[];
@@ -23,6 +28,7 @@ export interface LearningDialogue {
     progress?: LearningProgress;
     status: 'running' | 'finished' | 'failed' | 'cancelled' | 'unconfirmed' | 'conflict';
     message: string;
+    notice?: 'history-save' | 'learning-save';
 }
 export interface LearningTeacherContext { snapshot: PromptContextSnapshot; teacherDetails: string }
 // Scope is an access fact for the Host; the model sees the answer, its conditions and numbered paragraphs.
@@ -35,11 +41,11 @@ function feedbackView(assessment: LearningAssessment | undefined) {
     const { scope: _scope, ...feedback } = assessment;
     return feedback;
 }
-function readableUnit(unit: LearningUnit | null | undefined, osId: string, unitId: string) {
+function readableUnit(unit: LearningUnit | null | undefined, osId: string | null, unitId: string) {
     requireLearning(unit && unit.id === unitId && canReadLearningScope(unit.scope, osId), 'unitId', 'Select the current available unit');
     return unit;
 }
-function workView(unit: LearningUnit, attempts: LearningAttempt[], osId: string) {
+function workView(unit: LearningUnit, attempts: LearningAttempt[], osId: string | null) {
     return attempts.map(attempt => {
         const assessment = unit.assessments.find(entry => entry.attemptId === attempt.id);
         requireLearning(canReadLearningScope(attempt.scope, osId) && (!assessment || canReadLearningScope(assessment.scope, osId)),
@@ -55,7 +61,7 @@ function pendingAttempts(unit: LearningUnit, status: LearningExerciseStatus) {
 }
 
 /** The facts one request purpose works on; each purpose reads only its own stage of the unit. */
-function purposeFocus(data: LearningData, language: string, osId: string, action: LearningAction) {
+function purposeFocus(data: LearningData, language: string, osId: string | null, action: LearningAction) {
     const profile = data.profiles.find(entry => entry.language === language);
     switch (action.kind) {
     case 'summary-review': {
@@ -110,13 +116,13 @@ function purposeFocus(data: LearningData, language: string, osId: string, action
     }
 }
 
-function focus(data: LearningData, language: string, osId: string, action: LearningAction, exerciseId?: string) {
+function focus(data: LearningData, language: string, osId: string | null, action: LearningAction, exerciseId?: string) {
     const purpose = purposeFocus(data, language, osId, action);
     if (purpose !== undefined) { return purpose; }
     const profile = data.profiles.find(entry => entry.language === language);
     const current = profile?.[learningReadUnit(action, profile)];
     const unit = current && canReadLearningScope(current.scope, osId) ? current : null;
-    if ((action.kind === 'talk' || action.kind === 'explain') && action.unitId) {
+    if ((action.kind === 'talk') && action.unitId) {
         requireLearning(unit?.id === action.unitId, 'unitId', 'Select the current available unit');
     }
     if (action.kind === 'assess') {
@@ -154,12 +160,12 @@ function focus(data: LearningData, language: string, osId: string, action: Learn
 }
 
 export function buildLearningContext(options: {
-    data: LearningData; language: string; osId: string; teacher: NonNullable<LearningTeacherPreference['teacher']>;
-    context: LearningTeacherContext; action: LearningAction; message: string; exerciseId?: string; asOf?: string;
+    data: LearningData; language: string; osId: string | null; actor: LearningActor; teacher: LearningTeacherPreference['teacher'];
+    context: LearningTeacherContext | null; selection?: LearningSelection | null; action: LearningAction; message: string; exerciseId?: string; asOf?: string;
 }) {
     const { data, language, osId, action, context } = options;
     const currentTime = options.asOf ?? new Date().toISOString();
-    const background = createLearningBackground(context);
+    const background = options.actor === 'companion' && context ? createLearningBackground(context) : null;
     const profile = data.profiles.find(entry => entry.language === language);
     const read = (args: unknown) => readLearning(data, language, osId, args, currentTime, learningReadAudience(action), learningReadUnit(action, profile));
     const request = { language, action, currentTime,
@@ -167,13 +173,16 @@ export function buildLearningContext(options: {
         items: read({ section: 'items' }),
         review: read({ section: 'review' }),
         training: read({ section: 'training' }).data,
-        focus: focus(data, language, osId, action, options.exerciseId), background: background.initial() };
+        focus: focus(data, language, osId, action, options.exerciseId), selection: options.selection ?? null,
+        ...(background ? { background: background.initial() } : {}) };
     // Core settings have no clock, progress or recent-story fields. Dynamic data belongs at the tail.
-    const reference = { teacher: options.teacher, characters: context.snapshot.characters.map(character => ({
+    const reference = { teacher: options.teacher, characters: context?.snapshot.characters.map(character => ({
         cardName: character.displayName, description: character.description, personality: character.personality, scenario: character.scenario,
-    })) };
+    })) ?? [] };
     const userText = `[学生本轮发言]\n${options.message}`;
-    return { prefix: [{ role: 'system' as const, content: `人物与故事核心设定，作为身份背景资料。\n<teacher_reference>\n${safePromptJson(reference)}\n</teacher_reference>` }],
+    return { references: learningReferencedIds(request, learningReferenceScopes(data), osId),
+        taskReferences: learningReferencedIds(request.focus, learningReferenceScopes(data), osId),
+        prefix: options.actor === 'companion' && context ? [{ role: 'system' as const, content: `人物与故事核心设定，作为身份背景资料。\n<teacher_reference>\n${safePromptJson(reference)}\n</teacher_reference>` }] : [],
         messages: [{ role: 'user' as const, content: `${userText}\n\n本轮学习状态与背景资料：\n<learning_request>\n${safePromptJson(request)}\n</learning_request>` }],
         // Like ebook, replay the actual exchange, not an obsolete copy of every injected asset.
         turn: { role: 'user', content: `${userText}\n\n<learning_turn>\n${safePromptJson({ action })}\n</learning_turn>` } };

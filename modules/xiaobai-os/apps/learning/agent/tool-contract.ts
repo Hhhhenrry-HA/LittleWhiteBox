@@ -69,18 +69,6 @@ const tools = [
         parameters: object({ kind: enumeration(['material', 'exercise', 'replacement'], 'What the learner will open.'), id: id('Required for material or exercise: its existing ID in the current lesson. Omit for replacement.') }),
     } },
     { type: 'function', function: {
-        name: 'LearningHelp',
-        description: [
-            'Declare the assistance in this turn’s learner-facing text: questions receiving help and listening transcripts shown, quoted or translated. Send both arrays before speaking; empty arrays explicitly declare that a greeting or goal discussion gives no exercise help.',
-            'Future attempts on the named exercises count as helped; earlier submitted answers keep their original conditions. The focused explanation button already records its question’s hint; include any listening text your reply reveals.',
-            'Returns {ok,changed,ids,errors:[{path,message}]}. Published-content help is confirmed before text is displayed and survives interruption. Text helping with new or changed draft content waits for the lesson save.',
-            'A changed lesson discards unpublished text generated before or alongside that edit. Read the edit result, declare the resulting assistance scope and then reply. A failed declaration requires a corrected declaration before replying.',
-        ].join('\n'),
-        parameters: object({
-            exerciseIds: list(id('Current exercise ID.'), undefined, 'Questions receiving a hint, explanation or worked answer in this reply.'),
-            materialIds: list(id('Current material ID.'), undefined, 'Listening text being shown, quoted or translated in this reply.') }, ['exerciseIds', 'materialIds']),
-    } },
-    { type: 'function', function: {
         name: 'LearningRead',
         description: [
             'Read the current learning draft within this action’s permitted sources, including successful changes.',
@@ -211,17 +199,17 @@ export function learningToolNamesFor(action?: LearningAction): string[] {
     switch (action?.kind) {
     case 'reading-article': case 'reading-notes': case 'reading-essay': return [learningPreparationTool(action)!];
     case undefined: return [...ALL_TOOLS];
-    case 'prepare': return ['LearningRead', 'LearningLessonEdit', 'LearningHelp', 'LearningPresent'];
-    case 'review-prepare': return ['LearningRead', 'LearningLessonEdit', 'LearningHelp'];
-    case 'grade': case 'revision-review': case 'review-assess': return ['LearningRead', 'LearningAssess', 'LearningHelp'];
-    case 'model-essay': return ['LearningRead', 'LearningModelEssay', 'LearningHelp'];
-    case 'summary-review': return ['LearningRead', 'LearningHelp'];
-    // A remark only reads; it records nothing, not even a help declaration.
+    case 'prepare': return ['LearningRead', 'LearningLessonEdit', 'LearningPresent'];
+    case 'review-prepare': return ['LearningRead', 'LearningLessonEdit'];
+    case 'grade': case 'revision-review': case 'review-assess': return ['LearningRead', 'LearningAssess'];
+    case 'model-essay': return ['LearningRead', 'LearningModelEssay'];
+    case 'summary-review': return ['LearningRead'];
+    // An unsolicited remark can only read published learning facts.
     case 'companion': return ['LearningRead'];
-    case 'talk': case 'explain': return ['LearningRead', 'LearningHelp', 'LearningPresent', 'LearningRequest'];
-    case 'profile': return ['LearningRead', 'LearningProfileEdit', 'LearningHelp'];
-    case 'assess': return ['LearningRead', 'LearningAssess', 'LearningComplete', 'LearningHelp', 'LearningPresent'];
-    case 'complete': return ['LearningRead', 'LearningComplete', 'LearningHelp'];
+    case 'talk': return ['LearningRead', 'LearningPresent', 'LearningRequest'];
+    case 'profile': return ['LearningRead', 'LearningProfileEdit'];
+    case 'assess': return ['LearningRead', 'LearningAssess', 'LearningComplete', 'LearningPresent'];
+    case 'complete': return ['LearningRead', 'LearningComplete'];
     }
 }
 

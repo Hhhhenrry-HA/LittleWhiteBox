@@ -20,7 +20,7 @@ function fixture() {
     return { profiles: [profile] };
 }
 function injected(data, action = { kind: 'companion', materialId: 'm1', paragraphId: 'p1' }, exerciseId) {
-    const result = buildLearningContext({ data, language: 'en', osId: 'story-a', teacher: { name: 'Companion', note: '' },
+    const result = buildLearningContext({ actor: 'companion', data, language: 'en', osId: 'story-a', teacher: { name: 'Companion', note: '' },
         context: { snapshot, teacherDetails: '' }, action, exerciseId, message: '', asOf: '2026-09-01T08:00:00.000Z' });
     // This is the model-facing data envelope, not a source-code/string-presence test.
     return JSON.parse(result.messages[0].content.split('<learning_request>\n')[1].split('\n</learning_request>')[0]);
@@ -28,7 +28,7 @@ function injected(data, action = { kind: 'companion', materialId: 'm1', paragrap
 
 test('conversation and unprompted reading always receive the complete workbench material and actual settings', () => {
     const data = fixture();
-    for (const kind of ['companion', 'talk', 'explain']) {
+    for (const kind of ['companion', 'talk']) {
         const request = injected(data, { kind, materialId: 'm1', paragraphId: 'p1' });
         const ui = learningClassView(data, 'en', 'story-a');
         assert.deepEqual(request.training.materials, ui.unit.materials);
@@ -90,7 +90,7 @@ test('review questions and follow-up conversation share the selected review, sav
     const data = fixture(); const profile = data.profiles[0];
     profile.review = { ...structuredClone(profile.unit), id: 'review-1', kind: 'review', title: 'Recall',
         attempts: [savedAnswer()], assessments: [{ attemptId: 'a1', verdict: 'incorrect', understanding: '', expression: '', guidance: 'Use the past tense.', scope }] };
-    for (const kind of ['explain', 'talk']) {
+    for (const kind of ['talk']) {
         const request = injected(data, { kind, unitId: profile.review.id }, 'e1');
         assert.equal(request.training.id, profile.review.id);
         assert.equal(request.training.kind, 'review');
@@ -104,7 +104,7 @@ test('review questions and follow-up conversation share the selected review, sav
     profile.review.scope = { kind: 'story', osId: 'another-story' };
     assert.throws(() => injected(data, { kind: 'talk', unitId: 'review-1' }, 'e1'));
     profile.review = null;
-    assert.throws(() => injected(data, { kind: 'explain', unitId: 'review-1' }, 'e1'));
+    assert.throws(() => injected(data, { kind: 'talk', unitId: 'review-1' }, 'e1'));
     assert.equal(injected(data, { kind: 'talk', unitId: 'u1' }).training.id, 'u1');
 });
 

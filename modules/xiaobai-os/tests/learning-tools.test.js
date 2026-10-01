@@ -246,7 +246,7 @@ test('a corrected retry carries prior feedback into retained evidence without ch
     assert.equal(evidence.attempt.help.feedback, true);
     assert.equal(evidence.attempt.help.hint, false); assert.equal(evidence.attempt.help.answer, false);
     assert.equal(independentLearningSuccess(evidence), false);
-    assert.equal(h.session({ kind: 'explain' }).executeTool('LearningRead', { section: 'evidence' }).data[0].attempt.help.feedback, true);
+    assert.equal(h.session({ kind: 'talk' }).executeTool('LearningRead', { section: 'evidence' }).data[0].attempt.help.feedback, true);
 });
 
 test('unassessed retries and feedback on a different question do not invent prior assistance', async () => {
@@ -286,7 +286,7 @@ test('private units, answers, feedback and item labels do not cross stories; onl
     const downgraded = await h.reopen();
     downgraded.data.profiles[0].completions[0].scope = publicScope;
     assert.throws(() => parseLearningDocument(downgraded));
-    const other = h.session({ kind: 'explain' }, { kind: 'story', osId: 'story-b' }, 'story-b');
+    const other = h.session({ kind: 'talk' }, { kind: 'story', osId: 'story-b' }, 'story-b');
     assert.equal(other.executeTool('LearningRead', {}).data.blockedCurrentUnit, true);
     const items = other.executeTool('LearningRead', { section: 'items' }).data;
     assert.equal(items[0].label, null);
@@ -300,7 +300,7 @@ test('private units, answers, feedback and item labels do not cross stories; onl
     await h.prepare();
     const privateAnswer = await h.submit({ kind: 'text', text: 'Only the original teacher may see this answer.' }, scope);
     await h.assess(privateAnswer, { scope });
-    const reader = h.session({ kind: 'explain' }, { kind: 'story', osId: 'story-b' }, 'story-b');
+    const reader = h.session({ kind: 'talk' }, { kind: 'story', osId: 'story-b' }, 'story-b');
     assert.equal(reader.executeTool('LearningRead', { section: 'unit' }).data.attempts.length, 0);
 });
 

@@ -7,11 +7,11 @@ import LearningCompletion from './LearningCompletion.vue';
 import { applyLearningSentenceRevisions, learningAnnotatedSegments } from './workbench.js';
 import { useLearningUnitSession } from './learning-session.js';
 import { rememberLearningEditor as vRememberEditor } from './learning-editor.js';
-import { LEARNING_FLOW_COPY as flow } from './learning-copy.js';
+import { LEARNING_FLOW_COPY as flow, LEARNING_DIALOGUE_COPY as dialogueCopy } from './learning-copy.js';
 
 type Unit = NonNullable<LearningClientState['unit']>;
 const props = defineProps<{ state: LearningClientState; unit: Unit; disabled: boolean; pending: boolean; view: 'feedback' | 'model' }>();
-const emit = defineEmits<{ action: [name: string, input?: Record<string, unknown>]; confirm: [name: string, input: Record<string, unknown>, text: string]; record: [id: string] }>();
+const emit = defineEmits<{ action: [name: string, input?: Record<string, unknown>]; confirm: [name: string, input: Record<string, unknown>, text: string]; record: [id: string]; ask: [exerciseId: string] }>();
 const categories = { content: '内容', grammar: '语法', vocabulary: '词汇', cohesion: '衔接' };
 const severities = { error: '需要改', improve: '可以更好', alternative: '另一种说法' };
 const books = { grammar: '语法本', vocabulary: '生词本' };
@@ -93,6 +93,7 @@ const working = computed(() => props.state.pending?.unitId === props.unit.id ? p
                     <p v-if="entry.review?.guidance">{{ entry.review.guidance }}</p>
                 </section>
                 <p v-if="entry.assessment?.guidance" class="learning-graded-guidance">{{ entry.assessment.guidance }}</p>
+                <button v-if="entry.assessment" type="button" @click="emit('ask', entry.exercise.id)">{{ dialogueCopy.askAssessment }}</button>
                 <details v-if="entry.assessment && (entry.assessment.understanding || entry.assessment.expression)" class="learning-graded-more" :open="session.expanded[`feedback:${entry.draft.id}`]" @toggle="session.expanded[`feedback:${entry.draft.id}`] = ($event.target as HTMLDetailsElement).open">
                     <summary>理解与表达点评</summary>
                     <p v-if="entry.assessment.understanding"><b>理解</b>{{ entry.assessment.understanding }}</p>

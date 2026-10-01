@@ -21,7 +21,7 @@ const editable = computed(() => !draft.value || rewriting.value);
 const canRewrite = computed(() => ['writing', 'grading'].includes(props.unit.stage.stage) && !assessed.value && !props.state.pending);
 const count = computed(() => learningWritingCount(text.value, props.state.language));
 const savedCount = computed(() => learningWritingCount(draftText.value, props.state.language));
-const reply = computed(() => props.state.conversation.summaryReviews.find(entry => entry.attemptId === draft.value?.id)?.text ?? '');
+const reply = computed(() => props.state.workbenchConversation.summaryReviews.find(entry => entry.attemptId === draft.value?.id)?.text ?? '');
 function submit() {
     if (props.disabled || !text.value.trim()) { return; }
     editor.value.submitted = { before: draft.value?.id, text: text.value };

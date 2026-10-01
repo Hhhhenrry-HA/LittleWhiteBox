@@ -92,6 +92,8 @@
 .learning-brand-mark > span { position: absolute; right: -5px; bottom: -2px; font: 600 10px sans-serif; background: #e0edff; color: #2459aa; border: 2px solid var(--learn-bg); border-radius: 4px; padding: 1px; }
 .learning-toolbar .learning-toolbar-more { margin-left: auto; display: grid; place-items: center; width: 44px; }
 .learning-toolbar .learning-toolbar-back { display: grid; place-items: center; padding: 0; width: 32px; }
+.learning-toolbar .learning-assistant-button { display: flex; align-items: center; gap: 6px; color: var(--learn-blue); margin-left: auto; font-size: 13px; white-space: nowrap; }
+.learning-assistant-button[aria-expanded=true] { background: var(--learn-tint); }
 .learning-scroll { flex: 1; overflow-y: auto; overscroll-behavior: contain; min-height: 0; padding: 14px 24px 32px; scrollbar-width: thin; scroll-padding: 16px; }
 .learning-person-initial { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--learn-tint); color: var(--learn-blue); font-size: 16px; font-weight: 500; flex-shrink: 0; }
 

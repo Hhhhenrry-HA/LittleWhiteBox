@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createClassroomFixture, fixtureLesson } from './fixtures/learning-classroom.js';
-import { declaredTeacher } from './fixtures/learning-reply.js';
 import { createLearningSession } from '../apps/learning/agent/session.js';
 
 const requestData = request => {
@@ -16,7 +15,7 @@ function until(h, predicate) {
         const unsubscribe = h.bridge.subscribe(() => { if (predicate(h.state())) { clearTimeout(timeout); unsubscribe(); resolve(); } });
     });
 }
-async function send(h, action, input = {}) { return h.bridge.request(`learning/${action}`, { chatIdentity: h.state().chatIdentity, ...input }); }
+async function send(h, action, input = {}) { return h.bridge.request(`learning/${action}`, { chatIdentity: h.state().chatIdentity, target: 'companion', ...input }); }
 
 test('a learner can chat during preparation, and stopping the conversation does not stop that work', async t => {
     let releaseWork;
@@ -25,7 +24,7 @@ test('a learner can chat during preparation, and stopping the conversation does 
     await h.command('settings', { value: {} });
     const workGate = new Promise(resolve => { releaseWork = resolve; });
     let workCalls = 0;
-    h.flags.teacherResponse = declaredTeacher(async request => {
+    h.flags.teacherResponse = (async request => {
         const data = requestData(request);
         if (data?.action.kind === 'prepare') {
             if (++workCalls === 1) { await workGate; return { toolCalls: [call('LearningLessonEdit', fixtureLesson)] }; }
@@ -44,7 +43,7 @@ test('a learner can chat during preparation, and stopping the conversation does 
     releaseWork();
     await until(h, state => !state.busy);
     assert.equal(h.state().unit.title, fixtureLesson.title);
-    assert.equal(h.state().conversation.turns.filter(turn => turn.status === 'finished').length, 2);
+    assert.equal(h.state().conversation.turns.filter(turn => turn.status === 'finished').length, 1);
 });
 
 test('a chat request starts the native workbench action; ordinary conversation does not write a lesson', async t => {
@@ -55,7 +54,7 @@ test('a chat request starts the native workbench action; ordinary conversation d
     await h.command('talk', { message: 'Just saying hello.' });
     assert.equal(h.counts.userWrites, before);
     const counts = new Map();
-    h.flags.teacherResponse = declaredTeacher(request => {
+    h.flags.teacherResponse = (request => {
         const kind = requestData(request)?.action.kind;
         const count = (counts.get(kind) ?? 0) + 1; counts.set(kind, count);
         if (kind === 'talk' && count === 1) { return { toolCalls: [call('LearningRequest', { action: 'prepare', kind: 'lesson', instruction: 'Prepare a lesson.' })] }; }
@@ -80,12 +79,8 @@ test('a delegated answer retains its message-time conditions even when the reply
         const data = requestData(request);
         if (data?.action.kind === 'talk') {
             round++;
-            if (round === 1) { return { toolCalls: [call('LearningHelp', { exerciseIds: [exerciseId], materialIds: [] })] }; }
-            if (round === 2) { return { toolCalls: [call('LearningRequest', { action: 'submit', exerciseId, instruction: 'Please submit this:' })] }; }
+            if (round === 1) { return { toolCalls: [call('LearningRequest', { action: 'submit', exerciseId, instruction: 'Please submit this:' })] }; }
             return { text: 'I will submit your answer. Notice how the second paragraph broadens the idea.' };
-        }
-        if (!request.messages.some(entry => entry.role === 'tool')) {
-            return { toolCalls: [call('LearningHelp', { exerciseIds: [], materialIds: [] })] };
         }
         return { text: 'Your answer has been received.' };
     };
@@ -93,7 +88,7 @@ test('a delegated answer retains its message-time conditions even when the reply
     const saved = h.profile().unit.attempts.at(-1);
     assert.equal(saved.answer.text, message);
     assert.equal(saved.help.hint, false);
-    assert.deepEqual(h.profile().unit.revealed.hints, [exerciseId]);
+    assert.deepEqual(h.profile().unit.revealed.hints, []);
 });
 
 test('conversation tools reject direct writes and invented requests; replacement preserves its kind and waits for confirmation', async t => {
@@ -127,7 +122,7 @@ test('an explicit chat delegation is rejected while work is running, without que
     let response;
     let workCalls = 0;
     let chatCalls = 0;
-    h.flags.teacherResponse = declaredTeacher(async request => {
+    h.flags.teacherResponse = (async request => {
         if (requestData(request)?.action.kind === 'prepare') { workCalls++; await gate; return { text: 'Preparation remains unchanged.' }; }
         if (++chatCalls === 1) { return { toolCalls: [call('LearningRequest', { action: 'settings', instruction: 'Set my target to B2.', value: { targetLevel: 'B2' } })] }; }
         response = JSON.parse(request.messages.findLast(entry => entry.role === 'tool' && entry.toolName === 'LearningRequest').content);

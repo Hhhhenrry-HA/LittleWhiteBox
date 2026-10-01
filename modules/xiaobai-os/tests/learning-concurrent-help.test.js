@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createClassroomFixture } from './fixtures/learning-classroom.js';
 import { exposeLearningContent } from '../domains/learning/exposure.js';
-import { createLearningSession } from '../apps/learning/agent/session.js';
 
 test('saving an assessment after conversational help preserves both facts and the original answer conditions', async t => {
     const h = await createClassroomFixture(); t.after(h.dispose);
@@ -64,17 +63,16 @@ test('help for a reused question ID never attaches to a replaced passage in eith
             const h = await createClassroomFixture(); sub.after(h.dispose); await h.openLesson();
             const baseline = h.repository.snapshot().document;
             const unit = baseline.data.profiles[0].unit;
-            const session = createLearningSession(h.repository, { language: 'en', osId: unit.originOsId,
-                inputScope: unit.scope, action: { kind: 'talk' } });
-            assert.equal(session.executeTool('LearningHelp', { exerciseIds: [unit.exercises[0].id], materialIds: [] }).ok, true);
+            const helped = structuredClone(baseline.data);
+            exposeLearningContent(helped.profiles[0], 'hints', unit.exercises[0].id);
             const changed = structuredClone(baseline.data);
             changed.profiles[0].unit.materials[0].paragraphs[0].text = 'The train leaves at seven.';
             if (helpFirst) {
-                assert.equal((await session.saveHelp(() => true)).status, 'confirmed');
+                assert.equal((await h.repository.save(baseline, helped, () => true)).status, 'confirmed');
                 assert.equal((await h.repository.save(baseline, changed, () => true)).status, 'confirmed');
             } else {
                 assert.equal((await h.repository.save(baseline, changed, () => true)).status, 'confirmed');
-                await assert.rejects(session.saveHelp(() => true));
+                assert.equal((await h.repository.save(baseline, helped, () => true)).status, 'cancelled');
             }
             assert.deepEqual(h.profile().unit.revealed.hints, []);
         });
