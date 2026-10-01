@@ -1,6 +1,6 @@
 /* eslint-disable */
 import { E as W, F as r, K as F, L, M as D, O as J, Q as M, V as U, X as _, Z as P, _ as s, b as K, c as H, et as t, g as $, l as Q, m as a, nt as X, p as h, rt as k, s as Z, tt as A, u as O, v as G, x as V, y as Y } from "./xiaobai-os-runtime-dom.esm-bundler-BeaorYpU.js";
-import { n as ee } from "./xiaobai-os-app-navigation-dPaaNhS6.js";
+import { r as ee } from "./xiaobai-os-app-navigation-C25euSGK.js";
 import { n as te } from "./xiaobai-os-frame-bridge-BfVuKvnh.js";
 var ae = { class: "world-article" }, le = { tabindex: "-1" }, re = {
   key: 0,

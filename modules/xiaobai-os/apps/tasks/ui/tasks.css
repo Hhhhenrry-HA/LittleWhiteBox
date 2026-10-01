@@ -196,8 +196,8 @@
     .tasks-app-header h1 { font-size: 19px; }
 }
 @container os-stage (min-width: 960px) {
-    .tasks-workspace.is-main { display: grid; grid-template-columns: 164px minmax(0, 1fr); }
-    .tasks-nav { grid-column: 1; grid-row: 1; flex-direction: column; justify-content: flex-start; gap: 6px; padding: 18px 12px; border-top: 0; border-right: 1px solid var(--tasks-line); }
+    .tasks-workspace.is-main { display: grid; grid-template-columns: 164px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+    .tasks-nav { grid-column: 1; grid-row: 1; flex-direction: column; justify-content: flex-start; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; gap: 6px; padding: 18px 12px; border-top: 0; border-right: 1px solid var(--tasks-line); }
     .tasks-nav button { flex: 0 0 auto; min-height: 48px; display: flex; align-items: center; gap: 12px; justify-content: flex-start; padding: 6px 14px; font-size: 13px; border-radius: 10px; }
     .tasks-nav button[aria-current] { background: var(--tasks-tint); }
     .tasks-content { grid-column: 2; grid-row: 1; min-width: 0; }

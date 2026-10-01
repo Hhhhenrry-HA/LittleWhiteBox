@@ -1,6 +1,6 @@
 /* eslint-disable */
 import { $ as ge, C as _t, E as re, F as t, G as ea, H as ta, I as aa, K as te, L as D, M as xe, O as Ce, Q as na, U as H, X as G, Y as he, Z as ia, _ as i, a as Ue, b as W, c as ye, et as r, g as m, h as Y, i as la, l as ie, m as a, nt as St, o as oe, p as L, rt as s, tt as le, u as E, w as gt, x as Q, y as F, z as sa } from "./xiaobai-os-runtime-dom.esm-bundler-BeaorYpU.js";
-import { n as Ve, r as At } from "./xiaobai-os-app-navigation-dPaaNhS6.js";
+import { i as At, r as Ve } from "./xiaobai-os-app-navigation-C25euSGK.js";
 import { n as ra, t as oa } from "./xiaobai-os-frame-bridge-BfVuKvnh.js";
 import { t as et } from "./xiaobai-os-MessageMarkdown-C9TgJeVY.js";
 var Qe = /* @__PURE__ */ new WeakMap(), mt = [

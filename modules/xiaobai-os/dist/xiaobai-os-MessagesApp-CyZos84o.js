@@ -1,8 +1,8 @@
 /* eslint-disable */
 import { E as he, F as l, G as qe, H as Le, K as X, L as be, M as na, N as we, O as ia, P as ua, U as Ce, X as $, Y as Pe, _ as n, b as A, c as Ue, et as O, g as C, h as oe, i as ke, k as oa, l as ve, m as e, nt as Ie, o as ue, p as x, q as ra, rt as g, tt as Q, u as T, w as ce, x as K, y as le } from "./xiaobai-os-runtime-dom.esm-bundler-BeaorYpU.js";
-import { n as Fe } from "./xiaobai-os-app-navigation-dPaaNhS6.js";
+import { r as Fe } from "./xiaobai-os-app-navigation-C25euSGK.js";
 import { t as da } from "./xiaobai-os-context-tokens-bfmDTbG3.js";
-import { t as Ve } from "./xiaobai-os-AppDialog-CwwXWjcp.js";
+import { t as Ve } from "./xiaobai-os-AppDialog-B3ZziTBo.js";
 var va = {
   viewBox: "0 0 24 24",
   fill: "none",

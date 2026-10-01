@@ -1,6 +1,6 @@
 /* eslint-disable */
 import { A as Ze, D as Oe, E as Ye, F as h, L as ce, M as Be, O as Fe, U as Te, X as W, Z as we, _ as y, b as re, et as t, g as H, h as je, l as Ne, m as d, nt as xe, p as J, rt as m, tt as ue, u as te, v as se, x as Me, y as ne } from "./xiaobai-os-runtime-dom.esm-bundler-BeaorYpU.js";
-import { n as Ue, r as Ve } from "./xiaobai-os-app-navigation-dPaaNhS6.js";
+import { i as Ve, r as Ue } from "./xiaobai-os-app-navigation-C25euSGK.js";
 import { a as ve, i as We, n as de, o as Xe, r as o, s as he, t as De } from "./xiaobai-os-copy-Bo3eHGxn.js";
 import { At as pe, Ot as Ke, S as Je, St as Qe, X as et, _t as tt, a as at, g as Le, gt as nt, kt as Re, m as it, mt as ot, n as lt, q as rt, rt as st, t as dt, u as ct, x as Ce } from "./xiaobai-os-RoundedBoxGeometry-CpWqoTdO.js";
 var Ge = [

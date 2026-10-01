@@ -1,7 +1,7 @@
 /* eslint-disable */
 import { E as Qe, F as u, G as fe, K as Q, L as O, M as Ge, O as Xe, Q as ge, R as Ye, X as R, Y as Je, _ as d, b as g, et as A, g as m, h as S, l as We, m as e, o as G, p as I, rt as r, tt as X, u as w, x, y } from "./xiaobai-os-runtime-dom.esm-bundler-BeaorYpU.js";
-import { n as _e } from "./xiaobai-os-app-navigation-dPaaNhS6.js";
-import { t as et } from "./xiaobai-os-AppDialog-CwwXWjcp.js";
+import { r as _e } from "./xiaobai-os-app-navigation-C25euSGK.js";
+import { t as et } from "./xiaobai-os-AppDialog-B3ZziTBo.js";
 var tt = {
   class: "tasks-icon",
   viewBox: "0 0 24 24",

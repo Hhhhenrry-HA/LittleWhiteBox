@@ -1,13 +1,13 @@
 /* eslint-disable */
 import { C as c, F as u, R as f, T as _, X as m, c as v, f as h, h as y, l as t, m as l, p as g, x as b } from "./xiaobai-os-runtime-dom.esm-bundler-BeaorYpU.js";
-import { r as A, t as k } from "./xiaobai-os-app-navigation-dPaaNhS6.js";
+import { i as A, t as k } from "./xiaobai-os-app-navigation-C25euSGK.js";
 var w = ["onKeydown"], B = /* @__PURE__ */ b({
   inheritAttrs: !1,
   __name: "AppDialog",
   props: { busy: { type: Boolean } },
   emits: ["close"],
-  setup(r, { emit: i }) {
-    const n = r, p = i, d = c(k, null), s = g(() => d?.root.value?.firstElementChild ?? null), o = m(null);
+  setup(i, { emit: r }) {
+    const n = i, p = r, d = c(k, null), s = g(() => d?.root.value?.firstElementChild ?? null), o = m(null);
     function e() {
       n.busy || p("close");
     }

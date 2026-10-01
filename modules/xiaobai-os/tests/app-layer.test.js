@@ -20,9 +20,15 @@ test('an app layer can dock and become modal again without replacing its content
         previous.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
         Object.defineProperty(globalThis, key, { value, configurable: true });
     }
-    t.after(() => { for (const [key, descriptor] of previous) {
-        if (descriptor) { Object.defineProperty(globalThis, key, descriptor); } else { delete globalThis[key]; }
-    } });
+    let app;
+    t.after(async () => {
+        app?.unmount();
+        await Promise.resolve();
+        await (await import('vue')).nextTick();
+        for (const [key, descriptor] of previous) {
+            if (descriptor) { Object.defineProperty(globalThis, key, descriptor); } else { delete globalThis[key]; }
+        }
+    });
     const { createApp, h, ref, nextTick, onMounted, onBeforeUnmount } = await import('vue');
     const compiled = await build({ stdin: {
         contents: "export { default as Scope } from './components/AppNavigationScope.vue'; export { useAppLayer } from './navigation/app-navigation.ts';",
@@ -36,7 +42,7 @@ test('an app layer can dock and become modal again without replacing its content
     } }] });
     // eslint-disable-next-line no-unsanitized/method -- Compiled first-party components, not user input.
     const { Scope, useAppLayer } = await import(`data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`);
-    const modal = ref(true), open = ref(true), scope = ref(null);
+    const modal = ref(true), open = ref(true), dialogOpen = ref(false), scope = ref(null);
     let mounts = 0, unmounts = 0, backs = 0;
     const Panel = { setup() {
         const root = ref(null);
@@ -44,10 +50,16 @@ test('an app layer can dock and become modal again without replacing its content
         onMounted(() => mounts++); onBeforeUnmount(() => unmounts++);
         return () => h('section', { ref: root, 'data-panel': '' }, [h('input', { value: 'draft' })]);
     } };
-    const app = createApp({ setup: () => () => h(Scope, { owner: 'fixture', ref: scope }, () => [
+    const Dialog = { setup() {
+        const root = ref(null);
+        useAppLayer(root, () => { dialogOpen.value = false; });
+        return () => h('section', { ref: root, 'data-confirmation': '' }, [h('button', 'confirm')]);
+    } };
+    app = createApp({ setup: () => () => h(Scope, { owner: 'fixture', ref: scope }, () => [
         h('button', { 'data-background': '' }, 'action'), open.value ? h(Panel) : null,
+        dialogOpen.value ? h(Dialog) : null,
     ]) });
-    app.mount('#app'); t.after(() => app.unmount());
+    app.mount('#app');
     const flush = async () => { await nextTick(); await nextTick(); };
     await flush();
     const neighbour = window.document.querySelector('[data-background]');
@@ -63,6 +75,31 @@ test('an app layer can dock and become modal again without replacing its content
     assert.equal(mounts, 1); assert.equal(unmounts, 0);
     assert.equal(scope.value.back(), true); await flush();
     assert.equal(backs, 1); assert.equal(unmounts, 1);
+    assert.equal(neighbour.inert, false);
+    assert.equal(scope.value.back(), false);
+
+    // A responsive panel was opened first. Changing its modality must not put
+    // it above a later confirmation, nor change the order consumed by Back.
+    modal.value = false; open.value = true; await flush();
+    const panel = window.document.querySelector('[data-panel]');
+    const draft = panel.querySelector('input');
+    draft.value = 'retained behind confirmation';
+    dialogOpen.value = true; await flush();
+    const confirmation = window.document.querySelector('[data-confirmation]');
+    for (const dockedModal of [true, false, true]) {
+        modal.value = dockedModal; await flush();
+        assert.equal(panel.inert, true);
+        assert.equal(Boolean(confirmation.inert), false);
+        assert.equal(neighbour.inert, true);
+        assert.equal(window.document.querySelector('[data-panel] input'), draft);
+        assert.equal(draft.value, 'retained behind confirmation');
+    }
+    assert.equal(scope.value.back(), true); await flush();
+    assert.equal(dialogOpen.value, false);
+    assert.equal(open.value, true);
+    assert.equal(panel.inert, false);
+    assert.equal(neighbour.inert, true);
+    assert.equal(scope.value.back(), true); await flush();
     assert.equal(neighbour.inert, false);
     assert.equal(scope.value.back(), false);
 });

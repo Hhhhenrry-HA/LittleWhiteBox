@@ -1,9 +1,9 @@
 /* eslint-disable */
 import { E as ve, F as r, G as be, K as Re, L as J, M as _e, O as se, Q as he, U as ne, X as y, Z as ce, _ as o, b as Me, c as ae, et as i, g as m, h as G, l as re, m as a, nt as Se, o as Pe, p as N, rt as s, tt as H, u as K, x as le, y as Q } from "./xiaobai-os-runtime-dom.esm-bundler-BeaorYpU.js";
 import { t as Be } from "./xiaobai-os-descriptor-DmDuv1pM.js";
-import { n as Oe, r as ze } from "./xiaobai-os-app-navigation-dPaaNhS6.js";
+import { i as Oe, r as ze } from "./xiaobai-os-app-navigation-C25euSGK.js";
 import { t as qe } from "./xiaobai-os-context-tokens-bfmDTbG3.js";
-import { t as we } from "./xiaobai-os-AppDialog-CwwXWjcp.js";
+import { t as we } from "./xiaobai-os-AppDialog-B3ZziTBo.js";
 import { t as xe } from "./xiaobai-os-MessageMarkdown-C9TgJeVY.js";
 var L = Object.freeze({
   inputBudget: 158e3,
@@ -148,7 +148,7 @@ var Le = [
   },
   setup(n) {
     const g = n, e = y(!1), b = N(() => g.usage.used + g.draftTokens), h = (k) => `${(k / 1e3).toFixed(1)}k`;
-    return Oe(() => (e.value = !1, !0), () => e.value), (k, f) => (r(), o("div", {
+    return ze(() => (e.value = !1, !0), () => e.value), (k, f) => (r(), o("div", {
       class: "admin-context",
       onKeydown: f[2] || (f[2] = ae(re((c) => e.value = !1, ["stop"]), ["esc"]))
     }, [a("button", {
@@ -447,7 +447,7 @@ var Le = [
     function w() {
       _.value ? (_.value = null, v()) : b("close");
     }
-    ze(C, w, () => x.value);
+    Oe(C, w, () => x.value);
     async function A(O) {
       p.value = !0, c.value = "", _.value = null;
       try {

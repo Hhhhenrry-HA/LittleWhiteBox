@@ -1,6 +1,6 @@
 /* eslint-disable */
 import { A as tt, D as at, E as nt, F as w, L as ot, M as st, O as rt, U as $e, X as T, Z as ze, _ as k, b as Ne, et as t, g as A, l as it, m as l, p as D, rt as m, tt as lt, u as we, x as Xe, y as Ee } from "./xiaobai-os-runtime-dom.esm-bundler-BeaorYpU.js";
-import { n as ut, r as ct } from "./xiaobai-os-app-navigation-dPaaNhS6.js";
+import { i as ut, r as ct } from "./xiaobai-os-app-navigation-C25euSGK.js";
 import { At as dt, J as vt, S as ft, St as pt, X as mt, _t as ht, g as bt, gt as yt, m as gt, n as wt, o as Fe, q as Ke, rt as kt, t as _t, u as xt, x as J } from "./xiaobai-os-RoundedBoxGeometry-CpWqoTdO.js";
 import { a as V, c as St, i as ve, n as Ge, o as Et, r as He, s as Ue, t as s } from "./xiaobai-os-copy-i0wrrpaY.js";
 function Mt() {
@@ -872,9 +872,9 @@ var Dt = {
     }), a = Rt(o.bridge, o.chatIdentity, r), { view: n, busy: i, blocked: v, failed: h, notice: C, generating: M } = a, _ = T(null), I = T(null), u = T(null), b = T(1), E = T(!1), L = T(!1), P = T(!1), y = T(!0), g = T(!1), f = T(""), x = T(!1), Z = T(!1);
     let B = null, W = !1;
     const O = Pt(), q = D(() => L.value ? n.value?.best ?? null : n.value?.active ?? null), Q = D(() => q.value ? Ce(q.value) : null), $ = D(() => Q.value === "playing" && !L.value), ne = D(() => q.value ? Re(q.value) : 0), ee = D(() => Et(ne.value)), se = D(() => q.value ? Me(q.value.seed) : []), te = D(() => se.value[q.value?.moves.length ?? 0]), H = D(() => se.value[(q.value?.moves.length ?? 0) + 1]), U = D(() => y.value && !v.value && !o.generationActive && !E.value && !u.value && !g.value), X = D(() => !U.value || P.value), ae = D(() => n.value?.board?.supports[n.value.board.weak]);
-    ct(I, () => {
+    ut(I, () => {
       u.value = null;
-    }), ut(() => L.value ? (L.value = !1, !0) : !1);
+    }), ct(() => L.value ? (L.value = !1, !0) : !1);
     function fe() {
       B?.set({
         run: q.value,

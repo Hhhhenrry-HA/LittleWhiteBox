@@ -1,7 +1,7 @@
 /* eslint-disable */
 import { E as Ce, F as n, G as Me, K as Se, L as D, M as $e, O as Be, Q as Fe, R as Ne, U as ne, V as je, X as V, _ as i, b as w, c as Ae, et as r, g as b, h as N, l as he, m as t, nt as be, o as We, p as M, rt as v, s as Re, tt as W, u as S, v as Ye, x as U, y as E } from "./xiaobai-os-runtime-dom.esm-bundler-BeaorYpU.js";
-import { n as Xe } from "./xiaobai-os-app-navigation-dPaaNhS6.js";
-import { t as Ie } from "./xiaobai-os-AppDialog-CwwXWjcp.js";
+import { r as Xe } from "./xiaobai-os-app-navigation-C25euSGK.js";
+import { t as Ie } from "./xiaobai-os-AppDialog-B3ZziTBo.js";
 import { C as L, D as Ge, E as Je, O as et, S as Ke, T as ye, a as tt, b as at, c as lt, d as nt, f as Ee, g as st, h as ot, i as Te, l as it, n as rt, o as ut, p as Ve, r as Oe, s as ct, u as qe, v as me, w as ee, x as dt, y as vt } from "./xiaobai-os-map-presentation-DJztEHLW.js";
 var pt = { class: "map-viewport" }, mt = ["viewBox", "aria-label"], yt = {
   class: "map-viewport-controls",

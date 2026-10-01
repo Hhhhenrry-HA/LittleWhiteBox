@@ -1,6 +1,6 @@
 /* eslint-disable */
 import { F as s, G as N, L as I, M as J, O as K, Q as ee, R as H, X as M, _ as i, b as g, et as v, g as b, h as W, m as e, p as C, rt as n, tt as x, u as B, x as k, y as L } from "./xiaobai-os-runtime-dom.esm-bundler-BeaorYpU.js";
-import { t as R } from "./xiaobai-os-AppDialog-CwwXWjcp.js";
+import { t as R } from "./xiaobai-os-AppDialog-B3ZziTBo.js";
 var te = {
   class: "wallet-icon",
   viewBox: "0 0 24 24",

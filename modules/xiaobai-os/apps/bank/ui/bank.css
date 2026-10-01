@@ -169,8 +169,8 @@
 @media (max-width: 360px) { .bank-header { gap: 7px; padding-inline: 16px; } .bank-page { padding-inline: 18px; } .bank-dialog { padding: 22px 18px; } }
 @media (prefers-reduced-motion: reduce) { .bank-app *, .bank-app *::before, .bank-app *::after { animation: none !important; transition: none !important; } }
 @container os-stage (min-width: 900px) {
-    .bank-workspace { display: grid; grid-template-columns: 164px minmax(0, 1fr); }
-    .bank-navigation { grid-column: 1; grid-row: 1; grid-template-columns: 1fr; align-content: start; gap: 6px; padding: 18px 12px; border-top: 0; border-right: 1px solid var(--bank-line); }
+    .bank-workspace { display: grid; grid-template-columns: 164px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+    .bank-navigation { grid-column: 1; grid-row: 1; grid-template-columns: 1fr; align-content: start; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; gap: 6px; padding: 18px 12px; border-top: 0; border-right: 1px solid var(--bank-line); }
     .bank-navigation button { min-height: 48px; flex-direction: row; justify-content: flex-start; gap: 6px; padding: 6px 12px; font-size: 13px; border-radius: 10px; }
     .bank-navigation button[aria-current] { background: var(--bank-tint); }
     .bank-navigation button > span { width: 28px; }

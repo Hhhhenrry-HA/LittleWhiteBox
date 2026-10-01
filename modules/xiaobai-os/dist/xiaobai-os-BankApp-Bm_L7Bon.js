@@ -1,7 +1,7 @@
 /* eslint-disable */
 import { F as s, G as de, K as ve, L as P, M as be, O as ce, Q as ke, X as C, _ as o, b as g, et as ae, g as k, h as R, l as me, m as e, o as fe, p as _, rt as l, tt as D, u as A, x as N, y as U } from "./xiaobai-os-runtime-dom.esm-bundler-BeaorYpU.js";
-import { n as pe } from "./xiaobai-os-app-navigation-dPaaNhS6.js";
-import { t as ge } from "./xiaobai-os-AppDialog-CwwXWjcp.js";
+import { r as pe } from "./xiaobai-os-app-navigation-C25euSGK.js";
+import { t as ge } from "./xiaobai-os-AppDialog-B3ZziTBo.js";
 var ye = class extends Error {
   code;
   constructor(n, u = "") {
