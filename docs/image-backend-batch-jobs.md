@@ -4,7 +4,7 @@
 
 支持后端任务的 provider 在 Scene Planner 完成后一次提交整批请求。SillyTavern 后端进程独立完成上游请求、图片间隔与结果暂存；浏览器后台节流、JavaScript 暂停或短暂断网只影响进度同步，不影响已经创建的任务。
 
-本方案不合并或移植 #84 的前端 Worker 计时器。SD WebUI 与 ComfyUI 默认继续使用各自已有的酒馆代理或浏览器直连链路；只有用户显式启用小白X后台批量任务时，才改由本插件执行。
+SD WebUI 与 ComfyUI 默认继续使用各自已有的酒馆代理或浏览器直连链路；只有用户显式启用小白X后台批量任务时，才改由本插件执行。
 
 ## 终态边界
 
@@ -24,7 +24,7 @@
 - 单项 timeout、显式取消、结果字节暂存和 TTL 清理。
 - V4.5 图片响应解包，以及 V5 MessagePack 流的有界逐帧解析与最终 PNG 提取。
 
-后端不接收 Scene Planner、角色、楼层、slot 或正文信息。NovelAI adapter 只解释供应商传输事件，把 `final/error` 收敛成通用 Image Job 的最终图片或错误。
+Image Job 接口不接收 Scene Planner、角色、楼层、slot 或正文信息；后端规划由独立 [Draw Run](./backend-draw-runs.md)负责，两个接口不能混作一项能力。NovelAI adapter 只解释供应商传输事件，把 `final/error` 收敛成通用 Image Job 的最终图片或错误。
 
 ## 唯一事实来源与生命周期
 
@@ -183,15 +183,7 @@ novelai-v5-final-image-v1
 4. 删除 capability 并回退 server plugin 版本发布。
 5. 删除浏览器 IndexedDB `xb_image_backend_jobs`；后端任务仍随 Node 进程重启清空。
 
-## 施工顺序
 
-1. 后端 manager：状态机、per-owner 轮转、timeout/cancel/cooldown、敏感数据清理、TTL。
-2. 后端 REST：输入校验、owner 授权、结果 MIME/ACK、旧 NovelAI 接口回归、`image-batch-jobs-v1` capability。
-3. 前端 job client：协议封装、轮询重试、前台补查、取消和幂等收取。
-4. provider request preparation 与统一 batch 执行；任务开关关闭时保留原链路。
-5. journal、租约、提交 CAS、刷新接回与显式取消结算。
-6. 接入文本源/ebook 与楼层占位符路径，再统一单张刷新/重试入口。
-7. 刷新 `assistant-file-manifest.json`；仅在依赖检查证明需要时重建 bundle。
 
 ## 最低必要测试
 
@@ -225,6 +217,6 @@ novelai-v5-final-image-v1
 - 聊天未加载时保留结果，全 chat 找不到 slot 时才丢弃；slot 删除必须避开编辑状态，最终 DOM 提交必须晚于 journal 删除。
 - teardown detach 不发送 cancel/delete；cleanup/reinit 后的旧 provider 操作不得创建任务。
 
-## 验收
+## 外部验证
 
 后台任务模式规划 4 张、间隔 20 秒；第一张开始后关闭或刷新页面。正常 `pagehide` 写下遗言时，重新进入原聊天应立即接管原 job；模拟系统强杀或禁用 localStorage 时仍等待旧 lease 到期。两种路径最终都应让四张图落入原 slot，journal 在全部落库和 ACK 后消失。随后分别验证临时断网恢复、显式 active cancel、删除单个 slot、多标签页竞争、多楼层轮转，以及关闭任务开关仍走原链路。

@@ -6,7 +6,7 @@
 
 这层解决的是配置、供应商调用和 SillyTavern 事件时序，不拥有地图、任务或四次元壁的业务语义。普通 OS 仍不依赖`modules/tavern/**`。
 
-## 2. 开工检查结论
+## 2. 所有权与生命周期
 
 | 项目 | 结论 |
 | --- | --- |
@@ -51,9 +51,9 @@ OS Agent bundle 取代当前由 Fourth Wall 命名和拥有的 Agent bundle。�
 
 ### 3.1 已落地业务能力与迁移边界
 
-Agent/maintenance 的业务行为已经落地，但当前代码仍位于旧 host/composition。Kernel 施工时必须按上方目录迁入 Capability，并删除旧入口，不能在旧目录外包一层转发器形成双路径。
+Agent 与 Maintenance 已分别归 `capabilities/agent/`和 `capabilities/maintenance/`；Host 仅组合注册，不重新建立旧集中入口。
 
-- Agent API APP、Agent gateway 和通用 Agent bundle 已完成，因为四次元壁是它们当下的真实消费者。
+- Agent API APP、Agent gateway 和通用 Agent bundle 由现有四次元壁及其他已注册消费者共用，不建立第二套配置与传输。
 - Map 交付自己的领域、Prompt、工具、Session、UI 和 participant 时，同阶段引入了 accepted-turn source 与业务无关 runner；Map 固定注册桌面入口，自动维护开关只在 APP 内。
 - Tasks 已交付自己的领域、Prompt、工具、Session、UI、资金事务和 participant，没有在通用 runner 中增加 Tasks 状态分支。
 - Map 与 Tasks 是两个真实 participant；同一接受轮可共用一个 Provider Session，但各自拥有 staging、结果和提交事务。

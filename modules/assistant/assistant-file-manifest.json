@@ -97,7 +97,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/core/server-storage.js",
       "relativePath": "core/server-storage.js",
       "extension": ".js",
-      "sizeBytes": 1247
+      "sizeBytes": 1268
     },
     {
       "source": "littlewhitebox",
@@ -108,17 +108,24 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/core/storage-copy.js",
+      "relativePath": "core/storage-copy.js",
+      "extension": ".js",
+      "sizeBytes": 158
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/core/storage-file.js",
       "relativePath": "core/storage-file.js",
       "extension": ".js",
-      "sizeBytes": 11105
+      "sizeBytes": 12234
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/core/storage-file.test.js",
       "relativePath": "core/storage-file.test.js",
       "extension": ".js",
-      "sizeBytes": 10360
+      "sizeBytes": 11897
     },
     {
       "source": "littlewhitebox",
@@ -139,21 +146,21 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/docs/backend-draw-runs.md",
       "relativePath": "docs/backend-draw-runs.md",
       "extension": ".md",
-      "sizeBytes": 42377
+      "sizeBytes": 38451
     },
     {
       "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/docs/draw-agentcore-scene-planner-migration.md",
-      "relativePath": "docs/draw-agentcore-scene-planner-migration.md",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/docs/chat-image-delivery.md",
+      "relativePath": "docs/chat-image-delivery.md",
       "extension": ".md",
-      "sizeBytes": 60748
+      "sizeBytes": 3778
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/docs/image-backend-batch-jobs.md",
       "relativePath": "docs/image-backend-batch-jobs.md",
       "extension": ".md",
-      "sizeBytes": 19827
+      "sizeBytes": 19192
     },
     {
       "source": "littlewhitebox",
@@ -167,7 +174,14 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/docs/novelai-v5-product-development.md",
       "relativePath": "docs/novelai-v5-product-development.md",
       "extension": ".md",
-      "sizeBytes": 44015
+      "sizeBytes": 39341
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/docs/scene-planner-design.md",
+      "relativePath": "docs/scene-planner-design.md",
+      "extension": ".md",
+      "sizeBytes": 4319
     },
     {
       "source": "littlewhitebox",
@@ -542,13 +556,6 @@
     },
     {
       "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/agent-core/docs/conversation-runtime-consolidation.md",
-      "relativePath": "modules/agent-core/docs/conversation-runtime-consolidation.md",
-      "extension": ".md",
-      "sizeBytes": 17225
-    },
-    {
-      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/agent-core/node-entry.js",
       "relativePath": "modules/agent-core/node-entry.js",
       "extension": ".js",
@@ -587,7 +594,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/agent-core/README.md",
       "relativePath": "modules/agent-core/README.md",
       "extension": ".md",
-      "sizeBytes": 7481
+      "sizeBytes": 7453
     },
     {
       "source": "littlewhitebox",
@@ -692,7 +699,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/agent-core/tavily-search.js",
       "relativePath": "modules/agent-core/tavily-search.js",
       "extension": ".js",
-      "sizeBytes": 8249
+      "sizeBytes": 8297
     },
     {
       "source": "littlewhitebox",
@@ -1000,7 +1007,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/assistant/ARCHITECTURE.md",
       "relativePath": "modules/assistant/ARCHITECTURE.md",
       "extension": ".md",
-      "sizeBytes": 9741
+      "sizeBytes": 8704
     },
     {
       "source": "littlewhitebox",
@@ -2446,13 +2453,6 @@
     },
     {
       "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/shared/tests/fixtures/image-slot-verification.md",
-      "relativePath": "modules/draw/shared/tests/fixtures/image-slot-verification.md",
-      "extension": ".md",
-      "sizeBytes": 9979
-    },
-    {
-      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/shared/tests/fixtures/provider-browser-actions.mjs",
       "relativePath": "modules/draw/shared/tests/fixtures/provider-browser-actions.mjs",
       "extension": ".mjs",
@@ -3111,6 +3111,13 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/chat-deletion-lifecycle.js",
+      "relativePath": "modules/story-summary/chat-deletion-lifecycle.js",
+      "extension": ".js",
+      "sizeBytes": 937
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/data/anchor-extraction.js",
       "relativePath": "modules/story-summary/data/anchor-extraction.js",
       "extension": ".js",
@@ -3146,10 +3153,17 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/data/config-transitions.js",
+      "relativePath": "modules/story-summary/data/config-transitions.js",
+      "extension": ".js",
+      "sizeBytes": 3438
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/data/config.js",
       "relativePath": "modules/story-summary/data/config.js",
       "extension": ".js",
-      "sizeBytes": 23834
+      "sizeBytes": 23849
     },
     {
       "source": "littlewhitebox",
@@ -3164,6 +3178,20 @@
       "relativePath": "modules/story-summary/data/events.js",
       "extension": ".js",
       "sizeBytes": 2388
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/data/fact-edits.js",
+      "relativePath": "modules/story-summary/data/fact-edits.js",
+      "extension": ".js",
+      "sizeBytes": 1347
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/data/fact-identity.js",
+      "relativePath": "modules/story-summary/data/fact-identity.js",
+      "extension": ".js",
+      "sizeBytes": 753
     },
     {
       "source": "littlewhitebox",
@@ -3191,7 +3219,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/data/memory-copy.js",
       "relativePath": "modules/story-summary/data/memory-copy.js",
       "extension": ".js",
-      "sizeBytes": 1076
+      "sizeBytes": 1216
     },
     {
       "source": "littlewhitebox",
@@ -3219,7 +3247,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/data/store.js",
       "relativePath": "modules/story-summary/data/store.js",
       "extension": ".js",
-      "sizeBytes": 32472
+      "sizeBytes": 32277
     },
     {
       "source": "littlewhitebox",
@@ -3240,7 +3268,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/data/summary-import.js",
       "relativePath": "modules/story-summary/data/summary-import.js",
       "extension": ".js",
-      "sizeBytes": 2212
+      "sizeBytes": 3080
     },
     {
       "source": "littlewhitebox",
@@ -3258,31 +3286,17 @@
     },
     {
       "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/docs/memory-maintenance-implementation-plan.md",
-      "relativePath": "modules/story-summary/docs/memory-maintenance-implementation-plan.md",
-      "extension": ".md",
-      "sizeBytes": 7253
-    },
-    {
-      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/docs/memory-maintenance-target-design.md",
       "relativePath": "modules/story-summary/docs/memory-maintenance-target-design.md",
       "extension": ".md",
-      "sizeBytes": 30175
+      "sizeBytes": 31019
     },
     {
       "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/docs/memory-maintenance-verification.md",
-      "relativePath": "modules/story-summary/docs/memory-maintenance-verification.md",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/docs/recall-reuse.md",
+      "relativePath": "modules/story-summary/docs/recall-reuse.md",
       "extension": ".md",
-      "sizeBytes": 63300
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/docs/recall-reuse-verification.md",
-      "relativePath": "modules/story-summary/docs/recall-reuse-verification.md",
-      "extension": ".md",
-      "sizeBytes": 5002
+      "sizeBytes": 1942
     },
     {
       "source": "littlewhitebox",
@@ -3293,6 +3307,13 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/feedback-copy.js",
+      "relativePath": "modules/story-summary/feedback-copy.js",
+      "extension": ".js",
+      "sizeBytes": 2163
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/generate/arc-progress.js",
       "relativePath": "modules/story-summary/generate/arc-progress.js",
       "extension": ".js",
@@ -3300,10 +3321,17 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/generate/causal-evidence-format.js",
+      "relativePath": "modules/story-summary/generate/causal-evidence-format.js",
+      "extension": ".js",
+      "sizeBytes": 1369
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/generate/causal-evidence-packing.js",
       "relativePath": "modules/story-summary/generate/causal-evidence-packing.js",
       "extension": ".js",
-      "sizeBytes": 3168
+      "sizeBytes": 5684
     },
     {
       "source": "littlewhitebox",
@@ -3324,7 +3352,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/generate/event-evidence-packing.js",
       "relativePath": "modules/story-summary/generate/event-evidence-packing.js",
       "extension": ".js",
-      "sizeBytes": 1940
+      "sizeBytes": 1941
     },
     {
       "source": "littlewhitebox",
@@ -3338,21 +3366,21 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/generate/llm.js",
       "relativePath": "modules/story-summary/generate/llm.js",
       "extension": ".js",
-      "sizeBytes": 18903
+      "sizeBytes": 19125
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/generate/prompt.js",
       "relativePath": "modules/story-summary/generate/prompt.js",
       "extension": ".js",
-      "sizeBytes": 74487
+      "sizeBytes": 76092
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/generate/recall-failure.js",
       "relativePath": "modules/story-summary/generate/recall-failure.js",
       "extension": ".js",
-      "sizeBytes": 1480
+      "sizeBytes": 1471
     },
     {
       "source": "littlewhitebox",
@@ -3527,7 +3555,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/maintenance/prompt.js",
       "relativePath": "modules/story-summary/maintenance/prompt.js",
       "extension": ".js",
-      "sizeBytes": 6287
+      "sizeBytes": 6421
     },
     {
       "source": "littlewhitebox",
@@ -3643,6 +3671,13 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/settings-config.css",
+      "relativePath": "modules/story-summary/settings-config.css",
+      "extension": ".css",
+      "sizeBytes": 591
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/story-summary-a.css",
       "relativePath": "modules/story-summary/story-summary-a.css",
       "extension": ".css",
@@ -3660,7 +3695,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/story-summary-ui.js",
       "relativePath": "modules/story-summary/story-summary-ui.js",
       "extension": ".js",
-      "sizeBytes": 145826
+      "sizeBytes": 146808
     },
     {
       "source": "littlewhitebox",
@@ -3674,14 +3709,14 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/story-summary.html",
       "relativePath": "modules/story-summary/story-summary.html",
       "extension": ".html",
-      "sizeBytes": 78409
+      "sizeBytes": 78760
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/story-summary.js",
       "relativePath": "modules/story-summary/story-summary.js",
       "extension": ".js",
-      "sizeBytes": 208039
+      "sizeBytes": 206133
     },
     {
       "source": "littlewhitebox",
@@ -3702,7 +3737,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/tests/causal-evidence-packing.test.js",
       "relativePath": "modules/story-summary/tests/causal-evidence-packing.test.js",
       "extension": ".js",
-      "sizeBytes": 1447
+      "sizeBytes": 6148
     },
     {
       "source": "littlewhitebox",
@@ -3710,6 +3745,13 @@
       "relativePath": "modules/story-summary/tests/character-aliases.test.js",
       "extension": ".js",
       "sizeBytes": 9724
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/tests/chat-deletion-lifecycle.test.js",
+      "relativePath": "modules/story-summary/tests/chat-deletion-lifecycle.test.js",
+      "extension": ".js",
+      "sizeBytes": 4467
     },
     {
       "source": "littlewhitebox",
@@ -3724,6 +3766,13 @@
       "relativePath": "modules/story-summary/tests/chunk-repair-policy.test.js",
       "extension": ".js",
       "sizeBytes": 2844
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/tests/config-loading.test.js",
+      "relativePath": "modules/story-summary/tests/config-loading.test.js",
+      "extension": ".js",
+      "sizeBytes": 9460
     },
     {
       "source": "littlewhitebox",
@@ -3759,6 +3808,13 @@
       "relativePath": "modules/story-summary/tests/direct-evidence-session.test.js",
       "extension": ".js",
       "sizeBytes": 1529
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/tests/embedding-connection.test.js",
+      "relativePath": "modules/story-summary/tests/embedding-connection.test.js",
+      "extension": ".js",
+      "sizeBytes": 10214
     },
     {
       "source": "littlewhitebox",
@@ -3800,7 +3856,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/tests/event-evidence-packing.test.js",
       "relativePath": "modules/story-summary/tests/event-evidence-packing.test.js",
       "extension": ".js",
-      "sizeBytes": 2668
+      "sizeBytes": 2657
     },
     {
       "source": "littlewhitebox",
@@ -3822,6 +3878,13 @@
       "relativePath": "modules/story-summary/tests/event-rerank-admission.test.js",
       "extension": ".js",
       "sizeBytes": 2478
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/tests/fact-edits.test.js",
+      "relativePath": "modules/story-summary/tests/fact-edits.test.js",
+      "extension": ".js",
+      "sizeBytes": 1728
     },
     {
       "source": "littlewhitebox",
@@ -3905,7 +3968,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/tests/lexical-index.test.js",
       "relativePath": "modules/story-summary/tests/lexical-index.test.js",
       "extension": ".js",
-      "sizeBytes": 45342
+      "sizeBytes": 48173
     },
     {
       "source": "littlewhitebox",
@@ -3982,14 +4045,14 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/tests/memory-storage.test.js",
       "relativePath": "modules/story-summary/tests/memory-storage.test.js",
       "extension": ".js",
-      "sizeBytes": 38280
+      "sizeBytes": 39763
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/tests/prompt-assembly.test.js",
       "relativePath": "modules/story-summary/tests/prompt-assembly.test.js",
       "extension": ".js",
-      "sizeBytes": 11295
+      "sizeBytes": 14665
     },
     {
       "source": "littlewhitebox",
@@ -4056,6 +4119,13 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/tests/rerank-transport.test.js",
+      "relativePath": "modules/story-summary/tests/rerank-transport.test.js",
+      "extension": ".js",
+      "sizeBytes": 5403
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/tests/session-lease-registry.test.js",
       "relativePath": "modules/story-summary/tests/session-lease-registry.test.js",
       "extension": ".js",
@@ -4081,6 +4151,20 @@
       "relativePath": "modules/story-summary/tests/story-memory-result.test.js",
       "extension": ".js",
       "sizeBytes": 788
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/tests/summary-generation.test.js",
+      "relativePath": "modules/story-summary/tests/summary-generation.test.js",
+      "extension": ".js",
+      "sizeBytes": 12041
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/tests/summary-import.test.js",
+      "relativePath": "modules/story-summary/tests/summary-import.test.js",
+      "extension": ".js",
+      "sizeBytes": 1875
     },
     {
       "source": "littlewhitebox",
@@ -4140,6 +4224,13 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/tests/user-feedback.test.js",
+      "relativePath": "modules/story-summary/tests/user-feedback.test.js",
+      "extension": ".js",
+      "sizeBytes": 7397
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/tests/vector-input-digest.test.js",
       "relativePath": "modules/story-summary/tests/vector-input-digest.test.js",
       "extension": ".js",
@@ -4157,7 +4248,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/tests/vector-package.test.js",
       "relativePath": "modules/story-summary/tests/vector-package.test.js",
       "extension": ".js",
-      "sizeBytes": 26463
+      "sizeBytes": 32147
     },
     {
       "source": "littlewhitebox",
@@ -4172,6 +4263,20 @@
       "relativePath": "modules/story-summary/tests/vector-workflow.test.js",
       "extension": ".js",
       "sizeBytes": 5290
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/user-feedback.js",
+      "relativePath": "modules/story-summary/user-feedback.js",
+      "extension": ".js",
+      "sizeBytes": 3597
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/vector/embedding-connection.js",
+      "relativePath": "modules/story-summary/vector/embedding-connection.js",
+      "extension": ".js",
+      "sizeBytes": 3850
     },
     {
       "source": "littlewhitebox",
@@ -4227,7 +4332,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/vector/llm/reranker.js",
       "relativePath": "modules/story-summary/vector/llm/reranker.js",
       "extension": ".js",
-      "sizeBytes": 15128
+      "sizeBytes": 15068
     },
     {
       "source": "littlewhitebox",
@@ -4318,7 +4423,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/vector/retrieval/diffusion.js",
       "relativePath": "modules/story-summary/vector/retrieval/diffusion.js",
       "extension": ".js",
-      "sizeBytes": 38831
+      "sizeBytes": 38804
     },
     {
       "source": "littlewhitebox",
@@ -4339,7 +4444,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/vector/retrieval/entity-lexicon.js",
       "relativePath": "modules/story-summary/vector/retrieval/entity-lexicon.js",
       "extension": ".js",
-      "sizeBytes": 9049
+      "sizeBytes": 9107
     },
     {
       "source": "littlewhitebox",
@@ -4409,14 +4514,14 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/vector/retrieval/metrics.js",
       "relativePath": "modules/story-summary/vector/retrieval/metrics.js",
       "extension": ".js",
-      "sizeBytes": 47591
+      "sizeBytes": 47449
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/vector/retrieval/query-builder.js",
       "relativePath": "modules/story-summary/vector/retrieval/query-builder.js",
       "extension": ".js",
-      "sizeBytes": 17182
+      "sizeBytes": 17184
     },
     {
       "source": "littlewhitebox",
@@ -4430,7 +4535,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/vector/retrieval/recall.js",
       "relativePath": "modules/story-summary/vector/retrieval/recall.js",
       "extension": ".js",
-      "sizeBytes": 86752
+      "sizeBytes": 84010
     },
     {
       "source": "littlewhitebox",
@@ -4507,7 +4612,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/vector/storage/chunk-store.js",
       "relativePath": "modules/story-summary/vector/storage/chunk-store.js",
       "extension": ".js",
-      "sizeBytes": 14335
+      "sizeBytes": 14311
     },
     {
       "source": "littlewhitebox",
@@ -4535,7 +4640,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/vector/storage/package/messages.js",
       "relativePath": "modules/story-summary/vector/storage/package/messages.js",
       "extension": ".js",
-      "sizeBytes": 1877
+      "sizeBytes": 1989
     },
     {
       "source": "littlewhitebox",
@@ -4570,7 +4675,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/vector/storage/vector-io.js",
       "relativePath": "modules/story-summary/vector/storage/vector-io.js",
       "extension": ".js",
-      "sizeBytes": 9764
+      "sizeBytes": 10153
     },
     {
       "source": "littlewhitebox",
@@ -4584,7 +4689,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/vector/utils/embedder.js",
       "relativePath": "modules/story-summary/vector/utils/embedder.js",
       "extension": ".js",
-      "sizeBytes": 5073
+      "sizeBytes": 5112
     },
     {
       "source": "littlewhitebox",
@@ -4675,7 +4780,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/streaming-generation.js",
       "relativePath": "modules/streaming-generation.js",
       "extension": ".js",
-      "sizeBytes": 74022
+      "sizeBytes": 73831
     },
     {
       "source": "littlewhitebox",
@@ -6177,59 +6282,38 @@
     },
     {
       "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/tavern/docs/bank-app-implementation-plan.md",
-      "relativePath": "modules/tavern/docs/bank-app-implementation-plan.md",
-      "extension": ".md",
-      "sizeBytes": 23760
-    },
-    {
-      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/tavern/docs/bank-app-target-design.md",
       "relativePath": "modules/tavern/docs/bank-app-target-design.md",
       "extension": ".md",
-      "sizeBytes": 30630
+      "sizeBytes": 30577
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/tavern/docs/manager-prompt-and-map-contract.md",
       "relativePath": "modules/tavern/docs/manager-prompt-and-map-contract.md",
       "extension": ".md",
-      "sizeBytes": 7038
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/tavern/docs/pet-app-content-spec.md",
-      "relativePath": "modules/tavern/docs/pet-app-content-spec.md",
-      "extension": ".md",
-      "sizeBytes": 6836
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/tavern/docs/pet-app-implementation-plan.md",
-      "relativePath": "modules/tavern/docs/pet-app-implementation-plan.md",
-      "extension": ".md",
-      "sizeBytes": 4556
+      "sizeBytes": 6499
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/tavern/docs/pet-app-target-design.md",
       "relativePath": "modules/tavern/docs/pet-app-target-design.md",
       "extension": ".md",
-      "sizeBytes": 8502
+      "sizeBytes": 9541
     },
     {
       "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/tavern/docs/shop-app-implementation-plan.md",
-      "relativePath": "modules/tavern/docs/shop-app-implementation-plan.md",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/tavern/docs/phone-os-design.md",
+      "relativePath": "modules/tavern/docs/phone-os-design.md",
       "extension": ".md",
-      "sizeBytes": 17022
+      "sizeBytes": 8221
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/tavern/docs/shop-app-target-design.md",
       "relativePath": "modules/tavern/docs/shop-app-target-design.md",
       "extension": ".md",
-      "sizeBytes": 21730
+      "sizeBytes": 21694
     },
     {
       "source": "littlewhitebox",
@@ -6380,13 +6464,6 @@
     },
     {
       "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/tavern/PHONE_OS_DEVELOPMENT_PLAN.md",
-      "relativePath": "modules/tavern/PHONE_OS_DEVELOPMENT_PLAN.md",
-      "extension": ".md",
-      "sizeBytes": 26378
-    },
-    {
-      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/tavern/shared/accepted-economic-state.ts",
       "relativePath": "modules/tavern/shared/accepted-economic-state.ts",
       "extension": ".ts",
@@ -6509,7 +6586,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/tavern/shared/bank/README.md",
       "relativePath": "modules/tavern/shared/bank/README.md",
       "extension": ".md",
-      "sizeBytes": 1826
+      "sizeBytes": 1758
     },
     {
       "source": "littlewhitebox",
@@ -6831,7 +6908,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/tavern/shared/pet/README.md",
       "relativePath": "modules/tavern/shared/pet/README.md",
       "extension": ".md",
-      "sizeBytes": 2860
+      "sizeBytes": 2972
     },
     {
       "source": "littlewhitebox",
@@ -6894,7 +6971,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/tavern/shared/shop/README.md",
       "relativePath": "modules/tavern/shared/shop/README.md",
       "extension": ".md",
-      "sizeBytes": 923
+      "sizeBytes": 873
     },
     {
       "source": "littlewhitebox",
@@ -7972,14 +8049,14 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/administrator/ui/administrator.css",
       "relativePath": "modules/xiaobai-os/apps/administrator/ui/administrator.css",
       "extension": ".css",
-      "sizeBytes": 8644
+      "sizeBytes": 9099
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/administrator/ui/AdministratorApp.vue",
       "relativePath": "modules/xiaobai-os/apps/administrator/ui/AdministratorApp.vue",
       "extension": ".vue",
-      "sizeBytes": 15812
+      "sizeBytes": 15850
     },
     {
       "source": "littlewhitebox",
@@ -7993,7 +8070,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/administrator/ui/AdministratorDetails.vue",
       "relativePath": "modules/xiaobai-os/apps/administrator/ui/AdministratorDetails.vue",
       "extension": ".vue",
-      "sizeBytes": 4069
+      "sizeBytes": 4616
     },
     {
       "source": "littlewhitebox",
@@ -8049,7 +8126,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/agent-api/ui/agent-api.css",
       "relativePath": "modules/xiaobai-os/apps/agent-api/ui/agent-api.css",
       "extension": ".css",
-      "sizeBytes": 3957
+      "sizeBytes": 4688
     },
     {
       "source": "littlewhitebox",
@@ -8147,7 +8224,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/bank/README.md",
       "relativePath": "modules/xiaobai-os/apps/bank/README.md",
       "extension": ".md",
-      "sizeBytes": 954
+      "sizeBytes": 1021
     },
     {
       "source": "littlewhitebox",
@@ -8168,7 +8245,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/bank/ui/bank.css",
       "relativePath": "modules/xiaobai-os/apps/bank/ui/bank.css",
       "extension": ".css",
-      "sizeBytes": 17037
+      "sizeBytes": 18215
     },
     {
       "source": "littlewhitebox",
@@ -8182,7 +8259,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/bank/ui/BankApp.vue",
       "relativePath": "modules/xiaobai-os/apps/bank/ui/BankApp.vue",
       "extension": ".vue",
-      "sizeBytes": 15384
+      "sizeBytes": 15480
     },
     {
       "source": "littlewhitebox",
@@ -8658,7 +8735,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/dice/ui/DiceApp.vue",
       "relativePath": "modules/xiaobai-os/apps/dice/ui/DiceApp.vue",
       "extension": ".vue",
-      "sizeBytes": 10342
+      "sizeBytes": 10769
     },
     {
       "source": "littlewhitebox",
@@ -8854,7 +8931,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/fourth-wall/README.md",
       "relativePath": "modules/xiaobai-os/apps/fourth-wall/README.md",
       "extension": ".md",
-      "sizeBytes": 453
+      "sizeBytes": 1545
     },
     {
       "source": "littlewhitebox",
@@ -8868,14 +8945,14 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/fourth-wall/ui/fourth-wall.css",
       "relativePath": "modules/xiaobai-os/apps/fourth-wall/ui/fourth-wall.css",
       "extension": ".css",
-      "sizeBytes": 17310
+      "sizeBytes": 19353
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/fourth-wall/ui/FourthWallApp.vue",
       "relativePath": "modules/xiaobai-os/apps/fourth-wall/ui/FourthWallApp.vue",
       "extension": ".vue",
-      "sizeBytes": 16736
+      "sizeBytes": 17506
     },
     {
       "source": "littlewhitebox",
@@ -8896,7 +8973,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/fourth-wall/ui/FourthWallConversation.vue",
       "relativePath": "modules/xiaobai-os/apps/fourth-wall/ui/FourthWallConversation.vue",
       "extension": ".vue",
-      "sizeBytes": 8356
+      "sizeBytes": 9571
     },
     {
       "source": "littlewhitebox",
@@ -8924,7 +9001,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/fourth-wall/ui/FourthWallSessions.vue",
       "relativePath": "modules/xiaobai-os/apps/fourth-wall/ui/FourthWallSessions.vue",
       "extension": ".vue",
-      "sizeBytes": 2033
+      "sizeBytes": 1914
     },
     {
       "source": "littlewhitebox",
@@ -8939,6 +9016,13 @@
       "relativePath": "modules/xiaobai-os/apps/fourth-wall/ui/message-content.ts",
       "extension": ".ts",
       "sizeBytes": 4976
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/fourth-wall/ui/session-copy.ts",
+      "relativePath": "modules/xiaobai-os/apps/fourth-wall/ui/session-copy.ts",
+      "extension": ".ts",
+      "sizeBytes": 333
     },
     {
       "source": "littlewhitebox",
@@ -9253,7 +9337,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/game/stacking/copy.ts",
       "relativePath": "modules/xiaobai-os/apps/game/stacking/copy.ts",
       "extension": ".ts",
-      "sizeBytes": 4642
+      "sizeBytes": 4765
     },
     {
       "source": "littlewhitebox",
@@ -9281,7 +9365,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/game/stacking/HouseIcon.vue",
       "relativePath": "modules/xiaobai-os/apps/game/stacking/HouseIcon.vue",
       "extension": ".vue",
-      "sizeBytes": 1107
+      "sizeBytes": 1658
     },
     {
       "source": "littlewhitebox",
@@ -9302,7 +9386,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/game/stacking/README.md",
       "relativePath": "modules/xiaobai-os/apps/game/stacking/README.md",
       "extension": ".md",
-      "sizeBytes": 1410
+      "sizeBytes": 1258
     },
     {
       "source": "littlewhitebox",
@@ -9320,17 +9404,45 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/game/stacking/scene/camera.ts",
+      "relativePath": "modules/xiaobai-os/apps/game/stacking/scene/camera.ts",
+      "extension": ".ts",
+      "sizeBytes": 1501
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/game/stacking/scene/companion.ts",
+      "relativePath": "modules/xiaobai-os/apps/game/stacking/scene/companion.ts",
+      "extension": ".ts",
+      "sizeBytes": 2274
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/game/stacking/scene/environment.ts",
       "relativePath": "modules/xiaobai-os/apps/game/stacking/scene/environment.ts",
       "extension": ".ts",
-      "sizeBytes": 1193
+      "sizeBytes": 3729
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/game/stacking/scene/houses.ts",
       "relativePath": "modules/xiaobai-os/apps/game/stacking/scene/houses.ts",
       "extension": ".ts",
-      "sizeBytes": 2349
+      "sizeBytes": 4414
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/game/stacking/scene/lifetime.ts",
+      "relativePath": "modules/xiaobai-os/apps/game/stacking/scene/lifetime.ts",
+      "extension": ".ts",
+      "sizeBytes": 1004
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/game/stacking/scene/palette.ts",
+      "relativePath": "modules/xiaobai-os/apps/game/stacking/scene/palette.ts",
+      "extension": ".ts",
+      "sizeBytes": 603
     },
     {
       "source": "littlewhitebox",
@@ -9344,14 +9456,21 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/game/stacking/scene/resources.ts",
       "relativePath": "modules/xiaobai-os/apps/game/stacking/scene/resources.ts",
       "extension": ".ts",
-      "sizeBytes": 1499
+      "sizeBytes": 3970
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/game/stacking/scene/runtime.ts",
       "relativePath": "modules/xiaobai-os/apps/game/stacking/scene/runtime.ts",
       "extension": ".ts",
-      "sizeBytes": 13601
+      "sizeBytes": 19390
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/game/stacking/scene/timeline.ts",
+      "relativePath": "modules/xiaobai-os/apps/game/stacking/scene/timeline.ts",
+      "extension": ".ts",
+      "sizeBytes": 2380
     },
     {
       "source": "littlewhitebox",
@@ -9365,21 +9484,21 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/game/stacking/sound.ts",
       "relativePath": "modules/xiaobai-os/apps/game/stacking/sound.ts",
       "extension": ".ts",
-      "sizeBytes": 1477
+      "sizeBytes": 3946
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/game/stacking/stacking.css",
       "relativePath": "modules/xiaobai-os/apps/game/stacking/stacking.css",
       "extension": ".css",
-      "sizeBytes": 6559
+      "sizeBytes": 6812
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/game/stacking/StackingRoom.vue",
       "relativePath": "modules/xiaobai-os/apps/game/stacking/StackingRoom.vue",
       "extension": ".vue",
-      "sizeBytes": 13085
+      "sizeBytes": 13755
     },
     {
       "source": "littlewhitebox",
@@ -9414,7 +9533,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/game/ui/game.css",
       "relativePath": "modules/xiaobai-os/apps/game/ui/game.css",
       "extension": ".css",
-      "sizeBytes": 28294
+      "sizeBytes": 28688
     },
     {
       "source": "littlewhitebox",
@@ -9558,6 +9677,13 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/agent/access.ts",
+      "relativePath": "modules/xiaobai-os/apps/learning/agent/access.ts",
+      "extension": ".ts",
+      "sizeBytes": 2446
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/agent/background.ts",
       "relativePath": "modules/xiaobai-os/apps/learning/agent/background.ts",
       "extension": ".ts",
@@ -9568,7 +9694,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/agent/context.ts",
       "relativePath": "modules/xiaobai-os/apps/learning/agent/context.ts",
       "extension": ".ts",
-      "sizeBytes": 12158
+      "sizeBytes": 13529
     },
     {
       "source": "littlewhitebox",
@@ -9582,21 +9708,21 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/agent/history-compaction.ts",
       "relativePath": "modules/xiaobai-os/apps/learning/agent/history-compaction.ts",
       "extension": ".ts",
-      "sizeBytes": 3185
+      "sizeBytes": 3145
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/agent/history-prompt.ts",
       "relativePath": "modules/xiaobai-os/apps/learning/agent/history-prompt.ts",
       "extension": ".ts",
-      "sizeBytes": 1618
+      "sizeBytes": 1460
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/agent/history.ts",
       "relativePath": "modules/xiaobai-os/apps/learning/agent/history.ts",
       "extension": ".ts",
-      "sizeBytes": 2378
+      "sizeBytes": 2401
     },
     {
       "source": "littlewhitebox",
@@ -9614,6 +9740,13 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/agent/preparation-tools.ts",
+      "relativePath": "modules/xiaobai-os/apps/learning/agent/preparation-tools.ts",
+      "extension": ".ts",
+      "sizeBytes": 3427
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/agent/progress-overview.ts",
       "relativePath": "modules/xiaobai-os/apps/learning/agent/progress-overview.ts",
       "extension": ".ts",
@@ -9624,35 +9757,42 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/agent/prompt.ts",
       "relativePath": "modules/xiaobai-os/apps/learning/agent/prompt.ts",
       "extension": ".ts",
-      "sizeBytes": 12103
+      "sizeBytes": 13571
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/agent/provider-loop.ts",
       "relativePath": "modules/xiaobai-os/apps/learning/agent/provider-loop.ts",
       "extension": ".ts",
-      "sizeBytes": 14418
+      "sizeBytes": 14417
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/agent/research-tools.ts",
       "relativePath": "modules/xiaobai-os/apps/learning/agent/research-tools.ts",
       "extension": ".ts",
-      "sizeBytes": 2847
+      "sizeBytes": 3025
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/agent/session.ts",
       "relativePath": "modules/xiaobai-os/apps/learning/agent/session.ts",
       "extension": ".ts",
-      "sizeBytes": 31539
+      "sizeBytes": 26028
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/agent/tool-contract.ts",
       "relativePath": "modules/xiaobai-os/apps/learning/agent/tool-contract.ts",
       "extension": ".ts",
-      "sizeBytes": 28207
+      "sizeBytes": 26849
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/application/action-availability.ts",
+      "relativePath": "modules/xiaobai-os/apps/learning/application/action-availability.ts",
+      "extension": ".ts",
+      "sizeBytes": 2131
     },
     {
       "source": "littlewhitebox",
@@ -9670,10 +9810,45 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/application/companion.ts",
+      "relativePath": "modules/xiaobai-os/apps/learning/application/companion.ts",
+      "extension": ".ts",
+      "sizeBytes": 1264
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/application/conversation-copy.ts",
+      "relativePath": "modules/xiaobai-os/apps/learning/application/conversation-copy.ts",
+      "extension": ".ts",
+      "sizeBytes": 977
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/application/conversation-references.ts",
+      "relativePath": "modules/xiaobai-os/apps/learning/application/conversation-references.ts",
+      "extension": ".ts",
+      "sizeBytes": 2342
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/application/conversation-storage.ts",
+      "relativePath": "modules/xiaobai-os/apps/learning/application/conversation-storage.ts",
+      "extension": ".ts",
+      "sizeBytes": 7323
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/application/delegation.ts",
+      "relativePath": "modules/xiaobai-os/apps/learning/application/delegation.ts",
+      "extension": ".ts",
+      "sizeBytes": 2094
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/application/feedback.ts",
       "relativePath": "modules/xiaobai-os/apps/learning/application/feedback.ts",
       "extension": ".ts",
-      "sizeBytes": 7668
+      "sizeBytes": 7526
     },
     {
       "source": "littlewhitebox",
@@ -9687,21 +9862,28 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/application/lesson.ts",
       "relativePath": "modules/xiaobai-os/apps/learning/application/lesson.ts",
       "extension": ".ts",
-      "sizeBytes": 11043
+      "sizeBytes": 11666
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/application/message-view.ts",
       "relativePath": "modules/xiaobai-os/apps/learning/application/message-view.ts",
       "extension": ".ts",
-      "sizeBytes": 4424
+      "sizeBytes": 4912
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/application/practice.ts",
       "relativePath": "modules/xiaobai-os/apps/learning/application/practice.ts",
       "extension": ".ts",
-      "sizeBytes": 3634
+      "sizeBytes": 4032
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/application/preparation-copy.ts",
+      "relativePath": "modules/xiaobai-os/apps/learning/application/preparation-copy.ts",
+      "extension": ".ts",
+      "sizeBytes": 1041
     },
     {
       "source": "littlewhitebox",
@@ -9722,7 +9904,14 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/application/publication.ts",
       "relativePath": "modules/xiaobai-os/apps/learning/application/publication.ts",
       "extension": ".ts",
-      "sizeBytes": 1195
+      "sizeBytes": 992
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/application/research-feedback.ts",
+      "relativePath": "modules/xiaobai-os/apps/learning/application/research-feedback.ts",
+      "extension": ".ts",
+      "sizeBytes": 2937
     },
     {
       "source": "littlewhitebox",
@@ -9750,14 +9939,14 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/application/teacher.ts",
       "relativePath": "modules/xiaobai-os/apps/learning/application/teacher.ts",
       "extension": ".ts",
-      "sizeBytes": 1783
+      "sizeBytes": 3757
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/application/teaching.ts",
       "relativePath": "modules/xiaobai-os/apps/learning/application/teaching.ts",
       "extension": ".ts",
-      "sizeBytes": 19656
+      "sizeBytes": 28583
     },
     {
       "source": "littlewhitebox",
@@ -9765,6 +9954,13 @@
       "relativePath": "modules/xiaobai-os/apps/learning/descriptor.ts",
       "extension": ".ts",
       "sizeBytes": 345
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/domain/conversation.ts",
+      "relativePath": "modules/xiaobai-os/apps/learning/domain/conversation.ts",
+      "extension": ".ts",
+      "sizeBytes": 6346
     },
     {
       "source": "littlewhitebox",
@@ -9785,7 +9981,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/host/runtime.ts",
       "relativePath": "modules/xiaobai-os/apps/learning/host/runtime.ts",
       "extension": ".ts",
-      "sizeBytes": 42678
+      "sizeBytes": 52115
     },
     {
       "source": "littlewhitebox",
@@ -9796,31 +9992,38 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/materials/reading-content.ts",
+      "relativePath": "modules/xiaobai-os/apps/learning/materials/reading-content.ts",
+      "extension": ".ts",
+      "sizeBytes": 1539
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/materials/research.ts",
       "relativePath": "modules/xiaobai-os/apps/learning/materials/research.ts",
       "extension": ".ts",
-      "sizeBytes": 8374
+      "sizeBytes": 9579
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/materials/tavily-extract.ts",
       "relativePath": "modules/xiaobai-os/apps/learning/materials/tavily-extract.ts",
       "extension": ".ts",
-      "sizeBytes": 5359
+      "sizeBytes": 5406
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/module.ts",
       "relativePath": "modules/xiaobai-os/apps/learning/module.ts",
       "extension": ".ts",
-      "sizeBytes": 1937
+      "sizeBytes": 2253
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/partition.ts",
       "relativePath": "modules/xiaobai-os/apps/learning/partition.ts",
       "extension": ".ts",
-      "sizeBytes": 852
+      "sizeBytes": 1441
     },
     {
       "source": "littlewhitebox",
@@ -9855,7 +10058,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/types.ts",
       "relativePath": "modules/xiaobai-os/apps/learning/types.ts",
       "extension": ".ts",
-      "sizeBytes": 1761
+      "sizeBytes": 2123
     },
     {
       "source": "littlewhitebox",
@@ -9880,10 +10083,52 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/layout.ts",
+      "relativePath": "modules/xiaobai-os/apps/learning/ui/layout.ts",
+      "extension": ".ts",
+      "sizeBytes": 152
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/learning-copy.ts",
+      "relativePath": "modules/xiaobai-os/apps/learning/ui/learning-copy.ts",
+      "extension": ".ts",
+      "sizeBytes": 8402
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/learning-editor.ts",
+      "relativePath": "modules/xiaobai-os/apps/learning/ui/learning-editor.ts",
+      "extension": ".ts",
+      "sizeBytes": 1569
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/learning-notice.ts",
+      "relativePath": "modules/xiaobai-os/apps/learning/ui/learning-notice.ts",
+      "extension": ".ts",
+      "sizeBytes": 494
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/learning-process.ts",
+      "relativePath": "modules/xiaobai-os/apps/learning/ui/learning-process.ts",
+      "extension": ".ts",
+      "sizeBytes": 2399
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/learning-session.ts",
+      "relativePath": "modules/xiaobai-os/apps/learning/ui/learning-session.ts",
+      "extension": ".ts",
+      "sizeBytes": 10674
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/learning.css",
       "relativePath": "modules/xiaobai-os/apps/learning/ui/learning.css",
       "extension": ".css",
-      "sizeBytes": 49727
+      "sizeBytes": 50498
     },
     {
       "source": "littlewhitebox",
@@ -9897,21 +10142,49 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/LearningApp.vue",
       "relativePath": "modules/xiaobai-os/apps/learning/ui/LearningApp.vue",
       "extension": ".vue",
-      "sizeBytes": 30372
+      "sizeBytes": 37430
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/LearningBooks.vue",
+      "relativePath": "modules/xiaobai-os/apps/learning/ui/LearningBooks.vue",
+      "extension": ".vue",
+      "sizeBytes": 4897
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/LearningCompanionControl.vue",
+      "relativePath": "modules/xiaobai-os/apps/learning/ui/LearningCompanionControl.vue",
+      "extension": ".vue",
+      "sizeBytes": 1181
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/LearningCompletion.vue",
+      "relativePath": "modules/xiaobai-os/apps/learning/ui/LearningCompletion.vue",
+      "extension": ".vue",
+      "sizeBytes": 1789
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/LearningConversation.vue",
       "relativePath": "modules/xiaobai-os/apps/learning/ui/LearningConversation.vue",
       "extension": ".vue",
-      "sizeBytes": 9324
+      "sizeBytes": 11717
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/LearningGrading.vue",
+      "relativePath": "modules/xiaobai-os/apps/learning/ui/LearningGrading.vue",
+      "extension": ".vue",
+      "sizeBytes": 12605
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/LearningIcon.vue",
       "relativePath": "modules/xiaobai-os/apps/learning/ui/LearningIcon.vue",
       "extension": ".vue",
-      "sizeBytes": 1288
+      "sizeBytes": 1308
     },
     {
       "source": "littlewhitebox",
@@ -9929,6 +10202,27 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/LearningPreparation.vue",
+      "relativePath": "modules/xiaobai-os/apps/learning/ui/LearningPreparation.vue",
+      "extension": ".vue",
+      "sizeBytes": 2152
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/LearningProcess.vue",
+      "relativePath": "modules/xiaobai-os/apps/learning/ui/LearningProcess.vue",
+      "extension": ".vue",
+      "sizeBytes": 6237
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/LearningReading.vue",
+      "relativePath": "modules/xiaobai-os/apps/learning/ui/LearningReading.vue",
+      "extension": ".vue",
+      "sizeBytes": 8650
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/LearningRecords.vue",
       "relativePath": "modules/xiaobai-os/apps/learning/ui/LearningRecords.vue",
       "extension": ".vue",
@@ -9936,10 +10230,45 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/LearningReview.vue",
+      "relativePath": "modules/xiaobai-os/apps/learning/ui/LearningReview.vue",
+      "extension": ".vue",
+      "sizeBytes": 8994
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/LearningSelectionActions.vue",
+      "relativePath": "modules/xiaobai-os/apps/learning/ui/LearningSelectionActions.vue",
+      "extension": ".vue",
+      "sizeBytes": 791
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/LearningSettingsCard.vue",
+      "relativePath": "modules/xiaobai-os/apps/learning/ui/LearningSettingsCard.vue",
+      "extension": ".vue",
+      "sizeBytes": 3560
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/LearningSetup.vue",
       "relativePath": "modules/xiaobai-os/apps/learning/ui/LearningSetup.vue",
       "extension": ".vue",
-      "sizeBytes": 4538
+      "sizeBytes": 4587
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/LearningWorkbench.vue",
+      "relativePath": "modules/xiaobai-os/apps/learning/ui/LearningWorkbench.vue",
+      "extension": ".vue",
+      "sizeBytes": 8011
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/LearningWriteBox.vue",
+      "relativePath": "modules/xiaobai-os/apps/learning/ui/LearningWriteBox.vue",
+      "extension": ".vue",
+      "sizeBytes": 3967
     },
     {
       "source": "littlewhitebox",
@@ -9950,10 +10279,59 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/reading-selection.ts",
+      "relativePath": "modules/xiaobai-os/apps/learning/ui/reading-selection.ts",
+      "extension": ".ts",
+      "sizeBytes": 2324
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/ReadingParagraph.vue",
+      "relativePath": "modules/xiaobai-os/apps/learning/ui/ReadingParagraph.vue",
+      "extension": ".vue",
+      "sizeBytes": 4458
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/use-learning-companion.ts",
+      "relativePath": "modules/xiaobai-os/apps/learning/ui/use-learning-companion.ts",
+      "extension": ".ts",
+      "sizeBytes": 5493
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/use-learning-state.ts",
       "relativePath": "modules/xiaobai-os/apps/learning/ui/use-learning-state.ts",
       "extension": ".ts",
-      "sizeBytes": 3428
+      "sizeBytes": 3688
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/workbench.ts",
+      "relativePath": "modules/xiaobai-os/apps/learning/ui/workbench.ts",
+      "extension": ".ts",
+      "sizeBytes": 6325
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/upgrade/companion-v1.ts",
+      "relativePath": "modules/xiaobai-os/apps/learning/upgrade/companion-v1.ts",
+      "extension": ".ts",
+      "sizeBytes": 731
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/upgrade/memory-v1.ts",
+      "relativePath": "modules/xiaobai-os/apps/learning/upgrade/memory-v1.ts",
+      "extension": ".ts",
+      "sizeBytes": 3434
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/workbench-partition.ts",
+      "relativePath": "modules/xiaobai-os/apps/learning/workbench-partition.ts",
+      "extension": ".ts",
+      "sizeBytes": 1030
     },
     {
       "source": "littlewhitebox",
@@ -10800,7 +11178,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/messages/ui/ContactList.vue",
       "relativePath": "modules/xiaobai-os/apps/messages/ui/ContactList.vue",
       "extension": ".vue",
-      "sizeBytes": 2884
+      "sizeBytes": 2977
     },
     {
       "source": "littlewhitebox",
@@ -10829,6 +11207,13 @@
       "relativePath": "modules/xiaobai-os/apps/messages/ui/image-file.ts",
       "extension": ".ts",
       "sizeBytes": 1259
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/messages/ui/layout-copy.ts",
+      "relativePath": "modules/xiaobai-os/apps/messages/ui/layout-copy.ts",
+      "extension": ".ts",
+      "sizeBytes": 102
     },
     {
       "source": "littlewhitebox",
@@ -10870,14 +11255,14 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/messages/ui/messages.css",
       "relativePath": "modules/xiaobai-os/apps/messages/ui/messages.css",
       "extension": ".css",
-      "sizeBytes": 18319
+      "sizeBytes": 19499
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/messages/ui/MessagesApp.vue",
       "relativePath": "modules/xiaobai-os/apps/messages/ui/MessagesApp.vue",
       "extension": ".vue",
-      "sizeBytes": 24465
+      "sizeBytes": 24897
     },
     {
       "source": "littlewhitebox",
@@ -10996,7 +11381,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/shop/ui/shop.css",
       "relativePath": "modules/xiaobai-os/apps/shop/ui/shop.css",
       "extension": ".css",
-      "sizeBytes": 18403
+      "sizeBytes": 18863
     },
     {
       "source": "littlewhitebox",
@@ -11416,7 +11801,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/tasks/ui/tasks.css",
       "relativePath": "modules/xiaobai-os/apps/tasks/ui/tasks.css",
       "extension": ".css",
-      "sizeBytes": 18717
+      "sizeBytes": 19962
     },
     {
       "source": "littlewhitebox",
@@ -11430,7 +11815,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/tasks/ui/TasksApp.vue",
       "relativePath": "modules/xiaobai-os/apps/tasks/ui/TasksApp.vue",
       "extension": ".vue",
-      "sizeBytes": 28117
+      "sizeBytes": 28277
     },
     {
       "source": "littlewhitebox",
@@ -11528,7 +11913,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/wallet/ui/wallet-ui.css",
       "relativePath": "modules/xiaobai-os/apps/wallet/ui/wallet-ui.css",
       "extension": ".css",
-      "sizeBytes": 5813
+      "sizeBytes": 6361
     },
     {
       "source": "littlewhitebox",
@@ -11542,7 +11927,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/wallet/ui/WalletApp.vue",
       "relativePath": "modules/xiaobai-os/apps/wallet/ui/WalletApp.vue",
       "extension": ".vue",
-      "sizeBytes": 8492
+      "sizeBytes": 8617
     },
     {
       "source": "littlewhitebox",
@@ -11833,10 +12218,17 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/brand/mascot/reactions.ts",
+      "relativePath": "modules/xiaobai-os/brand/mascot/reactions.ts",
+      "extension": ".ts",
+      "sizeBytes": 1311
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/brand/mascot/README.md",
       "relativePath": "modules/xiaobai-os/brand/mascot/README.md",
       "extension": ".md",
-      "sizeBytes": 1698
+      "sizeBytes": 1728
     },
     {
       "source": "littlewhitebox",
@@ -12036,227 +12428,122 @@
     },
     {
       "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/action-check-card-reveal-verification.md",
-      "relativePath": "modules/xiaobai-os/docs/action-check-card-reveal-verification.md",
-      "extension": ".md",
-      "sizeBytes": 13019
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/action-check-g0-verification.md",
-      "relativePath": "modules/xiaobai-os/docs/action-check-g0-verification.md",
-      "extension": ".md",
-      "sizeBytes": 15012
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/action-check-g1-verification.md",
-      "relativePath": "modules/xiaobai-os/docs/action-check-g1-verification.md",
-      "extension": ".md",
-      "sizeBytes": 5842
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/action-check-g2-g5-verification.md",
-      "relativePath": "modules/xiaobai-os/docs/action-check-g2-g5-verification.md",
-      "extension": ".md",
-      "sizeBytes": 18338
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/action-check-implementation-plan.md",
-      "relativePath": "modules/xiaobai-os/docs/action-check-implementation-plan.md",
-      "extension": ".md",
-      "sizeBytes": 31789
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/action-check-marker-verification.md",
-      "relativePath": "modules/xiaobai-os/docs/action-check-marker-verification.md",
-      "extension": ".md",
-      "sizeBytes": 8463
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/action-check-request-filter-verification.md",
-      "relativePath": "modules/xiaobai-os/docs/action-check-request-filter-verification.md",
-      "extension": ".md",
-      "sizeBytes": 5781
-    },
-    {
-      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/administrator-app-target-design.md",
       "relativePath": "modules/xiaobai-os/docs/administrator-app-target-design.md",
       "extension": ".md",
-      "sizeBytes": 52598
+      "sizeBytes": 44425
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/agent-api-and-maintenance-target-design.md",
       "relativePath": "modules/xiaobai-os/docs/agent-api-and-maintenance-target-design.md",
       "extension": ".md",
-      "sizeBytes": 24849
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/bank-app-implementation-plan.md",
-      "relativePath": "modules/xiaobai-os/docs/bank-app-implementation-plan.md",
-      "extension": ".md",
-      "sizeBytes": 3497
+      "sizeBytes": 24798
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/bank-app-target-design.md",
       "relativePath": "modules/xiaobai-os/docs/bank-app-target-design.md",
       "extension": ".md",
-      "sizeBytes": 5292
+      "sizeBytes": 4420
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/dice-app-target-design.md",
       "relativePath": "modules/xiaobai-os/docs/dice-app-target-design.md",
       "extension": ".md",
-      "sizeBytes": 47086
+      "sizeBytes": 9822
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/dice-coc7-design.md",
       "relativePath": "modules/xiaobai-os/docs/dice-coc7-design.md",
       "extension": ".md",
-      "sizeBytes": 18038
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/economy-platform-phase-1-implementation-plan.md",
-      "relativePath": "modules/xiaobai-os/docs/economy-platform-phase-1-implementation-plan.md",
-      "extension": ".md",
-      "sizeBytes": 4906
+      "sizeBytes": 14282
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/economy-platform-target-design.md",
       "relativePath": "modules/xiaobai-os/docs/economy-platform-target-design.md",
       "extension": ".md",
-      "sizeBytes": 5945
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/game-app-implementation-plan.md",
-      "relativePath": "modules/xiaobai-os/docs/game-app-implementation-plan.md",
-      "extension": ".md",
-      "sizeBytes": 3754
+      "sizeBytes": 6155
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/game-app-target-design.md",
       "relativePath": "modules/xiaobai-os/docs/game-app-target-design.md",
       "extension": ".md",
-      "sizeBytes": 7733
+      "sizeBytes": 7751
     },
     {
       "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/information-app-implementation-plan.md",
-      "relativePath": "modules/xiaobai-os/docs/information-app-implementation-plan.md",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/information-app-context-design.md",
+      "relativePath": "modules/xiaobai-os/docs/information-app-context-design.md",
       "extension": ".md",
-      "sizeBytes": 66488
+      "sizeBytes": 8990
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/information-app-modifications.md",
       "relativePath": "modules/xiaobai-os/docs/information-app-modifications.md",
       "extension": ".md",
-      "sizeBytes": 9277
+      "sizeBytes": 5377
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/information-app-target-design.md",
       "relativePath": "modules/xiaobai-os/docs/information-app-target-design.md",
       "extension": ".md",
-      "sizeBytes": 34506
+      "sizeBytes": 27826
     },
     {
       "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/language-learning-app-implementation-plan.md",
-      "relativePath": "modules/xiaobai-os/docs/language-learning-app-implementation-plan.md",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/language-learning-app-architecture.md",
+      "relativePath": "modules/xiaobai-os/docs/language-learning-app-architecture.md",
       "extension": ".md",
-      "sizeBytes": 113207
+      "sizeBytes": 22832
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/language-learning-app-target-design.md",
       "relativePath": "modules/xiaobai-os/docs/language-learning-app-target-design.md",
       "extension": ".md",
-      "sizeBytes": 81231
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/map-3d-assets-expansion-plan.md",
-      "relativePath": "modules/xiaobai-os/docs/map-3d-assets-expansion-plan.md",
-      "extension": ".md",
-      "sizeBytes": 44413
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/map-3d-upgrade-design.md",
-      "relativePath": "modules/xiaobai-os/docs/map-3d-upgrade-design.md",
-      "extension": ".md",
-      "sizeBytes": 19793
+      "sizeBytes": 85188
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/map-app-target-design.md",
       "relativePath": "modules/xiaobai-os/docs/map-app-target-design.md",
       "extension": ".md",
-      "sizeBytes": 30760
+      "sizeBytes": 30638
     },
     {
       "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/moving-game-implementation-plan.md",
-      "relativePath": "modules/xiaobai-os/docs/moving-game-implementation-plan.md",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/map-scene-rendering-design.md",
+      "relativePath": "modules/xiaobai-os/docs/map-scene-rendering-design.md",
       "extension": ".md",
-      "sizeBytes": 3722
+      "sizeBytes": 5082
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/moving-game-target-design.md",
       "relativePath": "modules/xiaobai-os/docs/moving-game-target-design.md",
       "extension": ".md",
-      "sizeBytes": 5803
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/moving-game-verification.md",
-      "relativePath": "modules/xiaobai-os/docs/moving-game-verification.md",
-      "extension": ".md",
-      "sizeBytes": 14639
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/os-kernel-implementation-plan.md",
-      "relativePath": "modules/xiaobai-os/docs/os-kernel-implementation-plan.md",
-      "extension": ".md",
-      "sizeBytes": 20144
+      "sizeBytes": 5625
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/os-kernel-target-design.md",
       "relativePath": "modules/xiaobai-os/docs/os-kernel-target-design.md",
       "extension": ".md",
-      "sizeBytes": 35086
+      "sizeBytes": 33943
     },
     {
       "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/os-ui-redesign-plan.md",
-      "relativePath": "modules/xiaobai-os/docs/os-ui-redesign-plan.md",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/os-ui-design.md",
+      "relativePath": "modules/xiaobai-os/docs/os-ui-design.md",
       "extension": ".md",
-      "sizeBytes": 9584
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/phase-1-implementation-plan.md",
-      "relativePath": "modules/xiaobai-os/docs/phase-1-implementation-plan.md",
-      "extension": ".md",
-      "sizeBytes": 9820
+      "sizeBytes": 2094
     },
     {
       "source": "littlewhitebox",
@@ -12267,108 +12554,31 @@
     },
     {
       "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/random-encounter-implementation-plan.md",
-      "relativePath": "modules/xiaobai-os/docs/random-encounter-implementation-plan.md",
-      "extension": ".md",
-      "sizeBytes": 30066
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/random-encounter-verification.md",
-      "relativePath": "modules/xiaobai-os/docs/random-encounter-verification.md",
-      "extension": ".md",
-      "sizeBytes": 9866
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/roll-native-continuation-verification.md",
-      "relativePath": "modules/xiaobai-os/docs/roll-native-continuation-verification.md",
-      "extension": ".md",
-      "sizeBytes": 10124
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/scene-map-implementation-plan.md",
-      "relativePath": "modules/xiaobai-os/docs/scene-map-implementation-plan.md",
-      "extension": ".md",
-      "sizeBytes": 7162
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/shop-app-implementation-plan.md",
-      "relativePath": "modules/xiaobai-os/docs/shop-app-implementation-plan.md",
-      "extension": ".md",
-      "sizeBytes": 6647
-    },
-    {
-      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/shop-app-target-design.md",
       "relativePath": "modules/xiaobai-os/docs/shop-app-target-design.md",
       "extension": ".md",
-      "sizeBytes": 10536
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/stacking-game-implementation-plan.md",
-      "relativePath": "modules/xiaobai-os/docs/stacking-game-implementation-plan.md",
-      "extension": ".md",
-      "sizeBytes": 4064
+      "sizeBytes": 10509
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/stacking-game-target-design.md",
       "relativePath": "modules/xiaobai-os/docs/stacking-game-target-design.md",
       "extension": ".md",
-      "sizeBytes": 7640
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/stacking-game-verification.md",
-      "relativePath": "modules/xiaobai-os/docs/stacking-game-verification.md",
-      "extension": ".md",
-      "sizeBytes": 7052
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/target-design-and-roadmap.md",
-      "relativePath": "modules/xiaobai-os/docs/target-design-and-roadmap.md",
-      "extension": ".md",
-      "sizeBytes": 16630
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/tasks-app-implementation-plan.md",
-      "relativePath": "modules/xiaobai-os/docs/tasks-app-implementation-plan.md",
-      "extension": ".md",
-      "sizeBytes": 36181
+      "sizeBytes": 9181
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/tasks-app-target-design.md",
       "relativePath": "modules/xiaobai-os/docs/tasks-app-target-design.md",
       "extension": ".md",
-      "sizeBytes": 63427
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/world-app-implementation-plan.md",
-      "relativePath": "modules/xiaobai-os/docs/world-app-implementation-plan.md",
-      "extension": ".md",
-      "sizeBytes": 32284
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/world-app-native-injection-verification.md",
-      "relativePath": "modules/xiaobai-os/docs/world-app-native-injection-verification.md",
-      "extension": ".md",
-      "sizeBytes": 6386
+      "sizeBytes": 55585
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/world-app-target-design.md",
       "relativePath": "modules/xiaobai-os/docs/world-app-target-design.md",
       "extension": ".md",
-      "sizeBytes": 17419
+      "sizeBytes": 17163
     },
     {
       "source": "littlewhitebox",
@@ -12403,7 +12613,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/domains/bank/README.md",
       "relativePath": "modules/xiaobai-os/domains/bank/README.md",
       "extension": ".md",
-      "sizeBytes": 1376
+      "sizeBytes": 1279
     },
     {
       "source": "littlewhitebox",
@@ -12452,7 +12662,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/domains/economy/README.md",
       "relativePath": "modules/xiaobai-os/domains/economy/README.md",
       "extension": ".md",
-      "sizeBytes": 1561
+      "sizeBytes": 1679
     },
     {
       "source": "littlewhitebox",
@@ -12515,7 +12725,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/domains/game/README.md",
       "relativePath": "modules/xiaobai-os/domains/game/README.md",
       "extension": ".md",
-      "sizeBytes": 1444
+      "sizeBytes": 1557
     },
     {
       "source": "littlewhitebox",
@@ -12571,7 +12781,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/domains/learning/exposure.ts",
       "relativePath": "modules/xiaobai-os/domains/learning/exposure.ts",
       "extension": ".ts",
-      "sizeBytes": 2053
+      "sizeBytes": 2069
     },
     {
       "source": "littlewhitebox",
@@ -12582,10 +12792,24 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/domains/learning/merge-exposure.ts",
+      "relativePath": "modules/xiaobai-os/domains/learning/merge-exposure.ts",
+      "extension": ".ts",
+      "sizeBytes": 4691
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/domains/learning/notes.ts",
       "relativePath": "modules/xiaobai-os/domains/learning/notes.ts",
       "extension": ".ts",
       "sizeBytes": 1548
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/domains/learning/preparation.ts",
+      "relativePath": "modules/xiaobai-os/domains/learning/preparation.ts",
+      "extension": ".ts",
+      "sizeBytes": 2552
     },
     {
       "source": "littlewhitebox",
@@ -12610,10 +12834,31 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/domains/learning/schedule.ts",
+      "relativePath": "modules/xiaobai-os/domains/learning/schedule.ts",
+      "extension": ".ts",
+      "sizeBytes": 5327
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/domains/learning/speech.ts",
       "relativePath": "modules/xiaobai-os/domains/learning/speech.ts",
       "extension": ".ts",
       "sizeBytes": 5980
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/domains/learning/stage.ts",
+      "relativePath": "modules/xiaobai-os/domains/learning/stage.ts",
+      "extension": ".ts",
+      "sizeBytes": 3670
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/domains/learning/text.ts",
+      "relativePath": "modules/xiaobai-os/domains/learning/text.ts",
+      "extension": ".ts",
+      "sizeBytes": 454
     },
     {
       "source": "littlewhitebox",
@@ -12802,7 +13047,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/domains/shop/README.md",
       "relativePath": "modules/xiaobai-os/domains/shop/README.md",
       "extension": ".md",
-      "sizeBytes": 1763
+      "sizeBytes": 1767
     },
     {
       "source": "littlewhitebox",
@@ -13257,7 +13502,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/README.md",
       "relativePath": "modules/xiaobai-os/README.md",
       "extension": ".md",
-      "sizeBytes": 7649
+      "sizeBytes": 3534
     },
     {
       "source": "littlewhitebox",
@@ -13320,7 +13565,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/shell/app-src/components/AppNavigationScope.vue",
       "relativePath": "modules/xiaobai-os/shell/app-src/components/AppNavigationScope.vue",
       "extension": ".vue",
-      "sizeBytes": 1853
+      "sizeBytes": 1917
     },
     {
       "source": "littlewhitebox",
@@ -13341,7 +13586,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/shell/app-src/components/XiaobaiOsDevice.vue",
       "relativePath": "modules/xiaobai-os/shell/app-src/components/XiaobaiOsDevice.vue",
       "extension": ".vue",
-      "sizeBytes": 4401
+      "sizeBytes": 4337
     },
     {
       "source": "littlewhitebox",
@@ -13383,7 +13628,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/shell/app-src/navigation/app-navigation.ts",
       "relativePath": "modules/xiaobai-os/shell/app-src/navigation/app-navigation.ts",
       "extension": ".ts",
-      "sizeBytes": 4172
+      "sizeBytes": 4839
     },
     {
       "source": "littlewhitebox",
@@ -13397,14 +13642,21 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/shell/app-src/styles/desktop-order.css",
       "relativePath": "modules/xiaobai-os/shell/app-src/styles/desktop-order.css",
       "extension": ".css",
-      "sizeBytes": 2893
+      "sizeBytes": 2818
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/shell/app-src/styles/index.css",
       "relativePath": "modules/xiaobai-os/shell/app-src/styles/index.css",
       "extension": ".css",
-      "sizeBytes": 11309
+      "sizeBytes": 11479
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/shell/README.md",
+      "relativePath": "modules/xiaobai-os/shell/README.md",
+      "extension": ".md",
+      "sizeBytes": 2302
     },
     {
       "source": "littlewhitebox",
@@ -13615,6 +13867,13 @@
       "relativePath": "modules/xiaobai-os/tests/app-catalog.test.js",
       "extension": ".js",
       "sizeBytes": 1379
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/app-layer.test.js",
+      "relativePath": "modules/xiaobai-os/tests/app-layer.test.js",
+      "extension": ".js",
+      "sizeBytes": 5926
     },
     {
       "source": "littlewhitebox",
@@ -13859,14 +14118,28 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/fixtures/learning-classroom.js",
       "relativePath": "modules/xiaobai-os/tests/fixtures/learning-classroom.js",
       "extension": ".js",
-      "sizeBytes": 13732
+      "sizeBytes": 14313
     },
     {
       "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/fixtures/learning-reply.js",
-      "relativePath": "modules/xiaobai-os/tests/fixtures/learning-reply.js",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/fixtures/learning-companion-v1.json",
+      "relativePath": "modules/xiaobai-os/tests/fixtures/learning-companion-v1.json",
+      "extension": ".json",
+      "sizeBytes": 59
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/fixtures/learning-memory-v1.json",
+      "relativePath": "modules/xiaobai-os/tests/fixtures/learning-memory-v1.json",
+      "extension": ".json",
+      "sizeBytes": 567
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/fixtures/learning-memory.js",
+      "relativePath": "modules/xiaobai-os/tests/fixtures/learning-memory.js",
       "extension": ".js",
-      "sizeBytes": 781
+      "sizeBytes": 487
     },
     {
       "source": "littlewhitebox",
@@ -13943,21 +14216,21 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/fixtures/stacking-browser-actions.mjs",
       "relativePath": "modules/xiaobai-os/tests/fixtures/stacking-browser-actions.mjs",
       "extension": ".mjs",
-      "sizeBytes": 18770
+      "sizeBytes": 28932
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/fixtures/stacking-browser-server.mjs",
       "relativePath": "modules/xiaobai-os/tests/fixtures/stacking-browser-server.mjs",
       "extension": ".mjs",
-      "sizeBytes": 7470
+      "sizeBytes": 7804
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/fixtures/stacking-cli-code.mjs",
       "relativePath": "modules/xiaobai-os/tests/fixtures/stacking-cli-code.mjs",
       "extension": ".mjs",
-      "sizeBytes": 758
+      "sizeBytes": 820
     },
     {
       "source": "littlewhitebox",
@@ -14202,42 +14475,63 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-agent-stream.test.js",
       "relativePath": "modules/xiaobai-os/tests/learning-agent-stream.test.js",
       "extension": ".js",
-      "sizeBytes": 51025
+      "sizeBytes": 35889
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-chat-boundary.test.js",
       "relativePath": "modules/xiaobai-os/tests/learning-chat-boundary.test.js",
       "extension": ".js",
-      "sizeBytes": 7631
+      "sizeBytes": 7801
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-classroom.test.js",
       "relativePath": "modules/xiaobai-os/tests/learning-classroom.test.js",
       "extension": ".js",
-      "sizeBytes": 47459
+      "sizeBytes": 47448
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-companion-context.test.js",
+      "relativePath": "modules/xiaobai-os/tests/learning-companion-context.test.js",
+      "extension": ".js",
+      "sizeBytes": 9691
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-concurrent-help.test.js",
+      "relativePath": "modules/xiaobai-os/tests/learning-concurrent-help.test.js",
+      "extension": ".js",
+      "sizeBytes": 5326
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-context-history.test.js",
       "relativePath": "modules/xiaobai-os/tests/learning-context-history.test.js",
       "extension": ".js",
-      "sizeBytes": 28964
+      "sizeBytes": 29099
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-conversation-lanes.test.js",
+      "relativePath": "modules/xiaobai-os/tests/learning-conversation-lanes.test.js",
+      "extension": ".js",
+      "sizeBytes": 9563
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-feedback.test.js",
       "relativePath": "modules/xiaobai-os/tests/learning-feedback.test.js",
       "extension": ".js",
-      "sizeBytes": 10127
+      "sizeBytes": 10206
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-materials.test.js",
       "relativePath": "modules/xiaobai-os/tests/learning-materials.test.js",
       "extension": ".js",
-      "sizeBytes": 3190
+      "sizeBytes": 3204
     },
     {
       "source": "littlewhitebox",
@@ -14248,6 +14542,90 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-memory-boundaries.test.js",
+      "relativePath": "modules/xiaobai-os/tests/learning-memory-boundaries.test.js",
+      "extension": ".js",
+      "sizeBytes": 12310
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-personas.test.js",
+      "relativePath": "modules/xiaobai-os/tests/learning-personas.test.js",
+      "extension": ".js",
+      "sizeBytes": 22846
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-preparation.test.js",
+      "relativePath": "modules/xiaobai-os/tests/learning-preparation.test.js",
+      "extension": ".js",
+      "sizeBytes": 11932
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-process.test.js",
+      "relativePath": "modules/xiaobai-os/tests/learning-process.test.js",
+      "extension": ".js",
+      "sizeBytes": 4334
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-purposes.test.js",
+      "relativePath": "modules/xiaobai-os/tests/learning-purposes.test.js",
+      "extension": ".js",
+      "sizeBytes": 28773
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-reading-content.test.js",
+      "relativePath": "modules/xiaobai-os/tests/learning-reading-content.test.js",
+      "extension": ".js",
+      "sizeBytes": 10302
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-retry.test.js",
+      "relativePath": "modules/xiaobai-os/tests/learning-retry.test.js",
+      "extension": ".js",
+      "sizeBytes": 8117
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-review-ui.test.js",
+      "relativePath": "modules/xiaobai-os/tests/learning-review-ui.test.js",
+      "extension": ".js",
+      "sizeBytes": 4790
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-schedule.test.js",
+      "relativePath": "modules/xiaobai-os/tests/learning-schedule.test.js",
+      "extension": ".js",
+      "sizeBytes": 5599
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-selection.test.js",
+      "relativePath": "modules/xiaobai-os/tests/learning-selection.test.js",
+      "extension": ".js",
+      "sizeBytes": 1187
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-stage.test.js",
+      "relativePath": "modules/xiaobai-os/tests/learning-stage.test.js",
+      "extension": ".js",
+      "sizeBytes": 21066
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-state.test.js",
+      "relativePath": "modules/xiaobai-os/tests/learning-state.test.js",
+      "extension": ".js",
+      "sizeBytes": 6950
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-storage.test.js",
       "relativePath": "modules/xiaobai-os/tests/learning-storage.test.js",
       "extension": ".js",
@@ -14255,17 +14633,38 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-teacher-recovery.test.js",
+      "relativePath": "modules/xiaobai-os/tests/learning-teacher-recovery.test.js",
+      "extension": ".js",
+      "sizeBytes": 1375
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-teaching.test.js",
       "relativePath": "modules/xiaobai-os/tests/learning-teaching.test.js",
       "extension": ".js",
-      "sizeBytes": 39855
+      "sizeBytes": 39657
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-tools.test.js",
       "relativePath": "modules/xiaobai-os/tests/learning-tools.test.js",
       "extension": ".js",
-      "sizeBytes": 39532
+      "sizeBytes": 39523
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-ui-session.test.js",
+      "relativePath": "modules/xiaobai-os/tests/learning-ui-session.test.js",
+      "extension": ".js",
+      "sizeBytes": 9965
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-workbench-ui.test.js",
+      "relativePath": "modules/xiaobai-os/tests/learning-workbench-ui.test.js",
+      "extension": ".js",
+      "sizeBytes": 7031
     },
     {
       "source": "littlewhitebox",
@@ -14419,7 +14818,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/mascot-performance.test.js",
       "relativePath": "modules/xiaobai-os/tests/mascot-performance.test.js",
       "extension": ".js",
-      "sizeBytes": 987
+      "sizeBytes": 2035
     },
     {
       "source": "littlewhitebox",
@@ -14668,6 +15067,20 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/stacking-lifetime.test.js",
+      "relativePath": "modules/xiaobai-os/tests/stacking-lifetime.test.js",
+      "extension": ".js",
+      "sizeBytes": 1245
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/stacking-models.test.js",
+      "relativePath": "modules/xiaobai-os/tests/stacking-models.test.js",
+      "extension": ".js",
+      "sizeBytes": 2046
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/stacking-quality.test.js",
       "relativePath": "modules/xiaobai-os/tests/stacking-quality.test.js",
       "extension": ".js",
@@ -14679,6 +15092,13 @@
       "relativePath": "modules/xiaobai-os/tests/stacking-rules.test.js",
       "extension": ".js",
       "sizeBytes": 2399
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/stacking-timeline.test.js",
+      "relativePath": "modules/xiaobai-os/tests/stacking-timeline.test.js",
+      "extension": ".js",
+      "sizeBytes": 2438
     },
     {
       "source": "littlewhitebox",
@@ -14860,7 +15280,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/README.md",
       "relativePath": "README.md",
       "extension": ".md",
-      "sizeBytes": 1122
+      "sizeBytes": 523
     },
     {
       "source": "littlewhitebox",
@@ -15046,6 +15466,41 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/scripts/gold-eval/experiments/l2-admission-expand.mjs",
+      "relativePath": "scripts/gold-eval/experiments/l2-admission-expand.mjs",
+      "extension": ".mjs",
+      "sizeBytes": 22668
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/scripts/gold-eval/experiments/l2-admission-fusion.mjs",
+      "relativePath": "scripts/gold-eval/experiments/l2-admission-fusion.mjs",
+      "extension": ".mjs",
+      "sizeBytes": 4108
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/scripts/gold-eval/experiments/l2-admission-live.mjs",
+      "relativePath": "scripts/gold-eval/experiments/l2-admission-live.mjs",
+      "extension": ".mjs",
+      "sizeBytes": 13459
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/scripts/gold-eval/experiments/l2-admission-report.mjs",
+      "relativePath": "scripts/gold-eval/experiments/l2-admission-report.mjs",
+      "extension": ".mjs",
+      "sizeBytes": 12570
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/scripts/gold-eval/experiments/l2-admission-screen.mjs",
+      "relativePath": "scripts/gold-eval/experiments/l2-admission-screen.mjs",
+      "extension": ".mjs",
+      "sizeBytes": 14020
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/scripts/gold-eval/experiments/prompt-candidate-audit.mjs",
       "relativePath": "scripts/gold-eval/experiments/prompt-candidate-audit.mjs",
       "extension": ".mjs",
@@ -15057,6 +15512,13 @@
       "relativePath": "scripts/gold-eval/experiments/prompt-reader-decision.mjs",
       "extension": ".mjs",
       "sizeBytes": 11246
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/scripts/gold-eval/experiments/publish-l2-admission-screen.mjs",
+      "relativePath": "scripts/gold-eval/experiments/publish-l2-admission-screen.mjs",
+      "extension": ".mjs",
+      "sizeBytes": 12142
     },
     {
       "source": "littlewhitebox",
@@ -15259,14 +15721,14 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/scripts/gold-eval/study/schema.mjs",
       "relativePath": "scripts/gold-eval/study/schema.mjs",
       "extension": ".mjs",
-      "sizeBytes": 10070
+      "sizeBytes": 10180
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/scripts/gold-eval/study/store.mjs",
       "relativePath": "scripts/gold-eval/study/store.mjs",
       "extension": ".mjs",
-      "sizeBytes": 12163
+      "sizeBytes": 12446
     },
     {
       "source": "littlewhitebox",
@@ -15337,6 +15799,20 @@
       "relativePath": "scripts/gold-eval/tests/fixtures/offline-provider.mjs",
       "extension": ".mjs",
       "sizeBytes": 4345
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/scripts/gold-eval/tests/l2-admission-fusion.test.mjs",
+      "relativePath": "scripts/gold-eval/tests/l2-admission-fusion.test.mjs",
+      "extension": ".mjs",
+      "sizeBytes": 2832
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/scripts/gold-eval/tests/l2-admission-live.test.mjs",
+      "relativePath": "scripts/gold-eval/tests/l2-admission-live.test.mjs",
+      "extension": ".mjs",
+      "sizeBytes": 905
     },
     {
       "source": "littlewhitebox",
@@ -15476,7 +15952,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/scripts/gold-eval/tests/study.test.mjs",
       "relativePath": "scripts/gold-eval/tests/study.test.mjs",
       "extension": ".mjs",
-      "sizeBytes": 4123
+      "sizeBytes": 5845
     },
     {
       "source": "littlewhitebox",
@@ -15515,6 +15991,13 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/scripts/story-summary-replay/build-bundle.mjs",
+      "relativePath": "scripts/story-summary-replay/build-bundle.mjs",
+      "extension": ".mjs",
+      "sizeBytes": 2322
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/scripts/story-summary-replay/config.mjs",
       "relativePath": "scripts/story-summary-replay/config.mjs",
       "extension": ".mjs",
@@ -15525,14 +16008,14 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/scripts/story-summary-replay/diagnostics-check.mjs",
       "relativePath": "scripts/story-summary-replay/diagnostics-check.mjs",
       "extension": ".mjs",
-      "sizeBytes": 9512
+      "sizeBytes": 9501
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/scripts/story-summary-replay/entry.mjs",
       "relativePath": "scripts/story-summary-replay/entry.mjs",
       "extension": ".mjs",
-      "sizeBytes": 93541
+      "sizeBytes": 93674
     },
     {
       "source": "littlewhitebox",
@@ -15574,14 +16057,14 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/scripts/story-summary-replay/prompt-packing-check.mjs",
       "relativePath": "scripts/story-summary-replay/prompt-packing-check.mjs",
       "extension": ".mjs",
-      "sizeBytes": 18924
+      "sizeBytes": 24864
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/scripts/story-summary-replay/recall-execution.mjs",
       "relativePath": "scripts/story-summary-replay/recall-execution.mjs",
       "extension": ".mjs",
-      "sizeBytes": 3060
+      "sizeBytes": 3062
     },
     {
       "source": "littlewhitebox",
@@ -15665,7 +16148,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/scripts/story-summary-replay/summary-request-check.mjs",
       "relativePath": "scripts/story-summary-replay/summary-request-check.mjs",
       "extension": ".mjs",
-      "sizeBytes": 5981
+      "sizeBytes": 6165
     },
     {
       "source": "littlewhitebox",
@@ -15679,7 +16162,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/scripts/story-summary-replay/summary-response-check.mjs",
       "relativePath": "scripts/story-summary-replay/summary-response-check.mjs",
       "extension": ".mjs",
-      "sizeBytes": 12465
+      "sizeBytes": 12659
     },
     {
       "source": "littlewhitebox",
@@ -15693,7 +16176,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/scripts/story-summary-replay-runner.mjs",
       "relativePath": "scripts/story-summary-replay-runner.mjs",
       "extension": ".mjs",
-      "sizeBytes": 36579
+      "sizeBytes": 34272
     },
     {
       "source": "littlewhitebox",
@@ -16095,307 +16578,6 @@
       "sizeBytes": 6806
     },
     {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/agent/access.ts",
-      "relativePath": "modules/xiaobai-os/apps/learning/agent/access.ts",
-      "extension": ".ts",
-      "sizeBytes": 1144
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/application/companion.ts",
-      "relativePath": "modules/xiaobai-os/apps/learning/application/companion.ts",
-      "extension": ".ts",
-      "sizeBytes": 1264
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/application/delegation.ts",
-      "relativePath": "modules/xiaobai-os/apps/learning/application/delegation.ts",
-      "extension": ".ts",
-      "sizeBytes": 2094
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/LearningBooks.vue",
-      "relativePath": "modules/xiaobai-os/apps/learning/ui/LearningBooks.vue",
-      "extension": ".vue",
-      "sizeBytes": 4897
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/LearningCompanionControl.vue",
-      "relativePath": "modules/xiaobai-os/apps/learning/ui/LearningCompanionControl.vue",
-      "extension": ".vue",
-      "sizeBytes": 1181
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/LearningCompletion.vue",
-      "relativePath": "modules/xiaobai-os/apps/learning/ui/LearningCompletion.vue",
-      "extension": ".vue",
-      "sizeBytes": 1789
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/LearningGrading.vue",
-      "relativePath": "modules/xiaobai-os/apps/learning/ui/LearningGrading.vue",
-      "extension": ".vue",
-      "sizeBytes": 12394
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/LearningReading.vue",
-      "relativePath": "modules/xiaobai-os/apps/learning/ui/LearningReading.vue",
-      "extension": ".vue",
-      "sizeBytes": 8413
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/LearningReview.vue",
-      "relativePath": "modules/xiaobai-os/apps/learning/ui/LearningReview.vue",
-      "extension": ".vue",
-      "sizeBytes": 8268
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/LearningSelectionActions.vue",
-      "relativePath": "modules/xiaobai-os/apps/learning/ui/LearningSelectionActions.vue",
-      "extension": ".vue",
-      "sizeBytes": 791
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/LearningSettingsCard.vue",
-      "relativePath": "modules/xiaobai-os/apps/learning/ui/LearningSettingsCard.vue",
-      "extension": ".vue",
-      "sizeBytes": 3560
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/LearningWorkbench.vue",
-      "relativePath": "modules/xiaobai-os/apps/learning/ui/LearningWorkbench.vue",
-      "extension": ".vue",
-      "sizeBytes": 7592
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/LearningWriteBox.vue",
-      "relativePath": "modules/xiaobai-os/apps/learning/ui/LearningWriteBox.vue",
-      "extension": ".vue",
-      "sizeBytes": 3958
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/ReadingParagraph.vue",
-      "relativePath": "modules/xiaobai-os/apps/learning/ui/ReadingParagraph.vue",
-      "extension": ".vue",
-      "sizeBytes": 4458
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/layout.ts",
-      "relativePath": "modules/xiaobai-os/apps/learning/ui/layout.ts",
-      "extension": ".ts",
-      "sizeBytes": 152
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/learning-copy.ts",
-      "relativePath": "modules/xiaobai-os/apps/learning/ui/learning-copy.ts",
-      "extension": ".ts",
-      "sizeBytes": 5852
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/learning-editor.ts",
-      "relativePath": "modules/xiaobai-os/apps/learning/ui/learning-editor.ts",
-      "extension": ".ts",
-      "sizeBytes": 1569
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/learning-session.ts",
-      "relativePath": "modules/xiaobai-os/apps/learning/ui/learning-session.ts",
-      "extension": ".ts",
-      "sizeBytes": 9432
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/reading-selection.ts",
-      "relativePath": "modules/xiaobai-os/apps/learning/ui/reading-selection.ts",
-      "extension": ".ts",
-      "sizeBytes": 2324
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/use-learning-companion.ts",
-      "relativePath": "modules/xiaobai-os/apps/learning/ui/use-learning-companion.ts",
-      "extension": ".ts",
-      "sizeBytes": 4737
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/workbench.ts",
-      "relativePath": "modules/xiaobai-os/apps/learning/ui/workbench.ts",
-      "extension": ".ts",
-      "sizeBytes": 6354
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/language-learning-app-architecture.md",
-      "relativePath": "modules/xiaobai-os/docs/language-learning-app-architecture.md",
-      "extension": ".md",
-      "sizeBytes": 17067
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/domains/learning/merge-exposure.ts",
-      "relativePath": "modules/xiaobai-os/domains/learning/merge-exposure.ts",
-      "extension": ".ts",
-      "sizeBytes": 4691
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/domains/learning/schedule.ts",
-      "relativePath": "modules/xiaobai-os/domains/learning/schedule.ts",
-      "extension": ".ts",
-      "sizeBytes": 5327
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/domains/learning/stage.ts",
-      "relativePath": "modules/xiaobai-os/domains/learning/stage.ts",
-      "extension": ".ts",
-      "sizeBytes": 3670
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-companion-context.test.js",
-      "relativePath": "modules/xiaobai-os/tests/learning-companion-context.test.js",
-      "extension": ".js",
-      "sizeBytes": 8168
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-concurrent-help.test.js",
-      "relativePath": "modules/xiaobai-os/tests/learning-concurrent-help.test.js",
-      "extension": ".js",
-      "sizeBytes": 5502
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-conversation-lanes.test.js",
-      "relativePath": "modules/xiaobai-os/tests/learning-conversation-lanes.test.js",
-      "extension": ".js",
-      "sizeBytes": 9964
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-purposes.test.js",
-      "relativePath": "modules/xiaobai-os/tests/learning-purposes.test.js",
-      "extension": ".js",
-      "sizeBytes": 29641
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-schedule.test.js",
-      "relativePath": "modules/xiaobai-os/tests/learning-schedule.test.js",
-      "extension": ".js",
-      "sizeBytes": 5599
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-selection.test.js",
-      "relativePath": "modules/xiaobai-os/tests/learning-selection.test.js",
-      "extension": ".js",
-      "sizeBytes": 1187
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-stage.test.js",
-      "relativePath": "modules/xiaobai-os/tests/learning-stage.test.js",
-      "extension": ".js",
-      "sizeBytes": 21050
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-ui-session.test.js",
-      "relativePath": "modules/xiaobai-os/tests/learning-ui-session.test.js",
-      "extension": ".js",
-      "sizeBytes": 8352
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-workbench-ui.test.js",
-      "relativePath": "modules/xiaobai-os/tests/learning-workbench-ui.test.js",
-      "extension": ".js",
-      "sizeBytes": 6972
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/LearningProcess.vue",
-      "relativePath": "modules/xiaobai-os/apps/learning/ui/LearningProcess.vue",
-      "extension": ".vue",
-      "sizeBytes": 5625
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/learning-process.ts",
-      "relativePath": "modules/xiaobai-os/apps/learning/ui/learning-process.ts",
-      "extension": ".ts",
-      "sizeBytes": 2222
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-process.test.js",
-      "relativePath": "modules/xiaobai-os/tests/learning-process.test.js",
-      "extension": ".js",
-      "sizeBytes": 3415
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-state.test.js",
-      "relativePath": "modules/xiaobai-os/tests/learning-state.test.js",
-      "extension": ".js",
-      "sizeBytes": 5544
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/agent/preparation-tools.ts",
-      "relativePath": "modules/xiaobai-os/apps/learning/agent/preparation-tools.ts",
-      "extension": ".ts",
-      "sizeBytes": 2926
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/application/preparation-copy.ts",
-      "relativePath": "modules/xiaobai-os/apps/learning/application/preparation-copy.ts",
-      "extension": ".ts",
-      "sizeBytes": 928
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/learning/ui/LearningPreparation.vue",
-      "relativePath": "modules/xiaobai-os/apps/learning/ui/LearningPreparation.vue",
-      "extension": ".vue",
-      "sizeBytes": 1606
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/domains/learning/preparation.ts",
-      "relativePath": "modules/xiaobai-os/domains/learning/preparation.ts",
-      "extension": ".ts",
-      "sizeBytes": 2552
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/learning-preparation.test.js",
-      "relativePath": "modules/xiaobai-os/tests/learning-preparation.test.js",
-      "extension": ".js",
-      "sizeBytes": 10943
-    },
-    {
       "source": "sillytavern-public",
       "publicPath": "css/!USER-CSS-README.md",
       "relativePath": "css/!USER-CSS-README.md",
@@ -16659,7 +16841,7 @@
       "publicPath": "index.html",
       "relativePath": "index.html",
       "extension": ".html",
-      "sizeBytes": 734570
+      "sizeBytes": 731935
     },
     {
       "source": "sillytavern-public",
@@ -18451,7 +18633,7 @@
       "publicPath": "scripts/openai.js",
       "relativePath": "scripts/openai.js",
       "extension": ".js",
-      "sizeBytes": 299442
+      "sizeBytes": 299180
     },
     {
       "source": "sillytavern-public",

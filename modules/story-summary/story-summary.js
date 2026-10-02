@@ -26,6 +26,14 @@ import { createMessageButtonOwnership } from "../../core/message-button-ownershi
 import { STORY_SUMMARY_TOGGLE_EVENT } from './runtime-events.js';
 import { initChatDeletionLifecycle } from './chat-deletion-lifecycle.js';
 import { createMemoryMaintenanceHost } from './maintenance/host.js';
+import { SUMMARY_FEEDBACK_COPY } from './feedback-copy.js';
+import {
+    clearEmbeddingFailureNotice,
+    notifyEmbeddingRecallFailure,
+    notifySummaryStartupFailure,
+    notifyUnconfirmedMemory,
+    runClearWithFeedback,
+} from './user-feedback.js';
 import { initAfterAiGate, notifyAfterAiHint, registerAfterAiHandler } from "../../core/after-ai-gate.js";
 import { getDefaultApiPrefix, resolveApiBaseUrl } from "../../shared/common/openai-url-utils.js";
 import {
@@ -51,10 +59,9 @@ import {
     saveVectorConfig,
     saveSummaryPanelConfig,
     saveSummaryPanelConfigVerified,
-    applySummaryPanelConfigSnapshot,
     loadConfigFromServer,
-    readSummaryPanelConfigFromServer,
 } from "./data/config.js";
+import { changeSummaryConfig, synchronizeSummaryConfig } from './data/config-transitions.js';
 import {
     getChatStorySummaryEnabled,
     resolveStorySummaryEnabled,
@@ -105,11 +112,12 @@ import { runSummaryGeneration } from "./generate/generator.js";
 import { createSummaryGenerationCancelledError } from "./generate/llm.js";
 
 // vector service
-import { embed, getEngineFingerprint, testOnlineService } from "./vector/utils/embedder.js";
+import { embed, getEngineFingerprint } from "./vector/utils/embedder.js";
 import { testL0Service } from "./vector/llm/llm-service.js";
 import { testRerankService } from "./vector/llm/reranker.js";
 import { isRetryableEmbeddingFailure } from "./vector/llm/embedding-failure.js";
 import { buildVectorIntegrityIssues } from "./vector/integrity-policy.js";
+import { createEmbeddingConnection } from './vector/embedding-connection.js';
 
 // tokenizer
 import { preload as preloadTokenizer, injectEntities, isReady as isTokenizerReady } from "./vector/utils/tokenizer.js";
@@ -183,7 +191,6 @@ import {
     isMaintenanceSnapshotCurrent,
     isVectorWriteSessionCurrent,
     resumeVectorWriteCoordinator,
-    runVectorConfigTransition,
     runVectorWriteTask,
     shutdownVectorWriteCoordinator,
     waitForVectorWrites,
@@ -196,6 +203,11 @@ import { invalidateLexicalIndex, warmupIndex, removeDocumentsByFloor, addEventDo
 // ═══════════════════════════════════════════════════════════════════════════
 
 const MODULE_ID = "storySummary";
+const embeddingConnection = createEmbeddingConnection({
+    synchronizeConfig: synchronizeSavedSummaryConfig,
+    prepareRuntime: warmupActiveVectorCache,
+    getVectorConfig,
+});
 const memoryMaintenance = createMemoryMaintenanceHost({
     canRun: () => isStorySummaryConsumableForCurrentChat(),
     invalidateRecall: () => cancelRecallAndClearPrompt('memory-maintained'),
@@ -206,8 +218,15 @@ const memoryMaintenance = createMemoryMaintenanceHost({
         refreshEntityLexiconAndWarmup();
         postToFrame({ type: 'SUMMARY_FULL_DATA', payload: buildFramePayload(getSummaryStore()) });
     },
-    changed: () => { void sendMemoryMaintenanceResults(); },
+    changed: () => {
+        reportUnconfirmedMemory();
+        void sendMemoryMaintenanceResults();
+    },
 });
+
+function reportUnconfirmedMemory() {
+    return notifyUnconfirmedMemory(getMemoryCommitState(), chat_metadata.extensions?.[EXT_ID]);
+}
 
 async function sendMemoryMaintenanceResults(offset = 0) {
     const chatId = getContext()?.chatId;
@@ -695,6 +714,7 @@ function isSummaryExecutionActive(execution) {
 function postSummaryExecution(execution, payload) {
     // A stopped run may still report its final status, but never into another chat/run.
     if (activeSummaryExecution === execution && getContext()?.chatId === execution.chatId) {
+        if (payload.type === 'SUMMARY_ERROR') reportUnconfirmedMemory();
         postToFrame(payload);
     }
 }
@@ -862,19 +882,23 @@ async function handleAnchorClear() {
     const targetChatId = getContext()?.chatId || '';
     if (!targetChatId) return;
 
-    await runVectorWriteTask(
-        { chatId: targetChatId, kind: 'clear-anchors', scope: VECTOR_WRITE_SCOPES.IO },
-        async () => {
-            if (getContext()?.chatId !== targetChatId) return;
-            await changeRecallData(targetChatId, () => clearAllAtomsAndVectors(targetChatId));
+    await runClearWithFeedback({
+        kind: 'anchors',
+        isCurrent: () => getContext()?.chatId === targetChatId,
+        reportUnconfirmed: reportUnconfirmedMemory,
+        clear: () => runVectorWriteTask(
+            { chatId: targetChatId, kind: 'clear-anchors', scope: VECTOR_WRITE_SCOPES.IO },
+            async () => {
+                if (getContext()?.chatId !== targetChatId) return false;
+                await changeRecallData(targetChatId, () => clearAllAtomsAndVectors(targetChatId));
+                return true;
+            },
+        ),
+        refresh: async () => {
+            await sendAnchorStatsToFrame();
+            await sendVectorStatsToFrame();
         },
-    );
-    if (getContext()?.chatId !== targetChatId) return;
-    await sendAnchorStatsToFrame();
-    await sendVectorStatsToFrame();
-
-    await executeSlashCommand("/echo severity=info 记忆锚点已清空");
-    xbLog.info(MODULE_ID, "记忆锚点已清空");
+    });
 }
 
 function handleAnchorCancel() {
@@ -882,13 +906,19 @@ function handleAnchorCancel() {
     scheduleVectorIntegrityCheck(0);
 }
 
-async function handleTestOnlineService(provider, config, target = "embedding") {
+async function handleTestOnlineService(config, target = "embedding") {
     try {
         postToFrame({ type: "VECTOR_ONLINE_STATUS", target, status: "downloading", message: "连接中..." });
         let result;
         if (target === "l0") result = await testL0Service(config);
         else if (target === "rerank") result = await testRerankService(config);
-        else result = await testOnlineService(provider, config);
+        else {
+            const chatId = getContext()?.chatId;
+            result = await embeddingConnection.test({
+                apiConfig: config,
+                isCurrent: () => !!events && getContext()?.chatId === chatId,
+            });
+        }
         postToFrame({
             type: "VECTOR_ONLINE_STATUS",
             target,
@@ -898,7 +928,8 @@ async function handleTestOnlineService(provider, config, target = "embedding") {
                 : (result.message || "连接成功"),
         });
     } catch (e) {
-        postToFrame({ type: "VECTOR_ONLINE_STATUS", target, status: "error", message: e.message });
+        postToFrame({ type: "VECTOR_ONLINE_STATUS", target, status: "error",
+            message: e.name === 'AbortError' ? SUMMARY_FEEDBACK_COPY.connectionCancelled : e.message });
     }
 }
 
@@ -1211,23 +1242,27 @@ async function handleClearVectors() {
     const targetChatId = getContext()?.chatId || '';
     if (!targetChatId) return;
 
-    await runVectorWriteTask(
-        { chatId: targetChatId, kind: 'clear-vectors', scope: VECTOR_WRITE_SCOPES.IO },
-        () => changeRecallData(targetChatId, async () => {
-            if (getContext()?.chatId !== targetChatId) return;
-            await clearEventVectors(targetChatId);
-            await clearAllChunks(targetChatId);
-            clearChunkDocuments(targetChatId);
-            await clearStateVectors(targetChatId);
-            // Reset both boundary and fingerprint so next incremental build starts from floor 0
-            // without being blocked by stale engine fingerprint mismatch.
-            await updateMeta(targetChatId, { lastChunkFloor: -1, fingerprint: null });
-        }),
-    );
-    if (getContext()?.chatId !== targetChatId) return;
-    await sendVectorStatsToFrame();
-    await executeSlashCommand('/echo severity=info 向量数据已清除。如需恢复，请点击“补齐缺漏”。');
-    xbLog.info(MODULE_ID, "向量数据已清除");
+    await runClearWithFeedback({
+        kind: 'vectors',
+        isCurrent: () => getContext()?.chatId === targetChatId,
+        reportUnconfirmed: reportUnconfirmedMemory,
+        clear: () => runVectorWriteTask(
+            { chatId: targetChatId, kind: 'clear-vectors', scope: VECTOR_WRITE_SCOPES.IO },
+            async () => {
+                if (getContext()?.chatId !== targetChatId) return false;
+                await changeRecallData(targetChatId, async () => {
+                    await clearEventVectors(targetChatId);
+                    await clearAllChunks(targetChatId);
+                    clearChunkDocuments(targetChatId);
+                    await clearStateVectors(targetChatId);
+                    // Reset boundary and fingerprint together for the next incremental build.
+                    await updateMeta(targetChatId, { lastChunkFloor: -1, fingerprint: null });
+                });
+                return true;
+            },
+        ),
+        refresh: sendVectorStatsToFrame,
+    });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1453,51 +1488,37 @@ async function maybeRunDelayedVectorMaintenance(scheduledChatId = null) {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Embedding 连接预热
-// ═══════════════════════════════════════════════════════════════════════════
-
-function warmupEmbeddingConnection() {
-    const vectorCfg = getVectorConfig();
-    if (!vectorCfg?.enabled) return;
-    embed(['.'], vectorCfg, { timeout: 5000 }).catch(() => { });
-}
-
-function warmupActiveVectorCache() {
+async function warmupActiveVectorCache(assertCurrent = () => {}) {
+    assertCurrent();
     if (!isStorySummaryConsumableForCurrentChat()) return;
     const vectorCfg = getVectorConfig();
     const { chatId } = getContext();
     logRecallRuntimeCheckpoint("warmupActiveVectorCache:start", `chat=${chatId || "-"} enabled=${vectorCfg?.enabled ? 1 : 0}`);
-    retainRecallRuntimeOnly(chatId || null).catch((error) => {
-        xbLog.warn(MODULE_ID, '召回运行时清理非当前聊天缓存失败', error);
-    });
+    await retainRecallRuntimeOnly(chatId || null);
+    assertCurrent();
     if (!vectorCfg?.enabled) {
         if (chatId) {
             logRecallRuntimeCheckpoint("warmupActiveVectorCache:clear-disabled", `chat=${chatId}`);
-            clearRecallRuntime().catch((error) => {
-                xbLog.warn(MODULE_ID, '召回运行时清理失败', error);
-            });
+            await clearRecallRuntime();
         }
         return;
     }
     if (!chatId) return;
-    warmRecallRuntime(chatId, { reason: 'active-chat-warmup' })
-        .then((result) => {
-            logRecallRuntimeCheckpoint("warmupActiveVectorCache:done", `chat=${chatId} skipped=${result?.skipped ? 1 : 0} status=${result?.stats?.status || '-'}`);
-        })
-        .catch((error) => {
-            xbLog.warn(MODULE_ID, '召回运行时预热失败', error);
-        })
-        .finally(() => {
-            if (activeChatId !== chatId) return;
-            sendVectorStatsToFrame().catch(() => { });
-        });
+    // The runtime owns session-scoped vectors; this does not create a resident cache.
+    const result = await warmRecallRuntime(chatId, { reason: 'active-chat-warmup' });
+    assertCurrent();
+    logRecallRuntimeCheckpoint("warmupActiveVectorCache:done", `chat=${chatId} skipped=${result?.skipped ? 1 : 0} status=${result?.stats?.status || '-'}`);
+    if (activeChatId === chatId) {
+        void sendVectorStatsToFrame().catch(error => xbLog.warn(MODULE_ID, SUMMARY_FEEDBACK_COPY.statsRefreshFailed, error));
+    }
 }
 
 async function finishVectorConfigTransition(previousConfig, nextConfig, reason, writeSession) {
     const nextEnabled = !!nextConfig?.enabled;
     const configChanged = JSON.stringify(previousConfig || {}) !== JSON.stringify(nextConfig || {});
     if (!configChanged) return false;
+
+    clearEmbeddingFailureNotice();
 
     logRecallRuntimeCheckpoint('vectorConfig:shutdown-runtime', `reason=${reason} enabled=${nextEnabled ? 1 : 0}`);
     await shutdownRecallRuntime();
@@ -1511,29 +1532,15 @@ async function finishVectorConfigTransition(previousConfig, nextConfig, reason, 
     return true;
 }
 
-function changeVectorConfig(reason, applyChange) {
-    const transition = runVectorConfigTransition(
-        {
-            chatId: getContext()?.chatId || '',
-            reason: `Vector configuration changed: ${reason}`,
-        },
-        async (writeSession) => {
-            const previousVectorConfig = getVectorConfig();
-            const result = await applyChange();
-            // This config is global, including if the chat changed while saving.
-            cancelRecallAndClearPrompt('vector-config-changed');
-            const nextVectorConfig = getVectorConfig();
-            const changed = await finishVectorConfigTransition(
-                previousVectorConfig,
-                nextVectorConfig,
-                reason,
-                writeSession,
-            );
-            return { previousVectorConfig, nextVectorConfig, result, changed };
-        },
-    );
-    cancelRecallAndClearPrompt('vector-config-changed');
-    return transition;
+async function changePanelConfig(reason, applyChange, vectorChanged = true) {
+    return changeSummaryConfig({
+        chatId: getContext()?.chatId || '',
+        reason: `summary-config:${reason}`,
+        vectorChanged,
+        applyChange,
+        invalidateRecall: () => cancelRecallAndClearPrompt('vector-config-changed'),
+        afterVectorChange: (previous, next, session) => finishVectorConfigTransition(previous, next, reason, session),
+    });
 }
 
 async function rebuildActiveVectorCacheAfterSummary(execution) {
@@ -2099,30 +2106,29 @@ function initButtonForLatestMessage() {
 // 面板数据发送
 // ═══════════════════════════════════════════════════════════════════════════
 
+async function synchronizeSavedSummaryConfig(assertCurrent = () => {}) {
+    return synchronizeSummaryConfig({
+        chatId: getContext()?.chatId || '',
+        assertCurrent,
+        beforeApply: (previous, next) => {
+            if (recallConfigKey(previous) !== recallConfigKey(next)) cancelRecallAndClearPrompt('recall-config-reloaded');
+        },
+        afterVectorChange: (previous, next, session) => finishVectorConfigTransition(previous, next, 'server-reload', session),
+    });
+}
+
 async function sendSavedConfigToFrame() {
     try {
-        const loadedConfig = await readSummaryPanelConfigFromServer();
-        if (recallConfigKey(getSummaryPanelConfig()) !== recallConfigKey(loadedConfig)) {
-            cancelRecallAndClearPrompt('recall-config-reloaded');
-        }
-        const previousVectorConfig = getVectorConfig();
-        const vectorChanged = JSON.stringify(previousVectorConfig || {})
-            !== JSON.stringify(loadedConfig?.vector || {});
-        const transition = vectorChanged
-            ? await changeVectorConfig(
-                'server-reload',
-                () => applySummaryPanelConfigSnapshot(loadedConfig),
-            )
-            : null;
-        const savedConfig = transition?.result
-            || (vectorChanged ? getSummaryPanelConfig() : applySummaryPanelConfigSnapshot(loadedConfig));
+        const savedConfig = await synchronizeSavedSummaryConfig();
         postToFrame({
             type: "LOAD_PANEL_CONFIG",
             config: savedConfig,
             builtInSummaryPrompts: BUILTIN_SUMMARY_PROMPTS,
         });
     } catch (e) {
-        xbLog.warn(MODULE_ID, "加载面板配置失败", e);
+        xbLog.warn(MODULE_ID, SUMMARY_FEEDBACK_COPY.configLoad.failed, e);
+        postToFrame({ type: 'PANEL_CONFIG_LOAD_ERROR', message: e.name === 'AbortError'
+            ? SUMMARY_FEEDBACK_COPY.configLoad.interrupted : e.message });
     }
 }
 
@@ -2878,6 +2884,7 @@ async function autoRunSummaryWithRetry(targetMesId, configForRun) {
         }
 
         if (!isSummaryExecutionActive(execution)) return;
+        if (reportUnconfirmedMemory()) return;
         if (lastResult?.stale) {
             await executeSlashCommand("/echo severity=warning 对话在总结期间持续变化，本次结果未保存；下次触发时会重新总结。");
         } else {
@@ -2907,7 +2914,7 @@ async function updateFrameStatsAfterSummary(store, execution) {
 
 function reportMemorySaveFailure(error) {
     const message = memorySaveError(error);
-    window.toastr?.error(message);
+    if (!reportUnconfirmedMemory()) window.toastr?.error(message);
     postToFrame({ type: 'SUMMARY_ERROR', message });
     postToFrame({ type: 'SUMMARY_FULL_DATA', payload: buildFramePayload(readPublishedSummaryMemory().storySummary) });
     notifyStorySummaryChatState();
@@ -3018,23 +3025,29 @@ async function handleFrameMessage(event) {
             break;
 
         case "VECTOR_TEST_ONLINE":
-            handleTestOnlineService(data.provider, data.config, data.target || "embedding");
+            handleTestOnlineService(data.config, data.target || "embedding");
             break;
 
         case "VECTOR_REPAIR":
-        case "VECTOR_GENERATE":
-            if (data.config) {
-                if (JSON.stringify(getVectorConfig() || {}) !== JSON.stringify(data.config || {})) {
-                    await changeVectorConfig(
-                        'vector-generate',
-                        () => saveVectorConfig(data.config) || {},
-                    );
+        case "VECTOR_GENERATE": {
+            const targetChatId = getContext()?.chatId;
+            try {
+                if (data.config && JSON.stringify(getVectorConfig() || {}) !== JSON.stringify(data.config)) {
+                    await changePanelConfig('vector-generate', () => saveVectorConfig(data.config) || {});
                 }
+            } catch (error) {
+                xbLog.warn(MODULE_ID, SUMMARY_FEEDBACK_COPY.vectorConfigFailed, error);
+                if (getContext()?.chatId === targetChatId) {
+                    postToFrame({ type: 'VECTOR_GEN_PROGRESS', current: -1, total: 0 });
+                    toastr.error(SUMMARY_FEEDBACK_COPY.vectorConfigFailed, SUMMARY_FEEDBACK_COPY.title);
+                }
+                break;
             }
             maybePreloadTokenizer();
             refreshEntityLexiconAndWarmup();
             handleGenerateVectors(data.type === 'VECTOR_REPAIR' ? 'repair' : 'rebuild');
             break;
+        }
 
         case "VECTOR_CLEAR":
             await handleClearVectors();
@@ -3466,24 +3479,18 @@ async function handleFrameMessage(event) {
         case "SAVE_PANEL_CONFIG":
             if (data.config) {
                 try {
-                    const previousRecallConfig = recallConfigKey(getSummaryPanelConfig());
                     const vectorChanged = Boolean(
                         data.config.vector
                         && JSON.stringify(getVectorConfig() || {}) !== JSON.stringify(data.config.vector || {})
                     );
-                    let previousVectorConfig = getVectorConfig();
-                    let savedConfig;
-                    if (vectorChanged) {
-                        const transition = await changeVectorConfig(
-                            'panel-save',
-                            () => saveSummaryPanelConfigVerified(data.config),
-                        );
-                        previousVectorConfig = transition?.previousVectorConfig || previousVectorConfig;
-                        savedConfig = transition?.result || getSummaryPanelConfig();
-                    } else {
-                        savedConfig = await saveSummaryPanelConfigVerified(data.config);
-                    }
-                    if (previousRecallConfig !== recallConfigKey(savedConfig)) {
+                    const transition = await changePanelConfig(
+                        'panel-save',
+                        () => saveSummaryPanelConfigVerified(data.config),
+                        vectorChanged,
+                    );
+                    const previousVectorConfig = transition.previousVectorConfig;
+                    const savedConfig = transition.result;
+                    if (recallConfigKey(transition.previousConfig) !== recallConfigKey(savedConfig)) {
                         cancelRecallAndClearPrompt('recall-config-changed');
                     }
                     if (!savedConfig.memoryMaintenanceEnabled) memoryMaintenance.cancel();
@@ -3494,7 +3501,7 @@ async function handleFrameMessage(event) {
                         && getEngineFingerprint(previousVectorConfig) !== getEngineFingerprint(nextVectorConfig);
                     if (!vectorEnabledChanged && !vectorFingerprintChanged) {
                         logRecallRuntimeCheckpoint("savePanelConfig:warm-runtime", `chat=${getContext().chatId || "-"} invalidated=0`);
-                        warmupActiveVectorCache();
+                        void warmupActiveVectorCache().catch(error => xbLog.warn(MODULE_ID, SUMMARY_FEEDBACK_COPY.vectorInitialization.runtime, error));
                     }
                     postToFrame({
                         type: "PANEL_CONFIG_SAVE_RESULT",
@@ -3668,9 +3675,11 @@ async function handleChatChanged(scheduledChatId = getContext()?.chatId || '') {
     invalidateLexicalIndex();
     scheduleLexicalWarmup(CHAT_CHANGE_LEXICAL_WARMUP_MS);
 
-    // Embedding 连接预热（保持 TCP keep-alive，减少首次召回超时）
-    warmupEmbeddingConnection();
-    warmupActiveVectorCache();
+    // Automatic initialization uses the same saved-config/runtime/probe path as testing.
+    void embeddingConnection.warmup({
+        isCurrent: () => !!events && !isChatStale(scheduledChatId) && isStorySummaryConsumableForCurrentChat(),
+        warningCooldownMs: VECTOR_WARNING_COOLDOWN_MS,
+    });
     logRecallRuntimeCheckpoint("chatChanged:after-warm-request", `chat=${activeChatId || "-"}`);
 
     scheduleVectorIntegrityCheck();
@@ -4202,7 +4211,9 @@ async function runStorySummaryRecallInterceptor(_interceptorChat, _contextSize, 
             const { issueCode, notice } = failure;
             xbLog.warn(MODULE_ID, notice, error);
             const { chatId } = getContext();
-            if (claimWarningCooldown('recall', chatId, issueCode, RECALL_WARNING_COOLDOWN_MS)) {
+            if (issueCode === 'recall_embedding_failed') {
+                notifyEmbeddingRecallFailure(chatId, notice, RECALL_WARNING_COOLDOWN_MS);
+            } else if (claimWarningCooldown('recall', chatId, issueCode, RECALL_WARNING_COOLDOWN_MS)) {
                 try {
                     await executeSlashCommand(`/echo severity=warning ${notice}`);
                 } catch (noticeError) {
@@ -4398,6 +4409,7 @@ async function registerEvents() {
     initButtonsForAll();
 
     events.on(event_types.CHAT_CHANGED, () => {
+        embeddingConnection.cancel();
         memoryMaintenance.cancel();
         cancelRecallAndClearPrompt('chat-changed');
         cancelActiveSummaryExecution();
@@ -4467,6 +4479,7 @@ async function unregisterEvents() {
 }
 
 async function runStorySummaryTeardown() {
+    embeddingConnection.cancel();
     memoryMaintenance.stop();
     // The master switch invokes this cleanup directly (without awaiting it).
     // Restore flags synchronously, before waiting for any background writer.
@@ -4478,6 +4491,7 @@ async function runStorySummaryTeardown() {
     postToFrame({ type: 'SUMMARY_STATUS', statusText: '' });
     invalidateLexicalIndex();
     const writerShutdown = shutdownVectorWriteCoordinator('Story Summary unregistered');
+    clearEmbeddingFailureNotice();
     clearWarningCooldowns();
     if (events) {
         CacheRegistry.unregister(MODULE_ID);
@@ -4512,6 +4526,7 @@ async function runStorySummaryTeardown() {
 }
 
 async function deactivateCurrentChatStorySummary() {
+    embeddingConnection.cancel();
     const hideCleanup = clearHideState();
     clearDeferredBackgroundTasks();
     cancelPendingHide();
@@ -4746,8 +4761,12 @@ function showBackupManagerModal() {
 
 $(document).on(STORY_SUMMARY_TOGGLE_EVENT, async (_e, enabled) => {
     if (enabled) {
-        await registerEvents();
-        await handleChatChanged();
+        try {
+            await registerEvents();
+            await handleChatChanged();
+        } catch (error) {
+            reportStartupFailure(error);
+        }
     } else {
         cancelActiveSummaryExecution();
         cancelRecallAndClearPrompt('disabled');
@@ -4759,6 +4778,11 @@ $(document).on(STORY_SUMMARY_TOGGLE_EVENT, async (_e, enabled) => {
 // ═══════════════════════════════════════════════════════════════════════════
 // 初始化
 // ═══════════════════════════════════════════════════════════════════════════
+
+function reportStartupFailure(error) {
+    const shouldNotify = Boolean(getSettings().storySummary?.enabled) && !reportUnconfirmedMemory();
+    notifySummaryStartupFailure(error, shouldNotify);
+}
 
 jQuery(() => {
     initChatDeletionLifecycle(handleChatDeleted);
@@ -4773,7 +4797,5 @@ jQuery(() => {
         initStateIntegration();
         maybePreloadTokenizer();
         await handleChatChanged();
-    })().catch((e) => {
-        xbLog.error(MODULE_ID, "Story summary initialization failed", e);
-    });
+    })().catch(reportStartupFailure);
 });

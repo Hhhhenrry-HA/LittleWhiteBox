@@ -35,6 +35,7 @@ async function reset(files) {
 async function activate() { return runtime.activate({ post: (type, payload) => { events.push({ type, payload }); return true; } }); }
 await reset();
 const root = resolve('.');
+const distRoot = resolve(process.env.XIAOBAI_OS_OUT_DIR || 'modules/xiaobai-os/dist');
 const html = `<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"><title>Stacking isolated verification</title><style>html,body{margin:0;height:100%;background:#edf4f7}iframe{width:100%;height:100%;border:0;display:block}</style></head><body><iframe title="OS" src="/modules/xiaobai-os/shell/xiaobai-os.html"></iframe><script type="module" src="/__stacking/bridge.js"></script></body></html>`;
 const bridge = `const frame=document.querySelector('iframe'),source='LittleWhiteBox-XiaobaiOS';let session=null,seq=0;const log=[];
 function send(type,payload,requestId,app=session){frame.contentWindow.postMessage({source,type,payload,requestId,...app},location.origin)}
@@ -72,7 +73,10 @@ createServer(async (req, res) => {
             res.end(JSON.stringify({ ok: true, result, events: outgoing })); return;
         }
         if (!['/modules/xiaobai-os/dist/', '/modules/xiaobai-os/shell/'].some(p => url.pathname.startsWith(p))) { throw new Error('outside_preview'); }
-        const path = resolve(root, '.' + decodeURIComponent(url.pathname)); if (!path.startsWith(root + sep)) { throw new Error('outside_root'); }
+        const distPrefix = '/modules/xiaobai-os/dist/';
+        const base = url.pathname.startsWith(distPrefix) ? distRoot : root;
+        const relative = base === distRoot ? decodeURIComponent(url.pathname.slice(distPrefix.length)) : '.' + decodeURIComponent(url.pathname);
+        const path = resolve(base, relative); if (!path.startsWith(base + sep)) { throw new Error('outside_root'); }
         res.setHeader('Content-Type', types[extname(path)] ?? 'application/octet-stream'); res.end(await readFile(path));
     } catch (error) { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ ok: false, error: error.code ?? error.message, message: error.message })); }
 }).listen(18913, '127.0.0.1', () => console.log('Stacking verification: http://127.0.0.1:18913/'));

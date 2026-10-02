@@ -1,6 +1,6 @@
 # Agent Core
 
-`agent-core` 是小白X里所有 Agent App 共用的无 UI 能力层。
+`agent-core` 是小白 X 各 Agent App 共用的业务无关能力层；共享配置表单原语可以在这里，具体 App 的界面与宿主装配不属于这里。
 
 浏览器原生 ESM 消费者不得直接加载带 SDK 裸包 import 的 `provider-config.js`。纯配置解析从
 `provider-resolution.js` 导入；真正需要发起模型请求时，懒加载构建产物
@@ -69,6 +69,4 @@ OpenAI 兼容、Responses、Anthropic 的免密请求不发送认证头；Google
 
 结果中的 `source` 区分宿主分词与估算，只用于本轮计量和显示，不持久化；估算不缓存为成功分词，下次请求仍可重新计数。不新增误差补偿系数，也不声称估算保证严格 token 上限。计量的是文本与工具的统一投影，不等于供应商计费用量；未知模型映射、图片等仍有误差，视觉预留由功能自己负责。
 
-信息 APP、四次元壁保持原有 128k/158k 预算规则，ebook 保持 158k/188k，小白助手保持 228k/258k。ebook 和助手沿用原有压缩后提示并继续的行为，不因这次计数修复增加硬性超限拦截。压缩与历史保留归各功能所有；工具续轮也计量，压缩后以新历史重建模型会话。圆环渲染无需请求分词器，使用本地估算或同输入的成功计数。
-
-小白酒馆管理助手也是共用计数的下游，其已有 Host bridge 注册与 228k/258k 策略保持不变，随共享修复更新构建产物。
+预算阈值、压缩、近期历史保留与超限处理归各消费者，不在 Core 统一改写：[信息 APP](../xiaobai-os/docs/information-app-context-design.md)、[四次元壁](../xiaobai-os/apps/fourth-wall/README.md)、小白助手、ebook 和 Tavern Manager 各使用自己的策略与 Host bridge。工具续轮也计量，压缩后以新历史重建模型会话；圆环无需请求分词器，使用本地估算或同输入的成功计数。

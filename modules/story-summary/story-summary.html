@@ -9,6 +9,7 @@
     <title>剧情总结 · Story Summary</title>
     <link rel="stylesheet" href="story-summary.css">
     <link rel="stylesheet" href="story-summary-timeline.css">
+    <link rel="stylesheet" href="settings-config.css">
     <link rel="stylesheet" href="maintenance/ui.css">
     <style>
         #xb-frame-boot {
@@ -261,6 +262,10 @@
                         <line x1="6" y1="6" x2="18" y2="18" />
                     </svg>
                 </button>
+            </div>
+            <div id="settings-config-status" class="settings-config-status" role="status" aria-live="polite" hidden>
+                <span id="settings-config-message"></span>
+                <button type="button" class="btn btn-sm" id="settings-config-retry" hidden></button>
             </div>
             <div class="modal-body">
                 <!-- Tab 1: Summary Settings -->

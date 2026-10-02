@@ -1,10 +1,6 @@
 # 云上叠叠屋
 
-现有游戏大厅中的独立 3D 平衡游戏。产品合同、施工记录和终审证据分别见：
-
-- [目标](../../../docs/stacking-game-target-design.md)
-- [施工与初审](../../../docs/stacking-game-implementation-plan.md)
-- [验收与终审](../../../docs/stacking-game-verification.md)
+现有游戏大厅中的独立 3D 平衡游戏。规则与产品边界见 [设计](../../../docs/stacking-game-target-design.md)。
 
 ## 边界
 
@@ -20,4 +16,4 @@ node --import tsx modules/xiaobai-os/tests/fixtures/stacking-strategy-experiment
 node --import tsx modules/xiaobai-os/tests/fixtures/stacking-browser-server.mjs
 ```
 
-浏览器脚本与生产规则分开；不带自动解题入口到游戏页面。具体场景和证据见终审文档。
+浏览器脚本与生产规则分开；不带自动解题入口到游戏页面。外部设备与真人体验不由自动测试保证。

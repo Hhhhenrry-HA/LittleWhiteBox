@@ -8,6 +8,8 @@ import { count, outcome, type Command } from './domain.js';
 import { cashout, STACKING_POLICY as P } from './policy.js';
 import { sequence } from './rules.js';
 import { createStackingScene, type StackingScene } from './scene/runtime.js';
+import { SUPPORT_WARNING_RATIO } from './scene/palette.js';
+import type { SceneCue } from './scene/timeline.js';
 import { createStackingSound } from './sound.js';
 import { createRecoveryJournal } from './recovery.js';
 import HouseIcon from './HouseIcon.vue';
@@ -20,7 +22,8 @@ const { view, busy, blocked, failed, notice, generating } = client;
 const canvas = ref<HTMLElement | null>(null), dialog = ref<HTMLElement | null>(null);
 const modal = ref<'rules' | 'start' | 'abandon' | 'cashout' | null>(null);
 const direction = ref<1 | -1>(1), paused = ref(false), archived = ref(false), animation = ref(false), activated = ref(true);
-const graphicsError = ref(false), localError = ref(''), soundBusy = ref(false), collapsed = ref(false);
+const graphicsError = ref(false), localError = ref(''), soundBusy = ref(false);
+const shownBalance = ref(0), shownCount = ref(0);
 let scene: StackingScene | null = null, mounted = false;
 const sound = createStackingSound();
 const run = computed(() => archived.value ? view.value?.best ?? null : view.value?.active ?? null);
@@ -41,8 +44,16 @@ function updateScene() {
 }
 function mountScene() {
     scene?.dispose(); scene = null; graphicsError.value = false;
-    try { scene = createStackingScene(canvas.value!, () => { graphicsError.value = true; void pauseSound(); }, value => { animation.value = value; }); updateScene(); }
+    animation.value = false;
+    try {
+        scene = createStackingScene(canvas.value!, () => { graphicsError.value = true; void pauseSound(); }, value => { animation.value = value; }, cue);
+        updateScene();
+    }
     catch { graphicsError.value = true; }
+}
+function cue(event: SceneCue) {
+    if (event === 'land') { shownCount.value = number.value; }
+    if (view.value?.soundEnabled && activated.value && !modal.value && !paused.value && !document.hidden) { sound.play(event); }
 }
 async function pauseSound() { try { await sound.pause(); } catch { localError.value = c.soundError; } }
 async function unlockSound() {
@@ -63,18 +74,14 @@ async function toggleSound() {
 async function act(command: Command) {
     void unlockSound();
     if (await client.act(command)) {
-        archived.value = false; collapsed.value = false;
+        archived.value = false;
         if (command.type === 'start') { direction.value = 1; paused.value = false; }
-        if (view.value?.soundEnabled) {
-            const result = view.value.active ? outcome(view.value.active) : null;
-            sound.play(result === 'lost' ? 'lose' : result === 'won' || result === 'cashed' ? 'reward' : 'land');
-        }
     }
 }
 function drop() {
     if (disabled.value || !playing.value || !scene) { return; }
-    const x = scene.coordinate();
-    void unlockSound(); if (view.value?.soundEnabled) { sound.play('drop'); }
+    void unlockSound();
+    const x = scene.release();
     void act({ type: 'drop', x, direction: direction.value });
 }
 function flip() { if (!disabled.value && playing.value) { direction.value = direction.value === 1 ? -1 : 1; void unlockSound(); } }
@@ -91,7 +98,7 @@ async function exportImage() {
 }
 function rotate(delta: number) { scene?.rotate(delta); }
 function zoom(delta: number) { scene?.zoom(delta); }
-function collapse() { scene?.collapse(); collapsed.value = true; }
+function replayFailure() { void unlockSound(); scene?.replayFailure(); }
 function keydown(event: KeyboardEvent) {
     if (event.repeat || modal.value || (event.target as HTMLElement).closest('input, textarea, select')) { return; }
     if (event.code === 'Space' && !(event.target as HTMLElement).closest('button')) { event.preventDefault(); drop(); }
@@ -99,9 +106,11 @@ function keydown(event: KeyboardEvent) {
 }
 function visibility() { if (document.hidden) { void pauseSound(); } }
 watch([run, direction, enabled, archived], updateScene);
-watch(() => weak.value?.ratio, (value, previous) => {
-    if (value !== undefined && value < 0.25 && (previous === undefined || previous >= 0.25) && view.value?.soundEnabled) { sound.play('danger'); }
-});
+// Submission, revalidation and ordinary reads share the client's one pending-operation boundary.
+watch(blocked, value => { if (!value) { scene?.cancelRelease(); } }, { flush: 'post' });
+watch([() => view.value?.balance, number, animation], () => {
+    if (!animation.value) { shownBalance.value = view.value?.balance ?? 0; shownCount.value = number.value; }
+}, { flush: 'post', immediate: true });
 watch([paused, modal, activated, graphicsError, () => props.generationActive], () => {
     if (paused.value || modal.value || !activated.value || graphicsError.value || props.generationActive) { void pauseSound(); }
 });
@@ -112,9 +121,9 @@ onBeforeUnmount(() => { client.dispose(); scene?.dispose(); document.removeEvent
 async function reload() { await nextTick(); mountScene(); }
 </script>
 <template>
-    <section class="stacking-room" tabindex="0" :aria-label="c.name" @keydown="keydown">
+    <section class="stacking-room" tabindex="0" :aria-label="c.name" :data-stack-presenting="animation" @keydown="keydown">
         <header class="stack-topbar">
-            <div><strong>{{ view ? c.balance(view.balance) : c.loading }}</strong><small v-if="view?.best">{{ archived ? c.best : c.bestCount(count(view.best)) }}</small></div>
+            <div><strong :data-stack-balance="view ? shownBalance : undefined">{{ view ? c.balance(shownBalance) : c.loading }}</strong><small v-if="archived">{{ c.best }}</small></div>
             <nav :aria-label="c.name"><button type="button" :disabled="soundBusy || busy || !view" :aria-pressed="view?.soundEnabled" @click="toggleSound">{{ view?.soundEnabled ? c.soundOn : c.soundOff }}</button><button type="button" @click="modal = 'rules'">{{ c.rules }}</button></nav>
         </header>
         <aside v-if="notice || failed || view?.pending || view?.writeState === 'failed'" class="stack-notice" role="alert">
@@ -122,25 +131,26 @@ async function reload() { await nextTick(); mountScene(); }
         </aside>
         <p v-if="localError" class="stack-notice" role="alert">{{ localError }}<button type="button" :aria-label="c.close" @click="localError = ''">×</button></p>
         <div class="stack-stage">
-            <div ref="canvas" class="stack-canvas" :aria-label="c.name" role="img" />
-            <div v-if="run" class="stack-hud"><strong>{{ c.progress(number) }}</strong><span v-if="playing && weak" :class="{ 'is-risk': weak.ratio < .25 }">{{ weak.ratio < .25 ? c.weak(weak.index) : c.stable }}</span></div>
+            <div ref="canvas" class="stack-canvas" :aria-label="c.scene" role="img" />
+            <div v-if="run" class="stack-hud"><strong :data-stack-count="shownCount">{{ c.progress(shownCount) }}</strong><span v-if="playing && weak && !animation" :class="{ 'is-risk': weak.ratio < SUPPORT_WARNING_RATIO }">{{ weak.ratio < SUPPORT_WARNING_RATIO ? c.weak(weak.index) : c.stable }}</span></div>
             <div v-if="graphicsError" class="stack-overlay" role="alert"><p>{{ c.graphics }}</p><button type="button" @click="reload">{{ c.reload }}</button></div>
             <div v-else-if="playing && (paused || generationActive)" class="stack-pause"><span>{{ generationActive ? c.storyBusy : c.paused }}</span><button v-if="!generationActive" type="button" @click="paused = false">{{ c.play }}</button></div>
-            <div v-if="run && !playing && !graphicsError" class="stack-view-controls">
-                <button type="button" :aria-label="c.rotateLeft" @click="rotate(-.3)">↶</button><button type="button" :aria-label="c.rotateRight" @click="rotate(.3)">↷</button><button type="button" :aria-label="c.zoomIn" @click="zoom(-.12)">＋</button><button type="button" :aria-label="c.zoomOut" @click="zoom(.12)">−</button><button type="button" :disabled="animation" @click="exportImage">{{ c.export }}</button>
-            </div>
         </div>
         <footer v-if="view" class="stack-controls">
+            <div v-if="run && !playing && !graphicsError && !animation" class="stack-view-controls">
+                <button type="button" :aria-label="c.rotateLeft" @click="rotate(-.3)">↶</button><button type="button" :aria-label="c.rotateRight" @click="rotate(.3)">↷</button><button type="button" :aria-label="c.zoomIn" @click="zoom(-.12)">＋</button><button type="button" :aria-label="c.zoomOut" @click="zoom(.12)">−</button><button type="button" @click="exportImage">{{ c.export }}</button>
+            </div>
             <template v-if="archived"><div class="stack-result"><strong>{{ c.bestCount(number) }}</strong><button type="button" @click="archived = false">{{ c.back }}</button></div></template>
             <template v-else-if="playing">
                 <div class="stack-queue"><div v-if="currentKind"><HouseIcon :kind="currentKind" :direction="direction" /><span><small>{{ c.now }} · {{ c.orient(direction) }}</small>{{ HOUSE_NAMES[currentKind] }}</span></div><div v-if="nextKind" class="stack-next"><HouseIcon :kind="nextKind" /><span><small>{{ c.next }}</small>{{ HOUSE_NAMES[nextKind] }}</span></div></div>
                 <div class="stack-actions"><button type="button" :disabled="disabled" @click="flip">{{ c.flip }}</button><button type="button" class="stack-primary" :disabled="disabled" @click="drop">{{ c.drop }} ↓</button><button v-if="available" type="button" :disabled="disabled" @click="modal = 'cashout'">{{ c.cash(available) }}</button><button v-else type="button" :disabled="busy || animation" @click="paused = !paused">{{ paused ? c.play : c.pause }}</button></div>
-                <div class="stack-bottom"><span role="status">{{ generating ? c.generating : busy ? c.saving : c.saved }}</span><button type="button" :disabled="blocked || animation" @click="modal = 'abandon'">{{ c.abandon }}</button></div>
+                <div class="stack-bottom"><span role="status">{{ generating ? c.generating : busy ? c.saving : failed || view.pending || view.writeState !== 'ready' ? c.awaiting : animation ? c.revealing : c.saved }}</span><button type="button" :disabled="blocked || animation" @click="modal = 'abandon'">{{ c.abandon }}</button></div>
             </template>
             <template v-else>
-                <div v-if="status" class="stack-result"><strong>{{ c[status as 'lost' | 'won' | 'cashed' | 'abandoned'] }}</strong><span v-if="run">{{ c.reward(view.award) }}</span></div>
-                <p v-if="status === 'lost' && view.board?.failure" class="stack-reason">{{ c.failure[view.board.failure] }}<button v-if="!collapsed" type="button" @click="collapse">{{ c.collapse }}</button></p>
-                <div class="stack-actions"><button type="button" class="stack-primary" :disabled="disabled || view.balance < P.fee" @click="modal = 'start'">{{ c.start }}</button><button v-if="view.best" type="button" @click="archived = true">{{ c.bestCount(count(view.best)) }}</button></div>
+                <p v-if="animation" class="stack-reveal-status" role="status">{{ c.revealing }}</p>
+                <div v-if="status && !animation" class="stack-result"><strong>{{ c[status as 'lost' | 'won' | 'cashed' | 'abandoned'] }}</strong><span v-if="run">{{ c.reward(view.award) }}</span></div>
+                <p v-if="status === 'lost' && view.board?.failure && !animation" class="stack-reason">{{ c.failure[view.board.failure] }}<button type="button" data-stack-action="replay" @click="replayFailure">{{ c.replay }}</button></p>
+                <div class="stack-actions"><button type="button" class="stack-primary" :disabled="disabled || view.balance < P.fee" @click="modal = 'start'">{{ c.start }}</button><button v-if="view.best" type="button" :disabled="animation" @click="archived = true">{{ c.bestCount(count(view.best)) }}</button></div>
                 <p v-if="view.balance < P.fee" class="stack-reason">{{ c.noFunds }}</p>
             </template>
         </footer>

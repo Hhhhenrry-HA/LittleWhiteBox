@@ -57,6 +57,8 @@ import { getSummarySourceEnd } from '../../modules/story-summary/generate/source
 import { selectMissingEventVectorPairs } from '../../modules/story-summary/vector/pipeline/event-vector-input.js';
 import { withSummaryRequestOverride } from './summary-request.mjs';
 
+export { __setReplayContext, __setExtensionSettings, applyReplayConfig };
+
 class MemoryStorage {
     #map = new Map();
 
@@ -85,7 +87,7 @@ function defineGlobal(name, value) {
     });
 }
 
-function ensureNodeReplayGlobals() {
+export function ensureNodeReplayGlobals() {
     if (!globalThis.performance) {
         defineGlobal('performance', performance);
     }
@@ -118,7 +120,7 @@ function ensureNodeReplayGlobals() {
     }
 }
 
-async function loadReplayModules(extSettings) {
+export async function loadReplayModules(extSettings) {
     const [{ EXT_ID }, configModule, storeModule, generatorModule, promptModule, chunkStoreModule, chunkBuilderModule, chunkTextModule, stateStoreModule, stateIntegrationModule, recallModule, eventRerankModule, metricsModule, embedderModule, lexicalIndexModule] = await Promise.all([
         import('../../core/constants.js'),
         import('../../modules/story-summary/data/config.js'),
@@ -551,7 +553,7 @@ function validateReplaySnapshot(snapshot, samplePath, sample, config) {
     }
 }
 
-async function restoreReplaySnapshot(modules, chatId, snapshot) {
+export async function restoreReplaySnapshot(modules, chatId, snapshot) {
     await resetReplayStores(modules, chatId);
     __setChatMetadata(cloneJsonSafe(snapshot?.summary?.chatMetadata) || {});
 
@@ -815,7 +817,7 @@ async function maintainNaturalTurnAfterAi(args) {
     return { ...counted.value, ...mergeCountedExternal(counted) };
 }
 
-function deserializePromptRecallInput(value = {}) {
+export function deserializePromptRecallInput(value = {}) {
     const { l1ByFloorEntries, ...rest } = value;
     return { ...cloneJsonSafe(rest), l1ByFloor: new Map(
         (l1ByFloorEntries || []).map(([floor, item]) => [Number(floor), cloneJsonSafe(item)]),

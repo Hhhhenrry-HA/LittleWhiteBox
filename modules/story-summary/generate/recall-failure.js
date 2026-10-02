@@ -1,3 +1,5 @@
+import { SUMMARY_FEEDBACK_COPY } from '../feedback-copy.js';
+
 export const RECALL_TIMEOUT_MS = 30_000;
 export const RECALL_TIMEOUT_REASONS = Object.freeze({
     host: 'host-wait-timeout',
@@ -23,7 +25,7 @@ export function recallFailureNotice(cancelReason, error, timeoutMs = RECALL_TIME
     if (error?.code === 'RECALL_EMBEDDING_FAILED' || error?.code === 'RECALL_EMBEDDING_INVALID_RESPONSE') {
         return {
             issueCode: 'recall_embedding_failed',
-            notice: '剧情记忆嵌入请求失败，本轮已跳过。请检查嵌入 API、网络和向量设置后重试。',
+            notice: SUMMARY_FEEDBACK_COPY.embeddingRecall,
         };
     }
     return {
