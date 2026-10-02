@@ -7160,7 +7160,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/tavern/tests/architecture-contracts.test.ts",
       "relativePath": "modules/tavern/tests/architecture-contracts.test.ts",
       "extension": ".ts",
-      "sizeBytes": 312654
+      "sizeBytes": 293044
     },
     {
       "source": "littlewhitebox",
