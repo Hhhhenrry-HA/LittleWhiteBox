@@ -1,6 +1,9 @@
 import type { LearningClientState } from '../types.js';
 
 type Activity = Pick<LearningClientState, 'busy' | 'chatBusy' | 'workbenchBusy' | 'preparation'>;
+export function learningActionLane(name: string, target: unknown): string {
+    return name === 'talk' || name === 'retry-chat' ? target === 'workbench' ? 'workbench-talk' : 'talk' : name;
+}
 const contextActions = new Set(['language', 'teacher', 'forget-conversation', 'resume', 'rate', 'seek', 'verify-teacher', 'adopt-teacher']);
 const preparationConcurrentActions = new Set(['submit', 'bookmark', 'say', 'play', 'save-note', 'delete-note']);
 const immediateActions = new Set(['records', 'export', 'pause', 'stop', 'cancel', 'cancel-chat', 'cancel-companion', 'cancel-preparation',

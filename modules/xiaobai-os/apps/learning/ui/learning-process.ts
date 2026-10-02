@@ -1,9 +1,11 @@
 import type { LearningDialogueView, LearningMessageView } from '../application/message-view.js';
+import type { LearningResearchFailure } from '../application/research-feedback.js';
 
 export interface LearningProcessMetadata {
     ok?: boolean; changed?: boolean; section?: string;
     resultsCount?: number; paragraphCount?: number; dataCount?: number; failedCount?: number; errorsCount?: number;
     materialsCount?: number; exercisesCount?: number; errorFields?: string[];
+    error?: LearningResearchFailure; httpStatus?: number;
 }
 export interface LearningProcessTool {
     id: string; name: string; status: 'preparing' | 'running' | 'done' | 'failed' | 'cancelled';

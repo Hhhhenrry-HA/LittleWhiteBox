@@ -1,12 +1,12 @@
 /* eslint-disable */
-import { E as W, F as r, K as F, L, M as D, O as J, Q as M, V as U, X as _, Z as P, _ as s, b as K, c as H, et as t, g as $, l as Q, m as a, nt as X, p as h, rt as k, s as Z, tt as A, u as O, v as G, x as V, y as Y } from "./xiaobai-os-runtime-dom.esm-bundler-BeaorYpU.js";
-import { r as ee } from "./xiaobai-os-app-navigation-C25euSGK.js";
+import { $ as P, D as W, H as K, I as r, J as L, N as F, Q as _, R as j, S as R, _ as s, at as k, b as H, c as U, et as A, g as $, it as Q, k as G, l as X, m as a, nt as t, p as h, rt as M, s as Y, u as O, x as E, y as Z } from "./xiaobai-os-runtime-dom.esm-bundler-C2atLQPd.js";
+import { r as ee } from "./xiaobai-os-app-navigation-5cBwNoCT.js";
 import { n as te } from "./xiaobai-os-frame-bridge-BfVuKvnh.js";
 var ae = { class: "world-article" }, le = { tabindex: "-1" }, re = {
   key: 0,
   class: "world-article-update",
   role: "status"
-}, se = { key: 1 }, ne = { class: "world-article-body" }, ie = /* @__PURE__ */ V({
+}, se = { key: 1 }, ne = { class: "world-article-body" }, ie = /* @__PURE__ */ R({
   __name: "NewsArticle",
   props: {
     article: {},
@@ -21,7 +21,7 @@ var ae = { class: "world-article" }, le = { tabindex: "-1" }, re = {
         type: "button",
         onClick: n[0] || (n[0] = (u) => d.$emit("latest"))
       }, "阅读新版")], 64)) : (r(), s("span", se, "这篇已不在当前列表，仍可读完。"))])) : $("", !0),
-      a("div", ne, [(r(!0), s(O, null, L(i.value, (u, g) => (r(), s("p", { key: g }, k(u), 1))), 128))])
+      a("div", ne, [(r(!0), s(O, null, j(i.value, (u, g) => (r(), s("p", { key: g }, k(u), 1))), 128))])
     ]));
   }
 }), oe = ie, ue = { class: "world-opening" }, de = {
@@ -31,18 +31,18 @@ var ae = { class: "world-article" }, le = { tabindex: "-1" }, re = {
   "aria-expanded",
   "aria-controls",
   "aria-label"
-], pe = /* @__PURE__ */ V({
+], pe = /* @__PURE__ */ R({
   __name: "WorldOpening",
   props: { overview: {} },
   setup(c) {
-    const e = _(!1), i = U(), d = `url("https://picsum.photos/800/300?random=${Math.random()}")`;
+    const e = _(!1), i = K(), d = `url("https://picsum.photos/800/300?random=${Math.random()}")`;
     return (n, u) => (r(), s("div", ue, [a("div", {
       class: "world-horizon",
       "aria-hidden": "true",
-      style: X({ "--world-cover-image": d })
+      style: Q({ "--world-cover-image": d })
     }, null, 4), c.overview ? (r(), s("div", de, [a("p", {
       id: t(i),
-      class: A(["world-overview-text", { "is-expanded": e.value }])
+      class: M(["world-overview-text", { "is-expanded": e.value }])
     }, k(c.overview), 11, ve), a("button", {
       type: "button",
       class: "world-overview-toggle",
@@ -53,16 +53,16 @@ var ae = { class: "world-article" }, le = { tabindex: "-1" }, re = {
     }, [(r(), s("svg", {
       viewBox: "0 0 24 24",
       "aria-hidden": "true",
-      class: A({ "is-expanded": e.value })
+      class: M({ "is-expanded": e.value })
     }, [...u[1] || (u[1] = [a("path", { d: "m7 10 5 5 5-5" }, null, -1)])], 2))], 8, ce)])) : $("", !0)]));
   }
 }), fe = pe;
 function we(c) {
-  const e = P(structuredClone(M(c.initialState))), i = _(!1), d = _(""), n = _(!1);
+  const e = P(structuredClone(A(c.initialState))), i = _(!1), d = _(""), n = _(!1);
   let u = !1, g = 0, b = () => {
   };
   function p(y) {
-    e.value = structuredClone(M(y)), d.value = "", n.value = !1;
+    e.value = structuredClone(A(y)), d.value = "", n.value = !1;
   }
   const S = h(() => !i.value && e.value.writeState === "ready"), x = h(() => e.value.maintenance === "running"), f = h(() => n.value ? d.value : e.value.writeState !== "ready" ? e.value.message : d.value || e.value.message), I = h(() => n.value || e.value.maintenance === "error" || [
     "failed",
@@ -88,14 +88,14 @@ function we(c) {
       u && (i.value = !1);
     }
   }
-  return D(() => {
+  return F(() => {
     u = !0, b = c.bridge.subscribe((y) => {
       if (y.type === "world/state") {
         const m = y.payload.state;
         m.chatIdentity === e.value.chatIdentity && (g++, p(m));
       } else y.type === "world/error" && (n.value = !0, d.value = "新闻暂时加载不了，请重试。");
     });
-  }), J(() => {
+  }), G(() => {
     u = !1, b();
   }), {
     state: e,
@@ -114,7 +114,7 @@ var be = { class: "world-toolbar" }, ye = { class: "world-tools" }, ge = ["disab
 }, Ie = ["data-article-id", "onClick"], Ne = { class: "world-item-text" }, Be = { class: "world-item-preview" }, qe = {
   key: 1,
   class: "world-empty"
-}, Me = ["disabled"], Ae = /* @__PURE__ */ V({
+}, Ae = ["disabled"], Me = /* @__PURE__ */ R({
   __name: "WorldApp",
   props: {
     bridge: {},
@@ -129,27 +129,27 @@ var be = { class: "world-toolbar" }, ye = { class: "world-tools" }, ge = ["disab
       await b(l === "subscribed" ? "subscribe" : "background", { enabled: o.checked }), o.checked = e.value.settings[l];
     }
     async function q(v) {
-      N = S.value?.scrollTop ?? 0, y = v.id, p.value = structuredClone(M(v)), await W(), x.value?.querySelector("h1")?.focus({ preventScroll: !0 });
+      N = S.value?.scrollTop ?? 0, y = v.id, p.value = structuredClone(A(v)), await W(), x.value?.querySelector("h1")?.focus({ preventScroll: !0 });
     }
     async function T() {
       p.value = null, await W(), S.value && (S.value.scrollTop = N, ([...S.value.querySelectorAll("[data-article-id]")].find((v) => v.dataset.articleId === y) ?? I.value)?.focus({ preventScroll: !0 }));
     }
-    async function R() {
-      m.value && (p.value = structuredClone(M(m.value)), await W(), x.value && (x.value.scrollTop = 0), x.value?.querySelector("h1")?.focus({ preventScroll: !0 }));
+    async function z() {
+      m.value && (p.value = structuredClone(A(m.value)), await W(), x.value && (x.value.scrollTop = 0), x.value?.querySelector("h1")?.focus({ preventScroll: !0 }));
     }
-    function E() {
+    function V() {
       f.value && (f.value.open = !1, f.value.querySelector("summary")?.focus());
     }
-    function j(v) {
+    function D(v) {
       f.value && v.target instanceof Node && !f.value.contains(v.target) && (f.value.open = !1);
     }
-    function z(v) {
+    function J(v) {
       f.value && (!(v.relatedTarget instanceof Node) || !f.value.contains(v.relatedTarget)) && (f.value.open = !1);
     }
-    return ee(() => f.value?.open ? (E(), !0) : p.value ? (T(), !0) : !1), (v, l) => (r(), s("section", {
+    return ee(() => f.value?.open ? (V(), !0) : p.value ? (T(), !0) : !1), (v, l) => (r(), s("section", {
       class: "world-app",
       "aria-label": "世界新闻",
-      onPointerdown: j
+      onPointerdown: D
     }, [
       a("header", be, [p.value ? (r(), s("button", {
         key: 0,
@@ -178,7 +178,7 @@ var be = { class: "world-toolbar" }, ye = { class: "world-tools" }, ge = ["disab
         stroke: "currentColor",
         "stroke-width": "1.6",
         "aria-hidden": "true",
-        class: A({ "world-spinning": t(n) })
+        class: M({ "world-spinning": t(n) })
       }, [...l[8] || (l[8] = [a("path", {
         d: "M20 10a8 8 0 1 0-1 6M20 4v6h-6",
         "stroke-linecap": "round",
@@ -187,9 +187,9 @@ var be = { class: "world-toolbar" }, ye = { class: "world-tools" }, ge = ["disab
         ref_key: "menu",
         ref: f,
         class: "world-menu",
-        onKeydown: H(Q(E, ["stop", "prevent"]), ["esc"]),
-        onFocusout: z
-      }, [l[13] || (l[13] = G('<summary aria-label="新闻设置" title="新闻设置"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="19" cy="12" r="1.7"></circle></svg></summary>', 1)), a("div", ke, [
+        onKeydown: U(X(V, ["stop", "prevent"]), ["esc"]),
+        onFocusout: J
+      }, [l[13] || (l[13] = Z('<summary aria-label="新闻设置" title="新闻设置"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="19" cy="12" r="1.7"></circle></svg></summary>', 1)), a("div", ke, [
         a("label", null, [l[9] || (l[9] = a("span", null, "自动新闻", -1)), a("input", {
           type: "checkbox",
           checked: t(e).settings.subscribed,
@@ -207,7 +207,7 @@ var be = { class: "world-toolbar" }, ye = { class: "world-tools" }, ge = ["disab
       ])], 40, me)])]),
       t(u) ? (r(), s("div", {
         key: 0,
-        class: A(["world-notice", { "is-error": t(g) }]),
+        class: M(["world-notice", { "is-error": t(g) }]),
         role: "status",
         "aria-live": "polite"
       }, [a("span", null, k(t(u)), 1), t(e).writeState === "unconfirmed" || t(e).pendingSave && t(e).writeState === "failed" ? (r(), s("button", {
@@ -226,11 +226,11 @@ var be = { class: "world-toolbar" }, ye = { class: "world-tools" }, ge = ["disab
         type: "button",
         onClick: l[5] || (l[5] = (o) => t(b)(t(e).maintenance === "error" && t(e).writeState === "ready" ? "refresh" : "read"))
       }, k(t(e).maintenance === "error" && t(e).writeState === "ready" ? "重试更新" : "重新加载"), 9, Ce)) : $("", !0)], 2)) : $("", !0),
-      F(a("div", {
+      L(a("div", {
         ref_key: "listing",
         ref: S,
         class: "world-scroll world-listing"
-      }, [K(fe, { overview: t(e).world.overview }, null, 8, ["overview"]), t(e).world.news.length ? (r(), s("section", $e, [(r(!0), s(O, null, L(t(e).world.news, (o) => (r(), s("article", {
+      }, [E(fe, { overview: t(e).world.overview }, null, 8, ["overview"]), t(e).world.news.length ? (r(), s("section", $e, [(r(!0), s(O, null, j(t(e).world.news, (o) => (r(), s("article", {
         key: o.id,
         class: "world-news-item"
       }, [a("button", {
@@ -244,18 +244,18 @@ var be = { class: "world-toolbar" }, ye = { class: "world-tools" }, ge = ["disab
           class: "world-primary",
           disabled: !B.value,
           onClick: l[6] || (l[6] = (o) => t(e).settings.subscribed ? t(b)("refresh") : t(b)("subscribe", { enabled: !0 }))
-        }, k(t(n) ? "正在更新…" : t(i) ? "正在处理…" : t(e).settings.subscribed ? "获取新闻" : "开启自动新闻"), 9, Me),
+        }, k(t(n) ? "正在更新…" : t(i) ? "正在处理…" : t(e).settings.subscribed ? "获取新闻" : "开启自动新闻"), 9, Ae),
         l[14] || (l[14] = a("small", null, "获取及更新将调用模型", -1))
-      ]))], 512), [[Z, !p.value]]),
+      ]))], 512), [[Y, !p.value]]),
       p.value ? (r(), s("div", {
         key: 1,
         ref_key: "articlePage",
         ref: x,
         class: "world-scroll world-reading"
-      }, [K(oe, {
+      }, [E(oe, {
         article: p.value,
         update: C.value,
-        onLatest: R
+        onLatest: z
       }, null, 8, ["article", "update"]), a("button", {
         type: "button",
         class: "world-bottom-back",
@@ -263,10 +263,10 @@ var be = { class: "world-toolbar" }, ye = { class: "world-tools" }, ge = ["disab
       }, [...l[15] || (l[15] = [a("svg", {
         viewBox: "0 0 24 24",
         "aria-hidden": "true"
-      }, [a("path", { d: "m14 6-6 6 6 6" })], -1), Y(" 返回见闻 ", -1)])])], 512)) : $("", !0)
+      }, [a("path", { d: "m14 6-6 6 6 6" })], -1), H(" 返回见闻 ", -1)])])], 512)) : $("", !0)
     ], 32));
   }
-}), Ee = Ae;
+}), Ve = Me;
 export {
-  Ee as default
+  Ve as default
 };

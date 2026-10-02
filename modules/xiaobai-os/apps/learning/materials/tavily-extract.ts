@@ -3,7 +3,7 @@ import { normalizeTavilyApiKey, normalizeTavilyBaseUrl } from '../../../../agent
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 
 export class LearningMaterialError extends Error {
-    constructor(readonly code: string) { super(code); }
+    constructor(readonly code: string, readonly httpStatus?: number) { super(code); }
 }
 
 export interface ExtractedSources {
@@ -93,7 +93,7 @@ export async function extractLearningSources(
         });
         if (!response.ok) {
             await response.body?.cancel();
-            throw new LearningMaterialError('learning_extract_http_failed');
+            throw new LearningMaterialError('learning_extract_http_failed', response.status);
         }
         const payload = await boundedJson(response);
         if (controller.signal.aborted) { throw new LearningMaterialError('learning_extract_cancelled'); }

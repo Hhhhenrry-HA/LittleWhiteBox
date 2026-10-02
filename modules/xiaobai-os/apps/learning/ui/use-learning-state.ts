@@ -3,7 +3,7 @@ import type { XiaobaiOsAppProps } from '../../../shell/app-contract.js';
 import { FrameRequestError, HostRequestError } from '../../../shell/app-src/frame-bridge.js';
 import type { LearningClientState } from '../types.js';
 import { LEARNING_REQUEST_COPY } from './learning-copy.js';
-import { learningActionAvailable, learningActionBusy } from '../application/action-availability.js';
+import { learningActionAvailable, learningActionBusy, learningActionLane } from '../application/action-availability.js';
 
 export function useLearningState(props: XiaobaiOsAppProps) {
     const state = shallowRef(structuredClone(toRaw(props.initialState as LearningClientState)));
@@ -19,7 +19,7 @@ export function useLearningState(props: XiaobaiOsAppProps) {
     const canChat = computed(() => canRequest('talk'));
     async function request(action: string, extra: Record<string, unknown> = {}) {
         if (pending.value) { return; }
-        if (learningActionBusy(action === 'talk' && extra.target === 'workbench' ? 'workbench-talk' : action, state.value)) { localIssue.value = 'busy'; return; }
+        if (learningActionBusy(learningActionLane(action, extra.target), state.value)) { localIssue.value = 'busy'; return; }
         pending.value = true; localIssue.value = null;
         const identity = state.value.chatIdentity;
         const version = pushed;

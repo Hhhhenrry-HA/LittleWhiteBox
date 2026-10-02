@@ -2,9 +2,10 @@ import type { AgentMessage } from '../../../../agent-core/runtime/conversation.j
 import type { LearningDialogue } from '../agent/context.js';
 import type { LearningMessage } from '../agent/messages.js';
 import { learningToolNames } from '../agent/session.js';
+import { learningResearchCode } from './research-feedback.js';
 
 export type LearningMessageView = Pick<AgentMessage, 'role' | 'content' | 'streaming' | 'error' | 'toolCallId' | 'toolName' | 'toolCalls'> & { hasReasoning: boolean; receivedChars: number };
-export type LearningDialogueView = Omit<LearningDialogue, 'messages'> & { messages: LearningMessageView[] };
+export type LearningDialogueView = Omit<LearningDialogue, 'messages'> & { messages: LearningMessageView[]; retryable?: boolean };
 
 const toolNames = new Set([...learningToolNames(), 'LearningSearch', 'LearningExtract', 'LearningContextRead']);
 const toolName = (name: string) => toolNames.has(name) ? name : '未知工具';
@@ -16,6 +17,12 @@ function toolMetadata(value: unknown): unknown {
     if (!value || typeof value !== 'object' || Array.isArray(value)) { return {}; }
     const source = value as Record<string, unknown>;
     const result: Record<string, unknown> = {};
+    const error = learningResearchCode(source.error) ?? (Array.isArray(source.failed)
+        ? source.failed.map(entry => learningResearchCode(entry?.error)).find(Boolean) : undefined);
+    if (error) {
+        result.error = error;
+        if (Number.isInteger(source.httpStatus) && Number(source.httpStatus) >= 400 && Number(source.httpStatus) <= 599) { result.httpStatus = source.httpStatus; }
+    }
     if (typeof source.section === 'string' && sections.has(source.section)) { result.section = source.section; }
     if (Array.isArray(source.errors)) {
         result.errorFields = [...new Set(source.errors.flatMap(error => {

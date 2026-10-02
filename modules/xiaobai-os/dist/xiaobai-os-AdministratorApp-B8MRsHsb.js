@@ -1,10 +1,10 @@
 /* eslint-disable */
-import { E as ve, F as r, G as be, K as Re, L as J, M as _e, O as se, Q as he, U as ne, X as y, Z as ce, _ as o, b as Me, c as ae, et as i, g as m, h as G, l as re, m as a, nt as Se, o as Pe, p as N, rt as s, tt as H, u as K, x as le, y as Q } from "./xiaobai-os-runtime-dom.esm-bundler-BeaorYpU.js";
+import { $ as ve, D as ce, G as ne, I as r, J as Te, N as _e, Q as y, R as Q, S as le, _ as o, at as s, b as J, c as ae, et as be, g as m, h as G, it as Se, k as se, l as re, m as a, nt as i, o as Me, p as N, q as he, rt as H, u as V, x as Pe } from "./xiaobai-os-runtime-dom.esm-bundler-C2atLQPd.js";
 import { t as Be } from "./xiaobai-os-descriptor-DmDuv1pM.js";
-import { i as Oe, r as ze } from "./xiaobai-os-app-navigation-C25euSGK.js";
-import { t as qe } from "./xiaobai-os-context-tokens-bfmDTbG3.js";
-import { t as we } from "./xiaobai-os-AppDialog-B3ZziTBo.js";
-import { t as xe } from "./xiaobai-os-MessageMarkdown-C9TgJeVY.js";
+import { i as qe, r as ze } from "./xiaobai-os-app-navigation-5cBwNoCT.js";
+import { t as Oe } from "./xiaobai-os-context-tokens-bfmDTbG3.js";
+import { t as we } from "./xiaobai-os-AppDialog-a7m1i1dI.js";
+import { t as xe } from "./xiaobai-os-MessageMarkdown-BEpRRRf3.js";
 var L = Object.freeze({
   inputBudget: 158e3,
   summaryTrigger: 128e3,
@@ -26,7 +26,7 @@ var L = Object.freeze({
   "image/webp",
   "image/gif"
 ]);
-function Ee() {
+function De() {
   return Array.from(globalThis.crypto.getRandomValues(new Uint8Array(16)), (n) => n.toString(16).padStart(2, "0")).join("");
 }
 var l = Object.freeze({
@@ -102,7 +102,7 @@ var l = Object.freeze({
   noEvidence: "这份资料的临时查阅入口已失效。已返回给管理员的内容仍保留在会话历史中，需要更多原文时可以重新查阅。",
   corrupted: "管理员记录损坏。可以清空管理员聊天；其他 APP 数据不受影响。",
   unsaved: "保存尚未确认。可检查结果、重新提交，或放弃未保存内容；已保存的修改不会撤销。"
-}), De = Object.freeze({
+}), Ee = Object.freeze({
   administrator_stopped: l.stopped,
   administrator_busy: "当前操作尚未结束，请先等待或停止。",
   administrator_context_changed: "聊天已切换，旧操作已停止。",
@@ -129,9 +129,9 @@ var l = Object.freeze({
   management_request_superseded: "记录已被后续修改取代。请说明当前希望怎样处理，不会恢复旧状态。",
   management_source_changed: "所依据的原文已经改变，需要重新查证。"
 });
-function j(n) {
+function K(n) {
   const g = n instanceof Error ? n.message : String(n);
-  return De[g] ?? g.slice(0, 700);
+  return Ee[g] ?? g.slice(0, 700);
 }
 var Le = [
   "aria-label",
@@ -140,7 +140,7 @@ var Le = [
 ], Ne = {
   key: 0,
   class: "admin-popover"
-}, Ke = ["aria-label"], Ve = { class: "admin-context-total" }, je = /* @__PURE__ */ le({
+}, Ve = ["aria-label"], je = { class: "admin-context-total" }, Ke = /* @__PURE__ */ le({
   __name: "AdministratorContext",
   props: {
     usage: {},
@@ -164,23 +164,23 @@ var Le = [
         type: "button",
         "aria-label": i(l).close,
         onClick: f[1] || (f[1] = (c) => e.value = !1)
-      }, "×", 8, Ke)]),
-      a("p", Ve, s(h(b.value)) + " / " + s(h(n.usage.limit)), 1),
-      a("dl", null, [(r(!0), o(K, null, J(i(l).contextParts, (c, p) => (r(), o(K, { key: p }, [a("dt", null, s(c), 1), a("dd", null, s(h(n.usage[p] + (p === "history" ? n.draftTokens : 0))), 1)], 64))), 128))]),
+      }, "×", 8, Ve)]),
+      a("p", je, s(h(b.value)) + " / " + s(h(n.usage.limit)), 1),
+      a("dl", null, [(r(!0), o(V, null, Q(i(l).contextParts, (c, p) => (r(), o(V, { key: p }, [a("dt", null, s(c), 1), a("dd", null, s(h(n.usage[p] + (p === "history" ? n.draftTokens : 0))), 1)], 64))), 128))]),
       a("small", null, s(i(l).budgetNote), 1)
     ])) : m("", !0)], 32));
   }
-}), Fe = je, Ue = ["aria-expanded"], We = { "aria-hidden": "true" }, Ge = {
+}), Fe = Ke, Ue = ["aria-expanded"], We = { "aria-hidden": "true" }, Ge = {
   key: 1,
   class: "admin-process-body"
 }, He = { key: 0 }, Ye = {
   key: 0,
   class: "admin-muted"
-}, Qe = {
+}, Je = {
   key: 1,
   class: "admin-error",
   role: "status"
-}, Je = /* @__PURE__ */ le({
+}, Qe = /* @__PURE__ */ le({
   __name: "AdministratorProcess",
   props: {
     row: {},
@@ -190,9 +190,9 @@ var Le = [
     chatIdentity: {}
   },
   setup(n) {
-    const g = n, e = y(!1), b = ce([]), h = y(!1), k = y(""), f = N(() => g.live?.process ?? b.value), c = N(() => g.live?.process.length ?? g.unsaved?.length ?? g.row.processCount), p = N(() => !!g.live || e.value);
+    const g = n, e = y(!1), b = ve([]), h = y(!1), k = y(""), f = N(() => g.live?.process ?? b.value), c = N(() => g.live?.process.length ?? g.unsaved?.length ?? g.row.processCount), p = N(() => !!g.live || e.value);
     let _ = 0;
-    async function S() {
+    async function M() {
       const C = ++_;
       if (k.value = "", h.value = !1, !p.value || g.live || !c.value) {
         b.value = [];
@@ -212,7 +212,7 @@ var Le = [
         });
         w() && (b.value = A.result);
       } catch (A) {
-        w() && (k.value = j(A));
+        w() && (k.value = K(A));
       } finally {
         w() && (h.value = !1);
       }
@@ -225,7 +225,7 @@ var Le = [
       () => g.unsaved,
       e
     ], (C, x) => {
-      (C[0] !== x[0] || C[1] !== x[1] || C[3] !== x[3]) && (e.value = !1), S();
+      (C[0] !== x[0] || C[1] !== x[1] || C[3] !== x[3]) && (e.value = !1), M();
     }, { immediate: !0 }), se(() => {
       _++;
     }), (C, x) => c.value ? (r(), o("section", {
@@ -237,30 +237,30 @@ var Le = [
       class: "admin-process-toggle",
       "aria-expanded": p.value,
       onClick: x[0] || (x[0] = (I) => e.value = !e.value)
-    }, [a("span", We, s(p.value ? "⌄" : "›"), 1), Q(s(i(l).process(c.value)), 1)], 8, Ue)), p.value ? (r(), o("div", Ge, [
-      (r(!0), o(K, null, J(f.value, (I) => (r(), o("div", {
+    }, [a("span", We, s(p.value ? "⌄" : "›"), 1), J(s(i(l).process(c.value)), 1)], 8, Ue)), p.value ? (r(), o("div", Ge, [
+      (r(!0), o(V, null, Q(f.value, (I) => (r(), o("div", {
         key: I.index,
         class: "admin-process-round"
       }, [I.text ? (r(), G(xe, {
         key: 0,
         class: "admin-markdown admin-process-narration",
         text: I.text
-      }, null, 8, ["text"])) : m("", !0), (r(!0), o(K, null, J(I.tools, (v) => (r(), o("div", {
+      }, null, 8, ["text"])) : m("", !0), (r(!0), o(V, null, Q(I.tools, (v) => (r(), o("div", {
         key: v.id,
         class: "admin-operation-line"
       }, [
         a("i", { class: H(["admin-operation-dot", `is-${v.status}`]) }, null, 2),
-        a("span", null, [Q(s(v.name), 1), v.target ? (r(), o("small", He, " · " + s(v.target), 1)) : m("", !0)]),
+        a("span", null, [J(s(v.name), 1), v.target ? (r(), o("small", He, " · " + s(v.target), 1)) : m("", !0)]),
         a("small", null, s(v.status === "queued" ? i(l).queued : v.status === "not-executed" ? i(l).notExecuted : i(l).operations[v.status]), 1)
       ]))), 128))]))), 128)),
       h.value ? (r(), o("span", Ye, s(i(l).processLoading), 1)) : m("", !0),
-      k.value ? (r(), o("p", Qe, [Q(s(k.value), 1), a("button", {
+      k.value ? (r(), o("p", Je, [J(s(k.value), 1), a("button", {
         type: "button",
-        onClick: S
+        onClick: M
       }, s(i(l).check), 1)])) : m("", !0)
     ])) : m("", !0)], 2)) : m("", !0);
   }
-}), Xe = Je, Ze = ["data-row-id"], et = ["aria-label"], tt = ["src", "alt"], at = {
+}), Xe = Qe, Ze = ["data-row-id"], et = ["aria-label"], tt = ["src", "alt"], at = {
   key: 2,
   class: "admin-muted"
 }, lt = {
@@ -292,7 +292,7 @@ var Le = [
   setup(n, { emit: g }) {
     const e = n, b = g, h = y(!1), k = y(e.row.text), f = y(!1), c = y("");
     let p = 0, _ = k.value.length;
-    const S = N(() => e.live ? e.live.text : k.value), C = N(() => e.unsavedProcess?.length ?? e.row.processCount);
+    const M = N(() => e.live ? e.live.text : k.value), C = N(() => e.unsavedProcess?.length ?? e.row.processCount);
     function x(v) {
       v.target.closest("a, button, input, textarea, select") || (v instanceof KeyboardEvent && v.preventDefault(), h.value = !h.value);
     }
@@ -308,24 +308,24 @@ var Le = [
     async function I(v, w = !1) {
       if (f.value) return;
       _ = Math.min(Math.max(_, v), e.row.totalChars);
-      const A = ++p, { turnId: P, role: O, revision: $ } = e.row, T = e.chatIdentity, z = () => A === p && T === e.chatIdentity && $ === e.row.revision && P === e.row.turnId;
+      const A = ++p, { turnId: P, role: q, revision: $ } = e.row, R = e.chatIdentity, z = () => A === p && R === e.chatIdentity && $ === e.row.revision && P === e.row.turnId;
       f.value = !0, c.value = "";
       try {
-        let R = w ? e.row.text : k.value;
-        for (; R.length < _; ) {
+        let T = w ? e.row.text : k.value;
+        for (; T.length < _; ) {
           const F = await e.bridge.request("administrator/text", {
-            chatIdentity: T,
+            chatIdentity: R,
             turnId: P,
-            role: O,
+            role: q,
             revision: $,
-            offset: R.length
+            offset: T.length
           });
           if (!z()) return;
-          R += F.result.text;
+          T += F.result.text;
         }
-        k.value = R;
-      } catch (R) {
-        z() && (w && (k.value = e.row.text), c.value = j(R));
+        k.value = T;
+      } catch (T) {
+        z() && (w && (k.value = e.row.text), c.value = K(T));
       } finally {
         z() && (f.value = !1);
       }
@@ -348,7 +348,7 @@ var Le = [
         "bridge",
         "chat-identity"
       ])) : m("", !0),
-      S.value || n.row.image || !n.live && !C.value ? (r(), o("div", {
+      M.value || n.row.image || !n.live && !C.value ? (r(), o("div", {
         key: 1,
         class: "admin-bubble",
         tabindex: "0",
@@ -368,15 +368,15 @@ var Le = [
           loading: "lazy",
           class: "admin-message-image"
         }, null, 8, tt)) : m("", !0),
-        S.value ? (r(), G(xe, {
+        M.value ? (r(), G(xe, {
           key: 1,
           class: "admin-markdown",
-          text: S.value
+          text: M.value
         }, null, 8, ["text"])) : m("", !0),
-        !S.value && !n.row.image ? (r(), o("span", at, s(n.row.error || i(l).noReply), 1)) : m("", !0)
+        !M.value && !n.row.image ? (r(), o("span", at, s(n.row.error || i(l).noReply), 1)) : m("", !0)
       ], 40, et)) : m("", !0),
-      n.live ? (r(), o(K, { key: 2 }, [
-        (r(!0), o(K, null, J(n.live.preview, (A) => (r(), o("div", {
+      n.live ? (r(), o(V, { key: 2 }, [
+        (r(!0), o(V, null, Q(n.live.preview, (A) => (r(), o("div", {
           key: A.id,
           class: "admin-operation-line"
         }, [
@@ -385,7 +385,7 @@ var Le = [
           a("small", null, s(i(l).operations[A.status]), 1)
         ]))), 128)),
         n.live.totalChars > i(L).textBlock ? (r(), o("small", lt, s(i(l).longReply), 1)) : m("", !0),
-        a("div", it, [w[5] || (w[5] = a("span", { class: "admin-working-dot" }, null, -1)), Q(s(i(l).phases[n.live.phase]), 1)])
+        a("div", it, [w[5] || (w[5] = a("span", { class: "admin-working-dot" }, null, -1)), J(s(i(l).phases[n.live.phase]), 1)])
       ], 64)) : m("", !0),
       !n.live && n.row.totalChars > k.value.length ? (r(), o("nav", {
         key: 3,
@@ -397,7 +397,7 @@ var Le = [
         onClick: w[1] || (w[1] = (A) => I(k.value.length + i(L).textBlock))
       }, s(i(l).moreText), 9, st)], 8, nt)) : m("", !0),
       n.row.error || c.value ? (r(), o("p", rt, s(c.value || n.row.error), 1)) : m("", !0),
-      h.value || !n.live && C.value && !S.value ? (r(), o("nav", {
+      h.value || !n.live && C.value && !M.value ? (r(), o("nav", {
         key: 5,
         class: "admin-message-actions",
         "aria-label": i(l).messageActions
@@ -439,50 +439,50 @@ var Le = [
   },
   emits: ["close"],
   setup(n, { emit: g }) {
-    const e = n, b = g, h = y([]), k = y(0), f = y(0), c = y(""), p = y(!1), _ = y(null), S = y(""), C = y(null), x = y(!0);
+    const e = n, b = g, h = y([]), k = y(0), f = y(0), c = y(""), p = y(!1), _ = y(null), M = y(""), C = y(null), x = y(!0);
     let I;
     function v() {
-      ve(() => C.value?.focus({ preventScroll: !0 }));
+      ce(() => C.value?.focus({ preventScroll: !0 }));
     }
     function w() {
       _.value ? (_.value = null, v()) : b("close");
     }
-    Oe(C, w, () => x.value);
-    async function A(O) {
+    qe(C, w, () => x.value);
+    async function A(q) {
       p.value = !0, c.value = "", _.value = null;
       try {
         const $ = await e.bridge.request("administrator/operations", {
           chatIdentity: e.chatIdentity,
           turnId: e.turnId,
-          offset: O
+          offset: q
         });
         h.value = $.result.items, f.value = $.result.total, k.value = $.result.offset;
       } catch ($) {
-        c.value = j($);
+        c.value = K($);
       } finally {
         p.value = !1;
       }
     }
-    async function P(O, $ = 0) {
+    async function P(q, $ = 0) {
       p.value = !0, c.value = "";
       try {
         _.value = (await e.bridge.request("administrator/evidence", {
           chatIdentity: e.chatIdentity,
-          reference: O,
+          reference: q,
           offset: $
-        })).result, S.value = O, v();
-      } catch (T) {
-        c.value = j(T);
+        })).result, M.value = q, v();
+      } catch (R) {
+        c.value = K(R);
       } finally {
         p.value = !1;
       }
     }
     return _e(() => {
-      const O = C.value.closest(".administrator-app"), $ = () => {
-        x.value = getComputedStyle(O).getPropertyValue("--admin-details-docked").trim() !== "1";
+      const q = C.value.closest(".administrator-app"), $ = () => {
+        x.value = getComputedStyle(q).getPropertyValue("--admin-details-docked").trim() !== "1";
       };
-      $(), I = new ResizeObserver($), I.observe(O), v(), A(0);
-    }), se(() => I?.disconnect()), (O, $) => (r(), o("section", {
+      $(), I = new ResizeObserver($), I.observe(q), v(), A(0);
+    }), se(() => I?.disconnect()), (q, $) => (r(), o("section", {
       ref_key: "layer",
       ref: C,
       class: "admin-details",
@@ -494,8 +494,8 @@ var Le = [
     }, [a("header", null, [a("strong", null, s(i(l).details), 1), a("button", {
       type: "button",
       "aria-label": i(l).close,
-      onClick: $[0] || ($[0] = (T) => b("close"))
-    }, "×", 8, gt)]), a("div", pt, [_.value ? (r(), o(K, { key: 0 }, [
+      onClick: $[0] || ($[0] = (R) => b("close"))
+    }, "×", 8, gt)]), a("div", pt, [_.value ? (r(), o(V, { key: 0 }, [
       a("button", {
         type: "button",
         class: "admin-text-button",
@@ -506,59 +506,59 @@ var Le = [
         key: 0,
         type: "button",
         disabled: p.value,
-        onClick: $[1] || ($[1] = (T) => P(S.value, _.value.nextOffset))
+        onClick: $[1] || ($[1] = (R) => P(M.value, _.value.nextOffset))
       }, s(i(l).moreText), 9, ft)) : m("", !0)
-    ], 64)) : (r(), o(K, { key: 1 }, [a("ol", bt, [(r(!0), o(K, null, J(h.value, (T) => (r(), o("li", { key: T.id }, [
+    ], 64)) : (r(), o(V, { key: 1 }, [a("ol", bt, [(r(!0), o(V, null, Q(h.value, (R) => (r(), o("li", { key: R.id }, [
       a("div", null, [
-        a("i", { class: H(["admin-operation-dot", `is-${T.status}`]) }, null, 2),
-        a("strong", null, s(T.name), 1),
-        a("span", null, s(i(l).operations[T.status]), 1),
-        a("small", null, s((T.elapsedMs / 1e3).toFixed(1)) + "s", 1)
+        a("i", { class: H(["admin-operation-dot", `is-${R.status}`]) }, null, 2),
+        a("strong", null, s(R.name), 1),
+        a("span", null, s(i(l).operations[R.status]), 1),
+        a("small", null, s((R.elapsedMs / 1e3).toFixed(1)) + "s", 1)
       ]),
-      T.target ? (r(), o("p", ht, s(T.target), 1)) : m("", !0),
-      a("p", wt, s(T.summary), 1),
+      R.target ? (r(), o("p", ht, s(R.target), 1)) : m("", !0),
+      a("p", wt, s(R.summary), 1),
       a("button", {
         type: "button",
         class: "admin-text-button",
         disabled: p.value,
-        onClick: (z) => P(T.id)
+        onClick: (z) => P(R.id)
       }, s(i(l).evidence), 9, kt)
     ]))), 128))]), a("nav", _t, [a("button", {
       type: "button",
       disabled: !k.value || p.value,
-      onClick: $[2] || ($[2] = (T) => A(Math.max(0, k.value - i(L).pageSize)))
+      onClick: $[2] || ($[2] = (R) => A(Math.max(0, k.value - i(L).pageSize)))
     }, s(i(l).earlier), 9, xt), a("button", {
       type: "button",
       disabled: k.value + h.value.length >= f.value || p.value,
-      onClick: $[3] || ($[3] = (T) => A(k.value + h.value.length))
+      onClick: $[3] || ($[3] = (R) => A(k.value + h.value.length))
     }, s(i(l).later), 9, $t)])], 64)), c.value ? (r(), o("p", It, s(c.value), 1)) : m("", !0)])], 40, mt));
   }
-}), At = Ct, Tt = { class: "admin-header" }, Rt = [
+}), At = Ct, Rt = { class: "admin-header" }, Tt = [
   "title",
   "aria-label",
   "disabled"
-], Mt = {
+], St = {
   key: 0,
   class: "admin-notice",
   role: "alert"
-}, St = ["disabled"], Pt = ["disabled"], Bt = {
+}, Mt = ["disabled"], Pt = ["disabled"], Bt = {
   key: 1,
   class: "admin-empty"
-}, Ot = {
+}, qt = {
   key: 2,
   class: "admin-live"
 }, zt = {
   class: "admin-live-status",
   role: "status",
   "aria-live": "polite"
-}, qt = ["disabled"], Et = {
+}, Ot = ["disabled"], Dt = {
   key: 2,
   class: "admin-notice",
   role: "status"
-}, Dt = ["disabled"], Lt = ["disabled"], Nt = ["disabled"], Kt = {
+}, Et = ["disabled"], Lt = ["disabled"], Nt = ["disabled"], Vt = {
   key: 3,
   class: "admin-attachment"
-}, Vt = ["src", "alt"], jt = ["aria-label", "disabled"], Ft = ["accept"], Ut = [
+}, jt = ["src", "alt"], Kt = ["aria-label", "disabled"], Ft = ["accept"], Ut = [
   "disabled",
   "aria-label",
   "title"
@@ -574,19 +574,19 @@ var Le = [
   "disabled",
   "aria-label",
   "title"
-], Yt = { class: "admin-dialog-actions" }, Qt = ["disabled"], Jt = { class: "admin-dialog-actions" }, Xt = ["disabled"], Zt = /* @__PURE__ */ le({
+], Yt = { class: "admin-dialog-actions" }, Jt = ["disabled"], Qt = { class: "admin-dialog-actions" }, Xt = ["disabled"], Zt = /* @__PURE__ */ le({
   __name: "AdministratorApp",
   props: {
     bridge: {},
     initialState: {}
   },
   setup(n) {
-    const g = n, e = ce(structuredClone(he(g.initialState))), b = ce(e.value.page.rows), h = y(e.value.page.start), k = y(e.value.page.total), f = y(""), c = y(null), p = y(""), _ = y(""), S = y(!1), C = y(!1), x = y(null), I = y(null), v = y(null), w = y(null), A = y(null), P = y(!0), O = y(!1), $ = y(0);
-    let T = 0, z = null;
+    const g = n, e = ve(structuredClone(be(g.initialState))), b = ve(e.value.page.rows), h = y(e.value.page.start), k = y(e.value.page.total), f = y(""), c = y(null), p = y(""), _ = y(""), M = y(!1), C = y(!1), x = y(null), I = y(null), v = y(null), w = y(null), A = y(null), P = y(!0), q = y(!1), $ = y(0);
+    let R = 0, z = null;
     ne([f, c], () => {
-      T++;
+      R++;
     }, { flush: "sync" });
-    const R = N(() => !!_.value || !!e.value.live), F = N(() => e.value.live?.phase ?? (["send", "regenerate"].includes(_.value) ? "preparing" : null)), X = N(() => R.value || e.value.unsaved || e.value.corrupted), $e = N(() => b.value.some((u) => u.role === "assistant" && u.turnId === e.value.live?.turnId)), U = N(() => h.value + b.value.length >= k.value);
+    const T = N(() => !!_.value || !!e.value.live), F = N(() => e.value.live?.phase ?? (["send", "regenerate"].includes(_.value) ? "preparing" : null)), X = N(() => T.value || e.value.unsaved || e.value.corrupted), $e = N(() => b.value.some((u) => u.role === "assistant" && u.turnId === e.value.live?.turnId)), U = N(() => h.value + b.value.length >= k.value);
     let me = () => {
     }, Z, W = 0;
     const ge = () => ({ chatIdentity: e.value.chatIdentity });
@@ -604,12 +604,12 @@ var Le = [
       } : null;
     }
     async function ue(u) {
-      await ve();
+      await ce();
       const t = v.value && [...v.value.querySelectorAll("[data-row-id]")].find((d) => d.dataset.rowId === u?.id);
       u && t && v.value && (v.value.scrollTop += t.getBoundingClientRect().top - u.top);
     }
     async function ee() {
-      await ve(), v.value && (v.value.scrollTop = v.value.scrollHeight);
+      await ce(), v.value && (v.value.scrollTop = v.value.scrollHeight);
     }
     function oe(u) {
       const t = pe(), d = U.value, B = e.value;
@@ -618,46 +618,46 @@ var Le = [
         return;
       }
       if (u.page.revision !== B.page.revision) {
-        const q = Math.max(L.pageSize, b.value.length), E = d && P.value ? Math.max(0, u.page.total - q) : Math.min(h.value, Math.max(0, u.page.total - q));
-        E === u.page.start && q === L.pageSize ? (b.value = u.page.rows, h.value = E, P.value || ue(t)) : Ie(E, q, t);
+        const O = Math.max(L.pageSize, b.value.length), D = d && P.value ? Math.max(0, u.page.total - O) : Math.min(h.value, Math.max(0, u.page.total - O));
+        D === u.page.start && O === L.pageSize ? (b.value = u.page.rows, h.value = D, P.value || ue(t)) : Ie(D, O, t);
       }
-      z && u.submission?.id === z.id && u.submission.accepted && (z.revision === T && (f.value = "", c.value = null), z = null), P.value && U.value && ee();
+      z && u.submission?.id === z.id && u.submission.accepted && (z.revision === R && (f.value = "", c.value = null), z = null), P.value && U.value && ee();
     }
     async function Ie(u, t, d) {
-      const B = ++W, q = e.value.chatIdentity, E = e.value.page.revision, M = () => B === W && q === e.value.chatIdentity && E === e.value.page.revision;
+      const B = ++W, O = e.value.chatIdentity, D = e.value.page.revision, S = () => B === W && O === e.value.chatIdentity && D === e.value.page.revision;
       try {
-        const D = [];
-        for (let V = u; V < Math.min(k.value, u + t); V += L.pageSize) {
+        const E = [];
+        for (let j = u; j < Math.min(k.value, u + t); j += L.pageSize) {
           const te = await ie("page", {
-            start: V,
-            revision: E
+            start: j,
+            revision: D
           });
-          if (!M()) return;
-          D.push(...te.rows);
+          if (!S()) return;
+          E.push(...te.rows);
         }
-        if (!M()) return;
-        b.value = D, h.value = u, P.value && U.value ? await ee() : await ue(d);
-      } catch (D) {
-        M() && (p.value = j(D));
+        if (!S()) return;
+        b.value = E, h.value = u, P.value && U.value ? await ee() : await ue(d);
+      } catch (E) {
+        S() && (p.value = K(E));
       }
     }
     async function de(u, t) {
-      if (S.value) return;
+      if (M.value) return;
       const d = ++W;
-      S.value = !0, p.value = "";
-      const B = pe(), q = e.value.chatIdentity, E = e.value.page.revision;
+      M.value = !0, p.value = "";
+      const B = pe(), O = e.value.chatIdentity, D = e.value.page.revision;
       try {
-        const M = await ie("page", {
+        const S = await ie("page", {
           start: u,
           revision: e.value.page.revision
         });
-        if (d !== W || q !== e.value.chatIdentity || E !== e.value.page.revision) return;
-        const D = b.value.filter((V) => V.revision === E);
-        t === "earlier" ? (b.value = [...M.rows, ...D.filter((V) => !M.rows.some((te) => te.id === V.id))].slice(0, L.windowSize), h.value = M.start) : t === "later" ? (b.value = [...D.filter((V) => !M.rows.some((te) => te.id === V.id)), ...M.rows].slice(-L.windowSize), h.value = M.start + M.rows.length - b.value.length) : (b.value = M.rows, h.value = M.start), k.value = M.total, await ue(B);
-      } catch (M) {
-        d === W && q === e.value.chatIdentity && E === e.value.page.revision && (p.value = j(M));
+        if (d !== W || O !== e.value.chatIdentity || D !== e.value.page.revision) return;
+        const E = b.value.filter((j) => j.revision === D);
+        t === "earlier" ? (b.value = [...S.rows, ...E.filter((j) => !S.rows.some((te) => te.id === j.id))].slice(0, L.windowSize), h.value = S.start) : t === "later" ? (b.value = [...E.filter((j) => !S.rows.some((te) => te.id === j.id)), ...S.rows].slice(-L.windowSize), h.value = S.start + S.rows.length - b.value.length) : (b.value = S.rows, h.value = S.start), k.value = S.total, await ue(B);
+      } catch (S) {
+        d === W && O === e.value.chatIdentity && D === e.value.page.revision && (p.value = K(S));
       } finally {
-        S.value = !1;
+        M.value = !1;
       }
     }
     async function ye() {
@@ -668,27 +668,27 @@ var Le = [
         _.value = "send", p.value = "", P.value = !0;
         try {
           z = {
-            id: Ee(),
-            revision: T
+            id: De(),
+            revision: R
           }, oe((await ie("send", {
             submissionId: z.id,
             text: f.value,
-            ...c.value ? { image: he(c.value) } : {}
+            ...c.value ? { image: be(c.value) } : {}
           })).state), await ye();
         } catch (u) {
-          p.value = j(u);
+          p.value = K(u);
         } finally {
           _.value = "";
         }
       }
     }
     async function Y(u, t = {}) {
-      if (!R.value) {
+      if (!T.value) {
         _.value = u, p.value = "";
         try {
           oe(await ie(u, t)), C.value = !1, x.value = null, u === "adopt" && (z = null), u === "clear" && (f.value = "", c.value = null, z = null, I.value = null);
         } catch (d) {
-          p.value = j(d);
+          p.value = K(d);
         } finally {
           _.value = "";
         }
@@ -702,11 +702,11 @@ var Le = [
           return;
         }
         try {
-          const B = await new Promise((E, M) => {
-            const D = new FileReader();
-            D.onload = () => E(String(D.result)), D.onerror = () => M(new Error(l.invalidImage)), D.readAsDataURL(d);
-          }), q = new Image();
-          q.src = B, await q.decode(), c.value = {
+          const B = await new Promise((D, S) => {
+            const E = new FileReader();
+            E.onload = () => D(String(E.result)), E.onerror = () => S(new Error(l.invalidImage)), E.readAsDataURL(d);
+          }), O = new Image();
+          O.src = B, await O.decode(), c.value = {
             name: d.name.slice(0, 120),
             dataUrl: B
           }, A.value?.focus();
@@ -716,14 +716,14 @@ var Le = [
       }
     }
     function Ae(u) {
-      u.key === "Enter" && !u.shiftKey && !O.value && !u.isComposing && (u.preventDefault(), R.value || fe());
+      u.key === "Enter" && !u.shiftKey && !q.value && !u.isComposing && (u.preventDefault(), T.value || fe());
     }
-    function Te() {
+    function Re() {
       v.value && (P.value = v.value.scrollHeight - v.value.scrollTop - v.value.clientHeight < 48);
     }
     return ne([f, c], () => {
       Z && clearTimeout(Z), Z = setTimeout(() => {
-        $.value = qe(f.value) + (c.value ? L.imageTokens : 0);
+        $.value = Oe(f.value) + (c.value ? L.imageTokens : 0);
       }, 160);
     }), _e(() => {
       me = g.bridge.subscribe((u) => {
@@ -735,9 +735,9 @@ var Le = [
     }), se(() => {
       W++, me(), Z && clearTimeout(Z);
     }), (u, t) => (r(), o("div", { class: H(["administrator-app", { "has-details": !!I.value }]) }, [
-      a("header", Tt, [
+      a("header", Rt, [
         a("h1", null, s(i(l).title), 1),
-        Me(Fe, {
+        Pe(Fe, {
           usage: e.value.context,
           "draft-tokens": e.value.live ? 0 : $.value
         }, null, 8, ["usage", "draft-tokens"]),
@@ -746,33 +746,33 @@ var Le = [
           class: "admin-icon-button",
           title: i(l).clear,
           "aria-label": i(l).clear,
-          disabled: R.value || e.value.unsaved,
+          disabled: T.value || e.value.unsaved,
           onClick: t[0] || (t[0] = (d) => C.value = !0)
         }, [...t[23] || (t[23] = [a("svg", {
           viewBox: "0 0 24 24",
           "aria-hidden": "true"
-        }, [a("path", { d: "M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 10v7m4-7v7" })], -1)])], 8, Rt)
+        }, [a("path", { d: "M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 10v7m4-7v7" })], -1)])], 8, Tt)
       ]),
-      e.value.corrupted ? (r(), o("div", Mt, [Q(s(i(l).corrupted), 1), a("button", {
+      e.value.corrupted ? (r(), o("div", St, [J(s(i(l).corrupted), 1), a("button", {
         type: "button",
-        disabled: R.value,
+        disabled: T.value,
         onClick: t[1] || (t[1] = (d) => C.value = !0)
-      }, s(i(l).clear), 9, St)])) : m("", !0),
+      }, s(i(l).clear), 9, Mt)])) : m("", !0),
       a("div", {
         ref_key: "list",
         ref: v,
         class: "admin-conversation",
-        onScrollPassive: Te
+        onScrollPassive: Re
       }, [
         h.value > 0 ? (r(), o("button", {
           key: 0,
           type: "button",
           class: "admin-history-button",
-          disabled: S.value,
+          disabled: M.value,
           onClick: t[2] || (t[2] = (d) => de(Math.max(0, h.value - i(L).pageSize), "earlier"))
         }, s(i(l).earlier), 9, Pt)) : m("", !0),
         !b.value.length && !F.value && !e.value.corrupted ? (r(), o("p", Bt, s(i(l).empty), 1)) : m("", !0),
-        (r(!0), o(K, null, J(b.value, (d) => (r(), G(ct, {
+        (r(!0), o(V, null, Q(b.value, (d) => (r(), G(ct, {
           key: d.id,
           row: d,
           live: d.role === "assistant" && d.turnId === e.value.live?.turnId ? e.value.live : null,
@@ -791,14 +791,14 @@ var Le = [
           "disabled",
           "unsaved-process"
         ]))), 128)),
-        F.value && U.value && !$e.value ? (r(), o("div", Ot, [a("div", zt, [t[24] || (t[24] = a("span", { class: "admin-working-dot" }, null, -1)), Q(s(i(l).phases[F.value]), 1)])])) : m("", !0),
+        F.value && U.value && !$e.value ? (r(), o("div", qt, [a("div", zt, [t[24] || (t[24] = a("span", { class: "admin-working-dot" }, null, -1)), J(s(i(l).phases[F.value]), 1)])])) : m("", !0),
         U.value ? m("", !0) : (r(), o("button", {
           key: 3,
           type: "button",
           class: "admin-history-button",
-          disabled: S.value,
+          disabled: M.value,
           onClick: t[6] || (t[6] = (d) => de(h.value + b.value.length, "later"))
-        }, s(i(l).later), 9, qt))
+        }, s(i(l).later), 9, Ot))
       ], 544),
       !U.value || !P.value ? (r(), o("button", {
         key: 1,
@@ -806,39 +806,39 @@ var Le = [
         class: "admin-latest",
         onClick: ye
       }, "↓ " + s(i(l).latest), 1)) : m("", !0),
-      p.value || e.value.error || e.value.unsaved ? (r(), o("div", Et, [
+      p.value || e.value.error || e.value.unsaved ? (r(), o("div", Dt, [
         a("span", null, s(p.value || (e.value.unsaved ? i(l).unsaved : e.value.error)), 1),
         e.value.unsaved ? (r(), o("button", {
           key: 0,
           type: "button",
-          disabled: R.value,
+          disabled: T.value,
           onClick: t[7] || (t[7] = (d) => Y("check"))
-        }, s(i(l).check), 9, Dt)) : m("", !0),
+        }, s(i(l).check), 9, Et)) : m("", !0),
         e.value.unsaved ? (r(), o("button", {
           key: 1,
           type: "button",
-          disabled: R.value,
+          disabled: T.value,
           onClick: t[8] || (t[8] = (d) => Y("confirm"))
         }, s(i(l).confirm), 9, Lt)) : m("", !0),
         e.value.conflict || e.value.unsaved ? (r(), o("button", {
           key: 2,
           type: "button",
-          disabled: R.value,
+          disabled: T.value,
           onClick: t[9] || (t[9] = (d) => Y("adopt"))
         }, s(i(l).adopt), 9, Nt)) : m("", !0)
       ])) : m("", !0),
-      c.value ? (r(), o("div", Kt, [
+      c.value ? (r(), o("div", Vt, [
         a("img", {
           src: c.value.dataUrl,
           alt: c.value.name
-        }, null, 8, Vt),
+        }, null, 8, jt),
         a("span", null, s(c.value.name), 1),
         a("button", {
           type: "button",
           "aria-label": i(l).removeImage,
-          disabled: R.value,
+          disabled: T.value,
           onClick: t[10] || (t[10] = (d) => c.value = null)
-        }, "×", 8, jt)
+        }, "×", 8, Kt)
       ])) : m("", !0),
       a("form", {
         class: "admin-composer",
@@ -877,7 +877,7 @@ var Le = [
           }),
           a("path", { d: "m3 17 5-5 4 4 4-7 5 8" })
         ], -1)])], 8, Ut),
-        Re(a("textarea", {
+        Te(a("textarea", {
           ref_key: "composer",
           ref: A,
           "onUpdate:modelValue": t[12] || (t[12] = (d) => f.value = d),
@@ -885,11 +885,11 @@ var Le = [
           maxlength: "16000",
           placeholder: i(l).placeholder,
           "aria-label": i(l).placeholder,
-          disabled: e.value.corrupted || R.value,
+          disabled: e.value.corrupted || T.value,
           onKeydown: Ae,
-          onCompositionstart: t[13] || (t[13] = (d) => O.value = !0),
-          onCompositionend: t[14] || (t[14] = (d) => O.value = !1)
-        }, null, 40, Wt), [[Pe, f.value]]),
+          onCompositionstart: t[13] || (t[13] = (d) => q.value = !0),
+          onCompositionend: t[14] || (t[14] = (d) => q.value = !1)
+        }, null, 40, Wt), [[Me, f.value]]),
         F.value ? (r(), o("button", {
           key: 0,
           type: "button",
@@ -934,10 +934,10 @@ var Le = [
         key: 5,
         class: "admin-dialog",
         "aria-label": i(l).clearTitle,
-        busy: R.value,
+        busy: T.value,
         onClose: t[19] || (t[19] = (d) => C.value = !1)
       }, {
-        default: be(() => [
+        default: he(() => [
           a("h2", null, s(i(l).clearTitle), 1),
           a("p", null, s(i(l).clearWarning), 1),
           a("div", Yt, [a("button", {
@@ -945,9 +945,9 @@ var Le = [
             onClick: t[17] || (t[17] = (d) => C.value = !1)
           }, s(i(l).cancel), 1), a("button", {
             type: "button",
-            disabled: R.value,
+            disabled: T.value,
             onClick: t[18] || (t[18] = (d) => Y("clear"))
-          }, s(i(l).clear), 9, Qt)])
+          }, s(i(l).clear), 9, Jt)])
         ]),
         _: 1
       }, 8, ["aria-label", "busy"])) : m("", !0),
@@ -955,13 +955,13 @@ var Le = [
         key: 6,
         class: "admin-dialog",
         "aria-label": i(l).delete,
-        busy: R.value,
+        busy: T.value,
         onClose: t[22] || (t[22] = (d) => x.value = null)
       }, {
-        default: be(() => [
+        default: he(() => [
           a("h2", null, s(i(l).delete), 1),
           a("p", null, s(i(l).deleteWarning), 1),
-          a("div", Jt, [a("button", {
+          a("div", Qt, [a("button", {
             type: "button",
             onClick: t[20] || (t[20] = (d) => x.value = null)
           }, s(i(l).cancel), 1), a("button", {

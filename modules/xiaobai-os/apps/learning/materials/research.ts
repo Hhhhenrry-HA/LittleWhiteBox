@@ -129,7 +129,8 @@ export function createLearningResearch(config: { tavilyApiKey?: string; tavilyBa
             } catch (error) {
                 if (options.signal.aborted) { throw new LearningMaterialError('learning_research_cancelled'); }
                 if (error instanceof LearningValidationError) { return { ok: false, error: 'invalid_arguments', path: error.path, message: error.message }; }
-                return { ok: false, error: error instanceof LearningMaterialError ? error.code : 'learning_research_failed' };
+                return { ok: false, error: error instanceof LearningMaterialError ? error.code : 'learning_research_failed',
+                    ...(error instanceof LearningMaterialError && error.httpStatus ? { httpStatus: error.httpStatus } : {}) };
             }
         },
     };

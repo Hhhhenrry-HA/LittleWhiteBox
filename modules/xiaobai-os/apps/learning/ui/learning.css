@@ -85,6 +85,11 @@
 .learning-turn-notice { font-size: 13px; line-height: 1.7; }
 .learning-turn-notice { color: var(--learn-muted); border-left: 2px solid var(--learn-rule); padding-left: 12px; }
 .learning-turn-notice.is-error { color: var(--learn-danger); border-color: var(--learn-danger); }
+.learning-turn-recovery { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 4px 12px; }
+.learning-turn-recovery .learning-turn-notice { flex: 1 1 200px; }
+.learning-turn-recovery > button { color: var(--learn-blue); }
+.learning-process-recovery { padding: 12px; border-top: 1px solid var(--learn-rule); }
+.learning-process-recovery .learning-source-choice, .learning-process-recovery .learning-preparation { margin: 0; }
 
 .learning-toolbar { display: flex; align-items: center; flex-shrink: 0; padding: 0 22px 6px; gap: 8px; }
 .learning-toolbar .learning-wordmark { display: flex; align-items: center; gap: 9px; padding: 0; font-size: 19px; font-weight: 600; }

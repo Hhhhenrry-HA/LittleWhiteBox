@@ -37,7 +37,7 @@ import { isTavilyConfigured } from '../../../../agent-core/tavily-search.js';
 import { learningPreparation, LEARNING_READING_BATCH } from '../../../domains/learning/preparation.js';
 import { learningPreparationTool } from '../agent/preparation-tools.js';
 import { LEARNING_PREPARATION_COPY as prepCopy } from '../application/preparation-copy.js';
-import { learningActionBusy } from '../application/action-availability.js';
+import { learningActionBusy, learningActionLane } from '../application/action-availability.js';
 
 export function createLearningRuntime(deps: {
     repository: LearningRepository; store: PartitionStore<LearningStoredCompanions>; files: XiaobaiOsFileControls;
@@ -55,7 +55,7 @@ export function createLearningRuntime(deps: {
     let job: object | null = null;
     let preparationJob: object | null = null;
     let preparation: LearningClientState['preparation'] = null;
-    let sourceChoice: { reason: NonNullable<LearningClientState['sourceChoice']>; input: Record<string, unknown>; unitId: string | null } | null = null;
+    let sourceChoice: { reason: NonNullable<LearningClientState['sourceChoice']>; source: 'web' | 'authored'; input: Record<string, unknown>; unitId: string | null } | null = null;
     const chats: Record<LearningActor, { job: object | null; kind: string; progress: string }> = {
         workbench: { job: null, kind: '', progress: '' }, companion: { job: null, kind: '', progress: '' },
     };
@@ -140,7 +140,7 @@ export function createLearningRuntime(deps: {
             chatIdentity, language, teacher: teacher.selected()?.person ?? null, companionSessionId: teacher.selected()?.id ?? null,
             candidates: teacher.candidates().map(person => ({ name: person.name, aliases: person.aliases })),
             storage: loadFailed ? 'unloaded' : snapshot.status, chatStorage: deps.files.getFileState(), workbenchStorage: deps.workbenchFiles.getFileState(), walletStorage: deps.rewardFiles.getFileState(),
-            sourceChoice: sourceChoice?.reason ?? null, ...activity(),
+            sourceChoice: !preparationJob && snapshot.status === 'ready' && sourceChoice?.unitId === view.currentUnitId ? sourceChoice.reason : null, ...activity(),
             companionBusy: !!chats.companion.job && chats.companion.kind === 'companion', chatMessage: chats.companion.progress, workbenchMessage: chats.workbench.progress,
             message: job ? progress : message, reply, pending, remark, companionReply, conversation: companion.conversation(), workbenchConversation: teaching.conversation(),
             walletOpen: deps.economy.isOpen(), media: speech.media.snapshot(), voices: speech.media.capabilities() };
@@ -274,8 +274,9 @@ export function createLearningRuntime(deps: {
         const owned = epoch;
         const guard = () => active() && epoch === owned && preparationJob === token;
         preparationJob = token;
-        sourceChoice = null;
-        preparation = { phase: article ? 'article' : 'notes', running: true, message: '' };
+        sourceChoice = article ? { reason: 'unavailable', source: article.source,
+            input: { message: article.message, replaceCurrent: article.replaceCurrent }, unitId: profileNow()?.unit?.id ?? null } : null;
+        preparation = { phase: article ? 'article' : 'notes', running: true, message: '', ...(article ? { source: article.source } : {}) };
         void deps.execution.run(async () => {
             try {
                 if (article) {
@@ -285,6 +286,7 @@ export function createLearningRuntime(deps: {
                         preparation!.message = result.status === 'failed' ? result.message : prepCopy.stopped; return;
                     }
                     if (!result.appliedTools.includes('LearningArticle')) { preparation!.message = result.text || prepCopy.incomplete; return; }
+                    sourceChoice = null;
                 }
                 const unitId = unit().id;
                 let notesFailure = '';
@@ -316,9 +318,6 @@ export function createLearningRuntime(deps: {
                 if (preparationJob === token) {
                     preparationJob = null;
                     if (preparation) { preparation = { ...preparation, running: false }; }
-                    if (article && preparation?.phase === 'article' && repository.snapshot().status === 'ready') {
-                        sourceChoice = { reason: 'unavailable', input: { message: article.message, replaceCurrent: article.replaceCurrent }, unitId: profileNow()?.unit?.id ?? null };
-                    }
                     publish();
                 }
             }
@@ -336,7 +335,7 @@ export function createLearningRuntime(deps: {
         if (source === 'web') {
             const config = await deps.agent.loadConfig();
             if (!guard()) { return; }
-            if (!isTavilyConfigured(config)) { sourceChoice = { reason: 'unconfigured', input: structuredClone(input), unitId: profile?.unit?.id ?? null }; return; }
+            if (!isTavilyConfigured(config)) { sourceChoice = { reason: 'unconfigured', source, input: structuredClone(input), unitId: profile?.unit?.id ?? null }; return; }
         }
         if (guard()) { startPreparation({ source, replaceCurrent, message: learningText(input.message, 'message', 4000) }); }
     }
@@ -407,7 +406,7 @@ export function createLearningRuntime(deps: {
         if (name === 'choose-original' || name === 'retry-source') {
             requireLearning(sourceChoice, 'source', 'Choose an article source first');
             requireLearning((profileNow()?.unit?.id ?? null) === sourceChoice.unitId, 'unitId', 'The current article changed; choose again');
-            await prepareReading(sourceChoice.input, guard, name === 'choose-original' ? 'authored' : 'web'); return;
+            await prepareReading(sourceChoice.input, guard, name === 'choose-original' ? 'authored' : sourceChoice.source); return;
         }
         if (name === 'resume-preparation') {
             requireLearning(unit().id === input.unitId && unit().kind === 'reading-writing', 'unitId', 'Continue the current reading article');
@@ -536,7 +535,7 @@ export function createLearningRuntime(deps: {
         throw new Error('learning_unknown_action');
     }
     function launch(name: string, input: Record<string, unknown>, answerBasis?: LearningAttemptBasis) {
-        if (name === 'talk' || name === 'companion') { return launchConversation(name, input); }
+        if (name === 'talk' || name === 'companion' || name === 'retry-chat') { return launchConversation(name, input); }
         yieldRemark();
         if (!active()) { return; }
         if (!canWork(name)) { return 'busy' as const; }
@@ -582,12 +581,19 @@ export function createLearningRuntime(deps: {
         });
         publish();
     }
-    function launchConversation(name: 'talk' | 'companion', input: Record<string, unknown>) {
+    function launchConversation(name: 'talk' | 'companion' | 'retry-chat', input: Record<string, unknown>) {
         const actor = name === 'companion' ? 'companion' : parseLearningActor(input.target);
         const lane = chats[actor];
         if (name !== 'companion') { yieldRemark(); }
         if (!active() || actor === 'companion' && !teacher.selected() || name === 'companion' && (lane.job || job || chats.workbench.job)) { return; }
         if (lane.job) { return 'busy' as const; }
+        const retryId = name === 'retry-chat' && typeof input.id === 'string' ? input.id : undefined;
+        if (name === 'retry-chat') {
+            const original = retryId ? runner(actor).retryRequest(retryId) : null;
+            const storageReady = (actor === 'workbench' ? deps.workbenchFiles : deps.files).getFileState() === 'ready';
+            if (!original || !storageReady) { lane.progress = conversationCopy.retryUnavailable; publish(); return; }
+            input = { ...original, unitId: original.action.kind === 'talk' ? original.action.unitId : undefined };
+        }
         if (actor === 'companion') { remark = null; }
         const token = {};
         const owned = epoch;
@@ -609,7 +615,7 @@ export function createLearningRuntime(deps: {
                 }
                 const result = await runner(actor).run({ action: name === 'companion' ? { kind: name, materialId, paragraphId } : { kind: 'talk', ...(unitId ? { unitId } : {}) },
                     exerciseId, selection: selected, message: text,
-                    displayMessage: selected ? `${text}\n\n${selected.quote}` : text });
+                    displayMessage: selected ? `${text}\n\n${selected.quote}` : text }, retryId);
                 if (!guard()) { return; }
                 // The runner owns a failed turn's notice; the outer lane reports only failures before a turn exists.
                 lane.progress = '';
@@ -667,7 +673,7 @@ export function createLearningRuntime(deps: {
                 'unitId', 'exerciseId', 'answer', 'attemptId', 'review', 'selection', 'kind', 'id', 'voice', 'materialId', 'partKey', 'openWallet', 'offset', 'value',
                 'paragraphId', 'termText', 'revisions', 'target', 'help']);
             if (!active() || input.chatIdentity !== chatIdentity) { return { state: state() }; }
-            if (learningActionBusy(name === 'talk' && input.target === 'workbench' ? 'workbench-talk' : name, activity())) { return { state: state(), rejected: 'busy' }; }
+            if (learningActionBusy(learningActionLane(name, input.target), activity())) { return { state: state(), rejected: 'busy' }; }
             if (name === 'pause') { speech.media.pause(); }
             // A companion remark never touches playback, so the player stays usable while it runs.
             else if (name === 'resume' && idle()) { speech.media.resume(); }

@@ -5,6 +5,15 @@ import { learningProcessRounds } from '../apps/learning/ui/learning-process.js';
 import { createClassroomFixture } from './fixtures/learning-classroom.js';
 
 const call = (id, name, args) => ({ id, name, arguments: JSON.stringify(args) });
+test('research failures expose only an allowed category and HTTP status, never provider diagnostics', () => {
+    for (const status of [401, 404, 429, 503]) {
+        const view = learningMessageView({ role: 'tool', toolName: 'LearningExtract', content: JSON.stringify({ ok: false,
+            error: 'learning_extract_http_failed', httpStatus: status, message: 'private proxy diagnostics', api_key: 'secret' }) });
+        assert.deepEqual(JSON.parse(view.content), { error: 'learning_extract_http_failed', httpStatus: status, ok: false });
+    }
+    const view = learningMessageView({ role: 'tool', content: JSON.stringify({ ok: false, error: 'private credential in error', httpStatus: 401 }) });
+    assert.deepEqual(JSON.parse(view.content), { ok: false });
+});
 test('the process retains completed and failed steps while another round is preparing, and after cancellation', () => {
     const secret = 'unpublished answer and private source text';
     const messages = [

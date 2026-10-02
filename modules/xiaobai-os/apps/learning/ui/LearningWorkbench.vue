@@ -10,7 +10,7 @@ import { LEARNING_DISCARD_COPY, LEARNING_DUE_LABEL } from './learning-copy.js';
 import type { LearningSelection } from '../../../domains/learning/notes.js';
 import { learningActionAvailable } from '../application/action-availability.js';
 
-const props = defineProps<{ state: LearningClientState; disabled: boolean; pending: boolean }>();
+const props = defineProps<{ state: LearningClientState; disabled: boolean; pending: boolean; preparationInProcess?: boolean }>();
 const blocked = (name: string) => props.disabled || !learningActionAvailable(name, props.state);
 const emit = defineEmits<{
     action: [name: string, input?: Record<string, unknown>]; confirm: [name: string, input: Record<string, unknown>, text: string];
@@ -42,7 +42,7 @@ const ask = (name: string, input: Record<string, unknown>, text: string) => emit
 
 <template>
     <div class="learning-workbench">
-        <LearningPreparation v-if="!state.sourceChoice || !starting" :state="state" :disabled="disabled" :pending="pending" @action="forward" />
+        <LearningPreparation v-if="!preparationInProcess && (!state.sourceChoice || !starting)" :state="state" :disabled="disabled" :pending="pending" @action="forward" />
         <div v-if="state.dueCount && !reviewOpen" class="learning-due">
             <span>{{ LEARNING_DUE_LABEL(state.dueCount) }}</span>
             <span v-if="state.pending?.purpose === 'review-prepare'" class="learning-working" role="status">
@@ -78,7 +78,7 @@ const ask = (name: string, input: Record<string, unknown>, text: string) => emit
                 <h1 v-if="!unit" tabindex="-1">{{ copy.reading }}</h1>
                 <h2 v-else>{{ copy.next }}</h2>
                 <button v-if="!unit" type="button" class="learning-start-preference" :aria-label="`${copy.settings}：${settingSummary}`" @click="emit('go', 'settings')"><span><strong>{{ copy.settings }}</strong><small>{{ settingSummary }}</small></span><LearningIcon name="arrow" /></button>
-                <LearningPreparation v-if="state.sourceChoice" :state="state" :disabled="disabled" :pending="pending" @action="forward" />
+                <LearningPreparation v-if="state.sourceChoice && !preparationInProcess" :state="state" :disabled="disabled" :pending="pending" @action="forward" />
                 <template v-if="!preparing && !state.sourceChoice">
                     <section class="learning-start-reading">
                         <LearningIcon name="workbook" />

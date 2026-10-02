@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { C as v, E as d, U as l } from "./xiaobai-os-runtime-dom.esm-bundler-BeaorYpU.js";
+import { D as v, G as l, w as d } from "./xiaobai-os-runtime-dom.esm-bundler-C2atLQPd.js";
 var m = /* @__PURE__ */ Symbol("app-navigation");
 function p(t) {
   const n = t.layers.value;
@@ -21,7 +21,7 @@ function y(t) {
 function f(t, n = null) {
   const e = t?.root.value;
   queueMicrotask(() => {
-    d(() => {
+    v(() => {
       if (e && (!e.isConnected || t?.root.value !== e)) return;
       const c = document.activeElement;
       if (c instanceof HTMLElement && c !== document.body && i(c)) return;
@@ -31,7 +31,7 @@ function f(t, n = null) {
   });
 }
 function b(t, n = () => !0) {
-  const e = v(m, null), c = (o = null) => {
+  const e = d(m, null), c = (o = null) => {
     const r = t();
     return r && f(e, o), r;
   };
@@ -47,8 +47,8 @@ function b(t, n = () => !0) {
     flush: "sync"
   }), () => e ? e.stack.back() : c();
 }
-function h(t, n, e = () => !0) {
-  const c = v(m, null);
+function E(t, n, e = () => !0) {
+  const c = d(m, null);
   b(() => (n(), !0), () => !!t.value), l(t, (o, r, s) => {
     if (!o || !c) return;
     const u = {
@@ -61,11 +61,11 @@ function h(t, n, e = () => !0) {
   }, { flush: "post" }), l(() => e() ? t.value : null, async (o, r, s) => {
     if (!o) return;
     const u = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    s(() => f(c, u)), await d(), !(!o.isConnected || !e() || c && p(c) !== o) && y(o);
+    s(() => f(c, u)), await v(), !(!o.isConnected || !e() || c && p(c) !== o) && y(o);
   }, { flush: "post" });
 }
 export {
-  h as i,
+  E as i,
   p as n,
   b as r,
   m as t

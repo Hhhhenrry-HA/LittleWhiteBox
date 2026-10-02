@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, ref, useSlots, watch } from 'vue';
 import type { LearningDialogueView } from '../application/message-view.js';
 import { learningProgressMessage } from '../application/feedback.js';
 import MessageMarkdown from '../../../shell/app-src/components/MessageMarkdown.vue';
 import { learningProcessRounds, type LearningProcessTool } from './learning-process.js';
 import { LEARNING_PROCESS_COPY as copy, LEARNING_PROCESS_FIELD_LABELS as fields } from './learning-copy.js';
 import { LEARNING_PREPARATION_COPY } from '../application/preparation-copy.js';
+import { learningResearchFailure } from '../application/research-feedback.js';
 
 const props = withDefaults(defineProps<{ turn: LearningDialogueView; stoppable?: boolean; disabled?: boolean }>(), { stoppable: false, disabled: false });
 const emit = defineEmits<{ stop: [] }>();
@@ -14,14 +15,15 @@ const tools = computed(() => rounds.value.flatMap(round => round.tools));
 const running = computed(() => props.turn.status === 'running');
 const preparationTitle = computed(() => LEARNING_PREPARATION_COPY.taskTitles[props.turn.purpose as keyof typeof LEARNING_PREPARATION_COPY.taskTitles]);
 const opened = ref<boolean | null>(null);
-const expanded = computed(() => opened.value ?? (running.value || props.turn.status === 'failed'));
+const slots = useSlots();
+const expanded = computed(() => opened.value ?? (running.value || props.turn.status === 'failed' || !!slots.default));
 const body = ref<HTMLElement | null>(null);
 const currentRound = computed(() => props.turn.progress?.round ?? rounds.value.at(-1)?.index);
 const status = computed(() => {
     if (!running.value) { return copy.outcomes[props.turn.status as keyof typeof copy.outcomes]; }
     const last = rounds.value.at(-1);
     const active = last?.tools.find(tool => tool.status === 'running' || tool.status === 'preparing');
-    if (active) { return `${copy.tools[active.name] ?? copy.title} · ${copy[active.status]}`; }
+    if (active) { return `${copy.tools[active.name] ?? copy.unknownTool} · ${copy[active.status]}`; }
     if (props.turn.progress?.stage === 'provider' && last?.streaming) {
         if (last.receivedChars) { return copy.received(last.receivedChars); }
         if (last.thinking) { return copy.thinking; }
@@ -30,6 +32,7 @@ const status = computed(() => {
 });
 function details(tool: LearningProcessTool) {
     const items: string[] = [];
+    if (tool.result.error) { items.push(learningResearchFailure(tool.result.error, tool.result.httpStatus)); }
     const section = tool.result.section ?? tool.input.section;
     if (section && copy.sections[section]) { items.push(copy.sections[section]); }
     if (tool.result.resultsCount !== undefined) { items.push(copy.results(tool.result.resultsCount)); }
@@ -55,7 +58,7 @@ watch(() => props.turn.messages, async () => {
 </script>
 
 <template>
-    <section v-if="running || tools.length" class="learning-process" :class="{ 'is-running': running }" :aria-label="copy.title">
+    <section v-if="running || tools.length || $slots.default" class="learning-process" :class="{ 'is-running': running }" :aria-label="copy.title">
         <header class="learning-process-header">
             <button type="button" class="learning-process-toggle" :aria-expanded="expanded" @click="opened = !expanded">
                 <span aria-hidden="true">{{ expanded ? '⌄' : '›' }}</span><strong>{{ preparationTitle ?? copy.title }}</strong>
@@ -69,12 +72,13 @@ watch(() => props.turn.messages, async () => {
                 <ol v-if="round.tools.length" class="learning-process-steps" :aria-label="copy.round(round.index)">
                     <li v-for="tool in round.tools" :key="tool.id" :data-status="tool.status">
                         <span class="learning-process-dot" aria-hidden="true">{{ tool.status === 'done' ? '✓' : tool.status === 'failed' ? '!' : '·' }}</span>
-                        <div><span>{{ copy.tools[tool.name] ?? copy.title }}</span><small v-if="details(tool)">{{ details(tool) }}</small></div>
+                        <div><span>{{ copy.tools[tool.name] ?? copy.unknownTool }}</span><small v-if="details(tool)">{{ details(tool) }}</small></div>
                         <small class="learning-process-result">{{ copy[tool.status] }}</small>
                     </li>
                 </ol>
             </template>
         </div>
-        <p v-if="!preparationTitle || running || expanded" class="learning-process-status" role="status" aria-live="polite"><span v-if="running" class="learning-working-dot" aria-hidden="true" />{{ status }}</p>
+        <p v-if="running || (!$slots.default && turn.status === 'finished' && (!preparationTitle || expanded))" class="learning-process-status" role="status" aria-live="polite"><span v-if="running" class="learning-working-dot" aria-hidden="true" />{{ status }}</p>
+        <div v-if="$slots.default" class="learning-process-recovery"><slot /></div>
     </section>
 </template>

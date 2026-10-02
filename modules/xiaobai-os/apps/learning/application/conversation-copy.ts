@@ -3,6 +3,7 @@ export const LEARNING_CONVERSATION_COPY = {
     historyLoadFailed: '暂时没能打开对话记录，请重新加载。学习内容保留。',
     historySaveFailed: '回复已收到，但这段对话还没有保存。请检查保存状态，回复不需要重新生成。',
     stopped: '已停止回复，已收到的内容保留。',
+    retryUnavailable: '这条消息已不能重试，请先检查保存状态，或在当前对话里重新提问。',
     workStopped: '已停止。已保存的学习内容保留。',
     changed: '学习内容已变化，这次操作没有继续。',
     delegatedBusy: '当前训练操作尚未完成，这次委托没有执行。',

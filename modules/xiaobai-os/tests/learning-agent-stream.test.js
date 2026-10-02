@@ -141,8 +141,10 @@ for (const mode of ['cancel', 'failure']) {
             return { text: '新请求的回复' };
         });
         await h.command('talk', { message: '继续。' });
+        const afterNewRequest = h.state().conversation.turns[index];
+        assert.equal(afterNewRequest.retryable, false);
         late({ text: '过期回调' });
-        assert.deepEqual(h.state().conversation.turns[index], interrupted);
+        assert.deepEqual(h.state().conversation.turns[index], afterNewRequest);
         assert.equal(h.state().conversation.turns.at(-1).teacher, '新请求的回复');
     });
 }

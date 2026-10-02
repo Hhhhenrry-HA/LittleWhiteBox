@@ -1,7 +1,7 @@
 /* eslint-disable */
-import { E as pe, F as y, G as te, I as be, J as ce, L as ye, M as ue, O as fe, R as ve, U as ke, W as xe, X as k, Z as le, _ as O, b as Y, et as T, f as Ae, g as z, h as W, j as _e, l as ae, m as d, n as Oe, nt as ne, p as ie, r as Se, rt as N, t as Ee, tt as J, u as de, x as V, y as he, z as Pe } from "./xiaobai-os-runtime-dom.esm-bundler-BeaorYpU.js";
+import { $ as le, B as be, D as pe, G as ye, I as y, K as ke, L as xe, M as Ae, N as ue, Q as k, R as _e, S as K, X as ce, _ as O, at as Z, b as fe, f as Oe, g as z, h as W, it as ne, k as ve, l as ae, m as d, n as Se, nt as T, p as ie, q as te, r as Ee, rt as Q, t as Pe, u as de, x as Y, z as he } from "./xiaobai-os-runtime-dom.esm-bundler-C2atLQPd.js";
 import { t as Re } from "./xiaobai-os-descriptor-DmDuv1pM.js";
-import { n as Ie, t as Le } from "./xiaobai-os-app-navigation-C25euSGK.js";
+import { n as Ie, t as Le } from "./xiaobai-os-app-navigation-5cBwNoCT.js";
 import { t as me } from "./xiaobai-os-assets-BT5gX6Sf.js";
 import { n as re, r as Me } from "./xiaobai-os-frame-bridge-BfVuKvnh.js";
 var se = [
@@ -78,7 +78,7 @@ var se = [
   name: "Dice",
   accent: "#7062d9",
   description: "Roll dice and manage story action checks, random encounters and a CoC7 character sheet."
-}), Ze = [
+}), qe = [
   {
     ...Re,
     icon: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3e%3crect%20width='64'%20height='64'%20rx='16'%20fill='%23428d83'/%3e%3cpath%20d='M17%2018h30v23H32l-10%207v-7h-5z'%20fill='none'%20stroke='%23fff'%20stroke-width='3'%20stroke-linejoin='round'/%3e%3cpath%20d='m25%2029%205%205%2010-11'%20fill='none'%20stroke='%23fff'%20stroke-width='3'%20stroke-linecap='round'%20stroke-linejoin='round'/%3e%3c/svg%3e", "" + import.meta.url).href
@@ -131,12 +131,12 @@ var se = [
     ...Xe,
     icon: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='12'%20y1='0'%20x2='76'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%234099ff'/%3e%3cstop%20offset='1'%20stop-color='%232260f1'/%3e%3c/linearGradient%3e%3cclipPath%20id='tile'%3e%3crect%20width='88'%20height='88'%20rx='22'/%3e%3c/clipPath%3e%3c/defs%3e%3cg%20clip-path='url(%23tile)'%3e%3crect%20width='88'%20height='88'%20fill='url(%23bg)'/%3e%3cpath%20d='M23%2017h32a9%209%200%200%201%209%209v25a9%209%200%200%201-9%209H37L23%2070V60a9%209%200%200%201-9-9V26a9%209%200%200%201%209-9Z'%20fill='%23fff'/%3e%3cpath%20d='m27%2048%2010-23%2010%2023m-17-7h14'%20stroke='%232773f5'%20stroke-width='3.5'%20stroke-linecap='round'%20stroke-linejoin='round'/%3e%3crect%20x='48'%20y='48'%20width='29'%20height='29'%20rx='9'%20fill='%2390ecff'/%3e%3cpath%20d='M54%2058h17m-9-4v4m5%200c-1%208-6%2011-12%2014m2-12c2%205%207%2010%2013%2012'%20stroke='%231952aa'%20stroke-width='2'%20stroke-linecap='round'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href
   }
-], qe = Object.freeze(se.map((t) => {
-  const i = Ze.find((e) => e.id === t);
+], Ne = Object.freeze(se.map((t) => {
+  const i = qe.find((e) => e.id === t);
   if (!i) throw new Error(`missing_shell_app:${t}`);
   return Object.freeze(i);
 }));
-function Ne(t) {
+function Ze(t) {
   let i = null, e = null;
   return Object.freeze({
     load() {
@@ -152,31 +152,31 @@ function Ne(t) {
     }
   });
 }
-var Ve = Object.freeze({
-  administrator: () => import("./xiaobai-os-AdministratorApp-CM-DpV80.js"),
-  dice: () => import("./xiaobai-os-DiceApp-2pO_zrEy.js"),
-  "agent-api": () => import("./xiaobai-os-AgentApiApp-C-9dbVtE.js"),
-  "fourth-wall": () => import("./xiaobai-os-FourthWallApp-DkFT22Go.js"),
-  wallet: () => import("./xiaobai-os-WalletApp-CtaraGMK.js"),
-  shop: () => import("./xiaobai-os-ShopApp-B1Vqbszp.js"),
-  bank: () => import("./xiaobai-os-BankApp-Bm_L7Bon.js"),
-  game: () => import("./xiaobai-os-GameApp-CAh_DHLC.js"),
-  map: () => import("./xiaobai-os-MapApp-DEEh4UHm.js"),
-  messages: () => import("./xiaobai-os-MessagesApp-CyZos84o.js"),
-  tasks: () => import("./xiaobai-os-TasksApp-DEjrY24T.js"),
-  world: () => import("./xiaobai-os-WorldApp-GXv208w5.js"),
-  learning: () => import("./xiaobai-os-LearningApp-6ZuO5S-C.js")
-}), ge = Object.freeze(qe.map((t) => {
-  const i = Ve[t.id];
+var Ke = Object.freeze({
+  administrator: () => import("./xiaobai-os-AdministratorApp-B8MRsHsb.js"),
+  dice: () => import("./xiaobai-os-DiceApp-DH04Pt8I.js"),
+  "agent-api": () => import("./xiaobai-os-AgentApiApp-BrkTGyUI.js"),
+  "fourth-wall": () => import("./xiaobai-os-FourthWallApp-DopC5fbN.js"),
+  wallet: () => import("./xiaobai-os-WalletApp-U9Qean7N.js"),
+  shop: () => import("./xiaobai-os-ShopApp-BWIA3r8D.js"),
+  bank: () => import("./xiaobai-os-BankApp-BhOlOZuE.js"),
+  game: () => import("./xiaobai-os-GameApp-CmLrz7jU.js"),
+  map: () => import("./xiaobai-os-MapApp-BfAHyK-6.js"),
+  messages: () => import("./xiaobai-os-MessagesApp-DG4siDHP.js"),
+  tasks: () => import("./xiaobai-os-TasksApp-BHQ3AVNQ.js"),
+  world: () => import("./xiaobai-os-WorldApp-C4FI56yM.js"),
+  learning: () => import("./xiaobai-os-LearningApp-BPG9_3Xu.js")
+}), ge = Object.freeze(Ne.map((t) => {
+  const i = Ke[t.id];
   if (!i) throw new Error(`missing_shell_app:${t.id}`);
-  const e = Ne(i);
+  const e = Ze(i);
   return Object.freeze({
     ...t,
     load: e.load,
     resetLoader: e.reset
   });
-})), Zt = Object.freeze(ge.map((t) => t.id));
-function Ke() {
+})), qt = Object.freeze(ge.map((t) => t.id));
+function Ve() {
   const t = [];
   return {
     add(i) {
@@ -191,16 +191,16 @@ function Ke() {
     }
   };
 }
-var Ye = /* @__PURE__ */ V({
+var Ye = /* @__PURE__ */ K({
   __name: "AppNavigationScope",
   props: { owner: {} },
   setup(t, { expose: i }) {
-    const e = t, o = k(null), b = le([]), E = Ke(), f = {
+    const e = t, o = k(null), b = le([]), E = Ve(), f = {
       root: o,
       layers: b,
       stack: E
     };
-    return be(Le, f), xe((l) => {
+    return xe(Le, f), ke((l) => {
       const h = Ie(f);
       if (!h || !o.value?.contains(h)) return;
       const p = /* @__PURE__ */ new Set();
@@ -230,16 +230,16 @@ var Ye = /* @__PURE__ */ V({
       ref: o,
       class: "xiaobai-os-app-route",
       tabindex: "-1"
-    }, [ve(l.$slots, "default")], 512));
+    }, [he(l.$slots, "default")], 512));
   }
-}), We = Ye, Je = /* @__PURE__ */ V({
+}), We = Ye, Qe = /* @__PURE__ */ K({
   __name: "AppBoundary",
   emits: ["failed"],
   setup(t, { emit: i }) {
     const e = i;
-    return _e((o) => (e("failed", o), !1)), (o, b) => ve(o.$slots, "default");
+    return Ae((o) => (e("failed", o), !1)), (o, b) => he(o.$slots, "default");
   }
-}), Qe = Je;
+}), Je = Qe;
 function et(t) {
   if (!Array.isArray(t)) return [];
   const i = new Set(se);
@@ -273,14 +273,14 @@ function at(t) {
       y: s.y - s.offsetY,
       width: s.width
     };
-    const R = r.getBoundingClientRect(), H = 42, Z = s.y < R.top + H ? -8 : s.y > R.bottom - H ? 8 : 0;
-    Z && (r.scrollTop += Z);
+    const R = r.getBoundingClientRect(), H = 42, q = s.y < R.top + H ? -8 : s.y > R.bottom - H ? 8 : 0;
+    q && (r.scrollTop += q);
     const M = r.querySelector(".xiaobai-os-app-grid");
     if (M) {
       const U = M.getBoundingClientRect();
       let n = 0, g = 1 / 0;
       [...M.querySelectorAll("[data-app-id]")].forEach((u, B) => {
-        const j = U.left + u.offsetLeft + u.offsetWidth / 2 - s.x, q = U.top + u.offsetTop + u.offsetHeight / 2 - s.y, G = j * j + q * q;
+        const j = U.left + u.offsetLeft + u.offsetWidth / 2 - s.x, N = U.top + u.offsetTop + u.offsetHeight / 2 - s.y, G = j * j + N * N;
         G < g && (g = G, n = B);
       }), t.move(s.id, n);
     }
@@ -296,7 +296,7 @@ function at(t) {
       width: e.width
     }, b = requestAnimationFrame(f));
   }
-  function h(r, s, R, H, Z) {
+  function h(r, s, R, H, q) {
     if (e || t.disabled()) return;
     const M = r instanceof Element ? r.closest("[data-app-id]") : null;
     if (!M?.dataset.appId) return;
@@ -304,7 +304,7 @@ function at(t) {
     e = {
       id: M.dataset.appId,
       pointerId: H,
-      touchId: Z,
+      touchId: q,
       x: s,
       y: R,
       startX: s,
@@ -358,7 +358,7 @@ function at(t) {
   let P = null;
   return ue(() => {
     P = t.root.value, P?.addEventListener("touchstart", $, { passive: !1 }), P?.addEventListener("touchmove", X, { passive: !1 }), P?.addEventListener("touchend", F, { passive: !1 }), P?.addEventListener("touchcancel", _), document.addEventListener("visibilitychange", w);
-  }), fe(() => {
+  }), ve(() => {
     _(), P?.removeEventListener("touchstart", $), P?.removeEventListener("touchmove", X), P?.removeEventListener("touchend", F), P?.removeEventListener("touchcancel", _), document.removeEventListener("visibilitychange", w);
   }), {
     floating: i,
@@ -384,7 +384,7 @@ var it = {
 }, ft = ["src"], vt = { class: "xiaobai-os-app-name" }, ht = {
   class: "xiaobai-os-sort-announcement",
   role: "status"
-}, mt = { class: "xiaobai-os-app-icon" }, gt = ["src"], wt = { class: "xiaobai-os-app-name" }, bt = /* @__PURE__ */ V({
+}, mt = { class: "xiaobai-os-app-icon" }, gt = ["src"], wt = { class: "xiaobai-os-app-name" }, bt = /* @__PURE__ */ K({
   __name: "XiaobaiOsHome",
   props: {
     apps: {},
@@ -442,7 +442,7 @@ var it = {
     async function H() {
       r(), l.value = oe(o.apps, []).map((n) => n.id), await _(null);
     }
-    function Z(n) {
+    function q(n) {
       f.value ? S.value = n.id : b("openApp", n);
     }
     function M(n) {
@@ -457,26 +457,26 @@ var it = {
         return;
       }
       if (!f.value) return;
-      const B = g?.parentElement, j = B ? getComputedStyle(B).gridTemplateColumns.split(" ").length : 4, q = {
+      const B = g?.parentElement, j = B ? getComputedStyle(B).gridTemplateColumns.split(" ").length : 4, N = {
         ArrowLeft: -1,
         ArrowRight: 1,
         ArrowUp: -j,
         ArrowDown: j
       }[n.key];
-      if (q === void 0) return;
+      if (N === void 0) return;
       n.preventDefault();
-      const G = l.value.indexOf(u), Q = Math.max(0, Math.min(l.value.length - 1, G + q));
-      Q !== G && (F(u, Q), S.value = u, $(u), _([...l.value]));
+      const G = l.value.indexOf(u), J = Math.max(0, Math.min(l.value.length - 1, G + N));
+      J !== G && (F(u, J), S.value = u, $(u), _([...l.value]));
     }
     function U(n) {
       n.key === " " && n.target instanceof Element && n.target.closest("[data-app-id]") && n.preventDefault();
     }
-    return ke(() => o.apps.map((n) => n.id).sort().join(","), () => {
+    return ye(() => o.apps.map((n) => n.id).sort().join(","), () => {
       r(), l.value = o.apps.map((n) => n.id);
     }), (n, g) => (y(), O("main", {
       ref_key: "root",
       ref: E,
-      class: J(["xiaobai-os-home", { "is-editing": f.value }]),
+      class: Q(["xiaobai-os-home", { "is-editing": f.value }]),
       onPointerdown: g[1] || (g[1] = (...u) => T(P) && T(P)(...u)),
       onKeydown: M,
       onKeyup: U,
@@ -508,37 +508,37 @@ var it = {
         disabled: h.value,
         onClick: R
       }, "完成", 8, st)], 64)) : z("", !0)]),
-      p.value ? (y(), O("div", ct, [d("span", null, N(p.value), 1), d("button", {
+      p.value ? (y(), O("div", ct, [d("span", null, Z(p.value), 1), d("button", {
         type: "button",
         disabled: h.value,
         onClick: g[0] || (g[0] = (u) => _(T(c)))
       }, "重试", 8, dt)])) : z("", !0),
-      Y(Oe, {
+      Y(Se, {
         tag: "section",
         name: "xiaobai-os-sort",
         class: "xiaobai-os-app-grid",
         "aria-label": "应用"
       }, {
-        default: te(() => [(y(!0), O(de, null, ye(L.value, (u) => (y(), O("button", {
+        default: te(() => [(y(!0), O(de, null, _e(L.value, (u) => (y(), O("button", {
           key: u.id,
           type: "button",
-          class: J(["xiaobai-os-app-tile", { "is-lifted": T(w)?.id === u.id }]),
+          class: Q(["xiaobai-os-app-tile", { "is-lifted": T(w)?.id === u.id }]),
           "data-app-id": u.id,
           "aria-label": u.name,
           "aria-keyshortcuts": f.value ? "ArrowUp ArrowDown ArrowLeft ArrowRight Space" : "F2 Space",
           style: ne({ "--app-accent": u.accent }),
-          onClick: (B) => Z(u)
+          onClick: (B) => q(u)
         }, [d("span", ut, [d("img", {
           src: u.icon,
           alt: "",
           width: "64",
           height: "64",
           draggable: "false"
-        }, null, 8, ft)]), d("span", vt, N(u.name), 1)], 14, pt))), 128))]),
+        }, null, 8, ft)]), d("span", vt, Z(u.name), 1)], 14, pt))), 128))]),
         _: 1
       }),
-      d("span", ht, N(x.value), 1),
-      (y(), W(Ae, { to: "body" }, [T(w) && s.value ? (y(), O("div", {
+      d("span", ht, Z(x.value), 1),
+      (y(), W(Oe, { to: "body" }, [T(w) && s.value ? (y(), O("div", {
         key: 0,
         class: "xiaobai-os-dragged-app xiaobai-os-app-tile",
         "aria-hidden": "true",
@@ -551,13 +551,13 @@ var it = {
         src: s.value.icon,
         alt: "",
         draggable: "false"
-      }, null, 8, gt)]), d("span", wt, N(s.value.name), 1)], 4)) : z("", !0)]))
+      }, null, 8, gt)]), d("span", wt, Z(s.value.name), 1)], 4)) : z("", !0)]))
     ], 34));
   }
 }), yt = bt, kt = ["disabled"], xt = {
   key: 0,
   "aria-hidden": "true"
-}, At = /* @__PURE__ */ V({
+}, At = /* @__PURE__ */ K({
   __name: "XiaobaiOsNavigation",
   props: {
     isHome: { type: Boolean },
@@ -570,7 +570,7 @@ var it = {
   ],
   setup(t) {
     return (i, e) => (y(), O("nav", {
-      class: J(["xiaobai-os-navigation", { "is-home": t.isHome }]),
+      class: Q(["xiaobai-os-navigation", { "is-home": t.isHome }]),
       "aria-label": "系统导航"
     }, [
       d("button", {
@@ -605,18 +605,18 @@ var it = {
       }, [d("path", { d: "m7 9.5 5 5 5-5" })])], -1)])])
     ], 2));
   }
-}), _t = At, Ot = { class: "xiaobai-os-system-mark" }, St = ["src"], Et = /* @__PURE__ */ V({
+}), _t = At, Ot = { class: "xiaobai-os-system-mark" }, St = ["src"], Et = /* @__PURE__ */ K({
   __name: "XiaobaiOsSystemBar",
   props: { isHome: { type: Boolean } },
   setup(t) {
     return (i, e) => (y(), O("header", {
-      class: J(["xiaobai-os-system-bar", { "is-home": t.isHome }]),
+      class: Q(["xiaobai-os-system-bar", { "is-home": t.isHome }]),
       "aria-label": "系统栏"
     }, [d("span", Ot, [d("img", {
       src: T(me),
       alt: "",
       "aria-hidden": "true"
-    }, null, 8, St), e[0] || (e[0] = he("小白 OS", -1))])], 2));
+    }, null, 8, St), e[0] || (e[0] = fe("小白 OS", -1))])], 2));
   }
 }), Pt = Et, Rt = { class: "xiaobai-os-device" }, It = { class: "xiaobai-os-glass" }, Lt = {
   key: "failure",
@@ -626,7 +626,7 @@ var it = {
   key: "loading",
   class: "xiaobai-os-app-loading",
   role: "status"
-}, $t = /* @__PURE__ */ V({
+}, $t = /* @__PURE__ */ K({
   __name: "XiaobaiOsDevice",
   props: {
     apps: {},
@@ -659,7 +659,7 @@ var it = {
       d("div", {
         class: "xiaobai-os-stage",
         style: ne(t.activeApp ? { "--app-accent": t.activeApp.accent } : null)
-      }, [Y(Ee, {
+      }, [Y(Pe, {
         name: "xiaobai-os-route",
         mode: "out-in"
       }, {
@@ -680,8 +680,8 @@ var it = {
             class: "xiaobai-os-app-failure-mark",
             "aria-hidden": "true"
           }, "!", -1)),
-          d("h1", null, N(t.activeApp?.name) + "暂时无法打开", 1),
-          d("p", null, N(t.appFailure.message), 1),
+          d("h1", null, Z(t.activeApp?.name) + "暂时无法打开", 1),
+          d("p", null, Z(t.appFailure.message), 1),
           d("div", Mt, [t.appFailure.retryable ? (y(), O("button", {
             key: 0,
             type: "button",
@@ -690,14 +690,14 @@ var it = {
             type: "button",
             onClick: l[2] || (l[2] = (h) => f.$emit("reload"))
           }, "重新打开 OS")])
-        ])) : t.appLoading ? (y(), O("div", Ct, [l[8] || (l[8] = d("span", { "aria-hidden": "true" }, null, -1)), he(" 正在打开" + N(t.activeApp?.name), 1)])) : t.activeApp && t.activeComponent ? (y(), W(We, {
+        ])) : t.appLoading ? (y(), O("div", Ct, [l[8] || (l[8] = d("span", { "aria-hidden": "true" }, null, -1)), fe(" 正在打开" + Z(t.activeApp?.name), 1)])) : t.activeApp && t.activeComponent ? (y(), W(We, {
           key: `app:${t.activeApp.id}:${t.appRenderKey}`,
           ref_key: "navigation",
           ref: E,
           owner: `${t.activeApp.id}:${t.appRenderKey}`
         }, {
-          default: te(() => [Y(Qe, { onFailed: l[3] || (l[3] = (h) => f.$emit("renderFailed", h)) }, {
-            default: te(() => [(y(), W(Pe(t.activeComponent), {
+          default: te(() => [Y(Je, { onFailed: l[3] || (l[3] = (h) => f.$emit("renderFailed", h)) }, {
+            default: te(() => [(y(), W(be(t.activeComponent), {
               bridge: t.bridge,
               "initial-state": t.activeState
             }, null, 8, ["bridge", "initial-state"]))]),
@@ -724,7 +724,7 @@ var it = {
   key: 1,
   class: "xiaobai-os-loading",
   role: "status"
-}, Ut = /* @__PURE__ */ V({
+}, Ut = /* @__PURE__ */ K({
   __name: "App",
   setup(t) {
     const i = Me(), e = k(null), o = k(null), b = k(!1), E = k("light"), f = k(/* @__PURE__ */ new Set()), l = k([]), h = k(""), p = k(null), x = le(null), S = k(null), m = k(!1), c = k(null), L = k(0), $ = k("");
@@ -750,7 +750,7 @@ var it = {
       const v = P.value.find((A) => A.id === a);
       v && p.value?.id !== v.id && M(v);
     }
-    function Z(a) {
+    function q(a) {
       if (a.type === "os/app-order-changed" && (l.value = a.payload.appOrder), a.type === "os/init" && R(a.payload || {}), a.type === "os/navigate" && b.value) {
         const I = a.payload;
         (I?.appId === null || typeof I?.appId == "string") && H(I.appId);
@@ -779,17 +779,17 @@ var it = {
       L.value += 1;
       const A = { appId: a.id };
       w = A, p.value = a, x.value = null, S.value = null, m.value = !0, c.value = null, i.clearAppSession(), $.value = "";
-      const I = i.request("app/activate", { appId: a.id }), D = a.load(), [K, ee] = await Promise.allSettled([I, D]);
+      const I = i.request("app/activate", { appId: a.id }), D = a.load(), [V, ee] = await Promise.allSettled([I, D]);
       try {
         if (v !== _) return;
-        if (K.status === "fulfilled") {
-          if (K.value.appId !== a.id || !K.value.activationToken) throw new Error("app_activation_mismatch");
+        if (V.status === "fulfilled") {
+          if (V.value.appId !== a.id || !V.value.activationToken) throw new Error("app_activation_mismatch");
           i.setAppSession({
             appId: a.id,
-            activationToken: K.value.activationToken
-          }), S.value = A.latestState ?? K.value.state ?? null;
+            activationToken: V.value.activationToken
+          }), S.value = A.latestState ?? V.value.state ?? null;
         } else {
-          const C = K.reason;
+          const C = V.reason;
           c.value = {
             phase: C instanceof re ? C.phase : "host",
             message: C instanceof Error ? C.message : String(C),
@@ -877,15 +877,15 @@ var it = {
       }
       _ += 1, w = null, i.post("app/deactivate", { appId: p.value?.id || "" }), i.clearAppSession(), p.value = null, x.value = null, S.value = null, m.value = !1, c.value = null;
     }
-    function q() {
+    function N() {
       o.value?.back() || j();
     }
     function G() {
       _ += 1, w = null, i.post("os/close"), i.clearAppSession();
     }
-    function Q(a) {
+    function J(a) {
       if (a.key === "Escape") {
-        a.preventDefault(), p.value ? q() : o.value?.back() || G();
+        a.preventDefault(), p.value ? N() : o.value?.back() || G();
         return;
       }
       if (a.key !== "Tab" || !e.value) return;
@@ -895,20 +895,20 @@ var it = {
       a.shiftKey && document.activeElement === A ? (a.preventDefault(), I.focus()) : !a.shiftKey && document.activeElement === I && (a.preventDefault(), A.focus());
     }
     return ue(async () => {
-      X = document.activeElement instanceof HTMLElement ? document.activeElement : null, F = i.subscribe(Z), i.start(), window.addEventListener("error", g), window.addEventListener("unhandledrejection", u), await pe(), e.value?.focus();
-    }), fe(() => {
+      X = document.activeElement instanceof HTMLElement ? document.activeElement : null, F = i.subscribe(q), i.start(), window.addEventListener("error", g), window.addEventListener("unhandledrejection", u), await pe(), e.value?.focus();
+    }), ve(() => {
       _ += 1, w = null, window.removeEventListener("error", g), window.removeEventListener("unhandledrejection", u), F(), i.dispose(), X?.focus();
     }), (a, v) => (y(), O("main", {
       ref_key: "root",
       ref: e,
-      class: J(["xiaobai-os-shell", `theme-${E.value}`]),
+      class: Q(["xiaobai-os-shell", `theme-${E.value}`]),
       role: "dialog",
       "aria-modal": "true",
       "aria-label": "小白 OS",
       tabindex: "-1",
-      onKeydown: Q,
+      onKeydown: J,
       onClick: ae(G, ["self"])
-    }, [$.value ? (y(), O("div", Dt, N($.value), 1)) : z("", !0), b.value ? (y(), W(Bt, {
+    }, [$.value ? (y(), O("div", Dt, Z($.value), 1)) : z("", !0), b.value ? (y(), W(Bt, {
       key: 2,
       ref_key: "device",
       ref: o,
@@ -923,7 +923,7 @@ var it = {
       "character-avatar": h.value,
       "save-app-order": r,
       onOpenApp: M,
-      onBack: q,
+      onBack: N,
       onHome: j,
       onClose: G,
       onRenderFailed: n,
@@ -942,4 +942,4 @@ var it = {
     ])) : (y(), O("div", Tt, "正在启动小白 OS"))], 34));
   }
 }), Ht = Ut;
-Se(Ht).mount("#app");
+Ee(Ht).mount("#app");

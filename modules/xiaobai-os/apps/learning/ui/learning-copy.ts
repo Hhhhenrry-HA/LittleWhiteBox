@@ -18,7 +18,7 @@ export const LEARNING_TEACHER_STORAGE_COPY = {
 };
 
 export const LEARNING_PROCESS_COPY = {
-    title: '学习动态', stop: '停止本次操作', round: (count: number) => `第 ${count} 轮`,
+    title: '学习动态', unknownTool: '准备下一步', stop: '停止本次操作', round: (count: number) => `第 ${count} 轮`,
     history: (count: number) => `${count} 个步骤`, received: (count: number) => `已收到 ${count} 字，正在整理`,
     preparing: '准备中', running: '进行中', done: '完成', failed: '未完成', cancelled: '已停止', thinking: '正在思考…',
     issues: (count: number) => `${count} 项内容未通过检查`, checkFields: (fields: string) => `需要调整：${fields}`,
@@ -88,7 +88,7 @@ export const LEARNING_REVIEW_COPY = {
     verdicts: { correct: '答对了', partial: '对了一部分', incorrect: '还没想起来', disputed: '等待复核' },
 };
 export const LEARNING_DIALOGUE_COPY = {
-    send: '发送', stop: '停止回复',
+    send: '发送', stop: '停止回复', retry: '重试回复',
     assistant: '学习助手', assistantEmpty: '想调整学习安排，还是问问这次的批改？',
     assistantPlaceholder: '问学习助手…', closeAssistant: '回到读写', askAssessment: '问问这次批改',
     clearAssistant: '清空教学对话', clearCompanion: '清空搭子对话',

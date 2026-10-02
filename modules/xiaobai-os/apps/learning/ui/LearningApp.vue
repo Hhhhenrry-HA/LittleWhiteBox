@@ -11,6 +11,7 @@ import LearningCompanionControl from './LearningCompanionControl.vue';
 import { LEARNING_DIALOGUE_COPY as dialogueCopy, LEARNING_CONFIRM_COPY, LEARNING_DISCARD_COPY, LEARNING_VOICE_COPY, LEARNING_REQUEST_COPY, LEARNING_TEACHER_STORAGE_COPY as teacherStorageCopy } from './learning-copy.js';
 import { LEARNING_REWARD_COPY, LEARNING_STORAGE_COPY } from '../application/feedback.js';
 import LearningWorkbench from './LearningWorkbench.vue';
+import LearningPreparation from './LearningPreparation.vue';
 import type { LearningPresentation, LearningActivityPresentation } from '../application/presentation.js';
 import type { LearningSelection } from '../../../domains/learning/notes.js';
 import LearningIcon from './LearningIcon.vue';
@@ -130,6 +131,11 @@ const workProcess = computed(() => {
     let running = turns.length - 1;
     while (running >= 0 && (turns[running].status !== 'running' || isLearningConversation({ kind: turns[running].purpose ?? 'talk' }))) { running--; }
     if (running >= 0) { index = running; }
+    else if (index >= 0 && state.value.preparation && isLearningPreparation({ kind: turns[index].purpose ?? 'talk' })) {
+        let phase = turns.length - 1;
+        while (phase >= 0 && turns[phase].purpose !== `reading-${state.value.preparation.phase}`) { phase--; }
+        if (phase >= 0) { index = phase; }
+    }
     return index < 0 ? null : { turn: state.value.workbenchConversation.turns[index],
         key: `${state.value.chatIdentity}:${state.value.language}:${state.value.workbenchConversation.removedTurns + index}` };
 });
@@ -351,11 +357,15 @@ async function exportData() {
                 <LearningConversation v-if="workMounted && assistantOpen" ref="assistant" target="workbench" :state="state" :disabled="!canRequest('workbench-talk')" :pending="pending" @action="request" @present="present" @close="closeAssistant" />
                 <div v-show="!assistantOpen" ref="scroller" class="learning-scroll" @scroll.passive="rememberWorkScroll" @click="rememberStudy" @focusin="rememberStudy">
                     <template v-if="workMounted && !assistantOpen">
-                        <LearningProcess v-if="workProcess" :key="workProcess.key" :turn="workProcess.turn" stoppable :disabled="pending" @stop="request(isLearningPreparation({ kind: workProcess.turn.purpose ?? 'talk' }) ? 'cancel-preparation' : 'cancel')" />
+                        <LearningProcess v-if="workProcess" :key="workProcess.key" :turn="workProcess.turn" stoppable :disabled="pending" @stop="request(isLearningPreparation({ kind: workProcess.turn.purpose ?? 'talk' }) ? 'cancel-preparation' : 'cancel')">
+                            <template v-if="state.storage === 'ready' && isLearningPreparation({ kind: workProcess.turn.purpose ?? 'talk' }) && !state.preparation?.running && (state.preparation || state.sourceChoice)" #default>
+                                <LearningPreparation :state="state" :disabled="!writable" :pending="pending" @action="workAction" />
+                            </template>
+                        </LearningProcess>
                         <p v-if="workProcess && !isLearningPreparation({ kind: workProcess.turn.purpose ?? 'talk' }) && learningTurnNotice(workProcess.turn, state.workbenchStorage, state.storage)" class="learning-turn-notice" :class="{ 'is-error': workProcess.turn.status === 'failed' }" role="status">{{ learningTurnNotice(workProcess.turn, state.workbenchStorage, state.storage) }}</p>
                         <div v-if="state.busy && workProcess?.turn.status !== 'running'" class="learning-working" role="status"><span class="learning-working-dot" aria-hidden="true" /><span>{{ state.message || copy.working }}</span><button type="button" :disabled="pending" @click="request('cancel')">停止</button></div>
                         <LearningWorkbench
-                            v-if="page === 'home'" :state="state" :disabled="!writable" :pending="pending"
+                            v-if="page === 'home'" :state="state" :disabled="!writable" :pending="pending" :preparation-in-process="!!workProcess && isLearningPreparation({ kind: workProcess.turn.purpose ?? 'talk' })"
                             @action="workAction" @confirm="askConfirm" @present="present" @go="go" @ask="askTeacher" @assistant="openAssistant" @record="openRecord"
                         />
                         <LearningSetup v-if="page === 'profile'" :state="state" :disabled="!canRequest('language')" @action="request" />
