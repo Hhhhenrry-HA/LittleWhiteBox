@@ -35,10 +35,12 @@ function details(tool: LearningProcessTool) {
     if (tool.result.error) { items.push(learningResearchFailure(tool.result.error, tool.result.httpStatus)); }
     const section = tool.result.section ?? tool.input.section;
     if (section && copy.sections[section]) { items.push(copy.sections[section]); }
-    if (tool.result.resultsCount !== undefined) { items.push(copy.results(tool.result.resultsCount)); }
+    if (tool.result.resultsCount !== undefined && (!tool.result.error || tool.result.resultsCount > 0)) {
+        items.push(tool.name === 'LearningExtract' ? copy.extracted(tool.result.resultsCount) : copy.results(tool.result.resultsCount));
+    }
     if (tool.result.paragraphCount !== undefined) { items.push(copy.paragraphs(tool.result.paragraphCount)); }
     if (tool.result.dataCount !== undefined) { items.push(copy.entries(tool.result.dataCount)); }
-    if (tool.result.failedCount) { items.push(copy.sourcesFailed(tool.result.failedCount)); }
+    if (tool.result.failedCount && (!tool.result.error || tool.result.failedCount > 1)) { items.push(copy.sourcesFailed(tool.result.failedCount)); }
     if (tool.name === 'LearningLessonEdit') {
         if (tool.input.materialsCount) { items.push(copy.proposedMaterials(tool.input.materialsCount)); }
         if (tool.input.exercisesCount) { items.push(copy.proposedExercises(tool.input.exercisesCount)); }

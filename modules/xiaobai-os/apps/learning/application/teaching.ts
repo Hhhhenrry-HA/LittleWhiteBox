@@ -250,7 +250,8 @@ export function createLearningTeaching(options: {
                     settle(visible, 'conflict', copy.changed);
                     return { status: 'conflict' };
                 }
-                const research = createLearningResearch(config, { sources, cache, signal: controller.signal, createId: options.createId, now: options.now });
+                const research = createLearningResearch(config, { sources, cache, signal: controller.signal, createId: options.createId, now: options.now,
+                    ...((request.action.kind === 'reading-article' || request.action.kind === 'prepare' && request.action.unit === 'reading-writing') ? { articleLanguage: classroom.language } : {}) });
                 const profile = baseline?.data.profiles.find(entry => entry.language === classroom.language);
                 const sourceUnit = profile?.[learningReadUnit(request.action, profile)];
                 const newMaterial = request.action.kind === 'reading-article' || request.action.kind === 'prepare' && (!sourceUnit || request.action.replaceCurrent === true);

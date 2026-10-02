@@ -32,7 +32,9 @@ test('the process retains completed and failed steps while another round is prep
     assert.equal(rounds[1].tools[0].result.errorsCount, 1);
     assert.equal(rounds[2].text, '');
     assert.equal(rounds[2].receivedChars, secret.length);
-    assert.deepEqual(learningProcessRounds({ ...turn, status: 'cancelled' }).flatMap(round => round.tools.map(tool => tool.status)), ['done', 'failed', 'cancelled']);
+    assert.deepEqual(learningProcessRounds({ ...turn, status: 'cancelled' }).flatMap(round => round.tools.map(tool => tool.status)), ['done', 'failed', 'not-run']);
+    const started = [...messages, learningMessageView({ role: 'tool', toolCallId: 'retry', toolName: 'LearningLessonEdit', content: '', streaming: true })];
+    assert.equal(learningProcessRounds({ status: 'cancelled', messages: started }).at(-1).tools[0].status, 'cancelled');
 });
 
 test('live rounds reach the view even when their general progress label has not changed', async t => {

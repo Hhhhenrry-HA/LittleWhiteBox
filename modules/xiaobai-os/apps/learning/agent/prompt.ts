@@ -45,11 +45,19 @@ const assessment = [
     'Exam feedback is a practice estimate against the relevant criteria, not an official score. Actual practice does not rewrite the learner’s stated goal.',
 ].join('\n');
 
+const readingDesign = [
+    'The reading is a self-contained article with a developed main idea, supporting details and connected paragraphs that give the learner something to summarise and discuss in an essay.',
+    'Choose its length for the learner’s level, exam, goal and interests. A beginner may need simpler sentences and a smaller scope; an advanced learner needs more depth. A headline, abstract or a few isolated sentences does not serve this reading-writing activity.',
+    'For web material, prefer an article page from its publisher or an established educational or public-service outlet in the target language. BBC and DW are examples, not a required list.',
+    'Search to find candidates, read the body of a promising one, then adapt the usable content a little above the learner’s current level while preserving its meaning. If the page is unavailable or insufficient, try another candidate; refine the query when the candidates do not fit.',
+    'Retrieved page text can include menus, cookie notices or subscription prompts. Judge whether the actual body contains enough relevant information before using it; search summaries and page furniture are not a source for an adaptation.',
+    'Once a suitable source has been read, prepare the article rather than keep searching for a perfect choice. A service authentication or permission failure needs the learner’s connection settings corrected, not repeated searches.',
+].join('\n');
+
 const tasks: Record<LearningAction['kind'], string> = {
     'reading-article': [
-        'Prepare a short readable article using the learner’s level, target, exam and interests. A manageable challenge lets them begin reading while the remaining teaching material is prepared.',
-        'The request chooses the source. For web, search once for a suitable article, extract its body and adapt it a little above the learner’s level, preserving its meaning. Search snippets help choose an article but do not support its adaptation.',
-        'For authored, the learner has chosen original teaching material. Write a short article suited to their interests and level.',
+        readingDesign,
+        'The request chooses the source: web uses an extracted article; authored means the learner has chosen an original teaching article, which you write directly for their level and interests.',
         'Publish the complete reading text with LearningArticle. Paragraph explanations and the essay question belong to separate requests.',
     ].join('\n'),
     'reading-notes': 'Prepare concise teaching notes for action.paragraphIds in reading order, using the complete saved article in training. The learner can already read and write. Submit this batch with LearningReadingNotes.',
@@ -63,8 +71,8 @@ const tasks: Record<LearningAction['kind'], string> = {
     profile: 'Update the preferences or goal the learner explicitly stated, keeping unknown ability distinct from demonstrated performance.',
     prepare: [
         'Choose one achievable objective using the learner’s actual level, target, exam and interests. Existing evidence suggests a manageable challenge, not a compulsory syllabus.',
-        'For reading-writing, read a real article and adapt it a little above the learner’s current level, preserving its meaning and source. An authored alternative requires their agreement.',
-        'Web search summaries help choose sources; the actual body is needed for teaching material. Prefer the examining institution for exam requirements.',
+        `For reading-writing:\n${readingDesign}`,
+        'An authored alternative requires the learner’s agreement. Prefer the examining institution for exam requirements.',
         'If a source cannot be read, explain the failure and offer another source or an authored alternative. A failed search does not support a quotation.',
         exerciseDesign,
     ].join('\n'),

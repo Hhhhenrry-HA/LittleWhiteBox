@@ -87,7 +87,7 @@ export async function searchWithTavily(config = {}, options = {}) {
 
     if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`tavily_search_failed:${response.status}:${errorText}`);
+        throw Object.assign(new Error(`tavily_search_failed:${response.status}:${errorText}`), { httpStatus: response.status });
     }
 
     let payload = null;

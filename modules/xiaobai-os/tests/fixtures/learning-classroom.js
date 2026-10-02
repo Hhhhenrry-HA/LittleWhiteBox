@@ -15,7 +15,7 @@ import { LEARNING_REWARDS_PARTITION } from '../../apps/learning/reward-partition
 export const fixtureLesson = {
     title: '城市的树，如何改变一个夏天', goal: '读懂一个清晰观点，再用自己的话说出来。', tier: 'short',
     materials: [{ key: 'text', title: 'A little shade goes a long way', kind: 'authored',
-        text: 'A tree can make a street feel very different. On a hot afternoon, its shade gives people a place to rest.\n\nTrees do more than make a city look beautiful. They help cool the air, support wildlife, and bring neighbours together.' }],
+        text: 'A tree can make a street feel very different. On a hot afternoon, its shade gives people a place to rest. Children can walk home without crossing a wide stretch of hot pavement, and older neighbours can stop for a conversation. A small patch of shade can turn an empty corner into a meeting place.\n\nTrees do more than make a city look beautiful. They help cool the air, support wildlife, and bring neighbours together. However, planting a tree is only the beginning. Young trees need water and enough space for their roots. When residents and local workers share this care, the benefits can last for many summers.' }],
     exercises: [{ key: 'q1', skill: 'reading', materialKeys: ['text'], prompt: 'What is the main idea of this passage?',
         response: { kind: 'choice', options: [{ id: 'a', text: 'Trees make city life more comfortable.' }, { id: 'b', text: 'Trees only make streets look beautiful.' }], multiple: false },
         rule: { kind: 'exact', answer: { kind: 'choice', ids: ['a'] }, explanation: '作者先用树荫举例，再解释树木能让城市生活更舒适。关键词是 do more than。' }, hint: '第二段的第一句，把视角从外观转向了作用。' }],

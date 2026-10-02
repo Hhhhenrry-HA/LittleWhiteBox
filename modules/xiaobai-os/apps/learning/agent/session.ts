@@ -10,6 +10,7 @@ import { createLearningId } from '../application/identity.js';
 import { learningPresentation, type LearningPresentation } from '../application/presentation.js';
 import { confirmedLearning, type LearningRepository } from '../application/service.js';
 import { createLearningSourceRegistry } from '../materials/lesson-sources.js';
+import { LearningReadingContentError } from '../materials/reading-content.js';
 import { readLearning } from './data-projection.js';
 import { learningToolNamesFor } from './tool-contract.js';
 import { isLearningConversation, learningAccessOsId, learningReadAudience, learningReadUnit, learningReviewScope } from './access.js';
@@ -74,7 +75,7 @@ export function createLearningSession(repository: LearningRepository, options: {
     const names = learningToolNamesFor(action);
     const sources = options.sources ?? createLearningSourceRegistry();
     const compileLesson = createLearningLessonCompiler({
-        osId: options.osId, scope: inputScope, prices: action.kind === 'prepare' ? action.prices ?? LEARNING_REWARD_PRICES : LEARNING_REWARD_PRICES,
+        osId: options.osId, language: canonicalLanguage, scope: inputScope, prices: action.kind === 'prepare' ? action.prices ?? LEARNING_REWARD_PRICES : LEARNING_REWARD_PRICES,
         createId, sources,
     });
     const active = () => requireLearning(!invalid && !sealed, 'action', 'This teaching action has ended');
@@ -273,7 +274,7 @@ export function createLearningSession(repository: LearningRepository, options: {
             } catch (error) {
                 if (!(error instanceof LearningValidationError)) { invalid = true; throw error; }
                 const issue = { path: error.path, message: error.message };
-                return { ok: false, changed: false, ids: [], errors: [issue] };
+                return { ok: false, changed: false, ids: [], errors: [issue], ...(error instanceof LearningReadingContentError ? { error: error.code } : {}) };
             }
         },
         async commit(guard: () => boolean) {

@@ -1,13 +1,12 @@
 /** Pure helpers for the workbench views; no Vue, no bridge, so they stay testable. */
+import { measureLearningText } from '../../../domains/learning/text.js';
 
 const DAY = 86_400_000;
 
 /** Chinese, Japanese and Korean writing is measured in characters, the rest in words. */
 export function learningWritingCount(text: string, language: string): { count: number; unit: '字' | '词' } {
-    if (/^(zh|ja|ko)\b/iu.test(language)) {
-        return { count: [...text.replace(/[\s\p{P}\p{S}]/gu, '')].length, unit: '字' };
-    }
-    return { count: text.match(/[\p{L}\p{N}][\p{L}\p{N}\p{M}'’-]*/gu)?.length ?? 0, unit: '词' };
+    const size = measureLearningText(text, language);
+    return { count: size.count, unit: size.unit === 'characters' ? '字' : '词' };
 }
 
 export interface LearningSentenceEdit { id: string; paragraphIndex: number; quote: string; replacement: string }

@@ -1,11 +1,14 @@
 import { LEARNING_LIMITS as L } from '../../../domains/learning/types.js';
 import type { LearningAction } from './session.js';
+import { LEARNING_READING_MINIMUM } from '../materials/reading-content.js';
+
+export const LEARNING_READING_EXTENT = `A full reading-writing article needs at least ${LEARNING_READING_MINIMUM.words} words, or ${LEARNING_READING_MINIMUM.characters} characters for Chinese, Japanese or Korean. This is a fragment check, not the recommended length.`;
 
 const text = (maxLength: number, description: string) => ({ type: 'string', maxLength, description });
 const object = (properties: Record<string, unknown>, required = Object.keys(properties)) => ({ type: 'object', properties, required, additionalProperties: false });
-const result = 'Returns {ok,changed,ids,errors:[{path,message}]}. A successful result ends this preparation step and is saved for the learner. A failed call changes nothing; correct the named fields.';
+const result = 'Returns {ok,changed,ids,errors:[{path,message}],error?}. error, when present, identifies insufficient source or article content. A successful result ends this preparation step; the app then saves it. A failed call changes nothing; correct the named fields.';
 export const learningPreparationTools = [
-    { type: 'function', function: { name: 'LearningArticle', description: `Publish one short article suitable for the learner. The app supplies a summary box for each paragraph. ${result}`,
+    { type: 'function', function: { name: 'LearningArticle', description: `Publish the reading-writing article. The app supplies a summary box for each paragraph. ${LEARNING_READING_EXTENT} An adapted article also needs an extracted source meeting this floor. ${result}`,
         parameters: object({ title: text(L.name, 'Article title.'), goal: text(L.goal, 'One achievable learning objective.'),
             tier: { type: 'string', enum: ['short', 'regular', 'deep'], description: 'Workload relative to the learner.' },
             kind: { type: 'string', enum: ['adapted', 'authored'], description: 'Adapted uses an extracted source; authored requires the request’s explicit choice.' },

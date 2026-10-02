@@ -9,6 +9,8 @@ const researchFailures = {
     learning_extract_failed: '读取正文时连接中断，请检查联网取材连接后重试。',
     learning_extract_invalid_response: '联网服务返回的内容无法作为正文读取，可以重试或改读原创文章。',
     learning_source_unavailable: '这个网页没有读到可用正文，可以换一个来源或改读原创文章。',
+    learning_source_incomplete: '这个网页取回的文字太少，还不够准备整篇读写练习，需要换一个来源。',
+    learning_article_incomplete: '这次整理的文章太短，还不够做整篇读写练习，尚未保存。',
     learning_source_too_large: '这个网页内容太多，未能读入。可以换一个来源或改读原创文章。',
     learning_research_failed: '这次联网取材没有完成，可以重试或改读原创文章。',
 } as const;
@@ -19,9 +21,12 @@ export function learningResearchCode(value: unknown): LearningResearchFailure | 
 }
 
 export function learningResearchFailure(code: LearningResearchFailure, httpStatus?: number): string {
-    if (code === 'learning_extract_http_failed') {
-        if (httpStatus === 401 || httpStatus === 403) { return '联网服务拒绝读取正文，请检查联网取材的密钥和权限。'; }
-        if (httpStatus === 404 || httpStatus === 405) { return '当前联网地址不支持读取正文，请检查联网取材地址，或改读原创文章。'; }
+    if (code === 'learning_extract_http_failed' || code === 'learning_search_failed') {
+        if (httpStatus === 401) { return '联网取材的验证没有通过，请检查联网密钥是否有效。'; }
+        if (httpStatus === 403) { return '联网服务拒绝了这次请求，请检查账号或接口权限；不一定是密钥填错。'; }
+        if (httpStatus === 404 || httpStatus === 405) { return code === 'learning_extract_http_failed'
+            ? '当前联网地址不支持读取正文，请检查联网取材地址，或改读原创文章。'
+            : '当前联网地址不支持搜索，请检查联网取材地址，或改读原创文章。'; }
         if (httpStatus === 429) { return '联网服务暂时限制了请求，请稍后重试，并检查剩余额度。'; }
         if (httpStatus && httpStatus >= 500) { return '联网服务暂时不可用，请稍后重试，或先读原创文章。'; }
     }

@@ -226,7 +226,7 @@ test('a review asks about exactly the due items, moves each schedule once, and c
     });
     assert.deepEqual(h.service.reviewSelection('en'), { itemIds: ['i1', 'i2'], tier: 'short' });
     assert.equal(h.service.reviewSelection('en', '2026-08-01T00:00:00.000Z'), null);
-    const compile = createLearningLessonCompiler({ osId: 'story-a', scope, prices: { short: 17, regular: 29, deep: 41 }, createId: h.createId, sources: { get: () => undefined } });
+    const compile = createLearningLessonCompiler({ osId: 'story-a', language: 'en', scope, prices: { short: 17, regular: 29, deep: 41 }, createId: h.createId, sources: { get: () => undefined } });
     const choice = (key, itemId) => ({ key, skill: 'vocabulary', materialKeys: [], prompt: `Which means ${itemId}?`, itemId,
         response: { kind: 'choice', options: [{ id: 'a', text: 'A' }, { id: 'b', text: 'B' }], multiple: false },
         rule: { kind: 'exact', answer: { kind: 'choice', ids: ['a'] }, explanation: '选 A。' } });

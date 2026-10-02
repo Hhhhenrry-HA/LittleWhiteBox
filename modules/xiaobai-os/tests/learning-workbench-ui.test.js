@@ -2,17 +2,18 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-    createLearningSeenUnits, applyLearningSentenceRevisions, learningAnnotatedSegments, learningSeeAgainLabel, learningWritingCount,
+    createLearningSeenUnits, applyLearningSentenceRevisions, learningAnnotatedSegments, learningSeeAgainLabel,
 } from '../apps/learning/ui/workbench.js';
 import { learningCompanionDelay } from '../apps/learning/application/companion.js';
 import { learningGrowth } from '../apps/learning/application/projection.js';
 import { learningAnswerParagraphs } from '../domains/learning/facts.js';
+import { measureLearningText } from '../domains/learning/text.js';
 
 test('writing count uses characters for CJK and words elsewhere', () => {
-    assert.deepEqual(learningWritingCount('公园让城市更凉快。', 'zh-CN'), { count: 8, unit: '字' });
-    assert.deepEqual(learningWritingCount('公園は 涼しい', 'ja'), { count: 6, unit: '字' });
-    assert.deepEqual(learningWritingCount("Parks don't just cool cities — they calm people.", 'en'), { count: 8, unit: '词' });
-    assert.deepEqual(learningWritingCount('   ', 'fr'), { count: 0, unit: '词' });
+    assert.deepEqual(measureLearningText('公园让城市更凉快。', 'zh-CN'), { count: 8, unit: 'characters' });
+    assert.deepEqual(measureLearningText('公園は 涼しい', 'ja'), { count: 6, unit: 'characters' });
+    assert.deepEqual(measureLearningText("Parks don't just cool cities — they calm people.", 'en'), { count: 8, unit: 'words' });
+    assert.deepEqual(measureLearningText('   ', 'fr'), { count: 0, unit: 'words' });
 });
 
 test('sentence revisions rewrite quotes inside the counted paragraph and keep the rest', () => {

@@ -8,7 +8,7 @@ export interface LearningProcessMetadata {
     error?: LearningResearchFailure; httpStatus?: number;
 }
 export interface LearningProcessTool {
-    id: string; name: string; status: 'preparing' | 'running' | 'done' | 'failed' | 'cancelled';
+    id: string; name: string; status: 'preparing' | 'running' | 'done' | 'failed' | 'cancelled' | 'not-run';
     input: LearningProcessMetadata; result: LearningProcessMetadata;
 }
 
@@ -36,7 +36,7 @@ export function learningProcessRounds(turn: LearningDialogueView) {
             const live = turn.status === 'running';
             const status: LearningProcessTool['status'] = response?.error || result.ok === false ? 'failed'
                 : response?.content && !response.streaming ? 'done'
-                    : !live || message.error ? 'cancelled' : response?.streaming ? 'running' : 'preparing';
+                    : !live || message.error ? response ? 'cancelled' : 'not-run' : response?.streaming ? 'running' : 'preparing';
             return { id: call.id, name: call.name, status, input: metadata(call.arguments), result };
         }),
     }));

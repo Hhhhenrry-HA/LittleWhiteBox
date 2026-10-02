@@ -1,7 +1,7 @@
 import { LEARNING_ANNOTATION_CATEGORIES, LEARNING_LIMITS as L, LEARNING_SKILLS } from '../../../domains/learning/types.js';
 import type { LearningAction } from './session.js';
 import { LEARNING_DELEGATED_ACTIONS } from '../application/delegation.js';
-import { learningPreparationTools, learningPreparationTool } from './preparation-tools.js';
+import { learningPreparationTools, learningPreparationTool, LEARNING_READING_EXTENT } from './preparation-tools.js';
 
 const text = (maxLength: number, description: string) => ({ type: 'string', maxLength, description });
 const nullableText = (maxLength: number, description: string) => ({ anyOf: [text(maxLength, description), { type: 'null' }], description: 'Omit to keep; null clears.' });
@@ -109,6 +109,7 @@ const tools = [
             'Each paragraph explanation covers useful vocabulary, reusable writing phrases and structures, grammar and coherence at this learner’s level. The final essay asks for a viewpoint, reflection or reasoned response grounded in the article, around 300 words (characters for Chinese or Japanese); state the unit in its prompt.',
             'review asks exactly one question per due item listed in the request, each naming its itemId. The app sets a review’s reward from its item count.',
             'Paragraph IDs are p1, p2, … following the blank-line-separated paragraphs of the material text.',
+            `${LEARNING_READING_EXTENT} An adapted article also needs an extracted source meeting this floor. An insufficient source or article returns error:learning_source_incomplete or error:learning_article_incomplete alongside the field errors.`,
             'Create only what the current activity needs. A short explanation or conversational example can stay in your reply without becoming saved reading material.',
             'A first unit needs title, goal, tier (except review) and at least one complete exercise; reading-writing receives its summary exercises from the app. Materials may be empty for a lesson or review. After that, omitted fields and unmentioned materials/exercises stay unchanged.',
             'Each supplied material or exercise is a complete upsert. Use its saved ID as key to update it, or a new local key to add it. Local keys remain usable through this teacher turn; later turns use the IDs returned by LearningRead.',

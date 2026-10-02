@@ -5,10 +5,11 @@ import { learningReviewTier, selectDueLearningItems } from '../../../domains/lea
 import { LEARNING_LIMITS as L, type LearningLanguage, type LearningScope, type LearningUnit, type RewardTier } from '../../../domains/learning/types.js';
 import { learningArray, learningEnum, learningId, learningIds, learningInteger, requireLearning, uniqueLearning } from '../../../domains/learning/validation.js';
 import { compileLearningMaterial, type createLearningSourceRegistry } from '../materials/lesson-sources.js';
+import { checkLearningReadingContent } from '../materials/reading-content.js';
 
 /** One lesson editor per teacher turn. New local keys are resolved once; saved IDs work directly. */
 export function createLearningLessonCompiler(options: {
-    osId: string; scope: LearningScope; prices: Readonly<Record<RewardTier, number>>; createId: () => string;
+    osId: string; language: string; scope: LearningScope; prices: Readonly<Record<RewardTier, number>>; createId: () => string;
     sources: Pick<ReturnType<typeof createLearningSourceRegistry>, 'get'>;
 }) {
     const unitId = options.createId();
@@ -41,6 +42,13 @@ export function createLearningLessonCompiler(options: {
             const id = idFor('material', key);
             requireLearning(!removeMaterials.includes(id), 'materials', 'A material cannot be edited and removed in the same call');
             const material = compileLearningMaterial(raw, id, options.sources);
+            if (kind === 'reading-writing') {
+                if (raw.kind === 'adapted') {
+                    const source = options.sources.get(String(raw.sourceId))!;
+                    checkLearningReadingContent(source.paragraphs.map(paragraph => paragraph.text).join('\n\n'), options.language, 'source', 'materials.sourceId');
+                }
+                checkLearningReadingContent(material.paragraphs.map(paragraph => paragraph.text).join('\n\n'), options.language, 'article', 'materials.text');
+            }
             const index = materials.findIndex(entry => entry.id === id);
             const old = materials[index];
             if (old && JSON.stringify(old.paragraphs) === JSON.stringify(material.paragraphs)) { material.transcriptRevealed = old.transcriptRevealed; }

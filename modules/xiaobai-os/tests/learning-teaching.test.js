@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { learningMemory } from './fixtures/learning-memory.js';
+import { fixtureLesson } from './fixtures/learning-classroom.js';
 import { createLearningTeaching } from '../apps/learning/application/teaching.js';
 import { createLearningService } from '../apps/learning/application/service.js';
 import { createLearningPractice } from '../apps/learning/application/practice.js';
@@ -63,7 +64,7 @@ async function harness(handler, { session = false, search = false, beforeWrite }
 }
 
 test('paragraph feedback stays bound to its saved answer across chat, later submissions and rewrites', async () => {
-    const material = { key: 'article', title: 'Trees', kind: 'authored', text: 'Trees cool streets.\n\nTrees need care.' };
+    const material = { ...fixtureLesson.materials[0], key: 'article' };
     const reading = { ...lesson([material]), kind: 'reading-writing',
         explanations: ['p1', 'p2'].map(paragraphId => ({ materialKey: 'article', paragraphId, explanation: 'Main idea.', terms: [] })),
         exercises: ['p1', 'p2', null].map((paragraphId, index) => ({ ...lesson().exercises[0], key: `q${index}`, ...(paragraphId ? { paragraphId } : {}) })) };
@@ -469,7 +470,7 @@ test('research failures do not leak transport errors, impose a two-query quota o
     t.mock.method(globalThis, 'fetch', async () => { count++; return new Response('private gateway response', { status: 401 }); });
     const research = createLearningResearch(config, { sources: createLearningSourceRegistry(), signal: controller.signal });
     const failed = await research.executeTool('LearningSearch', { query: 'public article' });
-    assert.deepEqual(failed, { ok: false, error: 'learning_search_failed' });
+    assert.deepEqual(failed, { ok: false, error: 'learning_search_failed', httpStatus: 401 });
     assert.equal(count, 1);
     await research.executeTool('LearningSearch', { query: 'another article' });
     assert.equal((await research.executeTool('LearningSearch', { query: 'third' })).ok, false);
