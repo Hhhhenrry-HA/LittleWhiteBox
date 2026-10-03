@@ -4,9 +4,15 @@ import { embed, getEngineFingerprint } from '../utils/embedder.js';
 import { getEmbeddingFailureDetails } from '../llm/embedding-failure.js';
 import { selectChunksForRepair } from './chunk-repair-policy.js';
 import { inputDigest } from '../utils/vector-input-digest.js';
+import { trackVectorActivity } from '../runtime/vector-activity.js';
 
-/** 完成楼层只用于自动增量；手动修补核对实际记录，包括中间缺口，保留已有材料。 */
-export async function repairMissingChunks({ chatId, chat, vectorConfig, signal, shouldCancel, onProgress }) {
+/** 自动维护与手动补齐共用：核对实际记录，包括中间缺口，保留已有材料。 */
+export async function repairMissingChunks(options) {
+    return trackVectorActivity({ chatId: options.chatId, phase: 'l1-vector-repair', api: options.vectorConfig?.embeddingApi, unit: 'chunks' },
+        activity => repairMissingChunksInner(options, activity));
+}
+
+async function repairMissingChunksInner({ chatId, chat, vectorConfig, signal, shouldCancel, onProgress }, activity) {
     const isCancelled = () => signal?.aborted || shouldCancel?.() === true;
     let repaired = 0;
     let phase = 'read';
@@ -22,24 +28,30 @@ export async function repairMissingChunks({ chatId, chat, vectorConfig, signal, 
         if (isCancelled()) return cancelled();
         const expected = chat.flatMap((message, floor) => chunkMessage(floor, message));
         const missing = selectChunksForRepair(expected, stored, vectors, fingerprint);
+        activity.update({ total: missing.length });
         const storedIds = new Set(stored.map(chunk => chunk.chunkId));
         onProgress?.(0, missing.length);
         for (let i = 0; i < missing.length; i += 20) {
             if (isCancelled()) return cancelled();
             const batch = missing.slice(i, i + 20);
             phase = 'embedding';
+            activity.update({ state: 'embedding', activeUnits: batch.length });
             const embeddings = await embed(batch.map(chunk => chunk.text), vectorConfig, { signal });
             if (isCancelled()) return cancelled();
             phase = 'write';
+            activity.update({ state: 'saving', activeUnits: 0 });
             await saveChunkRepairs(chatId, batch.filter(chunk => !storedIds.has(chunk.chunkId)), batch.map((chunk, index) => ({
                 chunkId: chunk.chunkId, vector: embeddings[index], sourceHash: inputDigest('chunk', chunk.text),
             })), fingerprint);
             repaired += batch.length;
+            activity.update({ completed: repaired });
             onProgress?.(repaired, missing.length);
         }
         if (isCancelled()) return cancelled();
         phase = 'metadata';
-        await updateMeta(chatId, { lastChunkFloor: chat.length - 1, fingerprint });
+        if (meta.lastChunkFloor !== chat.length - 1 || meta.fingerprint !== fingerprint) {
+            await updateMeta(chatId, { lastChunkFloor: chat.length - 1, fingerprint });
+        }
         return { success: true, repaired };
     } catch (error) {
         if (isCancelled()) return cancelled();

@@ -104,6 +104,13 @@ export async function getAllChunks(chatId) {
     return await chunksTable.where('chatId').equals(chatId).toArray();
 }
 
+export async function hasStoredChunksAfterFloor(chatId, floor, chatLength) {
+    if (floor + 1 >= chatLength) return false;
+    return await chunksTable.where('[chatId+floor]')
+        .between([chatId, floor + 1], [chatId, chatLength], true, false)
+        .count() > 0;
+}
+
 export async function getChunksByFloors(chatId, floors) {
     const chunks = await chunksTable
         .where('[chatId+floor]')
@@ -241,15 +248,16 @@ export async function saveIncrementalChunks(chatId, chunks, items, fingerprint, 
 }
 
 export async function getChunkVectorDescriptors(chatId) {
-    const records = await chunkVectorsTable.where('chatId').equals(chatId).toArray();
-    return records.map(record => {
+    const descriptors = [];
+    await chunkVectorsTable.where('chatId').equals(chatId).each(record => {
         let valid = false;
         try {
             assertFiniteVector(bufferToFloat32(record.vector), 'stored chunk vector', record.dims);
             valid = true;
         } catch { /* 无效向量与缺失向量一样，需要补齐。 */ }
-        return { chunkId: record.chunkId, fingerprint: record.fingerprint, valid };
+        descriptors.push({ chunkId: record.chunkId, fingerprint: record.fingerprint, valid });
     });
+    return descriptors;
 }
 
 export async function getAllChunkVectors(chatId) {
@@ -317,6 +325,15 @@ export async function getAllEventVectors(chatId) {
         ...r,
         vector: bufferToFloat32(r.vector),
     }));
+}
+
+// Gap checks need identity/model only, not decoded vector payloads.
+export async function getEventVectorDescriptors(chatId) {
+    const descriptors = [];
+    await eventVectorsTable.where('chatId').equals(chatId).each(record => {
+        descriptors.push({ eventId: record.eventId, fingerprint: record.fingerprint });
+    });
+    return descriptors;
 }
 
 export async function clearEventVectors(chatId) {

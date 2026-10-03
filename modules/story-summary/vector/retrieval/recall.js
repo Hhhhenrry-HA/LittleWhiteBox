@@ -20,10 +20,8 @@ import {
 import { getStateAtoms } from '../storage/state-store.js';
 import { getEngineFingerprint, embed } from '../utils/embedder.js';
 import { xbLog } from '../../../../core/debug-core.js';
-import {
-    throwIfSignalAborted,
-    waitForAbortableDelay,
-} from '../../../../shared/common/abort-utils.js';
+import { throwIfSignalAborted } from '../../../../shared/common/abort-utils.js';
+import { embedRecallQuery } from './query-embedding.js';
 import { getContext } from '../../../../../../../extensions.js';
 import {
     buildQueryBundle,
@@ -1254,32 +1252,12 @@ export async function recallMemory(allEvents, vectorConfig, options = {}) {
     if (diagnostics) diagnostics.stage = 'round1-embed';
     const T_R1_Embed_Start = performance.now();
     try {
-    try {
-        r1Vectors = await embed(segmentTexts, vectorConfig, { timeout: 3000, signal });
-    } catch (e1) {
-        throwIfSignalAborted(signal);
-        recordExternalFailure(metrics, { stage: 'round1-embed', kind: 'request', attempt: 1, error: e1 });
-        xbLog.warn(MODULE_ID, 'Round 1 向量化失败，500ms 后重试', e1);
-        const retryWaitStart = performance.now();
-        try {
-            await waitForAbortableDelay(500, signal);
-        } finally {
-            metrics.timing.round1EmbedRetryWait = Math.round(performance.now() - retryWaitStart);
-        }
-        throwIfSignalAborted(signal);
-        try {
-            r1Vectors = await embed(segmentTexts, vectorConfig, { timeout: 6000, signal });
-        } catch (e2) {
-            throwIfSignalAborted(signal);
-            recordExternalFailure(metrics, { stage: 'round1-embed', kind: 'request', attempt: 2, error: e2 });
-            xbLog.error(MODULE_ID, 'Round 1 向量化重试仍失败', e2);
-            const error = new Error('Embedding request failed after retry', { cause: e2 });
-            error.code = 'RECALL_EMBEDDING_FAILED';
-            error.stage = 'round1-embed';
-            error.attempts = 2;
-            throw error;
-        }
-    }
+        r1Vectors = await embedRecallQuery(segmentTexts, vectorConfig, {
+            signal,
+            onFailure: failure => recordExternalFailure(metrics, { stage: 'round1-embed', kind: 'request', ...failure }),
+            onRetryWait: elapsedMs => { metrics.timing.round1EmbedRetryWait = elapsedMs; },
+            onActivity: trace => { metrics.external.queryActivity = trace; },
+        });
     } finally {
         metrics.timing.round1Embed = Math.round(performance.now() - T_R1_Embed_Start);
     }

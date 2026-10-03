@@ -45,6 +45,13 @@ let embeddingBatchController = new AbortController();
 
 const operationControllers = new Map();
 const warningTimesByChannel = new Map();
+const stateObservers = new Set();
+function publishWriteState() { for (const observer of stateObservers) observer(); }
+
+export function observeVectorWrites(observer) {
+    stateObservers.add(observer);
+    return () => stateObservers.delete(observer);
+}
 
 function createAbortError(reason) {
     if (reason instanceof Error) return reason;
@@ -142,23 +149,27 @@ function enqueueVectorWrite({ chatId = '', kind = 'vector-write', scope, operati
     registerOperation(descriptor.operationId, operationController);
     pendingWrites += 1;
     epoch += 1;
+    publishWriteState();
 
     const run = writeTail
         .then(async () => {
             pendingWrites -= 1;
             if (!acceptingWrites || link.signal.aborted) {
                 epoch += 1;
+                publishWriteState();
                 return undefined;
             }
 
             const session = { ...descriptor, signal: link.signal, startedAt: Date.now() };
             activeWrite = session;
             epoch += 1;
+            publishWriteState();
             try {
                 return await task(session);
             } finally {
                 if (activeWrite === session) activeWrite = null;
                 epoch += 1;
+                publishWriteState();
             }
         })
         .finally(() => {

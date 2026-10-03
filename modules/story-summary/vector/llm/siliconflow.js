@@ -151,7 +151,7 @@ export async function embed(texts, options = {}) {
         if (error?.name === 'AbortError' && timedOut) {
             throw createEmbeddingFailureError(
                 `Embedding request timeout after ${timeout}ms`,
-                { kind: 'timeout' },
+                { kind: 'timeout', timeoutMs: timeout },
                 error,
             );
         }

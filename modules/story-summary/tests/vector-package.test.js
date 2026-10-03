@@ -19,11 +19,11 @@ const shims = {
     'script.js': 'export const chat_metadata=globalThis.__vectorPackageTest.metadata; export const isChatSaving=false; export const getRequestHeaders=()=>({});',
     // Older supported hosts do not export SHA-256; digesting belongs to the plugin.
     'lib.js': 'export {};',
-    'debug-core.js': 'export const xbLog={info(){},warn(){},error(){},debug(){}};',
+    'debug-core.js': 'export const xbLog={isEnabled:()=>globalThis.__vectorPackageTest.monitoring,info:(...args)=>globalThis.__vectorPackageTest.logs.push(args),warn:(...args)=>globalThis.__vectorPackageTest.logs.push(args),error(){},debug(){}};',
     'config.js': 'export const getVectorConfig=()=>globalThis.__vectorPackageTest.config; export const getTextFilterRules=()=>globalThis.__vectorPackageTest.filters;',
     'runtime.js': 'export const refreshRecallRuntime=async()=>{globalThis.__vectorPackageTest.runtimeInvalidations++;}; export const applyRecallRuntimeMutationBestEffort=()=>{globalThis.__vectorPackageTest.runtimeMutations++;}; export const clearRecallRuntime=async()=>{};',
     'lexical-index.js': 'export const invalidateLexicalIndex=()=>{globalThis.__vectorPackageTest.lexicalInvalidations++;};',
-    'siliconflow.js': 'export const embed=async(texts)=>{const host=globalThis.__vectorPackageTest; host.embeddingInputs.push(...texts); if(host.embeddingError) throw host.embeddingError; return texts.map(()=>[1,0]);};',
+    'siliconflow.js': 'export const embed=async(texts)=>{const host=globalThis.__vectorPackageTest; host.embeddingInputs.push(...texts); host.onEmbed?.(texts); if(host.embeddingError) throw host.embeddingError; return texts.map(()=>[1,0]);};',
     'llm-service.js': 'export const callLLM=async()=>{throw new Error("unexpected LLM call");};',
 };
 const bundled = await build({
@@ -32,11 +32,15 @@ const bundled = await build({
         "export * from './modules/story-summary/vector/storage/package/codec.js';",
         "export * from './modules/story-summary/vector/storage/package/sources.js';",
         "export * from './modules/story-summary/vector/utils/vector-input-digest.js';",
+        "export * from './modules/story-summary/vector/integrity-policy.js';",
+        "export * as coordinator from './modules/story-summary/vector/runtime/maintenance-coordinator.js';",
         "export * as io from './modules/story-summary/vector/storage/vector-io.js';",
         "export * as store from './modules/story-summary/vector/storage/chunk-store.js';",
         "export * as stateStore from './modules/story-summary/vector/storage/state-store.js';",
         "export * as pipeline from './modules/story-summary/vector/pipeline/state-integration.js';",
         "export * as chunkPipeline from './modules/story-summary/vector/pipeline/chunk-builder.js';",
+        "export * from './modules/story-summary/vector/pipeline/chunk-maintenance.js';",
+        "export * from './modules/story-summary/vector/pipeline/event-vector-input.js';",
         "export { db } from './modules/story-summary/data/db.js';",
     ].join('\n') },
     bundle: true, write: false, format: 'esm', platform: 'node',
@@ -55,7 +59,7 @@ after(() => db.close());
 
 beforeEach(async () => {
     for (const table of db.tables) await table.clear();
-    Object.assign(host, { filters: [], config: { enabled: true }, metadataWrites: 0, runtimeInvalidations: 0, runtimeMutations: 0, lexicalInvalidations: 0, embeddingInputs: [], embeddingError: null });
+    Object.assign(host, { filters: [], config: { enabled: true }, monitoring: true, logs: [], metadataWrites: 0, runtimeInvalidations: 0, runtimeMutations: 0, lexicalInvalidations: 0, embeddingInputs: [], embeddingError: null, onEmbed: null });
     host.context = { chatId: fixture.chatId, chat: structuredClone(fixture.chat) };
     for (const key of Object.keys(host.metadata)) delete host.metadata[key];
     host.metadata.extensions = { LittleWhiteBox: {
@@ -78,7 +82,314 @@ async function seedCache() {
     await mod.store.updateMeta(fixture.chatId, { fingerprint: fixture.fingerprint, lastChunkFloor: host.context.chat.length - 1 });
 }
 async function cacheSnapshot() { return Promise.all(db.tables.map(table => table.toArray())); }
+function automaticReceipts() { return host.logs.flat().filter(value => value?.action === 'automatic'); }
 async function createBytes() { await seedCache(); return (await mod.createVectorPackage()).bytes; }
+
+function maintainL1(options = {}) {
+    return mod.maintainChunks({ targetChatId: fixture.chatId, chatSnapshot: host.context.chat, vectorConfig: host.config, ...options });
+}
+
+for (const missing of ['vector', 'material', 'both']) {
+    test(`automatic L1 maintenance repairs a ${missing} gap behind a complete watermark without rebuying healthy vectors`, async () => {
+        host.context.chat.push({ mes: 'Middle floor.' }, { mes: 'Healthy later floor.' });
+        await seedCache();
+        if (missing !== 'material') await db.chunkVectors.delete([fixture.chatId, 'c-1-0']);
+        if (missing !== 'vector') await db.chunks.delete([fixture.chatId, 'c-1-0']);
+        const check = await mod.checkVectorCacheConsistency();
+        assert.equal(check.status, 'incomplete');
+        assert.deepEqual(check.missingChunkFloors, [1]);
+        assert.deepEqual(mod.buildVectorIntegrityIssues({
+            cacheInconsistent: check.status === 'inconsistent', chunkFloorGap: check.missingChunkFloors.length,
+        }), []);
+        const healthy = await db.chunkVectors.get([fixture.chatId, 'c-2-0']);
+        const result = await maintainL1();
+        assert.equal(result.success, true);
+        assert.equal(result.repaired, 1);
+        assert.deepEqual(host.embeddingInputs, ['Middle floor.']);
+        assert.deepEqual(await db.chunkVectors.get([fixture.chatId, 'c-2-0']), healthy);
+        assert.equal((await mod.checkVectorCacheConsistency()).status, 'consistent');
+        const after = await cacheSnapshot();
+        const again = await maintainL1();
+        assert.equal(again.repaired, 0);
+        assert.deepEqual(host.embeddingInputs, ['Middle floor.']);
+        assert.deepEqual(await cacheSnapshot(), after);
+    });
+}
+
+test('automatic L1 maintenance handles new floors and old holes in the same round', async () => {
+    await seedCache();
+    await db.chunkVectors.clear();
+    host.context.chat.push({ mes: 'New reply.' });
+    const result = await maintainL1();
+    assert.equal(result.success, true);
+    assert.equal(result.built, 1);
+    assert.equal(result.repaired, 1);
+    assert.deepEqual(host.embeddingInputs, ['New reply.', fixture.chat[0].mes]);
+    assert.equal((await db.meta.get(fixture.chatId)).lastChunkFloor, 1);
+});
+
+test('a lagging L1 watermark never causes complete restored vectors to be requested again', async () => {
+    host.context.chat.push({ mes: 'Missing middle.' }, { mes: 'Already restored.' });
+    await seedCache();
+    await db.chunkVectors.delete([fixture.chatId, 'c-1-0']);
+    await mod.store.updateMeta(fixture.chatId, { lastChunkFloor: -1 });
+    const healthy = await db.chunkVectors.get([fixture.chatId, 'c-2-0']);
+    const result = await maintainL1();
+    assert.equal(result.success, true);
+    assert.equal(result.repaired, 1);
+    assert.deepEqual(host.embeddingInputs, ['Missing middle.']);
+    assert.deepEqual(await db.chunkVectors.get([fixture.chatId, 'c-2-0']), healthy);
+    assert.equal((await db.meta.get(fixture.chatId)).lastChunkFloor, 2);
+});
+
+for (const failure of ['request', 'cancel']) {
+    test(`a partial L1 repair resumes only missing vectors after ${failure}`, async () => {
+        host.context.chat = Array.from({ length: 25 }, (_, i) => ({ mes: `Floor ${i}.` }));
+        await seedCache();
+        await db.chunkVectors.clear();
+        const controller = new AbortController();
+        let requests = 0;
+        host.onEmbed = () => {
+            if (++requests !== 2) return;
+            if (failure === 'cancel') controller.abort();
+            else host.embeddingError = Object.assign(new Error(), { embeddingFailure: { kind: 'http', status: 401 } });
+        };
+        const result = await maintainL1({ signal: controller.signal });
+        assert.equal(result.success, false);
+        assert.equal(result.repaired, 20);
+        assert.equal(await db.chunkVectors.count(), 20);
+        const completed = await db.chunkVectors.toArray();
+        const completedIds = new Set(completed.map(row => row.chunkId));
+        const remainingTexts = [...sourceIndex().chunks.values()].filter(row => !completedIds.has(row.id)).map(row => row.chunk.text);
+        host.onEmbed = null;
+        host.embeddingError = null;
+        host.embeddingInputs = [];
+        const next = await maintainL1();
+        assert.equal(next.success, true);
+        assert.equal(next.repaired, 5);
+        assert.deepEqual(host.embeddingInputs.sort(), remainingTexts.sort());
+        for (const row of completed) assert.deepEqual(await db.chunkVectors.get([row.chatId, row.chunkId]), row);
+    });
+}
+
+test('L2 gap checking uses event identities, not counts, and needs no decoded vectors or model call', async () => {
+    await seedCache();
+    const events = memory().storySummary.json.events;
+    assert.deepEqual(mod.selectMissingEventVectorPairs(events, await mod.store.getEventVectorDescriptors(fixture.chatId), fixture.fingerprint), []);
+    await db.eventVectors.clear();
+    await mod.store.saveEventVectors(fixture.chatId, [{ eventId: 'unrelated-event', vector: [1, 0] }], fixture.fingerprint);
+    const descriptors = await mod.store.getEventVectorDescriptors(fixture.chatId);
+    assert.deepEqual(descriptors, [{ eventId: 'unrelated-event', fingerprint: fixture.fingerprint }]);
+    assert.deepEqual(mod.selectMissingEventVectorPairs(events, descriptors, fixture.fingerprint).map(pair => pair.id), events.map(event => event.id));
+    assert.equal(host.embeddingInputs.length, 0);
+});
+
+for (const [reason, mutate] of [
+    ['missing_source_hash', () => db.chunkVectors.toCollection().modify(record => { delete record.sourceHash; })],
+    ['l1_count_mismatch', () => db.chunks.clear()],
+    ['l1_content_mismatch', () => db.chunks.toCollection().modify(record => { record.text += ' changed'; })],
+    ['missing_relation_hash', () => db.stateVectors.toCollection().modify(record => { delete record.relationHash; })],
+]) {
+    test(`automatic local check detects ${reason} without export, upload or a model request`, async () => {
+        await seedCache();
+        await mutate();
+        const before = await cacheSnapshot();
+        const result = await mod.checkVectorCacheConsistency();
+        const recoverable = reason === 'l1_count_mismatch';
+        assert.equal(result.status, recoverable ? 'incomplete' : 'inconsistent');
+        if (recoverable) assert.deepEqual(result.missingChunkFloors, [0]);
+        else assert.equal(result.diagnostic.details.reason, reason);
+        assert.equal(result.diagnostic.action, 'automatic');
+        const issues = mod.buildVectorIntegrityIssues({ cacheInconsistent: result.status === 'inconsistent' });
+        assert.deepEqual(issues.map(({ code, action }) => ({ code, action })), recoverable ? [] : [{ code: 'cache_inconsistent', action: 'rebuild' }]);
+        assert.deepEqual(await cacheSnapshot(), before);
+        assert.equal(host.metadataWrites, 0);
+        assert.equal(host.embeddingInputs.length, 0);
+    });
+
+    test(`cache rejection records ${reason}, counts, watermark and L0 failures without a write or upload`, async () => {
+        await seedCache();
+        memory().l0Index.byFloor[0] = { status: 'fail', attempts: 3 };
+        await mutate();
+        const before = await cacheSnapshot();
+        await assert.rejects(mod.io.backupToServer(), error => {
+            assert.equal(error.code, 'incomplete_cache');
+            assert.equal(error.details.reason, reason);
+            const receipt = error.cacheDiagnostic;
+            assert.equal(receipt.l1Chunks, reason === 'l1_count_mismatch' ? 0 : 1);
+            assert.equal(receipt.l1Vectors, 1);
+            assert.equal(receipt.lastChunkFloor, 0);
+            assert.equal(receipt.l0.pending, 0);
+            assert.deepEqual(receipt.l0.failedFloors, [{ floor: 0, attempts: 3, terminal: true }]);
+            assert.ok(host.logs.some(args => args.includes(receipt)));
+            return true;
+        });
+        assert.deepEqual(await cacheSnapshot(), before);
+        assert.equal(host.metadataWrites, 0);
+        assert.equal(host.embeddingInputs.length, 0);
+    });
+}
+
+test('a failed L0 extraction alone does not imply one of the four export cache faults', async () => {
+    await seedCache();
+    memory().l0Index.byFloor[0] = { status: 'fail', attempts: 3 };
+    memory().stateAtoms = [];
+    await db.stateVectors.clear();
+    const receipt = await mod.recordVectorCacheDiagnostic('before-rebuild');
+    assert.equal(receipt.code, 'valid');
+    assert.equal(receipt.l0.terminalFail, 1);
+    assert.equal(receipt.l0Vectors, 0);
+    assert.equal((await mod.checkVectorCacheConsistency()).status, 'consistent');
+});
+
+test('ordinary pending floors and a fresh empty cache are not treated as inconsistent stored vectors', async () => {
+    assert.equal((await mod.checkVectorCacheConsistency()).status, 'incomplete');
+    await seedCache();
+    for (let gap = 1; gap <= 5; gap++) {
+        host.context.chat.push({ is_user: true, mes: `pending message ${gap}` });
+        const result = await mod.checkVectorCacheConsistency();
+        assert.equal(result.status, 'incomplete');
+        assert.equal(result.missingChunkFloors.length, gap);
+        const issues = mod.buildVectorIntegrityIssues({ cacheInconsistent: result.status === 'inconsistent', chunkFloorGap: result.missingChunkFloors.length });
+        assert.deepEqual(issues.map(issue => issue.code), gap < 5 ? [] : ['l1_gap']);
+    }
+    assert.equal(host.embeddingInputs.length, 0);
+    assert.equal(automaticReceipts().length, 0);
+});
+
+test('automatic checking waits for idle and never inspects a half-written cache', async () => {
+    await seedCache();
+    await db.chunks.clear();
+    let finishWrite;
+    const held = new Promise(resolve => { finishWrite = resolve; });
+    const write = mod.coordinator.runVectorWriteTask({ chatId: fixture.chatId, scope: 'io' }, () => held);
+    try {
+        assert.deepEqual(await mod.checkVectorCacheConsistency(), { status: 'deferred' });
+    } finally {
+        finishWrite();
+        await write;
+    }
+    assert.deepEqual(await mod.checkVectorCacheConsistency({ isCurrent: () => false }), { status: 'deferred' });
+    assert.equal(automaticReceipts().length, 0);
+    assert.equal((await mod.checkVectorCacheConsistency()).status, 'incomplete');
+});
+
+test('many missing L1 segments in one floor stay silent after a failed repair and recover on a later round', async () => {
+    host.context.chat.push({ mes: '长句'.repeat(4000) }, { mes: 'Healthy last floor.' });
+    await seedCache();
+    const missing = [...sourceIndex().chunks.values()].filter(row => row.chunk.floor === 1);
+    assert.ok(missing.length >= 5);
+    await db.chunkVectors.bulkDelete(missing.map(row => [fixture.chatId, row.id]));
+    host.embeddingError = Object.assign(new Error(), { embeddingFailure: { kind: 'http', status: 503 } });
+    const failed = await maintainL1();
+    assert.equal(failed.success, false);
+    const check = await mod.checkVectorCacheConsistency();
+    assert.equal(check.status, 'incomplete');
+    assert.deepEqual(check.missingChunkFloors, [1]);
+    assert.deepEqual(mod.buildVectorIntegrityIssues({
+        cacheInconsistent: check.status === 'inconsistent', chunkFloorGap: check.missingChunkFloors.length,
+    }), []);
+    host.embeddingInputs = [];
+    host.embeddingError = null;
+    assert.equal((await maintainL1()).success, true);
+    assert.deepEqual(host.embeddingInputs.sort(), missing.map(row => row.chunk.text).sort());
+    assert.equal((await mod.checkVectorCacheConsistency()).status, 'consistent');
+});
+
+test('five actual incomplete L1 floors warn to fill after failure even with a complete watermark', async () => {
+    host.context.chat.push(...Array.from({ length: 6 }, (_, i) => ({ mes: `Middle ${i}.` })));
+    await seedCache();
+    await db.chunkVectors.bulkDelete([1, 2, 3, 4, 5].map(floor => [fixture.chatId, `c-${floor}-0`]));
+    host.embeddingError = Object.assign(new Error(), { embeddingFailure: { kind: 'http', status: 429 } });
+    assert.equal((await maintainL1()).success, false);
+    const check = await mod.checkVectorCacheConsistency();
+    assert.equal(check.status, 'incomplete');
+    assert.deepEqual(check.missingChunkFloors, [1, 2, 3, 4, 5]);
+    assert.equal((await db.meta.get(fixture.chatId)).lastChunkFloor, 6);
+    assert.deepEqual(mod.buildVectorIntegrityIssues({
+        cacheInconsistent: check.status === 'inconsistent', chunkFloorGap: check.missingChunkFloors.length,
+    }).map(({ code, action }) => ({ code, action })), [{ code: 'l1_gap', action: 'fill' }]);
+});
+
+test('ordinary gaps cannot conceal stale materials that gap repair would reuse', async () => {
+    await seedCache();
+    await db.chunkVectors.clear();
+    await db.chunks.toCollection().modify(record => { record.text += ' stale'; });
+    const check = await mod.checkVectorCacheConsistency();
+    assert.equal(check.status, 'inconsistent');
+    assert.equal(check.diagnostic.details.reason, 'l1_content_mismatch');
+    assert.equal(host.embeddingInputs.length, 0);
+});
+
+test('a vector without material is recoverable only if its input still matches the current source', async () => {
+    await seedCache();
+    await db.chunks.clear();
+    host.context.chat[0].mes += ' changed';
+    const check = await mod.checkVectorCacheConsistency();
+    assert.equal(check.status, 'inconsistent');
+    assert.equal(check.diagnostic.code, 'source_mismatch');
+    assert.equal(host.embeddingInputs.length, 0);
+});
+
+for (const change of ['chat', 'source', 'generation', 'writer']) {
+    test(`an automatic check discards its result when ${change} changes during storage reading`, async () => {
+        await seedCache();
+        await db.chunks.toCollection().modify(record => { record.text += ' stale'; });
+        let current = true;
+        const mutateDuringRead = record => {
+            if (change === 'chat') host.context.chatId = 'other-chat';
+            if (change === 'source') host.context.chat[0].mes += ' edited';
+            if (change === 'generation') current = false;
+            if (change === 'writer') mod.coordinator.invalidateMaintenanceEpoch();
+            return record;
+        };
+        db.chunks.hook('reading', mutateDuringRead);
+        try {
+            assert.deepEqual(await mod.checkVectorCacheConsistency({ isCurrent: () => current }), { status: 'deferred' });
+            assert.equal(automaticReceipts().length, 0);
+        } finally {
+            db.chunks.hook('reading').unsubscribe(mutateDuringRead);
+        }
+    });
+}
+
+test('a storage read failure propagates instead of prescribing a rebuild', async () => {
+    await seedCache();
+    const failure = new Error('storage unavailable');
+    const failRead = () => { throw failure; };
+    db.chunks.hook('reading', failRead);
+    try {
+        await assert.rejects(mod.checkVectorCacheConsistency(), error => error === failure);
+        assert.equal(automaticReceipts().length, 0);
+    } finally {
+        db.chunks.hook('reading').unsubscribe(failRead);
+    }
+});
+
+test('cache failure remains diagnosable in the console when monitoring is disabled', async t => {
+    await seedCache();
+    await db.chunks.clear();
+    host.monitoring = false;
+    const receipts = [];
+    t.mock.method(console, 'warn', (...args) => receipts.push(args[1]));
+    await assert.rejects(mod.createVectorPackage(), error => error.code === 'incomplete_cache');
+    assert.equal(receipts.length, 1);
+    assert.equal(receipts[0].details.reason, 'l1_count_mismatch');
+});
+
+test('before/after rebuild receipts expose the repaired cache fault without changing L0 extraction status', async () => {
+    await seedCache();
+    memory().l0Index.byFloor[0] = { status: 'fail', attempts: 3 };
+    await db.chunks.toCollection().modify(record => { record.text += ' stale'; });
+    const before = await mod.recordVectorCacheDiagnostic('before-rebuild');
+    assert.equal(before.details.reason, 'l1_content_mismatch');
+    await mod.chunkPipeline.buildAllChunks({ vectorConfig: host.config });
+    const after = await mod.recordVectorCacheDiagnostic('after-rebuild');
+    assert.equal(after.code, 'valid');
+    assert.deepEqual(after.l0, before.l0);
+    assert.equal(host.metadataWrites, 0);
+    assert.equal((await mod.checkVectorCacheConsistency()).status, 'consistent');
+});
 function rewriteZip(bytes, change) {
     const files = unzipSync(bytes);
     const manifest = JSON.parse(strFromU8(files['manifest.json']));

@@ -1,5 +1,6 @@
 // Story Summary per-run recall diagnostics.
 // Every collected field must have a runtime log, issue detector, or replay/gold consumer.
+import { SUMMARY_FEEDBACK_COPY } from '../../feedback-copy.js';
 
 /**
  * 创建空的指标对象
@@ -9,6 +10,7 @@ export function createMetrics() {
     return {
         external: {
             failures: [],
+            queryActivity: null,
         },
 
         // Query Build - 查询构建
@@ -369,6 +371,12 @@ export function formatMetricsLog(metrics, { complete = true } = {}) {
     }
 
     // Query Length
+    if (m.external.queryActivity) {
+        lines.push(SUMMARY_FEEDBACK_COPY.queryActivityLog);
+        lines.push(JSON.stringify(m.external.queryActivity));
+        lines.push('');
+    }
+
     lines.push('[Query Length] 查询长度');
     lines.push(`├─ query_v0_chars: ${m.query?.lengths?.v0Chars ?? 0}`);
     lines.push(`├─ query_v1_chars: ${m.query?.lengths?.v1Chars == null ? 'N/A' : m.query.lengths.v1Chars}`);

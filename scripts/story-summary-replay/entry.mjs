@@ -121,7 +121,7 @@ export function ensureNodeReplayGlobals() {
 }
 
 export async function loadReplayModules(extSettings) {
-    const [{ EXT_ID }, configModule, storeModule, generatorModule, promptModule, chunkStoreModule, chunkBuilderModule, chunkTextModule, stateStoreModule, stateIntegrationModule, recallModule, eventRerankModule, metricsModule, embedderModule, lexicalIndexModule] = await Promise.all([
+    const [{ EXT_ID }, configModule, storeModule, generatorModule, promptModule, chunkStoreModule, chunkBuilderModule, chunkTextModule, stateStoreModule, stateIntegrationModule, recallModule, eventRerankModule, metricsModule, embedderModule, lexicalIndexModule, chunkMaintenanceModule] = await Promise.all([
         import('../../core/constants.js'),
         import('../../modules/story-summary/data/config.js'),
         import('../../modules/story-summary/data/store.js'),
@@ -137,6 +137,7 @@ export async function loadReplayModules(extSettings) {
         import('../../modules/story-summary/vector/retrieval/metrics.js'),
         import('../../modules/story-summary/vector/utils/embedder.js'),
         import('../../modules/story-summary/vector/retrieval/lexical-index.js'),
+        import('../../modules/story-summary/vector/pipeline/chunk-maintenance.js'),
     ]);
 
     extSettings[EXT_ID] = { storySummary: { enabled: true } };
@@ -148,6 +149,7 @@ export async function loadReplayModules(extSettings) {
         ...promptModule,
         ...chunkStoreModule,
         ...chunkBuilderModule,
+        ...chunkMaintenanceModule,
         ...chunkTextModule,
         ...stateStoreModule,
         ...stateIntegrationModule,
@@ -810,7 +812,13 @@ async function summarizeNaturalHistory({
 async function maintainNaturalTurnAfterAi(args) {
     // Own the complete turn trace, including work completed before a later stage throws.
     const counted = await withExternalCallTrace(async () => {
-        const maintained = await maintainNaturalHistoryAfterAi(args);
+        const maintained = await maintainNaturalHistoryAfterAi({
+            ...args,
+            repairEvents: async () => {
+                const result = await vectorizeEventSummaries(args.modules, args.chatId, args.panelConfig.vector, args.modules.getSummaryStore()?.json?.events || []);
+                return { success: true, repaired: result.built };
+            },
+        });
         const summary = await summarizeNaturalHistory({ ...args, historyThroughFloor: args.floor, reason: 'after_ai' });
         return { ...maintained, result: { ...maintained.result, summary: summary.result } };
     });
