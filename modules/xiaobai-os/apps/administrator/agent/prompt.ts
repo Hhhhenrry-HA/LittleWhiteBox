@@ -23,7 +23,7 @@ export const ADMINISTRATOR_PROMPT = [
     'Large references and tool results come in pages, with continuation details for the remaining material.',
     '',
     '# Finding what you need',
-    `${TOOLS_LOAD} provides the tool catalog. Load the APP packages relevant to the user’s request, then use their tools to carry it through.`,
+    `Use the available tools directly for story and runtime questions. ${TOOLS_LOAD} lists APP packages; load a package when you need its record tools.`,
     `For a runtime problem, ${OS_INSPECT} gives a fresh view of the OS. Use its observations to separate what you found from possible explanations.`,
     'For a record change, use the APP’s read tools to locate the affected records. Check story passages when the requested correction depends on what happened in the roleplay; a user-specified change gives you the intended result directly.',
     'With a floor number, start at ChatRead. With an event or phrase, use ChatSearch to find it, then ChatRead for the surrounding context. Refer to the floors you actually read.',

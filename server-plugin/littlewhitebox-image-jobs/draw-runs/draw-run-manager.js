@@ -156,6 +156,7 @@ class DrawRunManager {
         maxTotalEnvelopeBytes = MAX_TOTAL_ENVELOPE_BYTES,
         errorRetentionMs = RUN_ERROR_RETENTION_MS,
         childSweepIntervalMs = CHILD_SWEEP_INTERVAL_MS,
+        cancellations = null,
     } = {}) {
         if (!runtime || typeof runtime.executePreparedScenePlanner !== 'function'
             || typeof runtime.compileDrawRunImages !== 'function') {
@@ -175,6 +176,7 @@ class DrawRunManager {
             throw new TypeError('Draw Run manager requires a per-run Host Client factory');
         }
         this.runtime = runtime;
+        this.cancellations = cancellations;
         this.agentCore = agentCore;
         this.envelopeValidator = envelopeValidator;
         this.imageJobService = imageJobService;
@@ -216,6 +218,7 @@ class DrawRunManager {
             this.#refreshChild(existing);
             return this.#snapshot(existing);
         }
+        this.cancellations?.assertAllowed(owner, 'run', envelope.runId);
         if (this.runs.size >= this.maxRuns || this.#ownerRuns(owner).length >= this.maxRunsPerOwner) {
             throw managerError('Too many retained Draw Runs', 'draw_run_limit', 429);
         }
@@ -266,6 +269,14 @@ class DrawRunManager {
             finishedAt: null,
             expiryTimer: null,
         };
+        try {
+            this.cancellations?.reserve(owner, {
+                runIds: [envelope.runId], jobIds: [this.runtime.deriveDrawRunChildJobId(envelope.runId)],
+            });
+        } catch (error) {
+            hostSession?.dispose?.();
+            throw error;
+        }
         this.runs.set(key, run);
         this.storedEnvelopeBytes += inputBytes;
         this.queue.push(key);
@@ -325,6 +336,7 @@ class DrawRunManager {
         this.childSweepTimer = null;
         this.queue.length = 0;
         for (const run of this.runs.values()) {
+            this.#releaseCancellationReservation(run);
             run.abortController?.abort();
             this.#releaseSensitiveInput(run);
             if (run.expiryTimer) clearTimeout(run.expiryTimer);
@@ -508,6 +520,12 @@ class DrawRunManager {
         this.queue = this.queue.filter(key => key !== run.key);
         this.#releaseSensitiveInput(run);
         this.runs.delete(run.key);
+        this.#releaseCancellationReservation(run);
+    }
+
+    #releaseCancellationReservation(run) {
+        this.cancellations?.release(run.owner, 'run', run.id);
+        if (!run.childJobId) this.cancellations?.release(run.owner, 'job', this.runtime.deriveDrawRunChildJobId(run.id));
     }
 
     #snapshot(run) {

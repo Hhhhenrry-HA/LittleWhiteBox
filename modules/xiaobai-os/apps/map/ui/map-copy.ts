@@ -1,5 +1,10 @@
 import type { MapBrowseFilter, MapBrowseKind } from './map-browse.js';
 
+export const MAP_PROJECTION_COPY = {
+    label: '投影地图', empty: '还没有地图',
+    enabled: '地图投影已开启。', disabled: '地图投影已关闭。',
+} as const;
+
 export const MAP_VIEW_LABELS = { world: '世界地图', region: '当前地区', scene: '当前场景' } as const;
 export const MAP_VISIT_LABELS = { visited: '已到访', unvisited: '未到访' } as const;
 export const MAP_BROWSE_COPY = {
@@ -7,6 +12,7 @@ export const MAP_BROWSE_COPY = {
     region: { unit: '场景', search: '搜索本地区场景', all: '全部场景', empty: '这个地区还没有记录场景', emptyHint: '可以查看其他地区，或更新地图补充。', notFound: '没有找到符合条件的场景' },
 } as const;
 export const MAP_NAV_COPY = {
+    loading: '正在打开地图…',
     viewLabel: '地图视图', trailLabel: '当前查看位置',
     unknownRegion: '所属地区待确认', unknownRegionHint: '地图还没有记录当前位置所属的地区。',
     regionMap: '查看地区地图', sceneMap: '查看场景图',

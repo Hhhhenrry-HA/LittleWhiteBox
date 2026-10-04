@@ -1,0 +1,13 @@
+html.map-projection-document { --os-status-height: 0px; }
+.map-projection-document, .map-projection-document body, .map-projection-document #app { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+.map-projection-loading { display: grid; place-items: center; height: 100%; font-size: 14px; }
+.map-projection-view .map-top { inset-inline: 10px; padding-top: 8px; }
+.map-projection-view.is-scene-view .map-top { margin-inline: 10px; }
+.map-projection-view .map-search-bar small,
+.map-projection-view .map-scene-caption,
+.map-projection-view .map-region-trail { display: none; }
+.map-projection-view.has-view-switch:not(.is-scene-view) .map-canvas { margin-top: 112px; }
+.map-projection-view .map-view-switch { flex-basis: 0; }
+.map-projection-view .map-region-card { margin: 6px 10px 10px; padding-block: 8px; }
+.map-projection-view .map-scene-caption { padding-block: 8px; }
+.map-projection-view .map-key { max-height: 45%; overflow: auto; }

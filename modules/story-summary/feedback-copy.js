@@ -23,7 +23,14 @@ export const SUMMARY_FEEDBACK_COPY = Object.freeze({
         retry: '重新读取',
     }),
     statsRefreshFailed: '向量统计刷新失败。',
-    embeddingRecall: detail => `本轮记忆召回已跳过。${detail}`,
+    embeddingRecall: detail => `记忆召回失败，本次生成已停止。${detail}`,
+    recallRetrying: '向量无法成功，建议终止生成后检查向量模型连接状态。',
+    recallRestartFailed: '自动重新生成失败，本次生成已停止。请查看控制台中的错误详情。',
+    recallInterrupted: Object.freeze({
+        edited: '聊天内容已修改，本次生成已停止，请重新发送。',
+        configuration: '记忆设置已变更，本次生成已停止，请重新发送。',
+        memory: '记忆数据已变更，本次生成已停止，请重新发送。',
+    }),
     embeddingRecallReasons: Object.freeze({
         timeout: attempts => {
             const limits = attempts.map(({ attempt, timeoutMs }) => `第 ${attempt} 次限时 ${timeoutMs / 1000} 秒`).join('；');
@@ -42,10 +49,10 @@ export const SUMMARY_FEEDBACK_COPY = Object.freeze({
     }),
     recallEmbeddingRequestFailed: 'Embedding query request failed',
     queryActivityLog: '[Query Activity] 查询期间任务时间线：remaining 为本批剩余处理量，deferredUnits 为未纳入本批的待办，均非缓存校验结果；activeUnits 为处理中条目，非 HTTP 并发数；sameOrigin 仅表示同源，不代表共享限额。空 activities 仅表示所记录阶段未运行；dropped > 0 表示记录已截断。',
-    recallEmbeddingRetry: delayMs => `Round 1 向量化暂时失败，${delayMs}ms 后重试`,
-    recallHostTimeout: seconds => `剧情记忆等待本轮用户消息超过 ${seconds} 秒，尚未开始召回，本轮已跳过。请检查酒馆生成准备流程。`,
-    recallComputeTimeout: seconds => `剧情记忆召回计算超过 ${seconds} 秒，本轮已跳过。请查看召回日志中的阶段和错误详情。`,
-    recallFailed: '剧情记忆召回失败，本轮已跳过。请查看召回日志中的阶段和错误详情。',
+    recallEmbeddingRetry: delayMs => `查询向量化暂时失败，${delayMs}ms 后重试`,
+    recallHostTimeout: seconds => `剧情记忆等待本轮用户消息超过 ${seconds} 秒，尚未开始召回，本次生成已停止。请检查酒馆生成准备流程。`,
+    recallComputeTimeout: seconds => `剧情记忆召回计算超过 ${seconds} 秒，本次生成已停止。请查看召回日志中的阶段和错误详情。`,
+    recallFailed: '剧情记忆召回失败，本次生成已停止。请查看召回日志中的阶段和错误详情。',
     startupFailed: '剧情总结未能完成启动，请刷新页面重试；若仍失败，请反馈控制台中的错误。',
     vectorMaintenance: Object.freeze({
         started: ({ chatId, floorsText, l0Pending, l0VectorMissing }) => `延迟向量维护开始 chat=${chatId} floors=${floorsText} l0Pending=${l0Pending} l0VectorMissing=${l0VectorMissing}；核对 L1/L2 缺口`,

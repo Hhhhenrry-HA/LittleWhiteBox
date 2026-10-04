@@ -3,7 +3,7 @@ import type { MainGenerationRuntime } from '../../host/main-generation-runtime.j
 import { createGameController } from './host/controller.js';
 import { createGameModule } from './module.js';
 import { withMovingRuntime } from './moving/host.js';
-import { withStackingRuntime } from './stacking/host.js';
+import { withBuildingRuntime } from './building/host.js';
 import type { XiaobaiOsSettingsRepository } from '../../host/settings-repository.js';
 
 export interface ProductionGameModuleDependencies {
@@ -16,9 +16,9 @@ export function createProductionGameModule(dependencies: ProductionGameModuleDep
     return createGameModule({
         service: { isMainGenerationActive: dependencies.mainGeneration.isActive },
         movingSoundEnabled: () => dependencies.settings.read()!.apps.game.movingSoundEnabled,
-        stackingSoundEnabled: () => dependencies.settings.read()!.apps.game.stackingSoundEnabled,
-        async install({ game, moving, stacking, economy, execution }) {
-            return withStackingRuntime(withMovingRuntime(createGameController({
+        buildingSoundEnabled: () => dependencies.settings.read()!.apps.game.buildingSoundEnabled,
+        async install({ game, moving, building, economy, execution }) {
+            return withBuildingRuntime(withMovingRuntime(createGameController({
                 game,
                 economy,
                 getChatIdentity: dependencies.getChatIdentity,
@@ -26,7 +26,7 @@ export function createProductionGameModule(dependencies: ProductionGameModuleDep
                 subscribeGeneration: dependencies.mainGeneration.subscribe,
                 execution,
             }), moving, () => dependencies.getChatIdentity()?.key ?? '', dependencies.settings),
-            stacking, () => dependencies.getChatIdentity()?.key ?? '', dependencies.settings);
+            building, () => dependencies.getChatIdentity()?.key ?? '', dependencies.settings);
         },
         async dispose(runtime) { await runtime.stopBackground?.(); },
     });

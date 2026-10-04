@@ -1,5 +1,7 @@
 import { packageError } from './package/messages.js';
-import { resolvePackageSources } from './package/sources.js';
+import { buildSourceIndex, resolvePackageSources } from './package/sources.js';
+import { collectChunkMaterials } from '../pipeline/chunk-materials.js';
+import { makeChunkId } from './chunk-store.js';
 
 // The automatic check needs identities and input digests, not embedding arrays.
 // Export projects through the same boundary before attaching its binary payload.
@@ -21,14 +23,6 @@ function storedSource(record, fingerprint, layer) {
 function buildStoredSourceManifest(cache, { chatId, sources }) {
     const first = cache.chunkVectors[0] || cache.stateVectors[0] || cache.eventVectors[0];
     const fingerprint = first?.fingerprint;
-    // Check materials without vectors too. A missing pair must not hide a
-    // different stored input that ordinary gap repair would reuse unchanged.
-    for (const chunk of cache.chunks) {
-        const current = sources.chunks.get(chunk.chunkId)?.chunk;
-        if (!current || chunk.text !== current.text || chunk.floor !== current.floor || chunk.chunkIdx !== current.chunkIdx) {
-            throw packageError('incomplete_cache', { reason: 'l1_content_mismatch', floor: chunk.floor });
-        }
-    }
     const data = {
         chatId, fingerprint, dims: first?.dims,
         chunks: cache.chunkVectors.map(record => {
@@ -59,18 +53,36 @@ export function buildCacheSourceManifest(cache, operation) {
     if (cache.chunkVectors.some(record => !cachedIds.has(record.chunkId))) {
         throw packageError('incomplete_cache', { reason: 'l1_content_mismatch' });
     }
+    // Packages omit L1 text, so import must be able to reconstruct every saved
+    // input from current chat. This is not the daily cache-integrity contract.
+    for (const chunk of cache.chunks) {
+        const current = operation.sources.chunks.get(chunk.chunkId)?.chunk;
+        if (!current || chunk.text !== current.text || chunk.floor !== current.floor || chunk.chunkIdx !== current.chunkIdx) {
+            throw packageError('incomplete_cache', { reason: 'l1_content_mismatch', floor: chunk.floor });
+        }
+    }
     return buildStoredSourceManifest(cache, operation);
 }
 
-// Daily maintenance distinguishes recoverable missing pairs from stale inputs.
-// Verify every remaining input first, then count unique incomplete floors,
-// including holes behind an otherwise complete progress watermark.
+// Daily integrity is vector-to-saved-material, not saved-material-to-live-chat.
+// Missing pairs share their material selection with automatic/manual gap repair.
 export function inspectCacheSourceCoverage(cache, operation) {
-    buildStoredSourceManifest(cache, operation);
+    const { chat } = operation.snapshot;
+    for (const chunk of cache.chunks) {
+        if (!Number.isInteger(chunk.floor) || chunk.floor < 0 || chunk.floor >= chat.length
+            || !Number.isInteger(chunk.chunkIdx) || chunk.chunkIdx < 0
+            || chunk.chunkId !== makeChunkId(chunk.floor, chunk.chunkIdx)
+            || typeof chunk.text !== 'string' || !chunk.text) {
+            throw packageError('incomplete_cache', { reason: 'l1_content_mismatch', floor: chunk.floor });
+        }
+    }
+    const materials = collectChunkMaterials(chat, cache.chunks, cache.chunkVectors);
+    const sources = buildSourceIndex(operation.snapshot, materials);
+    buildStoredSourceManifest(cache, { chatId: operation.chatId, sources });
     const cachedIds = new Set(cache.chunks.map(chunk => chunk.chunkId));
     const vectorIds = new Set(cache.chunkVectors.map(record => record.chunkId));
     const missingFloors = new Set();
-    for (const [id, source] of operation.sources.chunks) {
+    for (const [id, source] of sources.chunks) {
         if (!cachedIds.has(id) || !vectorIds.has(id)) missingFloors.add(source.chunk.floor);
     }
     return { missingChunkFloors: [...missingFloors].sort((a, b) => a - b) };

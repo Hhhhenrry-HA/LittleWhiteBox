@@ -133,6 +133,16 @@ test('recall prose keeps tag contents after existing exclusion rules have remove
     assert.equal(mod.cleanRecallMessageText('visible story'), 'visible story');
 });
 
+test('recall query segments ignore functional controls but retain actual dialogue', () => {
+    const query = text => mod.buildQueryBundle([{ is_user: true, mes: text }]);
+    const expected = query('Alice found the key.\n  \n\nHello Bob.');
+    const actual = query('Alice found the key.\n[img:rain] [image:slot-1] [dice:check_1]\n'
+        + '[tts:emotion=happy]\n[voice:sad:Hello Bob.]');
+    for (const key of ['querySegments', 'rerankQuery', 'lexicalTerms', 'focusQuery', 'focusTerms']) {
+        assert.deepEqual(actual[key], expected[key]);
+    }
+});
+
 test('UI custom exclusions run before tag removal and query construction', () => {
     host.store.json.characters.main = ['Alice', 'Bob'];
     host.filterRules = [

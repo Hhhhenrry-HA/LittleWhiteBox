@@ -301,6 +301,7 @@ test('advertises and proxies the V5 MessagePack stream route', async () => {
         'novelai-v5-final-image-v1',
         'draw-runs-v1',
         DRAW_RUN_RUNTIME_CAPABILITY,
+        'draw-work-cancellation-v1',
     ]);
 
     const req = new EventEmitter();

@@ -13,13 +13,13 @@ LittleWhiteBox 的可选 SillyTavern server plugin。开启小白X后台任务�
 
 SillyTavern 的前端扩展更新不会改写 `plugins/`。LittleWhiteBox 更新后，如果界面提示后台插件版本不兼容，请用扩展内的 `server-plugin/littlewhitebox-image-jobs/` 完整覆盖 `SillyTavern/plugins/littlewhitebox-image-jobs/`，再重启 SillyTavern。前端会在提交场景分析前校验运行契约，不会继续调用不兼容的旧插件。
 
-2.3.0 建立 `draw-run-runtime-v4` 边界，需要从旧后台升级一次。提示词与 `submit_scene_plan` Tool Schema 随前端请求提供；后台只解释返回结果中的 `images`，不解释 `mindful_prelude` 或其他规划说明。只要图片执行契约不变，后续增删、改名或调整规划字段都不需要再次替换后台。供应商协议变化或后台缺陷修复仍可能需要升级。
+当前分发包为 2.4.0，前端通过 `draw-work-cancellation-v1` 检查整组取消能力。启用后台排队重绘需要完整更新一次插件目录；不能只替换入口文件，也不能只更新前端。此包同时包含现有 Planner、供应商适配与工具参数解析修补，不需要分别安装补丁。
 
-当前分发包包含 2.3.0 同版本修补：内置 Agent Core 对没有明确恢复规则的 Tool 参数保留原文用于校验和纠错，不再猜测字段或替换为 `{}`；完整 `tool_call` 标签内，工具 JSON 前后的说明文字（含 `[2 张已完成]` 这类尾注）、代码围栏、多余标签与闭合符不会混入参数，多个 JSON、嵌套调用、未闭合引号和错位字段会明确报错；场景计划支持完整 `images` 数组之后的有限末尾括号修复；文本工具协议解析失败会保留错误分类和脱敏原始响应用于诊断。运行契约与最低版本要求不变，不强制已有 2.3.0 用户重新安装；正常任务仍可继续执行，但旧安装不包含这些异常处理修复。新安装用户直接复制扩展内当前的完整插件目录即可获得修补。
+后台继续使用 `draw-run-runtime-v4`：提示词与 `submit_scene_plan` Tool Schema 随前端请求提供，后台只解释图片执行结果。只要图片执行契约不变，后续调整规划字段或前端卡片展示不需要替换后台；供应商协议变化或后台缺陷修复仍可能需要升级。
 
-升级重启前，请先等待正在运行的任务完成并接回；后台任务保存在进程内存中，重启不会续跑。
+升级重启前，请先等待正在运行的任务完成并接回；后台任务及取消回执保存在进程内存中，重启不会续跑。
 
-当前分发包也包含共享 Agent 的免密反代支持：Scene Planner 的 API Key 可以留空，图片生成供应商的凭据要求不变。使用免密后台规划时，需要完整复制更新后的本插件并重启；只更新前端扩展不会更新已安装的后台。运行契约和最低版本仍为当前版本，不强制已有有密码用户升级，也不会自动重发旧后台拒绝的任务。
+Scene Planner 支持免密反代，Agent API Key 可以留空；图片生成供应商的凭据要求不变。取消执行与恢复的准确边界见 [整组取消契约](../../docs/image-backend-batch-jobs.md#整组取消)。
 
 角色 `type` 是提示词文本，不限定语言或固定枚举；空字符串、`null` 或省略也不因此拒绝出图。除表示未提供的 `null` 外，非文本值仍属于结构错误。角色库匹配与外貌注入不变；浏览器接回时，自动学习跳过没有提供类型的新角色，不把未知类型补成 `girl`。
 
@@ -43,6 +43,7 @@ SillyTavern 的前端扩展更新不会改写 `plugins/`。LittleWhiteBox 更新
 
 ```text
 image-batch-jobs-v1
+draw-work-cancellation-v1
 novelai-v5-final-image-v1
 draw-runs-v1
 draw-run-runtime-v4
@@ -58,6 +59,7 @@ draw-run-runtime-v4
 | GET | `/v1/jobs/:jobId/results/:index` | 获取已归一化的完成图片 |
 | DELETE | `/v1/jobs/:jobId/results/:index` | ACK 已落库结果并释放字节 |
 | POST | `/v1/jobs/:jobId/cancel` | 取消当前和未执行项目，保留完成结果 |
+| POST | `/v1/cancel` | 按明确的 jobIds/runIds 集合整体取消，并阻止保留期内迟到的同 ID 创建 |
 | DELETE | `/v1/jobs/:jobId` | 删除终态任务 |
 
 任务以当前登录用户 `req.user.profile.handle` 隔离。`requestId` 必填且按用户幂等；每批最多 20 项。任务只存在于内存，终态立即丢弃请求输入；前端在图片与 slot selection 都落库后才 ACK，全部交付后删除终态任务，异常退出时由一小时 TTL 兜底。浏览器会在独立 IndexedDB 中保存不含密钥和请求正文的 jobId/slotId 交付日志，用于刷新、断网或关闭页面后接回。默认上限为 200 个任务、每用户 20 个任务、64 MiB 排队输入和 512 MiB 结果字节。

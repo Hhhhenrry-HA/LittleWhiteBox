@@ -16,7 +16,10 @@ import {
     extension_prompt_roles,
     getRequestHeaders,
     chat_metadata,
+    setExternalAbortController,
 } from "../../../../../../script.js";
+import { generateGroupWrapper } from '../../../../../group-chats.js';
+import { isGenerating } from '../../shared/common/sillytavern-generation-state.js';
 import { EXT_ID, extensionFolderPath } from "../../core/constants.js";
 import { xbLog, CacheRegistry } from "../../core/debug-core.js";
 import { formatErrorDetails } from '../../core/error-details.js';
@@ -29,7 +32,9 @@ import { createMemoryMaintenanceHost } from './maintenance/host.js';
 import { SUMMARY_FEEDBACK_COPY } from './feedback-copy.js';
 import {
     clearEmbeddingFailureNotice,
-    notifyEmbeddingRecallFailure,
+    clearRecallFailureNotice,
+    createRecallRetryNotice,
+    notifyRecallFailure,
     notifySummaryStartupFailure,
     notifyUnconfirmedMemory,
     runClearWithFeedback,
@@ -77,7 +82,8 @@ import {
     isSummaryConsumable,
     extractRelationshipsFromFacts,
 } from "./data/store.js";
-import { commitSummaryMemory, readSummaryMemory, readPublishedSummaryMemory, assertMemoryWritable, getMemoryCommitState } from './data/memory-commit.js';
+import { commitSummaryMemory, readSummaryMemory, readPublishedSummaryMemory, assertMemoryWritable, getMemoryCommitState, waitForMemoryCommit } from './data/memory-commit.js';
+import { usesStoryRecall } from './generate/recall-policy.js';
 import { prepareImportedSummary, readSummaryPackageData, SUMMARY_MEMORY_PACKAGE } from './data/summary-import.js';
 import { createFactIdAllocator } from './data/fact-identity.js';
 import { mergeEditedFactsWithTimestamps } from './data/fact-edits.js';
@@ -105,7 +111,12 @@ import {
 import { selectBestStoryMemoryResult } from "./generate/story-memory-result.js";
 import { createRecallReuse, recallConfigKey } from './generate/recall-reuse.js';
 import { createRecallDiagnostics, formatRecallDiagnostics, formatRecallReuseDiagnostics, recordRecallFallback } from './recall-diagnostics.js';
-import { RECALL_TIMEOUT_MS, RECALL_TIMEOUT_REASONS, recallFailureNotice } from './generate/recall-failure.js';
+import { RECALL_TIMEOUT_MS, RECALL_TIMEOUT_REASONS, recallFailureNotice, recallCancellationNotice } from './generate/recall-failure.js';
+import { getGenerationRetryOwner } from '../../shared/common/generation-retry-owner.js';
+import { runRequiredRecall } from './generate/required-recall.js';
+import { createRecallRecovery } from './generate/recall-recovery.js';
+import { createRecallRecoveryHost } from './generate/recovery-host.js';
+import { acquireRecallRecoveryUi, protectGenerationDraft } from './generate/recovery-ui.js';
 
 // summary generation
 import { runSummaryGeneration } from "./generate/generator.js";
@@ -212,7 +223,10 @@ const embeddingConnection = createEmbeddingConnection({
 });
 const memoryMaintenance = createMemoryMaintenanceHost({
     canRun: () => isStorySummaryConsumableForCurrentChat(),
-    invalidateRecall: () => cancelRecallAndClearPrompt('memory-maintained'),
+    invalidateRecall: () => {
+        recallReuse.invalidate();
+        recallPrefetch.invalidate();
+    },
     refreshSummary: impact => {
         const chatId = getContext().chatId;
         removeEventDocuments(impact.eventIds, chatId);
@@ -3969,7 +3983,7 @@ function clearExtensionPrompt() {
 
 // The coordinator times actual computation separately from waiting for a USER
 // message. Completed outcomes remain claimable by this generation only.
-const RECALL_WARNING_COOLDOWN_MS = 10000;
+const RECALL_ADVISORY_COOLDOWN_MS = 10000;
 const RECALL_REASONS_THAT_ABORT_GENERATION = new Set([
     'chat-changed',
     'disabled',
@@ -3979,9 +3993,27 @@ const RECALL_REASONS_THAT_ABORT_GENERATION = new Set([
 ]);
 
 const recallReuse = createRecallReuse();
+let recallGenerationRequest = null;
+const recallRecoveryHost = createRecallRecoveryHost({
+    getContext, isGenerating, generateGroup: generateGroupWrapper,
+    setAbortController: setExternalAbortController,
+    protectDraft: () => protectGenerationDraft(document, getContext),
+    registerInterceptor: registerGenerateInterceptor,
+    unregisterInterceptor: unregisterGenerateInterceptor,
+});
+const recallRecovery = createRecallRecovery({
+    getContext, host: recallRecoveryHost,
+    acquireUi: onStop => acquireRecallRecoveryUi({ document, window, getContext, isGenerating, onStop }),
+    createNotice: createRecallRetryNotice,
+    onError: error => {
+        xbLog.error(MODULE_ID, SUMMARY_FEEDBACK_COPY.recallRestartFailed, error);
+        toastr.warning(SUMMARY_FEEDBACK_COPY.recallRestartFailed, SUMMARY_FEEDBACK_COPY.title);
+    },
+});
 
 const recallPrefetch = createRecallPrefetchCoordinator({
     getContext,
+    waitForStable: waitForMemoryCommit,
     prepare: (type, signal, diagnostics) => prepareMemoryPrompt(type, signal, diagnostics),
     pollMs: 16,
     maxAgeMs: RECALL_TIMEOUT_MS,
@@ -3999,10 +4031,17 @@ const recallPrefetch = createRecallPrefetchCoordinator({
 });
 
 function cancelActiveRecall(reason = 'cancelled', options = {}) {
-    return recallPrefetch.cancel(reason, {
+    const interrupted = recallRecovery.getCurrent() || recallPrefetch.getActive();
+    recallRecovery.cancel(reason);
+    const result = recallPrefetch.cancel(reason, {
         abortDispatch: RECALL_REASONS_THAT_ABORT_GENERATION.has(reason),
         ...options,
     });
+    const notice = recallCancellationNotice(reason);
+    if (interrupted && interrupted.chatId === getContext()?.chatId && notice) {
+        notifyRecallFailure(notice);
+    }
+    return result;
 }
 
 function cancelRecallAndClearPrompt(reason) {
@@ -4192,7 +4231,7 @@ async function commitMemoryPrompt(prepared, signal) {
             'recall',
             chatId,
             prepared.notice.issueCode || 'recall_notice',
-            RECALL_WARNING_COOLDOWN_MS,
+            RECALL_ADVISORY_COOLDOWN_MS,
         )
     ) {
         try {
@@ -4239,7 +4278,9 @@ async function commitMemoryPrompt(prepared, signal) {
 // generate_interceptor 消费者：宿主在用户消息入楼渲染后、Prompt 组装前 await。
 // 旧实现曾在过早的宿主事件中靠输入框缓存猜测焦点；现在直接读取真实 chat，
 // 普通发送以最后一条用户消息为焦点。
-async function runStorySummaryRecallInterceptor(_interceptorChat, _contextSize, _abort, type, runContext) {
+async function runStorySummaryRecallInterceptor(_interceptorChat, _contextSize, abort, type, runContext) {
+    // quiet 不参与总结，也不触碰前台的记忆位置。
+    if (!usesStoryRecall(type)) return;
     // 旧 Prompt 只在宿主真正走到 Prompt 组装前清理；提前召回不碰它。
     clearExtensionPrompt();
     if (!isStorySummaryConsumableForCurrentChat()) {
@@ -4261,46 +4302,45 @@ async function runStorySummaryRecallInterceptor(_interceptorChat, _contextSize, 
     });
     const waitStartedAt = performance.now();
     let joinStatus = 'pending';
-    runContext?.reportProgress?.(run.diagnostics);
+    run.diagnostics.cycle = recallRecovery.getCurrent()?.cycle || 1;
+    const request = recallGenerationRequest;
     try {
-        const outcome = await recallPrefetch.waitForOutcome(run);
-        if (!outcome?.ok) throw outcome?.error || new Error('Story Summary recall produced no outcome');
-
-        const recallResult = await commitMemoryPrompt(outcome.value, run.controller.signal);
+        const outcome = await runRequiredRecall({
+            coordinator: recallPrefetch, run, abort,
+            commit: commitMemoryPrompt,
+            onProgress: diagnostics => runContext?.reportProgress?.(diagnostics),
+            onRetry: (error, diagnostics) => {
+                joinStatus = 'retrying';
+                const text = formatRecallDiagnostics(diagnostics, { status: 'retrying', error });
+                xbLog.warn(MODULE_ID, text);
+                postToFrame({ type: 'RECALL_LOG', text });
+                recallRecovery.retry({ request, startedAt: run.computeStartedAt ?? waitStartedAt });
+            },
+            onFailure: async error => {
+                recallRecovery.cancel('recall-failed');
+                const failure = recallFailureNotice(run.cancelReason, error);
+                if (!failure) {
+                    joinStatus = `cancelled:${run.cancelReason}`;
+                    return;
+                }
+                joinStatus = 'failed';
+                if (recallPrefetch.getCurrent() !== run || getContext()?.chatId !== run.chatId) return;
+                clearExtensionPrompt();
+                run.diagnostics.finishedAt ??= performance.now();
+                const failureLog = formatRecallDiagnostics(run.diagnostics, { status: 'failed', reason: failure.issueCode, error });
+                postToFrame({ type: 'RECALL_LOG', text: failureLog });
+                xbLog.warn(MODULE_ID, failure.notice, error);
+                notifyRecallFailure(failure);
+            },
+        });
+        if (!outcome.ok) return;
+        recallRecovery.succeeded();
+        const recallResult = outcome.value;
         joinStatus = String(recallResult?.text || '').trim() ? 'committed' : 'empty';
         if (String(recallResult?.text || '').trim()) {
             return selectBestStoryMemoryResult(recallResult);
         }
         return selectBestStoryMemoryResult(recallResult, getStorySummaryForEna());
-    } catch (error) {
-        // 截止或失败时 fail-open。显式取消的调用方已经清理 Prompt；旧任务
-        // 不能在这里清掉替代它的新任务结果。后台残余任务也受最终写入闸门保护。
-        const failure = recallFailureNotice(run.cancelReason, error);
-        if (!failure) {
-            joinStatus = `cancelled:${run.cancelReason}`;
-        } else {
-            joinStatus = 'failed';
-            if (recallPrefetch.getCurrent() !== run || getContext()?.chatId !== run.chatId) return;
-            clearExtensionPrompt();
-            run.diagnostics.finishedAt ??= performance.now();
-            const failureLog = formatRecallDiagnostics(run.diagnostics, { status: 'failed', reason: failure.issueCode, error });
-            postToFrame({ type: 'RECALL_LOG', text: failureLog });
-            const { issueCode, notice } = failure;
-            xbLog.warn(MODULE_ID, notice, error);
-            const { chatId } = getContext();
-            if (issueCode === 'recall_embedding_failed') {
-                notifyEmbeddingRecallFailure(chatId, notice, RECALL_WARNING_COOLDOWN_MS);
-            } else if (claimWarningCooldown('recall', chatId, issueCode, RECALL_WARNING_COOLDOWN_MS)) {
-                try {
-                    await executeSlashCommand(`/echo severity=warning ${notice}`);
-                } catch (noticeError) {
-                    xbLog.warn(MODULE_ID, '显示剧情记忆召回失败提示失败', noticeError);
-                }
-            }
-        }
-        if (!runContext?.signal?.aborted) {
-            return selectBestStoryMemoryResult(undefined, getStorySummaryForEna());
-        }
     } finally {
         runContext?.reportProgress?.(null);
         xbLog.info(
@@ -4309,7 +4349,6 @@ async function runStorySummaryRecallInterceptor(_interceptorChat, _contextSize, 
             + `lead=${Math.max(0, Math.round((run.joinedAt || 0) - (run.computeStartedAt || run.joinedAt || 0)))}ms `
             + `wait=${Math.round(performance.now() - waitStartedAt)}ms`,
         );
-        recallPrefetch.finish(run);
     }
 }
 
@@ -4320,9 +4359,15 @@ function handleGenerationAfterCommands(type, params, isDryRun) {
 
     // 新 Generate 只作废旧计算，不碰上一轮 Prompt；Prompt 的唯一清理点
     // 仍是上面的 generate interceptor。
-    cancelActiveRecall('superseded');
+    if (recallRecoveryHost.ownsReplay(params)) {
+        recallPrefetch.cancel('superseded', { abortDispatch: true });
+    } else {
+        cancelActiveRecall('superseded');
+    }
 
     const normalizedType = type || 'normal';
+    recallGenerationRequest = { type: normalizedType, params: { ...params, signal: undefined },
+        owner: getGenerationRetryOwner(params?.signal) };
     if (action !== 'watch') return;
     if (!isStorySummaryConsumableForCurrentChat() || !getVectorConfig()?.enabled) return;
 
@@ -4358,6 +4403,9 @@ function scheduleWithChatGuard(fn, delay = 0, ...args) {
  * 重排，不会丢活。
  */
 function runContentChangeSync(handler, ...args) {
+    // Capture a live recovery before cancelling it; the later edit path must
+    // neither lose that interruption notice nor report the same stop twice.
+    if (recallRecovery.getCurrent()) cancelActiveRecall('history-changed');
     memoryMaintenance.cancel();
     const chatId = getContext()?.chatId || null;
     if (!chatId || !isStorySummaryEnabledForCurrentChat()) return undefined;
@@ -4526,7 +4574,7 @@ async function registerEvents() {
         runStorySummaryRecallInterceptor,
         GENERATE_INTERCEPTOR_ORDER.STORY_SUMMARY,
     );
-    events.on(event_types.GENERATION_STOPPED, () => {
+    recallRecoveryHost.install(() => {
         const { chatId } = getContext();
         cancelActiveRecall('generation-stopped', {
             retainForJoin: true,
@@ -4537,10 +4585,10 @@ async function registerEvents() {
         clearExtensionPrompt();
     });
     events.on(event_types.GENERATION_ENDED, (data) => {
+        if (recallRecovery.getCurrent()) return;
+        // ENDED 没有请求身份，quiet 结束也会触发；这里只通知后续维护，
+        // 不能清掉另一个前台请求已提交、尚未组装的记忆。
         notifyStorySummaryAfterAi(data, "generation_ended");
-        // stopGeneration() 会先触发 ENDED、再触发 STOPPED。这里不能销毁
-        // 本轮身份，否则保存完成后到达的 interceptor 会重新 fallback 召回。
-        clearExtensionPrompt();
     });
 
 }
@@ -4564,12 +4612,14 @@ async function runStorySummaryTeardown() {
     cancelActiveSummaryExecution();
     activeSummaryExecution = null;
     cancelRecallAndClearPrompt('unregistered');
+    recallRecoveryHost.dispose();
+    recallGenerationRequest = null;
     postToFrame({ type: 'RECALL_LOG', text: '' });
     postToFrame({ type: 'SUMMARY_STATUS', statusText: '' });
     invalidateLexicalIndex();
     const writerShutdown = shutdownVectorWriteCoordinator('Story Summary unregistered');
-    clearEmbeddingFailureNotice();
     clearWarningCooldowns();
+    clearRecallFailureNotice();
     if (events) {
         CacheRegistry.unregister(MODULE_ID);
         events.cleanup();

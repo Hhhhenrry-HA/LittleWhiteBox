@@ -278,7 +278,7 @@ Node 发布边界：
 
 NovelAI 自动学习在浏览器侧复用同一入口：未提供 `type` 的新角色可以出图，但不自动入库，避免角色库把缺失类型补成 `girl`；已有角色的匹配、停用保护与补空字段行为不变。
 
-2.2.0 正式版后台不接收 `planner.tool`，新前端通过 `draw-run-runtime-v4` 在提交前明确要求一次升级至 2.3.0；不保留在后端重建旧 Schema 的分支。既有聊天标记和图片交付记录没有格式变更。后续只改规划说明及其 Schema 不需要升级后台；改变图片执行语义、供应商协议或修复后台缺陷仍可能需要升级。
+前端同时校验当前 Planner 运行契约和 [整组取消能力](./image-backend-batch-jobs.md#整组取消)，部署版本与升级方式由 [后端 README](../server-plugin/littlewhitebox-image-jobs/README.md#升级) 维护。不保留后端重建旧 Schema 的分支；既有聊天标记和图片交付记录继续按现有身份接回。规划说明及其 Schema 不变更图片执行语义时，不要求升级后台。
 
 服务端验证边界：
 
@@ -341,8 +341,8 @@ Provider registry 只做 `provider → recipe validator → compiler → Image J
 
 - 首次提交不再要求“内存整份聊天 === 持久化整份聊天”。ST 的防抖保存、本页未落盘字段、其他扩展的合法内存修改都不应阻塞一次正常点击。
 - SillyTavern 的 `integrity` 是文件身份标识，不是每次保存递增的版本号；同一聊天双标签同时编辑仍属于 ST 原生的整聊覆盖边界。首次 marker 保存不自建另一套聊天版本系统；但无论宿主保存返回何种结果，读回没有 marker 都绝不 POST Draw Run。
-- adoption、取消与 marker 清理的写前条件只核对目标 run 的 marker 和冻结 swipe 正文；同一目标被编辑时不保存，无关楼层或运行时字段的合法差异不再阻断任务交接。SillyTavern 仍以整份聊天保存，因此不同标签页同时编辑不同楼层沿用宿主自身的最后写入覆盖边界，不在画图状态机内伪造聊天版本系统。
-- 同一页面内另有一层非持久化 mutation queue，把“修改共享 `ctx.chat` → 保存并确认”整体串行，防止首次 marker 与取消/恢复互相覆盖。
+- adoption 与 marker 清理的写前条件只核对目标 run 的 marker 和冻结 swipe 正文；同一目标被编辑时不保存，无关楼层或运行时字段的合法差异不再阻断任务交接。SillyTavern 仍以整份聊天保存，因此不同标签页同时编辑不同楼层沿用宿主自身的最后写入覆盖边界，不在画图状态机内伪造聊天版本系统。
+- 同一页面内另有一层非持久化 mutation queue，把“修改共享 `ctx.chat` → 保存并确认”整体串行，防止首次 marker 与恢复互相覆盖。
 - 读回失败或内容不符都属于"不确定"：不 POST、不回滚可能已成功的远端写入，保留 marker 等恢复清理。
 - 封装冻结调用时的聊天身份：单人聊天读 `/api/chats/get`，群聊读 `/api/chats/group/get`；保存期间切换聊天不能改变读回目标。
 - 保存等待和读回各有 15 秒上限。保存超时或抛错后仍继续读回：读回验证通过即确认，未通过才判定"不确定"；不取消仍可能完成的宿主保存。
@@ -361,7 +361,7 @@ extra.xbDrawRuns[runId] = {
   createdAt,
   // 自动模式才有
   automatic: true,
-  // 用户请求取消后才有
+  // 正式线已有标记的读取兼容；新取消使用整组意图 journal
   cancelRequestedAt,
 }
 ```
@@ -439,7 +439,7 @@ Draw Run唯一特许入口，不破坏Image Job普通任务的 `journal → slot
 → 删除 journal（ACK 响应丢失时凭 originRunId 重试，404 视为已完成）
 ```
 
-marker 清理后，面板控制权改读同一条Image Job journal，不另建 UI 状态快照：child 仍在排队/生成时继续显示实际阶段与张数并可取消。带完整任务身份的页面内活动事件只负责唤醒目标楼层读取当前 marker/journal，并携带这一刻的阶段或终态；事件不落盘、不设 TTL，也不作为任务事实。取消意图先原子写入 journal，再同时请求 Draw Run 与 child 取消，恢复器最终以 journal 的 `cancelling` 事实做 discard 结算。journal 删除后，成功/部分成功结果按浏览器生成的同一终态短暂显示，再自动回到空闲。
+marker 清理后，面板控制权改读同一条Image Job journal，不另建 UI 状态快照：child 仍在排队/生成时继续显示实际阶段与张数并可取消。带完整任务身份的页面内活动事件只负责唤醒目标楼层读取当前 marker/journal，并携带这一刻的阶段或终态；事件不落盘、不设 TTL，也不作为任务事实。新取消先持久化精确 run/job 集合并用同一个后端请求确认，恢复顺序与生命周期遵守 [整组取消契约](./image-backend-batch-jobs.md#整组取消)。journal 删除后，成功/部分成功结果按浏览器生成的同一终态短暂显示，再自动回到空闲。
 
 酒馆停止键 / Escape 只中止仍在浏览器调用栈里的前台生成，不取消已经由后端接管的 Draw Run。后台任务只能从对应楼层或悬浮画图胶囊显式取消，避免用户停止文本生成时误伤早前楼层已经付费的后台批。
 
@@ -458,7 +458,7 @@ slots 已进入 `message.mes` 后，正文是唯一排版事实，当前 DOM 只
 ## 11. 多标签页与 unclaimed run
 
 - 同源多标签页沿用 IndexedDB lease；创建 child journal 时只允许一个标签页 CAS 成功接管。
-- Draw Run 的首次 marker、取消、adoption 槽位和恢复结算写入都按聊天持有同源 Web Lock，同页共享内存修改另由 mutation queue 串行；两类锁都只活在运行期，不新增持久状态。首次 marker 以当前活聊天为事实并在保存后读回确认；取消、adoption 与 marker 清理在保存前精确比较目标 run 的 marker + swipe 正文，不能被同一目标的并发修改越过，也不因无关楼层差异永久卡住。Image Job槽位结算继续按其目标槽位快照执行；其他标签页已经推进同一目标正文时，陈旧恢复页只能让位。
+- Draw Run 的首次 marker、adoption 槽位和恢复结算写入都按聊天持有同源 Web Lock，同页共享内存修改另由 mutation queue 串行；两类锁都只活在运行期，不新增持久状态。首次 marker 以当前活聊天为事实并在保存后读回确认；adoption 与 marker 清理在保存前精确比较目标 run 的 marker + swipe 正文，不能被同一目标的并发修改越过，也不因无关楼层差异永久卡住。Image Job槽位结算继续按其目标槽位快照执行；其他标签页已经推进同一目标正文时，陈旧恢复页只能让位。
 - 后端存在且没有 marker/journal：不自动取消、不自动删除、不猜楼层，保持 `unclaimed`。已有 adoption journal 可按冻结的 chat target 跨聊天只读确认；无论 delivery 是 slots 还是 gallery，目标聊天未激活时都只等待，不能把“当前看不到 marker”误判成目标消失。回到目标聊天后再完成对应的占位符或 gallery 接回与 marker 清理。
 
 

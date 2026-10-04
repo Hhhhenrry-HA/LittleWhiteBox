@@ -16,8 +16,8 @@ import { GAME_APP_DESCRIPTOR } from './descriptor.js';
 import { GAME_PARTITION } from './partition.js';
 import { MOVING_PARTITION } from './moving/partition.js';
 import { createMovingService, type MovingService } from './moving/service.js';
-import { STACKING_PARTITION } from './stacking/partition.js';
-import { createStackingService, type StackingService } from './stacking/service.js';
+import { BUILDING_PARTITION } from './building/partition.js';
+import { createBuildingService, type BuildingService } from './building/service.js';
 
 export { GAME_PARTITION } from './partition.js';
 
@@ -25,7 +25,7 @@ export interface GameModuleInstallContext {
     ownerId: string;
     game: GameService;
     moving: MovingService;
-    stacking: StackingService;
+    building: BuildingService;
     economy: EconomyReadCapability;
     execution: AppInstallContext['execution'];
 }
@@ -35,14 +35,14 @@ export interface GameModuleDependencies {
     dispose?(runtime: XiaobaiOsAppRuntime): Promise<void>;
     service?: GameServiceDependencies;
     movingSoundEnabled?: () => boolean;
-    stackingSoundEnabled?: () => boolean;
+    buildingSoundEnabled?: () => boolean;
 }
 
 export function createGameModule(dependencies: GameModuleDependencies): XiaobaiOsAppModule {
     return {
         descriptor: GAME_APP_DESCRIPTOR,
         partition: GAME_PARTITION,
-        additionalPartitions: [MOVING_PARTITION, STACKING_PARTITION],
+        additionalPartitions: [MOVING_PARTITION, BUILDING_PARTITION],
         capabilities: [ECONOMY_READ_CAPABILITY, ECONOMY_TRANSACTION_CAPABILITY],
         install(context) {
             if (!context.partition) {throw new Error('Game partition store is unavailable');}
@@ -60,8 +60,8 @@ export function createGameModule(dependencies: GameModuleDependencies): XiaobaiO
                 ownerId: context.ownerId,
                 game,
                 moving,
-                stacking: createStackingService(context.storeFor(STACKING_PARTITION), context.filesFor(STACKING_PARTITION), economy,
-                    { idle: () => !dependencies.service?.isMainGenerationActive?.(), soundEnabled: dependencies.stackingSoundEnabled }),
+                building: createBuildingService(context.storeFor(BUILDING_PARTITION), context.filesFor(BUILDING_PARTITION), economy,
+                    { idle: () => !dependencies.service?.isMainGenerationActive?.(), soundEnabled: dependencies.buildingSoundEnabled }),
                 economy,
                 execution: context.execution,
             });

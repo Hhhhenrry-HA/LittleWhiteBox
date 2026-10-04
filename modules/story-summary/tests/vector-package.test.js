@@ -40,6 +40,7 @@ const bundled = await build({
         "export * as pipeline from './modules/story-summary/vector/pipeline/state-integration.js';",
         "export * as chunkPipeline from './modules/story-summary/vector/pipeline/chunk-builder.js';",
         "export * from './modules/story-summary/vector/pipeline/chunk-maintenance.js';",
+        "export * from './modules/story-summary/vector/pipeline/chunk-repair.js';",
         "export * from './modules/story-summary/vector/pipeline/event-vector-input.js';",
         "export { db } from './modules/story-summary/data/db.js';",
     ].join('\n') },
@@ -88,6 +89,181 @@ async function createBytes() { await seedCache(); return (await mod.createVector
 function maintainL1(options = {}) {
     return mod.maintainChunks({ targetChatId: fixture.chatId, chatSnapshot: host.context.chat, vectorConfig: host.config, ...options });
 }
+
+// Exact saved inputs, independent of later chat/cleaning changes. Tests use
+// real digests and storage, not source-code or wording assertions.
+async function seedStoredChunkInputs(floor, texts) {
+    await mod.store.deleteChunksAtFloor(fixture.chatId, floor);
+    const chunks = texts.map((text, chunkIdx) => ({
+        chunkId: mod.store.makeChunkId(floor, chunkIdx), floor, chunkIdx,
+        speaker: '角色', isUser: false, text, textHash: mod.store.hashText(text),
+    }));
+    await mod.store.saveChunks(fixture.chatId, chunks);
+    await mod.store.saveChunkVectors(fixture.chatId, chunks.map(chunk => ({
+        chunkId: chunk.chunkId, vector: [0, 1], sourceHash: mod.inputDigest('chunk', chunk.text),
+    })), fixture.fingerprint);
+}
+
+for (const prose of ['First.\n\nSecond.', 'First  word\t next.', 'First.\r\n\r\nSecond.']) {
+    test(`existing unmarked L1 inputs preserve whitespace through export and restore: ${JSON.stringify(prose)}`, async () => {
+        host.context.chat[0].mes = prose;
+        await seedCache();
+        // Seed the actual pre-projection input, not the current cleaner output.
+        await seedStoredChunkInputs(0, [prose]);
+        const sourceHash = mod.inputDigest('chunk', prose);
+        const { bytes } = await mod.createVectorPackage();
+        await db.chunks.clear();
+        await db.chunkVectors.clear();
+        await mod.restoreVectorPackage(bytes);
+        assert.equal((await mod.store.getAllChunks(fixture.chatId))[0].text, prose);
+        assert.equal((await db.chunkVectors.toArray())[0].sourceHash, sourceHash);
+        assert.deepEqual(host.embeddingInputs, []);
+    });
+}
+
+test('new functional markers and voice emotion changes do not invalidate current vectors', async () => {
+    host.context.chat[0].mes = '她走进屋内。\n[voice:happy:你好]';
+    await seedCache();
+    const before = await cacheSnapshot();
+    for (const marker of ['[image:slot-1]', '[img:rain]', '[图片:雨]', '[dice:check_1]', '[tts:emotion=happy]']) {
+        host.context.chat[0].mes = `她走进屋内。\n${marker}\n\n[语音:sad:你好]`;
+        assert.equal((await mod.checkVectorCacheConsistency()).status, 'consistent');
+        assert.equal((await maintainL1()).repaired, 0);
+        await assert.rejects(mod.createVectorPackage(), error => error.code === 'incomplete_cache');
+    }
+    assert.deepEqual(host.embeddingInputs, []);
+    assert.deepEqual(await cacheSnapshot(), before);
+});
+
+for (const input of ['她走进屋内。[image:slot-1]', '她走进屋内。[img:rain]', '她走进屋内。[图片:雨]', '她走进屋内。[dice:check_1]', '[voice:happy:她走进屋内。]', '她走进屋内。\n\n']) {
+    test(`saved inputs remain paired without silent projection rebuilds: ${input}`, async () => {
+        host.context.chat[0].mes = '她走进屋内。';
+        host.context.chat.push({ mes: 'Another healthy floor.' });
+        await seedCache();
+        await seedStoredChunkInputs(0, [input]);
+        const before = await cacheSnapshot();
+        const metadata = structuredClone(host.metadata);
+        const check = await mod.checkVectorCacheConsistency();
+        assert.equal(check.status, 'consistent');
+        assert.deepEqual(check.missingChunkFloors, []);
+        assert.equal((await maintainL1()).success, true);
+        assert.deepEqual(host.embeddingInputs, []);
+        assert.deepEqual(await cacheSnapshot(), before);
+        assert.deepEqual(host.metadata, metadata);
+        assert.equal((await mod.checkVectorCacheConsistency()).status, 'consistent');
+        // ZIP v3 has no saved text; its separate current-source guard remains.
+        await assert.rejects(mod.createVectorPackage(), error => error.code === 'incomplete_cache');
+        assert.equal((await maintainL1()).repaired, 0);
+        assert.equal(host.embeddingInputs.length, 0);
+    });
+}
+
+test('later cleaning changes never remove healthy saved chunks, including split markers', async () => {
+    host.context.chat[0].mes = '她走进屋内。';
+    await seedCache();
+    await seedStoredChunkInputs(0, ['她走进屋内。[img:ra', 'in, ho', 'use]']);
+    const before = await cacheSnapshot();
+    assert.equal((await mod.checkVectorCacheConsistency()).status, 'consistent');
+    assert.equal((await maintainL1()).success, true);
+    assert.deepEqual(host.embeddingInputs, []);
+    assert.deepEqual(await cacheSnapshot(), before);
+    assert.equal((await mod.checkVectorCacheConsistency()).status, 'consistent');
+});
+
+test('a now-empty projected floor retains its saved material and vector', async () => {
+    host.context.chat[0].mes = '[image:slot-1]';
+    await seedCache();
+    await seedStoredChunkInputs(0, ['[image:slot-1]']);
+    const before = await cacheSnapshot();
+    assert.equal((await mod.checkVectorCacheConsistency()).status, 'consistent');
+    const result = await maintainL1();
+    assert.equal(result.success, true);
+    assert.equal(result.repaired, 0);
+    assert.deepEqual(await cacheSnapshot(), before);
+    assert.deepEqual(host.embeddingInputs, []);
+    assert.equal((await mod.checkVectorCacheConsistency()).status, 'consistent');
+});
+
+test('unrecognized additions cannot manufacture gaps even when current prose splits into extra chunks', async () => {
+    host.context.chat[0].mes = '她走进屋内';
+    await seedCache();
+    const before = await cacheSnapshot();
+    host.context.chat[0].mes += '[inventory:sword]'.repeat(500);
+    assert.ok(sourceIndex().chunks.size > 1);
+    assert.equal((await mod.checkVectorCacheConsistency()).status, 'consistent');
+    assert.equal((await maintainL1()).repaired, 0);
+    assert.deepEqual(host.embeddingInputs, []);
+    assert.deepEqual(await cacheSnapshot(), before);
+    await assert.rejects(mod.createVectorPackage(), error => error.code === 'incomplete_cache');
+});
+
+test('an orphan vector identifies a missing material without treating added chunks as gaps', async () => {
+    host.context.chat[0].mes = '她走进屋内，然后关上门。'.repeat(100);
+    await seedCache();
+    const source = sourceIndex();
+    const missing = source.chunks.get('c-0-1').chunk;
+    assert.ok(source.chunks.size > 2);
+    await db.chunks.delete([fixture.chatId, missing.chunkId]);
+    const healthy = await db.chunkVectors.get([fixture.chatId, 'c-0-0']);
+    host.context.chat[0].mes += '[inventory:sword]'.repeat(500);
+    assert.ok(sourceIndex().chunks.size > source.chunks.size);
+    const check = await mod.checkVectorCacheConsistency();
+    assert.equal(check.status, 'incomplete');
+    assert.deepEqual(check.missingChunkFloors, [0]);
+    assert.equal((await maintainL1()).repaired, 1);
+    assert.deepEqual(host.embeddingInputs, [missing.text]);
+    assert.equal(await db.chunks.count(), source.chunks.size);
+    assert.deepEqual(await db.chunkVectors.get([fixture.chatId, 'c-0-0']), healthy);
+    assert.equal((await mod.checkVectorCacheConsistency()).status, 'consistent');
+});
+
+for (const change of ['edit', 'swipe', 'delete']) {
+    test(`explicit ${change} invalidation still updates L1 instead of preserving invalidated inputs`, async () => {
+        host.context.chat.push({ mes: 'Old ending.' });
+        await seedCache();
+        const healthy = await db.chunkVectors.get([fixture.chatId, 'c-0-0']);
+        if (change === 'delete') host.context.chat.pop();
+        else host.context.chat[1].mes = 'New ending. [image:slot-1]';
+        if (change === 'swipe') await mod.chunkPipeline.syncOnMessageSwiped(fixture.chatId, 1);
+        else await mod.chunkPipeline.syncOnMessageDeleted(fixture.chatId, 1);
+        assert.equal((await maintainL1()).success, true);
+        assert.deepEqual(host.embeddingInputs, change === 'delete' ? [] : ['New ending.']);
+        assert.equal(await db.chunks.count(), host.context.chat.length);
+        assert.deepEqual(await db.chunkVectors.get([fixture.chatId, 'c-0-0']), healthy);
+        assert.equal((await mod.checkVectorCacheConsistency()).status, 'consistent');
+    });
+}
+
+for (const currentText of ['她走进屋内。[inventory:sword]'.repeat(100), '[image:slot-1]']) {
+    test(`missing vectors use saved text even when live prose changes: ${currentText.slice(0, 30)}`, async () => {
+        const original = '她走进屋内。[image:slot-1]';
+        await seedCache();
+        await seedStoredChunkInputs(0, [original]);
+        await db.chunkVectors.clear();
+        host.context.chat[0].mes = currentText;
+        const check = await mod.checkVectorCacheConsistency();
+        assert.equal(check.status, 'incomplete');
+        assert.deepEqual(check.missingChunkFloors, [0]);
+        assert.equal((await maintainL1()).success, true);
+        assert.deepEqual(host.embeddingInputs, [original]);
+        assert.equal((await db.chunks.get([fixture.chatId, 'c-0-0'])).text, original);
+        assert.equal((await db.chunkVectors.get([fixture.chatId, 'c-0-0'])).sourceHash, mod.inputDigest('chunk', original));
+        assert.equal((await mod.checkVectorCacheConsistency()).status, 'consistent');
+        assert.equal((await maintainL1()).repaired, 0);
+    });
+}
+
+test('saved-source checks still reject unproven or mixed vector inputs', async () => {
+    host.context.chat[0].mes = 'red door';
+    await seedCache();
+    await seedStoredChunkInputs(0, ['red door[image:slot-1]']);
+    await db.chunkVectors.toCollection().modify(row => { delete row.sourceHash; });
+    assert.equal((await mod.checkVectorCacheConsistency()).status, 'inconsistent');
+    await seedStoredChunkInputs(0, ['red door[image:slot-1]']);
+    await db.stateVectors.toCollection().modify(row => { row.fingerprint = 'another-model'; });
+    assert.equal((await mod.checkVectorCacheConsistency()).status, 'inconsistent');
+    assert.deepEqual(host.embeddingInputs, []);
+});
 
 for (const missing of ['vector', 'material', 'both']) {
     test(`automatic L1 maintenance repairs a ${missing} gap behind a complete watermark without rebuying healthy vectors`, async () => {
@@ -140,6 +316,30 @@ test('a lagging L1 watermark never causes complete restored vectors to be reques
     assert.deepEqual(host.embeddingInputs, ['Missing middle.']);
     assert.deepEqual(await db.chunkVectors.get([fixture.chatId, 'c-2-0']), healthy);
     assert.equal((await db.meta.get(fixture.chatId)).lastChunkFloor, 2);
+});
+
+test('a long absent floor retains all 28 materials when the second repair batch fails', async () => {
+    host.context.chat = [{ mes: '甲乙丙丁。'.repeat(1100) }];
+    let requests = 0;
+    host.onEmbed = () => {
+        if (++requests === 2) host.embeddingError = Object.assign(new Error(), { embeddingFailure: { kind: 'http', status: 429 } });
+    };
+    const repair = () => mod.repairMissingChunks({ chatId: fixture.chatId, chat: host.context.chat, vectorConfig: host.config });
+    const first = await repair();
+    assert.equal(first.success, false);
+    assert.equal(first.repaired, 20);
+    assert.equal(await db.chunks.count(), 28);
+    assert.equal(await db.chunkVectors.count(), 20);
+    assert.equal((await mod.store.getMeta(fixture.chatId)).lastChunkFloor, -1);
+    const saved = await db.chunkVectors.toArray();
+    host.onEmbed = null;
+    host.embeddingError = null;
+    host.embeddingInputs = [];
+    assert.equal((await repair()).repaired, 8);
+    assert.equal(host.embeddingInputs.length, 8);
+    assert.equal(await db.chunkVectors.count(), 28);
+    for (const row of saved) assert.deepEqual(await db.chunkVectors.get([row.chatId, row.chunkId]), row);
+    assert.equal((await mod.store.getMeta(fixture.chatId)).lastChunkFloor, 0);
 });
 
 for (const failure of ['request', 'cancel']) {
@@ -198,6 +398,7 @@ for (const [reason, mutate] of [
         const recoverable = reason === 'l1_count_mismatch';
         assert.equal(result.status, recoverable ? 'incomplete' : 'inconsistent');
         if (recoverable) assert.deepEqual(result.missingChunkFloors, [0]);
+        else if (reason === 'l1_content_mismatch') assert.equal(result.diagnostic.code, 'source_mismatch');
         else assert.equal(result.diagnostic.details.reason, reason);
         assert.equal(result.diagnostic.action, 'automatic');
         const issues = mod.buildVectorIntegrityIssues({ cacheInconsistent: result.status === 'inconsistent' });
@@ -309,16 +510,6 @@ test('five actual incomplete L1 floors warn to fill after failure even with a co
     assert.deepEqual(mod.buildVectorIntegrityIssues({
         cacheInconsistent: check.status === 'inconsistent', chunkFloorGap: check.missingChunkFloors.length,
     }).map(({ code, action }) => ({ code, action })), [{ code: 'l1_gap', action: 'fill' }]);
-});
-
-test('ordinary gaps cannot conceal stale materials that gap repair would reuse', async () => {
-    await seedCache();
-    await db.chunkVectors.clear();
-    await db.chunks.toCollection().modify(record => { record.text += ' stale'; });
-    const check = await mod.checkVectorCacheConsistency();
-    assert.equal(check.status, 'inconsistent');
-    assert.equal(check.diagnostic.details.reason, 'l1_content_mismatch');
-    assert.equal(host.embeddingInputs.length, 0);
 });
 
 test('a vector without material is recoverable only if its input still matches the current source', async () => {

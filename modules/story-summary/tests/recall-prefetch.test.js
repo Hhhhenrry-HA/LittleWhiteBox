@@ -70,6 +70,37 @@ async function flushMicrotasks() {
     await Promise.resolve();
 }
 
+for (const alreadyRunning of [false, true]) {
+    test(`a retained stop cannot be counted as interrupted work on later edits (existing=${alreadyRunning})`, () => {
+        const { coordinator, context } = createHarness(() => assert.fail('stopped preparation must not start'));
+        if (alreadyRunning) {
+            const run = coordinator.startWatching({ chatId: context.chatId, initialLength: 0 });
+            assert.equal(coordinator.getActive(), run);
+        }
+        const stopped = coordinator.cancel('generation-stopped', { retainForJoin: true, chatId: context.chatId });
+        assert.equal(coordinator.getCurrent(), stopped);
+        assert.equal(coordinator.getActive(), null);
+        for (const reason of ['message-edited', 'recall-config-changed', 'summary-edited', 'cache-cleared']) {
+            assert.equal(coordinator.getActive(), null);
+            coordinator.cancel(reason);
+        }
+        const next = coordinator.startWatching({ chatId: context.chatId, initialLength: 0 });
+        assert.equal(coordinator.getActive(), next);
+        coordinator.cancel('message-edited');
+        assert.equal(coordinator.getActive(), null);
+    });
+}
+
+test('prepared recall remains interruptible until adopted; completed recall is no longer active', async () => {
+    const { coordinator, context } = createHarness(async () => ({ text: 'memory' }));
+    const { slot } = coordinator.join({ chatId: context.chatId, type: 'normal' });
+    assert.equal(coordinator.getActive(), slot);
+    await coordinator.waitForOutcome(slot);
+    assert.equal(coordinator.getActive(), slot);
+    coordinator.finish(slot);
+    assert.equal(coordinator.getActive(), null);
+});
+
 test('cancellation publishes once at cancellation time, before late work can affect a newer run', async () => {
     const cancellations = [];
     let finishOld;
@@ -115,6 +146,36 @@ test('dry-run is ignored without superseding a real run, while real non-user gen
     );
     assert.equal(getRecallPrefetchStartAction('swipe', {}, false), 'cancel-only');
     assert.equal(getRecallPrefetchStartAction('normal', {}, false), 'watch');
+    assert.equal(getRecallPrefetchStartAction('quiet', {}, false), 'ignore');
+    assert.equal(getRecallPrefetchStartAction('impersonate', {}, false), 'cancel-only');
+});
+
+test('maintenance invalidations coalesce without aborting the host or overlapping preparations', async () => {
+    const tasks = [];
+    const refreshed = Promise.withResolvers();
+    let active = 0;
+    let peak = 0;
+    const { coordinator, context } = createHarness(async (_type, signal) => {
+        peak = Math.max(peak, ++active);
+        const pending = Promise.withResolvers();
+        tasks.push({ ...pending, signal });
+        if (tasks.length === 2) refreshed.resolve();
+        try { return await pending.promise; } finally { active--; }
+    });
+    const run = coordinator.join({ chatId: context.chatId, type: 'normal' }).slot;
+    const result = coordinator.waitForOutcome(run);
+    await flushMicrotasks();
+    for (let i = 0; i < 20; i++) coordinator.invalidate();
+    assert.equal(tasks.length, 1);
+    assert.equal(tasks[0].signal.aborted, false);
+    tasks[0].resolve({ text: 'stale' });
+    await refreshed.promise;
+    assert.equal(tasks.length, 2);
+    tasks[1].resolve({ text: 'latest' });
+    assert.deepEqual(await result, { ok: true, value: { text: 'latest' } });
+    assert.equal(peak, 1);
+    assert.equal(run.cancelReason, null);
+    coordinator.finish(run);
 });
 
 test('prefetch waits for a real USER object and reuses that exact object at join', async () => {
@@ -272,7 +333,7 @@ test('an object-reference mismatch aborts the prefetched run and recomputes once
     });
 
     releaseFirst({ text: 'stale' });
-    assert.equal((await prefetched.outcome).ok, true);
+    assert.equal((await prefetched.outcome).error.name, 'AbortError');
     assert.equal(coordinator.getCurrent(), joined.slot);
 });
 

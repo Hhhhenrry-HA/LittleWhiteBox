@@ -15,7 +15,6 @@ import {
     openDB,
     storePreview,
     getPreview,
-    getCardPreview,
     getPreviewsBySlot,
     getDisplayPreviewForSlot,
     storeFailedPlaceholder,
@@ -91,12 +90,13 @@ import {
     createImageBackendJobMonitorRegistry,
     createImageBackendJobsClient,
     hasImageBackendJobsCapability,
+    IMAGE_JOBS_UNAVAILABLE_MESSAGE,
     ImageBackendJobsError,
     reportImageBackendJobState,
 } from "../../shared/backend-image-jobs.js";
 import { submitRecoverableImageJob } from "../../shared/recoverable-image-jobs.js";
 import { submitProviderDrawRun } from "../../shared/draw-run-production.js";
-import { cancelPendingDrawRuns, captureDrawCancellationTarget } from "../../shared/draw-run-controls.js";
+import { cancelFloorDrawWork, captureDrawCancellationTarget } from "../../shared/draw-run-controls.js";
 import { migrateLegacyNovelPromptSettings } from "./novel-prompt-migration.js";
 import { WorldbookProcessor } from "../../shared/worldbook-processor.js";
 import {
@@ -138,7 +138,8 @@ import { acquireFloorImageJob, getFloorImageJob, getFloorImageJobs, getFloorImag
 import { createImageRequestAttempt, imageHttpFailure, withImageRequestOutcome, ImageRequestOutcome } from '../../shared/image-request-outcome.js';
 import { createImageCardRedrawProvider } from "../../shared/image-card-redraw-provider.js";
 import { redrawImageCard, removeChatImageSlot, restoreImageCard } from "../../shared/image-card-actions.js";
-import { persistCardTagEdits } from "../../shared/card-tag-editor.js";
+import { persistCardTagEdits, readCardTagEditor } from "../../shared/card-tag-editor.js";
+import { getCurrentUserHandle } from "../../../../../../../user.js";
 import { hasPreviewImage, DRAW_SLOT_COPY } from "../../shared/image-record.js";
 // ═══════════════════════════════════════════════════════════════════════════
 // 常量
@@ -370,7 +371,7 @@ const novelImageRequestQueue = createSerialImageRequestQueue({
     createAbortError: () => new NovelDrawError('已取消', ErrorType.ABORTED),
     getCooldownMs: () => getNovelImageRequestDelay(),
 });
-const imageBackendJobsClient = createImageBackendJobsClient({ getHeaders: getRequestHeaders });
+const imageBackendJobsClient = createImageBackendJobsClient({ getHeaders: getRequestHeaders, getOwner: getCurrentUserHandle });
 let ensureNovelDrawPanelRef = null;
 let overlayResizeHandler = null;
 let afterAiGateDispose = null;
@@ -533,39 +534,16 @@ function insertPreviewIntoRenderedMessage({ messageId, slotId, html }) {
 //   传导到后端，删掉一个已经付过钱的任务。
 // - 其它 reason：模块卸载、聊天切换这类生命周期中止。前端必须停手，但后端任务要留着，
 //   靠恢复记录在下次打开时接回——否则「重载一次扩展」就等于烧掉一批图。
-function cancelPendingDrawRun(messageId, target) {
-    // Draw Run 归属于当前 swipe。用户在任务期间切换图片 Provider 后，
-    // 新 Provider 的按钮仍要能取消这一个既有任务。
-    if (!target.entries.length) return false;
-    void cancelPendingDrawRuns(messageId, { ctx: target.ctx, target }).catch((error) => {
-        console.error('[NovelDraw] 后台 Draw Run 取消失败:', error);
-        toastr.error(error?.message || '后台画图取消失败，请稍后重试', '小白X画图');
-    });
-    return true;
-}
-
 function abortGeneration(messageId = null, { reason = 'user', target = captureDrawCancellationTarget(messageId) } = {}) {
-    if (messageId !== null && messageId !== undefined) {
-        const jobs = getFloorImageJobs(generationJobs, getContext(), messageId, target);
-        let aborted = false;
-        for (const job of jobs) {
-            job.abortReason ||= reason;
-            if (reason === 'user') job.backendCancel.abort();
-            job.controller.abort();
-            aborted = true;
-        }
-        if (reason === 'user' && cancelPendingDrawRun(messageId, target)) aborted = true;
-        return aborted;
-    }
-
-    let aborted = false;
-    generationJobs.forEach((job) => {
+    const jobs = messageId !== null && messageId !== undefined
+        ? getFloorImageJobs(generationJobs, getContext(), messageId, target)
+        : [...generationJobs.values()];
+    if (reason === 'user') return cancelFloorDrawWork(messageId, { target, jobs });
+    for (const job of jobs) {
         job.abortReason ||= reason;
-        if (reason === 'user') job.backendCancel.abort();
         job.controller.abort();
-        aborted = true;
-    });
-    return aborted;
+    }
+    return jobs.length > 0;
 }
 
 function isGenerating(messageId = null) {
@@ -1781,7 +1759,7 @@ async function runNovelImageBatch({
             if (!hasImageBackendJobsCapability(backendStatus)) {
                 detachScope.dispose();
                 throw new NovelDrawError(
-                    '小白X后台批量任务不可用。请安装并启动当前 littlewhitebox-image-jobs，或关闭此选项后继续使用逐张后端发送。',
+                    IMAGE_JOBS_UNAVAILABLE_MESSAGE,
                     ErrorType.NETWORK,
                 );
             }
@@ -2276,7 +2254,13 @@ async function toggleEditPanel(container, show) {
     );
 
     if (show) {
-        const preview = await getCardPreview({ imgId: container.dataset.imgId, slotId: container.dataset.slotId });
+        let preview;
+        try { preview = await readCardTagEditor(container); }
+        catch (error) {
+            console.error(DRAW_SLOT_COPY.tagReadFailed, error);
+            showToast(error.message, 'error');
+            return;
+        }
         const currentTags = preview?.tags ?? container.dataset.tags ?? '';
 
         if (origLabel) origLabel.style.display = 'none';

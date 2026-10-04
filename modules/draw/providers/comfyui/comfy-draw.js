@@ -1,5 +1,4 @@
 import {
-    getCardPreview,
     storePreview,
     storeFailedPlaceholder,
     setSlotSelection,
@@ -51,13 +50,14 @@ import {
     createImageBackendJobsClient,
     fetchImageBackendJobsStatus,
     hasImageBackendJobsCapability,
+    IMAGE_JOBS_UNAVAILABLE_MESSAGE,
     readImageBackendResultBase64,
     readImageBlobBase64,
     reportImageBackendJobState,
 } from "../../shared/backend-image-jobs.js";
 import { submitRecoverableImageJob } from "../../shared/recoverable-image-jobs.js";
 import { submitProviderDrawRun } from "../../shared/draw-run-production.js";
-import { cancelPendingDrawRuns, captureDrawCancellationTarget } from "../../shared/draw-run-controls.js";
+import { cancelFloorDrawWork, captureDrawCancellationTarget } from "../../shared/draw-run-controls.js";
 import { createCharacterEnabledControl, getCharacterEnabledFromCard } from "../../shared/character-enabled-control.js";
 import { hashStableValue } from "../../shared/generation-fingerprint.js";
 import {
@@ -105,7 +105,8 @@ import { acquireFloorImageJob, getFloorImageJob, getFloorImageJobs, getFloorImag
 import { createImageRequestAttempt, imageHttpFailure, withImageRequestOutcome, ImageRequestOutcome } from '../../shared/image-request-outcome.js';
 import { createImageCardRedrawProvider } from "../../shared/image-card-redraw-provider.js";
 import { redrawImageCard, removeChatImageSlot, restoreImageCard } from "../../shared/image-card-actions.js";
-import { persistCardTagEdits } from "../../shared/card-tag-editor.js";
+import { persistCardTagEdits, readCardTagEditor } from "../../shared/card-tag-editor.js";
+import { getCurrentUserHandle } from "../../../../../../../user.js";
 import { hasPreviewImage, DRAW_SLOT_COPY } from "../../shared/image-record.js";
 // comfy-draw.js
 
@@ -188,7 +189,7 @@ const ImageState = { PREVIEW: 'preview', SAVING: 'saving', SAVED: 'saved', REFRE
 const comfyImageRequestQueue = createSerialImageRequestQueue({
     getCooldownMs: () => COMFY_REQUEST_DELAY_MS,
 });
-const comfyBackendJobsClient = createImageBackendJobsClient({ getHeaders: getRequestHeaders });
+const comfyBackendJobsClient = createImageBackendJobsClient({ getHeaders: getRequestHeaders, getOwner: getCurrentUserHandle });
 const COMFY_SIZE_PRESETS = [
     { value: '832x1216', width: 832, height: 1216 },
     { value: '1216x832', width: 1216, height: 832 },
@@ -1132,7 +1133,7 @@ async function runComfyImageBatch({
         }
         if (!hasImageBackendJobsCapability(status)) {
             detachScope.dispose();
-            throw new Error('小白X后台批量任务不可用。请安装并启动 littlewhitebox-image-jobs，或关闭此选项后继续使用当前连接方式。');
+            throw new Error(IMAGE_JOBS_UNAVAILABLE_MESSAGE);
         }
         try {
             const backendRequest = compiledBatch
@@ -3594,41 +3595,20 @@ function releaseGenerationJob(job) {
     releaseFloorImageJob(generationJobs, job);
 }
 
-function cancelPendingDrawRun(messageId, target) {
-    // Draw Run 归属于当前 swipe。用户在任务期间切换图片 Provider 后，
-    // 新 Provider 的按钮仍要能取消这一个既有任务。
-    if (!target.entries.length) return false;
-    void cancelPendingDrawRuns(messageId, { ctx: target.ctx, target }).catch((error) => {
-        console.error('[ComfyDraw] 后台 Draw Run 取消失败:', error);
-        toastr.error(error?.message || '后台画图取消失败，请稍后重试', '小白X画图');
-    });
-    return true;
-}
-
 export function abortGeneration(messageId = null, { reason = 'user', target = captureDrawCancellationTarget(messageId) } = {}) {
-    if (messageId !== null && messageId !== undefined) {
-        const jobs = getFloorImageJobs(generationJobs, getContext(), messageId, target);
-        let aborted = false;
-        for (const job of jobs) {
-            job.abortReason ||= reason;
-            if (reason === 'user') job.backendCancel.abort();
-            job.controller.abort();
-            aborted = true;
-        }
-        if (reason === 'user' && cancelPendingDrawRun(messageId, target)) aborted = true;
-        return aborted;
-    }
-    let aborted = false;
-    for (const job of generationJobs.values()) {
-        job.abortReason ||= reason;
-        if (reason === 'user') job.backendCancel.abort();
-        job.controller.abort();
-        aborted = true;
-    }
+    const jobs = messageId !== null && messageId !== undefined
+        ? getFloorImageJobs(generationJobs, getContext(), messageId, target)
+        : [...generationJobs.values()];
     if (reason === 'user') {
-        abortPendingRequest();
+        const cancellation = cancelFloorDrawWork(messageId, { target, jobs });
+        if (messageId === null || messageId === undefined) abortPendingRequest();
+        return cancellation;
     }
-    return aborted;
+    for (const job of jobs) {
+        job.abortReason ||= reason;
+        job.controller.abort();
+    }
+    return jobs.length > 0;
 }
 
 export function isGenerating(messageId = null) {
@@ -4212,7 +4192,13 @@ async function toggleEditPanel(container, show) {
     );
 
     if (show) {
-        const preview = await getCardPreview({ imgId: container.dataset.imgId, slotId: container.dataset.slotId });
+        let preview;
+        try { preview = await readCardTagEditor(container); }
+        catch (error) {
+            console.error(DRAW_SLOT_COPY.tagReadFailed, error);
+            toastr.error(error.message);
+            return;
+        }
         const currentTags = preview?.tags ?? container.dataset.tags ?? '';
 
         if (origLabel) origLabel.style.display = 'none';

@@ -1,4 +1,5 @@
 import { SUMMARY_FEEDBACK_COPY } from '../feedback-copy.js';
+import { readEmbeddingFailure } from '../vector/llm/embedding-failure.js';
 
 export const RECALL_TIMEOUT_MS = 30_000;
 export const RECALL_TIMEOUT_REASONS = Object.freeze({
@@ -6,8 +7,22 @@ export const RECALL_TIMEOUT_REASONS = Object.freeze({
     compute: 'recall-timeout',
 });
 
+const CANCELLATION_REASONS = Object.freeze({
+    'message-edited': 'edited', 'history-changed': 'edited',
+    'vector-config-changed': 'configuration', 'recall-config-reloaded': 'configuration',
+    'recall-config-changed': 'configuration', 'evidence-visibility-changed': 'configuration',
+    'character-aliases-edited': 'configuration',
+    'summary-edited': 'memory', 'summary-cleared': 'memory', 'summary-rollback': 'memory',
+    'memory-data-changed': 'memory', 'manual-summary-completed': 'memory', 'cache-cleared': 'memory',
+});
+
+export function recallCancellationNotice(reason) {
+    const kind = CANCELLATION_REASONS[reason];
+    return kind ? { issueCode: 'recall_interrupted', reason: kind, notice: SUMMARY_FEEDBACK_COPY.recallInterrupted[kind] } : null;
+}
+
 function embeddingFailureNotice(error) {
-    const failure = error.cause?.embeddingFailure;
+    const failure = readEmbeddingFailure(error);
     const status = failure?.status;
     let reason = 'unknown';
     if (failure?.kind === 'http') {
@@ -22,12 +37,13 @@ function embeddingFailureNotice(error) {
         reason = 'invalid_response';
     }
     const timeouts = (error.errors || []).flatMap((attemptError, index) => {
-        const detail = attemptError.embeddingFailure;
+        const detail = readEmbeddingFailure(attemptError);
         return detail?.kind === 'timeout' && Number.isFinite(detail.timeoutMs)
             ? [{ attempt: index + 1, timeoutMs: detail.timeoutMs }]
             : [];
     });
     const copy = SUMMARY_FEEDBACK_COPY.embeddingRecallReasons;
+    if (!Object.hasOwn(copy, reason)) reason = 'unknown';
     return {
         issueCode: 'recall_embedding_failed',
         reason,

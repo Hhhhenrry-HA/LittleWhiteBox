@@ -33,6 +33,7 @@ const novelai = require('./providers/novelai/adapter.js');
 const sdWebUi = require('./providers/sd-webui/adapter.js');
 const comfyui = require('./providers/comfyui/adapter.js');
 const pluginManifest = require('./manifest.json');
+const { CANCELLATION_CAPABILITY, createCancellationRegistry, registerCancellationRoutes } = require('./cancellation.js');
 
 const providerAdapters = Object.freeze({
     novelai,
@@ -47,6 +48,7 @@ const PLUGIN_CAPABILITIES = Object.freeze([
     'novelai-v5-final-image-v1',
     'draw-runs-v1',
     'draw-run-runtime-v4',
+    CANCELLATION_CAPABILITY,
 ]);
 const LOG_PREFIX = '[littlewhitebox-image-jobs]';
 
@@ -57,14 +59,17 @@ const info = {
     description: 'Background image job runner for LittleWhiteBox providers; also serves the NovelAI proxy routes.',
 };
 
+const cancellations = createCancellationRegistry();
 const jobManager = createAsyncImageJobManager({
     adapters: providerAdapters,
+    cancellations,
 });
 const imageJobService = createImageJobService({
     manager: jobManager,
     adapters: providerAdapters,
 });
 const drawRunManager = createDrawRunManager({
+    cancellations,
     runtime: drawRunRuntime,
     agentCore,
     envelopeValidator: createEnvelopeValidator(drawRunRuntime),
@@ -225,6 +230,7 @@ async function init(router) {
     });
     registerLoopbackProbeRoutes(router);
     registerDrawRunRoutes(router, { manager: drawRunManager });
+    registerCancellationRoutes(router, { registry: cancellations, jobManager, drawRunManager });
 
     // v1 is the frozen upstream 1.0.1 contract; URL resolution deliberately
     // stays inside the client so input validation runs in its original order.
@@ -343,6 +349,7 @@ async function init(router) {
 async function exit() {
     drawRunManager.close();
     jobManager.close();
+    cancellations.close();
 }
 
 module.exports = { exit, info, init };

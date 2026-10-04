@@ -25,13 +25,14 @@ export function createAdministratorToolResults() {
         }
     }
     return {
-        project(id: string, result: ManagementResult) {
+        project(id: string, result: ManagementResult, sourcePaged = false) {
             const full = safePromptJson(result);
             remove(id);
             if (full.length > POLICY.evidenceChars) { return { ok: result.ok, status: result.status, detailsUnavailable: 'result_exceeds_evidence_budget', totalChars: full.length }; }
             while (chars + full.length > POLICY.evidenceChars) { remove(entries.keys().next().value!); }
             entries.set(id, full); chars += full.length;
-            return full.length <= MANAGEMENT_READ_CHARS ? result : { ok: result.ok, status: result.status, data: { reference: id, ...textPage(full) } };
+            // Source-paged tools return their content and continuation together; the cache still retains the full evidence.
+            return sourcePaged || full.length <= MANAGEMENT_READ_CHARS ? result : { ok: result.ok, status: result.status, data: { reference: id, ...textPage(full) } };
         },
         page(id: string, reference: string, offset?: unknown) {
             const page = textPage(source(reference), offset);

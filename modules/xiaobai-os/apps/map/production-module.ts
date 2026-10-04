@@ -5,6 +5,7 @@ import { createMapController } from './host/controller.js';
 import { createMapMaintenanceParticipant } from './host/maintenance-participant.js';
 import { createMapPromptRuntime, type MapPromptEventHandlers } from './host/prompt-runtime.js';
 import { createMapSettingsRuntime } from './host/settings-runtime.js';
+import type { createMapProjectionRuntime } from './host/projection-runtime.js';
 import { createMapModule } from './module.js';
 import { MAP_PROMPTS } from './prompt-registration.js';
 import { createMapManagement } from './management/participant.js';
@@ -19,6 +20,7 @@ export interface ProductionMapModuleDependencies {
     getChatIdentity: () => XiaobaiOsChatIdentity | null;
     getPlayerDisplayName: () => string;
     subscribePrompt(handlers: MapPromptEventHandlers): () => void;
+    createProjectionRuntime: typeof createMapProjectionRuntime;
 }
 
 export function createProductionMapModule(dependencies: ProductionMapModuleDependencies): XiaobaiOsAppModule {
@@ -47,7 +49,8 @@ export function createProductionMapModule(dependencies: ProductionMapModuleDepen
                 settings: dependencies.settings,
                 maintenance: maintenance.runner,
             });
-            return createAppRuntimeGroup(controller, [prompt, settings]);
+            const projection = dependencies.createProjectionRuntime(map, dependencies.settings, maintenance.runner, controller.readState);
+            return createAppRuntimeGroup(controller, [prompt, settings, projection]);
         },
         async dispose(runtime) { await runtime.stopBackground?.(); },
     });

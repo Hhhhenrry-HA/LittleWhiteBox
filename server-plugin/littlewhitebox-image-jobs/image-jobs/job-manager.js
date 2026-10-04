@@ -59,8 +59,10 @@ class AsyncImageJobManager {
         maxJobInputBytes = DEFAULT_MAX_JOB_INPUT_BYTES,
         maxStoredInputBytes = DEFAULT_MAX_STORED_INPUT_BYTES,
         maxStoredResultBytes = DEFAULT_MAX_STORED_RESULT_BYTES,
+        cancellations = null,
     } = {}) {
         this.adapters = Object.assign(Object.create(null), adapters);
+        this.cancellations = cancellations;
         this.now = now;
         this.random = random;
         this.retentionMs = retentionMs;
@@ -93,6 +95,7 @@ class AsyncImageJobManager {
             }
             return this.#snapshot(existing);
         }
+        this.cancellations?.assertAllowed(owner, 'job', requestId);
         if (this.jobs.size >= this.maxJobs || this.#ownerJobs(owner).length >= this.maxJobsPerOwner) {
             throw createManagerError('Too many retained image jobs', 'job_limit', 429);
         }
@@ -129,6 +132,7 @@ class AsyncImageJobManager {
                 error: null,
             })),
         };
+        this.cancellations?.reserve(owner, { jobIds: [requestId] });
         this.jobs.set(storageKey, job);
         this.storedInputBytes += inputBytes;
         this.#enqueueJob(job);
@@ -174,16 +178,27 @@ class AsyncImageJobManager {
     }
 
     cancelJob(owner, jobId) {
-        const job = this.#ownedJob(owner, jobId);
-        if (!job) return null;
+        return this.cancelJobs(owner, [jobId])[0];
+    }
+
+    cancelJobs(owner, jobIds) {
+        // No await or queue advancement until the entire selected set is marked.
+        const jobs = jobIds.map(id => this.#ownedJob(owner, id));
+        for (const job of jobs) this.#cancelJob(job);
+        queueMicrotask(() => this.#pump(owner));
+        return jobs.map(job => job ? this.#snapshot(job) : null);
+    }
+
+    #cancelJob(job) {
+        if (!job) return;
         if (TERMINAL_JOB_STATES.has(job.state) && !this.#isRunning(job)) {
-            return this.#snapshot(job);
+            return;
         }
 
         job.cancelRequested = true;
         job.updatedAt = this.now();
         this.#discardSecrets(job, true);
-        const scheduler = this.schedulers.get(owner);
+        const scheduler = this.schedulers.get(job.owner);
         if (scheduler) {
             scheduler.queue = scheduler.queue.filter(key => key !== job.storageKey);
             if (scheduler.active?.jobId === job.id) scheduler.active.controller.abort();
@@ -191,8 +206,6 @@ class AsyncImageJobManager {
         if (!this.#isRunning(job)) {
             this.#finalizeJob(job, 'cancelled');
         }
-        queueMicrotask(() => this.#pump(owner));
-        return this.#snapshot(job);
     }
 
     deleteJob(owner, jobId) {
@@ -213,6 +226,7 @@ class AsyncImageJobManager {
             scheduler.active?.controller.abort();
         }
         for (const job of this.jobs.values()) {
+            this.cancellations?.release(job.owner, 'job', job.id);
             if (job.expiryTimer) clearTimeout(job.expiryTimer);
             this.#discardSecrets(job, true);
             for (const item of job.items) this.#releaseResult(item);
@@ -420,6 +434,7 @@ class AsyncImageJobManager {
         for (const item of job.items) this.#releaseResult(item);
         this.#releaseInput(job);
         this.jobs.delete(job.storageKey);
+        this.cancellations?.release(job.owner, 'job', job.id);
         const scheduler = this.schedulers.get(job.owner);
         if (scheduler) scheduler.queue = scheduler.queue.filter(key => key !== job.storageKey);
     }

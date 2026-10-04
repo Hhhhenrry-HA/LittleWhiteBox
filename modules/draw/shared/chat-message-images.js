@@ -7,6 +7,7 @@ import { createChatImageSession } from './chat-image-session.js';
 import { buildPendingImageHtml, ensureDrawImageStyles, isMessageBeingEdited, renderPreviewsForMessage } from './draw-common.js';
 import { DRAW_SLOT_COPY } from './image-record.js';
 import { subscribeChatImagePlacement } from './chat-image-placement.js';
+import { hasGenerationRecovery } from '../../../shared/common/generation-retry-owner.js';
 
 const events = createModuleEvents('chatMessageImages');
 const leases = new Map();
@@ -214,7 +215,7 @@ export function initChatMessageImages() {
     events.on(event_types.GENERATION_STARTED, (type, _options, dryRun) => session.start(type, dryRun));
     events.on(event_types.GENERATION_AFTER_COMMANDS, (...args) => { if (enabled()) session.observe(...args); });
     events.on(event_types.GENERATE_AFTER_DATA, (_data, dryRun) => session.requesting(dryRun));
-    events.on(event_types.GENERATION_STOPPED, () => session.stop());
+    events.on(event_types.GENERATION_STOPPED, () => { if (!hasGenerationRecovery()) session.stop(); });
     events.on(event_types.MESSAGE_DELETED, () => session.deleted());
     events.on(event_types.MESSAGE_RECEIVED, (index, type) => enabled() ? session.received(index, type) : session.stop());
     events.on(event_types.MESSAGE_EDITED, index => session.edited(index));

@@ -1,11 +1,12 @@
 import { createAbortError, throwIfSignalAborted } from '../../../shared/common/abort-utils.js';
 import { createRecallDiagnostics } from '../recall-diagnostics.js';
 import { RECALL_TIMEOUT_MS, RECALL_TIMEOUT_REASONS } from './recall-failure.js';
+import { usesStoryRecall } from './recall-policy.js';
 
 const DEFAULT_POLL_MS = 16;
 
 export function getRecallPrefetchStartAction(type, params, isDryRun) {
-    if (isDryRun) return 'ignore';
+    if (isDryRun || !usesStoryRecall(type)) return 'ignore';
     const normalizedType = type || 'normal';
     if (normalizedType !== 'normal' || params?.automatic_trigger) return 'cancel-only';
     return 'watch';
@@ -103,17 +104,27 @@ export function createRecallPrefetchCoordinator(options) {
     function startCompute(slot) {
         if (slot.outcome) return;
         clearTimers(slot);
-        slot.computeStartedAt = now();
+        slot.computeStartedAt ??= now();
         // Watching for a USER message consumes no recall computation budget.
         slot.deadlineAt = slot.computeStartedAt + maxAgeMs;
         slot.diagnostics.startedAt = now();
         slot.diagnostics.stage = 'prepare';
         scheduleExpiry(slot);
-        slot.outcome = settle(Promise.resolve().then(() => {
-            if (slot.controller.signal.aborted) {
-                throw slot.controller.signal.reason || createAbortError('Story Summary recall cancelled');
+        slot.outcome = settle(Promise.resolve().then(async () => {
+            // Maintenance invalidations coalesce. They never abort an in-flight
+            // prepare, replace this generation, or reset its deadline.
+            for (;;) {
+                throwIfSignalAborted(slot.controller.signal);
+                await options.waitForStable?.(slot.controller.signal);
+                throwIfSignalAborted(slot.controller.signal);
+                const revision = slot.revision;
+                slot.diagnostics.finishedAt = null;
+                const result = await settle(prepare(slot.type, slot.controller.signal, slot.diagnostics));
+                throwIfSignalAborted(slot.controller.signal);
+                if (revision !== slot.revision) continue;
+                if (!result.ok) throw result.error;
+                return result.value;
             }
-            return prepare(slot.type, slot.controller.signal, slot.diagnostics);
         })).then(outcome => {
             // Both success and failure are final outcomes. A late host join must
             // neither expire a finished result nor replace its original error.
@@ -171,6 +182,7 @@ export function createRecallPrefetchCoordinator(options) {
                 stage: phase === 'watching' ? 'waiting-for-user' : 'prepare',
             },
             outcome: null,
+            revision: 0,
             pollTimer: null,
             expiryTimer: null,
             runContext: null,
@@ -325,9 +337,12 @@ export function createRecallPrefetchCoordinator(options) {
         try {
             // The coordinator owns the only deadline. Waiting must still end
             // immediately if prepare ignores cancellation or never settles.
-            const outcome = await Promise.race([slot.outcome, cancelled]);
-            throwIfSignalAborted(signal);
-            return outcome;
+            for (;;) {
+                const pending = slot.outcome;
+                const outcome = await Promise.race([pending, cancelled]);
+                throwIfSignalAborted(signal);
+                if (pending === slot.outcome) return outcome;
+            }
         } finally {
             signal.removeEventListener('abort', onAbort);
         }
@@ -367,12 +382,29 @@ export function createRecallPrefetchCoordinator(options) {
         slot.phase = 'idle';
     }
 
+    function getActive() {
+        return current && !['cancelled', 'idle'].includes(current.phase) ? current : null;
+    }
+
+    function invalidate() {
+        const slot = getActive();
+        if (!slot) return;
+        slot.revision++;
+        if (slot.phase === 'ready') {
+            slot.outcome = null;
+            slot.phase = slot.joinedAt === null ? 'recalling' : 'joined';
+            startCompute(slot);
+        }
+    }
+
     return Object.freeze({
         startWatching,
         join,
         waitForOutcome,
         cancel,
         finish,
+        invalidate,
+        getActive,
         getCurrent: () => current,
     });
 }

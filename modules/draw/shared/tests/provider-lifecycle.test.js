@@ -33,7 +33,7 @@ for (const provider of Object.keys(providerFixtures)) test(`${provider} producti
     const cancelledPrepared = assert.rejects(cancelled.prepared);
     const cancelledComplete = assert.rejects(cancelled.completed);
     await Promise.resolve();
-    assert.equal(api.abortGeneration(0), true);
+    assert.equal(await api.abortGeneration(0), true);
     await Promise.all([cancelledPrepared, cancelledComplete]);
     assert.equal(beforeSubmit.mes, '[img: cancelled]');
     for (const boundary of ['cancel', 'chat-switch']) await t.test(`manual save wait retains unsubmitted ownership across ${boundary}`, async () => {
@@ -55,7 +55,7 @@ for (const provider of Object.keys(providerFixtures)) test(`${provider} producti
         try {
             await saving.promise;
             assert.equal(submissions, 0);
-            if (boundary === 'cancel') assert.equal(api.abortGeneration(0), true);
+            if (boundary === 'cancel') assert.equal(await api.abortGeneration(0), true);
             else h.ctx = { ...ctx, chatId: 'other-chat', chat: [other] };
             releaseSave.resolve();
             const outcome = await completed;
@@ -106,7 +106,7 @@ for (const provider of Object.keys(providerFixtures)) test(`${provider} producti
                         scene: tag.tags, placement: { ...tag, mode: 'replace' } })) });
                 await operation.prepared;
                 const result = await operation.completed;
-                assert.equal(cancelledAtStorage, true);
+                assert.equal(await cancelledAtStorage, true);
                 assert.equal(submissions, 0);
                 assert.equal(result.unknown, 0);
                 assert.equal(result.aborted, true);
@@ -194,7 +194,7 @@ for (const provider of Object.keys(providerFixtures)) test(`${provider} producti
                 await listener({ messageId: 0, swipeId, newSwipeId: 1 });
             }
             assert.equal(api.getGenerationState(0).data.total, 2);
-            assert.equal(api.abortGeneration(0), true);
+            assert.equal(await api.abortGeneration(0), true);
             assert.equal(requestSignal.aborted, false);
             response.resolve();
             const [a, b] = await Promise.all([first.completed, second.completed]);

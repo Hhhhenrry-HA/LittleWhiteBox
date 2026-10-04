@@ -5,8 +5,8 @@ import { build } from 'esbuild';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// Protect the foreground request contract: permanent failures send once,
-// transient failures retry at most once, cancellation stays silent, and notices
+// Protect the foreground request contract: failures retry once per host round,
+// cancellation stays silent, and diagnostics
 // classify real transport failures rather than guessing from elapsed time.
 // Real request policy, transport, validation and presentation; only host config,
 // diagnostics and HTTP are replaced. No provider requests or paid API calls.
@@ -77,9 +77,9 @@ test('a query timeout keeps overlapping floor work even when that work failed be
     await background;
     t.mock.timers.tick(3000);
     await flush();
-    t.mock.timers.tick(500);
+    t.mock.timers.tick(1000);
     await flush();
-    t.mock.timers.tick(6000);
+    t.mock.timers.tick(3000);
     assert.equal((await pending).error.code, 'RECALL_EMBEDDING_FAILED');
     assert.ok(trace.timeline.some(entry => entry.activities.some(activity => activity.activeFloors.includes(30))));
     assert.ok(trace.timeline.some(entry => entry.activities.some(activity => activity.outcome?.failed === 1)));
@@ -89,11 +89,14 @@ test('a query timeout keeps overlapping floor work even when that work failed be
     assert.deepEqual(trace, before);
 });
 
-test('an unexpected failure is retained without an automatic retry or an invented diagnosis', async t => {
+test('an unexpected failure stops without an invented diagnosis or retry', async t => {
     t.mock.timers.enable({ apis: ['setTimeout'] });
     const cause = new Error('unexpected fixture failure');
     respond = () => { throw cause; };
-    const { error } = await query();
+    const pending = query();
+    await flush();
+    t.mock.timers.tick(1000);
+    const { error } = await pending;
     assert.equal(error.cause, cause);
     assert.equal(mod.recallFailureNotice(null, error).reason, 'unknown');
     t.mock.timers.runAll();
@@ -102,8 +105,8 @@ test('an unexpected failure is retained without an automatic retry or an invente
 });
 
 const permanent = [
-    ...[400, 401, 403, 404, 422].map(status => ({
-        name: `HTTP ${status}`, reason: [401, 403].includes(status) ? 'credentials' : 'http', status,
+    ...[400, 401, 403, 404, 422, 429].map(status => ({
+        name: `HTTP ${status}`, reason: status === 429 ? 'rate_limit' : [401, 403].includes(status) ? 'credentials' : 'http', status,
         prepare() { respond = () => new Response('{}', { status }); }, requests: 1,
     })),
     { name: 'missing key', reason: 'configuration', requests: 0, prepare() { config.embeddingApi.key = ''; } },
@@ -115,13 +118,13 @@ const permanent = [
         prepare() { respond = () => new Response(JSON.stringify({ data: [{ index: 0, embedding: [] }] })); } },
 ];
 for (const entry of permanent) {
-    test(`${entry.name} fails immediately without a retry and selects its own recovery guidance`, async t => {
+    test(`${entry.name} stops immediately with its actionable diagnosis`, async t => {
         t.mock.timers.enable({ apis: ['setTimeout'] });
         entry.prepare();
         let outcome;
         query().then(value => { outcome = value; });
         await flush();
-        assert.ok(outcome?.error, 'permanent error must settle without waiting for any timer');
+        assert.ok(outcome?.error);
         assert.equal(outcome.error.code, 'RECALL_EMBEDDING_FAILED');
         assert.equal(outcome.error.errors.length, 1);
         assert.equal(outcome.error.cause, failures[0].error);
@@ -137,7 +140,7 @@ for (const entry of permanent) {
     });
 }
 
-for (const status of [408, 429, 500, 503, 599, null]) {
+for (const status of [408, 500, 503, 599, null]) {
     test(`${status == null ? 'network failure' : `HTTP ${status}`} can recover with exactly one delayed retry`, async t => {
         t.mock.timers.enable({ apis: ['setTimeout'] });
         respond = () => {
@@ -148,7 +151,7 @@ for (const status of [408, 429, 500, 503, 599, null]) {
         const pending = query();
         await flush();
         assert.equal(requests.length, 1);
-        t.mock.timers.tick(499);
+        t.mock.timers.tick(999);
         await flush();
         assert.equal(requests.length, 1);
         t.mock.timers.tick(1);
@@ -159,7 +162,7 @@ for (const status of [408, 429, 500, 503, 599, null]) {
     });
 }
 
-for (const [status, reason] of [[408, 'request_timeout'], [429, 'rate_limit'], [503, 'server'], [null, 'network']]) {
+for (const [status, reason] of [[408, 'request_timeout'], [503, 'server'], [null, 'network']]) {
     test(`repeated ${reason} stops after two attempts and preserves both causes`, async t => {
         t.mock.timers.enable({ apis: ['setTimeout'] });
         respond = () => {
@@ -168,7 +171,7 @@ for (const [status, reason] of [[408, 'request_timeout'], [429, 'rate_limit'], [
         };
         const pending = query();
         await flush();
-        t.mock.timers.tick(500);
+        t.mock.timers.tick(1000);
         const { error } = await pending;
         assert.equal(error.errors.length, 2);
         assert.equal(error.cause, failures[1].error);
@@ -191,15 +194,15 @@ for (const phase of ['headers', 'body']) {
         t.mock.timers.tick(3000);
         await flush();
         assert.equal(failures.length, 1);
-        t.mock.timers.tick(500);
+        t.mock.timers.tick(1000);
         await flush();
         assert.equal(requests.length, 2);
-        t.mock.timers.tick(6000);
+        t.mock.timers.tick(3000);
         const { error } = await pending;
         assert.equal(error.errors.length, 2);
         assert.equal(mod.recallFailureNotice(null, error).reason, 'timeout');
         assert.deepEqual(mod.recallFailureNotice(null, error).timeouts, [
-            { attempt: 1, timeoutMs: 3000 }, { attempt: 2, timeoutMs: 6000 },
+            { attempt: 1, timeoutMs: 3000 }, { attempt: 2, timeoutMs: 3000 },
         ]);
     });
 }
@@ -211,7 +214,7 @@ test('a first timeout can recover without publishing a terminal failure', async 
     await flush();
     t.mock.timers.tick(3000);
     await flush();
-    t.mock.timers.tick(500);
+    t.mock.timers.tick(1000);
     assert.deepEqual(await pending, { vectors: [[1, 0]] });
     assert.equal(requests.length, 2);
     assert.equal(failures[0].error.embeddingFailure.kind, 'timeout');
@@ -225,13 +228,13 @@ test('network failure followed by timeout never reports two timeouts', async t =
     };
     const pending = query();
     await flush();
-    t.mock.timers.tick(500);
+    t.mock.timers.tick(1000);
     await flush();
-    t.mock.timers.tick(6000);
+    t.mock.timers.tick(3000);
     const { error } = await pending;
     const notice = mod.recallFailureNotice(null, error);
     assert.equal(notice.reason, 'timeout');
-    assert.deepEqual(notice.timeouts, [{ attempt: 2, timeoutMs: 6000 }]);
+    assert.deepEqual(notice.timeouts, [{ attempt: 2, timeoutMs: 3000 }]);
 });
 
 test('timeout followed by an authorization failure reports the final actionable cause', async t => {
@@ -241,7 +244,7 @@ test('timeout followed by an authorization failure reports the final actionable 
     await flush();
     t.mock.timers.tick(3000);
     await flush();
-    t.mock.timers.tick(500);
+    t.mock.timers.tick(1000);
     const { error } = await pending;
     const notice = mod.recallFailureNotice(null, error);
     assert.equal(notice.reason, 'credentials');

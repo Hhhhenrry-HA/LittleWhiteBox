@@ -203,18 +203,6 @@ export async function saveChunkVectors(chatId, items, fingerprint) {
     });
 }
 
-/** 修补正文片段时原文与向量一起提交，失败不覆盖已有的有效记录。 */
-export async function saveChunkRepairs(chatId, chunks, items, fingerprint) {
-    const chunkRecords = makeChunkRecords(chatId, chunks);
-    const vectorRecords = makeChunkVectorRecords(chatId, items, fingerprint);
-    await db.transaction('rw', chunksTable, chunkVectorsTable, async () => {
-        await chunksTable.bulkPut(chunkRecords);
-        await chunkVectorsTable.bulkPut(vectorRecords);
-    });
-    applyRecallRuntimeMutationBestEffort(chatId, { type: 'upsertChunks', chunks: chunkRecords });
-    applyRecallRuntimeMutationBestEffort(chatId, { type: 'upsertChunkVectors', items: vectorRecords });
-}
-
 // A watermark can precede already-restored chunks. Commit the entire incremental
 // batch atomically so failure/cancellation restores overwritten records as well
 // as removing new ones. Runtime invalidation must follow commit, not each write.

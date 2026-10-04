@@ -35,7 +35,7 @@ function captureOperation(options) {
     };
     assertCurrent();
     return {
-        chatId, sources: buildSourceIndex(snapshot), assertCurrent,
+        chatId, snapshot, assertCurrent,
         totalFloors: snapshot.chat.length,
         l0: summarizeL0Floors(snapshot.chat, chat_metadata.extensions?.[EXT_ID]?.l0Index?.byFloor),
     };
@@ -47,7 +47,7 @@ function packageFromCache(cache, operation) {
         chunkVectors: cache.chunkVectors.map(vectorSourceRecord),
         stateVectors: cache.stateVectors.map(vectorSourceRecord),
         eventVectors: cache.eventVectors.map(vectorSourceRecord),
-    }, operation);
+    }, { chatId: operation.chatId, sources: buildSourceIndex(operation.snapshot) });
     data.chunks.forEach((row, i) => { row.vector = new Float32Array(cache.chunkVectors[i].vector); });
     data.states.forEach((row, i) => {
         row.vector = new Float32Array(cache.stateVectors[i].vector);
@@ -155,7 +155,7 @@ export async function restoreVectorPackage(bytes, onProgress, options = {}) {
     if (!data.chunks.length && !data.states.length && !data.events.length) {
         throw packageError(data.warningCodes.length ? 'legacy_unverifiable' : 'empty_cache');
     }
-    const resolved = resolvePackageSources(data, operation.sources);
+    const resolved = resolvePackageSources(data, buildSourceIndex(operation.snapshot));
     operation.assertCurrent();
     onProgress?.(PACKAGE_PROGRESS.write);
     await replaceVectorCache(operation.chatId, data, resolved, operation.assertCurrent);

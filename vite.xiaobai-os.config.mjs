@@ -118,7 +118,10 @@ export default defineConfig(({ mode }) => {
             emptyOutDir: buildShell,
             outDir: outputDirectory,
             lib: {
-                entry: path.resolve(
+                entry: buildShell ? {
+                    'xiaobai-os-app': path.resolve('modules/xiaobai-os/shell/app-src/main.ts'),
+                    'xiaobai-os-map-projection': path.resolve('modules/xiaobai-os/apps/map/ui/projection-entry.ts'),
+                } : path.resolve(
                     buildAgent
                         ? 'modules/xiaobai-os/agent/browser-entry.ts'
                         : buildHost
@@ -126,10 +129,10 @@ export default defineConfig(({ mode }) => {
                             : 'modules/xiaobai-os/shell/app-src/main.ts',
                 ),
                 formats: ['es'],
-                fileName: () => {
+                fileName: (_format, entryName) => {
                     if (buildAgent) return 'xiaobai-os-agent.js';
                     if (buildHost) return 'xiaobai-os-host.js';
-                    return 'xiaobai-os-app.js';
+                    return `${entryName}.js`;
                 },
                 cssFileName: 'xiaobai-os-app',
             },

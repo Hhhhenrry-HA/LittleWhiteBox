@@ -1,23 +1,26 @@
 import assert from 'node:assert/strict';
 import { after, beforeEach, test } from 'node:test';
 import {
-    clearEmbeddingFailureNotice, notifyEmbeddingRecallFailure, notifyEmbeddingWarmupFailure,
+    clearEmbeddingFailureNotice, clearRecallFailureNotice, notifyRecallFailure, notifyEmbeddingWarmupFailure,
     notifySummaryStartupFailure, notifyUnconfirmedMemory, runClearWithFeedback,
+    createRecallRetryNotice,
 } from '../user-feedback.js';
 import { recallFailureNotice } from '../generate/recall-failure.js';
+import { createRecallPrefetchCoordinator } from '../generate/recall-prefetch.js';
+import { runRequiredRecall } from '../generate/required-recall.js';
 import { clearWarningCooldowns } from '../vector/runtime/maintenance-coordinator.js';
 
 // Only the host toast/console boundary is replaced. Exercise the real policy,
-// including promotion, per-chat recall notices and loaded-memory ownership.
+// including replacement of blocked-send notices and loaded-memory ownership.
 const originalToastr = globalThis.toastr;
 const originalError = console.error;
 let shown, visible, errors;
 const probe = () => notifyEmbeddingWarmupFailure(120000);
-const recall = (chatId = 'chat') => notifyEmbeddingRecallFailure(chatId,
-    recallFailureNotice(null, { code: 'RECALL_EMBEDDING_FAILED' }).notice, 10000);
+const recall = () => notifyRecallFailure(recallFailureNotice(null, { code: 'RECALL_EMBEDDING_FAILED' }));
 
 beforeEach(() => {
     clearEmbeddingFailureNotice();
+    clearRecallFailureNotice();
     clearWarningCooldowns();
     shown = []; visible = new Set(); errors = [];
     const show = level => (_message, _title, options) => {
@@ -38,6 +41,7 @@ beforeEach(() => {
 
 after(() => {
     clearEmbeddingFailureNotice();
+    clearRecallFailureNotice();
     if (originalToastr === undefined) delete globalThis.toastr;
     else globalThis.toastr = originalToastr;
     console.error = originalError;
@@ -59,6 +63,23 @@ test('only an unconfirmed save warns, once per loaded memory even after repeated
     assert.equal(shown.length, 2);
 });
 
+test('a recall retry notice is shown once, survives waiting, and clears only its own run', () => {
+    const unrelated = toastr.info('unrelated');
+    const first = createRecallRetryNotice();
+    first.show(); first.show();
+    assert.equal(shown.length, 2);
+    assert.equal(shown[1].options.timeOut, 0);
+    assert.equal(shown[1].options.extendedTimeOut, 0);
+    const second = createRecallRetryNotice();
+    second.show();
+    first.clear(); first.clear();
+    assert.deepEqual([...visible], [unrelated, shown[2]]);
+    second.clear();
+    second.show(); // A dismissed/finished run cannot nag again on the next retry.
+    assert.equal(shown.length, 3);
+    assert.deepEqual([...visible], [unrelated]);
+});
+
 test('a real recall failure replaces the probe warning and renews its display duration', () => {
     probe(); probe();
     assert.equal(shown.length, 1);
@@ -68,9 +89,9 @@ test('a real recall failure replaces the probe warning and renews its display du
     assert.deepEqual([...visible], [shown[1]]);
     assert.equal(shown[1].options.timeOut, first.options.timeOut);
     probe(); recall();
-    assert.equal(shown.length, 2);
-    recall('another-chat'); // A new chat's actual failure must not be hidden.
     assert.equal(shown.length, 3);
+    recall(); // A second immediate blocked send must not be hidden.
+    assert.equal(shown.length, 4);
     assert.equal(visible.size, 1);
 });
 
@@ -103,8 +124,41 @@ test('replacing an expired probe and cleaning up never remove unrelated notices'
     recall();
     assert.equal(visible.size, 2);
     clearEmbeddingFailureNotice();
+    clearRecallFailureNotice();
     assert.deepEqual([...visible], [unrelated]);
 });
+
+for (const cause of [
+    { kind: 'http', status: 401 }, { kind: 'http', status: 403 },
+    { kind: 'http', status: 429 }, { kind: 'http', status: 404 },
+    { kind: 'configuration' }, { kind: 'invalid_response' }, {}, null,
+]) {
+    test(`each blocked send refreshes one visible reason, without cooldown: ${JSON.stringify(cause)}`, async () => {
+        const unrelated = toastr.info('unrelated');
+        const error = cause === null ? new Error('storage failure')
+            : Object.assign(new Error('query failed', {
+                cause: Object.assign(new Error(), { embeddingFailure: cause }),
+            }), { code: 'RECALL_EMBEDDING_FAILED' });
+        const context = { chatId: 'chat', chat: [] };
+        const coordinator = createRecallPrefetchCoordinator({
+            getContext: () => context, prepare: async () => { throw error; },
+        });
+        let stopped = 0;
+        for (let attempt = 0; attempt < 2; attempt++) {
+            const { slot: run } = coordinator.join({ chatId: context.chatId, type: 'normal' });
+            await runRequiredRecall({ coordinator, run,
+                commit: () => assert.fail('failed recall cannot commit'),
+                abort: () => { stopped++; },
+                onRetry: () => assert.fail('terminal failure cannot restart'),
+                onFailure: failure => notifyRecallFailure(recallFailureNotice(run.cancelReason, failure)),
+            });
+            assert.equal(stopped, attempt + 1);
+            assert.equal(shown.length, attempt + 2);
+            assert.equal(shown.at(-1).options.preventDuplicates, false);
+            assert.deepEqual([...visible], [unrelated, shown.at(-1)]);
+        }
+    });
+}
 
 for (const kind of ['vectors', 'anchors']) {
     test(`${kind}: failed clearing has one failure receipt, preserves the cause and never retries`, async () => {

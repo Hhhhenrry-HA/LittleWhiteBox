@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Group, Vector3 } from 'three';
-import { createMascotPerformer } from '../brand/mascot/performance.ts';
+import { createMascotPerformer, createMascotPoses } from '../brand/mascot/performance.ts';
 import { createMascotReactions } from '../brand/mascot/reactions.ts';
 
 test('Xiaobai pauses, runs with a box, then returns to the same resting pose', () => {
@@ -40,4 +40,16 @@ test('Xiaobai reactions keep their stage position and return to the original sca
         assert.deepEqual(mascot.position.toArray(), home.toArray()); assert.deepEqual(mascot.scale.toArray(), size.toArray());
         assert.deepEqual(mascot.rotation.toArray(), [0, 0, 0, 'XYZ']);
     }
+});
+
+test('living postures do not accumulate transforms or change Xiaobai proportions, and reduced motion is static', () => {
+    const mascot = new Group(), anchor = new Vector3(2, 1, .3), poses = createMascotPoses(mascot);
+    mascot.scale.setScalar(.57); const size = mascot.scale.clone(), rotations = new Set();
+    for (const posture of ['reading', 'reclining', 'sleeping', 'sipping', 'looking']) {
+        poses.pose(posture, anchor, 100, true); const first = [mascot.position.toArray(), mascot.rotation.toArray()];
+        poses.pose(posture, anchor, 2000, true);
+        assert.deepEqual([mascot.position.toArray(), mascot.rotation.toArray()], first);
+        assert.deepEqual(mascot.scale, size); rotations.add(JSON.stringify(mascot.rotation.toArray()));
+    }
+    assert.equal(rotations.size, 5); poses.reset(); assert.deepEqual(mascot.rotation.toArray(), [0, 0, 0, 'XYZ']);
 });

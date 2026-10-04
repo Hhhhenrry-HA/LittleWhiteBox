@@ -54,6 +54,7 @@ export interface XiaobaiOsSettingsRepository {
     setEnabled: (enabled: boolean) => Promise<XiaobaiOsSettings>;
     setAppOrder: (order: readonly string[]) => Promise<XiaobaiOsSettings>;
     setMapAutoMaintenance: (enabled: boolean) => Promise<XiaobaiOsSettings>;
+    setMapProjection: (enabled: boolean) => Promise<XiaobaiOsSettings>;
     setTasksAutoMaintenance: (enabled: boolean) => Promise<XiaobaiOsSettings>;
     setMessagesSettings: (settings: MessagesSettings) => Promise<XiaobaiOsSettings>;
     setDiceFeature: (feature: DiceFeature, enabled: boolean) => Promise<XiaobaiOsSettings>;
@@ -63,7 +64,7 @@ export interface XiaobaiOsSettingsRepository {
     finishDiceSheetMigration: () => Promise<XiaobaiOsSettings>;
     setWorldPreference: (key: keyof WorldSettings, enabled: boolean) => Promise<XiaobaiOsSettings>;
     setGameMovingSound: (enabled: boolean) => Promise<XiaobaiOsSettings>;
-    setGameStackingSound: (enabled: boolean) => Promise<XiaobaiOsSettings>;
+    setGameBuildingSound: (enabled: boolean) => Promise<XiaobaiOsSettings>;
     mutateFourthWall: (
         action: (current: FourthWallGlobalSettings) => FourthWallGlobalSettings,
     ) => Promise<XiaobaiOsSettings>;
@@ -256,6 +257,14 @@ export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): Xia
         });
     }
 
+    function setMapProjection(enabled: boolean): Promise<XiaobaiOsSettings> {
+        if (typeof enabled !== 'boolean') { throw new TypeError('invalid_map_projection'); }
+        return mutate(next => {
+            next.apps.map.projectToChat = enabled;
+            return next;
+        });
+    }
+
     function setAppOrder(order: readonly string[]): Promise<XiaobaiOsSettings> {
         const normalized = normalizeAppOrder(order);
         if (!Array.isArray(order) || normalized.length !== order.length) {
@@ -357,9 +366,9 @@ export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): Xia
         });
     }
 
-    function setGameStackingSound(enabled: boolean): Promise<XiaobaiOsSettings> {
-        if (typeof enabled !== 'boolean') { throw new TypeError('Game stacking sound must be a boolean'); }
-        return mutate(next => { next.apps.game.stackingSoundEnabled = enabled; return next; });
+    function setGameBuildingSound(enabled: boolean): Promise<XiaobaiOsSettings> {
+        if (typeof enabled !== 'boolean') { throw new TypeError('Game building sound must be a boolean'); }
+        return mutate(next => { next.apps.game.buildingSoundEnabled = enabled; return next; });
     }
 
     function subscribe(listener: (settings: XiaobaiOsSettings) => void): () => void {
@@ -384,6 +393,7 @@ export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): Xia
         setEnabled,
         setAppOrder,
         setMapAutoMaintenance,
+        setMapProjection,
         setTasksAutoMaintenance,
         setMessagesSettings,
         setDiceFeature,
@@ -393,7 +403,7 @@ export function createSettingsRepository(adapter: XiaobaiOsSettingsAdapter): Xia
         finishDiceSheetMigration,
         setWorldPreference,
         setGameMovingSound,
-        setGameStackingSound,
+        setGameBuildingSound,
         mutateFourthWall,
         subscribe,
         subscribeMutationInstalled,

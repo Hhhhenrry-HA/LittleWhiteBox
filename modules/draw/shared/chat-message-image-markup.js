@@ -9,6 +9,7 @@ const OPAQUE_TAGS = new Set(['code', 'pre', 'script', 'style', 'textarea']);
 // Keep raw offsets; code examples, escaped tags and HTML attributes are not requests.
 export function parseChatImageTags(value) {
     const source = String(value || '');
+    if (source.search(TAG_PATTERN) < 0) return [];
     const excluded = [];
     let offset = 0;
     while (offset < source.length) {

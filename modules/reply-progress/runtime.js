@@ -1,5 +1,6 @@
 import { observeGenerateInterceptors } from '../../shared/common/generate-interceptor.js';
 import { createPlaceholderPresenter } from './placeholder.js';
+import { hasGenerationRecovery } from '../../shared/common/generation-retry-owner.js';
 
 const VISIBLE_TYPES = new Set(['', 'normal', 'regenerate', 'swipe', 'continue']);
 const HOST_PHASES = new Set(['assembly', 'request', 'waiting']);
@@ -98,6 +99,14 @@ export function createReplyProgressRuntime({
     }
 
     function onInterceptor({ phase, id, type, run: dispatch, detail }) {
+        if (phase === 'dispatch-start' && run && hasGenerationRecovery()
+            && run.chat === getChat() && VISIBLE_TYPES.has(String(type || ''))) {
+            run.unobserveRequest?.();
+            run.unobserveRequest = null;
+            run.dispatch = null;
+            run.type = String(type || 'normal');
+            run.phase = 'context';
+        }
         if (!run || !run.afterCommands || run.chat !== getChat()
             || HOST_PHASES.has(run.phase)
             || !VISIBLE_TYPES.has(String(type || '')) || String(type || 'normal') !== run.type) return;
@@ -207,7 +216,7 @@ export function createReplyProgressRuntime({
             stop();
         });
         for (const name of ['GENERATION_ENDED', 'GROUP_WRAPPER_FINISHED', 'GENERATION_STOPPED', 'CHAT_CHANGED']) {
-            on(name, stop);
+            on(name, () => { if (name === 'CHAT_CHANGED' || !hasGenerationRecovery()) stop(); });
         }
         unobserveInterceptors = observeGenerateInterceptors(onInterceptor);
     }

@@ -21,6 +21,7 @@ import { DiceOperationError } from '../application/operation-error.js';
 import type { DiceRerollService } from '../application/reroll-service.js';
 import { jsonValuesEqual } from '../../../host/json-values-equal.js';
 import { holdDiceRecoverySave } from './recovery-save-gate.js';
+import { getGenerationRetryOwner, hasGenerationRecovery, runOwnedGeneration } from '../../../../../shared/common/generation-retry-owner.js';
 import { subscribeChatImagePlacement, rebaseImageOffset, rebaseImageText, restoreChatImagePlacements } from '../../../../draw/shared/chat-image-placement.js';
 
 export type DiceCardAction = 'continue-check' | 'cancel-continue' | 'reroll-check' | 'retry-check';
@@ -115,6 +116,7 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
         id: uuidv4,
         reveal,
         async continue(target, candidate, signal) {
+            return runOwnedGeneration(signal, async (bindRequest: (signal: AbortSignal) => void) => {
             // Explicit recovery may replace a cancelled call while its native I/O unwinds.
             // A live continuation still owns the normal chain until Generate resolves.
             if (intention && !intention.signal.aborted) { await intention.settled; }
@@ -123,6 +125,7 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
             const callController = new AbortController();
             const callSignal = inGroup ? wrapperSignal : callController.signal;
             if (!callSignal) { throw new Error('本次群聊已结束，无法继续检定。'); }
+            bindRequest(callSignal);
             let settle!: () => void;
             const settled = new Promise<void>(resolve => { settle = resolve; });
             const own: NonNullable<typeof intention> = { target, candidate, signal: callSignal, settled, received: false,
@@ -179,6 +182,7 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
                 settle();
                 changed();
             }
+            }, () => session.cancel());
         },
     });
 
@@ -244,7 +248,7 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
         if (unsubscribe) { return; }
         const events = createModuleEvents('xiaobaiOsDice');
         const started = async (type: unknown, options: { signal?: AbortSignal }, dryRun: unknown) => {
-            if (dryRun || intention && type === 'continue' && options.signal === intention.signal
+            if (dryRun || type === 'quiet' || intention && type === 'continue' && options.signal === intention.signal
                 && currentTarget(intention.target)) { return; }
             // Keep an error at the preceding member while the aborted wrapper unwinds.
             if (is_group_generating && wrapperSignal?.aborted) { return; }
@@ -419,6 +423,7 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
         events.on(event_types.GROUP_MEMBER_DRAFTED, groupBoundary);
         events.on(event_types.GROUP_WRAPPER_FINISHED, async () => { await groupBoundary(); wrapperSignal = undefined; changed(); });
         const stopped = () => {
+            if (hasGenerationRecovery() || intention && getGenerationRetryOwner(intention.signal)?.retryPending) { clearPrompt(); return; }
             if (pausingGroup) { clearPrompt(); return; }
             const phase = session.view()?.phase.kind;
             // Internal wrapper stop must not discard the same-roll recovery candidate.
