@@ -2,7 +2,14 @@ import type { MapBrowseFilter, MapBrowseKind } from './map-browse.js';
 
 export const MAP_PROJECTION_COPY = {
     label: '投影地图', empty: '还没有地图',
+    description: '将地图投影到最后一个AI楼层末尾显示。',
     enabled: '地图投影已开启。', disabled: '地图投影已关闭。',
+    views: { world: '世界', region: '地区', scene: '场景' },
+    options: '地图显示选项', location: '回到当前位置',
+} as const;
+
+export const MAP_SCENE_COPY = {
+    mode: '场景显示方式', two: '二维', three: '三维', lowWalls: '低墙', labels: '名称',
 } as const;
 
 export const MAP_VIEW_LABELS = { world: '世界地图', region: '当前地区', scene: '当前场景' } as const;
@@ -22,6 +29,8 @@ export const MAP_NAV_COPY = {
     sceneEmpty: '这里的布局还没画出来', unknownLocation: '还不知道你在哪里',
     sceneUpdateHint: '更新地图后，会结合设定与剧情补齐这里的普通布局。', locationUpdateHint: '更新地图后，会根据剧情确认你所在的地方。',
     legend: '世界图展示地区，地区图展示所属场景；场景图展示一个地点的内部布局。地图不按实际比例。',
+    legendLabel: '地图图例', legendTitle: '读懂这张地图', legendCurrent: '你在这里', legendPlace: '可探索地点',
+    legendRoutes: '路线连接已记录的地点；箭头表示单向通行。',
 } as const;
 
 export function mapBrowseCount(kind: MapBrowseKind, count: number): string {

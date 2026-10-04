@@ -92,6 +92,11 @@
 .messages-typing > span { display: flex; gap: 4px; padding: 12px; border-radius: 16px; background: var(--xiaobai-os-surface); }
 .messages-typing i { width: 4px; height: 4px; background: var(--messages-accent); border-radius: 50%; animation: messages-wave .8s ease-in-out infinite alternate; }
 .messages-typing i:nth-child(2) { animation-delay: .2s; }.messages-typing i:nth-child(3) { animation-delay: .4s; }
+.messages-provisional { opacity: .78; }
+.messages-provisional .messages-image-placeholder { min-height: 90px; }
+.messages-provisional-label { font-size: 10px; opacity: .7; }
+.messages-peek { background: none; padding: 6px 4px; font-size: 11px !important; color: var(--messages-accent) !important; }
+.messages-character-state { white-space: pre-wrap; margin: -4px 0 12px; padding: 10px 12px; max-width: 86%; border-left: 2px solid var(--xiaobai-os-divider); color: var(--xiaobai-os-muted); font-size: 11px; line-height: 1.7; overflow-wrap: anywhere; }
 .messages-composer { flex-shrink: 0; padding: 10px 10px max(14px, env(safe-area-inset-bottom)); background: var(--xiaobai-os-surface); border-top: 1px solid var(--xiaobai-os-divider); }
 .messages-composer-line { display: flex; align-items: flex-end; gap: 7px; }
 .messages-composer textarea { field-sizing: content; flex: 1; min-width: 0; resize: none; min-height: 40px; max-height: 130px; padding: 10px 13px; border: 0; border-radius: 18px; background: var(--xiaobai-os-screen); color: var(--xiaobai-os-ink); font-size: 13px; line-height: 1.5; }

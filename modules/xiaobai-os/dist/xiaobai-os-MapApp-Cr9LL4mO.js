@@ -1,6 +1,6 @@
 /* eslint-disable */
-import { B as G, C as c, D as O, I as K, O as $, Q as L, S as Y, U as r, _ as W, at as P, b as A, et as M, ft as m, k as F, lt as e, st as X, ut as J, w as b, x as i } from "./xiaobai-os-frame-bridge-CrPFvkI3.js";
-import { h as S, m as U, p as C, t as Z } from "./xiaobai-os-MapBrowser-DW5ePvWd.js";
+import { B as G, C as c, D as U, I as K, O as $, Q as L, S as Y, U as r, _ as W, at as P, b as A, et as M, ft as d, k as F, lt as e, st as X, ut as J, w as b, x as i } from "./xiaobai-os-frame-bridge-CrPFvkI3.js";
+import { h as S, m as q, p as C, t as Z } from "./xiaobai-os-MapBrowser-CSDGp-Hv.js";
 import { t as x } from "./xiaobai-os-AppDialog-Ce_C5VGF.js";
 var _ = { class: "map-dialog-header" }, ee = { key: 0 }, te = { class: "map-settings-content" }, ae = { class: "map-auto-setting" }, ne = ["aria-checked", "disabled"], se = { class: "map-auto-setting" }, ie = [
   "aria-checked",
@@ -51,7 +51,7 @@ var _ = { class: "map-dialog-header" }, ee = { key: 0 }, te = { class: "map-sett
           key: 0,
           class: J(["map-settings-feedback", { "is-error": t.notice ? t.noticeError : t.maintenanceError }]),
           role: "status"
-        }, [i("strong", null, m(t.notice ? t.notice === t.maintenanceMessage ? "最近一次更新" : "操作提示" : t.status || "最近一次更新"), 1), t.notice || t.maintenanceMessage ? (r(), b("p", ee, m(t.notice || t.maintenanceMessage), 1)) : c("", !0)], 2)) : c("", !0),
+        }, [i("strong", null, d(t.notice ? t.notice === t.maintenanceMessage ? "最近一次更新" : "操作提示" : t.status || "最近一次更新"), 1), t.notice || t.maintenanceMessage ? (r(), b("p", ee, d(t.notice || t.maintenanceMessage), 1)) : c("", !0)], 2)) : c("", !0),
         i("div", te, [
           i("section", ae, [s[9] || (s[9] = i("div", null, [i("h3", null, "随对话自动更新"), i("p", null, "你发送下一条消息时，根据上一轮对话更新地图。适用于所有普通聊天。")], -1)), i("button", {
             type: "button",
@@ -62,12 +62,12 @@ var _ = { class: "map-dialog-header" }, ee = { key: 0 }, te = { class: "map-sett
             disabled: t.autoToggleBusy,
             onClick: s[1] || (s[1] = (l) => a.$emit("setAuto", !t.autoMaintenance))
           }, [...s[8] || (s[8] = [i("span", null, null, -1)])], 8, ne)]),
-          i("section", se, [i("div", null, [i("h3", null, m(e(U).label), 1)]), i("button", {
+          i("section", se, [i("div", null, [i("h3", null, d(e(q).label), 1), i("p", null, d(e(q).description), 1)]), i("button", {
             type: "button",
             class: "map-switch",
             role: "switch",
             "aria-checked": t.projectToChat,
-            "aria-label": e(U).label,
+            "aria-label": e(q).label,
             disabled: t.autoToggleBusy,
             onClick: s[2] || (s[2] = (l) => a.$emit("setProjection", !t.projectToChat))
           }, [...s[10] || (s[10] = [i("span", null, null, -1)])], 8, ie)]),
@@ -80,12 +80,12 @@ var _ = { class: "map-dialog-header" }, ee = { key: 0 }, te = { class: "map-sett
               class: "map-primary-button",
               disabled: t.busy || !!t.disabledReason || !t.hasMap,
               onClick: s[3] || (s[3] = (l) => a.$emit("update"))
-            }, m(t.busy ? t.status || "请稍候…" : "更新地图"), 9, oe),
+            }, d(t.busy ? t.status || "请稍候…" : "更新地图"), 9, oe),
             t.hasMap ? c("", !0) : (r(), b("small", ue, "请先建立世界地图"))
           ]),
           i("section", re, [
             $(S, { name: "globe" }),
-            i("h3", null, m(t.hasMap ? "重新绘制世界" : "建立世界地图"), 1),
+            i("h3", null, d(t.hasMap ? "重新绘制世界" : "建立世界地图"), 1),
             s[13] || (s[13] = i("p", null, "依据角色与世界设定建立地图；设定未写明的地方，会合理补全。结合当前聊天保留已发生的故事。", -1)),
             t.hasMap ? (r(), b("p", de, "新地图保存成功后替换原图；失败时保留原图。")) : c("", !0),
             i("button", {
@@ -93,15 +93,15 @@ var _ = { class: "map-dialog-header" }, ee = { key: 0 }, te = { class: "map-sett
               class: "map-secondary-button",
               disabled: t.busy || !!t.disabledReason,
               onClick: s[4] || (s[4] = (l) => a.$emit("rebuild"))
-            }, m(t.busy ? t.status || "请稍候…" : t.hasMap ? "重新绘制" : "绘制世界地图"), 9, me)
+            }, d(t.busy ? t.status || "请稍候…" : t.hasMap ? "重新绘制" : "绘制世界地图"), 9, me)
           ]),
-          t.disabledReason ? (r(), b("p", be, m(t.disabledReason), 1)) : c("", !0),
+          t.disabledReason ? (r(), b("p", be, d(t.disabledReason), 1)) : c("", !0),
           i("button", {
             type: "button",
             class: "map-sync-button",
             disabled: t.busy || t.refreshDisabled,
             onClick: s[5] || (s[5] = (l) => a.$emit("refresh"))
-          }, [$(S, { name: "refresh" }), s[14] || (s[14] = O("重新加载地图", -1))], 8, ve),
+          }, [$(S, { name: "refresh" }), s[14] || (s[14] = U("重新加载地图", -1))], 8, ve),
           s[15] || (s[15] = i("p", { class: "map-setting-note" }, "只加载已保存的地图，不会重新绘制。绘制或更新时可以离开此页面。", -1))
         ])
       ]),
@@ -116,18 +116,18 @@ function z(t) {
   return t.maintenanceStatus === "maintaining" || t.maintenanceStatus === "rebuilding";
 }
 function fe(t) {
-  const a = P(structuredClone(X(t.initialState))), s = P(null), l = P(""), d = P(!1);
+  const a = P(structuredClone(X(t.initialState))), s = P(null), l = P(""), m = P(!1);
   let p = !1, f = 0, k = 0, I = () => {
   };
-  const B = A(() => a.value.status === "unconfirmed" || a.value.writeState === "unconfirmed"), y = A(() => s.value !== null || ["loading", "saving"].includes(a.value.status) || ["maintaining", "rebuilding"].includes(a.value.maintenanceStatus || "")), j = A(() => y.value ? "正在更新地图，请稍候" : B.value ? "请先检查上一次是否保存成功" : a.value.status === "conflict" ? "存档有变化，请先选择要保留的版本" : a.value.status !== "ready" ? a.value.message || "地图暂时不可更新" : a.value.chatIdentity ? "" : "请先打开一个聊天"), q = A(() => a.value.maintenanceStatus === "rebuilding" || s.value === "rebuild" ? "正在绘制世界…" : a.value.maintenanceStatus === "maintaining" || s.value === "maintain" ? "正在更新地图…" : s.value === "confirm" ? "正在检查保存…" : y.value ? "请稍候…" : ""), V = A(() => a.value.message || l.value), D = A(() => a.value.message ? [
+  const B = A(() => a.value.status === "unconfirmed" || a.value.writeState === "unconfirmed"), y = A(() => s.value !== null || ["loading", "saving"].includes(a.value.status) || ["maintaining", "rebuilding"].includes(a.value.maintenanceStatus || "")), j = A(() => y.value ? "正在更新地图，请稍候" : B.value ? "请先检查上一次是否保存成功" : a.value.status === "conflict" ? "存档有变化，请先选择要保留的版本" : a.value.status !== "ready" ? a.value.message || "地图暂时不可更新" : a.value.chatIdentity ? "" : "请先打开一个聊天"), T = A(() => a.value.maintenanceStatus === "rebuilding" || s.value === "rebuild" ? "正在绘制世界…" : a.value.maintenanceStatus === "maintaining" || s.value === "maintain" ? "正在更新地图…" : s.value === "confirm" ? "正在检查保存…" : y.value ? "请稍候…" : ""), V = A(() => a.value.message || l.value), D = A(() => a.value.message ? [
     "blocked",
     "error",
     "conflict",
     "unconfirmed"
-  ].includes(a.value.status) : d.value);
+  ].includes(a.value.status) : m.value);
   function h(o) {
     const n = z(a.value);
-    a.value = structuredClone(o), z(o) ? (l.value = "", d.value = !1) : n && (l.value = o.maintenanceMessage || "", d.value = o.maintenanceStatus === "error");
+    a.value = structuredClone(o), z(o) ? (l.value = "", m.value = !1) : n && (l.value = o.maintenanceMessage || "", m.value = o.maintenanceStatus === "error");
   }
   function w(o, n) {
     const u = o instanceof Error ? o.message : String(o);
@@ -135,18 +135,18 @@ function fe(t) {
   }
   async function v(o, n, u = {}) {
     if (s.value) return;
-    const E = ++f, Q = k, T = a.value.chatIdentity;
-    s.value = n, l.value = "", d.value = !1;
+    const E = ++f, Q = k, N = a.value.chatIdentity;
+    s.value = n, l.value = "", m.value = !1;
     try {
-      const N = await t.bridge.request(o, {
-        chatIdentity: T,
+      const O = await t.bridge.request(o, {
+        chatIdentity: N,
         ...u
       }, 35e3);
-      if (!p || E !== f || a.value.chatIdentity !== T) return;
-      const g = R(N) ? N.result : void 0, H = R(g) && R(g.state) ? g.state : g;
-      Q === k && R(H) && H.chatIdentity === T && h(H), (n === "maintain" || n === "rebuild") && R(g) && typeof g.message == "string" && g.message && (l.value = g.message), n === "refresh" && a.value.status === "ready" && (l.value = "已加载保存的地图。"), n === "settings" && (l.value = a.value.autoMaintenance ? "自动更新已开启。" : "自动更新已关闭。"), n === "projection" && (l.value = a.value.projectToChat ? U.enabled : U.disabled), n === "confirm" && a.value.status === "ready" && (l.value = "已确认保存成功。"), n === "adopt" && R(g) && g.adoption === "adopted" && (l.value = "已使用当前聊天里保存的 OS 存档。");
-    } catch (N) {
-      p && E === f && a.value.chatIdentity === T && (l.value = w(N, n), d.value = !0);
+      if (!p || E !== f || a.value.chatIdentity !== N) return;
+      const g = R(O) ? O.result : void 0, H = R(g) && R(g.state) ? g.state : g;
+      Q === k && R(H) && H.chatIdentity === N && h(H), (n === "maintain" || n === "rebuild") && R(g) && typeof g.message == "string" && g.message && (l.value = g.message), n === "refresh" && a.value.status === "ready" && (l.value = "已加载保存的地图。"), n === "settings" && (l.value = a.value.autoMaintenance ? "自动更新已开启。" : "自动更新已关闭。"), n === "projection" && (l.value = a.value.projectToChat ? q.enabled : q.disabled), n === "confirm" && a.value.status === "ready" && (l.value = "已确认保存成功。"), n === "adopt" && R(g) && g.adoption === "adopted" && (l.value = "已使用当前聊天里保存的 OS 存档。");
+    } catch (O) {
+      p && E === f && a.value.chatIdentity === N && (l.value = w(O, n), m.value = !0);
     } finally {
       p && E === f && (s.value = null);
     }
@@ -157,7 +157,7 @@ function fe(t) {
         const n = o.payload.state;
         if (n.chatIdentity !== a.value.chatIdentity) return;
         k += 1, h(n);
-      } else o.type === "map/error" && (k += 1, d.value = !0, l.value = o.payload.message || "地图暂时无法读取，请重新打开。");
+      } else o.type === "map/error" && (k += 1, m.value = !0, l.value = o.payload.message || "地图暂时无法读取，请重新打开。");
     });
   }), K(() => {
     p = !1, f += 1, I();
@@ -167,11 +167,11 @@ function fe(t) {
     busy: y,
     disabledReason: j,
     requiresConfirmation: B,
-    status: q,
+    status: T,
     notice: V,
     isError: D,
     dismissNotice: () => {
-      l.value = "", d.value = !1;
+      l.value = "", m.value = !1;
     },
     refresh: () => {
       if (!y.value && !B.value) return v("map/refresh", "refresh");
@@ -209,7 +209,7 @@ var ye = {
     initialState: {}
   },
   setup(t) {
-    const { state: a, activeRequest: s, busy: l, disabledReason: d, requiresConfirmation: p, status: f, notice: k, isError: I, dismissNotice: B, refresh: y, confirmSave: j, adopt: q, setAuto: V, setProjection: D, update: h, rebuild: w } = fe(t), v = P(!1);
+    const { state: a, activeRequest: s, busy: l, disabledReason: m, requiresConfirmation: p, status: f, notice: k, isError: I, dismissNotice: B, refresh: y, confirmSave: j, adopt: T, setAuto: V, setProjection: D, update: h, rebuild: w } = fe(t), v = P(!1);
     return L(() => a.value.chatIdentity, () => {
       v.value = !1;
     }), (o, n) => (r(), Y(Z, {
@@ -222,11 +222,11 @@ var ye = {
         "aria-label": "地图设置",
         onClick: n[0] || (n[0] = (u) => v.value = !0)
       }, [$(S, { name: "more" })])]),
-      feedback: M(() => [e(f) ? (r(), b("div", ye, [n[9] || (n[9] = i("span", null, null, -1)), O(m(e(f)), 1)])) : c("", !0), e(k) || e(p) || e(a).status === "conflict" ? (r(), b("aside", {
+      feedback: M(() => [e(f) ? (r(), b("div", ye, [n[9] || (n[9] = i("span", null, null, -1)), U(d(e(f)), 1)])) : c("", !0), e(k) || e(p) || e(a).status === "conflict" ? (r(), b("aside", {
         key: 1,
         class: J(["map-notice", { "is-error": e(I) }]),
         role: "status"
-      }, [i("p", null, m(e(k) || (e(p) ? "还不确定是否保存成功，请先检查保存。" : "服务器上的存档与当前内容不同。")), 1), e(p) ? (r(), b("button", {
+      }, [i("p", null, d(e(k) || (e(p) ? "还不确定是否保存成功，请先检查保存。" : "服务器上的存档与当前内容不同。")), 1), e(p) ? (r(), b("button", {
         key: 0,
         type: "button",
         disabled: e(l),
@@ -234,7 +234,7 @@ var ye = {
       }, "检查保存", 8, ge)) : e(a).status === "conflict" ? (r(), b(W, { key: 1 }, [n[10] || (n[10] = i("small", null, "恢复会放弃尚未保存的更改，并使用当前聊天已保存的 OS 数据（不只是地图）。", -1)), i("button", {
         type: "button",
         disabled: e(l),
-        onClick: n[2] || (n[2] = (...u) => e(q) && e(q)(...u))
+        onClick: n[2] || (n[2] = (...u) => e(T) && e(T)(...u))
       }, "放弃未保存更改并恢复", 8, ke)], 64)) : e(a).status === "error" || e(a).status === "blocked" ? (r(), b("button", {
         key: 2,
         type: "button",
@@ -248,38 +248,38 @@ var ye = {
         onClick: n[4] || (n[4] = (...u) => e(B) && e(B)(...u))
       }, [$(S, { name: "close" })]))], 2)) : c("", !0)]),
       "scene-empty-action": M(({ located: u }) => [
-        i("p", null, m(u ? e(C).sceneUpdateHint : e(C).locationUpdateHint), 1),
+        i("p", null, d(u ? e(C).sceneUpdateHint : e(C).locationUpdateHint), 1),
         i("button", {
           type: "button",
           class: "map-secondary-button",
-          disabled: !!e(d),
+          disabled: !!e(m),
           onClick: n[5] || (n[5] = (...E) => e(h) && e(h)(...E))
-        }, m(e(l) ? e(C).updating : e(C).update), 9, Ce),
-        e(d) && !e(l) ? (r(), b("p", Me, m(e(d)), 1)) : c("", !0)
+        }, d(e(l) ? e(C).updating : e(C).update), 9, Ce),
+        e(m) && !e(l) ? (r(), b("p", Me, d(e(m)), 1)) : c("", !0)
       ]),
       "scope-empty-action": M(() => [i("button", {
         type: "button",
         class: "map-secondary-button",
-        disabled: !!e(d),
+        disabled: !!e(m),
         onClick: n[6] || (n[6] = (...u) => e(h) && e(h)(...u))
-      }, m(e(l) ? e(C).updating : e(C).update), 9, $e)]),
+      }, d(e(l) ? e(C).updating : e(C).update), 9, $e)]),
       "empty-map": M(() => [i("div", Se, [
         i("span", Be, [$(S, { name: "globe" })]),
         n[11] || (n[11] = i("small", null, "故事之外，还有一整个世界", -1)),
-        i("h1", null, m(e(a).status === "loading" ? e(C).loading : "下一站，去哪里？"), 1),
+        i("h1", null, d(e(a).status === "loading" ? e(C).loading : "下一站，去哪里？"), 1),
         n[12] || (n[12] = i("p", null, [
-          O("把世界设定画成地图，"),
+          U("把世界设定画成地图，"),
           i("br"),
-          O("也为留白的地方添上值得探索的去处。")
+          U("也为留白的地方添上值得探索的去处。")
         ], -1)),
         e(a).status !== "loading" ? (r(), b("button", {
           key: 0,
           type: "button",
           class: "map-primary-button",
-          disabled: !!e(d),
+          disabled: !!e(m),
           onClick: n[7] || (n[7] = (...u) => e(w) && e(w)(...u))
-        }, m(e(l) ? e(f) || "正在准备…" : "绘制世界地图"), 9, je)) : c("", !0),
-        e(d) && !e(l) ? (r(), b("p", Ae, m(e(d)), 1)) : c("", !0)
+        }, d(e(l) ? e(f) || "正在准备…" : "绘制世界地图"), 9, je)) : c("", !0),
+        e(m) && !e(l) ? (r(), b("p", Ae, d(e(m)), 1)) : c("", !0)
       ])]),
       overlay: M(() => [v.value ? (r(), Y(pe, {
         key: 0,
@@ -288,7 +288,7 @@ var ye = {
         busy: e(l),
         "refresh-disabled": e(p),
         "auto-toggle-busy": e(s) !== null,
-        "disabled-reason": e(d),
+        "disabled-reason": e(m),
         "has-map": !!e(a).map,
         status: e(f),
         "maintenance-message": e(a).maintenanceMessage || "",

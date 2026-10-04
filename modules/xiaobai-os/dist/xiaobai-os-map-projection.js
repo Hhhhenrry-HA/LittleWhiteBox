@@ -1,6 +1,6 @@
 /* eslint-disable */
 import { B as u, C as l, I as d, S as m, U as o, at as _, et as v, ft as n, k as f, lt as y, r as g, u as h, w as p, x as k } from "./xiaobai-os-frame-bridge-CrPFvkI3.js";
-import { p as B, t as b } from "./xiaobai-os-MapBrowser-DW5ePvWd.js";
+import { p as B, t as b } from "./xiaobai-os-MapBrowser-CSDGp-Hv.js";
 var j = {
   key: 0,
   class: "map-notice",
@@ -12,15 +12,16 @@ var j = {
 }, M = /* @__PURE__ */ f({
   __name: "MapProjection",
   setup(r) {
-    const e = _(null), a = g(), c = a.subscribe((t) => {
+    const e = _(null), a = g(), i = a.subscribe((t) => {
       if (t.type !== "map/projection-state") return;
       const s = t.payload;
       document.documentElement.classList.toggle("theme-dark", s.theme === "dark"), e.value = s.state;
     });
     return u(a.start), d(() => {
-      c(), a.dispose();
+      i(), a.dispose();
     }), (t, s) => e.value ? (o(), m(b, {
       key: 0,
+      compact: "",
       class: "map-projection-view",
       map: e.value.map,
       "chat-identity": e.value.chatIdentity
@@ -29,8 +30,8 @@ var j = {
       _: 1
     }, 8, ["map", "chat-identity"])) : (o(), p("div", w, n(y(B).loading), 1));
   }
-}), C = M, i = h(C);
-i.mount("#app");
+}), C = M, c = h(C);
+c.mount("#app");
 window.addEventListener("pagehide", (r) => {
-  r.persisted || i.unmount();
+  r.persisted || c.unmount();
 });

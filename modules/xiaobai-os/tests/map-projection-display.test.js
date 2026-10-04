@@ -2,11 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { parseHTML } from 'linkedom';
 import { createMapProjectionDisplay } from '../apps/map/host/projection-display.js';
+import { createMainGenerationRuntime } from '../host/main-generation-runtime.js';
 import { createEmptyMapDomain } from '../domains/map/state.js';
 import { mapBrowseFixture } from './fixtures/map-browse.js';
 
-// DOM ownership is the contract: no message/body writes, duplicate surfaces or stale chat data.
-test('projection follows only the final assistant, survives rerenders, and owns no message data', async t => {
+function displayDom() {
     const { document, window } = parseHTML('<html><body><div id="chat"></div></body></html>');
     const globals = new Map();
     const frames = new Map();
@@ -17,6 +17,16 @@ test('projection follows only the final assistant, survives rerenders, and owns 
         globals.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
         Object.defineProperty(globalThis, key, { value, configurable: true });
     }
+    const cleanup = () => { for (const [key, descriptor] of globals) {
+        if (descriptor) { Object.defineProperty(globalThis, key, descriptor); } else { delete globalThis[key]; }
+    } };
+    const flush = async () => { await Promise.resolve(); const work = [...frames.values()]; frames.clear(); work.forEach(fn => fn()); };
+    return { document, frames, flush, cleanup };
+}
+
+// DOM ownership is the contract: no message/body writes, duplicate surfaces or stale chat data.
+test('projection follows only the final assistant, survives rerenders, and owns no message data', async t => {
+    const { document, frames, flush, cleanup } = displayDom();
     const source = { identityKey: 'a', messages: [{ is_user: true }, { is_user: false }, { is_user: true }] };
     const state = { chatIdentity: 'a', projectToChat: false, map: null };
     const posts = [], channels = [];
@@ -29,16 +39,14 @@ test('projection follows only the final assistant, survives rerenders, and owns 
     const first = floor(0), assistant = floor(1); floor(2);
     const original = structuredClone(source.messages);
     const display = createMapProjectionDisplay({ enabled: () => state.projectToChat, readState: () => { reads++; return structuredClone(state); }, captureChat: () => { captures++; return source; },
+        isGenerationActive: () => false,
         readTheme: () => theme, frameSrc: '/projection.html', subscribe(handlers) { notify = handlers; return () => { notify = null; }; },
         bridgeFactory(options) {
             channels.push(options);
             return { post: (type, payload) => { posts.push({ type, payload: structuredClone(payload) }); return true; }, dispose: () => { disposed++; } };
         },
     });
-    t.after(() => { display.stop(); for (const [key, descriptor] of globals) {
-        if (descriptor) { Object.defineProperty(globalThis, key, descriptor); } else { delete globalThis[key]; }
-    } });
-    const flush = async () => { await Promise.resolve(); const work = [...frames.values()]; frames.clear(); work.forEach(fn => fn()); };
+    t.after(() => { display.stop(); cleanup(); });
     display.start(); await flush(); assert.equal(document.querySelector('iframe'), null);
     assert.equal(reads, 0, 'disabled projection never reads map data');
     state.projectToChat = true; notify.stateChanged(); await flush();
@@ -123,4 +131,181 @@ test('projection follows only the final assistant, survives rerenders, and owns 
     assert.equal(frames.size, 0);
     source.messages = [{ is_user: true }]; display.start(); await flush();
     assert.equal(document.querySelector('iframe'), null, 'a chat without an assistant has no projection target');
+});
+
+test('projection stays absent throughout main generation and resumes passively from the latest state', async t => {
+    const { document, frames, flush, cleanup } = displayDom();
+    let hostGenerating = false, replyPaused = false, lifecycle, notify, reads = 0, captures = 0, disposed = 0;
+    const generation = createMainGenerationRuntime({ readHostGenerating: () => hostGenerating,
+        subscribe(handlers) { lifecycle = handlers; return () => { lifecycle = null; }; } });
+    generation.startBackground();
+    const source = { identityKey: 'a', messages: [{ is_user: false }] };
+    const state = { chatIdentity: 'a', projectToChat: true, map: mapBrowseFixture() };
+    const posts = [];
+    function mountFloor(index) {
+        const floor = document.createElement('div'); floor.className = 'mes'; floor.setAttribute('mesid', index);
+        const body = document.createElement('div'); body.className = 'mes_text'; floor.append(body);
+        document.getElementById('chat').append(floor); return floor;
+    }
+    let latest = mountFloor(0);
+    const display = createMapProjectionDisplay({ enabled: () => state.projectToChat, isGenerationActive: generation.isActive,
+        isReplyPaused: () => replyPaused,
+        readState: () => { reads++; return structuredClone(state); }, captureChat: () => { captures++; return source; },
+        readTheme: () => 'light', frameSrc: '/projection.html', subscribe(handlers) {
+            notify = handlers;
+            const unsubscribe = generation.subscribe(handlers.activityChanged);
+            return () => { unsubscribe(); notify = null; };
+        },
+        bridgeFactory: () => ({ post: (_type, payload) => { posts.push(payload); return true; }, dispose: () => { disposed++; } }),
+    });
+    t.after(() => { display.stop(); generation.stopBackground(); cleanup(); });
+    const surface = () => document.querySelector('.xb-map-projection');
+    function hostState(active) { hostGenerating = active; lifecycle.hostStateChanged(); }
+    display.start(); await flush(); assert.ok(surface());
+
+    for (const type of ['normal', 'regenerate', 'continue', 'swipe']) {
+        lifecycle.started({ type, dryRun: false });
+        const before = { reads, captures, posts: posts.length, disposed };
+        notify.messagesChanged(); // A pending completed-floor event must not beat generation start.
+        hostState(true);
+        assert.equal(surface(), null, 'generation immediately removes the entire surface');
+        assert.equal(disposed, before.disposed + 1);
+        assert.equal(frames.size, 0, 'pending placement work is cancelled');
+        source.messages.push({ is_user: false }); latest = mountFloor(source.messages.length - 1);
+        for (let chunk = 0; chunk < 10; chunk++) {
+            latest.querySelector('.mes_text').textContent += 'chunk';
+            state.map.revision++; notify.stateChanged();
+            notify.messagesChanged(); // Includes intermediate tool/message completion.
+            document.documentElement.classList.toggle('theme-dark');
+            await flush();
+            assert.equal(surface(), null);
+        }
+        state.projectToChat = false; notify.stateChanged();
+        state.projectToChat = true; notify.stateChanged(); await flush();
+        assert.deepEqual({ reads, captures, posts: posts.length }, { reads: before.reads, captures: before.captures, posts: before.posts },
+            'stream, domain, settings and theme changes cannot read or publish a map during generation');
+        hostState(false);
+        assert.equal(surface(), null, 'generation end schedules attachment instead of mounting inside the host event');
+        await flush();
+        assert.equal(surface().closest('.mes'), latest);
+        assert.equal(reads, before.reads + 1, 'coalesced map changes are read once at completion');
+        assert.equal(posts.at(-1).state.map.revision, state.map.revision);
+    }
+
+    lifecycle.groupStarted({ type: 'normal', dryRun: false });
+    lifecycle.started({ type: 'normal', dryRun: false }); hostState(true);
+    hostState(false); notify.messagesChanged(); await flush();
+    assert.equal(surface(), null, 'a completed group member cannot reveal the projection mid-turn');
+    lifecycle.groupFinished(); await flush(); assert.ok(surface());
+
+    const beforePause = reads;
+    lifecycle.started({ type: 'normal', dryRun: false }); hostState(true);
+    replyPaused = true; notify.activityChanged(); hostState(false);
+    state.map.revision++; notify.stateChanged(); notify.messagesChanged(); await flush();
+    assert.equal(surface(), null, 'native stop at a Dice choice is not a completed reply');
+    assert.equal(reads, beforePause, 'map publications remain deferred throughout a Dice pause');
+    display.stop(); display.start(); await flush();
+    assert.equal(surface(), null, 'a restored Dice pause does not depend on seeing generation start');
+    lifecycle.started({ type: 'continue', dryRun: false }); hostState(true);
+    replyPaused = false; notify.activityChanged(); await flush();
+    assert.equal(surface(), null, 'releasing Dice cannot reveal the map during native continuation');
+    hostState(false); await flush(); assert.ok(surface());
+    replyPaused = true; notify.messagesChanged(); await flush();
+    assert.equal(surface(), null, 'switching to a saved paused swipe hides an already visible map');
+    replyPaused = false; notify.activityChanged(); await flush(); assert.ok(surface());
+
+    const beforePreflight = surface();
+    lifecycle.started({ type: 'normal', dryRun: false }); lifecycle.hostStateChanged(); await flush();
+    assert.equal(surface(), beforePreflight, 'failed preflight cannot strand the projection hidden');
+    lifecycle.started({ type: 'quiet', dryRun: false }); hostState(true); await flush();
+    assert.equal(surface(), beforePreflight, 'background generation does not hide the chat map');
+    hostState(false);
+
+    lifecycle.started({ type: 'swipe', dryRun: false }); hostState(true);
+    const beforeRestart = reads;
+    display.stop(); display.start(); await flush();
+    assert.equal(surface(), null, 'restarting the projection during generation leaves no placeholder');
+    assert.equal(reads, beforeRestart);
+    hostState(false); await flush(); assert.ok(surface(), 'stop/error recovery needs no message-rendered event');
+
+    display.stop(); generation.stopBackground();
+    hostGenerating = true;
+    generation.startBackground(); display.start(); await flush();
+    assert.equal(surface(), null, 'starting OS mid-reply cannot expose an existing map without a start event');
+    hostState(false); await flush();
+    assert.ok(surface(), 'late-started projection receives the real completion boundary');
+
+    lifecycle.started({ type: 'continue', dryRun: false }); hostState(true);
+    state.map = null; notify.stateChanged(); hostState(false); await flush();
+    assert.equal(surface(), null, 'completion cannot restore a map that was cleared during generation');
+    state.map = mapBrowseFixture(); notify.stateChanged(); await flush(); assert.ok(surface());
+
+    lifecycle.started({ type: 'normal', dryRun: false }); hostState(true);
+    source.identityKey = 'b'; state.chatIdentity = 'b'; notify.chatChanged(); await flush();
+    assert.equal(surface(), null);
+    hostState(false); await flush(); assert.equal(posts.at(-1).state.chatIdentity, 'b');
+
+    lifecycle.started({ type: 'normal', dryRun: false }); hostState(true);
+    state.projectToChat = false; notify.stateChanged(); hostState(false); await flush();
+    assert.equal(surface(), null, 'turning the setting off during generation prevents remount');
+    display.stop(); hostState(true); hostState(false);
+    assert.equal(frames.size, 0, 'shutdown releases generation subscriptions');
+});
+
+test('new swipe preflight hides projection and native rollback restores it without generation-end events', async t => {
+    const { document, flush, cleanup } = displayDom();
+    const message = { is_user: false, mes: 'saved', swipe_id: 0, swipes: ['saved', 'other saved'] };
+    const source = { identityKey: 'a', messages: [message] };
+    const state = { chatIdentity: 'a', projectToChat: true, map: mapBrowseFixture() };
+    let reads = 0, captures = 0, notify;
+    const floor = () => {
+        const root = document.createElement('div'); root.className = 'mes last_mes'; root.setAttribute('mesid', '0'); root.setAttribute('swipeid', '0');
+        const body = document.createElement('div'); body.className = 'mes_text'; body.textContent = message.mes;
+        root.append(body); return root;
+    };
+    const chat = document.getElementById('chat');
+    let latest = floor(); chat.append(latest);
+    const display = createMapProjectionDisplay({ enabled: () => state.projectToChat, isGenerationActive: () => false,
+        readState: () => { reads++; return structuredClone(state); }, captureChat: () => { captures++; return source; },
+        readTheme: () => 'light', frameSrc: '/projection.html', subscribe(handlers) { notify = handlers; return () => {}; },
+        bridgeFactory: () => ({ post: () => true, dispose() {} }),
+    });
+    t.after(() => { display.stop(); cleanup(); });
+    const surface = () => document.querySelector('.xb-map-projection');
+    display.start(); await flush(); assert.ok(surface());
+    for (const version of ['1.14', '1.18']) {
+        // Native selection precedes Generate('swipe') and its awaited server ping.
+        message.swipe_id = message.swipes.length;
+        latest.querySelector('.mes_text').textContent = '...';
+        notify.messagesChanged(); await flush();
+        assert.equal(surface(), null, `${version}: pending candidate is not a completed floor`);
+        const before = { reads, captures };
+        latest.querySelector('.mes_text').textContent = 'changed prose'; await flush();
+        assert.deepEqual({ reads, captures }, before, 'waiting for rollback does not observe streaming text');
+        state.map.revision++; notify.stateChanged(); await flush();
+        assert.equal(surface(), null); assert.equal(reads, before.reads, 'preflight defers dirty map reads too');
+
+        // Frozen native rollback boundaries: addOneMessage writes swipeid in 1.14;
+        // redisplayChat replaces direct #chat children in 1.18. Neither emits completion.
+        message.swipe_id = 0;
+        if (version === '1.14') {
+            latest.querySelector('.mes_text').textContent = message.mes;
+            latest.setAttribute('swipeid', '0');
+        } else {
+            latest = floor(); chat.replaceChildren(latest);
+        }
+        await flush();
+        assert.ok(surface(), `${version}: failed ping and native rollback must not strand the map hidden`);
+        assert.equal(reads, before.reads + 1);
+        message.swipe_id = 1; notify.messagesChanged(); await flush();
+        assert.ok(surface(), 'existing candidates remain browsable');
+    }
+    message.swipe_id = message.swipes.length; notify.messagesChanged(); await flush();
+    assert.equal(surface(), null);
+    message.swipes.push('generated'); notify.messagesChanged(); await flush();
+    assert.ok(surface(), 'successful candidate becomes eligible at completion');
+    message.swipe_id = message.swipes.length; notify.messagesChanged(); await flush();
+    display.stop(); const stopped = captures;
+    latest.setAttribute('swipeid', '0'); await flush();
+    assert.equal(captures, stopped, 'stop removes native rollback observation');
 });

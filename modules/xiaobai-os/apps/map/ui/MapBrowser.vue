@@ -4,6 +4,8 @@ import { useAppBack } from '../../../shell/app-src/navigation/app-navigation.js'
 import type { MapDomainV1 } from '../../../domains/map/types.js';
 import MapAtlas from './MapAtlas.vue';
 import MapSceneView from './MapSceneView.vue';
+import MapProjectionControls from './MapProjectionControls.vue';
+import MapLegend from './MapLegend.vue';
 import { resolveInitialMapView } from './map-view.js';
 import MapSearch from './MapSearch.vue';
 import MapPlaceDetail from './MapPlaceDetail.vue';
@@ -14,7 +16,7 @@ import { mapBrowseScope, type MapBrowseFilter } from './map-browse.js';
 import { MAP_PROJECTION_COPY, MAP_BROWSE_COPY, MAP_NAV_COPY, MAP_VIEW_LABELS, mapBrowseAction, mapBrowseSummary } from './map-copy.js';
 import './map.css';
 
-const props = defineProps<{ map: MapDomainV1 | null; chatIdentity: string }>();
+const props = defineProps<{ map: MapDomainV1 | null; chatIdentity: string; compact?: boolean }>();
 const summaryId = `map-browse-summary-${useId()}`;
 const selectedKey = ref('');
 type MapView = { kind: 'world' } | { kind: 'region' | 'scene'; key: string };
@@ -22,6 +24,8 @@ type MapView = { kind: 'world' } | { kind: 'region' | 'scene'; key: string };
 const initialView = (): MapView => resolveInitialMapView(props.map) === 'scene' ? { kind: 'scene', key: '' } : { kind: 'world' };
 const view = ref<MapView>(initialView());
 const renderMode = ref<'2d' | '3d'>('3d');
+const lowWalls = ref(false);
+const showLabels = ref(true);
 const threeUnavailable = ref(false);
 const threeNotice = ref('');
 let viewChosen = false;
@@ -123,20 +127,23 @@ useAppBack(() => {
 </script>
 <template>
     <main class="map-app" :class="{ 'has-view-switch': atlas?.locations.length, 'is-scene-view': showingScene }">
+        <MapProjectionControls v-if="compact && atlas?.locations.length" v-model:mode="renderMode" v-model:low-walls="lowWalls" v-model:show-labels="showLabels" :view="view.kind" :scene-available="scene?.status === 'active'" :three-unavailable="threeUnavailable" :located="Boolean(player)" @navigate="kind => navigate(kind === 'world' ? { kind } : { kind, key: '' })" @locate="showingScene ? showScene() : locatePlayer()" />
         <div class="map-top">
-            <header class="map-search-bar"><MapIcon :name="showingScene ? 'layers' : 'search'" /><button v-if="!showingScene" type="button" class="map-search-entry" :disabled="!atlas?.locations.length" @click="searchFilter = 'all'">{{ browseCopy.search }}<small>{{ browseTitle }}</small></button><div v-else class="map-search-entry">{{ sceneLocation?.name || MAP_VIEW_LABELS.scene }}<small>{{ sceneKey ? MAP_NAV_COPY.sceneBrowsing : MAP_NAV_COPY.sceneCurrent }}</small></div><slot name="toolbar" /></header>
-            <div v-if="atlas?.locations.length" class="map-view-row">
-                <nav class="map-view-switch" :aria-label="MAP_NAV_COPY.viewLabel">
-                    <button type="button" :aria-pressed="view.kind === 'world'" @click="showWorld"><MapIcon name="globe" />{{ MAP_VIEW_LABELS.world }}</button>
-                    <button type="button" :aria-pressed="view.kind === 'region'" @click="enterRegion()"><MapIcon name="compass" />{{ MAP_VIEW_LABELS.region }}</button>
-                    <button type="button" :aria-pressed="showingScene" @click="showScene()"><MapIcon name="layers" />{{ MAP_VIEW_LABELS.scene }}</button>
-                </nav>
-                <div v-if="showingScene" class="map-scene-tools">
-                    <button v-if="sceneKey" type="button" class="map-round-button" aria-label="回到当前场景" @click="showScene()"><MapIcon name="locate" /></button>
-                    <button type="button" class="map-round-button" :aria-expanded="helpOpen" aria-label="地图图例" @click="helpOpen = !helpOpen"><MapIcon name="layers" /></button>
+            <template v-if="!compact">
+                <header class="map-search-bar"><MapIcon :name="showingScene ? 'layers' : 'search'" /><button v-if="!showingScene" type="button" class="map-search-entry" :disabled="!atlas?.locations.length" @click="searchFilter = 'all'">{{ browseCopy.search }}<small>{{ browseTitle }}</small></button><div v-else class="map-search-entry">{{ sceneLocation?.name || MAP_VIEW_LABELS.scene }}<small>{{ sceneKey ? MAP_NAV_COPY.sceneBrowsing : MAP_NAV_COPY.sceneCurrent }}</small></div><slot name="toolbar" /></header>
+                <div v-if="atlas?.locations.length" class="map-view-row">
+                    <nav class="map-view-switch" :aria-label="MAP_NAV_COPY.viewLabel">
+                        <button type="button" :aria-pressed="view.kind === 'world'" @click="showWorld"><MapIcon name="globe" />{{ MAP_VIEW_LABELS.world }}</button>
+                        <button type="button" :aria-pressed="view.kind === 'region'" @click="enterRegion()"><MapIcon name="compass" />{{ MAP_VIEW_LABELS.region }}</button>
+                        <button type="button" :aria-pressed="showingScene" @click="showScene()"><MapIcon name="layers" />{{ MAP_VIEW_LABELS.scene }}</button>
+                    </nav>
+                    <div v-if="showingScene" class="map-scene-tools">
+                        <button v-if="sceneKey" type="button" class="map-round-button" aria-label="回到当前场景" @click="showScene()"><MapIcon name="locate" /></button>
+                        <button type="button" class="map-round-button" :aria-expanded="helpOpen" :aria-label="MAP_NAV_COPY.legendLabel" @click="helpOpen = !helpOpen"><MapIcon name="layers" /></button>
+                    </div>
                 </div>
-            </div>
-            <nav v-if="atlas?.locations.length && !showingScene" class="map-region-trail" :aria-label="MAP_NAV_COPY.trailLabel"><button type="button" :aria-current="view.kind === 'world' ? 'page' : undefined" @click="showWorld"><MapIcon name="globe" />{{ MAP_VIEW_LABELS.world }}</button><template v-if="view.kind === 'region'"><MapIcon name="next" /><span aria-current="page">{{ browseTitle }}</span></template></nav>
+                <nav v-if="atlas?.locations.length && !showingScene" class="map-region-trail" :aria-label="MAP_NAV_COPY.trailLabel"><button type="button" :aria-current="view.kind === 'world' ? 'page' : undefined" @click="showWorld"><MapIcon name="globe" />{{ MAP_VIEW_LABELS.world }}</button><template v-if="view.kind === 'region'"><MapIcon name="next" /><span aria-current="page">{{ browseTitle }}</span></template></nav>
+            </template>
             <aside v-if="threeNotice" class="map-notice" role="status"><p>{{ threeNotice }}</p><button type="button" class="map-notice-close" aria-label="关闭三维提示" @click="threeNotice = ''"><MapIcon name="close" /></button></aside>
             <slot name="feedback" />
         </div>
@@ -144,18 +151,19 @@ useAppBack(() => {
             <template v-if="map && atlas?.locations.length">
                 <MapAtlas v-if="scope.locations.length" v-show="!showingScene" :atlas="map.atlas" :scope="scope" :label="browseTitle" :current-location-key="playerKey" :selected-location-key="selectedKey" :focus-key="focusKey" :focus-sequence="focusSequence" @select="key => selectPlace(key)" />
                 <template v-if="showingScene">
-                    <MapSceneView v-if="scene?.status === 'active'" v-model:mode="renderMode" :scene="scene" :three-unavailable="threeUnavailable" @fallback="fallbackThree" />
+                    <MapSceneView v-if="scene?.status === 'active'" v-model:mode="renderMode" v-model:low-walls="lowWalls" v-model:show-labels="showLabels" :scene="scene" :compact="compact" :three-unavailable="threeUnavailable" @fallback="fallbackThree" />
                     <div v-else class="map-empty"><MapIcon name="layers" /><h2>{{ sceneLocation ? MAP_NAV_COPY.sceneEmpty : MAP_NAV_COPY.unknownLocation }}</h2><template v-if="sceneKey && sceneKey !== playerKey"><button type="button" class="map-secondary-button" @click="currentRegion ? enterRegion(currentRegion.key) : showWorld()">{{ currentRegion ? MAP_NAV_COPY.regionMap : MAP_VIEW_LABELS.world }}</button></template><slot v-else name="scene-empty-action" :located="Boolean(sceneLocation)" /></div>
                 </template>
                 <div v-if="!showingScene && !scope.locations.length" class="map-empty"><MapIcon name="pin" /><h2>{{ view.kind === 'region' && !currentRegion ? MAP_NAV_COPY.unknownRegion : browseCopy.empty }}</h2><p>{{ view.kind === 'region' && !currentRegion ? MAP_NAV_COPY.unknownRegionHint : browseCopy.emptyHint }}</p><button v-if="view.kind === 'region'" type="button" class="map-secondary-button" @click="showWorld">{{ MAP_VIEW_LABELS.world }}</button><slot v-else name="scope-empty-action" /></div>
             </template>
             <slot v-else name="empty-map"><div class="map-empty"><MapIcon name="globe" /><h2>{{ MAP_PROJECTION_COPY.empty }}</h2></div></slot>
         </div>
-        <div v-if="atlas?.locations.length && !showingScene" class="map-floating-tools" :class="{ 'has-detail': selected }"><button type="button" class="map-round-button" :disabled="!player" aria-label="回到我的位置" @click="locatePlayer"><MapIcon name="locate" /></button><button type="button" class="map-round-button" :aria-expanded="helpOpen" aria-label="地图图例" @click="helpOpen = !helpOpen"><MapIcon name="layers" /></button></div>
-        <aside v-if="helpOpen" class="map-key"><strong>读懂这张地图</strong><p><i class="map-key-current" />你在这里 <i class="map-key-place" />可探索地点</p><p>路线连接已记录的地点；箭头表示单向通行。</p><small>{{ MAP_NAV_COPY.legend }}</small></aside>
+        <div v-if="!compact && atlas?.locations.length && !showingScene" class="map-floating-tools" :class="{ 'has-detail': selected }"><button type="button" class="map-round-button" :disabled="!player" aria-label="回到我的位置" @click="locatePlayer"><MapIcon name="locate" /></button><button type="button" class="map-round-button" :aria-expanded="helpOpen" :aria-label="MAP_NAV_COPY.legendLabel" @click="helpOpen = !helpOpen"><MapIcon name="layers" /></button></div>
+        <aside v-if="helpOpen" class="map-key"><MapLegend /></aside>
         <MapPlaceDetail v-if="selected && map && !showingScene" :key="selected.key" :location="selected" :map="map" :current-key="playerKey" @close="selectedKey = ''" @scene="showScene(selected.key)" @explore="enterRegion(selected.key)" @select="key => selectPlace(key, true)" />
-        <button v-else-if="atlas?.locations.length && !showingScene" type="button" class="map-region-card" :aria-label="mapBrowseAction(scope.kind, bannerFilter)" :aria-describedby="summaryId" @click="searchFilter = bannerFilter"><span class="map-region-icon"><MapIcon :name="scope.kind === 'world' ? 'globe' : 'compass'" /></span><span :id="summaryId" class="map-region-summary"><strong>{{ browseTitle }}</strong><small>{{ mapBrowseSummary(scope.kind, scope.locations.length, scope.unvisited) }}</small></span><span class="map-round-button" aria-hidden="true"><MapIcon name="next" /></span></button>
-        <footer v-else-if="showingScene && atlas?.locations.length" class="map-scene-caption"><MapIcon name="layers" /><span><strong>{{ sceneLocation?.name || '当前位置待确认' }}</strong><small>{{ sceneKey ? '正在查看场景图 · 不会移动人物' : '当前位置的场景图' }}</small></span></footer>
+        <button v-else-if="!compact && atlas?.locations.length && !showingScene" type="button" class="map-region-card" :aria-label="mapBrowseAction(scope.kind, bannerFilter)" :aria-describedby="summaryId" @click="searchFilter = bannerFilter"><span class="map-region-icon"><MapIcon :name="scope.kind === 'world' ? 'globe' : 'compass'" /></span><span :id="summaryId" class="map-region-summary"><strong>{{ browseTitle }}</strong><small>{{ mapBrowseSummary(scope.kind, scope.locations.length, scope.unvisited) }}</small></span><span class="map-round-button" aria-hidden="true"><MapIcon name="next" /></span></button>
+        <footer v-else-if="!compact && showingScene && atlas?.locations.length" class="map-scene-caption"><MapIcon name="layers" /><span><strong>{{ sceneLocation?.name || '当前位置待确认' }}</strong><small>{{ sceneKey ? '正在查看场景图 · 不会移动人物' : '当前位置的场景图' }}</small></span></footer>
+        <div v-if="compact && atlas?.locations.length && !selected" class="map-projection-caption" :title="showingScene ? sceneLocation?.name : browseTitle"><MapIcon :name="showingScene ? 'pin' : 'compass'" /><span>{{ showingScene ? sceneLocation?.name || MAP_NAV_COPY.unknownLocation : browseTitle }}</span></div>
         <MapSearch v-if="searchFilter && atlas" :scope="scope" :title="browseTitle" :initial-filter="searchFilter" @close="searchFilter = null" @select="key => selectPlace(key)" />
         <slot name="overlay" />
     </main>

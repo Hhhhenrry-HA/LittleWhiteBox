@@ -17,7 +17,7 @@ onMounted(bridge.start);
 onBeforeUnmount(() => { unsubscribe(); bridge.dispose(); });
 </script>
 <template>
-    <MapBrowser v-if="state" class="map-projection-view" :map="state.map" :chat-identity="state.chatIdentity">
+    <MapBrowser v-if="state" compact class="map-projection-view" :map="state.map" :chat-identity="state.chatIdentity">
         <template #feedback><aside v-if="state.message" class="map-notice" role="status"><p>{{ state.message }}</p></aside></template>
     </MapBrowser>
     <div v-else class="map-projection-loading" role="status">{{ MAP_NAV_COPY.loading }}</div>

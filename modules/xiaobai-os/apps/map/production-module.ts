@@ -1,11 +1,12 @@
 import type { XiaobaiOsSettingsRepository } from '../../host/settings-repository.js';
+import type { MainGenerationRuntime } from '../../host/main-generation-runtime.js';
 import type { XiaobaiOsChatIdentity } from '../../types.js';
 import { createAppRuntimeGroup } from '../../kernel/runtime-group.js';
 import { createMapController } from './host/controller.js';
 import { createMapMaintenanceParticipant } from './host/maintenance-participant.js';
 import { createMapPromptRuntime, type MapPromptEventHandlers } from './host/prompt-runtime.js';
 import { createMapSettingsRuntime } from './host/settings-runtime.js';
-import type { createMapProjectionRuntime } from './host/projection-runtime.js';
+import type { createMapProjectionRuntime, MapProjectionReplyPause } from './host/projection-runtime.js';
 import { createMapModule } from './module.js';
 import { MAP_PROMPTS } from './prompt-registration.js';
 import { createMapManagement } from './management/participant.js';
@@ -17,6 +18,8 @@ import { MANAGEMENT_CAPABILITY } from '../../capabilities/management/index.js';
 
 export interface ProductionMapModuleDependencies {
     settings: XiaobaiOsSettingsRepository;
+    mainGeneration: MainGenerationRuntime;
+    replyPause?: MapProjectionReplyPause;
     getChatIdentity: () => XiaobaiOsChatIdentity | null;
     getPlayerDisplayName: () => string;
     subscribePrompt(handlers: MapPromptEventHandlers): () => void;
@@ -49,7 +52,7 @@ export function createProductionMapModule(dependencies: ProductionMapModuleDepen
                 settings: dependencies.settings,
                 maintenance: maintenance.runner,
             });
-            const projection = dependencies.createProjectionRuntime(map, dependencies.settings, maintenance.runner, controller.readState);
+            const projection = dependencies.createProjectionRuntime(map, dependencies.settings, maintenance.runner, controller.readState, dependencies.mainGeneration, dependencies.replyPause);
             return createAppRuntimeGroup(controller, [prompt, settings, projection]);
         },
         async dispose(runtime) { await runtime.stopBackground?.(); },

@@ -1,5 +1,5 @@
 import { payloadText, type MessageContact, type PrivateMessage } from '../../../domains/messages/types.js';
-import { escapePromptData as escape } from '../../../host/prompt-context/format.js';
+import { escapePromptData as escape, escapePromptTags } from '../../../host/prompt-context/format.js';
 import type { CommunicationStage } from '../application/communication-chronology.js';
 
 export function threadLine(message: PrivateMessage): string {
@@ -35,13 +35,14 @@ export function communicationBlock(stage: CommunicationStage, content: string): 
     return `<communication after_story_floor="${floor ?? 'unknown'}">\n${position}\n${content}\n</communication>`;
 }
 
-export function communicationRecords(stages: readonly CommunicationStage[], records: PrivateMessage[], afterSeq: number): string {
+export function communicationRecords(stages: readonly CommunicationStage[], records: PrivateMessage[], afterSeq: number,
+    renderMessage: (message: PrivateMessage) => string = threadLine): string {
     let offset = 0;
     return stages.flatMap(stage => {
         const members: PrivateMessage[] = [];
         while (offset < records.length && records[offset].seq <= stage.throughSeq) {members.push(records[offset++]);}
         if (!members.length) {return [];}
-        return [stage.firstSeq > afterSeq ? communicationBreak(stage) : '', communicationBlock(stage, members.map(threadLine).join('\n'))];
+        return [stage.firstSeq > afterSeq ? communicationBreak(stage) : '', communicationBlock(stage, members.map(renderMessage).join('\n'))];
     }).filter(Boolean).join('\n');
 }
 
@@ -52,5 +53,5 @@ export function earlierSummary(summary: MessageContact['summary'], stages: reado
     // A summary's placement stays bounded; enumerating every archived stage would defeat compaction.
     const scope = `<covered_communications count="${covered.length}" first_after_story_floor="${first?.afterStoryFloor ?? 'unknown'}" last_after_story_floor="${last?.afterStoryFloor ?? 'unknown'}">摘要涵盖以上起止范围，末尾停在最后一个通讯时点内；各阶段的言行见摘要正文。</covered_communications>`;
     const lastBreak = covered.length > 1 && last ? `<last_summarized_transition>这是摘要进入末段通讯前的间隔。\n${communicationBreak(last)}\n</last_summarized_transition>` : '';
-    return `<earlier_summary>\n以下摘要替代较早短信。\n${scope}\n${lastBreak}\n<summary_text>${escape(summary.text)}</summary_text>\n</earlier_summary>`;
+    return `<earlier_summary>\n以下摘要替代较早短信。\n${scope}\n${lastBreak}\n<summary_text>${escapePromptTags(summary.text)}</summary_text>\n</earlier_summary>`;
 }

@@ -503,7 +503,21 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
             await session.showResult(rolled.target, { body: rolled.target.body, records: parseDiceRecords(rolled.target.records) }, rolled.operationId);
         } else { throw new DiceOperationError('dice_target_changed'); }
     }
-    return { start, stop, cancel,
+    function isReplyPaused(): boolean {
+        if (!enabled()) { return false; }
+        const source = captureDiceChat();
+        const message = source?.chat.at(-1);
+        if (!source || !message || message.is_user || message.is_system) { return false; }
+        // Ownership, not body equality: a continuation changes the body before its native Promise settles.
+        const ownsTail = (target: DiceTarget) => target.source.key === source.key && target.source.chat === source.chat
+            && target.message === message && target.swipe === (message.swipe_id ?? 0);
+        const active = session.view();
+        if (active && ownsTail(active.target) || intention && !intention.signal.aborted && ownsTail(intention.target)) { return true; }
+        // Reopened chats and existing swipes derive the pause from their saved facts; no new persisted flag.
+        return !!terminalCheck(message.mes, readDiceRecords(message))
+            || parseActionCheck(message.mes, 0, rule()).kind !== 'none';
+    }
+    return { start, stop, cancel, isReplyPaused,
         actions, act, records, current: currentTarget,
         view() {
             const current = session.view();

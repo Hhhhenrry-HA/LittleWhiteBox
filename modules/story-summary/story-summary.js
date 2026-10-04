@@ -2664,6 +2664,7 @@ export function getStorySummaryMemoryText() {
 /**
  * Returns an optional, source-bounded L2 event projection for other prompt owners.
  * This never exposes the Story Summary store or non-event memory layers.
+ * @param {{ throughMessageIndex: number, maxCharacters?: number }} options
  */
 export function getStorySummaryL2EventText({
     throughMessageIndex,

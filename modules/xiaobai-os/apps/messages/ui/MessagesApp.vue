@@ -34,6 +34,8 @@ const name = ref(''); const note = ref(''); const personSearch = ref('');
 const peopleStatus = ref<'loading' | 'ready' | 'failed'>('ready');
 const contactAction = ref(createMessageId());
 let alive = true; let threadRequest = 0; let dialogGeneration = 0;
+// Navigation intent survives state refreshes; page.hasNewer describes only loaded records.
+let latestRequested = false;
 const drafts = reactive(new Map<string, MessageDraft>());
 const draft = computed({ get: () => drafts.get(selected.value) ?? emptyDraft(), set: value => {drafts.set(selected.value, value);} });
 const submitted = ref<PendingOutgoingMessage | null>(null);
@@ -55,18 +57,20 @@ async function request<T>(type: string, payload: Record<string, unknown> = {}): 
 }
 async function readThread(older = false, latest = false) {
     const id = selected.value; if (!id) {return;}
+    if (older) {latestRequested = false;} else if (latest) {latestRequested = true;}
     const token = ++threadRequest; loading.value = true; threadError.value = '';
     try {
         const current = page.value;
         const next = await request<ThreadPage>('messages/thread', { contactId: id,
             ...(older ? { before: current.messages[0]?.seq, revision: current.revision }
-                : !latest && current.messages.length ? { window: { first: current.messages[0].seq, last: current.messages.at(-1)!.seq, latest: !current.hasNewer } } : {}) });
+                : !latestRequested && current.messages.length ? { window: { first: current.messages[0].seq, last: current.messages.at(-1)!.seq, latest: !current.hasNewer } } : {}) });
         if (!alive || token !== threadRequest || selected.value !== id) {return;}
         if (next.revision !== state.value.revision) {return;}
         const combine = older && current.revision === next.revision;
         const messages = combine ? [...next.messages, ...current.messages].slice(0, 100) : next.messages;
         page.value = { ...next, messages, hasNewer: combine ? messages.at(-1)?.id !== current.messages.at(-1)?.id || current.hasNewer : next.hasNewer,
             permissions: combine ? { ...current.permissions, ...next.permissions } : next.permissions };
+        latestRequested = false;
         if (submitted.value?.contactId === id && messages.some(message => message.id === submitted.value?.messageId)) {submitted.value = null; sendError.value = null;}
     } catch {if (alive && token === threadRequest && selected.value === id) {threadError.value = '消息暂时无法读取。';}}
     finally {if (token === threadRequest) {loading.value = false;}}
@@ -89,9 +93,9 @@ function apply(next: MessagesClientState) {
 const unsubscribe = props.bridge.subscribe(event => {if (event.type === 'messages/state') {apply((event.payload as { state: MessagesClientState }).state);}});
 function select(id: string) {
     if (id === selected.value) { return; }
-    selected.value = id; error.value = ''; page.value = emptyPage(id); void readThread();
+    selected.value = id; latestRequested = false; error.value = ''; page.value = emptyPage(id); void readThread();
 }
-function back() {selected.value = ''; threadRequest++; threadError.value = ''; page.value = emptyPage();}
+function back() {selected.value = ''; latestRequested = false; threadRequest++; threadError.value = ''; page.value = emptyPage();}
 useAppBack(() => { back(); return true; }, () => !!selected.value);
 async function run(task: () => Promise<void>, showFailure: () => boolean = () => true) {
     if (working.value) {return;} working.value = true; error.value = '';
@@ -103,8 +107,7 @@ function send(payload: OutgoingMessage) {
     const input = { contactId: selected.value, messageId: `input:${createMessageId()}`, payload, createdAt: Date.now() };
     submitted.value = input; sendError.value = null;
     drafts.delete(input.contactId);
-    // Sending is a return to the live conversation, not a write into the viewed history page.
-    page.value = { ...page.value, hasNewer: false };
+    // Keep history marked as history until the latest page has actually arrived.
     void readThread(false, true);
     conversation.value?.sent();
     void deliver(input.contactId, input.messageId, input);
