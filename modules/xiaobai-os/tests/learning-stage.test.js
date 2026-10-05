@@ -65,24 +65,19 @@ test('lessons have no steps; a review is answered, graded, then complete', () =>
     const answered = { ...review, attempts: [attempt('b1', 'r1', 'cool'), attempt('b2', 'r2', 'shade')] };
     assert.equal(stage(answered), 'grading');
     assert.equal(stage({ ...answered, assessments: [assessment('b1', { signal: 'hesitant' }), assessment('b2')] }), 'complete');
-    assert.throws(() => parseLearningUnit({ ...answered, attempts: [...answered.attempts, attempt('b3', 'r1', 'again')] }), /attempts/);
+    assert.equal(parseLearningUnit({ ...answered, attempts: [...answered.attempts, attempt('b3', 'r1', 'again')] }).attempts.length, 3);
     assert.throws(() => parseLearningUnit({ ...review, exercises: [review.exercises[0], { ...review.exercises[1], itemId: 'i1' }] }));
     assert.throws(() => parseLearningUnit({ ...lesson, exercises: [{ ...writing('q1'), itemId: 'i1' }] }));
     assert.throws(() => parseLearningUnit({ ...lesson, attempts: [attempt('c1', 'q1', 'x')], assessments: [assessment('c1', { signal: 'clean' })] }), /signal/);
 });
 
-test('reading-writing units keep one explained article, one summary per paragraph, one essay and one revision per draft', () => {
+test('reading-writing validates references without fixing the number or order of learning activities', () => {
     parseLearningUnit(rwUnit());
     const second = { ...article, id: 'm2' };
     for (const [change, bad] of [
         ['two articles', { materials: [article, second] }],
-        ['reordered explanations', { explanations: [...explanations].reverse() }],
-        ['missing summary', { exercises: [writing('s1', 'p1'), writing('e1')] }],
-        ['two essays', { exercises: [writing('s1', 'p1'), writing('s2', 'p2'), writing('e1'), writing('e2')] }],
         ['objective summary', { exercises: [{ ...writing('s1', 'p1'), skill: 'reading' }, writing('s2', 'p2'), writing('e1')] }],
         ['revision of ungraded draft', { attempts: [...drafts, attempt('a4', 'e1', 'x', { revisesAttemptId: 'a3' })] }],
-        ['two revisions', { attempts: [...drafts, attempt('a4', 'e1', 'x', { revisesAttemptId: 'a3' }), attempt('a5', 'e1', 'y', { revisesAttemptId: 'a3' })],
-            assessments: [assessment('a3')] }],
         ['resolved outside draft', { attempts: [...drafts, attempt('a4', 'e1', 'x', { revisesAttemptId: 'a3' })],
             assessments: [assessment('a3'), assessment('a4', { resolvedAnnotationIds: ['nope'] })] }],
         ['missing model essay key', { modelEssay: undefined }],
@@ -157,9 +152,10 @@ test('a reading-writing unit runs draft, grading, revision, review and model ess
     await h.write(profile => { profile.unit = rwUnit(); });
     const first = await h.submit('u1', 's1', 'Parks are cool.');
     await h.submit('u1', 's2', 'Trees give shade.');
-    await assert.rejects(async () => h.assess(first, {}), /every draft is written/);
+    await h.assess(first, {});
+    assert.equal(h.read().unit.assessments[0].attemptId, first);
     const resubmitted = await h.submit('u1', 's1', 'Parks cool cities.');
-    assert.deepEqual(h.read().unit.attempts.map(entry => entry.exerciseId), ['s2', 's1']);
+    assert.deepEqual(h.read().unit.attempts.map(entry => entry.exerciseId), ['s1', 's2', 's1']);
     const essay = await h.submit('u1', 'e1', 'I like parks.\nYesterday he is go there.');
     assert.equal(learningClassView(h.repository.snapshot().document.data, 'en', 'story-a').unit.stage.stage, 'grading');
 
@@ -170,9 +166,7 @@ test('a reading-writing unit runs draft, grading, revision, review and model ess
 
     const draftIds = h.read().unit.attempts.map(entry => entry.id);
     await h.assess(resubmitted, {});
-    await h.assess(draftIds[0], {});
-    assert.throws(() => h.service.prepareAttempt({ language: 'en', unitId: 'u1', exerciseId: 's1', answer: { kind: 'text', text: 'late' },
-        scope, osId: 'story-a', replays: 0, slowPlayback: false }), /Grading has started/);
+    await h.assess(draftIds[1], {});
     await h.assess(essay, { verdict: 'partial', annotations: [{ category: 'grammar', severity: 'error', paragraphIndex: 1, quote: 'is go',
         explanation: '过去的事用过去时', suggestion: 'went', item: { label: 'past simple' } }] });
     const grammar = h.read().items.find(item => item.label === 'past simple');
@@ -183,26 +177,62 @@ test('a reading-writing unit runs draft, grading, revision, review and model ess
     const noteId = h.read().unit.assessments.find(entry => entry.attemptId === essay).annotations[0].id;
     assert.equal(h.read().unit.assessments.find(entry => entry.attemptId === essay).annotations[0].itemId, grammar.id);
 
-    await assert.rejects(async () => h.service.saveModelEssay('en', 'u1', { text: 'x', level: 'B1' }, () => true), /model essay/);
-    assert.throws(() => h.service.submitRevision('en', 'u1', [{ attemptId: resubmitted, text: 'x' }], () => true), /corrections/);
     await h.service.submitRevision('en', 'u1', [{ attemptId: essay, text: 'I like parks.\nYesterday he went there.' }], () => true);
     const revision = h.read().unit.attempts.at(-1);
     assert.equal(revision.revisesAttemptId, essay);
     assert.equal(revision.help.feedback, true);
     assert.equal(learningUnitStage(h.read().unit).stage, 'reviewing');
-    assert.throws(() => h.service.skipRevision('en', 'u1', () => true), /skipped/);
     await h.assess(revision.id, { resolvedAnnotationIds: [noteId] });
     assert.equal(learningUnitStage(h.read().unit).stage, 'model');
     assert.equal(h.read().completions.length, 0);
     await h.service.saveModelEssay('en', 'u1', { text: 'Parks keep cities cool.', level: 'B1' }, () => true);
     assert.equal(learningUnitStage(h.read().unit).stage, 'complete');
-    assert.deepEqual(h.read().completions.map(entry => [entry.unitId, entry.reward.amount, entry.attemptIds.length]), [['u1', 17, 4]]);
+    assert.deepEqual(h.read().completions.map(entry => [entry.unitId, entry.reward.amount, entry.attemptIds.length]), [['u1', 17, 5]]);
 
     // Deleting a graded draft takes its revision along; that exercise may then be written again.
     await h.service.deleteAttempt('en', essay, () => true);
     assert.equal(h.read().unit.attempts.some(entry => entry.exerciseId === 'e1'), false);
     assert.equal(h.read().items.find(item => item.id === grammar.id).evidence.length, 0);
     await h.submit('u1', 'e1', 'A new essay.');
+});
+
+test('partial drafts accept separate revision batches and further revisions without completing missing work', async () => {
+    const h = harness(); await h.repository.read(); await h.service.saveSettings('en', {}, () => true);
+    await h.write(profile => { profile.unit = rwUnit(); });
+    const first = await h.submit('u1', 's1', 'Parks good.');
+    const second = await h.submit('u1', 's2', 'Trees good.');
+    const mark = { annotations: [{ category: 'grammar', severity: 'improve', paragraphIndex: 0, quote: 'good', explanation: 'Add a verb.', suggestion: 'are good' }] };
+    await h.assess(first, mark); await h.assess(second, mark);
+    await h.service.submitRevision('en', 'u1', [{ attemptId: first, text: 'Parks are good.' }], () => true);
+    const revision = h.read().unit.attempts.at(-1).id;
+    await h.assess(revision, mark);
+    await h.service.submitRevision('en', 'u1', [{ attemptId: second, text: 'Trees are helpful.' }], () => true);
+    await h.service.submitRevision('en', 'u1', [{ attemptId: revision, text: 'Parks cool cities.' }], () => true);
+    const latest = h.read().unit.attempts.at(-1);
+    await h.assess(latest.id, {});
+    const progress = learningUnitStage(h.read().unit);
+    assert.equal(progress.stage, 'writing');
+    assert.equal(progress.exercises[0].revisionAttemptId, latest.id);
+    assert.deepEqual(progress.exercises.map(row => row.status), ['done', 'reviewing', 'writing']);
+    assert.equal(h.read().unit.attempts.length, 5);
+    assert.equal(h.read().completions.length, 0);
+});
+
+test('an early model essay helps future essay attempts without rewriting earlier conditions', async () => {
+    const h = harness(); await h.repository.read(); await h.service.saveSettings('en', {}, () => true);
+    await h.write(profile => { profile.unit = rwUnit(); });
+    const earlier = await h.submit('u1', 'e1', 'Parks are good.'); await h.assess(earlier, {});
+    const basis = { document: h.repository.snapshot().document, submittedAt: T0 };
+    await h.service.saveModelEssay('en', 'u1', { text: 'Parks keep cities cool.', level: 'B1' }, () => true);
+    const later = await h.submit('u1', 'e1', 'Parks keep cities cool.');
+    assert.equal(h.read().unit.attempts.find(entry => entry.id === earlier).help.answer, false);
+    assert.equal(h.read().unit.attempts.find(entry => entry.id === later).help.answer, true);
+    const messageAnswer = h.service.prepareAttempt({ language: 'en', unitId: 'u1', exerciseId: 'e1', answer: { kind: 'text', text: 'My original message.' },
+        scope, osId: 'story-a', replays: 0, slowPlayback: false }, basis);
+    assert.equal((await messageAnswer.save(() => true)).status, 'confirmed');
+    assert.equal(h.read().unit.attempts.at(-1).help.answer, false);
+    assert.ok(h.read().unit.modelEssay);
+    assert.equal(h.read().completions.length, 0);
 });
 
 test('skipping a revision goes straight to the model essay', async () => {
@@ -231,8 +261,8 @@ test('a review asks about exactly the due items, moves each schedule once, and c
         response: { kind: 'choice', options: [{ id: 'a', text: 'A' }, { id: 'b', text: 'B' }], multiple: false },
         rule: { kind: 'exact', answer: { kind: 'choice', ids: ['a'] }, explanation: '选 A。' } });
     const context = { profile: h.read(), now: T0 };
-    assert.throws(() => compile({ kind: 'review', title: '复习', goal: '回忆', exercises: [choice('q1', 'i1')] }, null, null, context), /each due item/);
-    assert.throws(() => compile({ kind: 'review', title: '复习', goal: '回忆', exercises: [choice('q1', 'i1'), choice('q2', 'i3')] }, null, null, context), /each due item/);
+    assert.ok(compile({ kind: 'review', title: '复习', goal: '回忆', exercises: [choice('q1', 'i1')] }, null, null, context));
+    assert.ok(compile({ kind: 'review', title: '复习', goal: '回忆', exercises: [choice('q1', 'i1'), choice('q2', 'i3')] }, null, null, context));
     const review = compile({ kind: 'review', title: '复习', goal: '回忆', tier: 'deep', exercises: [choice('q1', 'i1'), choice('q2', 'i2')] }, null, null, context);
     assert.equal(review.reward.tier, 'short');
     await h.write(profile => { profile.review = review; });
@@ -240,7 +270,7 @@ test('a review asks about exactly the due items, moves each schedule once, and c
     const pending = answer => h.service.prepareAttempt({ language: 'en', unitId: review.id, exerciseId: answer.exerciseId,
         answer: { kind: 'choice', ids: [answer.id] }, scope, osId: 'story-a', replays: 0, slowPlayback: false });
     await pending({ exerciseId: q1.id, id: 'a' }).save(() => true);
-    assert.throws(() => pending({ exerciseId: q1.id, id: 'b' }), /answered once/);
+    assert.ok(pending({ exerciseId: q1.id, id: 'b' }).attemptId);
     const i1 = h.read().items.find(item => item.id === 'i1');
     assert.deepEqual([i1.schedule.repetitions, i1.schedule.lastQuality, i1.schedule.dueAt, i1.evidence.length], [1, 5, '2026-09-02T08:00:00.000Z', 1]);
     assert.equal(h.read().completions.length, 0);

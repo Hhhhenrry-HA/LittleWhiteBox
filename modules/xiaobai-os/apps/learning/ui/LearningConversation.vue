@@ -83,7 +83,6 @@ function onKeydown(event: KeyboardEvent) {
 }
 watch([() => dialogue.value.turns, () => busy.value], follow);
 function available(target: LearningPresentation) {
-    if (target.kind === 'replacement') { return !props.disabled && props.state.currentUnitId === target.unitId; }
     const unit = [props.state.unit, props.state.review].find(entry => entry?.id === target.unitId);
     return !!unit && (target.kind === 'exercise' ? unit.exercises : unit.materials).some(entry => entry.id === target.id);
 }

@@ -238,44 +238,88 @@ test('a native image placement during continuation preparation preserves the inc
 const cocCall = '<xb_action_check>' + JSON.stringify({ action: 'Force the door', stat: 'body', difficulty: 'regular' }) + '</xb_action_check>';
 const message = mes => ({ name: 'Mira', mes, extra: {} });
 
+test('reply pause follows the selected message ending, not a retained Dice session', async t => {
+    const adapter = setup(t);
+    await begin(); await host.intercept('normal');
+    const target = message(call + '\n</fictional_scenarios>'); host.source.chat.push(target);
+    assert.equal(adapter.isReplyPaused(target), true);
+    await received(); await setImmediate();
+    assert.equal(adapter.view().phase.kind, 'awaiting-choice');
+    const pausedBody = target.mes;
+    target.mes += '\n\nAfterward.';
+    assert.ok(adapter.view(), 'the workflow has not been cleared yet');
+    assert.equal(adapter.isReplyPaused(target), false, 'historical Dice cannot hide completed prose');
+    target.mes = pausedBody + '\n \t';
+    assert.equal(adapter.isReplyPaused(target), true, 'whitespace after a stored result is still a pause');
+    for (const following of [{ is_user: true, mes: 'Continue' }, { is_system: true, extra: { type: 'narrator' }, mes: 'Note' }]) {
+        host.source.chat.push(following);
+        assert.equal(adapter.isReplyPaused(target), true, 'the caller-selected AI floor is authoritative');
+        host.source.chat.pop();
+    }
+    target.mes = pausedBody + '\nAfterward.\n' + call;
+    assert.equal(adapter.isReplyPaused(target), true, 'another executable request pauses again');
+});
+
+test('finished prose releases the pause before the native continuation promise settles', async t => {
+    const adapter = setup(t);
+    await begin(); await host.intercept('normal');
+    const target = message(call); host.source.chat.push(target);
+    await received(); await setImmediate();
+    const finalizing = Promise.withResolvers();
+    t.after(() => finalizing.resolve());
+    host.reply = async () => {
+        target.mes += '\n\nAfterward.';
+        await received();
+        host.unlock();
+        await finalizing.promise;
+    };
+    const continuation = choose(adapter, 1);
+    try {
+        await setImmediate();
+        assert.equal(host.busy, false);
+        assert.equal(adapter.isBusy(), true, 'Dice still owns the unsettled continuation');
+        assert.equal(adapter.isReplyPaused(target), false, 'in-flight finalization is not a content pause');
+    } finally { finalizing.resolve(); await continuation; }
+});
+
 for (const group of [false, true]) test(`reply pause outlives native stop, reload and failed continuation (group: ${group})`, async t => {
     const revealing = Promise.withResolvers();
     const adapter = setup(t, group, () => revealing.promise);
     t.after(() => revealing.resolve());
-    assert.equal(adapter.isReplyPaused(), false, 'ordinary replies have no Dice hold');
+    assert.equal(adapter.isReplyPaused(host.source.chat.at(-1)), false, 'ordinary replies have no Dice hold');
     await begin(); await host.intercept('normal');
     const target = message(call); host.source.chat.push(target);
-    assert.equal(adapter.isReplyPaused(), true, 'the received request already holds the reply before Dice listeners run');
+    assert.equal(adapter.isReplyPaused(target), true, 'the received request already holds the reply before Dice listeners run');
     await received();
-    assert.equal(adapter.isReplyPaused(), true, 'revealing the roll is not completion');
+    assert.equal(adapter.isReplyPaused(target), true, 'revealing the roll is not completion');
     revealing.resolve(); await setImmediate();
     if (group) {
         host.group(true); await host.emit('GROUP_MEMBER_DRAFTED');
         host.group(false); await host.emit('GROUP_WRAPPER_FINISHED');
     }
     assert.equal(host.busy, false);
-    assert.equal(adapter.isReplyPaused(), true, 'the native host can be idle while Dice waits for a choice');
+    assert.equal(adapter.isReplyPaused(target), true, 'the native host can be idle while Dice waits for a choice');
     const pausedBody = target.mes;
     adapter.cancel();
-    assert.equal(adapter.isReplyPaused(), true, 'saved terminal checks retain their pause without a live session');
+    assert.equal(adapter.isReplyPaused(target), true, 'saved terminal checks retain their pause without a live session');
     host.enabled = false;
-    assert.equal(adapter.isReplyPaused(), false, 'disabled Dice never blocks projection');
+    assert.equal(adapter.isReplyPaused(target), false, 'disabled Dice never blocks projection');
     host.enabled = true;
     target.swipe_id = 1; target.mes = 'Already completed candidate'; await host.emit('MESSAGE_SWIPED', 1);
-    assert.equal(adapter.isReplyPaused(), false, 'unreferenced records cannot pause another swipe');
+    assert.equal(adapter.isReplyPaused(target), false, 'unreferenced records cannot pause another swipe');
     target.swipe_id = 0; target.mes = pausedBody; await host.emit('MESSAGE_SWIPED', 1);
-    assert.equal(adapter.isReplyPaused(), true, 'returning to the paused swipe derives its state again');
+    assert.equal(adapter.isReplyPaused(target), true, 'returning to the paused swipe derives its state again');
     const normalReply = host.reply;
     host.reply = async () => { throw new Error('fixture-provider-rejection'); };
     await choose(adapter, 1);
-    assert.equal(adapter.isReplyPaused(), true, 'a failed continuation still awaits an outcome');
+    assert.equal(adapter.isReplyPaused(target), true, 'a failed continuation still awaits an outcome');
     host.reply = normalReply;
     await choose(adapter, 1);
-    assert.equal(adapter.isReplyPaused(), false, 'only the completed continuation releases the pause');
+    assert.equal(adapter.isReplyPaused(target), false, 'only the completed continuation releases the pause');
     host.source.chat.push({ is_user: true, mes: call });
-    assert.equal(adapter.isReplyPaused(), false, 'user text is never a Dice pause');
+    assert.equal(adapter.isReplyPaused(host.source.chat.at(-1)), false, 'user text is never a Dice pause');
     host.source.chat = [message('Another chat')]; host.source.key += '-other';
-    assert.equal(adapter.isReplyPaused(), false, 'old choices cannot hold another chat');
+    assert.equal(adapter.isReplyPaused(host.source.chat.at(-1)), false, 'old choices cannot hold another chat');
 });
 
 for (const group of [false, true]) test(`validated native image placement preserves the live DICE choice and roll (group: ${group})`, async t => {

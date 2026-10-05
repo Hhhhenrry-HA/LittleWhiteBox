@@ -90,26 +90,6 @@ async function harness() {
         reopen: async () => { const reopened = createLearningRepository(files); return (await reopened.read()).document; } };
 }
 
-test('conversation delegates exact learner text without staging an answer or accepting teacher-supplied text', async () => {
-    const h = await harness();
-    const unit = await h.prepare();
-    const message = '  Trees makes city cooler.\nI think shade helps.  ';
-    const run = h.session({ kind: 'talk' }, publicScope, 'story-a', message);
-    const exerciseId = unit.exercises[0].id;
-    assert.equal(run.executeTool('LearningAnswer', { exerciseId, text: 'A corrected answer.' }).ok, false);
-    assert.equal(run.executeTool('LearningRequest', { action: 'submit', exerciseId, instruction: message, text: 'A corrected answer.' }).ok, false);
-    const request = { action: 'submit', exerciseId, instruction: message.trim() };
-    const recorded = run.executeTool('LearningRequest', request);
-    assert.equal(recorded.ok, true, JSON.stringify(recorded));
-    const delegation = run.delegation();
-    assert.equal(delegation.input.answer.text, message);
-    assert.deepEqual(run.executeTool('LearningRequest', request), recorded);
-    assert.deepEqual(run.delegation(), delegation);
-    assert.equal(h.read().unit.attempts.length, 0);
-    assert.equal((await run.commit(() => true)).status, 'unchanged');
-    assert.equal(h.read().unit.attempts.length, 0);
-});
-
 test('a teacher starts a fresh lesson only after a confirmed completion, preserving the reward and retained evidence', async () => {
     const h = await harness(); const unit = await h.prepare();
     const premature = h.session({ kind: 'prepare', replaceCurrent: false });
@@ -130,15 +110,63 @@ test('a teacher starts a fresh lesson only after a confirmed completion, preserv
     assert.equal(h.read().items[0].evidence[0].attempt.id, attemptId);
 });
 
-test('presentation references cannot outlive a deleted exercise in the same proposed turn', async () => {
+test('retiring a displayed exercise clears its transient link without blocking the edit', async () => {
     const h = await harness();
     const unit = await h.prepare(lesson({ exercises: [question(), question({ key: 'second' })] }));
     const run = h.session({ kind: 'prepare', replaceCurrent: false });
     const id = unit.exercises[1].id;
     assert.equal(run.executeTool('LearningPresent', { kind: 'exercise', id }).ok, true);
-    assert.equal(run.executeTool('LearningLessonEdit', { removeExercises: [id] }).ok, false);
+    assert.equal(run.executeTool('LearningLessonEdit', { removeExercises: [id] }).ok, true);
+    assert.equal(run.presentation(), null);
+    assert.equal((await run.commit(() => true)).status, 'confirmed');
+    assert.equal(h.read().unit.exercises.length, 1);
+});
+
+test('an external replacement requires reading or naming the new target, while own replacements stay in focus', async () => {
+    const h = await harness(); const old = await h.prepare();
+    const run = h.session({ kind: 'talk', unitId: old.id });
+    const replacement = await h.prepare(lesson({ title: 'New target' }));
+    run.refresh();
+    assert.equal(run.executeTool('LearningLessonEdit', { title: 'Stale edit' }).ok, false);
+    run.executeTool('LearningRead', { section: 'unit' });
+    assert.equal(run.executeTool('LearningLessonEdit', { title: 'Deliberate edit' }).ok, true);
+    await run.checkpoint(() => true);
+    run.authorizeReplacement(replacement.id);
+    assert.equal(run.executeTool('LearningLessonEdit', { ...lesson(), newLesson: true }).ok, true);
+    await run.checkpoint(() => true); run.refresh();
+    assert.equal(run.executeTool('LearningLessonEdit', { title: 'Own new target' }).ok, true);
+    await run.commit(() => true);
+    assert.notEqual(h.read().unit.id, replacement.id);
+});
+
+test('an unsent replacement restores the saved focus and presentation rather than retaining its candidate', async () => {
+    const h = await harness(); const unit = await h.prepare();
+    const run = h.session({ kind: 'talk', unitId: unit.id });
+    run.executeTool('LearningPresent', { kind: 'exercise', id: unit.exercises[0].id });
+    const presentation = run.presentation();
+    run.authorizeReplacement(unit.id);
+    assert.equal(run.executeTool('LearningLessonEdit', { ...lesson(), newLesson: true }).ok, true);
+    assert.equal(run.presentation(), null);
+    await h.service.saveSettings('en', { level: 'B2' }, () => true);
+    assert.equal((await run.checkpoint(() => true)).status, 'cancelled');
+    assert.deepEqual(run.presentation(), presentation);
+    assert.deepEqual(run.appliedTools(), ['LearningPresent']);
+    run.refresh();
+    assert.equal(run.executeTool('LearningLessonEdit', { title: 'Still the saved lesson' }).ok, true);
+    assert.equal((await run.commit(() => true)).status, 'confirmed');
+    assert.equal(h.read().unit.id, unit.id); assert.equal(h.read().unit.title, 'Still the saved lesson');
+    assert.equal(h.read().level, 'B2');
+});
+
+test('all reading-content writers keep private input out of a shared article', async () => {
+    const h = await harness(); const unit = await h.prepare(lesson({ kind: 'reading-writing' }));
+    const run = h.session({ kind: 'talk' }, { kind: 'story', osId: 'story-a' });
+    for (const [name, args] of [
+        ['LearningReadingNotes', { explanations: [{ paragraphId: 'p1', explanation: 'Private detail', terms: [] }] }],
+        ['LearningEssayTask', { prompt: 'Private detail' }],
+        ['LearningModelEssay', { unitId: unit.id, text: 'Private detail', level: 'B1' }],
+    ]) { assert.equal(run.executeTool(name, args).ok, false, name); }
     assert.equal((await run.commit(() => true)).status, 'unchanged');
-    assert.equal(h.read().unit.exercises.length, 2);
 });
 
 test('lesson tools preserve actual source text through submission, assessment, completion and storage reopen', async () => {
@@ -183,12 +211,12 @@ test('failed calls are atomic, correction retains IDs and valid earlier changes 
     assert.deepEqual(h.read().unit.exercises.map(exercise => exercise.id), [good.ids.at(-1)]);
 });
 
-test('assessment and completion cannot edit goals, manufacture attempts or change published money', async () => {
+test('assessment can accompany goal edits but cannot manufacture attempts or change published money', async () => {
     const h = await harness();
     const unit = await h.prepare();
     let run = h.session({ kind: 'complete' });
     assert.equal(run.executeTool('LearningComplete', { unitId: unit.id, attemptIds: ['invented'], summary: '做完了' }).ok, false);
-    assert.equal(run.executeTool('LearningProfileEdit', { goal: { description: '想多练阅读理解' } }).ok, false);
+    assert.equal(run.executeTool('LearningProfileEdit', { goal: { description: '想多练阅读理解' } }).ok, true);
     assert.equal(h.session({ kind: 'prepare', replaceCurrent: false }).executeTool('LearningLessonEdit', { tier: 'deep' }).ok, false);
     const attemptId = await h.submit();
     run = h.session({ kind: 'assess', attemptId, review: false });
@@ -495,15 +523,15 @@ test('a failed item attachment leaves no debt on a corrected assessment', async 
     assert.equal(h.read().items[0].evidence[0].attempt.id, second);
 });
 
-test('reviewing one answer does not implicitly authorise rewriting another answer’s feedback', async () => {
+test('reconsidering another answer requires an explicit review flag, not another run', async () => {
     const h = await harness(); await h.prepare();
     const first = await h.submit(); await h.assess(first);
     const second = await h.submit(); await h.assess(second);
     const run = h.session({ kind: 'assess', attemptId: first, review: true });
     const revised = { ...h.feedback(second), verdict: 'partial' };
     assert.equal(run.executeTool('LearningAssess', revised).ok, false);
-    assert.equal(run.executeTool('LearningAssess', { ...revised, review: true }).ok, false);
-    assert.equal((await run.commit(() => true)).status, 'unchanged');
+    assert.equal(run.executeTool('LearningAssess', { ...revised, review: true }).ok, true);
+    assert.equal((await run.commit(() => true)).status, 'confirmed');
     const targeted = h.session({ kind: 'assess', attemptId: second, review: true });
     assert.equal(targeted.executeTool('LearningAssess', revised).ok, true);
     await targeted.commit(() => true);

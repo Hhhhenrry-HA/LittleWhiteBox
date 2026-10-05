@@ -1,5 +1,6 @@
 // Loopback preview of production Shell/Host. Its wallet and files exist only in memory.
 import { createServer } from 'node:http';
+import process from 'node:process';
 import { readFile } from 'node:fs/promises';
 import { resolve, sep, extname } from 'node:path';
 import { userEconomyHarness } from '../user-economy-harness.js';
@@ -12,9 +13,9 @@ import { createGameController } from '../../apps/game/host/controller.ts';
 import { driveExpedition } from './expedition-service-driver.mjs';
 let harness, expedition, game, runtime, events = [], seed = 7;
 const identity = 'expedition-preview';
-async function reset(files) {
+async function reset(files, initialPartitions) {
     await runtime?.stopBackground?.(); game?.dispose();
-    harness = await userEconomyHarness({ files }); await harness.economy.ensureOpen();
+    harness = await userEconomyHarness({ files, initialPartitions }); await harness.economy.ensureOpen();
     expedition = createExpeditionService(harness.store(EXPEDITION_PARTITION), harness.transactions, harness.economy, { seed: () => seed++ });
     game = createGameService(harness.store(GAME_PARTITION), harness.transactions, harness.economy);
     await game.refreshCurrent(); await expedition.refresh();
@@ -46,6 +47,7 @@ createServer(async (req, res) => {
                 case 'activate': result = await activate(); break;
                 case 'deactivate': await runtime.deactivate('preview'); break;
                 case 'reset': seed = Number(url.searchParams.get('seed') ?? 7); await reset(); result = await activate(); break;
+                case 'v1': { const fixture = JSON.parse(await readFile(new URL('./expedition-v1.json', import.meta.url), 'utf8')); await reset(undefined, async () => fixture); result = await activate(); break; }
                 case 'reload': await reset(harness.state.files); result = await activate(); break;
                 case 'mode': harness.state.mode = url.searchParams.get('value'); result = harness.state.mode; break;
                 case 'view': result = expedition.view(); break;

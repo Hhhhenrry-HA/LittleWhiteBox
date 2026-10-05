@@ -1,6 +1,8 @@
 import { Scene, WebGLRenderer, OrthographicCamera, Vector3, Color, Group, Box3,
     HemisphereLight, DirectionalLight, SRGBColorSpace, PCFSoftShadowMap, NeutralToneMapping } from 'three';
 import { createMascot } from '../../../../brand/mascot/model.js';
+import { dressMascot } from '../../../../brand/mascot/outfit-model.js';
+import { BUILDER_OUTFIT } from '../outfit.js';
 import { createResources } from './resources.js';
 import { withSceneLifetime } from './lifetime.js';
 import { pixelRatio, RENDER_BUDGET } from './quality.js';
@@ -38,6 +40,10 @@ export function createBuildingScene(host: HTMLElement, onLayout: (targets: CellT
         const mascot = createMascot({ group(parent, pos) { const group = new Group(); group.position.set(...pos); parent.add(group); return group; },
             ball(parent, size, color, pos) { return r.mesh(parent, 'sphere', color, size, pos); } }, scene, [0, 0, 0]);
         mascot.scale.setScalar(.70);
+        dressMascot({
+            ball(parent, size, color, position) { return r.mesh(parent, 'sphere', color, size, position); },
+            box(parent, size, color, position) { return r.mesh(parent, 'box', color, size, position); },
+        }, mascot, BUILDER_OUTFIT);
         let invitationFocus: Pick<Part, 'x' | 'y' | 'z'> | null = null;
         let focused = false, moment: LifeMoment | null = null;
         const footOffset = -new Box3().setFromObject(mascot).min.y;

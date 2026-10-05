@@ -3,7 +3,7 @@ import { canReadLearningScope, type LearningLanguage, type LearningScope } from 
 import { combineLearningScope, requireLearning } from '../../../domains/learning/validation.js';
 
 export function isLearningPreparation(action: Pick<LearningAction, 'kind'>) {
-    return action.kind === 'reading-article' || action.kind === 'reading-notes' || action.kind === 'reading-essay';
+    return action.kind === 'prepare';
 }
 
 /** Conversation has its own run; only a requested workbench action can change training facts. */

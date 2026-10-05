@@ -34,10 +34,10 @@ import type { LearningClientState } from '../types.js';
 import type { LearningTtsFacade } from './media-adapter.js';
 import type { LearningRewardPolicy } from '../reward-partition.js';
 import { isTavilyConfigured } from '../../../../agent-core/tavily-search.js';
-import { learningPreparation, LEARNING_READING_BATCH } from '../../../domains/learning/preparation.js';
-import { learningPreparationTool } from '../agent/preparation-tools.js';
+import { learningPreparation } from '../../../domains/learning/preparation.js';
 import { LEARNING_PREPARATION_COPY as prepCopy } from '../application/preparation-copy.js';
 import { learningActionBusy, learningActionLane } from '../application/action-availability.js';
+import { createLearningApprovals } from '../application/approval.js';
 
 export function createLearningRuntime(deps: {
     repository: LearningRepository; store: PartitionStore<LearningStoredCompanions>; files: XiaobaiOsFileControls;
@@ -75,7 +75,8 @@ export function createLearningRuntime(deps: {
     let recordId = '';
     let offset = 0;
     const repository = deps.repository;
-    const activity = () => ({ busy: !!job || !!preparationJob && preparation?.phase === 'article',
+    const approvals = createLearningApprovals(publish);
+    const activity = () => ({ busy: !!job,
         chatBusy: !!chats.companion.job && chats.companion.kind !== 'companion', workbenchBusy: !!chats.workbench.job, preparation });
     const canWork = (name: string) => !learningActionBusy(name, activity());
     const service = createLearningService(repository);
@@ -92,16 +93,29 @@ export function createLearningRuntime(deps: {
         const selected = teacher.selected();
         return workspace && selected ? { ...workspace, teacher: selected.person, sessionId: selected.id } : null;
     }
-    function persona(actor: LearningActor) {
+    function persona(actor: LearningActor): ReturnType<typeof createLearningTeaching> {
         return createLearningTeaching({ actor, repository, gateway: deps.agent,
             current: actor === 'workbench' ? current : companionCurrent, capture: deps.capture,
             memory: () => histories.port(actor, language, teacher.selected()?.id ?? null),
-            onConversation: publish, canDelegate: canWork,
-            onProgress: (next, action) => {
-                if (!learningPreparationTool(action)) {
-                    const text = learningProgressMessage(next);
-                    if (isLearningConversation(action)) { chats[actor].progress = text; } else { progress = text; }
+            onConversation: publish, confirm: approvals.request, onSettled: payPending,
+            delegate: async (request, signal, onSaved) => {
+                if (signal.aborted) { return { ok: false, status: 'cancelled' }; }
+                if (chats.workbench.job || job || preparationJob) { return { ok: false, status: 'busy' }; }
+                const token = {};
+                chats.workbench.job = token; chats.workbench.kind = 'talk'; publish();
+                const cancel = () => { if (chats.workbench.job === token) { teaching.cancel('conversation'); } };
+                signal.addEventListener('abort', cancel, { once: true });
+                try {
+                    const result = await teaching.run({ ...request, action: { kind: 'talk', unitId: request.unitId } }, undefined, onSaved);
+                    return { ok: result.status === 'finished', ...result, text: result.status === 'finished' ? result.text : result.status === 'failed' ? result.message : '' };
+                } finally {
+                    signal.removeEventListener('abort', cancel);
+                    if (chats.workbench.job === token) { chats.workbench.job = null; chats.workbench.kind = ''; chats.workbench.progress = ''; publish(); }
                 }
+            },
+            onProgress: (next, action) => {
+                const text = learningProgressMessage(next);
+                if (isLearningConversation(action)) { chats[actor].progress = text; } else { progress = text; }
                 publish();
             },
         });
@@ -140,7 +154,7 @@ export function createLearningRuntime(deps: {
             chatIdentity, language, teacher: teacher.selected()?.person ?? null, companionSessionId: teacher.selected()?.id ?? null,
             candidates: teacher.candidates().map(person => ({ name: person.name, aliases: person.aliases })),
             storage: loadFailed ? 'unloaded' : snapshot.status, chatStorage: deps.files.getFileState(), workbenchStorage: deps.workbenchFiles.getFileState(), walletStorage: deps.rewardFiles.getFileState(),
-            sourceChoice: !preparationJob && snapshot.status === 'ready' && sourceChoice?.unitId === view.currentUnitId ? sourceChoice.reason : null, ...activity(),
+            sourceChoice: !preparationJob && snapshot.status === 'ready' && sourceChoice?.unitId === view.currentUnitId ? sourceChoice.reason : null, ...activity(), approval: approvals.current(),
             companionBusy: !!chats.companion.job && chats.companion.kind === 'companion', chatMessage: chats.companion.progress, workbenchMessage: chats.workbench.progress,
             message: job ? progress : message, reply, pending, remark, companionReply, conversation: companion.conversation(), workbenchConversation: teaching.conversation(),
             walletOpen: deps.economy.isOpen(), media: speech.media.snapshot(), voices: speech.media.capabilities() };
@@ -170,28 +184,22 @@ export function createLearningRuntime(deps: {
     async function pay(unitId: string, open: boolean, guard: () => boolean) {
         const result = await rewards.settle(language, unitId, open, guard);
         // A save or storage warning already on screen matters more than the payment note.
-        if (!guard() || message) { return; }
+        if (!guard() || message) { return result; }
         // Successful settlement and wallet setup already have a home in the completion card.
         if (!['paid', 'wallet-closed', 'retired', 'cancelled'].includes(result)) { message = LEARNING_REWARD_COPY.unknown; }
+        return result;
     }
-    /** Null while the file is not confirmed; confirming it is followed by payPending instead. */
-    function completionIds() {
-        return repository.snapshot().status === 'ready' ? new Set(profileNow()?.completions.map(entry => entry.unitId) ?? []) : null;
-    }
-    /** Completions are facts saved with learning; one that an action just recorded is settled once, keyed by its unitId. */
-    async function payNew(before: Set<string> | null, guard: () => boolean) {
-        if (!before || repository.snapshot().status !== 'ready') { return; }
-        for (const completion of profileNow()?.completions ?? []) {
-            if (!before.has(completion.unitId) && !completion.receipt && rewards.status(completion) !== 'retired' && guard()) { await pay(completion.unitId, false, guard); }
-        }
-    }
-    /** On opening or after a wallet change, an unpaid completion in either slot that the wallet can take now is settled. */
+    /** All entry points settle confirmed completion records, including units retired by later tools. */
     async function payPending(guard: () => boolean) {
-        if (repository.snapshot().status !== 'ready') { return; }
+        if (!guard() || repository.snapshot().status !== 'ready') { return; }
         const profile = profileNow();
-        for (const unitId of [profile?.unit?.id, profile?.review?.id]) {
-            const completion = profile?.completions.find(entry => entry.unitId === unitId);
-            if (completion && rewards.status(completion) === 'available' && guard()) { await pay(completion.unitId, false, guard); }
+        for (const completion of profile?.completions ?? []) {
+            if (rewards.status(completion) === 'available') {
+                if (!guard() || repository.snapshot().status !== 'ready') { break; }
+                const result = await pay(completion.unitId, false, guard);
+                // A failed file/ledger write affects this settlement pass, not just one lesson.
+                if (result !== 'paid' && result !== 'retired') { break; }
+            }
         }
     }
     async function afterTeaching(result: LearningTeachingResult, guard: () => boolean, action: LearningAction['kind'], exerciseId?: string, selection: LearningSelection | null = null) {
@@ -211,27 +219,24 @@ export function createLearningRuntime(deps: {
         return found;
     }
     const stageRequests = {
-        grade: '我的初稿都写好了，请统一批改。',
+        grade: '请批改这课已经交上的答案，接着根据实际情况完成这次教学工作。还没写的留给我继续写。',
         'revision-review': '我按批注改好了，请复核修订稿。',
         'model-essay': '请给我一篇这次作文的范文。',
-        'review-assess': '这组复习题我都答完了，请批改。',
+        'review-assess': '请批改这组复习题中已经交上的答案。',
     } as const;
     const nextStage: Partial<Record<string, keyof typeof stageRequests>> = { grading: 'grade', reviewing: 'revision-review', model: 'model-essay' };
-    /** Runs whichever stage request the saved facts ask for next, until the unit waits for the learner or is complete. */
-    async function advance(unitId: string, guard: () => boolean) {
-        for (let step = 0; step < 3 && guard(); step++) {
-            const target = slot(unitId);
-            const stage = learningUnitStage(target).stage;
-            const purpose = target.kind === 'review' ? (stage === 'grading' ? 'review-assess' as const : undefined)
-                : target.kind === 'reading-writing' ? nextStage[stage] : undefined;
-            if (!purpose) { return; }
-            pending = { purpose, unitId }; publish();
-            const result = await teaching.run({ action: { kind: purpose, unitId }, message: stageRequests[purpose] });
-            pending = null;
-            await afterTeaching(result, guard, purpose);
-            if (result.status !== 'finished' || !guard()) { return; }
-            if (learningUnitStage(slot(unitId)).stage === stage) { message = '这一步还没有全部完成，可以再点一次继续。已保存的批改会保留。'; return; }
-        }
+    /** Native buttons express an intent; the teacher owns the complete tool loop. */
+    async function advance(unitId: string, guard: () => boolean, intent?: keyof typeof stageRequests) {
+        if (!guard()) { return; }
+        const target = slot(unitId);
+        const progress = learningUnitStage(target);
+        const purpose = intent ?? (target.kind === 'review' ? 'review-assess'
+            : progress.exercises.some(row => row.status === 'grading') ? 'grade'
+                : progress.exercises.some(row => row.status === 'reviewing') ? 'revision-review' : nextStage[progress.stage] ?? 'grade');
+        pending = { purpose, unitId }; publish();
+        const result = await teaching.run({ action: { kind: purpose, unitId }, message: stageRequests[purpose] });
+        pending = null;
+        await afterTeaching(result, guard, purpose);
     }
     async function cleanHistories(before: LearningDocument | null, guard: () => boolean, deletedLanguage?: string, clearAll = false) {
         const remaining = learningReferenceScopes(repository.snapshot().document?.data);
@@ -279,39 +284,21 @@ export function createLearningRuntime(deps: {
         preparation = { phase: article ? 'article' : 'notes', running: true, message: '', ...(article ? { source: article.source } : {}) };
         void deps.execution.run(async () => {
             try {
-                if (article) {
-                    const result = await teaching.run({ action: { kind: 'reading-article', source: article.source, replaceCurrent: article.replaceCurrent }, message: article.message });
-                    if (!guard()) { return; }
-                    if (result.status !== 'finished') {
-                        preparation!.message = result.status === 'failed' ? result.message : prepCopy.stopped; return;
-                    }
-                    if (!result.appliedTools.includes('LearningArticle')) { preparation!.message = result.text || prepCopy.incomplete; return; }
-                    sourceChoice = null;
+                const result = await teaching.run({ action: { kind: 'prepare', unit: 'reading-writing',
+                    replaceCurrent: article?.replaceCurrent ?? false, ...(article ? { source: article.source } : {}) },
+                message: article?.message ?? '请接着完成当前文章的备课，沿用之前商定的要求。' });
+                if (!guard()) { return; }
+                if (result.status !== 'finished') {
+                    preparation!.message = result.status === 'failed' ? result.message : prepCopy.stopped; return;
                 }
-                const unitId = unit().id;
-                let notesFailure = '';
-                while (guard()) {
-                    const target = slot(unitId);
-                    const missing = learningPreparation(target);
-                    if (missing.ready) { preparation = null; return; }
-                    if (notesFailure && missing.essay) { preparation = { phase: 'notes', running: false, unitId, message: notesFailure }; return; }
-                    const phase = !notesFailure && missing.missing.length ? 'notes' : 'essay';
-                    preparation = { phase, running: true, unitId, message: '' }; publish();
-                    const task: LearningAction = phase === 'notes'
-                        ? { kind: 'reading-notes', unitId, paragraphIds: missing.missing.slice(0, LEARNING_READING_BATCH) }
-                        : { kind: 'reading-essay', unitId };
-                    const result = await teaching.run({ action: task, message: phase === 'notes' ? prepCopy.notesRequest : prepCopy.essayRequest });
-                    if (!guard()) { return; }
-                    if (result.status !== 'finished') {
-                        if (phase === 'notes' && result.status === 'failed' && repository.snapshot().status === 'ready') { notesFailure = result.message; continue; }
-                        preparation.message = result.status === 'failed' ? result.message : prepCopy.stopped; return;
-                    }
-                    if (!result.appliedTools.includes(learningPreparationTool(task)!)) {
-                        if (phase === 'notes') { notesFailure = result.text || prepCopy.incomplete; continue; }
-                        preparation.message = result.text || prepCopy.incomplete; return;
-                    }
-                    publish();
+                if (article && (profileNow()?.unit?.id ?? null) === sourceChoice?.unitId) {
+                    preparation!.message = result.text;
+                    await afterTeaching(result, guard, 'prepare');
+                    return;
                 }
+                sourceChoice = null;
+                preparation = null;
+                await afterTeaching(result, guard, 'prepare');
             } catch (error) {
                 if (guard() && preparation) { preparation.message = reportLearningFailure('prepare', error instanceof LearningStorageError ? error.code : 'learning_action_failed', { stage: 'action', cause: error }); }
             } finally {
@@ -443,14 +430,19 @@ export function createLearningRuntime(deps: {
                 message: learningText(input.message, 'message', 4000) }), guard, 'prepare'); return;
         }
         if (name === 'submit') {
+            const purpose = slot(String(input.unitId)).kind === 'lesson' ? 'assess' : 'summary-review';
             const result = await practice.submit({ unitId: learningText(input.unitId, 'unitId', 128), exerciseId: learningText(input.exerciseId, 'exerciseId', 128),
                 answer: input.answer as LearningAnswer, replays: 0, slowPlayback: false }, guard, answerBasis);
             if (result.status === 'saved' && result.teaching) {
-                const purpose = slot(String(input.unitId)).kind === 'lesson' ? 'assess' : 'summary-review';
                 await afterTeaching(result.teaching, guard, purpose, String(input.exerciseId));
             }
             else if (result.status !== 'saved') { saved(result); }
-            if (result.status === 'saved' && guard() && slot(String(input.unitId)).kind === 'review') { await advance(String(input.unitId), guard); }
+            if (result.status === 'saved' && guard()) {
+                const target = profileNow()?.review;
+                if (target && target.id === input.unitId && target.attempts.some(attempt => !target.assessments.some(entry => entry.attemptId === attempt.id && entry.verdict !== 'disputed'))) {
+                    await advance(target.id, guard);
+                } else if (!result.teaching) { await payPending(guard); }
+            }
             return;
         }
         if (name === 'assess') {
@@ -468,8 +460,8 @@ export function createLearningRuntime(deps: {
         if (name === 'skip-revision' || name === 'submit-revision') {
             const unitId = slot(learningText(input.unitId, 'unitId', 128)).id;
             const result = name === 'skip-revision' ? await service.skipRevision(language, unitId, guard)
-                : await service.submitRevision(language, unitId, input.revisions, guard);
-            if (saved(result) && guard()) { await advance(unitId, guard); }
+                : await service.submitRevision(language, unitId, input.revisions, guard, answerBasis);
+            if (saved(result) && guard()) { await advance(unitId, guard, name === 'submit-revision' ? 'revision-review' : 'model-essay'); }
             return;
         }
         if (name === 'grade') { await advance(slot(learningText(input.unitId, 'unitId', 128)).id, guard); return; }
@@ -526,7 +518,10 @@ export function createLearningRuntime(deps: {
             saved(await service.note(language, lesson.id, String(input.id), guard)); return;
         }
         if (name === 'reward') { await pay(String(input.unitId), input.openWallet === true, guard); return; }
-        if (name === 'delete-item') { saved(await service.deleteItem(language, String(input.id), guard)); recordId = ''; return; }
+        if (name === 'delete-item') {
+            if (saved(await service.deleteItem(language, String(input.id), guard))) { await payPending(guard); }
+            recordId = ''; return;
+        }
         if (name === 'delete-attempt') { saved(await service.deleteAttempt(language, String(input.id), guard)); return; }
         requireLearning(!deps.rewardFiles.hasPendingCommit(), 'wallet', 'Resolve pending wallet changes before deleting learning data');
         if (name === 'abandon') { saved(await service.abandonUnit(language, guard)); reply = null; return; }
@@ -557,10 +552,7 @@ export function createLearningRuntime(deps: {
                 else if (!await speech.flush()) { return; }
                 before = repository.snapshot().document;
                 if (guard()) {
-                    const completed = completionIds();
                     await action(name, input, guard, answerBasis);
-                    // Any save may have completed a unit by its facts; payment follows it here, once per new completion.
-                    if (!['reward', 'read', 'verify', 'retry-save', 'adopt-server', 'verify-wallet', 'adopt-wallet'].includes(name) && guard()) { await payNew(completed, guard); }
                 }
             }
             catch (error) {
@@ -588,8 +580,9 @@ export function createLearningRuntime(deps: {
         if (!active() || actor === 'companion' && !teacher.selected() || name === 'companion' && (lane.job || job || chats.workbench.job)) { return; }
         if (lane.job) { return 'busy' as const; }
         const retryId = name === 'retry-chat' && typeof input.id === 'string' ? input.id : undefined;
+        let original: ReturnType<ReturnType<typeof createLearningTeaching>['retryRequest']> = null;
         if (name === 'retry-chat') {
-            const original = retryId ? runner(actor).retryRequest(retryId) : null;
+            original = retryId ? runner(actor).retryRequest(retryId) : null;
             const storageReady = (actor === 'workbench' ? deps.workbenchFiles : deps.files).getFileState() === 'ready';
             if (!original || !storageReady) { lane.progress = conversationCopy.retryUnavailable; publish(); return; }
             input = { ...original, unitId: original.action.kind === 'talk' ? original.action.unitId : undefined };
@@ -601,10 +594,11 @@ export function createLearningRuntime(deps: {
         const guard = () => active() && epoch === owned && lane.job === token;
         void deps.execution.run(async () => {
             try {
-                const answerBasis = { document: repository.snapshot().document ?? null, submittedAt: new Date().toISOString() };
+                const answerBasis = original?.answerBasis ?? { document: repository.snapshot().document ?? null, submittedAt: new Date().toISOString() };
                 const exerciseId = input.exerciseId === undefined ? undefined : learningText(input.exerciseId, 'exerciseId', 128);
-                const unitId = name !== 'companion' && input.unitId !== undefined ? slot(learningText(input.unitId, 'unitId', 128)).id : undefined;
-                const selected = input.selection ? selection(input.selection) : null;
+                const unitId = original && original.action.kind === 'talk' ? original.action.unitId
+                    : name !== 'companion' && input.unitId !== undefined ? slot(learningText(input.unitId, 'unitId', 128)).id : undefined;
+                const selected = original ? original.selection ?? null : input.selection ? selection(input.selection) : null;
                 const materialId = name === 'companion' && input.materialId !== undefined ? learningText(input.materialId, 'materialId', 128) : undefined;
                 const paragraphId = name === 'companion' && input.paragraphId !== undefined ? learningText(input.paragraphId, 'paragraphId', 128) : undefined;
                 const text = name === 'companion' ? '' : learningText(input.message, 'message', selected ? 1800 : 4000);
@@ -614,7 +608,7 @@ export function createLearningRuntime(deps: {
                     if (!saved(exposed) || !guard()) { return; }
                 }
                 const result = await runner(actor).run({ action: name === 'companion' ? { kind: name, materialId, paragraphId } : { kind: 'talk', ...(unitId ? { unitId } : {}) },
-                    exerciseId, selection: selected, message: text,
+                    exerciseId, selection: selected, message: text, answerBasis, submissions: original?.submissions,
                     displayMessage: selected ? `${text}\n\n${selected.quote}` : text }, retryId);
                 if (!guard()) { return; }
                 // The runner owns a failed turn's notice; the outer lane reports only failures before a turn exists.
@@ -627,10 +621,6 @@ export function createLearningRuntime(deps: {
                         companionReply = { text: result.text, action: 'talk', unitId, ...(exerciseId ? { exerciseId } : {}) }; companionSelection = selected;
                     } else {
                         reply = { text: result.text, action: 'talk', unitId, ...(exerciseId ? { exerciseId } : {}) }; replySelection = selected;
-                    }
-                    if (result.delegation) {
-                        const rejected = launch(result.delegation.action, result.delegation.input, result.delegation.action === 'submit' ? answerBasis : undefined);
-                        if (rejected) { lane.progress = conversationCopy.delegatedBusy; }
                     }
                 }
             } catch (error) {
@@ -671,10 +661,14 @@ export function createLearningRuntime(deps: {
             const name = messageInput.type.replace(/^learning\//, '');
             const input = learningRecord(messageInput.payload ?? {}, 'request', ['chatIdentity', 'language', 'teacher', 'message', 'replaceCurrent',
                 'unitId', 'exerciseId', 'answer', 'attemptId', 'review', 'selection', 'kind', 'id', 'voice', 'materialId', 'partKey', 'openWallet', 'offset', 'value',
-                'paragraphId', 'termText', 'revisions', 'target', 'help']);
+                'paragraphId', 'termText', 'revisions', 'target', 'help', 'approved']);
             if (!active() || input.chatIdentity !== chatIdentity) { return { state: state() }; }
             if (learningActionBusy(learningActionLane(name, input.target), activity())) { return { state: state(), rejected: 'busy' }; }
-            if (name === 'pause') { speech.media.pause(); }
+            if (name === 'approve-operation') {
+                requireLearning(typeof input.approved === 'boolean', 'approved', 'Choose whether to proceed');
+                approvals.resolve(learningText(input.id, 'id', 128), input.approved);
+            }
+            else if (name === 'pause') { speech.media.pause(); }
             // A companion remark never touches playback, so the player stays usable while it runs.
             else if (name === 'resume' && idle()) { speech.media.resume(); }
             else if (name === 'stop') { speech.stop(); }

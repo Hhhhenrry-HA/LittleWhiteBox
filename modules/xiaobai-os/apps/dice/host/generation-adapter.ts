@@ -10,6 +10,7 @@ import type { ActionCheckFrequency, ActionCheckRule } from '../types.js';
 import { readCoc7Sheet, type Coc7Sheet } from '../domain/coc7-sheet.js';
 import { parseDiceRecords } from '../domain/check-records.js';
 import { createActionCheckSession } from '../application/action-check-session.js';
+import { isDiceContinuationPending } from '../application/continuation-state.js';
 import type { DiceContinuationStage, DiceContinuationProgress, DiceHostBlocker } from '../application/host-wait.js';
 import { applyDiceCandidate, captureDiceTarget, clearNewDiceSwipe, isDiceTargetCurrent, readDiceRecords, type DiceCandidate, type DiceTarget } from './message-records.js';
 import { filterDiceGenerationData, type DiceGenerationData } from './request-filter.js';
@@ -503,19 +504,10 @@ export function createDiceGenerationAdapter(enabled: () => boolean, frequency: (
             await session.showResult(rolled.target, { body: rolled.target.body, records: parseDiceRecords(rolled.target.records) }, rolled.operationId);
         } else { throw new DiceOperationError('dice_target_changed'); }
     }
-    function isReplyPaused(): boolean {
-        if (!enabled()) { return false; }
-        const source = captureDiceChat();
-        const message = source?.chat.at(-1);
-        if (!source || !message || message.is_user || message.is_system) { return false; }
-        // Ownership, not body equality: a continuation changes the body before its native Promise settles.
-        const ownsTail = (target: DiceTarget) => target.source.key === source.key && target.source.chat === source.chat
-            && target.message === message && target.swipe === (message.swipe_id ?? 0);
-        const active = session.view();
-        if (active && ownsTail(active.target) || intention && !intention.signal.aborted && ownsTail(intention.target)) { return true; }
-        // Reopened chats and existing swipes derive the pause from their saved facts; no new persisted flag.
-        return !!terminalCheck(message.mes, readDiceRecords(message))
-            || parseActionCheck(message.mes, 0, rule()).kind !== 'none';
+    function isReplyPaused(message: unknown): boolean {
+        if (!enabled() || message === null || typeof message !== 'object') { return false; }
+        // The caller selects its floor. Workflow ownership is not a pause in that floor's prose.
+        return isDiceContinuationPending(message);
     }
     return { start, stop, cancel, isReplyPaused,
         actions, act, records, current: currentTarget,

@@ -5,6 +5,8 @@ import { MATCH_SIZE } from '../rules.js';
 import { createItem } from './items.js';
 import { createToyKit } from './toy-kit.js';
 import { createMascot } from '../../../../brand/mascot/model.js';
+import { dressMascot } from '../../../../brand/mascot/outfit-model.js';
+import { MOVER_OUTFIT } from '../outfit.js';
 
 const PALETTES = {
     weekend: { wall: '#e0efe7', floor: '#fff0df', trim: '#95c9b3', seat: '#f2b4bc', rug: '#c9e1f3', cabinet: '#f4d294' },
@@ -111,6 +113,7 @@ export function createRoomModel(level: MovingLevel) {
         markers.set(item.id, marker);
     }
     const mascot = createMascot(kit, root, [-3.05, .52, 3.55]);
+    dressMascot(kit, mascot, MOVER_OUTFIT);
     const parcel = kit.group(mascot, [0, -.03, .37]);
     box(parcel, [.47, .35, .33], '#dfb084', [0, 0, 0], .035);
     box(parcel, [.08, .36, .34], '#ffe6b8', [0, 0, 0], .008);

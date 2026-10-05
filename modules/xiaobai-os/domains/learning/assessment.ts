@@ -3,13 +3,12 @@ import { checkLearningAnnotations, parseLearningAssessment } from './facts.js';
 import { learningRecord, learningText } from './profile.js';
 import { selectLearningEvidence } from './progress.js';
 import { advanceLearningSchedule, correctLearningSchedules, learningReviewQuality, learningScheduled, newLearningSchedule } from './schedule.js';
-import { learningUnitStage } from './stage.js';
-import { canReadLearningScope, LEARNING_LIMITS as L, type LearningAssessment, type LearningEvidence, type LearningItem, type LearningLanguage, type LearningScope, type LearningSkill, type LearningUnit } from './types.js';
+import { canReadLearningScope, LEARNING_LIMITS as L, type LearningAssessment, type LearningAttempt, type LearningEvidence, type LearningItem, type LearningLanguage, type LearningScope, type LearningSkill, type LearningUnit } from './types.js';
 import { combineLearningScope, learningArray, learningId, requireLearning, uniqueLearning } from './validation.js';
 
 /**
- * The one copy of an attempt kept as item evidence. Reading-writing keeps it small: a summary keeps only its
- * paragraph and an essay keeps no article text, so a few long articles cannot fill the learning file.
+ * The one copy of an attempt kept as item evidence. Reading-writing summaries keep only their paragraph and
+ * essays keep no article text; other exercises retain their referenced materials, including selectable evidence.
  */
 export function projectLearningEvidence(unit: LearningUnit, attemptId: string): LearningEvidence {
     const attempt = unit.attempts.find(entry => entry.id === attemptId);
@@ -17,7 +16,7 @@ export function projectLearningEvidence(unit: LearningUnit, attemptId: string): 
     requireLearning(attempt && assessment, 'attemptId', 'Evidence needs a saved attempt with feedback');
     const exercise = unit.exercises.find(entry => entry.id === attempt.exerciseId)!;
     let materials = unit.materials.filter(material => exercise.materialIds.includes(material.id));
-    if (unit.kind === 'reading-writing') {
+    if (unit.kind === 'reading-writing' && exercise.skill === 'writing') {
         materials = exercise.paragraphId === undefined ? [] : materials.map(material => ({ ...material,
             paragraphs: material.paragraphs.filter(paragraph => paragraph.id === exercise.paragraphId) })).filter(material => material.paragraphs.length);
     }
@@ -58,22 +57,33 @@ export function attachLearningEvidence(item: LearningItem, evidence: LearningEvi
     item.evidence = selectLearningEvidence([...item.evidence.filter(entry => entry.attempt.id !== evidence.attempt.id), structuredClone(evidence)]);
 }
 
+/** Only saved answer facts establish order; representative evidence is reordered on every judgement. */
+function followsLearningAttempt(profile: LearningLanguage, attempt: LearningAttempt, earlierId: string): boolean {
+    const unit = learningUnitOfAttempt(profile, earlierId);
+    const earlier = unit?.attempts.find(entry => entry.id === earlierId)
+        ?? profile.items.flatMap(item => item.evidence).find(entry => entry.attempt.id === earlierId)?.attempt;
+    if (!earlier) { return false; }
+    if (attempt.submittedAt !== earlier.submittedAt) { return attempt.submittedAt > earlier.submittedAt; }
+    // A current unit preserves submission order even when two answers share a timestamp; archives do not.
+    return unit !== undefined && unit.attempts.findIndex(entry => entry.id === attempt.id)
+        > unit.attempts.findIndex(entry => entry.id === earlierId);
+}
+
 /**
- * A review answer moves its item's memory schedule once, with its evidence, in the save that records the judgement.
- * A changed judgement first withdraws this attempt's earlier move.
+ * Apply a new or changed judgement, never a replay. Current and archived review answers obey the same rule:
+ * a changed judgement withdraws its own move and reapplies it only if no later answer has moved the item.
  */
-export function scheduleLearningReview(profile: LearningLanguage, attemptId: string, now: string, rejudged = false): void {
-    if (rejudged) { correctLearningSchedules(profile.items, attemptId, now); }
-    const review = profile.review;
-    const attempt = review?.attempts.find(entry => entry.id === attemptId);
-    const assessment = review?.assessments.find(entry => entry.attemptId === attemptId);
-    if (!review || !attempt || !assessment) { return; }
-    const exercise = review.exercises.find(entry => entry.id === attempt.exerciseId)!;
+export function scheduleLearningReview(profile: LearningLanguage, evidence: LearningEvidence, now: string, prior?: LearningAssessment): void {
+    const { attempt, assessment, exercise } = evidence;
     const item = profile.items.find(entry => entry.id === exercise.itemId);
+    const advances = item?.schedule && (!prior || item.schedule.lastAttemptId === attempt.id
+        || prior.verdict === 'disputed' && (item.schedule.lastAttemptId === null
+            || followsLearningAttempt(profile, attempt, item.schedule.lastAttemptId)));
+    if (prior) { correctLearningSchedules(profile.items, attempt.id, now); }
     if (!item?.schedule) { return; }
-    attachLearningEvidence(item, projectLearningEvidence(review, attemptId));
+    attachLearningEvidence(item, evidence);
     const quality = learningReviewQuality(attempt, assessment);
-    if (quality !== null) { item.schedule = advanceLearningSchedule(item.schedule, quality, attemptId, now); }
+    if (advances && quality !== null) { item.schedule = advanceLearningSchedule(item.schedule, quality, attempt.id, now); }
 }
 
 type ItemRef = { itemId: string | null; label: string | null };
@@ -96,9 +106,6 @@ export function assessLearning(profile: LearningLanguage, args: unknown, options
     const archived = currentAttempt ? null : next.items.flatMap(item => item.evidence).find(entry => entry.attempt.id === attemptId);
     const attempt = currentAttempt ?? archived?.attempt;
     requireLearning(attempt && canReadLearningScope(attempt.scope, options.osId), 'attemptId', 'Submit and save an available learner answer before evaluation');
-    if (unit?.kind === 'reading-writing') {
-        requireLearning(learningUnitStage(unit).stage !== 'writing', 'attemptId', 'Grade the reading-writing drafts together once every draft is written');
-    }
     const scope = combineLearningScope(attempt.scope, options.inputScope);
     const { items: rawItems, annotations: rawAnnotations, ...rawAssessment } = input;
     const prior = currentAttempt ? unit!.assessments.find(entry => entry.attemptId === attemptId) : archived?.assessment;
@@ -154,17 +161,9 @@ export function assessLearning(profile: LearningLanguage, args: unknown, options
         const item = resolveItem(change, evidence.exercise.skill, 'items');
         if (!linked.includes(item)) { linked.push(item); }
     }
+    // Decide against the saved answers before new item links can prune their representative evidence.
+    if (!prior || rejudged) { scheduleLearningReview(next, evidence, now, prior); }
     for (const item of linked) { attachLearningEvidence(item, evidence); ids.push(item.id); }
-    if (unit?.kind === 'review') { scheduleLearningReview(next, attemptId, now, rejudged); }
-    else if (rejudged) {
-        // A retained review answer that is re-judged moves its item again from the final verdict, unless a later
-        // review has moved the item since (the dispute left it at the entry state with no attempt of its own).
-        const item = next.items.find(entry => entry.id === archived?.exercise.itemId && entry.schedule
-            && (entry.schedule.lastAttemptId === attemptId || prior?.verdict === 'disputed' && entry.schedule.lastAttemptId === null));
-        correctLearningSchedules(next.items, attemptId, now);
-        const quality = learningReviewQuality(attempt, assessment);
-        if (item?.schedule && quality !== null) { item.schedule = advanceLearningSchedule(item.schedule, quality, attemptId, now); }
-    }
     completeLearningByFacts(next, 'unit', now);
     completeLearningByFacts(next, 'review', now);
     return { profile: next, ids };

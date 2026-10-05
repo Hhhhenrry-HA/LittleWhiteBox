@@ -3,11 +3,11 @@ import { computed, ref, watch } from 'vue';
 import type { LearningClientState } from '../types.js';
 import type { LearningAnnotation } from '../../../domains/learning/types.js';
 import { learningAnswerParagraphs } from '../../../domains/learning/facts.js';
-import LearningCompletion from './LearningCompletion.vue';
 import { applyLearningSentenceRevisions, learningAnnotatedSegments } from './workbench.js';
 import { useLearningUnitSession } from './learning-session.js';
 import { rememberLearningEditor as vRememberEditor } from './learning-editor.js';
 import { LEARNING_FLOW_COPY as flow, LEARNING_DIALOGUE_COPY as dialogueCopy } from './learning-copy.js';
+import { learningRevisionWork } from './revision-work.js';
 
 type Unit = NonNullable<LearningClientState['unit']>;
 const props = defineProps<{ state: LearningClientState; unit: Unit; disabled: boolean; pending: boolean; view: 'feedback' | 'model' }>();
@@ -23,22 +23,16 @@ const edits = computed(() => session.value.edits);
 const stage = computed(() => props.unit.stage.stage);
 const paragraphNumbers = computed(() => new Map(props.unit.materials.flatMap(material => material.paragraphs).map((paragraph, index) => [paragraph.id, index + 1])));
 const text = (attempt: Unit['attempts'][number] | undefined) => attempt?.answer.kind === 'text' ? attempt.answer.text : '';
-const rows = computed(() => props.unit.stage.exercises.flatMap(row => {
-    const exercise = props.unit.exercises.find(entry => entry.id === row.exerciseId);
-    const draft = props.unit.attempts.find(entry => entry.id === row.draftAttemptId);
-    if (!exercise || !draft) { return []; }
-    const assessment = props.unit.assessments.find(entry => entry.attemptId === draft.id);
-    const revision = props.unit.attempts.find(entry => entry.id === row.revisionAttemptId);
-    const review = revision && props.unit.assessments.find(entry => entry.attemptId === revision.id);
-    const annotations = assessment?.annotations ?? [];
-    return [{ row, exercise, draft, assessment, revision, review, annotations,
-        label: exercise.paragraphId ? `第 ${paragraphNumbers.value.get(exercise.paragraphId) ?? '?'} 段总结` : '作文',
+const rows = computed(() => learningRevisionWork(props.unit).map(work => {
+    const { exercise, draft, review, annotations } = work;
+    return { ...work,
+        label: exercise.paragraphId ? `第 ${paragraphNumbers.value.get(exercise.paragraphId) ?? '?'} 段总结` : exercise.prompt,
         paragraphs: learningAnswerParagraphs(text(draft)).map((paragraph, index) => ({ index,
             segments: learningAnnotatedSegments(paragraph, annotations.filter(entry => entry.paragraphIndex === index)),
             annotations: annotations.filter(entry => entry.paragraphIndex === index) })),
-        resolved: new Set(review?.resolvedAnnotationIds ?? []) }];
+        resolved: new Set(review?.resolvedAnnotationIds ?? []) };
 }).sort((left, right) => Number(right.annotations.length > 0) - Number(left.annotations.length > 0)));
-const revising = (row: typeof rows.value[number]) => stage.value === 'revising' && row.row.status === 'revising';
+const revising = (row: typeof rows.value[number]) => row.row.status === 'revising';
 const editable = (row: typeof rows.value[number], annotation: LearningAnnotation) => revising(row) && annotation.severity !== 'alternative';
 watch(rows, list => {
     for (const annotation of list.flatMap(row => row.annotations)) { edits.value[annotation.id] ??= { value: annotation.quote, done: false }; }
@@ -74,13 +68,14 @@ function submitRevision() {
     else { notice.value = copy.unplaced; }
 }
 const working = computed(() => props.state.pending?.unitId === props.unit.id ? props.state.pending.purpose : null);
+const pendingFeedback = computed(() => rows.value.some(entry => entry.row.status === 'grading' || entry.row.status === 'reviewing'));
 </script>
 
 <template>
     <section class="learning-grading" :aria-labelledby="view === 'feedback' ? 'learning-grading-title' : undefined">
         <template v-if="view === 'feedback'">
             <h2 id="learning-grading-title">{{ copy.title }}</h2>
-            <div v-if="stage === 'revising'" class="learning-grading-actions">
+            <div v-if="rows.some(revising)" class="learning-grading-actions">
                 <small>已改 {{ doneCount }} / {{ openCount }} 处</small>
                 <small v-if="notice" class="learning-annotation-missing" role="status">{{ notice }}</small>
                 <button type="button" :disabled="disabled" @click="emit('confirm', 'skip-revision', { unitId: unit.id }, '跳过这次修改？批注会保留，直接进入范文。')">跳过修改</button>
@@ -127,11 +122,10 @@ const working = computed(() => props.state.pending?.unitId === props.unit.id ? p
                 </div>
             </details>
         </template>
-        <div v-if="['grading', 'reviewing', 'model'].includes(stage)" class="learning-working" role="status">
+        <div v-if="pendingFeedback || stage === 'model'" class="learning-working" role="status">
             <template v-if="working"><span class="learning-working-dot" aria-hidden="true" /><span>{{ working === 'grade' ? flow.grading : working === 'revision-review' ? flow.reviewing : flow.modelling }}</span><button type="button" :disabled="pending" @click="emit('action', 'cancel')">{{ flow.stop }}</button></template>
             <template v-else><button type="button" class="learning-primary" :disabled="disabled" @click="emit('action', 'grade', { unitId: unit.id })">{{ stage === 'grading' ? flow.grade : flow.continue }}</button></template>
         </div>
-        <LearningCompletion v-if="view === 'model' && stage === 'complete'" :state="state" :unit-id="unit.id" :amount="unit.reward.amount" label="本篇完成" :disabled="disabled" @action="(name, input) => emit('action', name, input)" />
         <section v-if="view === 'model' && unit.modelEssay" class="learning-model-essay">
             <h3>范文<small>{{ unit.modelEssay.level }}</small></h3>
             <p v-for="(line, index) in learningAnswerParagraphs(unit.modelEssay.text)" :key="index">{{ line }}</p>

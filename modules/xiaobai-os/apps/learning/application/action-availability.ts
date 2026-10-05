@@ -6,7 +6,7 @@ export function learningActionLane(name: string, target: unknown): string {
 }
 const contextActions = new Set(['language', 'teacher', 'forget-conversation', 'resume', 'rate', 'seek', 'verify-teacher', 'adopt-teacher']);
 const preparationConcurrentActions = new Set(['submit', 'bookmark', 'say', 'play', 'save-note', 'delete-note']);
-const immediateActions = new Set(['records', 'export', 'pause', 'stop', 'cancel', 'cancel-chat', 'cancel-companion', 'cancel-preparation',
+const immediateActions = new Set(['approve-operation', 'records', 'export', 'pause', 'stop', 'cancel', 'cancel-chat', 'cancel-companion', 'cancel-preparation',
     'tts-settings', 'research-settings', 'dismiss-source']);
 const recoveryActions = new Set(['read', 'verify', 'retry-save', 'adopt-server', 'verify-teacher', 'adopt-teacher', 'verify-workbench', 'adopt-workbench', 'verify-wallet', 'adopt-wallet', 'export']);
 

@@ -27,11 +27,11 @@ export function createProductionDiceModule(settings: XiaobaiOsSettingsRepository
     references: (identityKey: string) => Promise<EncounterReferences>,
     isAuxiliaryMessage: (message: DiceHostMessage) => boolean, upgrade: () => Promise<void>) {
     let cleanup: (() => Promise<void>) | null = null;
-    let readReplyPaused: (() => boolean) | null = null;
+    let readReplyPaused: ReturnType<typeof createDiceGenerationAdapter>['isReplyPaused'] | null = null;
     const replyListeners = new Set<() => void>();
     const replyChanged = () => { for (const listener of replyListeners) { listener(); } };
     const replyPause = {
-        isPaused: () => readReplyPaused?.() ?? false,
+        isPaused: (message: unknown) => readReplyPaused?.(message) ?? false,
         subscribe(listener: () => void) { replyListeners.add(listener); return () => { replyListeners.delete(listener); }; },
     };
     const module: XiaobaiOsAppModule = {

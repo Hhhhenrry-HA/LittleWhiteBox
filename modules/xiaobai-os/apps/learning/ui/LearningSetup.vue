@@ -33,7 +33,7 @@ useAppBack(() => { if (!step.value) { return false; } void go(step.value - 1); r
                 <summary>{{ state.candidates.length ? '手动填写其他人物' : '手动填写' }}</summary>
                 <form class="learning-fields" @submit.prevent="emit('action', 'teacher', { teacher: { name: name.trim(), note: note.trim() } })">
                     <label>名字<input v-model="name" type="text" maxlength="80" placeholder="例如 林老师" :disabled="disabled"></label>
-                    <label>一句身份说明<input v-model="note" type="text" maxlength="200" placeholder="例如 在东京长大的大学同学，说话直爽" :disabled="disabled"></label>
+                    <label>一句身份说明<input v-model="note" type="text" maxlength="200" placeholder="例如 在东京长大的邻居，说话直爽" :disabled="disabled"></label>
                     <button type="submit" :disabled="disabled || !name.trim()">选这位</button>
                 </form>
             </details>

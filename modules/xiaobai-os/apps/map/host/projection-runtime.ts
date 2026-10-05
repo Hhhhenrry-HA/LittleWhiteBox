@@ -10,7 +10,7 @@ import type { MaintenanceRunner } from '../../../capabilities/maintenance/runner
 import { createMapProjectionDisplay } from './projection-display.js';
 
 export interface MapProjectionReplyPause {
-    isPaused(): boolean;
+    isPaused(message: unknown): boolean;
     subscribe(listener: () => void): () => void;
 }
 
@@ -24,7 +24,7 @@ export function createMapProjectionRuntime(map: MapService, settings: XiaobaiOsS
         },
         readState,
         isGenerationActive: mainGeneration.isActive,
-        isReplyPaused: () => replyPause?.isPaused() ?? false,
+        isReplyPaused: message => replyPause?.isPaused(message) ?? false,
         captureChat: getSillyTavernChatSurface,
         readTheme: () => getSillyTavernShellSnapshot().theme,
         frameSrc: `/${extensionFolderPath}/modules/xiaobai-os/apps/map/ui/projection.html`,

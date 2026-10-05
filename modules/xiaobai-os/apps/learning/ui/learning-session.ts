@@ -3,6 +3,7 @@ import type { LearningSelection } from '../../../domains/learning/notes.js';
 import type { LearningClientState } from '../types.js';
 import { learningAnswerDraftChanged, type LearningAnswerDraft } from './answer-draft.js';
 import type { LearningEditorDraft } from './learning-editor.js';
+import { learningRevisionWork } from './revision-work.js';
 
 interface WritingDraft extends LearningEditorDraft {
     text: string;
@@ -24,7 +25,7 @@ interface UnitSession {
     selection: LearningSelection | null;
     activities: Record<string, { scroll: number; selected: LearningSelection | null; retry: boolean; materialsOpen: boolean }>;
     activityDrafts: Record<string, { response: string; value: LearningAnswerDraft; submitted?: { before: string | undefined } }>;
-    review: { index: number | null; drafts: Record<string, LearningAnswerDraft>; openReason: string; expanded: boolean; seenBefore: boolean | null };
+    review: { index: number | null; drafts: Record<string, { value: LearningAnswerDraft; retry: boolean; submitted?: { before: string | undefined } }>; openReason: string; expanded: boolean; seenBefore: boolean | null };
 }
 const emptyChat = () => ({ text: '', cursor: undefined as LearningEditorDraft['cursor'], focus: null as { unitId?: string; exerciseId?: string; selection?: LearningSelection; help?: boolean } | null,
     study: null as { unitId: string; exerciseId?: string } | null,
@@ -68,6 +69,10 @@ export function createLearningUiSession() {
             for (const id of Object.keys(units)) {
                 const unit = [state.unit, state.review].find(unit => unit?.id === id);
                 if (!unit) { delete units[id]; continue; }
+                for (const [exerciseId, draft] of Object.entries(units[id].review.drafts)) {
+                    const saved = unit.attempts.filter(attempt => attempt.exerciseId === exerciseId).at(-1);
+                    if (draft.submitted && saved && saved.id !== draft.submitted.before) { delete units[id].review.drafts[exerciseId]; }
+                }
                 for (const [exerciseId, draft] of Object.entries(units[id].activityDrafts)) {
                     const saved = unit.attempts.filter(attempt => attempt.exerciseId === exerciseId).at(-1);
                     if (draft.submitted && saved && saved.id !== draft.submitted.before) {
@@ -116,13 +121,14 @@ export function hasLearningUnsavedInput(session: LearningUiSession, state: Learn
         const local = unit && session.units[unit.id];
         if (!unit || !local) { continue; }
         if (Object.values(local.writing).some(draft => !!draft.text.trim())) { return true; }
-        if (unit.stage.stage === 'revising' && unit.assessments.some(assessment => assessment.annotations?.some(annotation =>
-            local.edits[annotation.id] && local.edits[annotation.id].value !== annotation.quote))) { return true; }
+        if (Object.keys(local.edits).length && learningRevisionWork(unit).some(work => work.row.status === 'revising'
+            && work.annotations.some(annotation => local.edits[annotation.id] && local.edits[annotation.id].value !== annotation.quote))) { return true; }
         for (const exercise of unit.exercises) {
             const activity = local.activityDrafts[exercise.id]?.value;
             const review = local.review.drafts[exercise.id];
             if (activity && learningAnswerDraftChanged(activity, exercise.response)) { return true; }
-            if (review && !unit.attempts.some(attempt => attempt.exerciseId === exercise.id) && learningAnswerDraftChanged(review, exercise.response)) { return true; }
+            if (review && (review.retry || !unit.attempts.some(attempt => attempt.exerciseId === exercise.id))
+                && learningAnswerDraftChanged(review.value, exercise.response)) { return true; }
         }
     }
     return false;

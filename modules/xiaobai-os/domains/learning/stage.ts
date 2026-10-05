@@ -23,7 +23,12 @@ export function learningUnitStage(unit: LearningUnit): { stage: LearningUnitStag
     const assessed = (attempt: LearningAttempt | undefined) => unit.assessments.find(entry => entry.attemptId === attempt?.id && entry.verdict !== 'disputed');
     const rows = unit.exercises.map(exercise => {
         const draft = unit.kind === 'reading-writing' ? learningLatestDraft(unit, exercise.id) : unit.attempts.filter(entry => entry.exerciseId === exercise.id).at(-1);
-        const revision = draft && unit.attempts.find(entry => entry.revisesAttemptId === draft.id);
+        const descendants = new Set(draft ? [draft.id] : []);
+        const revisions = unit.attempts.filter(entry => {
+            if (!entry.revisesAttemptId || !descendants.has(entry.revisesAttemptId)) { return false; }
+            descendants.add(entry.id); return true;
+        });
+        const revision = revisions.at(-1);
         return { exercise, draft, revision, draftAssessment: assessed(draft), revisionAssessment: assessed(revision) };
     });
     const exercises = (status: (row: typeof rows[number]) => LearningExerciseStatus) => rows.map(row => ({ exerciseId: row.exercise.id,
@@ -34,13 +39,13 @@ export function learningUnitStage(unit: LearningUnit): { stage: LearningUnitStag
         const stage = rows.some(row => !row.draft) ? 'answering' : rows.some(row => !row.draftAssessment) ? 'grading' : 'complete';
         return { stage, exercises: exercises(basic) };
     }
-    if (!learningPreparation(unit).ready || rows.some(row => !row.draft)) { return { stage: 'writing', exercises: exercises(basic) }; }
-    if (rows.some(row => !row.draftAssessment)) { return { stage: 'grading', exercises: exercises(basic) }; }
-    const revised = rows.some(row => row.revision);
-    if (!revised && !unit.revisionSkipped && rows.some(row => learningNeedsRevision(row.draftAssessment))) {
-        return { stage: 'revising', exercises: exercises(row => learningNeedsRevision(row.draftAssessment) ? 'revising' : 'done') };
-    }
-    const status = (row: typeof rows[number]): LearningExerciseStatus => row.revision && !row.revisionAssessment ? 'reviewing' : 'done';
+    const status = (row: typeof rows[number]): LearningExerciseStatus => !row.draft ? 'writing'
+        : row.revision && !row.revisionAssessment ? 'reviewing'
+            : !row.draftAssessment ? 'grading'
+        : !unit.revisionSkipped && learningNeedsRevision(row.revision ? row.revisionAssessment : row.draftAssessment) ? 'revising' : 'done';
+    if (!learningPreparation(unit).ready || rows.some(row => !row.draft)) { return { stage: 'writing', exercises: exercises(status) }; }
+    if (rows.some(row => !row.draftAssessment)) { return { stage: 'grading', exercises: exercises(status) }; }
     if (rows.some(row => row.revision && !row.revisionAssessment)) { return { stage: 'reviewing', exercises: exercises(status) }; }
+    if (rows.some(row => status(row) === 'revising')) { return { stage: 'revising', exercises: exercises(status) }; }
     return { stage: unit.modelEssay ? 'complete' : 'model', exercises: exercises(status) };
 }

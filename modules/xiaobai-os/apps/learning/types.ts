@@ -3,6 +3,7 @@ import type { XiaobaiOsFileState } from '../../kernel/contracts.js';
 import type { LearningAction } from './agent/session.js';
 import type { LearningDialogueView } from './application/message-view.js';
 import type { LearningMediaState, LearningVoice } from './host/media-adapter.js';
+import type { LearningApproval } from './application/approval.js';
 
 export interface LearningClientState extends LearningClassView {
     chatIdentity: string;
@@ -15,6 +16,7 @@ export interface LearningClientState extends LearningClassView {
     workbenchStorage: XiaobaiOsFileState;
     walletStorage: XiaobaiOsFileState;
     busy: boolean;
+    approval: LearningApproval | null;
     sourceChoice: 'unconfigured' | 'unavailable' | null;
     preparation: { phase: 'article' | 'notes' | 'essay'; running: boolean; message: string; unitId?: string; source?: 'web' | 'authored' } | null;
     chatBusy: boolean;

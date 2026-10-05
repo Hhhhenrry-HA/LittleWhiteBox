@@ -27,12 +27,29 @@ test('identity changes ask before discarding work, but navigation and saving the
 test('a review first opened from another page reacts to an answer without remounting', () => {
     const session = createLearningUiSession();
     const local = computed(() => session.unit('new-review').review);
-    local.value.drafts.q1 = createLearningAnswerDraft({ kind: 'choice', options: [{ id: 'a', text: 'A' }], multiple: false });
-    const ready = computed(() => local.value.drafts.q1.picked.length > 0);
+    local.value.drafts.q1 = { value: createLearningAnswerDraft({ kind: 'choice', options: [{ id: 'a', text: 'A' }], multiple: false }), retry: false };
+    const ready = computed(() => local.value.drafts.q1.value.picked.length > 0);
     assert.equal(ready.value, false);
-    local.value.drafts.q1.picked.push('a');
+    local.value.drafts.q1.value.picked.push('a');
     assert.equal(ready.value, true);
-    assert.deepEqual(session.unit('new-review').review.drafts.q1.picked, ['a']);
+    assert.deepEqual(session.unit('new-review').review.drafts.q1.value.picked, ['a']);
+});
+
+test('review re-answer input survives failed saves and navigation, then retires after its saved attempt', () => {
+    const session = createLearningUiSession();
+    const exercise = { id: 'q1', response: { kind: 'choice', options: [{ id: 'a', text: 'A' }, { id: 'b', text: 'B' }], multiple: false } };
+    const review = { id: 'review', exercises: [exercise], attempts: [{ id: 'old', exerciseId: exercise.id }], assessments: [], stage: { stage: 'complete' } };
+    const state = { ...stateWith(null), review };
+    const local = session.unit(review.id).review;
+    local.drafts.q1 = { value: createLearningAnswerDraft(exercise.response), retry: true, submitted: { before: 'old' } };
+    local.drafts.q1.value.picked.push('b');
+    assert.equal(hasLearningUnsavedInput(session, state), true);
+    session.reconcile(state);
+    assert.deepEqual(session.unit(review.id).review.drafts.q1.value.picked, ['b']);
+    review.attempts.push({ id: 'new', exerciseId: exercise.id });
+    session.reconcile(state);
+    assert.equal(local.drafts.q1, undefined);
+    assert.equal(hasLearningUnsavedInput(session, state), false);
 });
 test('hidden writing keeps new input when an earlier submission is acknowledged, and retires only the saved draft', () => {
     const session = createLearningUiSession();
@@ -119,9 +136,9 @@ test('leaving warns for unsaved input, not untouched sorting cards or already sa
     const exercise = { id: 'q1', response: { kind: 'order', options: [{ id: 'a', text: 'first' }, { id: 'b', text: 'second' }] } };
     const unit = { id: 'review', exercises: [exercise], attempts: [], assessments: [], stage: { stage: 'answering' } };
     const local = session.unit(unit.id);
-    local.review.drafts.q1 = createLearningAnswerDraft(exercise.response);
+    local.review.drafts.q1 = { value: createLearningAnswerDraft(exercise.response), retry: false };
     assert.equal(hasLearningUnsavedInput(session, stateWith(unit)), false);
-    local.review.drafts.q1.order.reverse();
+    local.review.drafts.q1.value.order.reverse();
     assert.equal(hasLearningUnsavedInput(session, stateWith(unit)), true);
     unit.attempts.push({ exerciseId: 'q1' });
     assert.equal(hasLearningUnsavedInput(session, stateWith(unit)), false);

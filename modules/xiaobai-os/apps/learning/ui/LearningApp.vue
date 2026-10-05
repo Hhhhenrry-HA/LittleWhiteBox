@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useAppBack, useAppLayer } from '../../../shell/app-src/navigation/app-navigation.js';
 import type { XiaobaiOsAppProps } from '../../../shell/app-contract.js';
 import LearningActivity from './LearningActivity.vue';
+import LearningApproval from './LearningApproval.vue';
 import LearningBooks from './LearningBooks.vue';
 import LearningPlayer from './LearningPlayer.vue';
 import LearningSetup from './LearningSetup.vue';
@@ -12,7 +13,7 @@ import { LEARNING_DIALOGUE_COPY as dialogueCopy, LEARNING_CONFIRM_COPY, LEARNING
 import { LEARNING_REWARD_COPY, LEARNING_STORAGE_COPY } from '../application/feedback.js';
 import LearningWorkbench from './LearningWorkbench.vue';
 import LearningPreparation from './LearningPreparation.vue';
-import type { LearningPresentation, LearningActivityPresentation } from '../application/presentation.js';
+import type { LearningPresentation } from '../application/presentation.js';
 import type { LearningSelection } from '../../../domains/learning/notes.js';
 import LearningIcon from './LearningIcon.vue';
 import LearningProcess from './LearningProcess.vue';
@@ -52,7 +53,7 @@ const conversation = ref<InstanceType<typeof LearningConversation> | null>(null)
 const assistant = ref<InstanceType<typeof LearningConversation> | null>(null);
 const assistantOpen = ref(false);
 const assistantButton = ref<HTMLButtonElement | null>(null);
-const activity = ref<LearningActivityPresentation | null>(null);
+const activity = ref<LearningPresentation | null>(null);
 const scroller = ref<HTMLElement | null>(null);
 const scrolls: Partial<Record<Page, number>> = {};
 
@@ -131,11 +132,6 @@ const workProcess = computed(() => {
     let running = turns.length - 1;
     while (running >= 0 && (turns[running].status !== 'running' || isLearningConversation({ kind: turns[running].purpose ?? 'talk' }))) { running--; }
     if (running >= 0) { index = running; }
-    else if (index >= 0 && state.value.preparation && isLearningPreparation({ kind: turns[index].purpose ?? 'talk' })) {
-        let phase = turns.length - 1;
-        while (phase >= 0 && turns[phase].purpose !== `reading-${state.value.preparation.phase}`) { phase--; }
-        if (phase >= 0) { index = phase; }
-    }
     return index < 0 ? null : { turn: state.value.workbenchConversation.turns[index],
         key: `${state.value.chatIdentity}:${state.value.language}:${state.value.workbenchConversation.removedTurns + index}` };
 });
@@ -195,11 +191,6 @@ const workUnread = ref(false);
 watch([workVisible, page], ([visible, current]) => { if (visible && current === 'home') { workUnread.value = false; } });
 /** An explicit open goes to the workbench and brings the paragraph or exercise into view; an automatic one never moves the learner. */
 async function present(target: LearningPresentation, automatic = false) {
-    if (target.kind === 'replacement') {
-        if (state.value.currentUnitId !== target.unitId || state.value.storage !== 'ready') { return; }
-        askConfirm('replace-lesson', { unitId: target.unitId, message: target.message, kind: target.unitKind }, copy.replaceWarning);
-        return;
-    }
     if (state.value.review?.id === target.unitId) {
         if (automatic) { if (!workVisible.value || page.value !== 'home') { workUnread.value = true; } return; }
         const local = uiSession.unit(target.unitId).review;
@@ -275,7 +266,7 @@ async function workAction(name: string, input: Record<string, unknown> = {}, dis
     if (name === 'start-review') { await openReview(); }
     const unit = state.value.unit;
     if (unit?.kind === 'reading-writing' && input.unitId === unit.id && ['grade', 'submit-revision', 'skip-revision'].includes(name)) {
-        uiSession.unit(unit.id).reading.view = name !== 'grade' || ['reviewing', 'model', 'complete'].includes(unit.stage.stage) ? 'model' : 'feedback';
+        uiSession.unit(unit.id).reading.view = name === 'skip-revision' && unit.modelEssay ? 'model' : 'feedback';
         await go('home');
         if (scroller.value) { scroller.value.scrollTop = 0; }
     }
@@ -432,7 +423,8 @@ async function exportData() {
         </div>
         <LearningPlayer v-if="!activity" :state="state" @action="request" />
         <LearningActivity v-if="state.unit && activity" :key="`${state.chatIdentity}:${state.language}:${state.unit.id}:${activity.kind}:${activity.id}`" :state="state" :target="activity" :disabled="!writable" @action="request" @close="closeActivity" @ask="askTeacher" />
-        <div v-if="confirm" ref="confirmLayer" class="learning-confirm-shade" @keydown.esc.stop.prevent="confirm = null">
+        <LearningApproval v-if="state.approval" :approval="state.approval" :pending="pending" @action="request" />
+        <div v-else-if="confirm" ref="confirmLayer" class="learning-confirm-shade" @keydown.esc.stop.prevent="confirm = null">
             <section role="alertdialog" aria-labelledby="learning-confirm-title" class="learning-confirm">
                 <h2 id="learning-confirm-title">{{ LEARNING_CONFIRM_COPY[confirm.action].title }}</h2><p>{{ confirm.text }}</p>
                 <div class="learning-row"><button autofocus type="button" @click="confirm = null">{{ ['language', 'teacher'].includes(confirm.action) ? LEARNING_DISCARD_COPY.keepEditing : copy.cancel }}</button><button type="button" class="learning-primary" :disabled="!canRequest(confirm.action)" @click="workAction(confirm.action, confirm.input, true); confirm = null">{{ LEARNING_CONFIRM_COPY[confirm.action].accept }}</button></div>

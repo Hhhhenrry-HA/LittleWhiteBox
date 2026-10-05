@@ -6,11 +6,12 @@ import { COPY as c } from './copy.js';
 import { createControls } from './controls.js';
 import { createExpeditionScene } from './scene.js';
 import { createExpeditionSound } from './sound.js';
+import { zoneOf } from './domain.js';
 import type { ExpeditionClient } from './client.js';
-import type { Battle, BattleHud, InputSpan, PresentationError, Run, Weapon } from './types.js';
+import type { Battle, BattleHud, InputSpan, Outfit, PresentationError, Run, Weapon } from './types.js';
 import ExpeditionIcon from './ExpeditionIcon.vue';
 
-const props = defineProps<{ run: Run | null; client: ExpeditionClient; paused: boolean; camp: boolean; generationActive: boolean; weapon: Weapon; cloak: number; sound: boolean }>();
+const props = defineProps<{ run: Run | null; client: ExpeditionClient; paused: boolean; camp: boolean; generationActive: boolean; weapon: Weapon; outfit: Outfit; sound: boolean }>();
 const emit = defineEmits<{ pause: []; error: [reason: PresentationError]; hud: [battle: BattleHud | null] }>();
 const root = ref<HTMLElement | null>(null), canvas = ref<HTMLElement | null>(null), knob = ref({ x: 0, y: 0 });
 const cooldowns = ref({ dash: 0, skill: 0 });
@@ -27,7 +28,7 @@ function sync() {
 function publishHud() {
     if (!local || local.tick === hudTick) { return; } hudTick = local.tick;
     cooldowns.value = { dash: local.player.dash, skill: local.player.skill };
-    emit('hud', { player: { ...local.player }, enemies: local.enemies.filter(e => isBoss(e.kind)).map(e => ({ ...e })), wave: local.wave, waves: local.waves, tick: local.tick });
+    emit('hud', { player: { ...local.player }, enemies: local.enemies.filter(e => isBoss(e.kind)).map(e => ({ ...e })), wave: local.wave, waves: local.waves, tick: local.tick, objective: { ...local.objective }, encounter: local.encounter });
 }
 async function flush() {
     if (sending || !tape.length || props.client.blocked.value || props.generationActive) { return; }
@@ -56,8 +57,8 @@ function render(now: number) {
         if (local.tick % 3 === 0 || local.status !== 'fighting') { publishHud(); }
     } else { accumulator = 0; }
     try {
-        if (!document.hidden) { scene?.draw(local, props.camp ? { weapon: props.weapon, cloak: props.cloak } : props.run ?? { weapon: props.weapon, cloak: props.cloak },
-            props.run ? Math.floor(props.run.step / RULES.zoneSteps) : 0, props.camp ? 'camp' : local ? 'battle' : 'between', now); }
+        if (!document.hidden) { scene?.draw(local, props.camp ? { weapon: props.weapon, outfit: props.outfit } : props.run ?? { weapon: props.weapon, outfit: props.outfit },
+            props.run ? zoneOf(props.run) : 0, props.camp ? 'camp' : local ? 'battle' : 'between', now); }
     }
     catch { emit('error', 'rendering'); pause(); cancelAnimationFrame(frame); }
 }

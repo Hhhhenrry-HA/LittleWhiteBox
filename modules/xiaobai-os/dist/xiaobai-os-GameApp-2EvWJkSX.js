@@ -1,7 +1,6 @@
 /* eslint-disable */
-import { C as k, D as te, G as J, I as ne, P as Z, Q as P, S as x, U as o, _ as j, at as h, b as B, ft as b, k as X, lt as t, m as re, o as oe, ot as ie, p as ue, q as W, st as F, tt as le, ut as Y, v as se, w as m, x as a } from "./xiaobai-os-frame-bridge-CrPFvkI3.js";
-import { n as de } from "./xiaobai-os-assets-BT5gX6Sf.js";
-import { n as ve, r as K, t as ee } from "./xiaobai-os-room-catalog-BvINPEju.js";
+import { C as _, D as te, G as J, I as ne, P as Z, Q as O, S as x, U as o, _ as j, at as h, b as D, ft as b, k as X, lt as t, m as re, o as oe, ot as ie, p as ue, q as W, st as F, tt as le, ut as Y, v as se, w as m, x as a } from "./xiaobai-os-frame-bridge-CrPFvkI3.js";
+import { n as de, r as K, t as ee } from "./xiaobai-os-room-catalog-7ei6nRgl.js";
 function ae(i) {
   return i && typeof i == "object" && "code" in i ? String(i.code) : "";
 }
@@ -9,16 +8,16 @@ function H(i) {
   const g = i instanceof Error ? i.message : String(i);
   return g.includes("economy_insufficient_funds") || g.includes("cannot be overdrawn") ? "小白币不够了，换个小一点的筹码吧。" : g.includes("game_dice_bid_not_higher") ? "这次要叫得比对方更大一些。" : g.includes("game_revision_conflict") || g.includes("game_event_id_conflict") ? "本局已有变化，请重新加载后继续。" : g.includes("game_main_generation_active") ? "故事正在回复，等回复结束就能继续玩。" : g.includes("聊天已切换") ? "聊天已切换，请重新打开游戏。" : g === "host_request_timeout" ? "暂时没收到结果。可以重试这次操作，不会重复下注或重新抽取结果。" : "这次操作没能完成，请重试。";
 }
-function ce(i, g) {
-  const e = h(structuredClone(F(g))), l = h(null), u = h(null), p = h(null), v = h(!1), c = h(!1), G = h(""), D = h(""), I = h(null);
-  let _ = !1, $ = 0, S = 0, w = 0, Q = 0;
+function ve(i, g) {
+  const e = h(structuredClone(F(g))), l = h(null), u = h(null), p = h(null), v = h(!1), c = h(!1), I = h(""), T = h(""), G = h(null);
+  let k = !1, C = 0, S = 0, w = 0, Q = 0;
   function q() {
     return typeof globalThis.crypto?.randomUUID == "function" ? "game-ui:" + globalThis.crypto.randomUUID() : "game-ui:" + Date.now() + ":" + ++Q;
   }
-  const L = B(() => ["unconfirmed", "save-failed"].includes(e.value.status)), f = B(() => v.value || !!p.value), C = B(() => f.value ? "上一项操作还在进行，请稍候。" : e.value.status !== "ready" ? e.value.message || "游戏正在准备，请稍候。" : I.value ? "请先重试这次操作，或重新加载本局结果。" : e.value.generationActive ? "故事正在回复，等回复结束就能继续玩。" : ""), A = B(() => u.value ?? {
+  const E = D(() => ["unconfirmed", "save-failed"].includes(e.value.status)), f = D(() => v.value || !!p.value), $ = D(() => f.value ? "上一项操作还在进行，请稍候。" : e.value.status !== "ready" ? e.value.message || "游戏正在准备，请稍候。" : G.value ? "请先重试这次操作，或重新加载本局结果。" : e.value.generationActive ? "故事正在回复，等回复结束就能继续玩。" : ""), A = D(() => u.value ?? {
     balance: e.value.balance,
     lockedAmount: e.value.lockedAmount
-  }), M = B(() => f.value || L.value || [
+  }), M = D(() => f.value || E.value || [
     "conflict",
     "saving",
     "loading"
@@ -26,7 +25,7 @@ function ce(i, g) {
   function R(r) {
     const y = e.value;
     if (y.chatIdentity !== r.chatIdentity)
-      l.value = null, u.value = null, I.value = null, p.value = null, v.value = !1, S += 1, w += 1;
+      l.value = null, u.value = null, G.value = null, p.value = null, v.value = !1, S += 1, w += 1;
     else if (y.activeGame && r.status === "ready" && !r.activeGame) {
       const s = r.records.find((n) => n.gameId === y.activeGame.id);
       s && (u.value = {
@@ -38,9 +37,9 @@ function ce(i, g) {
         balanceAfter: r.balance
       });
     }
-    e.value = structuredClone(r), c.value = !1, D.value = "", G.value = "", I.value = null;
+    e.value = structuredClone(r), c.value = !1, T.value = "", I.value = "", G.value = null;
   }
-  function T(r) {
+  function B(r) {
     const y = r === "game_save_pending" ? "save-failed" : r === "storage_unconfirmed" ? "unconfirmed" : r === "storage_conflict" ? "conflict" : null;
     return y ? (e.value = {
       ...e.value,
@@ -48,20 +47,20 @@ function ce(i, g) {
       message: y === "save-failed" ? "这局还没保存好，请重试保存后继续。" : y === "unconfirmed" ? "还不确定是否保存成功，请先检查保存。" : "服务器上的游戏记录与当前内容不同，请重新打开酒馆后继续。"
     }, !0) : !1;
   }
-  async function E(r) {
-    const y = e.value.chatIdentity, s = $, n = w;
-    p.value = r.action, I.value = null, G.value = "";
+  async function L(r) {
+    const y = e.value.chatIdentity, s = C, n = w;
+    p.value = r.action, G.value = null, I.value = "";
     try {
       const d = await i.request(r.endpoint, r.payload, 35e3);
-      return _ || n !== w || e.value.chatIdentity !== y ? !1 : ($ === s && R(d.result), !0);
+      return k || n !== w || e.value.chatIdentity !== y ? !1 : (C === s && R(d.result), !0);
     } catch (d) {
-      return !_ && n === w && $ === s && e.value.chatIdentity === y && !T(ae(d)) && (G.value = H(d), e.value.status === "ready" && (I.value = r)), !1;
+      return !k && n === w && C === s && e.value.chatIdentity === y && !B(ae(d)) && (I.value = H(d), e.value.status === "ready" && (G.value = r)), !1;
     } finally {
-      !_ && n === w && e.value.chatIdentity === y && (p.value = null);
+      !k && n === w && e.value.chatIdentity === y && (p.value = null);
     }
   }
   async function U(r) {
-    return _ || C.value ? !1 : E({
+    return k || $.value ? !1 : L({
       endpoint: r.endpoint,
       action: structuredClone(F(r)),
       payload: {
@@ -73,43 +72,43 @@ function ce(i, g) {
       }
     });
   }
-  async function O() {
-    return _ || !I.value || f.value || e.value.status !== "ready" || e.value.generationActive ? !1 : E(structuredClone(F(I.value)));
+  async function V() {
+    return k || !G.value || f.value || e.value.status !== "ready" || e.value.generationActive ? !1 : L(structuredClone(F(G.value)));
   }
   async function z(r = !1) {
-    if (_ || f.value || !r && M.value) return;
-    const y = e.value.chatIdentity, s = $, n = ++S;
-    v.value = !0, G.value = "";
+    if (k || f.value || !r && M.value) return;
+    const y = e.value.chatIdentity, s = C, n = ++S;
+    v.value = !0, I.value = "";
     try {
       const d = await i.request(r ? "game/confirm-save" : "game/refresh", { chatIdentity: y }, 35e3);
-      if (_ || n !== S || e.value.chatIdentity !== y) return;
-      s === $ && R("state" in d.result ? d.result.state : d.result), I.value = null;
+      if (k || n !== S || e.value.chatIdentity !== y) return;
+      s === C && R("state" in d.result ? d.result.state : d.result), G.value = null;
     } catch (d) {
-      !_ && n === S && s === $ && e.value.chatIdentity === y && (T(ae(d)) || (G.value = H(d)));
+      !k && n === S && s === C && e.value.chatIdentity === y && (B(ae(d)) || (I.value = H(d)));
     } finally {
       n === S && (v.value = !1);
     }
   }
   async function N() {
-    if (_ || !e.value.hasMore || c.value || f.value || e.value.status !== "ready") return;
-    const r = $, y = e.value.chatIdentity;
-    c.value = !0, D.value = "";
+    if (k || !e.value.hasMore || c.value || f.value || e.value.status !== "ready") return;
+    const r = C, y = e.value.chatIdentity;
+    c.value = !0, T.value = "";
     try {
       const s = await i.request("game/records/load-more", {
         chatIdentity: y,
         offset: e.value.records.length
       }, 35e3);
-      if (_ || r !== $ || y !== e.value.chatIdentity) return;
+      if (k || r !== C || y !== e.value.chatIdentity) return;
       const n = new Set(e.value.records.map((d) => d.id));
       e.value.records.push(...s.result.records.filter((d) => !n.has(d.id))), e.value.total = s.result.total, e.value.hasMore = s.result.hasMore;
     } catch (s) {
-      !_ && r === $ && y === e.value.chatIdentity && (D.value = H(s));
+      !k && r === C && y === e.value.chatIdentity && (T.value = H(s));
     } finally {
-      r === $ && (c.value = !1);
+      r === C && (c.value = !1);
     }
   }
-  const V = i.subscribe((r) => {
-    _ || (r.type === "game/state" ? ($ += 1, R(r.payload.state)) : r.type === "game/error" && (G.value = "游戏暂时无法读取，请重新打开。"));
+  const P = i.subscribe((r) => {
+    k || (r.type === "game/state" ? (C += 1, R(r.payload.state)) : r.type === "game/error" && (I.value = "游戏暂时无法读取，请重新打开。"));
   });
   return {
     state: e,
@@ -119,14 +118,14 @@ function ce(i, g) {
     reading: v,
     loadingMore: c,
     busy: f,
-    error: G,
-    recordsError: D,
-    failed: I,
-    disabledReason: C,
-    needsSave: L,
+    error: I,
+    recordsError: T,
+    failed: G,
+    disabledReason: $,
+    needsSave: E,
     refreshDisabled: M,
     act: U,
-    retry: O,
+    retry: V,
     loadMore: N,
     refresh: () => z(),
     confirmSave: () => z(!0),
@@ -137,14 +136,14 @@ function ce(i, g) {
       l.value = null, u.value = null;
     },
     dispose: () => {
-      _ = !0, S += 1, V();
+      k = !0, S += 1, P();
     }
   };
 }
-var me = { class: "game-lobby" }, ye = ["src"], fe = { class: "game-search" }, ge = {
+var ce = { class: "game-lobby" }, me = ["src"], ye = { class: "game-search" }, fe = {
   class: "game-categories",
   "aria-label": "游戏分类"
-}, be = ["aria-pressed", "onClick"], pe = { class: "game-shelf" }, he = ["data-game-room", "onClick"], _e = { class: "game-tile-art" }, ke = ["src"], Ce = ["src"], $e = { class: "game-tile-copy" }, Ie = {
+}, ge = ["aria-pressed", "onClick"], be = { class: "game-shelf" }, pe = ["data-game-room", "onClick"], he = { class: "game-tile-art" }, ke = ["src"], _e = ["src"], $e = { class: "game-tile-copy" }, Ce = {
   key: 1,
   class: "game-empty"
 }, Ge = /* @__PURE__ */ X({
@@ -152,8 +151,8 @@ var me = { class: "game-lobby" }, ye = ["src"], fe = { class: "game-search" }, g
   props: { activeGame: {} },
   emits: ["open"],
   setup(i) {
-    const g = h(""), e = h("全部"), l = ["全部", ...new Set(ee.map((p) => p.category))], u = B(() => ee.filter((p) => (e.value === "全部" || p.category === e.value) && (p.name + p.tagline + p.category).includes(g.value.trim())));
-    return (p, v) => (o(), m("section", me, [
+    const g = h(""), e = h("全部"), l = ["全部", ...new Set(ee.map((p) => p.category))], u = D(() => ee.filter((p) => (e.value === "全部" || p.category === e.value) && (p.name + p.tagline + p.category).includes(g.value.trim())));
+    return (p, v) => (o(), m("section", ce, [
       i.activeGame ? (o(), m("button", {
         key: 0,
         type: "button",
@@ -163,11 +162,11 @@ var me = { class: "game-lobby" }, ye = ["src"], fe = { class: "game-search" }, g
         a("img", {
           src: t(K)(i.activeGame.kind).artwork,
           alt: ""
-        }, null, 8, ye),
+        }, null, 8, me),
         a("span", null, [v[3] || (v[3] = a("small", null, "进行中", -1)), a("strong", null, b(t(K)(i.activeGame.kind).name), 1)]),
         v[4] || (v[4] = a("b", null, "继续 →", -1))
-      ])) : k("", !0),
-      a("label", fe, [v[5] || (v[5] = a("svg", {
+      ])) : _("", !0),
+      a("label", ye, [v[5] || (v[5] = a("svg", {
         viewBox: "0 0 24 24",
         "aria-hidden": "true"
       }, [a("circle", {
@@ -180,30 +179,30 @@ var me = { class: "game-lobby" }, ye = ["src"], fe = { class: "game-search" }, g
         placeholder: "找个游戏",
         "aria-label": "搜索游戏"
       }, null, 512), [[ue, g.value]])]),
-      a("nav", ge, [(o(), m(j, null, J(l, (c) => a("button", {
+      a("nav", fe, [(o(), m(j, null, J(l, (c) => a("button", {
         key: c,
         type: "button",
         "aria-pressed": e.value === c,
-        onClick: (G) => e.value = c
-      }, b(c), 9, be)), 64))]),
-      a("div", pe, [(o(!0), m(j, null, J(u.value, (c) => (o(), m("button", {
+        onClick: (I) => e.value = c
+      }, b(c), 9, ge)), 64))]),
+      a("div", be, [(o(!0), m(j, null, J(u.value, (c) => (o(), m("button", {
         key: c.id,
         type: "button",
         class: Y(["game-tile", "tone-" + c.tone]),
         "data-game-room": c.id,
-        onClick: (G) => p.$emit("open", c.id)
-      }, [a("div", _e, [a("img", {
+        onClick: (I) => p.$emit("open", c.id)
+      }, [a("div", he, [a("img", {
         src: c.artwork,
         alt: "",
         loading: "lazy"
-      }, null, 8, ke), c.id === "moving" || c.id === "building" ? (o(), m("img", {
+      }, null, 8, ke), "mascotPortrait" in c ? (o(), m("img", {
         key: 0,
         class: "game-tile-mascot",
-        src: t(de),
+        src: c.mascotPortrait,
         alt: "",
         loading: "lazy"
-      }, null, 8, Ce)) : k("", !0)]), a("div", $e, [a("h3", null, b(c.name), 1), a("span", null, [te(b(c.entry) + " ", 1), v[6] || (v[6] = a("i", { "aria-hidden": "true" }, "↗", -1))])])], 10, he))), 128))]),
-      u.value.length ? k("", !0) : (o(), m("div", Ie, [
+      }, null, 8, _e)) : _("", !0)]), a("div", $e, [a("h3", null, b(c.name), 1), a("span", null, [te(b(c.entry) + " ", 1), v[6] || (v[6] = a("i", { "aria-hidden": "true" }, "↗", -1))])])], 10, pe))), 128))]),
+      u.value.length ? _("", !0) : (o(), m("div", Ce, [
         v[7] || (v[7] = a("h3", null, "没找到这个游戏", -1)),
         v[8] || (v[8] = a("p", null, "换个名字，或者看看其他分类。", -1)),
         a("button", {
@@ -215,23 +214,23 @@ var me = { class: "game-lobby" }, ye = ["src"], fe = { class: "game-search" }, g
       ]))
     ]));
   }
-}), Se = Ge, we = {
+}), Ie = Ge, Se = {
   class: "game-records",
   "aria-labelledby": "game-records-title"
-}, Ae = { class: "game-section-heading" }, Me = {
+}, we = { class: "game-section-heading" }, Ae = {
   key: 0,
   class: "game-record-list"
-}, Re = {
+}, Me = {
   class: "game-record-mark",
   "aria-hidden": "true"
-}, Te = { class: "game-record-main" }, Be = ["datetime"], De = { class: "game-record-money" }, Le = {
+}, Re = { class: "game-record-main" }, Be = ["datetime"], De = { class: "game-record-money" }, Te = {
   key: 1,
   class: "game-record-empty"
 }, Ee = {
   key: 2,
   class: "game-inline-error",
   role: "status"
-}, Ue = ["disabled"], Ne = /* @__PURE__ */ X({
+}, Le = ["disabled"], Ue = /* @__PURE__ */ X({
   __name: "GameRecords",
   props: {
     records: {},
@@ -250,12 +249,12 @@ var me = { class: "game-lobby" }, ye = ["src"], fe = { class: "game-search" }, g
         minute: "2-digit"
       }).format(new Date(e));
     }
-    return (e, l) => (o(), m("section", we, [
-      a("header", Ae, [l[1] || (l[1] = a("div", null, [a("h2", { id: "game-records-title" }, "记录")], -1)), a("small", null, b(i.total) + " 局", 1)]),
-      i.records.length ? (o(), m("div", Me, [(o(!0), m(j, null, J(i.records, (u) => (o(), m("article", {
+    return (e, l) => (o(), m("section", Se, [
+      a("header", we, [l[1] || (l[1] = a("div", null, [a("h2", { id: "game-records-title" }, "记录")], -1)), a("small", null, b(i.total) + " 局", 1)]),
+      i.records.length ? (o(), m("div", Ae, [(o(!0), m(j, null, J(i.records, (u) => (o(), m("article", {
         key: u.id,
         class: Y(["game-record", `is-${u.outcomeTone}`])
-      }, [a("div", Re, b(t(K)(u.game).mark), 1), a("div", Te, [
+      }, [a("div", Me, b(t(K)(u.game).mark), 1), a("div", Re, [
         a("header", null, [a("div", null, [a("span", null, b(u.gameLabel), 1), a("strong", null, b(u.outcomeLabel), 1)]), a("time", { datetime: new Date(u.createdAt).toISOString() }, b(g(u.createdAt)), 9, Be)]),
         a("div", De, [
           a("span", null, "下注 ¤ " + b(u.amountIn), 1),
@@ -263,87 +262,87 @@ var me = { class: "game-lobby" }, ye = ["src"], fe = { class: "game-search" }, g
           a("strong", null, b(u.net > 0 ? "+" : "") + b(u.net), 1)
         ]),
         a("details", null, [l[2] || (l[2] = a("summary", null, "本局详情", -1)), (o(), x(W(t(K)(u.game).record), { detail: u.detail }, null, 8, ["detail"]))])
-      ])], 2))), 128))])) : (o(), m("div", Le, [...l[3] || (l[3] = [a("span", { "aria-hidden": "true" }, "◇", -1), a("p", null, "暂无游戏记录", -1)])])),
-      i.error ? (o(), m("p", Ee, b(i.error), 1)) : k("", !0),
+      ])], 2))), 128))])) : (o(), m("div", Te, [...l[3] || (l[3] = [a("span", { "aria-hidden": "true" }, "◇", -1), a("p", null, "暂无游戏记录", -1)])])),
+      i.error ? (o(), m("p", Ee, b(i.error), 1)) : _("", !0),
       i.hasMore ? (o(), m("button", {
         key: 3,
         type: "button",
         class: "game-load-more",
         disabled: i.loadingMore,
         onClick: l[0] || (l[0] = (u) => e.$emit("loadMore"))
-      }, b(i.loadingMore ? "正在翻阅…" : "更多记录"), 9, Ue)) : k("", !0)
+      }, b(i.loadingMore ? "正在翻阅…" : "更多记录"), 9, Le)) : _("", !0)
     ]));
   }
-}), qe = Ne, xe = { class: "game-header" }, ze = {
+}), Ne = Ue, qe = { class: "game-header" }, xe = {
   key: 1,
   class: "game-funds",
   "aria-label": "可用小白币"
-}, Fe = {
+}, ze = {
   key: 0,
   class: "game-nav",
   "aria-label": "游戏页面"
-}, Oe = ["aria-current"], Ve = ["aria-current"], Pe = ["aria-current"], je = {
+}, Fe = ["aria-current"], Ve = ["aria-current"], Pe = ["aria-current"], Oe = {
   key: 1,
   class: "game-notice",
   role: "status"
-}, Ke = ["disabled"], Qe = ["disabled"], He = ["disabled"], Je = {
+}, je = ["disabled"], Ke = ["disabled"], Qe = ["disabled"], He = {
   key: 0,
   class: "game-empty",
   role: "status"
-}, We = {
+}, Je = {
   key: 1,
   class: "game-empty",
   role: "status"
-}, Xe = /* @__PURE__ */ X({
+}, We = /* @__PURE__ */ X({
   __name: "GameApp",
   props: {
     bridge: {},
     initialState: {}
   },
   setup(i) {
-    const g = i, e = ce(g.bridge, g.initialState), { state: l, settlement: u, funds: p, inFlight: v, reading: c, loadingMore: G, busy: D, error: I, recordsError: _, failed: $, disabledReason: S, needsSave: w, refreshDisabled: Q } = e, q = h(null);
-    let L = 0;
-    const f = h(l.value.activeGame ? "room" : "lobby"), C = h(l.value.activeGame?.kind || null), A = ie(null), M = h(""), R = h(!1);
-    let T = 0;
-    const E = B(() => C.value ? ve(C.value) : null), U = B(() => f.value === "room" && E.value?.mode === "standalone");
-    async function O() {
-      const s = E.value, n = ++T;
+    const g = i, e = ve(g.bridge, g.initialState), { state: l, settlement: u, funds: p, inFlight: v, reading: c, loadingMore: I, busy: T, error: G, recordsError: k, failed: C, disabledReason: S, needsSave: w, refreshDisabled: Q } = e, q = h(null);
+    let E = 0;
+    const f = h(l.value.activeGame ? "room" : "lobby"), $ = h(l.value.activeGame?.kind || null), A = ie(null), M = h(""), R = h(!1);
+    let B = 0;
+    const L = D(() => $.value ? de($.value) : null), U = D(() => f.value === "room" && L.value?.mode === "standalone");
+    async function V() {
+      const s = L.value, n = ++B;
       if (A.value = null, M.value = "", !!s) {
         R.value = !0;
         try {
           const d = await s.load();
-          n === T && (A.value = d.default);
+          n === B && (A.value = d.default);
         } catch {
-          n === T && (M.value = "这个游戏暂时没能打开，再试一次吧。");
+          n === B && (M.value = "这个游戏暂时没能打开，再试一次吧。");
         } finally {
-          n === T && (R.value = !1);
+          n === B && (R.value = !1);
         }
       }
     }
-    P([
+    O([
       f,
-      C,
+      $,
       () => !!l.value.activeGame,
       () => !!u.value
     ], (s, n) => {
-      n[0] === "lobby" && (L = q.value?.scrollTop || 0), Z(() => {
-        q.value?.scrollTo({ top: f.value === "lobby" ? L : 0 });
+      n[0] === "lobby" && (E = q.value?.scrollTop || 0), Z(() => {
+        q.value?.scrollTo({ top: f.value === "lobby" ? E : 0 });
       });
-    }), P(C, O, { immediate: !0 }), P(u, (s) => {
-      s && (C.value = s.record.game);
-    }), P(() => l.value.chatIdentity, () => {
-      L = 0, C.value = l.value.activeGame?.kind || null, f.value = C.value ? "room" : "lobby", Z(() => {
-        L = 0, q.value?.scrollTo({ top: 0 });
+    }), O($, V, { immediate: !0 }), O(u, (s) => {
+      s && ($.value = s.record.game);
+    }), O(() => l.value.chatIdentity, () => {
+      E = 0, $.value = l.value.activeGame?.kind || null, f.value = $.value ? "room" : "lobby", Z(() => {
+        E = 0, q.value?.scrollTo({ top: 0 });
       });
     });
     function z(s) {
-      C.value = s, f.value = "room";
+      $.value = s, f.value = "room";
     }
     function N(s) {
       e.dismissSettlement(), f.value = s;
     }
     oe(() => f.value === "lobby" ? !1 : (N("lobby"), !0));
-    function V() {
+    function P() {
       l.value.activeGame && z(l.value.activeGame.kind);
     }
     function r() {
@@ -353,74 +352,74 @@ var me = { class: "game-lobby" }, ye = ["src"], fe = { class: "game-search" }, g
       await e.act(s);
     }
     return ne(() => {
-      T += 1, e.dispose();
+      B += 1, e.dispose();
     }), (s, n) => (o(), m("main", { class: Y(["game-app", { "game-app-standalone": U.value }]) }, [
-      a("header", xe, [
+      a("header", qe, [
         f.value === "room" ? (o(), m("button", {
           key: 0,
           type: "button",
           class: "game-back",
           "aria-label": "返回游戏大厅",
           onClick: n[0] || (n[0] = (d) => N("lobby"))
-        }, " ‹ ")) : k("", !0),
-        a("h1", null, b(f.value === "room" ? E.value?.name : "游戏"), 1),
-        U.value ? k("", !0) : (o(), m("div", ze, [a("strong", null, "¤ " + b(t(p).balance.toLocaleString("zh-CN")), 1)]))
+        }, " ‹ ")) : _("", !0),
+        a("h1", null, b(f.value === "room" ? L.value?.name : "游戏"), 1),
+        U.value ? _("", !0) : (o(), m("div", xe, [a("strong", null, "¤ " + b(t(p).balance.toLocaleString("zh-CN")), 1)]))
       ]),
-      U.value ? k("", !0) : (o(), m("nav", Fe, [
+      U.value ? _("", !0) : (o(), m("nav", ze, [
         a("button", {
           type: "button",
           "aria-current": f.value === "lobby" ? "page" : void 0,
           onClick: n[1] || (n[1] = (d) => N("lobby"))
-        }, " 大厅 ", 8, Oe),
+        }, " 大厅 ", 8, Fe),
         t(l).activeGame ? (o(), m("button", {
           key: 0,
           type: "button",
-          "aria-current": f.value === "room" && C.value === t(l).activeGame.kind ? "page" : void 0,
-          onClick: V
-        }, [...n[7] || (n[7] = [te(" 继续 ", -1), a("i", null, null, -1)])], 8, Ve)) : k("", !0),
+          "aria-current": f.value === "room" && $.value === t(l).activeGame.kind ? "page" : void 0,
+          onClick: P
+        }, [...n[7] || (n[7] = [te(" 继续 ", -1), a("i", null, null, -1)])], 8, Ve)) : _("", !0),
         a("button", {
           type: "button",
           "aria-current": f.value === "records" ? "page" : void 0,
           onClick: n[2] || (n[2] = (d) => N("records"))
         }, " 记录 ", 8, Pe)
       ])),
-      !U.value && (t(l).message || t(I) || t(l).generationActive) ? (o(), m("aside", je, [
-        a("p", null, b(t(I) || t(l).message || "故事正在回复，等回复结束就能继续玩。"), 1),
+      !U.value && (t(l).message || t(G) || t(l).generationActive) ? (o(), m("aside", Oe, [
+        a("p", null, b(t(G) || t(l).message || "故事正在回复，等回复结束就能继续玩。"), 1),
         t(w) ? (o(), m("button", {
           key: 0,
           type: "button",
-          disabled: t(D),
+          disabled: t(T),
           onClick: n[3] || (n[3] = (...d) => t(e).confirmSave && t(e).confirmSave(...d))
-        }, b(t(c) ? "正在检查…" : t(l).status === "save-failed" ? "重试保存" : "检查保存"), 9, Ke)) : t($) ? (o(), m("button", {
+        }, b(t(c) ? "正在检查…" : t(l).status === "save-failed" ? "重试保存" : "检查保存"), 9, je)) : t(C) ? (o(), m("button", {
           key: 1,
           type: "button",
-          disabled: t(D) || t(l).generationActive,
+          disabled: t(T) || t(l).generationActive,
           onClick: n[4] || (n[4] = (...d) => t(e).retry && t(e).retry(...d))
-        }, " 重试这次操作 ", 8, Qe)) : k("", !0),
+        }, " 重试这次操作 ", 8, Ke)) : _("", !0),
         !t(w) && t(l).status !== "conflict" ? (o(), m("button", {
           key: 2,
           type: "button",
           disabled: t(Q),
           onClick: n[5] || (n[5] = (...d) => t(e).refresh && t(e).refresh(...d))
-        }, " 重新加载 ", 8, He)) : k("", !0)
-      ])) : k("", !0),
+        }, " 重新加载 ", 8, Qe)) : _("", !0)
+      ])) : _("", !0),
       a("div", {
         ref_key: "scroll",
         ref: q,
         class: "game-scroll"
       }, [
-        le((o(), x(Se, {
+        le((o(), x(Ie, {
           key: t(l).chatIdentity,
           "active-game": t(l).activeGame,
           onOpen: z
         }, null, 8, ["active-game"])), [[re, f.value === "lobby"]]),
-        f.value === "records" ? (o(), x(qe, {
+        f.value === "records" ? (o(), x(Ne, {
           key: 0,
           records: t(l).records,
           total: t(l).total,
           "has-more": t(l).hasMore,
-          "loading-more": t(G),
-          error: t(_),
+          "loading-more": t(I),
+          error: t(k),
           onLoadMore: t(e).loadMore
         }, null, 8, [
           "records",
@@ -429,32 +428,32 @@ var me = { class: "game-lobby" }, ye = ["src"], fe = { class: "game-search" }, g
           "loading-more",
           "error",
           "onLoadMore"
-        ])) : f.value === "room" ? (o(), m(j, { key: 1 }, [R.value ? (o(), m("div", Je, [...n[8] || (n[8] = [a("p", null, "正在摆好桌面…", -1)])])) : M.value ? (o(), m("div", We, [a("p", null, b(M.value), 1), a("button", {
+        ])) : f.value === "room" ? (o(), m(j, { key: 1 }, [R.value ? (o(), m("div", He, [...n[8] || (n[8] = [a("p", null, "正在摆好桌面…", -1)])])) : M.value ? (o(), m("div", Je, [a("p", null, b(M.value), 1), a("button", {
           type: "button",
-          onClick: O
-        }, "重新打开")])) : A.value && E.value?.mode === "wager" ? (o(), x(W(A.value), {
+          onClick: V
+        }, "重新打开")])) : A.value && L.value?.mode === "wager" ? (o(), x(W(A.value), {
           key: 2,
           state: t(l),
           "disabled-reason": t(S),
           "in-flight": t(v),
-          settlement: t(u)?.record.game === C.value ? t(u) : null,
+          settlement: t(u)?.record.game === $.value ? t(u) : null,
           onRevealed: t(e).revealComplete,
           onAction: y,
           onAgain: r,
           onLobby: n[6] || (n[6] = (d) => N("lobby")),
-          onResume: V
+          onResume: P
         }, null, 40, [
           "state",
           "disabled-reason",
           "in-flight",
           "settlement",
           "onRevealed"
-        ])) : k("", !0)], 64)) : k("", !0),
+        ])) : _("", !0)], 64)) : _("", !0),
         (o(), x(se, {
           key: t(l).chatIdentity,
           max: 1
         }, [U.value && A.value && !R.value && !M.value ? (o(), x(W(A.value), {
-          key: C.value,
+          key: $.value,
           bridge: g.bridge,
           "chat-identity": t(l).chatIdentity,
           "generation-active": t(l).generationActive
@@ -462,11 +461,11 @@ var me = { class: "game-lobby" }, ye = ["src"], fe = { class: "game-search" }, g
           "bridge",
           "chat-identity",
           "generation-active"
-        ])) : k("", !0)], 1024))
+        ])) : _("", !0)], 1024))
       ], 512)
     ], 2));
   }
-}), aa = Xe;
+}), Ze = We;
 export {
-  aa as default
+  Ze as default
 };

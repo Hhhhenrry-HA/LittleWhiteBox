@@ -7,7 +7,7 @@ import { RULES } from '../apps/game/expedition/content.ts';
 import { appendInput, tickBattle } from '../apps/game/expedition/combat.ts';
 import { pilot } from './fixtures/expedition-pilot.mjs';
 import { driveExpedition } from './fixtures/expedition-service-driver.mjs';
-const start = { type: 'start', weapon: 'blade', cloak: 0, oaths: [] };
+const start = { type: 'start', weapon: 'blade', outfit: 'traveler', oaths: [] };
 async function setup(files, dependencies = {}) {
     const h = await userEconomyHarness({ files }); await h.economy.ensureOpen();
     const service = createExpeditionService(h.store(EXPEDITION_PARTITION), h.transactions, h.economy, { seed: () => 7, ...dependencies });
@@ -21,7 +21,7 @@ test('full legal campaign awards only confirmed achievements, unlocks content an
     const begin = h.request(start); await h.service.act(begin, () => true); await h.service.act(begin, () => true);
     assert.equal(h.service.view().balance, initialBalance);
     const { view: end, lastRequest } = await driveExpedition(h.service);
-    assert.equal(end.data.active.phase, 'won'); assert.deepEqual(end.data.bossClears, [0, 1, 2]); assert.deepEqual(end.data.mastered, ['blade']);
+    assert.equal(end.data.active.phase, 'won'); assert.deepEqual(new Set(end.data.bossClears), new Set(end.data.active.bosses)); assert.deepEqual(end.data.mastered, ['blade']);
     assert.equal(end.balance, initialBalance + RULES.firstBossAward * 3 + RULES.firstVictoryAward + RULES.masteryAward);
     await h.service.act(lastRequest, () => true); assert.equal(h.service.view().balance, end.balance);
     const reloaded = await setup(h.state.files); assert.deepEqual(reloaded.service.view().data, end.data);
@@ -38,7 +38,7 @@ test('rejected save keeps original random candidate; retry cannot buy a reroll o
     h.state.mode = 'confirmed'; await h.service.confirm(() => true);
     assert.equal(draws, 1); assert.equal(h.service.view().data.active.id, request.actionId);
     await h.service.act(request, () => true); assert.equal(draws, 1); assert.equal(h.service.view().data.revision, 1);
-    await assert.rejects(h.service.act({ ...request, command: { ...start, cloak: 1 } }, () => true), { code: 'expedition_identity' });
+    await assert.rejects(h.service.act({ ...request, command: { ...start, outfit: 'guardian' } }, () => true), { code: 'expedition_identity' });
 });
 
 test('an unknown award save is recovered once, with wallet and boss-clear facts together', async () => {
@@ -56,7 +56,7 @@ test('an unknown award save is recovered once, with wallet and boss-clear facts 
     assert.ok(h.service.view().data.revision > old.data.revision);
     const awarded = h.service.view(); assert.equal(awarded.balance, balance + RULES.firstBossAward);
     await h.service.confirm(() => true); assert.equal(h.service.view().balance, awarded.balance);
-    const restored = await setup(h.state.files); assert.deepEqual(restored.service.view().data.bossClears, [0]); assert.equal(restored.service.view().balance, awarded.balance);
+    const restored = await setup(h.state.files); assert.deepEqual(restored.service.view().data.bossClears, [restored.service.view().data.active.bosses[0]]); assert.equal(restored.service.view().balance, awarded.balance);
 });
 
 test('checkpoint progress survives chat changes and stale or oversized commands cannot alter it', async () => {

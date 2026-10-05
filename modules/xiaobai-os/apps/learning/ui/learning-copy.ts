@@ -30,7 +30,7 @@ export const LEARNING_PROCESS_COPY = {
     tools: { LearningRead: '查看学习记录', LearningContextRead: '查看相关资料', LearningSearch: '寻找文章', LearningExtract: '读取网页',
         LearningProfileEdit: '调整学习目标', LearningLessonEdit: '准备练习', LearningRequest: '安排练习', LearningModelEssay: '准备范文',
         LearningArticle: '整理阅读正文', LearningReadingNotes: '整理本段知识', LearningEssayTask: '准备写作题',
-        LearningAssess: '批改作答', LearningPresent: '打开练习', LearningComplete: '整理学习收获' } as Record<string, string>,
+        LearningAssess: '批改作答', LearningPresent: '打开练习', LearningReveal: '展示学习帮助', LearningSubmit: '保存原答', LearningComplete: '整理学习收获' } as Record<string, string>,
     sections: { overview: '学习概况', training: '本次阅读材料', unit: '本次练习', materials: '阅读材料', exercises: '练习题', attempts: '你的作答',
         notes: '笔记', listening: '听力记录', items: '知识点', review: '到期复习', evidence: '学习记录', completions: '已完成练习', sources: '文章来源' } as Record<string, string>,
 };
@@ -47,9 +47,9 @@ export const LEARNING_DUE_LABEL = (count: number) => `${count} 个知识点可�
 export const LEARNING_VOICE_COPY = { settings: '声音设置', enable: '开启语音' };
 
 export const LEARNING_FLOW_COPY = {
-    navigation: '本篇学习', reading: '阅读与写作', feedback: '批改与修改', model: '范文',
+    navigation: '本篇学习', reading: '阅读与写作', feedback: '批改与修改', model: '范文', completed: '本篇完成',
     grading: '正在看你的作品…', reviewing: '正在复核修改稿…', modelling: '正在写范文…',
-    gradeReady: '这一篇写好了', grade: '提交批改', continue: '继续', stop: '停止', viewModel: '查看范文',
+    grade: '批改已提交的作答', continue: '继续', stop: '停止', viewModel: '查看范文',
     review: '开始复习', resumeReview: '继续复习',
     original: '原稿与批注', revision: '修改稿', resolved: '这处已改对',
     setupTitle: '这次想学到哪里', setupSteps: 3, setupContinue: '继续', setupFinish: '确认目标',
@@ -86,6 +86,7 @@ export const LEARNING_DISCARD_COPY = {
 export const LEARNING_REVIEW_COPY = {
     answer: '你的作答', saved: '已保存，答完这组再一起看看。', ready: '这组答完了', grade: '批改这组',
     ask: '问语伴',
+    retry: '再试一次', cancelRetry: '取消重答',
     verdicts: { correct: '答对了', partial: '对了一部分', incorrect: '还没想起来', disputed: '等待复核' },
 };
 export const LEARNING_DIALOGUE_COPY = {
@@ -100,3 +101,8 @@ export const LEARNING_DIALOGUE_COPY = {
     adoptConfirm: '放弃本次尚未保存的对话，使用服务器上的记录？',
     skipCompanion: '先自己学', listen: '听这段回复', saveNote: '保存笔记',
 } as const;
+export const LEARNING_APPROVAL_COPY = {
+    title: '替换当前练习？',
+    detail: '新内容保存成功后，替换这份课件、作答和笔记。学习本中的记录和已获得的奖励保留。',
+    decline: '保留当前练习', accept: '替换并继续',
+};

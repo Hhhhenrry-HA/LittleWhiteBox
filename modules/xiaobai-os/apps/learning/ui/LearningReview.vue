@@ -26,13 +26,21 @@ const attempt = computed(() => exercise.value && attemptOf(exercise.value.id));
 const assessment = computed(() => props.review.assessments.find(entry => entry.attemptId === attempt.value?.id));
 const paragraphs = computed(() => props.review.materials.flatMap(material => material.paragraphs));
 const drafts = computed(() => local.value.drafts);
-watch(exercise, value => { if (value && !drafts.value[value.id]) { drafts.value[value.id] = createLearningAnswerDraft(value.response); } }, { immediate: true });
-const draft = computed({ get: () => drafts.value[exercise.value!.id], set: value => { drafts.value[exercise.value!.id] = value; } });
+watch([exercise, () => exercise.value && drafts.value[exercise.value.id]], ([value]) => {
+    if (value && !drafts.value[value.id]) { drafts.value[value.id] = { value: createLearningAnswerDraft(value.response), retry: false }; }
+}, { immediate: true });
+const draft = computed({ get: () => drafts.value[exercise.value!.id].value, set: value => { drafts.value[exercise.value!.id].value = value; } });
+const retrying = computed(() => !!exercise.value && !!drafts.value[exercise.value.id]?.retry);
 const answered = computed(() => props.review.exercises.filter(entry => attemptOf(entry.id)).length);
 const openReason = computed({ get: () => local.value.openReason, set: value => { local.value.openReason = value; } });
 
 function submit(answer: LearningAnswer) {
+    drafts.value[exercise.value!.id].submitted = { before: attempt.value?.id };
     emit('action', 'submit', { unitId: props.review.id, exerciseId: exercise.value!.id, answer });
+}
+function retry() {
+    const value = exercise.value!;
+    drafts.value[value.id] = { value: createLearningAnswerDraft(value.response), retry: !retrying.value };
 }
 function next() { const open = props.review.exercises.findIndex(entry => !attemptOf(entry.id)); if (open >= 0) { index.value = open; } }
 function select(position: number) { index.value = position; expanded.value = true; }
@@ -62,10 +70,10 @@ const item = (id?: string) => [...props.state.books.grammar, ...props.state.book
             />
         </nav>
         <template v-if="exercise && !folded">
-            <div :key="`${exercise.id}:${attempt ? 'back' : 'front'}`" class="learning-card" :class="{ 'is-back': !!attempt }">
+            <div :key="`${exercise.id}:${attempt && !retrying ? 'back' : 'front'}`" class="learning-card" :class="{ 'is-back': !!attempt && !retrying }">
                 <p class="learning-eyebrow">{{ attempt ? copy.answer : `第 ${index + 1} 张` }}</p>
                 <h3>{{ exercise.prompt }}</h3>
-                <AnswerInput v-if="!attempt" v-model="draft" :response="exercise.response" :paragraphs="paragraphs" :disabled="disabled" @submit="submit" />
+                <AnswerInput v-if="!attempt || retrying" v-model="draft" :response="exercise.response" :paragraphs="paragraphs" :disabled="disabled || !learningActionAvailable('submit', state)" @submit="submit" />
                 <template v-else>
                     <blockquote>{{ learningAnswerText(attempt.answer, exercise.response, paragraphs) }}</blockquote>
                     <template v-if="assessment">
@@ -77,6 +85,7 @@ const item = (id?: string) => [...props.state.books.grammar, ...props.state.book
                     <small v-else>{{ copy.saved }}</small>
                     <button v-if="answered < review.exercises.length" type="button" class="learning-primary" @click="next">下一张</button>
                 </template>
+                <button v-if="attempt" type="button" :disabled="disabled || !learningActionAvailable('submit', state)" @click="retry">{{ retrying ? copy.cancelRetry : copy.retry }}</button>
                 <button type="button" class="learning-review-ask" data-action="ask" :disabled="pending || !learningActionAvailable('talk', state)" @click="emit('ask', exercise.id, review.id)">{{ copy.ask }}</button>
             </div>
         </template>

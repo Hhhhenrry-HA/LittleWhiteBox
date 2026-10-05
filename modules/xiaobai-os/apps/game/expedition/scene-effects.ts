@@ -30,6 +30,31 @@ export function createBattleEffects(k: SceneKit, root: Group) {
             }
         }
         if (p.shield) { ground('ring', FX.magic, .9, p.x, p.y); }
+        if (p.ward > 0) { ground('ring', FX.heal, .8, p.x, p.y, .7); }
+        if (!b.boss && (b.encounter === 'siege' || b.encounter === 'ritual')) {
+            const o = b.objective;
+            if (b.encounter === 'ritual') {
+                ground('disc', FX.magic, 2.5, o.x, o.y, .12); ground('ring', FX.magic, 2.5, o.x, o.y);
+                ground('ring', FX.gold, 2.2, o.x, o.y, .8);
+            }
+            const plinth = draw('cylinder', '#526b79'); plinth.position.set(o.x, .3, o.y); plinth.scale.set(.5, .6, .5);
+            const core = draw('rock', b.encounter === 'siege' ? FX.fire : FX.magic); core.position.set(o.x, 1, o.y); core.scale.set(.23, .5, .23);
+            if (!reduced) { core.rotation.y = b.tick * .025; }
+        }
+        for (const ally of b.companions) {
+            if (ally.hp <= 0 || ally.life <= 0) { continue; }
+            ground('ring', FX.heal, .4, ally.x, ally.y, .8);
+            if (ally.kind === 'turret') {
+                const base = draw('cylinder', '#687c81'); base.position.set(ally.x, .25, ally.y); base.scale.set(.4, .5, .4);
+                const cannon = draw('box', '#bd9a68'); cannon.position.set(ally.x, .65, ally.y); cannon.scale.set(.9, .2, .25); cannon.rotation.y = -ally.angle;
+                const glow = draw('sphere', FX.magic); glow.position.set(ally.x + Math.cos(ally.angle) * .45, .65, ally.y + Math.sin(ally.angle) * .45); glow.scale.setScalar(.11);
+            } else {
+                const glow = draw('sphere', ally.kind === 'shade' ? '#a6acd8' : ally.empowered ? FX.gold : FX.heal, .8);
+                glow.position.set(ally.x, .55 + (reduced ? 0 : Math.sin(b.tick * .1 + ally.id) * .08), ally.y); glow.scale.set(.3, .36, .3);
+                for (const side of [-1, 1]) { const ear = draw('cone', ally.kind === 'shade' ? '#a6acd8' : FX.heal); ear.position.set(ally.x + side * .2, .93, ally.y); ear.scale.set(.08, .22, .08); }
+                const eye = draw('sphere', '#fff9d3'); eye.position.set(ally.x + Math.cos(ally.angle) * .26, .63, ally.y + Math.sin(ally.angle) * .26); eye.scale.setScalar(.07);
+            }
+        }
         for (const e of b.enemies) {
             if (isBoss(e.kind) && e.phase > 1) {
                 const radius = ENEMIES[e.kind].radius + .55;
@@ -47,26 +72,42 @@ export function createBattleEffects(k: SceneKit, root: Group) {
                     const line = draw('box', FX.danger, .3); line.scale.set(.75, .035, length);
                     line.position.set(e.x + Math.cos(e.angle) * length / 2, .09, e.y + Math.sin(e.angle) * length / 2); line.rotation.y = Math.PI / 2 - e.angle;
                     ground('ring', FX.danger, .5, e.target.x, e.target.y, .9);
-                } else if (!isBoss(e.kind) && e.kind !== 'archer' && e.kind !== 'priest') {
+                } else if (e.kind === 'archer') {
+                    const length = Math.hypot(e.target.x - e.x, e.target.y - e.y), sight = draw('box', FX.warning, .6);
+                    sight.position.set((e.x + e.target.x) / 2, .11, (e.y + e.target.y) / 2); sight.scale.set(length, .03, .09); sight.rotation.y = -e.angle;
+                } else if (e.kind === 'bomber') { ground('ring', FX.warning, 1.9, e.target.x, e.target.y); }
+                else if (e.kind === 'soldier' || e.kind === 'guard' || e.kind === 'stalker') {
                     ground('disc', FX.danger, ENEMIES[e.kind].reach, e.target.x, e.target.y, .15 + progress * .2);
                     ground('ring', FX.danger, ENEMIES[e.kind].reach, e.target.x, e.target.y);
                 }
             }
             if (e.chill) { ground('ring', FX.frost, ENEMIES[e.kind].radius + .13, e.x, e.y); }
+            if (e.exposed) { ground('arc', FX.gold, ENEMIES[e.kind].radius + .3, e.x, e.y, .9); }
             if (e.burn && !reduced) {
                 for (let i = 0; i < 3; i++) { const flame = draw('rock', FX.fire, .8); flame.position.set(e.x + Math.sin(i * 2) * .3, .35 + ((b.tick + i * 7) % 20) / 18, e.y + Math.cos(i * 2) * .3); flame.scale.set(.08, .2, .08); }
             }
-            if (e.kind === 'priest') { ground('ring', '#a39aca', 4, e.x, e.y, .4); }
+            if (e.kind === 'priest') { ground('ring', '#a39aca', 3.5, e.x, e.y, .4); }
         }
         for (const h of b.hazards) {
             const color = h.friendly ? h.kind === 'fire' ? FX.fire : FX.magic : FX.danger;
+            if (h.kind === 'beam') {
+                const beam = draw('box', color, h.wait ? .3 : .75); beam.position.set(h.x + Math.cos(h.angle) * h.length / 2, .11, h.y + Math.sin(h.angle) * h.length / 2);
+                beam.scale.set(h.length, .04, h.width * 2); beam.rotation.y = -h.angle;
+                for (const offset of [0, h.length]) { ground('disc', color, h.width, h.x + Math.cos(h.angle) * offset, h.y + Math.sin(h.angle) * offset, h.wait ? .3 : .75); }
+                continue;
+            }
+            if (h.kind === 'ring') {
+                ground('ring', color, h.inner, h.x, h.y); ground('ring', color, h.radius, h.x, h.y);
+                for (let i = 1; i <= 4; i++) { ground('ring', color, h.inner + (h.radius - h.inner) * i / 5, h.x, h.y, h.wait ? .35 : .8); }
+                continue;
+            }
             ground('disc', color, h.radius, h.x, h.y, h.wait ? .2 : .4); ground('ring', color, h.radius, h.x, h.y);
             if (h.wait) {
                 ground('ring', color, h.radius * (1 - Math.min(1, h.wait / 45)), h.x, h.y, .7);
                 const cross = draw('box', color, .7); cross.position.set(h.x, .12, h.y); cross.scale.set(.08, .02, .6);
                 const cross2 = draw('box', color, .7); cross2.position.copy(cross.position); cross2.scale.set(.6, .02, .08);
             } else if (!reduced) {
-                ground('ring', FX.gold, h.radius * (1.15 - h.life / 60), h.x, h.y, .7, .25);
+                ground('ring', FX.gold, h.radius * (.7 + Math.sin(b.tick * .1) * .1), h.x, h.y, .7, .25);
                 for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3, shard = draw('cone', color, .7); shard.position.set(h.x + Math.cos(a) * h.radius * .65, .45, h.y + Math.sin(a) * h.radius * .65); shard.scale.set(.15, .9, .15); }
             }
         }

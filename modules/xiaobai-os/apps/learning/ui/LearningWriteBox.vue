@@ -15,10 +15,8 @@ const editor = computed(() => session.value.writing[props.exercise.id]);
 const text = computed({ get: () => editor.value.text, set: value => { editor.value.text = value; } });
 const rewriting = computed({ get: () => editor.value.rewriting, set: value => { editor.value.rewriting = value; } });
 const draft = computed(() => props.unit.attempts.filter(entry => entry.exerciseId === props.exercise.id && entry.revisesAttemptId === undefined).at(-1));
-const assessed = computed(() => props.unit.assessments.some(entry => entry.attemptId === draft.value?.id && entry.verdict !== 'disputed'));
 const draftText = computed(() => draft.value?.answer.kind === 'text' ? draft.value.answer.text : '');
 const editable = computed(() => !draft.value || rewriting.value);
-const canRewrite = computed(() => ['writing', 'grading'].includes(props.unit.stage.stage) && !assessed.value && !props.state.pending);
 const count = computed(() => learningWritingCount(text.value, props.state.language));
 const savedCount = computed(() => learningWritingCount(draftText.value, props.state.language));
 const reply = computed(() => props.state.workbenchConversation.summaryReviews.find(entry => entry.attemptId === draft.value?.id)?.text ?? '');
@@ -45,7 +43,7 @@ function rewrite() { text.value = draftText.value; rewriting.value = true; }
             <p class="learning-write-saved">{{ draftText }}</p>
             <div class="learning-write-foot">
                 <small>已保存 · {{ savedCount.count }} {{ savedCount.unit }}</small>
-                <button v-if="canRewrite" type="button" :disabled="disabled" @click="rewrite">重写</button>
+                <button type="button" :disabled="disabled" @click="rewrite">重写</button>
             </div>
         </template>
         <MessageMarkdown v-if="reply" class="learning-markdown learning-write-reply" :text="reply" />

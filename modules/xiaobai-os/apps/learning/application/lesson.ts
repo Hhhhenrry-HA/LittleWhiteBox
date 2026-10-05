@@ -1,18 +1,16 @@
 import { parseLearningUnit } from '../../../domains/learning/data.js';
 import { LEARNING_SUMMARY_PROMPT } from '../../../domains/learning/preparation.js';
 import { learningRecord, learningText } from '../../../domains/learning/profile.js';
-import { learningReviewTier, selectDueLearningItems } from '../../../domains/learning/schedule.js';
+import { learningReviewTier } from '../../../domains/learning/schedule.js';
 import { LEARNING_LIMITS as L, type LearningLanguage, type LearningScope, type LearningUnit, type RewardTier } from '../../../domains/learning/types.js';
 import { learningArray, learningEnum, learningId, learningIds, learningInteger, requireLearning, uniqueLearning } from '../../../domains/learning/validation.js';
 import { compileLearningMaterial, type createLearningSourceRegistry } from '../materials/lesson-sources.js';
-import { checkLearningReadingContent } from '../materials/reading-content.js';
 
 /** One lesson editor per teacher turn. New local keys are resolved once; saved IDs work directly. */
 export function createLearningLessonCompiler(options: {
     osId: string; language: string; scope: LearningScope; prices: Readonly<Record<RewardTier, number>>; createId: () => string;
     sources: Pick<ReturnType<typeof createLearningSourceRegistry>, 'get'>;
 }) {
-    const unitId = options.createId();
     const ids = new Map<string, string>();
     const prices = { ...options.prices };
     for (const [tier, price] of Object.entries(prices)) { learningInteger(price, `prices.${tier}`, 1); }
@@ -20,12 +18,13 @@ export function createLearningLessonCompiler(options: {
     return (args: unknown, current: LearningUnit | null = null, published: LearningUnit | null = null,
         context: { profile: LearningLanguage; now: string } | null = null): LearningUnit => {
         const input = learningRecord(args, 'LearningLessonEdit', ['kind', 'title', 'goal', 'tier', 'materials', 'exercises', 'removeMaterials', 'removeExercises', 'explanations']);
+        const unitId = current?.id ?? options.createId();
         const kind = learningEnum(input.kind ?? current?.kind ?? 'lesson', 'kind', ['reading-writing', 'review', 'lesson']);
         requireLearning(!current || kind === current.kind, 'kind', 'A unit keeps its kind; start a new unit for another kind of practice');
         const idFor = (kind: 'material' | 'exercise', key: string) => {
             const records = kind === 'material' ? current?.materials : current?.exercises;
             if (records?.some(record => record.id === key)) { return key; }
-            const local = `${kind}:${key}`;
+            const local = `${unitId}:${kind}:${key}`;
             if (!ids.has(local)) { ids.set(local, options.createId()); }
             return ids.get(local)!;
         };
@@ -42,13 +41,6 @@ export function createLearningLessonCompiler(options: {
             const id = idFor('material', key);
             requireLearning(!removeMaterials.includes(id), 'materials', 'A material cannot be edited and removed in the same call');
             const material = compileLearningMaterial(raw, id, options.sources);
-            if (kind === 'reading-writing') {
-                if (raw.kind === 'adapted') {
-                    const source = options.sources.get(String(raw.sourceId))!;
-                    checkLearningReadingContent(source.paragraphs.map(paragraph => paragraph.text).join('\n\n'), options.language, 'source', 'materials.sourceId');
-                }
-                checkLearningReadingContent(material.paragraphs.map(paragraph => paragraph.text).join('\n\n'), options.language, 'article', 'materials.text');
-            }
             const index = materials.findIndex(entry => entry.id === id);
             const old = materials[index];
             if (old && JSON.stringify(old.paragraphs) === JSON.stringify(material.paragraphs)) { material.transcriptRevealed = old.transcriptRevealed; }
@@ -56,7 +48,7 @@ export function createLearningLessonCompiler(options: {
             materialRefs.set(key, id); materialRefs.set(id, id);
         }
         const materialId = (key: string) => {
-            const id = materialRefs.get(key) ?? ids.get(`material:${key}`);
+            const id = materialRefs.get(key) ?? ids.get(`${unitId}:material:${key}`);
             requireLearning(id && materials.some(material => material.id === id), 'materialKeys', 'Use a current material ID or a local key from this turn');
             return id;
         };
@@ -91,12 +83,11 @@ export function createLearningLessonCompiler(options: {
         }
         let reviewTier: RewardTier | undefined;
         if (kind === 'review') {
-            // The schedule, not the teacher, decides what is reviewed and how large the reward is.
-            requireLearning(context, 'kind', "A review is prepared from the learner's due items");
-            const due = published ? published.exercises.map(exercise => exercise.itemId!) : selectDueLearningItems(context.profile, context.now, options.osId).map(item => item.id);
+            // The teacher chooses saved learning items; publication fixes the group's reward.
+            requireLearning(context, 'kind', "A review is prepared from the learner's saved items");
             const chosen = exercises.map(exercise => (exercise as { itemId?: unknown }).itemId);
-            requireLearning(due.length > 0 && chosen.length === due.length && due.every(id => chosen.includes(id)), 'exercises', 'Ask exactly one question for each due item');
-            reviewTier = learningReviewTier(due.length);
+            requireLearning(chosen.every(id => context.profile.items.some(item => item.id === id && item.schedule)), 'exercises', 'Review saved vocabulary or grammar items');
+            reviewTier = published?.reward.tier ?? learningReviewTier(chosen.length);
         }
         const tier = reviewTier ?? learningEnum(input.tier ?? current?.reward.tier, 'tier', ['short', 'regular', 'deep']);
         requireLearning(!published || tier === published.reward.tier, 'tier', 'A published lesson keeps its reward; adapt the practice within it');
@@ -115,9 +106,6 @@ export function createLearningLessonCompiler(options: {
             revealed: { answers: current?.revealed.answers.filter(id => !removeExercises.includes(id)) ?? [],
                 hints: current?.revealed.hints.filter(id => !removeExercises.includes(id)) ?? [] } });
         if (current) {
-            if (published?.kind === 'reading-writing') {
-                requireLearning(JSON.stringify(next.materials) === JSON.stringify(current.materials), 'materials', 'Published reading text stays fixed');
-            }
             const protectedExercises = new Set([...current.attempts.map(attempt => attempt.exerciseId),
                 ...(current.listening ?? []).map(record => record.exerciseId), ...(current.notes ?? []).map(note => note.exerciseId)]);
             const protectedMaterials = new Set(current.exercises.filter(exercise => protectedExercises.has(exercise.id)).flatMap(exercise => exercise.materialIds));

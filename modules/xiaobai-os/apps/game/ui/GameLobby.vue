@@ -2,7 +2,6 @@
 import { computed, ref } from 'vue';
 import type { GameActiveGameView } from '../types.js';
 import { GAME_ENTRIES, gameRoom, type GameEntryId } from './room-catalog.js';
-import { MASCOT_PORTRAIT_URL } from '../../../brand/mascot/assets.js';
 defineProps<{ activeGame: GameActiveGameView | null }>();
 defineEmits<{ open: [kind: GameEntryId] }>();
 const search = ref('');
@@ -47,7 +46,7 @@ const visible = computed(() =>
             >
                 <div class="game-tile-art">
                     <img :src="room.artwork" alt="" loading="lazy">
-                    <img v-if="room.id === 'moving' || room.id === 'building'" class="game-tile-mascot" :src="MASCOT_PORTRAIT_URL" alt="" loading="lazy">
+                    <img v-if="'mascotPortrait' in room" class="game-tile-mascot" :src="room.mascotPortrait" alt="" loading="lazy">
                 </div>
                 <div class="game-tile-copy">
                     <h3>{{ room.name }}</h3>

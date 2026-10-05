@@ -7,7 +7,7 @@ import { MAP_PROJECTION_COPY } from '../ui/map-copy.js';
 interface ProjectionDisplayOptions {
     enabled(): boolean;
     isGenerationActive(): boolean;
-    isReplyPaused?(): boolean;
+    isReplyPaused?(message: unknown): boolean;
     readState(): MapClientState;
     captureChat(): Pick<XiaobaiOsChatSurface, 'identityKey' | 'messages'> | null;
     readTheme(): 'light' | 'dark';
@@ -40,7 +40,6 @@ export function createMapProjectionDisplay({ enabled, isGenerationActive, isRepl
     let stateSignature = '';
     let publishedState: MapClientState | null = null;
     let publishedTheme = '';
-    const isSuppressed = () => isGenerationActive() || isReplyPaused();
 
     function clear(): void {
         bridge?.dispose(); bridge = null;
@@ -66,13 +65,15 @@ export function createMapProjectionDisplay({ enabled, isGenerationActive, isRepl
         swipeObserver?.disconnect();
         try {
             if (!enabled()) { clear(); resetState(); return; }
-            if (isSuppressed()) { clear(); return; }
+            if (isGenerationActive()) { clear(); return; }
             const source = captureChat();
             if (!source) { clear(); resetState(); return; }
             let index = source.messages.length - 1;
             while (index >= 0 && storyMessageRole(source.messages[index]) !== 'assistant') { index -= 1; }
-            const floor = index < 0 ? null : document.querySelector<HTMLElement>(`#chat .mes[mesid="${index}"]`);
-            if (index >= 0 && isPendingSwipe(source.messages[index])) {
+            if (index < 0) { clear(); return; }
+            const message = source.messages[index];
+            const floor = document.querySelector<HTMLElement>(`#chat .mes[mesid="${index}"]`);
+            if (isPendingSwipe(message)) {
                 clear();
                 // Failed preflight has no completion event. Native rollback replaces
                 // floors (1.18) or rewrites swipeid (1.14), without streaming-text observation.
@@ -81,6 +82,7 @@ export function createMapProjectionDisplay({ enabled, isGenerationActive, isRepl
                 if (floor) { swipeObserver?.observe(floor, { attributes: true, attributeFilter: ['swipeid'] }); }
                 return;
             }
+            if (isReplyPaused(message)) { clear(); return; }
             if (stateDirty) {
                 const next = readState();
                 const signature = JSON.stringify(next);

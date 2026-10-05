@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { assessLearning } from '../domains/learning/assessment.js';
 import {
     advanceLearningSchedule, correctLearningSchedules, learningReviewQuality, learningReviewTier, learningScheduleAt, learningScheduled,
     learningScheduleReason, newLearningSchedule, parseLearningSchedule, selectDueLearningItems,
@@ -59,6 +60,94 @@ test('a deleted, disputed or re-judged attempt returns only the items it last mo
     correctLearningSchedules([moved, other], 'a1', day(3));
     assert.deepEqual(moved.schedule, newLearningSchedule(day(3)));
     assert.deepEqual(other.schedule, before);
+});
+
+function reviewHistory(sameTime = false) {
+    const scope = { kind: 'public' };
+    return { language: 'en', unit: null, completions: [], items: [item('i1', T0)],
+        review: { id: 'rv', kind: 'review', title: 'Review', goal: 'Recall shade', scope, originOsId: 'story-a',
+            reward: { tier: 'short', amount: 17 }, materials: [], revealed: { answers: [], hints: [] }, assessments: [],
+            exercises: [{ id: 'r1', skill: 'vocabulary', materialIds: [], prompt: 'Use shade.', hint: '', itemId: 'i1',
+                response: { kind: 'text' }, rule: { kind: 'semantic' } }],
+            attempts: ['a', 'b', 'c', 'd'].map((id, index) => ({ id, exerciseId: 'r1', scope,
+                answer: { kind: 'text', text: 'Trees provide shade.' }, submittedAt: day(sameTime ? 0 : index), help: help({ feedback: index > 0 }) })) } };
+}
+
+function judgeReview(profile, attemptId, verdict, now, extra = {}) {
+    return assessLearning(profile, { attemptId, verdict, understanding: '', expression: '', guidance: 'Reviewed.', ...extra }, {
+        attemptId, review: true, inputScope: { kind: 'public' }, osId: 'story-a', createId: () => 'unused', now: () => now,
+    }).profile;
+}
+
+for (const archived of [false, true]) {
+    for (const verdict of ['correct', 'incorrect']) {
+        test(`resolving an initially disputed answer ${verdict} follows an older schedule but preserves a newer one, ${archived ? 'archived' : 'current'}`, () => {
+            const first = judgeReview(reviewHistory(), 'a', 'correct', T0);
+            const disputed = judgeReview(first, 'b', 'disputed', day(1));
+            assert.deepEqual(disputed.items[0].schedule, first.items[0].schedule);
+            const available = structuredClone(disputed);
+            if (archived) { available.review = null; }
+            const resolved = judgeReview(available, 'b', verdict, day(2));
+            const expected = verdict === 'correct'
+                ? { ef: 2.46, repetitions: 2, intervalDays: 6, dueAt: day(8), lastAttemptId: 'b', lastQuality: 3 }
+                : { ef: 2.6, repetitions: 0, intervalDays: 1, dueAt: day(3), lastAttemptId: 'b', lastQuality: 1 };
+            assert.deepEqual(resolved.items[0].schedule, expected);
+            assert.deepEqual(judgeReview(resolved, 'b', verdict, day(3)).items[0].schedule, expected);
+
+            const newer = judgeReview(disputed, 'c', 'correct', day(2));
+            const before = structuredClone(newer.items[0].schedule);
+            if (archived) { newer.review = null; }
+            const rejudged = judgeReview(newer, 'b', verdict, day(3));
+            assert.equal(rejudged.items[0].evidence.find(entry => entry.attempt.id === 'b').assessment.verdict, verdict);
+            assert.deepEqual(rejudged.items[0].schedule, before);
+        });
+    }
+}
+
+test('current answer order breaks timestamp ties without letting an older disputed answer overwrite a newer schedule', () => {
+    const first = judgeReview(reviewHistory(true), 'a', 'correct', T0);
+    const disputed = judgeReview(first, 'b', 'disputed', T0);
+    const resolved = judgeReview(disputed, 'b', 'correct', day(1));
+    assert.deepEqual(resolved.items[0].schedule, {
+        ef: 2.46, repetitions: 2, intervalDays: 6, dueAt: day(7), lastAttemptId: 'b', lastQuality: 3,
+    });
+    const newer = judgeReview(disputed, 'c', 'correct', T0);
+    assert.deepEqual(judgeReview(newer, 'b', 'incorrect', day(1)).items[0].schedule, newer.items[0].schedule);
+});
+
+test('a current scheduled answer still establishes order after its representative evidence is pruned', () => {
+    let profile = judgeReview(reviewHistory(), 'a', 'correct', T0);
+    for (const [index, id] of ['b', 'c', 'd'].entries()) { profile = judgeReview(profile, id, 'disputed', day(index + 1)); }
+    assert.equal(profile.items[0].evidence.some(entry => entry.attempt.id === 'a'), false);
+    assert.deepEqual(judgeReview(profile, 'd', 'correct', day(4)).items[0].schedule, {
+        ef: 2.46, repetitions: 2, intervalDays: 6, dueAt: day(10), lastAttemptId: 'd', lastQuality: 3,
+    });
+});
+
+test('rejudging archived evidence uses the prior schedule before a new item link prunes its source', () => {
+    const history = reviewHistory();
+    history.review.attempts[1].help = help();
+    let profile = judgeReview(history, 'a', 'correct', T0);
+    profile = judgeReview(profile, 'b', 'disputed', day(1));
+    const [disputed, first] = profile.items[0].evidence;
+    // Other practice keeps the old success as part of an independent pair; the disputed answer is retained elsewhere.
+    const other = structuredClone(first);
+    other.unitId = 'lesson';
+    delete other.exercise.itemId;
+    other.exercise.prompt = 'Find shade outdoors.';
+    other.attempt.id = 'c'; other.attempt.submittedAt = day(2);
+    other.assessment.attemptId = 'c'; other.assessment.verdict = 'partial';
+    const latest = structuredClone(other);
+    latest.attempt.id = 'd'; latest.attempt.submittedAt = day(3);
+    latest.assessment.attemptId = 'd'; latest.assessment.verdict = 'correct';
+    profile.items[0].evidence = [latest, first, other];
+    profile.items.push(item('i2', T0, { evidence: [disputed] }));
+    profile.review = null;
+    const resolved = judgeReview(profile, 'b', 'correct', day(4), { items: [{ itemId: 'i1' }] });
+    assert.equal(resolved.items[0].evidence.some(entry => entry.attempt.id === 'a'), false);
+    assert.deepEqual(resolved.items[0].schedule, {
+        ef: 2.7, repetitions: 2, intervalDays: 6, dueAt: day(10), lastAttemptId: 'b', lastQuality: 5,
+    });
 });
 
 test('due selection is sorted, readable in this story, and at most twenty; the tier follows the count', () => {

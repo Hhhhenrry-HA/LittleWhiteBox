@@ -1,0 +1,86 @@
+<script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { Color, DirectionalLight, Group, HemisphereLight, NeutralToneMapping, OrthographicCamera, Scene, SRGBColorSpace, WebGLRenderer } from 'three';
+import { COPY as c, ENEMY_NAMES, OUTFIT_COPY } from './copy.js';
+import { BOSS_IDS, OUTFIT_IDS } from './ids.js';
+import { BOSS_SPECS } from './content.js';
+import { isFinished } from './domain.js';
+import { OUTFITS, ownsOutfit } from './outfits.js';
+import { createHero } from './scene-actors.js';
+import { createSceneKit } from './scene-kit.js';
+import type { Command, ExpeditionData, Outfit, Weapon } from './types.js';
+
+const props = defineProps<{ data: ExpeditionData; balance: number; blocked: boolean; weapon: Weapon }>();
+const emit = defineEmits<{ command: [command: Command] }>();
+const selected = ref<Outfit>(props.data.equippedOutfit), confirming = ref(false), rotation = ref(0), failed = ref(false), host = ref<HTMLElement | null>(null);
+const thumbnails = ref<Partial<Record<Outfit, string>>>({});
+const spec = computed(() => OUTFITS[selected.value]), owned = computed(() => ownsOutfit(props.data, selected.value));
+const achievementBoss = computed(() => BOSS_IDS.find(id => BOSS_SPECS[id].awardKey === spec.value.achievement));
+let dispose: (() => void) | null = null, dirty = true, actionUntil = 0;
+watch([selected, rotation, () => props.weapon], () => { dirty = true; confirming.value = false; });
+function select(id: Outfit) { selected.value = id; }
+function previewAction() { actionUntil = performance.now() + 1100; dirty = true; }
+function purchase() { confirming.value = false; emit('command', { type: 'purchase', id: selected.value }); }
+onMounted(() => {
+    let renderer: WebGLRenderer;
+    try { renderer = new WebGLRenderer({ antialias: true, alpha: false }); }
+    catch { failed.value = true; return; }
+    renderer.outputColorSpace = SRGBColorSpace; renderer.toneMapping = NeutralToneMapping; renderer.setPixelRatio(Math.min(devicePixelRatio, 1.8));
+    const scene = new Scene(), kit = createSceneKit(), root = new Group(), hero = createHero(kit, root);
+    scene.background = new Color('#d1e0e1'); scene.add(root, new HemisphereLight('#fff6e3', '#627c93', 2.7));
+    const sun = new DirectionalLight('#fff6e0', 3); sun.position.set(-3, 5, 6); scene.add(sun);
+    const camera = new OrthographicCamera(-2.35, 2.35, 2.35, -2.35, .1, 30); camera.position.set(0, 2.9, 7); camera.lookAt(0, 1.7, 0);
+    // The rack and fitting view share the actual outfit geometry, not a second icon catalog.
+    renderer.setSize(144, 144, false);
+    try {
+        for (const id of OUTFIT_IDS) {
+            hero.update({ x: 0, y: 0, facing: Math.PI / 2, dashTime: 0, swing: 0 }, props.weapon, id, 0, true, false);
+            hero.root.position.set(0, .1, 0); hero.root.rotation.y = -.2; hero.root.scale.setScalar(1.35);
+            renderer.render(scene, camera); thumbnails.value[id] = renderer.domElement.toDataURL('image/png');
+        }
+    } catch {
+        failed.value = true; kit.dispose(); scene.clear(); renderer.dispose(); renderer.forceContextLoss(); return;
+    }
+    host.value!.append(renderer.domElement);
+    let frame = 0, width = 1, height = 1;
+    const observer = new ResizeObserver(() => {
+        const box = host.value!.getBoundingClientRect(); width = Math.max(1, box.width); height = Math.max(1, box.height);
+        renderer.setSize(width, height, false); camera.left = -2.35 * width / height; camera.right = -camera.left; camera.top = 2.35; camera.bottom = -2.35; camera.updateProjectionMatrix(); dirty = true;
+    }); observer.observe(host.value!);
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+    function lost(event: Event) { event.preventDefault(); failed.value = true; cancelAnimationFrame(frame); }
+    renderer.domElement.addEventListener('webglcontextlost', lost);
+    function draw(now: number) {
+        frame = requestAnimationFrame(draw);
+        if (!dirty && (now > actionUntil || reduced.matches)) { return; }
+        const playing = now < actionUntil && !reduced.matches, tick = now * .03;
+        hero.update({ x: playing ? Math.sin(tick * .4) * .03 : 0, y: 0, facing: Math.PI / 2, dashTime: 0, swing: playing ? 8 - tick % 8 : 0 }, props.weapon, selected.value, tick, reduced.matches, false);
+        hero.root.position.set(0, .1, 0); hero.root.rotation.y = Number(rotation.value) * Math.PI / 180; hero.root.scale.setScalar(1.35);
+        try { renderer.render(scene, camera); dirty = false; }
+        catch { failed.value = true; cancelAnimationFrame(frame); }
+    }
+    frame = requestAnimationFrame(draw);
+    dispose = () => { cancelAnimationFrame(frame); observer.disconnect(); renderer.domElement.removeEventListener('webglcontextlost', lost); kit.dispose(); scene.clear(); renderer.dispose(); renderer.forceContextLoss(); renderer.domElement.remove(); };
+});
+onBeforeUnmount(() => dispose?.());
+</script>
+<template>
+    <div class="exp-wardrobe">
+        <section class="exp-fitting">
+            <div ref="host" class="exp-outfit-preview" :aria-label="OUTFIT_COPY[selected].name"><p v-if="failed" role="alert">{{ c.presentationError.rendering }}</p></div>
+            <div class="exp-preview-tools"><label>{{ c.rotate }}<input v-model="rotation" type="range" min="-180" max="180" step="5" :aria-label="c.rotate"></label><button type="button" :disabled="failed" @click="previewAction">{{ c.previewAction }}</button></div>
+            <h3>{{ OUTFIT_COPY[selected].name }}</h3><p>{{ OUTFIT_COPY[selected].detail }}</p>
+            <p class="exp-muted">{{ c.wardrobeNote }}</p>
+            <template v-if="owned"><button type="button" class="exp-primary" :disabled="blocked || data.equippedOutfit === selected" @click="emit('command', { type: 'equip', id: selected })">{{ data.equippedOutfit === selected ? c.equipped : c.equip }}</button><small v-if="data.active && !isFinished(data.active)">{{ c.nextRunOutfit }}</small></template>
+            <p v-else-if="achievementBoss">{{ c.unlockWeapon(ENEMY_NAMES[achievementBoss]) }}</p>
+            <template v-else-if="confirming"><p>{{ c.buyOutfit(OUTFIT_COPY[selected].name, spec.price) }}</p><div class="exp-purchase-confirm"><button type="button" class="exp-primary" :disabled="blocked || balance < spec.price" @click="purchase">{{ c.confirm }}</button><button type="button" @click="confirming = false">{{ c.cancel }}</button></div></template>
+            <button v-else type="button" class="exp-primary" :disabled="blocked || balance < spec.price" @click="confirming = true">{{ balance < spec.price ? c.noCoins : c.purchase }} · {{ c.coins(spec.price) }}</button>
+        </section>
+        <div class="exp-outfit-rack" :aria-label="c.tryOn">
+            <button v-for="id in OUTFIT_IDS" :key="id" type="button" :aria-pressed="selected === id" @click="select(id)">
+                <img v-if="thumbnails[id]" class="exp-outfit-swatch" :src="thumbnails[id]" alt="">
+                <strong>{{ OUTFIT_COPY[id].name }}</strong><small>{{ data.equippedOutfit === id ? c.equipped : ownsOutfit(data, id) ? c.owned : OUTFITS[id].price ? c.coins(OUTFITS[id].price) : c.achievement }}</small>
+            </button>
+        </div>
+    </div>
+</template>

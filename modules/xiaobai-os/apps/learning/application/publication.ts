@@ -10,9 +10,9 @@ export function createLearningPublication(messages: LearningMessage[], options: 
         }
     }
     return {
-        begin(message: LearningMessage) { if (options.transactional) { message.contentVisibility = 'pending-save'; } },
-        complete(message: LearningMessage) {
-            if (!options.current() && message.contentVisibility) { message.contentVisibility = 'private'; }
+        begin(message: LearningMessage) { if (options.transactional) { message.contentVisibility = 'pending-response'; } },
+        complete(message: LearningMessage, toolsSucceeded = true) {
+            if (message.contentVisibility === 'pending-response') { message.contentVisibility = options.current() && toolsSucceeded ? 'pending-save' : 'private'; }
         },
         discard,
         confirmSave() {

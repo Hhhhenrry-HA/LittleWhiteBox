@@ -8,5 +8,5 @@ export const LEARNING_PREPARATION_COPY = {
     resume: '继续准备',
     missingNotes: '本段知识待补充', missingEssay: '写作题待补充',
     notesRequest: '请补充这些段落的学习知识。', essayRequest: '请为这篇文章准备主题写作题。',
-    taskTitles: { 'reading-article': '准备阅读文章', 'reading-notes': '整理本段知识', 'reading-essay': '准备写作题' },
+    taskTitles: { prepare: '准备学习内容' },
 };

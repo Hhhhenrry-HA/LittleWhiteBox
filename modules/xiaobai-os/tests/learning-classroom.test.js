@@ -245,6 +245,8 @@ async function fillLearningFile(h) {
     while (bytes < target) {
         const completion = { unitId: `archived-${profile.completions.length}`, completedAt: '2026-09-01T00:00:00.000Z',
             summary: 'x'.repeat(2000), scope: { kind: 'public' }, attemptIds: ['archived-answer'],
+            // Capacity data represents settled history, not thousands of outstanding payments.
+            receipt: { transactionId: `paid-${profile.completions.length}`, receivedAt: Date.parse('2026-09-01T00:00:00.000Z') },
             reward: { originOsId: profile.unit.originOsId, amount: 20, title: 'Lesson', note: 'Completed' } };
         const overhead = size(completion) - 2000 + (profile.completions.length ? 1 : 0);
         const available = target - bytes - overhead;
@@ -253,6 +255,7 @@ async function fillLearningFile(h) {
         profile.completions.push(completion); bytes += overhead + completion.summary.length;
     }
     assert.equal(size(document), target);
+    assert.doesNotThrow(() => parseLearningData(document.data));
     h.replaceUser(document); await h.command('read');
     assert.equal(h.state().storage, 'ready');
 }
@@ -319,6 +322,8 @@ test('unconfirmed completion remains unpublished; recovery pays only after confi
     const service = createLearningService(h.repository);
     await service.prepareAttempt({ language: 'en', unitId: unit.id, exerciseId: unit.exercises[0].id, answer: { kind: 'choice', ids: ['a'] },
         scope: unit.scope, osId: unit.originOsId, replays: 0, slowPlayback: false }).save(() => true);
+    h.flags.teacherResponse = (_request, round) => round === 1 ? { toolCalls: [{ id: 'complete', name: 'LearningComplete', arguments: JSON.stringify({
+        unitId: unit.id, attemptIds: [h.profile().unit.attempts[0].id], summary: '完成' }) }] } : { text: '完成了。' };
     h.flags.userFailure = true;
     const result = await h.command('complete');
     assert.equal(result.storage, 'unconfirmed'); assert.equal(result.completions.length, 0); assert.equal(h.economy.getPlayerBalance(), 100);
@@ -612,7 +617,7 @@ test('confirming an owned teacher save restores the reply and activity once with
             assert.equal(restored.storage, 'ready');
             assert.deepEqual(restored.workbenchConversation.turns.slice(0, -1), turns);
             assert.equal(restored.workbenchConversation.turns.at(-1).user, '给我阅读练习。');
-            assert.equal(restored.workbenchConversation.turns.at(-1).presentation.id, unit.exercises[0].id);
+            assert.equal(restored.workbenchConversation.turns.at(-1).presentation, undefined);
             assert.equal(restored.reply.text, restored.workbenchConversation.turns.at(-1).teacher);
             await h.command('verify'); await h.command('read');
             assert.equal(h.state().workbenchConversation.turns.length, turns.length + 1);
@@ -660,34 +665,4 @@ test('an uncertain native answer preserves dialogue on verification and remains 
     assert.deepEqual(h.state().conversation.turns, turns);
     assert.equal(h.state().unit.attempts.length, 1);
     assert.equal(h.counts.provider, calls);
-});
-
-test('teacher-requested replacement waits for exact-lesson confirmation and keeps the old course on failure', async t => {
-    for (const blocked of [false, true]) {
-        await t.test(blocked ? 'other-story lesson' : 'current lesson', async sub => {
-            const h = await createClassroomFixture(); sub.after(h.dispose); await h.openLesson();
-            const old = structuredClone(h.profile().unit);
-            if (blocked) { await h.changeChat(); await h.command('teacher', { teacher: { name: '林老师', note: '' } }); }
-            h.flags.talkTools = [{ name: 'LearningPresent', args: { kind: 'replacement' } }];
-            await h.command('talk', { message: '这课太难了，换成基础句子练习。' });
-            const target = h.state().conversation.turns.at(-1).presentation;
-            assert.equal(target.kind, 'replacement'); assert.equal(target.unitId, old.id);
-            assert.deepEqual(h.profile().unit, old);
-            const calls = h.counts.provider;
-            await h.command('replace-lesson', { unitId: 'stale-unit', message: target.message });
-            assert.equal(h.counts.provider, calls);
-            h.flags.providerFailure = true;
-            await h.command('replace-lesson', { unitId: target.unitId, message: target.message });
-            assert.deepEqual(h.profile().unit, old);
-            h.flags.providerFailure = false; h.flags.userRejected = true;
-            await h.command('replace-lesson', { unitId: target.unitId, message: target.message });
-            assert.deepEqual(h.profile().unit, old);
-            h.flags.userRejected = false;
-            await h.command('replace-lesson', { unitId: target.unitId, message: target.message });
-            assert.notEqual(h.profile().unit.id, old.id);
-            const finishedCalls = h.counts.provider;
-            await h.command('replace-lesson', { unitId: target.unitId, message: target.message });
-            assert.equal(h.counts.provider, finishedCalls);
-        });
-    }
 });

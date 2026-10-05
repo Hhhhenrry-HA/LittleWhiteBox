@@ -4,8 +4,10 @@ import { fault } from './random.js';
 import type { ExpeditionData } from './types.js';
 
 function legs(data: ExpeditionData): EconomyActionLeg[] {
-    return data.awards.map(a => ({ idempotencyKey: `expedition:${a.key}`, actionId: a.actionId, sourceId: a.runId,
-        fromAccountId: 'counterparty:game:expedition', toAccountId: 'player', amount: a.amount, kind: 'expedition_award', title: COPY.name }));
+    return [...data.awards.map(a => ({ idempotencyKey: `expedition:${a.key}`, actionId: a.actionId, sourceId: a.runId,
+        fromAccountId: 'counterparty:game:expedition', toAccountId: 'player', amount: a.amount, kind: 'expedition_award', title: COPY.name })),
+    ...data.purchases.map(p => ({ idempotencyKey: `expedition:outfit:${p.id}`, actionId: p.actionId, sourceId: p.id,
+        fromAccountId: 'player', toAccountId: 'system:sink', amount: p.amount, kind: 'expedition_outfit', title: COPY.wardrobe }))];
 }
 export function validateEconomy(data: ExpeditionData, economy: EconomyTransactionCapability) {
     const expected = legs(data), actual = economy.listOwnedTransactions().filter(t => t.idempotencyKey.startsWith('expedition:'));
@@ -16,7 +18,8 @@ export function validateEconomy(data: ExpeditionData, economy: EconomyTransactio
             || match.fromAccountId !== leg.fromAccountId || match.toAccountId !== leg.toAccountId || match.reversalOfTransactionId) { fault('invalid'); }
     }
 }
-export function postAwards(before: ExpeditionData, after: ExpeditionData, economy: EconomyTransactionCapability) {
-    const known = new Set(before.awards.map(a => a.key)); const fresh = legs(after).filter(l => !known.has(l.idempotencyKey.slice('expedition:'.length)));
+export function postExpeditionMoney(before: ExpeditionData, after: ExpeditionData, economy: EconomyTransactionCapability) {
+    const known = new Set(legs(before).map(a => a.idempotencyKey)); const fresh = legs(after).filter(l => !known.has(l.idempotencyKey));
+    if (fresh.filter(l => l.fromAccountId === 'player').reduce((sum, l) => sum + l.amount, 0) > economy.getAccountBalance('player')) { fault('funds'); }
     if (fresh.length) { economy.postAction({ legs: fresh }); }
 }

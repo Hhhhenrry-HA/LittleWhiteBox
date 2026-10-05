@@ -2,17 +2,15 @@ import { learningEvidence, learningUnitOfAttempt, replaceLearningAssessment } fr
 import { completeLearningByFacts, saveLearningModelEssay } from '../../../domains/learning/completion.js';
 import { parseLearningAnswer } from '../../../domains/learning/exercise.js';
 import { exposeLearningContent } from '../../../domains/learning/exposure.js';
-import { parseLearningHelp } from '../../../domains/learning/facts.js';
 import { defaultLearningProfile, LEARNING_DEFAULT_EXPLANATION_LANGUAGE, learningRecord, parseLearningLanguageTag, parseLearningProfile } from '../../../domains/learning/profile.js';
 import { correctLearningSchedules, learningReviewTier, newLearningSchedule, selectDueLearningItems } from '../../../domains/learning/schedule.js';
-import { learningLatestDraft, learningNeedsRevision, learningUnitStage } from '../../../domains/learning/stage.js';
 import { learningSpeechParts, parseLearningVoice } from '../../../domains/learning/speech.js';
 import type { LearningNote } from '../../../domains/learning/notes.js';
 import { canReadLearningScope, type LearningData, type LearningLanguage, type LearningScope } from '../../../domains/learning/types.js';
 import { learningArray, learningId, learningTimestamp, requireLearning, uniqueLearning } from '../../../domains/learning/validation.js';
-import type { createLearningRepository } from '../storage/repository.js';
+import type { createLearningRepository, LearningSaveConfirmation } from '../storage/repository.js';
 import { createLearningId } from './identity.js';
-import { appendLearningAttempt, type LearningAttemptBasis } from './attempt.js';
+import { appendLearningAttempt, learningAttemptConditions, learningAttemptUnit, type LearningAttemptBasis } from './attempt.js';
 
 export type LearningRepository = ReturnType<typeof createLearningRepository>;
 
@@ -22,7 +20,9 @@ export function confirmedLearning(repository: LearningRepository) {
     return snapshot.document;
 }
 
-export function createLearningService(repository: LearningRepository, options: { createId?: () => string; now?: () => string } = {}) {
+export function createLearningService(repository: LearningRepository, options: {
+    createId?: () => string; now?: () => string; onConfirmed?: LearningSaveConfirmation;
+} = {}) {
     const createId = options.createId ?? createLearningId;
     const now = options.now ?? (() => new Date().toISOString());
     const mutate = (language: string, change: (data: LearningData, index: number) => void, guard: () => boolean) => {
@@ -31,7 +31,7 @@ export function createLearningService(repository: LearningRepository, options: {
         const index = data.profiles.findIndex(profile => profile.language === language);
         requireLearning(index >= 0, 'language', 'Select a saved learning profile');
         change(data, index);
-        return repository.save(expected, data, guard);
+        return repository.save(expected, data, guard, options.onConfirmed);
     };
     const stamp = () => learningTimestamp(now(), 'now');
     const readingWriting = (profile: LearningLanguage, unitId: string) => {
@@ -71,7 +71,7 @@ export function createLearningService(repository: LearningRepository, options: {
                 explanationLanguage: pick('explanationLanguage', profile.explanationLanguage) ?? LEARNING_DEFAULT_EXPLANATION_LANGUAGE,
                 selfAssessment: profile.selfAssessment, level: pick('level', profile.level), interests: pick('interests', profile.interests),
                 goal: { ...profile.goal, exam: pick('exam', profile.goal.exam), targetLevel: pick('targetLevel', profile.goal.targetLevel) } }, 'settings'));
-            return repository.save(expected, data, guard);
+            return repository.save(expected, data, guard, options.onConfirmed);
         },
         /** A tapped explanation term goes into the vocabulary book, due tomorrow, before any evidence exists. */
         bookmarkTerm(language: string, unitId: string, materialId: string, paragraphId: string, termText: string, guard: () => boolean) {
@@ -90,33 +90,32 @@ export function createLearningService(repository: LearningRepository, options: {
         skipRevision(language: string, unitId: string, guard: () => boolean) {
             return mutate(language, (data, index) => {
                 const unit = readingWriting(data.profiles[index], unitId);
-                requireLearning(learningUnitStage(unit).stage === 'revising', 'unitId', 'Revision can be skipped while it is waiting');
                 unit.revisionSkipped = true;
             }, guard);
         },
-        /** One batch revises graded drafts; each latest draft that received corrections is revised at most once. */
-        submitRevision(language: string, unitId: string, revisions: unknown, guard: () => boolean) {
+        /** Revisions are new learner attempts; batches and further revisions preserve the earlier work. */
+        submitRevision(language: string, unitId: string, revisions: unknown, guard: () => boolean, basis?: LearningAttemptBasis) {
             return mutate(language, (data, index) => {
                 const unit = readingWriting(data.profiles[index], unitId);
-                requireLearning(learningUnitStage(unit).stage === 'revising', 'unitId', 'Revise after grading, before the revision is reviewed');
                 const entries = learningArray(revisions, 'revisions', (raw, path) => {
                     const entry = learningRecord(raw, path, ['attemptId', 'text']);
                     return { attemptId: learningId(entry.attemptId, `${path}.attemptId`), text: entry.text, path };
                 }, unit.exercises.length);
                 requireLearning(entries.length > 0, 'revisions', 'Submit at least one revised draft');
                 uniqueLearning(entries.map(entry => entry.attemptId), 'revisions');
-                const submittedAt = stamp();
+                const submittedAt = basis?.submittedAt ?? stamp();
                 for (const entry of entries) {
                     const draft = unit.attempts.find(attempt => attempt.id === entry.attemptId);
-                    requireLearning(draft && learningLatestDraft(unit, draft.exerciseId)?.id === draft.id
-                        && learningNeedsRevision(unit.assessments.find(assessment => assessment.attemptId === draft.id)),
-                    `${entry.path}.attemptId`, 'Revise a latest draft that received corrections');
+                    requireLearning(draft && unit.assessments.some(assessment => assessment.attemptId === draft.id),
+                        `${entry.path}.attemptId`, 'Revise a saved answer with feedback');
+                    const conditions = learningAttemptUnit(basis, language, unit, draft.exerciseId);
+                    const help = learningAttemptConditions(conditions, draft.exerciseId, draft.scope.kind === 'story' ? draft.scope.osId : null);
                     unit.attempts.push({ id: learningId(createId(), 'attemptId'), exerciseId: draft.exerciseId,
                         answer: parseLearningAnswer({ kind: 'text', text: entry.text }, { kind: 'text' }, [], `${entry.path}.text`), submittedAt,
-                        help: parseLearningHelp({ answer: unit.revealed.answers.includes(draft.exerciseId), hint: unit.revealed.hints.includes(draft.exerciseId),
-                            feedback: true, transcript: false, replays: 0, slowPlayback: false }),
+                        ...help, help: { ...help.help, feedback: true },
                         scope: structuredClone(draft.scope), revisesAttemptId: draft.id });
                 }
+                unit.revisionSkipped = false;
             }, guard);
         },
         saveModelEssay(language: string, unitId: string, value: unknown, guard: () => boolean) {
@@ -132,16 +131,18 @@ export function createLearningService(repository: LearningRepository, options: {
         /** Called by Host after a real submit. Returned intent is kept for this save, not recreated by retries. */
         prepareAttempt(input: { language: string; unitId: string; exerciseId: string; answer: unknown;
             scope: LearningScope; osId: string; replays: number; slowPlayback: boolean }, basis?: LearningAttemptBasis) {
-            const expected = basis ? basis.document : confirmedLearning(repository);
+            const expected = confirmedLearning(repository);
             const data = structuredClone(expected?.data ?? { profiles: [] });
             const profile = data.profiles.find(profile => profile.language === input.language);
             requireLearning(profile, 'language', 'Select a saved learning profile');
-            const attempt = appendLearningAttempt(profile, { ...input, createId, now: basis ? () => basis.submittedAt : now });
+            const currentUnit = [profile.unit, profile.review].find(entry => entry?.id === input.unitId);
+            const originalUnit = learningAttemptUnit(basis, input.language, currentUnit, input.exerciseId);
+            const attempt = appendLearningAttempt(profile, { ...input, createId, now: basis ? () => basis.submittedAt : now, basis: originalUnit });
             let submitted = false;
             return { attemptId: attempt.id, save(guard: () => boolean) {
                 requireLearning(!submitted, 'attemptId', 'This submission has been sent; read or verify its saved result');
                 submitted = true;
-                return repository.save(expected, data, guard);
+                return repository.save(expected, data, guard, options.onConfirmed);
             } };
         },
         reveal(language: string, unitId: string, kind: 'answers' | 'hints' | 'transcripts', id: string, osId: string, guard: () => boolean) {

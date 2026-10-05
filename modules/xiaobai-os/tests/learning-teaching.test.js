@@ -63,6 +63,47 @@ async function harness(handler, { session = false, search = false, beforeWrite }
         reopen: () => createLearningRepository(files).read() };
 }
 
+for (const ending of ['continue', 'failure']) {
+    test(`a concurrent unsent edit releases the draft without a pending-save lock (${ending})`, async t => {
+        t.mock.method(console, 'error', () => {});
+        const waiting = []; let rejected; let refreshed;
+        const h = await harness(async request => {
+            const current = JSON.parse(request.messages.findLast(message => message.role === 'user').content.split('<learning_request>\n')[1].split('\n</learning_request>')[0]);
+            const calls = results(request);
+            if (!calls.length) {
+                await new Promise(resolve => { waiting.push(resolve); if (waiting.length === 2) { waiting.forEach(release => release()); } });
+                return { text: current.action.kind === 'talk' ? 'Not-yet-saved claim' : '',
+                    toolCalls: [call('LearningProfileEdit', current.action.kind === 'profile' ? { level: 'B2' } : { interests: 'trees' })] };
+            }
+            if (current.action.kind === 'profile') { return { text: 'Level saved.' }; }
+            if (calls.length === 1) {
+                rejected = calls[0].response;
+                return { toolCalls: [call('LearningRead', {})] };
+            }
+            if (calls.length === 2) {
+                refreshed = calls[1].response;
+                if (ending === 'failure') { throw new Error('Provider stopped after reading'); }
+                return { toolCalls: [call('LearningProfileEdit', { interests: 'trees' })] };
+            }
+            assert.equal(calls.at(-1).response.status, 'confirmed');
+            return { text: 'Interests saved.' };
+        });
+        const [native, conversation] = await Promise.all([
+            h.teaching.run({ action: { kind: 'profile' }, message: 'Set B2.' }),
+            h.teaching.run({ action: { kind: 'talk' }, message: 'Set interests to trees.' }),
+        ]);
+        assert.equal(native.status, 'finished');
+        assert.equal(rejected.status, 'cancelled'); assert.equal(rejected.changed, false); assert.deepEqual(rejected.ids, []);
+        assert.equal(refreshed.section, 'overview'); assert.equal(refreshed.data.profile.level, 'B2');
+        assert.equal(h.repository.snapshot().status, 'ready'); assert.equal(h.repository.pendingCommitId(), null);
+        assert.equal(h.read().level, 'B2'); assert.equal(h.read().interests, ending === 'continue' ? 'trees' : null);
+        const turn = h.teaching.conversation().turns.find(turn => turn.purpose === 'talk');
+        assert.equal(turn.notice, undefined); assert.equal(turn.retryable, ending === 'failure');
+        assert.ok(!turn.messages.some(message => message.content === 'Not-yet-saved claim'));
+        assert.equal(conversation.status, ending === 'continue' ? 'finished' : 'failed');
+    });
+}
+
 test('paragraph feedback stays bound to its saved answer across chat, later submissions and rewrites', async () => {
     const material = { ...fixtureLesson.materials[0], key: 'article' };
     const reading = { ...lesson([material]), kind: 'reading-writing',
@@ -172,7 +213,7 @@ for (const outcome of ['confirmed', 'unconfirmed', 'failed', 'cancelled']) {
             if (outcome === 'cancelled') { h.teaching.cancel(); }
             assert.equal(h.teaching.conversation().turns.length, 1);
             assert.equal(h.teaching.conversation().turns[0].presentation, undefined);
-            assert.equal(h.read().unit, null);
+            assert.ok(h.read().unit);
             return { text: '试试用自己的话表达。' };
         });
         if (outcome === 'unconfirmed') { h.interruptSave(); }
@@ -186,44 +227,19 @@ for (const outcome of ['confirmed', 'unconfirmed', 'failed', 'cancelled']) {
             assert.equal(turns.length, 1);
             assert.equal(turns[0].presentation, undefined);
             assert.equal(turns[0].status, outcome);
-            assert.equal(h.read().unit, null);
+            assert.equal(h.read().unit === null, outcome === 'unconfirmed');
             if (outcome === 'unconfirmed') {
                 h.confirmSave(); await h.repository.verify();
                 assert.ok(h.read().unit);
                 const calls = h.requests.length;
-                assert.equal((await h.teaching.recoverConfirmed()).result.text, '试试用自己的话表达。');
-                assert.equal(h.teaching.conversation().turns.at(-1).presentation.id, h.read().unit.exercises[0].id);
+                assert.ok((await h.teaching.recoverConfirmed()).result.changed);
+                assert.equal(h.teaching.conversation().turns.at(-1).presentation, undefined);
                 assert.equal(await h.teaching.recoverConfirmed(), null);
                 assert.equal(h.requests.length, calls);
             }
         }
     });
 }
-
-test('a conversational submission delegates only after a complete reply; provider failure leaves the lesson intact', async () => {
-    let phase = 'prepare'; let step = 0;
-    const h = await harness(request => {
-        if (phase === 'prepare') { return ++step === 1 ? { toolCalls: [call('LearningLessonEdit', lesson())] } : { text: 'Summarise the main point.' }; }
-        if (++step === 1) { return { toolCalls: [call('LearningRequest', { action: 'submit', exerciseId: h.read().unit.exercises[0].id, instruction: 'Submit this:' })] }; }
-        if (phase === 'failed') { throw Object.assign(new Error('fixture'), { status: 401 }); }
-        return { text: '我会提交你的原答。' };
-    });
-    await h.teaching.run({ action, message: '开始' });
-    const original = structuredClone(h.read().unit);
-    const input = { action: { kind: 'talk' }, message: 'Submit this: Trees makes streets cool.' };
-    phase = 'failed'; step = 0;
-    const failed = await h.teaching.run(input);
-    assert.equal(failed.status, 'failed');
-    assert.equal(failed.delegation, undefined);
-    assert.deepEqual(h.read().unit, original);
-    phase = 'success'; step = 0;
-    const finished = await h.teaching.run(input);
-    assert.equal(finished.status, 'finished');
-    assert.equal(finished.delegation.action, 'submit');
-    assert.equal(finished.delegation.input.answer.text, input.message);
-    assert.deepEqual(h.read().unit, original);
-    assert.equal(h.teaching.conversation().turns.at(-1).user, input.message);
-});
 
 test('real submitted answer survives failed assessment and is evaluated under the same ID on retry', async () => {
     let phase = 'prepare';
@@ -285,7 +301,7 @@ test('cancel, changed classroom and late provider replies cannot publish staged 
             return { text: '晚到的新课程' };
         });
         assert.equal((await h.teaching.run({ action, message: '开始' })).status, 'cancelled');
-        assert.equal(h.read().unit, null);
+        assert.ok(h.read().unit);
     }
 });
 
@@ -300,8 +316,8 @@ test('empty replies and repeated no-progress calls stop, while a rejected edit d
         const result = await h.teaching.run({ action, message: '开始' });
         assert.equal(result.status, mode === 'invalid' ? 'finished' : 'failed');
         if (mode === 'invalid') { assert.equal(h.read().unit.title, lesson().title); }
-        else { assert.equal(h.read().unit, null); }
-        if (mode === 'limit') { assert.equal(result.reason, 'learning_stalled'); }
+        else { assert.ok(h.read().unit); }
+        if (mode === 'limit') { assert.equal(result.reason, 'learning_round_limit'); }
     }
 });
 

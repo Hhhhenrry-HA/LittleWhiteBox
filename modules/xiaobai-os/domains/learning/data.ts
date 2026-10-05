@@ -26,21 +26,18 @@ function checkReadingWriting(path: string, materials: LearningMaterial[], exerci
     requireLearning(materials.length === 1, `${path}.materials`, 'A reading-writing unit reads exactly one article');
     const article = materials[0];
     const paragraphs = article.paragraphs.map(paragraph => paragraph.id);
-    requireLearning(explanations.every((entry, index) => entry.materialId === article.id && entry.paragraphId === paragraphs[index]),
-        `${path}.explanations`, 'Explanations follow the article from its first paragraph, once each');
+    requireLearning(explanations.every(entry => entry.materialId === article.id && paragraphs.includes(entry.paragraphId)),
+        `${path}.explanations`, 'Explanations reference article paragraphs');
+    uniqueLearning(explanations.map(entry => entry.paragraphId), `${path}.explanations`);
     const summaries = exercises.filter(exercise => exercise.paragraphId !== undefined);
     requireLearning(summaries.every(exercise => openWriting(exercise) && exercise.materialIds.includes(article.id)), `${path}.exercises`, 'Paragraph summaries are open writing on the article');
     uniqueLearning(summaries.map(exercise => exercise.paragraphId!), `${path}.exercises`);
-    requireLearning(summaries.length === paragraphs.length, `${path}.exercises`, 'Summarise every article paragraph once');
-    const essays = exercises.filter(exercise => exercise.paragraphId === undefined);
-    requireLearning(essays.length <= 1 && essays.every(openWriting), `${path}.exercises`, 'A reading-writing unit has at most one open essay while preparation continues');
     for (const [index, attempt] of attempts.entries()) {
         if (attempt.revisesAttemptId === undefined) { continue; }
         const draft = attempts.slice(0, index).find(entry => entry.id === attempt.revisesAttemptId);
-        requireLearning(draft && draft.revisesAttemptId === undefined && draft.exerciseId === attempt.exerciseId
+        requireLearning(draft && draft.exerciseId === attempt.exerciseId
             && assessments.some(entry => entry.attemptId === draft.id), `${path}.attempts`, 'A revision revises an earlier, assessed draft of the same exercise');
     }
-    uniqueLearning(attempts.flatMap(attempt => attempt.revisesAttemptId ?? []), `${path}.attempts`);
 }
 
 export function parseLearningUnit(value: unknown, path = 'unit'): LearningUnit {
@@ -63,7 +60,6 @@ export function parseLearningUnit(value: unknown, path = 'unit'): LearningUnit {
     requireLearning(rw || attempts.every(attempt => attempt.revisesAttemptId === undefined), `${path}.attempts`, 'Only reading-writing drafts are revised');
     if (kind === 'review') {
         uniqueLearning(exercises.map(exercise => exercise.itemId!), `${path}.exercises`);
-        uniqueLearning(attempts.map(attempt => attempt.exerciseId), `${path}.attempts`);
     }
     for (const assessment of assessments) {
         const attempt = attempts.find(attempt => attempt.id === assessment.attemptId);

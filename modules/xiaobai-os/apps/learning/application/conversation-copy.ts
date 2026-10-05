@@ -10,4 +10,5 @@ export const LEARNING_CONVERSATION_COPY = {
     memoryClearFailed: '对话记录尚未确认清理，请检查保存状态。',
     learningSaveUnconfirmed: '学习修改尚未确认保存，请检查保存。',
     learningSaveConflict: '学习记录有冲突，请检查保存。',
+    learningSaveRecovered: '已确认刚才的修改保存成功。这次工作中途停下了，可以接着提出未完成的要求。',
 } as const;

@@ -1,7 +1,6 @@
 import { parseLearningData } from '../../../domains/learning/data.js';
 import { mergeLearningExposure } from '../../../domains/learning/merge-exposure.js';
-import { mergeLearningSupplement } from '../../../domains/learning/preparation.js';
-import type { LearningData, LearningUnit } from '../../../domains/learning/types.js';
+import type { LearningData } from '../../../domains/learning/types.js';
 import type { JsonUserFilePort } from '../../../kernel/contracts.js';
 import { XiaobaiOsStorageError } from '../../../storage/storage-port.js';
 import { createLearningId } from '../application/identity.js';
@@ -15,9 +14,13 @@ type SaveResult = (
     | { status: 'confirmed' | 'unchanged'; document: LearningDocument | null }
     | { status: 'cancelled' | 'unconfirmed' | 'conflict' }) & { commitId?: string };
 
+/** Runtime-only acknowledgement of this exact write, including later verification. */
+export type LearningSaveConfirmation = (result: Extract<SaveResult, { status: 'confirmed' | 'unchanged' }>) => void;
+
 interface PendingWrite {
     expected: LearningDocument | null;
     candidate: LearningDocument;
+    onConfirmed?: LearningSaveConfirmation;
 }
 
 /** One instance per host session; closing the OS must not discard an uncertain upload. */
@@ -55,16 +58,22 @@ export function createLearningRepository(files: JsonUserFilePort, options: {
             status: conflict ? 'conflict' as const : pending ? 'unconfirmed' as const : confirmed === undefined ? 'unloaded' as const : 'ready' as const };
     }
 
+    function accept(entry: PendingWrite, document: LearningDocument): SaveResult {
+        confirmed = document;
+        pending = null;
+        conflict = false;
+        const result = { status: 'confirmed' as const, document: structuredClone(document), commitId: document.commitId };
+        entry.onConfirmed?.(result);
+        return result;
+    }
+
     async function inspectPending(): Promise<{ result: SaveResult; observed?: LearningDocument | null }> {
         if (!pending) { return { result: { status: conflict ? 'conflict' : 'unchanged', document: structuredClone(confirmed ?? null) } }; }
         let observed;
         try { observed = await readFile(); }
         catch { return { result: { status: 'unconfirmed' } }; }
         if (sameLearningDocument(observed, pending.candidate)) {
-            confirmed = observed;
-            pending = null;
-            conflict = false;
-            return { result: { status: 'confirmed', document: structuredClone(confirmed) }, observed };
+            return { result: accept(pending, observed!), observed };
         }
         conflict = !sameLearningDocument(observed, pending.expected);
         return { result: { status: conflict ? 'conflict' : 'unconfirmed' }, observed };
@@ -82,10 +91,6 @@ export function createLearningRepository(files: JsonUserFilePort, options: {
         pending = entry;
         try {
             await files.replace(LEARNING_FILENAME, structuredClone(entry.candidate));
-            confirmed = entry.candidate;
-            pending = null;
-            conflict = false;
-            return { status: 'confirmed', document: structuredClone(confirmed), commitId: entry.candidate.commitId };
         } catch (error) {
             const status = error instanceof XiaobaiOsStorageError ? error.httpStatus : undefined;
             if (status !== undefined && status >= 400 && status < 500 && status !== 408 && status !== 429) {
@@ -93,18 +98,19 @@ export function createLearningRepository(files: JsonUserFilePort, options: {
                 throw new LearningStorageError('learning_write_rejected');
             }
             // A rejected fetch may still complete on the server. Never resend it on this evidence alone.
+            return { ...await verifyWrite(), commitId: entry.candidate.commitId };
         }
-        return { ...await verifyWrite(), commitId: entry.candidate.commitId };
+        return accept(entry, entry.candidate);
     }
 
-    function save(expected: LearningDocument | null, data: LearningData, isCurrent: () => boolean): Promise<SaveResult> {
+    function save(expected: LearningDocument | null, data: LearningData, isCurrent: () => boolean, onConfirmed?: LearningSaveConfirmation): Promise<SaveResult> {
         // Freeze caller inputs before entering the queue; queued changes cannot mutate this intent.
         const baseline = expected === null ? null : parseLearningDocument(expected);
         const next = parseLearningData(data);
-        return enqueue(() => saveNow(baseline, next, isCurrent));
+        return enqueue(() => saveNow(baseline, next, isCurrent, onConfirmed));
     }
 
-    async function saveNow(baseline: LearningDocument | null, next: LearningData, isCurrent: () => boolean): Promise<SaveResult> {
+    async function saveNow(baseline: LearningDocument | null, next: LearningData, isCurrent: () => boolean, onConfirmed?: LearningSaveConfirmation): Promise<SaveResult> {
         if (!isCurrent()) { return { status: 'cancelled' }; }
         if (pending || conflict) { throw new LearningStorageError('learning_resolve_pending_first'); }
         await ensureLoaded();
@@ -115,7 +121,9 @@ export function createLearningRepository(files: JsonUserFilePort, options: {
         if (!rebased) { return { status: 'cancelled' }; }
         confirmed = observed;
         if (JSON.stringify(observed?.data ?? { profiles: [] }) === JSON.stringify(rebased)) {
-            return { status: 'unchanged', document: structuredClone(observed) };
+            const result = { status: 'unchanged' as const, document: structuredClone(observed) };
+            onConfirmed?.(result);
+            return result;
         }
         const candidate = parseLearningDocument({ schemaVersion: 2, revision: (observed?.revision ?? 0) + 1,
             commitId: createId(), data: rebased });
@@ -124,30 +132,13 @@ export function createLearningRepository(files: JsonUserFilePort, options: {
             throw new LearningStorageError('learning_file_full');
         }
         if (!isCurrent()) { return { status: 'cancelled' }; }
-        return upload({ expected: observed, candidate });
-    }
-
-    function supplement(language: string, before: LearningUnit, prepared: LearningUnit, isCurrent: () => boolean): Promise<SaveResult> {
-        const original = structuredClone(before);
-        const additions = structuredClone(prepared);
-        return enqueue(async () => {
-            if (!isCurrent()) { return { status: 'cancelled' }; }
-            if (pending || conflict) { throw new LearningStorageError('learning_resolve_pending_first'); }
-            await ensureLoaded();
-            const data = structuredClone(confirmed?.data ?? { profiles: [] });
-            const profile = data.profiles.find(entry => entry.language === language);
-            const merged = profile?.unit && mergeLearningSupplement(original, profile.unit, additions);
-            if (!profile || !merged) { return { status: 'cancelled' }; }
-            profile.unit = merged;
-            return saveNow(confirmed ?? null, parseLearningData(data), isCurrent);
-        });
+        return upload({ expected: observed, candidate, onConfirmed });
     }
 
     return Object.freeze({
         snapshot,
         pendingCommitId: () => pending?.candidate.commitId ?? null,
         save,
-        supplement,
         read: () => enqueue(async () => {
             await ensureLoaded();
             return snapshot();
@@ -167,6 +158,7 @@ export function createLearningRepository(files: JsonUserFilePort, options: {
         }),
         adoptServer: () => enqueue(async () => {
             const observed = await readFile();
+            if (pending && sameLearningDocument(observed, pending.candidate)) { accept(pending, observed!); return snapshot(); }
             confirmed = observed;
             pending = null;
             conflict = false;

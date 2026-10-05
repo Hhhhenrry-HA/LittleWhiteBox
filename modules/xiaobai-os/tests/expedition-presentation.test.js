@@ -4,9 +4,12 @@ import { parseHTML } from 'linkedom';
 import { Group, Mesh, OrthographicCamera, Vector3 } from 'three';
 import { createControls } from '../apps/game/expedition/controls.ts';
 import { CAMERA_EIGHTH_TURNS } from '../apps/game/expedition/visuals.ts';
-import { createBattle, tickBattle } from '../apps/game/expedition/combat.ts';
+import { createBattle as initializeBattle, tickBattle } from '../apps/game/expedition/combat.ts';
 import { createSceneKit } from '../apps/game/expedition/scene-kit.ts';
 import { buildWorld } from '../apps/game/expedition/scene-world.ts';
+
+import { REGIONS } from '../apps/game/expedition/content.ts';
+const createBattle = (seed, zone, elite, boss, hp, gear) => initializeBattle({ seed, zone, chapter: zone % 3, elite, boss, hp, bossKind: REGIONS[zone].bosses[0], encounter: 'skirmish' }, gear);
 
 function withControls(run) {
     const { window } = parseHTML('<main tabindex="0"><button></button></main>');
@@ -49,7 +52,7 @@ test('focus loss clears movement/actions and Space does not hijack a focused act
 test('every region builds valid camp, ordinary and boss geometry without changing combat state', () => {
     const kit = createSceneKit(), root = new Group();
     try {
-        for (let zone = 0; zone < 3; zone++) {
+        for (let zone = 0; zone < REGIONS.length; zone++) {
             for (const boss of [null, false, true]) {
                 const battle = boss === null ? null : createBattle(7, zone, false, boss, 100, { weapon: 'blade', relics: [], oaths: [] });
                 const before = structuredClone(battle), dispose = buildWorld(kit, root, zone, battle);

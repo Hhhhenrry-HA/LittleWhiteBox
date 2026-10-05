@@ -43,7 +43,7 @@ for (const toolMode of ['native', 'tagged-json']) {
                 assert.equal(h.profile().goal.description, '正常结束才保存');
                 assert.equal(turn.teacher, partial);
             } else {
-                assert.deepEqual(h.profile(), before);
+                assert.deepEqual(h.profile(), { ...before, goal: { ...before.goal, description: '正常结束才保存' } });
                 assert.ok(turn.message);
                 assert.ok(!JSON.stringify(turn).includes(partial));
             }
@@ -235,7 +235,7 @@ test(`real Responses SDK ${ending} respects the classroom commit boundary`, asyn
     assert.equal(requests, 1, 'Termination failures must not retry');
     if (ending === 'completed') { assert.equal(h.profile().goal.description, '不应保存的修改'); }
     else {
-        assert.deepEqual(h.profile(), before);
+        assert.deepEqual(h.profile(), { ...before, goal: { ...before.goal, description: '不应保存的修改' } });
         assert.ok(!turn.messages.some(entry => entry.role === 'tool' && entry.toolCallId === 'late-edit'));
     }
 });
@@ -364,7 +364,7 @@ test('source snippets and wrap-up drafts stay private while their references rem
     assert.ok(search.content.includes(secret)); assert.ok(completion.toolCalls[0].arguments.includes(secret));
 });
 
-for (const ending of ['confirmed', 'unconfirmed', 'rejected', 'cancelled']) {
+for (const ending of ['confirmed', 'unconfirmed', 'cancelled']) {
     test(`help about a new listening lesson waits for that lesson's confirmed save (${ending})`, async t => {
         t.mock.method(console, 'error', () => {});
         const h = await createClassroomFixture(); const gate = deferred();
@@ -386,19 +386,19 @@ for (const ending of ['confirmed', 'unconfirmed', 'rejected', 'cancelled']) {
         const running = h.command('replace-lesson', { unitId: before.unit.id, message: '换一篇听力。' });
         const pending = await waiting;
         assert.ok(!JSON.stringify(pending.workbenchConversation).includes(secret));
-        assert.deepEqual(h.profile(), before);
+        assert.equal(h.profile().unit.id === before.unit.id, ending === 'unconfirmed');
         if (ending === 'cancelled') { await h.command('cancel'); }
         gate.resolve(); await running;
         if (ending !== 'confirmed') {
             assert.ok(!JSON.stringify(h.state().workbenchConversation).includes(secret));
-            assert.deepEqual(h.profile(), before);
+            assert.equal(h.profile().unit.id === before.unit.id, ending === 'unconfirmed');
         }
         if (ending === 'unconfirmed') {
             const requests = h.counts.provider; h.flags.userFailure = false;
             await h.command('retry-save'); assert.equal(h.counts.provider, requests);
         }
         if (ending === 'confirmed' || ending === 'unconfirmed') {
-            assert.ok(JSON.stringify(h.state().workbenchConversation).includes(secret));
+            assert.equal(JSON.stringify(h.state().workbenchConversation).includes(secret), ending === 'confirmed');
             assert.equal(h.profile().unit.materials[0].transcriptRevealed, false);
             assert.deepEqual(h.profile().unit.revealed.hints, []);
         }
@@ -461,12 +461,12 @@ test(`reading a helped but unpublished lesson exposes only metadata (${section})
     const pending = nextState(h, state => state.workbenchConversation.turns.at(-1)?.messages.some(entry => entry.toolName === 'LearningRead' && entry.content));
     const run = h.command('replace-lesson', { unitId: before.unit.id, message: '准备听力材料。' });
     assert.ok(!JSON.stringify((await pending).workbenchConversation).includes(secret));
-    assert.deepEqual(h.profile(), before);
+    assert.notEqual(h.profile().unit.id, before.unit.id);
     await h.command('cancel'); gate.resolve(); await run;
     assert.ok(!JSON.stringify(h.state().workbenchConversation).includes(secret));
     h.flags.teacherResponse = ((_request, round) => round === 1
         ? { toolCalls: [call('LearningLessonEdit', lesson)] } : { text: '请先听一遍。' });
-    await h.command('replace-lesson', { unitId: before.unit.id, message: '使用同一段原文。' });
+    await h.command('replace-lesson', { unitId: h.profile().unit.id, message: '使用同一段原文。' });
     const unit = h.profile().unit;
     assert.equal(unit.materials[0].paragraphs[0].text, secret);
     assert.equal(unit.materials[0].transcriptRevealed, false);

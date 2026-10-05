@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useAppLayer } from '../../../shell/app-src/navigation/app-navigation.js';
 import type { LearningClientState } from '../types.js';
-import type { LearningActivityPresentation } from '../application/presentation.js';
+import type { LearningPresentation } from '../application/presentation.js';
 import type { LearningSelection } from '../../../domains/learning/notes.js';
 import type { LearningAnswer } from '../../../domains/learning/types.js';
 import AnswerInput from './AnswerInput.vue';
@@ -15,7 +15,7 @@ import { learningAnswerText } from '../application/answer-text.js';
 import { createLearningAnswerDraft, type LearningAnswerDraft } from './answer-draft.js';
 import { useLearningUnitSession } from './learning-session.js';
 
-const props = defineProps<{ state: LearningClientState; target: LearningActivityPresentation; disabled: boolean }>();
+const props = defineProps<{ state: LearningClientState; target: LearningPresentation; disabled: boolean }>();
 const emit = defineEmits<{ action: [name: string, input?: Record<string, unknown>]; close: []; ask: [exerciseId: string | undefined, selection?: LearningSelection] }>();
 const body = ref<HTMLElement | null>(null);
 const session = useLearningUnitSession(() => props.target.unitId);

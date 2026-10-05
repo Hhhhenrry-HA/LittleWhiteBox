@@ -72,17 +72,6 @@ export async function createClassroomFixture({ listening = false, lesson: lesson
             const message = request.messages.findLast(entry => entry.role === 'user');
             const input = JSON.parse(message.content.split('<learning_request>\n').at(-1).split('\n</learning_request>')[0]);
             const action = input.action;
-            if (action.kind === 'reading-article') {
-                return { toolCalls: [call('LearningArticle', { title: lessonInput.title, goal: lessonInput.goal, tier: lessonInput.tier,
-                    kind: 'authored', text: lessonInput.materials[0].text })] };
-            }
-            if (action.kind === 'reading-notes') {
-                return { toolCalls: [call('LearningReadingNotes', { explanations: action.paragraphIds.map(paragraphId => ({ paragraphId,
-                    explanation: '注意本段的主题句和连接方式，用自己的话概括作者的意思。', terms: [] })) })] };
-            }
-            if (action.kind === 'reading-essay') {
-                return { toolCalls: [call('LearningEssayTask', { prompt: 'Should cities plant more trees? Give your view in around 300 words.' })] };
-            }
             if (action.kind === 'summary-review') { return { text: '抓住了主要意思，可以再补充作者给出的理由。' }; }
             if (action.kind === 'profile') {
                 if (flags.profileReply !== null) { return { text: flags.profileReply }; }
@@ -91,6 +80,15 @@ export async function createClassroomFixture({ listening = false, lesson: lesson
             if (action.kind === 'prepare') {
                 if (flags.prepareReply !== null) { return { text: flags.prepareReply }; }
                 const lesson = structuredClone(lessonInput);
+                if (action.unit === 'reading-writing') {
+                    lesson.kind = 'reading-writing';
+                    lesson.explanations = lesson.materials[0].text.split(/\n\s*\n/).map((_text, index) => ({ materialKey: lesson.materials[0].key,
+                        paragraphId: `p${index + 1}`, explanation: '注意主题句与上下文的联系。', terms: [] }));
+                    lesson.exercises = [...lesson.explanations.map(note => ({ key: `summary:${note.paragraphId}`, paragraphId: note.paragraphId,
+                        skill: 'writing', materialKeys: [lesson.materials[0].key], prompt: 'Summarise this paragraph.', response: { kind: 'text' }, rule: { kind: 'semantic' } })),
+                    { key: 'essay', skill: 'writing', materialKeys: [lesson.materials[0].key],
+                        prompt: 'Should cities plant more trees? Explain your reasons.', response: { kind: 'text' }, rule: { kind: 'semantic' } }];
+                }
                 if (listening) { lesson.exercises[0].skill = 'listening'; }
                 return { toolCalls: [call('LearningLessonEdit', lesson)] };
             }

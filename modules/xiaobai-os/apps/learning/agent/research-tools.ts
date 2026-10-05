@@ -21,7 +21,7 @@ export function learningResearchTools() {
                 'Returns {ok,results,failed:[{candidateId,error}]}. Each result contains sourceId, url, title, retrievedAt, paragraphCount, paragraphs and nextOffset, plus candidateId when reading search candidates. Partial successes remain usable.',
                 'Paragraph entries contain paragraph (1-based), id, textOffset, text and paragraphComplete. Assemble chunks with the same paragraph number in offset order. Only fully read ranges can support an excerpt.',
                 'Reading another page of a successful source uses the same in-memory text without another network request. Errors return {ok:false,error,httpStatus?,path?,message?}.',
-                'learning_source_unavailable means the page yielded no text. For full reading-writing preparation, learning_source_incomplete means too little text was retrieved even for the article’s minimum extent. Try another candidate; these results cannot support an adaptation.',
+                'learning_source_unavailable means the page yielded no text. Read the extracted body to judge whether it supplies the source needed for this learner’s request.',
             ].join('\n'),
             parameters: { type: 'object', properties: {
                 candidateIds: { type: 'array', minItems: 1, maxItems: 2, items: { type: 'string' }, description: 'One or two IDs returned by LearningSearch in this classroom.' },

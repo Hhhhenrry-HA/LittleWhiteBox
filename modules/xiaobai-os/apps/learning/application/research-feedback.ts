@@ -9,8 +9,6 @@ const researchFailures = {
     learning_extract_failed: '读取正文时连接中断，请检查联网取材连接后重试。',
     learning_extract_invalid_response: '联网服务返回的内容无法作为正文读取，可以重试或改读原创文章。',
     learning_source_unavailable: '这个网页没有读到可用正文，可以换一个来源或改读原创文章。',
-    learning_source_incomplete: '这个网页取回的文字太少，还不够准备整篇读写练习，需要换一个来源。',
-    learning_article_incomplete: '这次整理的文章太短，还不够做整篇读写练习，尚未保存。',
     learning_source_too_large: '这个网页内容太多，未能读入。可以换一个来源或改读原创文章。',
     learning_research_failed: '这次联网取材没有完成，可以重试或改读原创文章。',
 } as const;

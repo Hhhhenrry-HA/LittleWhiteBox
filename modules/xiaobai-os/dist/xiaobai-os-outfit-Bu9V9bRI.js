@@ -1,5 +1,5 @@
 /* eslint-disable */
-var y = {
+var p = {
   fee: 50,
   habitableAward: 50,
   collectionSize: 6,
@@ -7,12 +7,12 @@ var y = {
   maxParts: 40,
   maxWidth: 6,
   maxDepth: 3
-}, re = [
+}, ae = [
   "courtyard",
   "duplex",
   "terrace",
   "sunroom"
-], _ = {
+], E = {
   courtyard: {
     floors: 1,
     living: 2,
@@ -37,7 +37,7 @@ var y = {
     materials: 12,
     award: 140
   }
-}, ae = "sunroom", x = {
+}, oe = "sunroom", k = {
   hall: {
     width: 1,
     cost: 0
@@ -74,7 +74,7 @@ var y = {
     width: 1,
     cost: 0
   }
-}, I = [
+}, O = [
   "room",
   "wide",
   "study",
@@ -82,7 +82,7 @@ var y = {
   "path",
   "terrace"
 ];
-function oe(e) {
+function se(e) {
   return e.heights.flatMap((n, a) => Array.from({ length: n }, (r, t) => ({
     x: a % e.width,
     y: t,
@@ -92,7 +92,7 @@ function oe(e) {
 function j(e, n, a) {
   return e.heights[a * e.width + n];
 }
-var se = {
+var ie = {
   width: 1.3,
   height: 1.12,
   depth: 1.15
@@ -100,27 +100,27 @@ var se = {
 function S(e) {
   return e === "room" || e === "wide" || e === "study";
 }
-function p(e) {
+function v(e) {
   return e === "entry" || e === "hall" || S(e);
 }
-function d(e) {
+function l(e) {
   return `${e.x}:${e.y}:${e.z}`;
 }
-function f(e) {
-  return Array.from({ length: x[e.kind].width }, (n, a) => ({
+function y(e) {
+  return Array.from({ length: k[e.kind].width }, (n, a) => ({
     x: e.x + a,
     y: e.y,
     z: e.z
   }));
 }
-var U = ["room", "room"], Z = I.filter((e) => e !== "path");
-function F(e, n) {
+var F = ["room", "room"], Z = O.filter((e) => e !== "path");
+function H(e, n) {
   return Object.fromEntries(Z.map((a) => [a, e.owned.filter((r) => r === a).length - n.filter((r) => r.kind === a).length]));
 }
-function ie(e, n) {
-  return Object.values(F(e, n)).every((a) => a >= 0);
+function le(e, n) {
+  return Object.values(H(e, n)).every((a) => a >= 0);
 }
-function z(e) {
+function b(e) {
   return [
     {
       ...e,
@@ -140,45 +140,45 @@ function z(e) {
     }
   ];
 }
-function k(e) {
+function w(e) {
   const n = /* @__PURE__ */ new Map();
-  for (const a of e) for (const r of f(a)) n.set(d(r), a);
+  for (const a of e) for (const r of y(a)) n.set(l(r), a);
   return n;
 }
-function O(e, n, a = {
+function P(e, n, a = {
   x: e.entrance,
   y: 0,
   z: e.entryZ
 }) {
-  const r = k(n), t = H(e, n), o = d(a), s = /* @__PURE__ */ new Map();
+  const r = w(n), t = V(e, n), o = l(a), s = /* @__PURE__ */ new Map();
   if (!r.has(o) || r.get(o).kind === "roof") return s;
   const u = [a];
   s.set(o, null);
   for (let h = 0; h < u.length; h++) {
-    const m = u[h], i = d(m), c = z(m);
-    t.has(i) && c.push({
+    const m = u[h], i = l(m), d = b(m);
+    t.has(i) && d.push({
       ...m,
       y: m.y + 1
-    }), t.has(d({
+    }), t.has(l({
       ...m,
       y: m.y - 1
-    })) && c.push({
+    })) && d.push({
       ...m,
       y: m.y - 1
     });
-    for (const l of c) {
-      const g = d(l), w = r.get(g);
-      w && w.kind !== "roof" && !s.has(g) && (s.set(g, i), u.push(l));
+    for (const c of d) {
+      const f = l(c), x = r.get(f);
+      x && x.kind !== "roof" && !s.has(f) && (s.set(f, i), u.push(c));
     }
   }
   return s;
 }
-function b(e, n) {
-  return O(e, n);
+function M(e, n) {
+  return P(e, n);
 }
 function de(e, n, a, r) {
-  const t = O(e, n, r);
-  let o = d(a);
+  const t = P(e, n, r);
+  let o = l(a);
   if (!t.has(o)) return [];
   const s = [];
   for (; o !== null; ) {
@@ -191,35 +191,35 @@ function de(e, n, a, r) {
   }
   return s;
 }
-function H(e, n) {
-  const a = k(n), r = /* @__PURE__ */ new Set(), t = /* @__PURE__ */ new Set();
-  for (const o of n.filter((s) => s.y > 0 && s.kind !== "roof").flatMap(f)) {
-    if (t.has(d(o))) continue;
+function V(e, n) {
+  const a = w(n), r = /* @__PURE__ */ new Set(), t = /* @__PURE__ */ new Set();
+  for (const o of n.filter((s) => s.y > 0 && s.kind !== "roof").flatMap(y)) {
+    if (t.has(l(o))) continue;
     const s = [o];
-    t.add(d(o));
-    for (let i = 0; i < s.length; i++) for (const c of z(s[i])) {
-      const l = d(c), g = a.get(l);
-      g && g.kind !== "roof" && !t.has(l) && (t.add(l), s.push(c));
+    t.add(l(o));
+    for (let i = 0; i < s.length; i++) for (const d of b(s[i])) {
+      const c = l(d), f = a.get(c);
+      f && f.kind !== "roof" && !t.has(c) && (t.add(c), s.push(d));
     }
     const u = s.map((i) => ({
       ...i,
       y: i.y - 1
     })).filter((i) => {
-      const c = a.get(d(i));
-      return c && p(c.kind);
-    }), h = (i) => ["hall", "entry"].includes(a.get(d(i)).kind) ? 0 : 1, m = (i) => Math.abs(i.x - e.entrance) + Math.abs(i.z - e.entryZ);
-    u.sort((i, c) => h(i) - h(c) || m(i) - m(c) || i.z - c.z || i.x - c.x), u.length && r.add(d(u[0]));
+      const d = a.get(l(i));
+      return d && v(d.kind);
+    }), h = (i) => ["hall", "entry"].includes(a.get(l(i)).kind) ? 0 : 1, m = (i) => Math.abs(i.x - e.entrance) + Math.abs(i.z - e.entryZ);
+    u.sort((i, d) => h(i) - h(d) || m(i) - m(d) || i.z - d.z || i.x - d.x), u.length && r.add(l(u[0]));
   }
   return r;
 }
-function P(e, n) {
-  return n.filter((a) => a.y === 0 && p(a.kind)).flatMap(f).sort((a, r) => Math.abs(a.x - e.entrance) + Math.abs(a.z - e.entryZ) - (Math.abs(r.x - e.entrance) + Math.abs(r.z - e.entryZ)) || a.x - r.x)[0] ?? null;
-}
 function A(e, n) {
-  const a = P(e, n), r = n.map((s) => s.kind === "hall" && a && d(s) === d(a) ? {
+  return n.filter((a) => a.y === 0 && v(a.kind)).flatMap(y).sort((a, r) => Math.abs(a.x - e.entrance) + Math.abs(a.z - e.entryZ) - (Math.abs(r.x - e.entrance) + Math.abs(r.z - e.entryZ)) || a.x - r.x)[0] ?? null;
+}
+function C(e, n) {
+  const a = A(e, n), r = n.map((s) => s.kind === "hall" && a && l(s) === l(a) ? {
     ...s,
     kind: "entry"
-  } : s), t = k(r), o = r.filter((s) => p(s.kind)).flatMap(f).filter((s) => !t.has(d({
+  } : s), t = w(r), o = r.filter((s) => v(s.kind)).flatMap(y).filter((s) => !t.has(l({
     x: s.x,
     y: s.y + 1,
     z: s.z
@@ -231,39 +231,39 @@ function A(e, n) {
     z: s.z
   }))];
 }
-function C(e, n, a) {
-  const r = P(e, a);
+function B(e, n, a) {
+  const r = A(e, a);
   return !r || Math.abs(r.y - n.y) + Math.abs(r.x - n.x) + Math.abs(r.z - n.z) > 1;
 }
-function V(e, n) {
-  const a = k(n);
+function G(e, n) {
+  const a = w(n);
   return [-1, 1].filter((r) => {
-    const t = a.get(d({
-      x: r < 0 ? e.x - 1 : e.x + x[e.kind].width,
+    const t = a.get(l({
+      x: r < 0 ? e.x - 1 : e.x + k[e.kind].width,
       y: e.y,
       z: e.z
     }));
-    return !t || !p(t.kind);
+    return !t || !v(t.kind);
   });
 }
-function B(e, n, a) {
-  return !a.some((r) => r !== n && r.z === n.z && r.y >= n.y && f(r).some((t) => t.x === n.x || Math.sign(t.x - n.x) === e.sunSide));
+function D(e, n, a) {
+  return !a.some((r) => r !== n && r.z === n.z && r.y >= n.y && y(r).some((t) => t.x === n.x || Math.sign(t.x - n.x) === e.sunSide));
 }
-function T(e, n, a) {
-  return C(e, n, a) ? V(n, a).length ? null : "window" : "noisy";
+function R(e, n, a) {
+  return B(e, n, a) ? G(n, a).length ? null : "window" : "noisy";
 }
-function R(e, n) {
-  const a = k(n), r = b(e, n);
+function _(e, n) {
+  const a = w(n), r = M(e, n);
   return n.flatMap((t) => {
     const o = t.kind === "study" ? "read" : t.kind === "terrace" ? "sunbathe" : t.kind === "room" ? "rest" : t.kind === "wide" ? "relax" : t.kind === "garden" ? "garden" : null;
     return o ? [{
       part: t,
       activity: o,
-      issue: r.has(d(t)) ? o === "read" && T(e, t, n) ? T(e, t, n) : o === "sunbathe" && !B(e, t, n) ? "shaded" : [
+      issue: r.has(l(t)) ? o === "read" && R(e, t, n) ? R(e, t, n) : o === "sunbathe" && !D(e, t, n) ? "shaded" : [
         "read",
         "rest",
         "relax"
-      ].includes(o) && f(t).some((s) => !a.has(d({
+      ].includes(o) && y(t).some((s) => !a.has(l({
         x: s.x,
         y: s.y + 1,
         z: s.z
@@ -271,21 +271,21 @@ function R(e, n) {
     }] : [];
   });
 }
-function G(e, n) {
-  const a = b(e, n), r = n.filter((o) => a.has(d(o))), t = {
-    quietReading: r.some((o) => o.kind === "study" && !T(e, o, n)),
-    sunTerrace: r.some((o) => o.kind === "terrace" && B(e, o, n)),
+function K(e, n) {
+  const a = M(e, n), r = n.filter((o) => a.has(l(o))), t = {
+    quietReading: r.some((o) => o.kind === "study" && !R(e, o, n)),
+    sunTerrace: r.some((o) => o.kind === "terrace" && D(e, o, n)),
     garden: r.some((o) => o.kind === "garden" && Math.sign(o.x - e.entrance) === e.gardenSide),
-    spacious: r.filter((o) => S(o.kind)).reduce((o, s) => o + x[s.kind].width, 0) >= e.living,
+    spacious: r.filter((o) => S(o.kind)).reduce((o, s) => o + k[s.kind].width, 0) >= e.living,
     upstairs: r.some((o) => S(o.kind) && o.y === e.floors - 1),
     terrace: r.some((o) => o.kind === "terrace")
   };
-  return K(e).map((o) => ({
+  return J(e).map((o) => ({
     id: o,
     met: t[o]
   }));
 }
-function K(e) {
+function J(e) {
   switch (e.tier) {
     case "courtyard":
       return ["garden", "spacious"];
@@ -298,7 +298,7 @@ function K(e) {
   }
 }
 function ce(e, n) {
-  const a = R(e, n).filter((r) => !r.issue);
+  const a = _(e, n).filter((r) => !r.issue);
   return [
     "read",
     "sunbathe",
@@ -311,54 +311,54 @@ function ce(e, n) {
   });
 }
 function N(e) {
-  return e.reduce((n, a) => n + x[a.kind].cost, 0);
+  return e.reduce((n, a) => n + k[a.kind].cost, 0);
 }
 function q(e, n) {
-  if (n.length > y.maxParts) return "materials";
+  if (n.length > p.maxParts) return "materials";
   const a = /* @__PURE__ */ new Map();
   for (const t of n) {
-    if (t.kind !== "hall" && !I.includes(t.kind) || !Number.isInteger(t.x) || !Number.isInteger(t.y) || !Number.isInteger(t.z) || t.z < 0 || t.z >= e.depth || t.x < 0 || t.x + x[t.kind].width > e.width || t.y < 0 || f(t).some((o) => o.y >= j(e, o.x, o.z))) return "bounds";
-    for (const o of f(t)) {
-      const s = d(o);
+    if (t.kind !== "hall" && !O.includes(t.kind) || !Number.isInteger(t.x) || !Number.isInteger(t.y) || !Number.isInteger(t.z) || t.z < 0 || t.z >= e.depth || t.x < 0 || t.x + k[t.kind].width > e.width || t.y < 0 || y(t).some((o) => o.y >= j(e, o.x, o.z))) return "bounds";
+    for (const o of y(t)) {
+      const s = l(o);
       if (a.has(s)) return "occupied";
       a.set(s, t);
     }
   }
   if (N(n) > e.materials) return "materials";
-  if (!a.has(d({
+  if (!a.has(l({
     x: e.entrance,
     y: 0,
     z: e.entryZ
   }))) return "entrance";
   for (const t of n) {
-    if (t.kind === "garden" && (t.y !== 0 || n.some((o) => o.y > 0 && f(o).some((s) => s.x === t.x && s.z === t.z)))) return "garden";
+    if (t.kind === "garden" && (t.y !== 0 || n.some((o) => o.y > 0 && y(o).some((s) => s.x === t.x && s.z === t.z)))) return "garden";
     if (t.kind === "path" && t.y !== 0) return "path";
     if (t.kind === "terrace" && (t.y === 0 || !e.terraces)) return "terrace";
-    if (t.y > 0 && f(t).some((o) => {
-      const s = a.get(d({
+    if (t.y > 0 && y(t).some((o) => {
+      const s = a.get(l({
         x: o.x,
         y: o.y - 1,
         z: o.z
       }));
-      return !s || !p(s.kind);
+      return !s || !v(s.kind);
     })) return "support";
   }
-  const r = b(e, n);
-  return n.some((t) => f(t).some((o) => !r.has(d(o)))) ? "connected" : null;
+  const r = M(e, n);
+  return n.some((t) => y(t).some((o) => !r.has(l(o)))) ? "connected" : null;
 }
-function J(e, n) {
-  const a = A(e, n), r = b(e, a), t = G(e, a), o = !q(e, n) && n.some((s) => s.kind === "room");
+function Q(e, n) {
+  const a = C(e, n), r = M(e, a), t = K(e, a), o = !q(e, n) && n.some((s) => s.kind === "room");
   return {
     wishes: t,
-    spaces: R(e, a),
+    spaces: _(e, a),
     habitable: o,
     fulfilled: o && t.every((s) => s.met),
     materials: N(n),
-    unreachable: n.filter((s) => !r.has(d(s))).map(d)
+    unreachable: n.filter((s) => !r.has(l(s))).map(l)
   };
 }
-function le(e, n, a) {
-  const r = k(n), t = [];
+function ue(e, n, a) {
+  const r = w(n), t = [];
   for (let o = 0; o < e.floors; o++) for (let s = 0; s < e.depth; s++) for (let u = 0; u < e.width; u++) {
     const h = {
       kind: a,
@@ -366,42 +366,42 @@ function le(e, n, a) {
       y: o,
       z: s
     };
-    !r.has(d(h)) && !q(e, [...n, h]) && t.push(h);
+    !r.has(l(h)) && !q(e, [...n, h]) && t.push(h);
   }
   return t;
 }
-function ue(e, n, a) {
-  const r = e.find((t) => d(t) === d(n));
+function he(e, n, a) {
+  const r = e.find((t) => l(t) === l(n));
   return !r || !["room", "study"].includes(r.kind) || r.kind === a ? null : e.map((t) => t === r ? {
     ...t,
     kind: a
   } : t);
 }
-var D = [
+var L = [
   "gardenWalk",
   "gardenReading",
   "gardenTea",
   "quietBedroom",
   "courtyard"
 ];
-var Q = {
+var X = {
   gardenWalk: "garden",
   gardenReading: "study",
   gardenTea: "wide",
   quietBedroom: "room",
   courtyard: "garden"
 };
-function he(e) {
+function me(e) {
   return e.length * 2;
 }
-function X(e) {
-  const n = [...D];
+function ee(e) {
+  const n = [...L];
   return (e >>> 4) % 2 && ([n[1], n[2]] = [n[2], n[1]]), n;
 }
-function L(e, n) {
+function U(e, n) {
   return e.y - n.y || e.z - n.z || e.x - n.x;
 }
-function Y(e, n, a) {
+function W(e, n, a) {
   const r = (i) => ({
     id: e,
     part: null,
@@ -411,60 +411,60 @@ function Y(e, n, a) {
     part: i,
     need: null
   });
-  if (!J(n, a).habitable) return r("bedroom");
-  const o = A(n, a), s = k(a), u = R(n, o).filter((i) => !i.issue).map((i) => i.part).sort(L), h = u.filter((i) => i.kind === "garden"), m = (i) => f(i).some((c) => z(c).some((l) => s.get(d(l))?.kind === "garden"));
+  if (!Q(n, a).habitable) return r("bedroom");
+  const o = C(n, a), s = w(a), u = _(n, o).filter((i) => !i.issue).map((i) => i.part).sort(U), h = u.filter((i) => i.kind === "garden"), m = (i) => y(i).some((d) => b(d).some((c) => s.get(l(c))?.kind === "garden"));
   switch (e) {
     case "gardenWalk": {
       if (!h.length) return r("garden");
-      const i = h.find((c) => z(c).some((l) => s.get(d(l))?.kind === "path"));
+      const i = h.find((d) => b(d).some((c) => s.get(l(c))?.kind === "path"));
       return i ? t(i) : r("path");
     }
     case "gardenReading": {
-      const i = u.filter((l) => l.kind === "study");
+      const i = u.filter((c) => c.kind === "study");
       if (!i.length) return r("study");
-      const c = i.find((l) => [-1, 1].some((g) => s.get(d({
-        ...l,
-        x: l.x + g
+      const d = i.find((c) => [-1, 1].some((f) => s.get(l({
+        ...c,
+        x: c.x + f
       }))?.kind === "garden"));
-      return c ? t(c) : r("gardenWindow");
+      return d ? t(d) : r("gardenWindow");
     }
     case "gardenTea": {
-      const i = u.filter((l) => l.kind === "wide");
+      const i = u.filter((c) => c.kind === "wide");
       if (!i.length) return r("livingRoom");
-      const c = i.find(m);
-      return c ? t(c) : r("gardenDoor");
+      const d = i.find(m);
+      return d ? t(d) : r("gardenDoor");
     }
     case "quietBedroom": {
-      const i = u.filter((c) => c.kind === "room" && C(n, c, o)).find((c) => {
-        const l = o.filter((w) => w !== c && w.kind !== "roof"), g = b(n, l);
-        return l.every((w) => f(w).every((W) => g.has(d(W))));
+      const i = u.filter((d) => d.kind === "room" && B(n, d, o)).find((d) => {
+        const c = o.filter((x) => x !== d && x.kind !== "roof"), f = M(n, c);
+        return c.every((x) => y(x).every((Y) => f.has(l(Y))));
       });
       return i ? t(i) : r("privacy");
     }
     case "courtyard": {
       if (!h.length) return r("garden");
-      const i = h.find((c) => z(c).filter((l) => {
-        const g = s.get(d(l));
-        return g && p(g.kind);
+      const i = h.find((d) => b(d).filter((c) => {
+        const f = s.get(l(c));
+        return f && v(f.kind);
       }).length >= 3);
       return i ? t(i) : r("enclosure");
     }
   }
 }
-function me(e, n, a) {
-  const r = X(e.seed).find((t) => !a.includes(t));
-  return r ? Y(r, e, n) : null;
-}
 function ge(e, n, a) {
+  const r = ee(e.seed).find((t) => !a.includes(t));
+  return r ? W(r, e, n) : null;
+}
+function fe(e, n, a) {
   return a.flatMap((r) => {
-    const t = n.filter((s) => s.kind === Q[r]).sort(L), o = Y(r, e, n).part ?? t[0];
+    const t = n.filter((s) => s.kind === X[r]).sort(U), o = W(r, e, n).part ?? t[0];
     return o ? [{
       id: r,
       part: o
     }] : [];
   });
 }
-var v = {
+var z = {
   hall: "过厅",
   entry: "门厅",
   room: "卧室",
@@ -474,30 +474,30 @@ var v = {
   garden: "花园",
   path: "院路",
   roof: "屋顶"
-}, E = {
+}, I = {
   courtyard: "小院平房",
   duplex: "两层小楼",
   terrace: "露台小屋",
   sunroom: "阳光书屋"
-}, fe = {
+}, ye = {
   disconnected: "这里还没有接通",
   uncovered: "这里还没有封顶",
   noisy: "门口旁边和正上方都吵，隔开一格更安静",
   window: "两侧都被房间夹住了，要留一面朝户外的侧窗",
   shaded: "太阳被挡住了，向阳一侧要留空"
-}, M = {
+}, T = {
   read: "读一会儿书",
   sunbathe: "晒晒太阳",
   rest: "睡个午觉",
   relax: "坐下来喝杯茶",
   garden: "看看小院"
-}, ye = {
+}, pe = {
   read: "小白在翻书",
   sunbathe: "小白在晒太阳",
   rest: "小白睡着啦",
   relax: "小白在喝茶",
   garden: "小白在赏花"
-}, ee = {
+}, ne = {
   gardenWalk: {
     title: "沿小路去赏花",
     wish: "想沿着院路，走到花园里。",
@@ -528,7 +528,7 @@ var v = {
     gift: "庭院灯串",
     thanks: "窗里有家，窗外有花。这就是我们的小院啦。"
   }
-}, we = {
+}, xe = {
   bedroom: "先留一间能住的卧室。",
   garden: "添一块露天花园。",
   path: "让院路直接接到花园边，拐角相碰不算。",
@@ -550,8 +550,8 @@ var v = {
     ready: "小白筑家 · 基础房屋",
     finished: "小白筑家 · 心愿交付"
   },
-  start: `开工 · ${y.fee} 金币`,
-  admission: (e) => `开工扣 ${y.fee} 金币，先领 ${U.length} 间卧室的建材。有卧室即返还 ${y.habitableAward}；配齐客厅和户外一角可交付。安静阅读角、向阳露台、三面围合小院，任选 2 项实现，交付再得 ${_[e].award - y.habitableAward}。旧小屋会保留。`,
+  start: `开工 · ${p.fee} 金币`,
+  admission: (e) => `开工扣 ${p.fee} 金币，先领 ${F.length} 间卧室的建材。有卧室即返还 ${p.habitableAward}；配齐客厅和户外一角可交付。安静阅读角、向阳露台、三面围合小院，任选 2 项实现，交付再得 ${E[e].award - p.habitableAward}。旧小屋会保留。`,
   construction: "给小白造个家",
   workbench: "建造与家园",
   newProject: "开始一栋新小屋",
@@ -573,12 +573,12 @@ var v = {
     outdoor: "花园／向阳露台"
   },
   bonusTitle: "额外心愿 · 任选 2 项",
-  bonusTerms: (e) => `交付时满足任意 2 项，另得 ${_[e].award - y.habitableAward} 金币。`,
+  bonusTerms: (e) => `交付时满足任意 2 项，另得 ${E[e].award - p.habitableAward} 金币。`,
   bonusProgress: (e) => `心愿 ${Math.min(e, 2)}/2 · 详情`,
   planningHelp: "房间的数字是预算花费，小字是剩余建材。拆下会退回建材和预算。阅读角需要远离门口、侧窗朝外；露台要在楼上，向阳处不受遮挡。建材不必用完，达标后也可继续建造。",
   deliver: "交付小屋",
   delivered: "小白的新家，交付啦！",
-  deliveryTerms: (e, n) => `本次共得 ${e} 金币（含已发的 ${y.habitableAward}）。${n ? "额外心愿也达成了。" : "额外心愿还没齐，交付后不再补领本次奖金。"}交付后仍可在家园自由改建。`,
+  deliveryTerms: (e, n) => `本次共得 ${e} 金币（含已发的 ${p.habitableAward}）。${n ? "额外心愿也达成了。" : "额外心愿还没齐，交付后不再补领本次奖金。"}交付后仍可在家园自由改建。`,
   deliveryIncomplete: "卧室、客厅和可用的花园或露台齐全后，即可交付。",
   goal: {
     courtyard: "露天花园三面紧挨地面房间",
@@ -595,48 +595,48 @@ var v = {
   undo: "撤销",
   menu: "更多",
   budget: (e) => `预算余 ${e}`,
-  selected: (e) => v[e.kind],
+  selected: (e) => z[e.kind],
   cell: (e, n, a) => `第 ${n + 1} 层，第 ${a + 1} 排，第 ${e + 1} 列`,
-  place: (e) => `建${v[e.kind]}，第 ${e.y + 1} 层，第 ${e.z + 1} 排，第 ${e.x + 1} 列`,
-  choice: (e, n = null) => `${v[e]}，预算 ${x[e].cost}${n === null ? "" : `，剩余建材 ${n}`}`,
-  refit: (e) => `改成${v[e]}`,
+  place: (e) => `建${z[e.kind]}，第 ${e.y + 1} 层，第 ${e.z + 1} 排，第 ${e.x + 1} 列`,
+  choice: (e, n = null) => `${z[e]}，预算 ${k[e].cost}${n === null ? "" : `，剩余建材 ${n}`}`,
+  refit: (e) => `改成${z[e]}`,
   remodel: "改建家园",
   done: "结束改建",
   reside: "住回这里",
   floors: "查看楼层",
   whole: "全景",
   floor: (e) => e === 0 ? "一层 · 庭院" : `${e + 1} 层`,
-  invited: (e) => `好呀，去${M[e]}。`,
+  invited: (e) => `好呀，去${T[e]}。`,
   focus: "看看小白",
   noPlace: "这里暂时放不下，换一种房间或拆改一下。",
   sun: (e) => `阳光从${e === -1 ? "左" : "右"}边来`,
-  walking: (e) => `小白正要${M[e]}`,
-  useSpace: (e) => `请小白${M[e]}`,
-  archiveTitle: (e, n) => `${E[e]} · ${n + 1}`,
+  walking: (e) => `小白正要${T[e]}`,
+  useSpace: (e) => `请小白${T[e]}`,
+  archiveTitle: (e, n) => `${I[e]} · ${n + 1}`,
   complete: "小白的家",
   abandoned: "工程已停工",
   earned: (e) => `已到账 ${e} 金币`,
-  net: (e) => `净收益 ${e - y.fee >= 0 ? "+" : ""}${e - y.fee}`,
+  net: (e) => `净收益 ${e - p.fee >= 0 ? "+" : ""}${e - p.fee}`,
   memories: "小家回忆",
-  memoryProgress: (e) => `${e} / ${D.length} 段生活`,
-  memoryReward: (e) => `${ee[e].gift} · 改建预算 +2`,
+  memoryProgress: (e) => `${e} / ${L.length} 段生活`,
+  memoryReward: (e) => `${ne[e].gift} · 改建预算 +2`,
   remember: "请小白来看看",
   memoryReady: "布置好了，叫小白来试试吧。",
   memoryComplete: "每个角落，都有一起住下来的回忆。",
   memoryFinished: "继续按你的心意改建，纪念物会一直留下。",
   memoryStored: "已收好，添回对应房间就会摆出来",
-  memoryPlaced: (e) => `摆在${v[e]}`,
+  memoryPlaced: (e) => `摆在${z[e]}`,
   memoryLocked: "还没发生的生活",
   memoryCollection: "纪念物随对应用途房间自动摆放；拆改不丢失，也不重复领取。",
   collection: "作品册",
   collect: "收藏这栋",
   uncollect: "移出作品册",
   emptyCollection: "另建新小屋时，交付的旧屋会自动留在这里。",
-  collectionCount: (e) => `${e} / ${y.collectionSize} 栋`,
+  collectionCount: (e) => `${e} / ${p.collectionSize} 栋`,
   uncollectTitle: "移出作品册？",
   uncollectBody: "历史收益保留。若不是当前工程，移出后将不再保留这栋建筑，可先保存留影。",
   export: "保存留影",
-  exportName: (e) => `小白筑家-${E[e]}.png`,
+  exportName: (e) => `小白筑家-${I[e]}.png`,
   exportError: "留影未能保存，请重试。",
   abandon: "放弃工程",
   abandonTitle: "停止这次建造？",
@@ -650,7 +650,7 @@ var v = {
     "选楼层和房间，再点地面空位。可前后左右扩建，院路能连通花园和房间；门、楼梯和屋顶自动安排。",
     "每块地的轮廓和预算不同。小院留在地面，露台在楼上；阅读角要远离门口，至少一侧通向户外、小院或露台。点现有房间可以拆改或请小白试住。",
     "开工后连选 3 批建材，每批独立随机 3 选 1，不按之前选择调整，也不保证都有露台。已出现的选项会保存，刷新不重抽。拆房退回建材，院路免费。",
-    `有卧室立即到账 ${y.habitableAward} 金币。卧室、客厅和户外一角齐全即可主动交付，也可继续实现额外心愿。`,
+    `有卧室立即到账 ${p.habitableAward} 金币。卧室、客厅和户外一角齐全即可主动交付，也可继续实现额外心愿。`,
     "交付后奖金结清，家园可免费改建、发展生活纪念；不补发或重发本次金币。另建新屋前确认费用，旧屋自动保留。"
   ],
   zoomIn: "放大",
@@ -662,7 +662,7 @@ var v = {
   soundOff: "声音关",
   soundError: "声音设置未保存，请重试。",
   audioDispose: "[Building] Audio context disposal failed",
-  noFunds: `开工需要 ${y.fee} 金币，当前余额不足。`,
+  noFunds: `开工需要 ${p.fee} 金币，当前余额不足。`,
   graphics: "画面暂停，工程仍在。请重新载入画面。",
   reload: "重载画面",
   saveProblem: "这次操作尚未确认，请复核原操作。",
@@ -672,7 +672,7 @@ var v = {
   refresh: "重新读取",
   retiredIntent: "旧版未完成的构件操作已取消，工程和到账记录保留，请按新布局继续。",
   balance: (e) => `钱包 ${e}`
-}, ne = {
+}, te = {
   stock: "手头没有这类建材，可以拆回已有的同类房间。",
   bounds: "这里超出了地块或层高",
   occupied: "这里已经有房间",
@@ -683,8 +683,8 @@ var v = {
   garden: "小院要落在地面，上方留空",
   terrace: "露台需要建在楼上",
   connected: "房间之间要连通门厅"
-}, te = {
-  ...Object.fromEntries(Object.entries(ne).map(([e, n]) => [`building_${e}`, n])),
+}, re = {
+  ...Object.fromEntries(Object.entries(te).map(([e, n]) => [`building_${e}`, n])),
   building_invalid: "这次操作不合法，请重新读取工程。",
   building_identity: "操作身份不匹配，请重新读取。",
   building_stale: $.conflict,
@@ -699,51 +699,274 @@ var v = {
   building_unavailable: "当前无法施工，请稍后再试。",
   building_recovery: $.recoveryProblem
 };
-function ke(e) {
-  return te[e && typeof e == "object" && "code" in e ? String(e.code) : e instanceof Error ? e.message : ""] ?? $.saveProblem;
+function we(e) {
+  return re[e && typeof e == "object" && "code" in e ? String(e.code) : e instanceof Error ? e.message : ""] ?? $.saveProblem;
 }
+var g = {
+  helmet: "#efbd50",
+  highlight: "#ffe19a",
+  denim: "#467c8d",
+  seam: "#a7d0ce",
+  leather: "#98653f",
+  metal: "#d8e7e6"
+}, ke = [
+  {
+    shape: "ball",
+    size: [
+      0.345,
+      0.12,
+      0.285
+    ],
+    at: [
+      0,
+      0.405,
+      -0.015
+    ],
+    color: g.helmet
+  },
+  {
+    shape: "ball",
+    size: [
+      0.375,
+      0.024,
+      0.31
+    ],
+    at: [
+      0,
+      0.365,
+      0.015
+    ],
+    color: g.helmet
+  },
+  {
+    shape: "box",
+    size: [
+      0.045,
+      0.025,
+      0.4
+    ],
+    at: [
+      0,
+      0.516,
+      -0.015
+    ],
+    color: g.highlight
+  },
+  {
+    shape: "box",
+    size: [
+      0.082,
+      0.055,
+      0.02
+    ],
+    at: [
+      0,
+      0.407,
+      0.278
+    ],
+    color: g.highlight
+  },
+  {
+    shape: "ball",
+    size: [
+      0.285,
+      0.165,
+      0.255
+    ],
+    at: [
+      0,
+      -0.14,
+      0
+    ],
+    color: g.denim
+  },
+  {
+    shape: "box",
+    size: [
+      0.26,
+      0.21,
+      0.05
+    ],
+    at: [
+      0,
+      -0.055,
+      0.252
+    ],
+    color: g.denim
+  },
+  ...[-1, 1].map((e) => ({
+    shape: "box",
+    size: [
+      0.046,
+      0.19,
+      0.042
+    ],
+    at: [
+      e * 0.17,
+      -7e-3,
+      0.239
+    ],
+    color: g.denim,
+    tilt: e * -0.22
+  })),
+  ...[-1, 1].map((e) => ({
+    shape: "ball",
+    size: [
+      0.023,
+      0.023,
+      0.012
+    ],
+    at: [
+      e * 0.15,
+      0.035,
+      0.272
+    ],
+    color: g.helmet
+  })),
+  {
+    shape: "box",
+    size: [
+      0.12,
+      0.073,
+      0.02
+    ],
+    at: [
+      0,
+      -0.055,
+      0.283
+    ],
+    color: g.seam
+  },
+  {
+    shape: "ball",
+    size: [
+      0.299,
+      0.035,
+      0.266
+    ],
+    at: [
+      0,
+      -0.155,
+      0
+    ],
+    color: g.leather
+  },
+  {
+    shape: "box",
+    size: [
+      0.065,
+      0.056,
+      0.02
+    ],
+    at: [
+      0,
+      -0.155,
+      0.274
+    ],
+    color: g.helmet
+  },
+  {
+    shape: "box",
+    size: [
+      0.125,
+      0.12,
+      0.115
+    ],
+    at: [
+      -0.277,
+      -0.17,
+      0.12
+    ],
+    color: g.leather
+  },
+  {
+    shape: "box",
+    size: [
+      0.083,
+      0.075,
+      0.025
+    ],
+    at: [
+      -0.277,
+      -0.155,
+      0.188
+    ],
+    color: g.helmet
+  },
+  {
+    shape: "box",
+    size: [
+      0.039,
+      0.19,
+      0.047
+    ],
+    at: [
+      0.29,
+      -0.21,
+      0.13
+    ],
+    color: g.leather,
+    tilt: -0.18
+  },
+  {
+    shape: "box",
+    size: [
+      0.15,
+      0.064,
+      0.079
+    ],
+    at: [
+      0.31,
+      -0.11,
+      0.13
+    ],
+    color: g.metal,
+    tilt: -0.18
+  }
+];
 export {
-  F as A,
-  j as B,
-  P as C,
-  de as D,
-  k as E,
-  ae as F,
-  oe as H,
-  I,
-  re as L,
-  y as M,
-  se as N,
-  H as O,
-  x as P,
-  _ as R,
-  V as S,
-  b as T,
-  p as U,
-  d as V,
-  N as _,
-  we as a,
-  ce as b,
-  ke as c,
-  he as d,
-  Y as f,
-  le as g,
-  J as h,
-  ee as i,
-  ie as j,
-  Z as k,
-  D as l,
-  me as m,
-  $ as n,
-  v as o,
-  X as p,
-  ne as r,
-  fe as s,
-  ye as t,
-  ge as u,
-  q as v,
+  Z as A,
+  y as B,
+  G as C,
+  w as D,
+  M as E,
+  k as F,
+  l as H,
+  oe as I,
+  O as L,
+  le as M,
+  p as N,
+  de as O,
+  ie as P,
+  ae as R,
+  _ as S,
+  C as T,
+  se as U,
+  j as V,
+  v as W,
+  ue as _,
+  ne as a,
+  he as b,
+  ye as c,
+  fe as d,
+  me as f,
+  Q as g,
+  ge as h,
+  te as i,
+  H as j,
+  V as k,
+  we as l,
+  ee as m,
+  pe as n,
+  xe as o,
+  W as p,
+  $ as r,
+  z as s,
+  ke as t,
+  L as u,
+  N as v,
   A as w,
-  R as x,
-  ue as y,
-  f as z
+  ce as x,
+  q as y,
+  E as z
 };

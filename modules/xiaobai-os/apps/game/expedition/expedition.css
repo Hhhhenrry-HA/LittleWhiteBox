@@ -6,6 +6,9 @@
 }
 .exp-app[data-zone="1"] { --exp-surface:#303f61; --exp-muted:#c0cce3; --exp-line:#b9c7e738; --exp-gold:#d7cff2; }
 .exp-app[data-zone="2"] { --exp-surface:#423c3c; --exp-muted:#dbcdba; --exp-gold:#f1cf90; }
+.exp-app[data-zone="3"] { --exp-surface:#3c4049; --exp-muted:#d9cbc0; --exp-gold:#ecc598; }
+.exp-app[data-zone="4"] { --exp-surface:#26485e; --exp-muted:#bbd9e7; --exp-gold:#e3f0dd; }
+.exp-app[data-zone="5"] { --exp-surface:#3c3554; --exp-muted:#d1c6e0; --exp-gold:#eed9b3; }
 .exp-app::after { content:""; position:absolute; inset:0; pointer-events:none; z-index:0; background:linear-gradient(180deg,#15343d4d,transparent 24%,transparent 69%,#163c4740); }
 .exp-is-camp::after { background:linear-gradient(90deg,transparent 20%,#14383c20 42%,#123238ed 74%); }
 .exp-is-between::after { background:#102e38ba; backdrop-filter:blur(5px); }
@@ -49,10 +52,12 @@
 .exp-encounter small { display:block; font-size:12px; letter-spacing:.3em; color:#fff1c8; margin-bottom:9px; }
 .exp-encounter strong { display:block; font:500 34px/1.3 "Songti SC","Noto Serif CJK SC",SimSun,serif; letter-spacing:.16em; color:#fff9e7; }
 @keyframes exp-encounter { 0% { opacity:0; translate:0 10px; } 18%,70% { opacity:1; translate:0 0; } 100% { opacity:0; translate:0 -8px; } }
-.exp-camp { position:absolute; z-index:1; right:7%; top:50%; transform:translateY(-47%); width:min(355px,40%); max-height:calc(100% - 110px); overflow:auto; padding:6px 6px 12px; scrollbar-width:thin; }
+.exp-camp { position:absolute; z-index:1; right:7%; top:78px; bottom:18px; width:min(355px,40%); display:flex; flex-direction:column; overflow:hidden; padding:6px 6px 12px; }
+.exp-camp-loadout { flex:1; min-height:0; overflow:auto; margin-bottom:10px; scrollbar-width:thin; }
+.exp-camp>.exp-title,.exp-camp>.exp-primary { flex-shrink:0; }
 .exp-title { display:flex; gap:.16em; align-items:center; margin:0 0 24px; color:#fff4d5; font:500 clamp(34px,4.8cqw,58px)/1.15 "Songti SC","Noto Serif CJK SC",SimSun,serif; letter-spacing:.07em; text-shadow:0 3px 18px #142e38; }
 .exp-title span:last-child { color:#d9bc80; }
-.exp-weapon-select { display:flex; gap:7px; }
+.exp-weapon-select { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }
 .exp-weapon-select button { position:relative; display:flex; flex:1; flex-direction:column; align-items:center; min-width:0; padding:11px 4px 9px; background:#b0cebc08; border-color:#d0d9b530; }
 .exp-weapon-select button>.exp-icon { width:42px; height:42px; color:#e2cc9c; margin-bottom:6px; }
 .exp-weapon-select button>span { font-size:11px; text-align:center; }
@@ -63,12 +68,12 @@
 .exp-weapon-detail { font-size:12px; color:#e0e8d6; line-height:1.65; min-height:5.6em; padding-top:13px; }
 .exp-weapon-detail>span { display:block; font-size:11px; color:var(--exp-muted); margin-top:4px; }
 .exp-camp .exp-next-unlock { font-size:11px; color:var(--exp-gold); line-height:1.6; margin:0 0 8px; }
-.exp-camp-options { display:flex; justify-content:space-between; align-items:center; margin:5px 0 12px; }
-.exp-cloaks { display:flex; gap:4px; }
-.exp-cloaks button { width:44px; height:44px; padding:11px; min-height:44px; position:relative; border-color:transparent; }
-.exp-cloaks button i { display:block; width:21px; height:23px; background:var(--cloak); clip-path:polygon(23% 0,77% 0,100% 87%,50% 100%,0 87%); box-shadow:inset 0 2px #ffffff70; }
-.exp-cloaks button>.exp-icon { position:absolute; width:14px; height:14px; inset:16px auto auto 15px; color:#fff9e3; }
-.exp-cloaks [aria-pressed=true] { border-color:#d8c38e; }
+.exp-camp-options { display:flex; justify-content:space-between; align-items:stretch; gap:8px; margin:5px 0 12px; flex-shrink:0; }
+.exp-camp-options button { flex:1; padding:8px; }
+.exp-app .exp-difficulty-entry { font-size:12px; text-align:left; }.exp-difficulty-entry small { display:block; margin-top:3px; color:var(--exp-muted); font-size:10px; }
+.exp-wardrobe-entry { display:flex; align-items:center; gap:9px; text-align:left; }
+.exp-wardrobe-entry span { font-size:12px; }.exp-wardrobe-entry small { display:block; margin-top:3px; font-size:10px; color:var(--exp-muted); }
+.exp-wardrobe-entry .exp-icon { color:var(--exp-gold); }
 .exp-help-button { display:grid; place-items:center; width:44px; min-height:44px!important; height:44px; padding:8px!important; border-radius:50%!important; }.exp-help-button .exp-icon { width:23px; height:23px; }
 .exp-oaths { border-top:1px solid var(--exp-line); padding:10px 0; font-size:12px; }
 .exp-oaths summary { cursor:pointer; min-height:24px; color:var(--exp-gold); }
@@ -76,7 +81,7 @@
 .exp-oaths small { display:block; color:var(--exp-muted); margin-top:4px; font-size:11px; line-height:1.5; }.exp-oaths input { width:18px; height:18px; accent-color:#b3bd87; }
 .exp-app .exp-primary { display:flex; width:100%; max-width:380px; align-items:center; justify-content:center; gap:18px; min-height:50px; background:linear-gradient(110deg,#dec48d,#f0dbab 55%,#c9aa70); color:#233c3d; border:1px solid #f8e5b5; border-radius:3px; font-size:15px; font-weight:650; letter-spacing:.12em; box-shadow:0 4px 14px #071b2e30; }
 .exp-app .exp-primary:not(:disabled):hover { background:#f5e4bd; border-color:#fff4d7; }
-.exp-primary .exp-icon { width:26px; height:26px; }.exp-free { display:block; font-size:10px; color:var(--exp-muted); margin:10px 0 0; text-align:center; letter-spacing:.05em; }
+.exp-primary .exp-icon { width:26px; height:26px; }
 .exp-app .exp-quiet { display:block; margin:10px auto 0; border:0; background:transparent; padding:10px 14px; color:var(--exp-muted); font-size:12px; text-decoration:underline; text-underline-offset:4px; text-decoration-color:#c5d5c54d; }
 .exp-camp-location { color:var(--exp-gold); font-size:19px; line-height:1.8; }.exp-camp-location>span { display:block; font-size:13px; color:var(--exp-muted); }
 .exp-camp-relics { display:flex; gap:10px; margin:22px 0; }.exp-camp-relics .exp-icon { width:32px; height:40px; color:#e5d0a3; }
@@ -111,6 +116,12 @@
 .exp-relic-art::before { content:""; position:absolute; width:86px; height:86px; border:1px solid currentColor; border-radius:50%; opacity:.2; }
 .exp-relic-art::after { content:""; position:absolute; width:104px; height:104px; border-top:1px solid currentColor; border-bottom:1px solid currentColor; border-radius:50%; transform:rotate(-30deg); opacity:.14; }
 .exp-relic-art>.exp-icon { width:82px; height:82px; filter:drop-shadow(0 5px 2px #25494a18); }
+.exp-relic-art>b { position:absolute; right:0; bottom:0; padding:2px 6px; background:#eee8d6; border:1px solid currentColor; border-radius:3px; font-size:10px; }
+.exp-relic-price { display:block; margin-top:12px; color:#5c715a; font-size:11px; }
+.exp-supply { display:flex; align-items:center; gap:12px; margin:18px auto 5px; text-align:left; }.exp-supply small { display:block; font-size:11px; color:var(--exp-muted); margin-top:4px; }
+.exp-resource { display:block; width:100%; height:6px; margin-top:4px; accent-color:var(--exp-gold); }
+.exp-health>.exp-ward-stat { font-size:10px; color:#bbfff1; margin:4px 0 0; }
+.exp-encounter p { margin-top:10px; color:#fff4d7; font-size:13px; }
 .exp-relic-options button>span { display:flex; flex-direction:column; align-items:center; width:100%; }
 .exp-relic-family { color:var(--relic); font-size:10px; margin-bottom:7px; border:1px solid currentColor; padding:1px 6px; border-radius:2px; }
 .exp-relic-options strong { font:600 19px/1.4 "Songti SC","Noto Serif CJK SC",SimSun,serif; letter-spacing:.05em; }
@@ -126,6 +137,8 @@
 .exp-pause-overlay>.exp-panel { width:min(410px,100%); text-align:center; }.exp-pause-emblem { width:48px; height:48px; color:var(--exp-gold); margin-bottom:14px; }
 .exp-notice { position:absolute; z-index:12; top:85px; left:16px; right:16px; background:#183a43; color:#fff3d4; border:1px solid #ecbf81; padding:16px; border-radius:6px; box-shadow:0 8px 30px #09212f60; }
 .exp-notice p { line-height:1.7; font-size:13px; margin-bottom:10px; }
+.exp-dialog-notice-host { flex-shrink:0; }
+.exp-dialog-notice-host .exp-notice { position:static; padding:12px; margin-bottom:12px; box-shadow:none; }
 .exp-touch { position:absolute; bottom:26px; left:24px; right:24px; display:flex; align-items:flex-end; justify-content:space-between; pointer-events:none; z-index:2; }
 .exp-stick { width:108px; height:108px; position:relative; border-radius:50%; background:#173d4729; border:1px solid #f0efcf80; box-shadow:inset 0 0 0 10px #f4f4df0d,0 3px 14px #173b4020; touch-action:none; pointer-events:auto; }
 .exp-stick>span { position:absolute; width:46px; height:46px; top:30px; left:30px; border-radius:50%; border:1px solid #f3e8c3cc; background:#174a55a6; box-shadow:inset 0 0 0 4px #e5e6c515,0 3px 7px #0b2c3c30; }
@@ -145,6 +158,27 @@
 .exp-modal>header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; }.exp-modal h2 { margin:0; font-size:23px; }
 .exp-modal>header button { display:grid; place-items:center; padding:8px; border:0; width:44px; min-height:44px; }
 .exp-modal h3 { font-size:13px; font-weight:500; color:var(--exp-gold); margin:18px 0 12px; }
+.exp-wardrobe-modal { width:min(920px,100%); display:flex; flex-direction:column; height:min(640px,100%); overflow:hidden; }
+.exp-wardrobe-modal>header { flex-shrink:0; }
+.exp-wardrobe { flex:1; min-height:0; display:grid; grid-template-columns:minmax(230px,1fr) minmax(260px,1.2fr); gap:26px; }
+.exp-fitting { overflow:auto; scrollbar-width:thin; padding-right:4px; }
+.exp-outfit-preview { height:clamp(130px,22vh,220px); overflow:hidden; border-radius:6px; background:#d1e0e1; }
+.exp-outfit-preview canvas { display:block; width:100%; height:100%; }.exp-outfit-preview p { padding:20px; color:#304959; }
+.exp-preview-tools { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:8px 0; }
+.exp-preview-tools label { font-size:10px; color:var(--exp-muted); min-width:0; flex:1; }
+.exp-preview-tools input { display:block; width:100%; accent-color:var(--exp-gold); min-height:28px; }
+.exp-preview-tools button { font-size:11px; padding:7px; }
+.exp-fitting h3 { font-size:19px; margin:16px 0 4px; }.exp-fitting p { font-size:12px; margin:6px 0; }.exp-fitting>.exp-muted { margin:9px 0 14px; font-size:11px; }
+.exp-fitting>small { display:block; font-size:10px; color:var(--exp-muted); margin-top:9px; }
+.exp-outfit-rack { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); grid-auto-rows:max-content; align-content:start; gap:9px; overflow:auto; scrollbar-width:thin; padding-right:3px; }
+.exp-outfit-rack button { display:flex; flex-direction:column; align-items:center; gap:6px; padding:10px 5px; min-width:0; }
+.exp-outfit-rack [aria-pressed=true] { background:#f1dfbd18; border-color:var(--exp-gold); }
+.exp-outfit-swatch { display:block; width:80px; height:80px; flex:none; object-fit:contain; border-radius:4px; }
+.exp-outfit-rack strong { font-size:11px; font-weight:500; }.exp-outfit-rack small { font-size:10px; color:var(--exp-muted); }
+.exp-purchase-confirm { display:flex; gap:9px; margin-top:10px; }.exp-purchase-confirm button { min-width:70px; }
+.exp-journal-tabs { display:flex; gap:6px; }.exp-journal-tabs button { flex:1; font-size:12px; }.exp-journal-tabs [aria-pressed=true] { border-color:var(--exp-gold); color:var(--exp-gold); }
+.exp-receipts li { display:grid; grid-template-columns:1fr auto; gap:8px; }.exp-receipts b { color:var(--exp-gold); font-size:14px; }
+.exp-receipts details { grid-column:1 / -1; font-size:11px; color:var(--exp-muted); }.exp-receipts summary { cursor:pointer; padding:6px 0; }.exp-receipts code { overflow-wrap:anywhere; }
 .exp-inventory { list-style:none; margin:12px 0; padding:0; display:grid; gap:10px; }
 .exp-inventory>li,.exp-inventory>button { display:flex; gap:15px; align-items:center; padding:13px 0; border-bottom:1px solid var(--exp-line); text-align:left; }
 .exp-inventory>button { padding:12px; }.exp-inventory .exp-icon { width:48px; height:48px; color:var(--relic); }
@@ -155,12 +189,12 @@
 .exp-list { list-style:none; padding:0; margin:12px 0; }.exp-list li { padding:11px 0; border-bottom:1px solid var(--exp-line); }.exp-list strong { font-size:13px; font-weight:500; }.exp-list small { display:block; margin-top:5px; font-size:12px; color:var(--exp-muted); }
 @container moving-frame (max-width:600px) {
     .exp-is-camp::after { background:linear-gradient(180deg,#183c4210 13%,#183c4210 25%,#12383cdb 49%,#12383cfa 68%); }
-    .exp-camp { top:auto; bottom:12px; right:24px; left:24px; width:auto; transform:none; max-height:calc(100% - 220px); padding:8px 0 2px; }
+    .exp-camp { top:43%; bottom:12px; right:24px; left:24px; width:auto; height:auto; padding:8px 0 2px; }
     .exp-title { font-size:38px; margin-bottom:17px; justify-content:center; }
     .exp-weapon-select { gap:7px; }.exp-weapon-select button { flex-direction:row; justify-content:center; padding:8px 4px; min-height:70px; }.exp-weapon-select button>.exp-icon { width:28px; height:35px; margin:0 4px 0 0; }
     .exp-weapon-select button>span { font-size:11px; }.exp-weapon-select small { font-size:10px; }.exp-weapon-select button .exp-lock { width:10px; height:10px; }
     .exp-weapon-detail { min-height:5.2em; padding-top:10px; font-size:11px; }.exp-weapon-detail>span { font-size:10px; }
-    .exp-camp-options { margin:2px 0 10px; }.exp-free { margin-top:8px; font-size:9px; }
+    .exp-camp-options { margin:2px 0 10px; }
     .exp-camp .exp-primary { max-width:none; min-height:47px; }
     .exp-hud { top:13px; left:14px; right:14px; }.exp-health { width:150px; max-width:43%; }.exp-health>span { font-size:10px; }.exp-health-track { height:17px; }
     .exp-tools { gap:5px; }.exp-tools button { min-width:44px; width:44px; min-height:44px; padding:8px; }.exp-tools .exp-icon { width:23px; height:23px; }
@@ -176,7 +210,7 @@
     .exp-relic-options { flex-direction:column; gap:9px; }
     .exp-relic-options button { flex-direction:row; align-items:center; padding:11px 14px 11px 8px; gap:12px; }
     .exp-relic-art { width:72px; height:68px; flex-shrink:0; margin:0; }.exp-relic-art>.exp-icon { width:56px; height:56px; }.exp-relic-art::before { width:58px; height:58px; }.exp-relic-art::after { width:67px; height:67px; }
-    .exp-relic-options button>span { align-items:flex-start; text-align:left; }.exp-relic-family { display:none; }.exp-relic-options strong { font-size:17px; }
+    .exp-relic-options button>span { align-items:flex-start; text-align:left; }.exp-relic-family { display:block; margin-bottom:4px; font-size:9px; }.exp-relic-options strong { font-size:17px; }
     .exp-relic-options strong+small { font-size:12px; margin-top:6px; line-height:1.6; }
     .exp-prize { padding:9px 13px; margin-bottom:14px; font-size:12px; }.exp-prize small { font-size:10px; }
     .exp-touch { bottom:28px; left:19px; right:19px; }.exp-stick { width:96px; height:96px; }.exp-stick>span { top:24px; left:24px; }
@@ -185,15 +219,27 @@
     .exp-equipped-strip { bottom:8px; padding:2px 7px; gap:3px; }.exp-equipped-strip .exp-icon { width:21px; height:21px; }
     .exp-modal-wrap { padding:13px; }.exp-panel { padding:22px; }.exp-modal h2 { font-size:21px; }.exp-collection { grid-template-columns:repeat(2,minmax(0,1fr)); }
     .exp-landmark { width:82px; height:94px; }.exp-result-build { gap:8px; }.exp-result-build .exp-icon { width:32px; }
+    .exp-wardrobe { display:flex; flex-direction:column; gap:12px; }.exp-outfit-preview { height:180px; }
+    .exp-fitting { flex:1; min-height:0; }.exp-outfit-rack { flex-shrink:0; }
+    .exp-outfit-rack { display:flex; overflow-x:auto; gap:7px; padding-bottom:10px; scroll-snap-type:x proximity; }.exp-outfit-rack button { flex:0 0 88px; scroll-snap-align:start; }
+    .exp-fitting h3 { margin-top:9px; font-size:17px; }.exp-fitting p { line-height:1.5; }.exp-outfit-swatch { width:60px; height:60px; }
 }
 @media (prefers-reduced-motion:reduce) {
     .exp-app *, .exp-app *::before,.exp-app *::after { animation:none!important; transition:none!important; }
+}
+@container moving-frame (max-height:650px) and (min-width:600px) {
+    .exp-loot-screen .exp-screen-heading { margin-bottom:12px; }.exp-loot-screen .exp-screen-heading h2 { font-size:26px; }.exp-loot-screen .exp-screen-heading>small { margin-bottom:6px; }
+    .exp-loot-screen .exp-prize { padding:8px 12px; margin-bottom:12px; }
+    .exp-loot-screen .exp-relic-art { height:62px; width:70px; margin:0 0 6px; }.exp-loot-screen .exp-relic-art>.exp-icon { width:54px; height:54px; }
+    .exp-loot-screen .exp-relic-art::before { width:58px; height:58px; }.exp-loot-screen .exp-relic-art::after { display:none; }
+    .exp-loot-screen .exp-relic-options button { padding:12px; }.exp-loot-screen .exp-relic-options strong+small { margin-top:8px; line-height:1.55; }
+    .exp-loot-screen .exp-upgrade-hint { margin-top:10px; }.exp-loot-screen .exp-supply { margin:10px auto 0; }
 }
 @container moving-frame (max-height:440px) and (min-width:600px) {
     .exp-hud { top:9px; }.exp-tools button { min-height:44px; }
     .exp-camp { top:62px; bottom:12px; right:24px; left:auto; width:45%; transform:none; max-height:none; display:flex; flex-direction:column; overflow:hidden; }
     .exp-camp-loadout { flex:1; min-height:0; overflow:auto; margin-bottom:10px; scrollbar-width:thin; }
-    .exp-camp>.exp-primary,.exp-camp>.exp-title { flex-shrink:0; }.exp-free { display:none; }
+    .exp-camp>.exp-primary,.exp-camp>.exp-title { flex-shrink:0; }
     .exp-title { font-size:28px; margin-bottom:12px; }.exp-weapon-select button { padding:6px 4px; }
     .exp-camp-options { margin:0 0 7px; }.exp-weapon-detail { padding-top:8px; min-height:0; margin-bottom:9px; }
     .exp-between { top:calc(50% + 30px); max-height:calc(100% - 80px); width:min(820px,calc(100% - 48px)); }
@@ -211,12 +257,13 @@
     .exp-pause-overlay { padding:12px; }.exp-pause-overlay>.exp-panel { max-height:100%; overflow:auto; padding:18px; }.exp-pause-emblem { display:none; }
     .exp-relic-art { height:65px; width:70px; margin:0 0 8px; }.exp-relic-art>.exp-icon { width:54px; height:54px; }.exp-relic-art::before { width:58px; height:58px; }.exp-relic-art::after { display:none; }
     .exp-relic-options button { padding:10px 13px; }.exp-relic-options strong { font-size:17px; }.exp-relic-options strong+small { margin-top:6px; }.exp-relic-family { display:none; }
-    .exp-loot-screen { display:grid; grid-template-columns:minmax(160px,1fr) minmax(0,2.8fr); grid-template-rows:auto minmax(0,1fr) auto; gap:0 20px; height:calc(100% - 80px); }
+    .exp-loot-screen { display:grid; grid-template-columns:minmax(160px,1fr) minmax(0,2.8fr); grid-template-rows:auto minmax(0,1fr) auto auto; gap:0 20px; height:calc(100% - 80px); }
     .exp-loot-screen .exp-decision-content { display:contents; }
     .exp-loot-screen .exp-screen-heading { grid-column:1; grid-row:1; margin:0; }.exp-loot-screen .exp-screen-heading h2 { font-size:21px; }
     .exp-loot-screen .exp-prize,.exp-loot-screen .exp-muted { grid-column:1; grid-row:2; align-self:center; margin:6px 0; padding:6px 0; font-size:11px; }
     .exp-loot-screen .exp-prize small { font-size:10px; }.exp-loot-screen .exp-prize>.exp-icon { width:24px; }
-    .exp-loot-screen>.exp-quiet { grid-column:1; grid-row:3; margin:0; }
+    .exp-loot-screen .exp-upgrade-hint { display:none; }.exp-loot-screen .exp-supply { grid-column:1; grid-row:3; margin:4px 0; padding:5px; font-size:11px; }
+    .exp-loot-screen>.exp-quiet { grid-column:1; grid-row:4; margin:0; }
     .exp-loot-screen .exp-relic-options { grid-column:2; grid-row:1 / -1; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; overflow:auto; scrollbar-width:thin; padding:3px; }
     .exp-loot-screen .exp-relic-options button { flex-direction:row; gap:8px; padding:9px; }
     .exp-loot-screen .exp-relic-options button>span { align-items:flex-start; text-align:left; }.exp-loot-screen .exp-relic-options strong { font-size:14px; }.exp-loot-screen .exp-relic-options strong+small { font-size:11px; line-height:1.5; }

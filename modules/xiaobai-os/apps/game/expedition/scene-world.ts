@@ -101,15 +101,34 @@ export function buildWorld(k: SceneKit, root: Group, zone: number, battle: Battl
         stone(banner, [2, .08, .08], [0, 0, 0], c.trim);
         for (let i = 0; i < 5; i++) { stone(banner, [.35, 2.6 - Math.abs(i - 2) * .12, .08], [(i - 2) * .34, -1.35, Math.sin(i * 2) * .08], i % 2 ? c.foliage : c.dark); }
         stone(banner, [.12, 1.8, .09], [0, -1.15, .13], c.trim);
-        for (let i = 0; i < 4; i++) { shrub(side * (12.8 + i % 2), -9 + i * 5, .8 + i * .1); }
-        tree(side * 15, -13, 1.5); tree(side * 17, 1, 1.7);
+        if (zone < 3) {
+            for (let i = 0; i < 4; i++) { shrub(side * (12.8 + i % 2), -9 + i * 5, .8 + i * .1); }
+            tree(side * 15, -13, 1.5); tree(side * 17, 1, 1.7);
+        } else if (zone === 3) {
+            for (let i = 0; i < 3; i++) {
+                const furnace = group(root, [side * 15, 0, -9 + i * 7]);
+                mesh(furnace, 'cylinder', c.dark, [1.4, 2.8, 1.4], [0, 1.4, 0]); mesh(furnace, 'cylinder', c.trim, [.7, 4.5, .7], [0, 4.9, 0]);
+                stone(furnace, [1.5, 1, .2], [0, 1, 1.3], c.accent); mesh(furnace, 'torus', c.trim, [1.1, 1.1, .3], [0, 1.2, 1.4]);
+            }
+        } else if (zone === 4) {
+            for (let i = 0; i < 5; i++) { mesh(root, 'rock', i % 2 ? c.light : c.accent, [1, 2.2 + i % 3, .9], [side * (13.5 + i % 2), 1.2, -9 + i * 4]).rotation.z = side * -.2; }
+            const mast = group(root, [side * 17, 0, -13]); stone(mast, [.22, 8, .22], [0, 3.5, 0], c.dark);
+            k.shape(mast, [[0, 0], [3, -1], [0, -4]], c.light, [0, 6.5, 0]);
+        } else {
+            for (let i = 0; i < 4; i++) {
+                const shelf = group(root, [side * 14, 0, -10 + i * 6]);
+                stone(shelf, [2.4, 3.5, 1], [0, 1.75, 0], c.dark);
+                for (let row = 0; row < 3; row++) { stone(shelf, [2.6, .12, 1.1], [0, .8 + row, 0], c.trim); for (let col = 0; col < 5; col++) { stone(shelf, [.27, .65 + col % 2 * .12, .6], [-.85 + col * .4, 1.2 + row, .1], col % 2 ? c.foliage : c.stone); } }
+            }
+            const portal = mesh(root, 'torus', c.trim, [3.4, 4, .5], [side * 18, 6.2, -13]); portal.rotation.y = side * .3;
+        }
         stone(root, [7, 1.4, 18], [side * 17, -.7, -3], c.dark);
         stone(root, [6.7, .1, 17.7], [side * 17, .06, -3], c.seam);
         for (const edge of [-3.5, 3.5]) { stone(root, [.22, .25, 18.2], [side * 17 + edge, .13, -3], c.stone); }
         stone(root, [9, 1.8, 10], [side * 15, -.9, -17], c.dark);
         stone(root, [8.7, .1, 9.7], [side * 15, .06, -17], c.seam);
     }
-    // Architecture recedes into the mist, with three distinct regional silhouettes.
+    // Each region keeps the open arena but changes the skyline and surrounding place.
     for (let i = 0; i < 7; i++) {
         const x = (i - 3) * 8, z = -26 - (i % 3) * 6, h = 7 + (i * 5 % 7);
         stone(root, [5.2, h, 5.5], [x, h / 2 - 3, z], c.stone);
@@ -118,6 +137,15 @@ export function buildWorld(k: SceneKit, root: Group, zone: number, battle: Battl
             const crescent = mesh(root, 'crescent', c.trim, [1.5, 1.5, 1.5], [x, h - .8, z]); crescent.rotation.z = .9;
         } else if (zone === 2) {
             mesh(root, 'cone', c.trim, [3.4, 4.8, 3.4], [x, h - .8, z]);
+        } else if (zone === 3) {
+            for (const dx of [-1.3, 1.3]) { mesh(root, 'cylinder', c.dark, [.7, 5 + i % 2 * 2, .7], [x + dx, h - 1, z]); }
+            stone(root, [3.8, .25, 4], [x, h - 2.5, z], c.trim);
+        } else if (zone === 4) {
+            mesh(root, 'cone', c.light, [3.2, 4.5, 3.2], [x, h - .8, z]);
+            for (const dx of [-1, 1]) { mesh(root, 'rock', c.accent, [.4, 2, .4], [x + dx, h - 3, z + 3]); }
+        } else if (zone === 5) {
+            mesh(root, 'rock', c.trim, [1.4, 2.3, 1.4], [x, h + .7, z]);
+            mesh(root, 'torus', c.accent, [2, 2, 2], [x, h - 1, z]).rotation.x = Math.PI / 2;
         } else {
             for (const dx of [-2, 0, 2]) { stone(root, [.7, 1.2, 5.6], [x + dx, h - 2.35, z], c.light); }
             if (i % 2) { tree(x + 1, z + 2, 1.5); }

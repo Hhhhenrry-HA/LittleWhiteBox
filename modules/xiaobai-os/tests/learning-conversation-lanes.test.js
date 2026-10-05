@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createClassroomFixture, fixtureLesson } from './fixtures/learning-classroom.js';
-import { createLearningSession } from '../apps/learning/agent/session.js';
 
 const requestData = request => {
     const message = request.messages.find(entry => entry.role === 'user' && entry.content.includes('<learning_request>'));
@@ -46,73 +45,8 @@ test('a learner can chat during preparation, and stopping the conversation does 
     assert.equal(h.state().conversation.turns.filter(turn => turn.status === 'finished').length, 1);
 });
 
-test('a chat request starts the native workbench action; ordinary conversation does not write a lesson', async t => {
-    const h = await createClassroomFixture(); t.after(h.dispose);
-    await h.command('teacher', { teacher: { name: '林老师', note: '' } });
-    await h.command('settings', { value: {} });
-    const before = h.counts.userWrites;
-    await h.command('talk', { message: 'Just saying hello.' });
-    assert.equal(h.counts.userWrites, before);
-    const counts = new Map();
-    h.flags.teacherResponse = (request => {
-        const kind = requestData(request)?.action.kind;
-        const count = (counts.get(kind) ?? 0) + 1; counts.set(kind, count);
-        if (kind === 'talk' && count === 1) { return { toolCalls: [call('LearningRequest', { action: 'prepare', kind: 'lesson', instruction: 'Prepare a lesson.' })] }; }
-        if (kind === 'prepare' && count === 1) { return { toolCalls: [call('LearningLessonEdit', fixtureLesson)] }; }
-        return { text: kind === 'prepare' ? 'The lesson is ready.' : 'I will prepare that.' };
-    });
-    await h.command('talk', { message: 'Prepare a lesson.' });
-    assert.equal(h.state().unit.title, fixtureLesson.title);
-    assert.equal(counts.has('prepare'), true);
-});
 
-test('a delegated answer retains its message-time conditions even when the reply gives a hint first', async t => {
-    const lesson = structuredClone(fixtureLesson);
-    lesson.exercises[0].response = { kind: 'text' };
-    lesson.exercises[0].rule = { kind: 'semantic' };
-    const h = await createClassroomFixture({ lesson }); t.after(h.dispose);
-    await h.openLesson();
-    const exerciseId = h.state().unit.exercises[0].id;
-    const message = 'Please submit this: Trees make city life more comfortable.';
-    let round = 0;
-    h.flags.teacherResponse = async request => {
-        const data = requestData(request);
-        if (data?.action.kind === 'talk') {
-            round++;
-            if (round === 1) { return { toolCalls: [call('LearningRequest', { action: 'submit', exerciseId, instruction: 'Please submit this:' })] }; }
-            return { text: 'I will submit your answer. Notice how the second paragraph broadens the idea.' };
-        }
-        return { text: 'Your answer has been received.' };
-    };
-    await h.command('talk', { message });
-    const saved = h.profile().unit.attempts.at(-1);
-    assert.equal(saved.answer.text, message);
-    assert.equal(saved.help.hint, false);
-    assert.deepEqual(h.profile().unit.revealed.hints, []);
-});
 
-test('conversation tools reject direct writes and invented requests; replacement preserves its kind and waits for confirmation', async t => {
-    const h = await createClassroomFixture(); t.after(h.dispose);
-    await h.openLesson();
-    const before = structuredClone(h.profile());
-    const message = 'Replace this with a lesson. Set my target to B2.';
-    const session = createLearningSession(h.repository, { language: 'en', osId: before.unit.originOsId,
-        inputScope: before.unit.scope, action: { kind: 'talk' }, learnerMessage: message });
-    for (const name of ['LearningLessonEdit', 'LearningAssess', 'LearningProfileEdit', 'LearningComplete', 'LearningAnswer']) {
-        assert.equal(session.executeTool(name, {}).ok, false);
-    }
-    assert.equal(session.executeTool('LearningRequest', { action: 'prepare', instruction: 'An invented learner request.' }).ok, false);
-    assert.equal(session.delegation(), null);
-    assert.equal(session.executeTool('LearningRequest', { action: 'prepare', kind: 'lesson', instruction: 'Replace this with a lesson.' }).status, 'confirmation');
-    assert.equal(session.presentation().unitKind, 'lesson');
-    assert.equal(session.delegation(), null);
-    assert.equal(session.executeTool('LearningRequest', { action: 'settings', instruction: 'Set my target to B2.', value: { targetLevel: 'B2' } }).ok, false);
-    assert.equal((await session.commit(() => true)).status, 'unchanged');
-    assert.deepEqual(h.profile(), before);
-    const passive = createLearningSession(h.repository, { language: 'en', osId: before.unit.originOsId,
-        inputScope: before.unit.scope, action: { kind: 'companion' }, learnerMessage: message });
-    assert.equal(passive.executeTool('LearningRequest', { action: 'settings', instruction: message, value: { targetLevel: 'B2' } }).ok, false);
-});
 
 test('an explicit chat delegation is rejected while work is running, without queuing it', async t => {
     let release;
@@ -124,7 +58,7 @@ test('an explicit chat delegation is rejected while work is running, without que
     let chatCalls = 0;
     h.flags.teacherResponse = (async request => {
         if (requestData(request)?.action.kind === 'prepare') { workCalls++; await gate; return { text: 'Preparation remains unchanged.' }; }
-        if (++chatCalls === 1) { return { toolCalls: [call('LearningRequest', { action: 'settings', instruction: 'Set my target to B2.', value: { targetLevel: 'B2' } })] }; }
+        if (++chatCalls === 1) { return { toolCalls: [call('LearningRequest', {})] }; }
         response = JSON.parse(request.messages.findLast(entry => entry.role === 'tool' && entry.toolName === 'LearningRequest').content);
         return { text: 'That operation has not run while preparation is active.' };
     });

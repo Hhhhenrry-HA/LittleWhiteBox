@@ -1,10 +1,4 @@
-import { canReadLearningScope, type LearningData, type LearningScope } from '../../../domains/learning/types.js';
-import { combineLearningScope } from '../../../domains/learning/validation.js';
-
-/** Access provenance is retained with the exchange; source IDs remain only deletion/attachment references. */
-export function learningConversationScope(references: string[], scopes: ReadonlyMap<string, LearningScope>, initial: LearningScope = { kind: 'public' }): LearningScope {
-    return references.reduce((scope, id) => scopes.has(id) ? combineLearningScope(scope, scopes.get(id)!) : scope, initial);
-}
+import type { LearningData, LearningScope } from '../../../domains/learning/types.js';
 
 /** Access and deletion follow the existing coursework, never a copied long-term article. */
 export function learningReferenceScopes(data: LearningData | undefined): Map<string, LearningScope> {
@@ -26,17 +20,4 @@ export function learningReferenceScopes(data: LearningData | undefined): Map<str
         }
     }
     return scopes;
-}
-
-export function learningReferencedIds(value: unknown, scopes: ReadonlyMap<string, LearningScope>, osId: string | null): string[] {
-    const found = new Set<string>();
-    function visit(entry: unknown) {
-        if (typeof entry === 'string') {
-            const scope = scopes.get(entry);
-            if (scope && canReadLearningScope(scope, osId)) { found.add(entry); }
-        } else if (Array.isArray(entry)) { entry.forEach(visit); }
-        else if (entry && typeof entry === 'object') { Object.values(entry).forEach(visit); }
-    }
-    visit(value);
-    return [...found];
 }

@@ -44,10 +44,10 @@ export function createExpeditionScene(host: HTMLElement, onError: () => void) {
     }
     function clearActors() { for (const entry of enemies.values()) { actors.remove(entry.actor.root); entry.marker.remove(); } enemies.clear(); floaters.splice(0).forEach(f => f.element.remove()); }
     return {
-        draw(battle: Battle | null, loadout: Pick<Run, 'weapon' | 'cloak'>, zone: number, mode: SceneMode = 'battle', now = 0) {
+        draw(battle: Battle | null, loadout: Pick<Run, 'weapon' | 'outfit'>, zone: number, mode: SceneMode = 'battle', now = 0) {
             if (disposed || failed) { return; }
             const b = mode === 'battle' ? battle : null, time = b?.tick ?? (reduced.matches ? 0 : now * .025), tickChanged = b?.tick !== lastTick;
-            const appearance = `${loadout.weapon}/${loadout.cloak}/${zone}`;
+            const appearance = `${loadout.weapon}/${loadout.outfit}/${zone}`;
             if (!dirty && mode === lastMode && appearance === lastAppearance && b === lastBattle
                 && (!tickChanged && b || !b && (mode === 'between' || reduced.matches || now - lastFrame < 40))) { return; }
             lastFrame = now; const c = PALETTES[zone];
@@ -67,7 +67,7 @@ export function createExpeditionScene(host: HTMLElement, onError: () => void) {
             camera.left = -horizontal / 2; camera.right = horizontal / 2; camera.top = horizontal / aspect / 2; camera.bottom = -camera.top;
             const bearing = portrait ? 0 : CAMERA_EIGHTH_TURNS * Math.PI / 4;
             camera.position.set(target.x + Math.sin(bearing) * 25, 28, target.z + Math.cos(bearing) * 25); camera.lookAt(target.x, 0, target.z); camera.updateProjectionMatrix(); camera.updateMatrixWorld();
-            hero.update(b?.player ?? null, loadout.weapon, loadout.cloak, time, reduced.matches, portrait);
+            hero.update(b?.player ?? null, loadout.weapon, loadout.outfit, time, reduced.matches, portrait);
             for (const e of b?.enemies ?? []) {
                 let entry = enemies.get(e.id);
                 if (!entry) {

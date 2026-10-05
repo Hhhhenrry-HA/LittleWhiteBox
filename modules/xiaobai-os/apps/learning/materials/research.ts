@@ -5,7 +5,6 @@ import { learningArray, learningId, learningInteger, requireLearning } from '../
 import type { createLearningSourceRegistry, LearningSource } from './lesson-sources.js';
 import { createLearningId } from '../application/identity.js';
 import { extractLearningSources, LearningMaterialError, learningPublicUrl } from './tavily-extract.js';
-import { checkLearningReadingContent, LearningReadingContentError } from './reading-content.js';
 
 export const LEARNING_RESEARCH_LIMITS = Object.freeze({ query: 400,
     results: 8, defaultResults: 5, page: 4500, chunk: 500 });
@@ -45,7 +44,6 @@ export function createLearningResearch(config: { tavilyApiKey?: string; tavilyBa
     sources: ReturnType<typeof createLearningSourceRegistry>; signal: AbortSignal;
     cache?: ReturnType<typeof createLearningResearchCache>;
     createId?: () => string; now?: () => string; timeoutMs?: number;
-    articleLanguage?: string;
 }) {
     const { candidates, extracted } = options.cache ?? createLearningResearchCache();
     const createId = options.createId ?? createLearningId;
@@ -88,7 +86,6 @@ export function createLearningResearch(config: { tavilyApiKey?: string; tavilyBa
             requireLearning(input.candidateIds === undefined, 'sourceId', 'Choose sourceId or candidateIds for this read');
             const source = options.sources.get(learningId(input.sourceId, 'sourceId'));
             requireLearning(source, 'sourceId', 'Use a source ID from LearningRead section sources');
-            if (options.articleLanguage) { checkLearningReadingContent(source.paragraphs.map(paragraph => paragraph.text).join('\n\n'), options.articleLanguage, 'source', 'sourceId'); }
             return { ok: true, results: [sourcePage(source, offset)], failed: [] };
         }
         const ids = learningArray(input.candidateIds, 'candidateIds', learningId, 2);
@@ -118,13 +115,6 @@ export function createLearningResearch(config: { tavilyApiKey?: string; tavilyBa
         const results = selected.flatMap(candidate => {
             const entry = extracted.get(candidate.id);
             if (!entry) { return []; }
-            try {
-                if (options.articleLanguage) { checkLearningReadingContent(entry.paragraphs.map(paragraph => paragraph.text).join('\n\n'), options.articleLanguage, 'source', 'candidateIds'); }
-            } catch (error) {
-                if (!(error instanceof LearningReadingContentError)) { throw error; }
-                failed.push({ candidateId: candidate.id, error: error.code });
-                return [];
-            }
             if (!options.sources.get(entry.id)) { options.sources.add(entry); }
             return [{ candidateId: candidate.id, ...sourcePage(entry, offset) }];
         });
@@ -141,7 +131,7 @@ export function createLearningResearch(config: { tavilyApiKey?: string; tavilyBa
                 throw new LearningMaterialError('learning_research_unknown_tool');
             } catch (error) {
                 if (options.signal.aborted) { throw new LearningMaterialError('learning_research_cancelled'); }
-                if (error instanceof LearningValidationError) { return { ok: false, error: error instanceof LearningReadingContentError ? error.code : 'invalid_arguments', path: error.path, message: error.message }; }
+                if (error instanceof LearningValidationError) { return { ok: false, error: 'invalid_arguments', path: error.path, message: error.message }; }
                 return { ok: false, error: error instanceof LearningMaterialError ? error.code : 'learning_research_failed',
                     ...(error instanceof LearningMaterialError && error.httpStatus ? { httpStatus: error.httpStatus } : {}) };
             }

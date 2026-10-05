@@ -61,21 +61,15 @@ function harness() {
     return { repository, service, read, write, session, assess };
 }
 
-test('each request offers only the tools its step needs', () => {
-    assert.deepEqual(names({ kind: 'summary-review', unitId: 'u1', attemptId: 'a1' }).sort(), ['LearningRead']);
-    // A companion remark writes nothing, not even a help declaration.
+test('workbench intents share capabilities while the companion delegates formal work', () => {
+    const all = names({ kind: 'talk' });
+    for (const kind of ['summary-review', 'grade', 'revision-review', 'review-assess', 'model-essay', 'prepare', 'profile']) {
+        assert.deepEqual(names({ kind }), all);
+    }
+    assert.ok(all.includes('LearningSubmit') && all.includes('LearningLessonEdit') && all.includes('LearningAssess'));
+    assert.deepEqual(learningTools({ kind: 'talk' }, 'companion').map(tool => tool.function.name).sort(),
+        ['LearningPresent', 'LearningRead', 'LearningRequest']);
     assert.deepEqual(names({ kind: 'companion' }), ['LearningRead']);
-    for (const kind of ['grade', 'revision-review', 'review-assess']) {
-        const offered = names({ kind, unitId: 'u1' });
-        assert.ok(offered.includes('LearningAssess'), kind);
-        assert.ok(!offered.includes('LearningLessonEdit') && !offered.includes('LearningComplete') && !offered.includes('LearningModelEssay'), kind);
-    }
-    assert.deepEqual(names({ kind: 'model-essay', unitId: 'u1' }).sort(), ['LearningModelEssay', 'LearningRead']);
-    assert.ok(names({ kind: 'review-prepare', itemIds: ['i1'], asOf: T0 }).includes('LearningLessonEdit'));
-    assert.ok(!names({ kind: 'talk' }).includes('LearningModelEssay'));
-    for (const action of [{ kind: 'talk' }, { kind: 'prepare' }, { kind: 'summary-review', unitId: 'u1', attemptId: 'a1' }, { kind: 'model-essay', unitId: 'u1' }]) {
-        assert.ok(!names(action).includes('LearningHelp'), action.kind);
-    }
 });
 
 test('a public article does not grant grading or model-essay access to another story’s saved writing', () => {
@@ -92,7 +86,7 @@ test('a public article does not grant grading or model-essay access to another s
     assert.throws(() => focusOf(data, { kind: 'model-essay', unitId: 'u1' }), error => error.path === 'attemptId');
 });
 
-test('grading, revision review and review assessment each accept only the answers they wait on', async () => {
+test('grading can edit the lesson and assess available work beyond its initial focus', async () => {
     const h = harness(); await h.repository.read();
     await h.service.saveSettings('en', {}, () => true);
     const drafts = [attempt('a1', 's1', 'Parks cool cities.'), attempt('a2', 's2', 'Trees give shade.'), attempt('a3', 'e1', 'I like parks.\nYesterday he is go there.')];
@@ -102,12 +96,12 @@ test('grading, revision review and review assessment each accept only the answer
     });
     // Summaries get a brief reply that saves nothing.
     const summary = h.session({ kind: 'summary-review', unitId: 'u1', attemptId: 'a1' });
-    assert.equal(summary.executeTool('LearningAssess', h.assess('a1')).ok, false);
+    assert.equal(summary.executeTool('LearningAssess', h.assess('a1')).ok, true);
     const focus = focusOf(h.repository.snapshot().document.data, { kind: 'grade', unitId: 'u1' });
     assert.deepEqual(focus.drafts.map(entry => entry.attempt?.id ?? entry.id), ['a1', 'a2', 'a3']);
 
     const grade = h.session({ kind: 'grade', unitId: 'u1' });
-    assert.equal(grade.executeTool('LearningLessonEdit', { title: 'x' }).ok, false);
+    assert.equal(grade.executeTool('LearningLessonEdit', { title: 'x' }).ok, true);
     for (const id of ['a1', 'a2']) { assert.equal(grade.executeTool('LearningAssess', h.assess(id)).ok, true, id); }
     const marked = grade.executeTool('LearningAssess', h.assess('a3', { verdict: 'partial',
         annotations: [{ category: 'grammar', severity: 'error', paragraphIndex: 1, quote: 'is go', explanation: '过去时', suggestion: 'went' }] }));
@@ -118,14 +112,14 @@ test('grading, revision review and review assessment each accept only the answer
     await h.service.submitRevision('en', 'u1', [{ attemptId: 'a3', text: 'I like parks.\nYesterday he went there.' }], () => true);
     const revision = h.read().unit.attempts.at(-1);
     const noteId = h.read().unit.assessments.find(entry => entry.attemptId === 'a3').annotations[0].id;
-    assert.equal(h.session({ kind: 'grade', unitId: 'u1' }).executeTool('LearningAssess', h.assess(revision.id)).ok, false);
+    assert.equal(h.session({ kind: 'grade', unitId: 'u1' }).executeTool('LearningAssess', h.assess(revision.id)).ok, true);
     const review = h.session({ kind: 'revision-review', unitId: 'u1' });
     assert.equal(review.executeTool('LearningAssess', h.assess('a3')).ok, false);
     assert.equal(review.executeTool('LearningAssess', h.assess(revision.id, { resolvedAnnotationIds: [noteId] })).ok, true);
     await review.commit(() => true);
     assert.equal(learningUnitStage(h.read().unit).stage, 'model');
 
-    assert.equal(h.session({ kind: 'review-assess', unitId: 'u1' }).executeTool('LearningAssess', h.assess('a1')).ok, false);
+    assert.equal(h.session({ kind: 'review-assess', unitId: 'u1' }).executeTool('LearningAssess', h.assess('a1')).ok, true);
     // A lesson edit outside a review request never creates a review.
     assert.equal(h.session({ kind: 'talk' }).executeTool('LearningLessonEdit', { kind: 'review', title: '复习', goal: '回忆', exercises: [] }).ok, false);
 
@@ -136,7 +130,7 @@ test('grading, revision review and review assessment each accept only the answer
     assert.deepEqual(h.read().completions.map(entry => entry.unitId), ['u1']);
 });
 
-test('a prepared review asks about exactly the items that were due when the learner started it', async () => {
+test('due review items are suggestions; a teacher can select other saved items', async () => {
     const h = harness(); await h.repository.read();
     await h.service.saveSettings('en', {}, () => true);
     await h.write(profile => {
@@ -151,7 +145,7 @@ test('a prepared review asks about exactly the items that were due when the lear
         response: { kind: 'choice', options: [{ id: 'a', text: 'A' }, { id: 'b', text: 'B' }], multiple: false },
         rule: { kind: 'exact', answer: { kind: 'choice', ids: ['a'] }, explanation: '选 A。' } });
     const run = h.session(action);
-    assert.equal(run.executeTool('LearningLessonEdit', { title: '复习', goal: '回忆', exercises: [choice('q1', 'i1'), choice('q3', 'i3')] }).ok, false);
+    assert.equal(h.session(action).executeTool('LearningLessonEdit', { title: '复习', goal: '回忆', exercises: [choice('q1', 'i1'), choice('q3', 'i3')] }).ok, true);
     assert.equal(run.executeTool('LearningLessonEdit', { title: '复习', goal: '回忆', exercises: [choice('q1', 'i1'), choice('q2', 'i2')] }).ok, true);
     assert.equal((await run.commit(() => true)).status, 'confirmed');
     assert.deepEqual(h.read().review.exercises.map(exercise => exercise.itemId), ['i1', 'i2']);
@@ -180,7 +174,7 @@ test('a unit completed by its facts is paid automatically, exactly once', async 
     assert.equal(after.completions.find(entry => entry.unitId === 'u1').rewardStatus, 'paid');
     assert.equal(h.economy.getPlayerBalance(), before + 17);
     const calls = h.counts.provider;
-    await h.command('grade', { unitId: 'u1' }); await h.command('reward', { unitId: 'u1' }); await h.reenter(); await h.command('read');
+    await h.command('reward', { unitId: 'u1' }); await h.reenter(); await h.command('read');
     assert.equal(h.counts.provider, calls);
     assert.equal(h.economy.getPlayerBalance(), before + 17);
     assert.deepEqual(h.failures, []);
@@ -215,9 +209,9 @@ test('a workbench step re-judges disputed feedback without a separate review fla
     assert.equal(grade.executeTool('LearningAssess', h.assess('a1', { verdict: 'partial' })).ok, true);
     // Feedback that was not disputed still changes only in an explicit review.
     assert.equal(grade.executeTool('LearningAssess', h.assess('a2', { verdict: 'partial' })).ok, false);
-    assert.equal(grade.executeTool('LearningAssess', h.assess('a2', { verdict: 'partial', review: true })).ok, false);
+    assert.equal(grade.executeTool('LearningAssess', h.assess('a2', { verdict: 'partial', review: true })).ok, true);
     const ordinary = h.session({ kind: 'assess', attemptId: 'a2', review: false });
-    assert.equal(ordinary.executeTool('LearningAssess', h.assess('a2', { verdict: 'partial', review: true })).ok, false);
+    assert.equal(ordinary.executeTool('LearningAssess', h.assess('a2', { verdict: 'partial', review: true })).ok, true);
     assert.equal((await grade.commit(() => true)).status, 'confirmed');
     assert.equal(h.read().unit.assessments.find(entry => entry.attemptId === 'a1').verdict, 'partial');
 });
@@ -232,6 +226,113 @@ test('a typed answer that rewrites an ungraded reading-writing draft replaces it
     const drafts = h.read().unit.attempts.filter(entry => entry.exerciseId === 's1');
     assert.deepEqual(drafts.map(entry => entry.answer.text), ['City parks keep summer streets cool.']);
 });
+
+for (const extra of [
+    { name: 'semantic evidence selection', skill: 'reading', response: { kind: 'evidence', materialKey: 'm1' },
+        rule: { kind: 'semantic' }, answer: { kind: 'evidence', ids: ['p1'] } },
+    { name: 'objective evidence selection', skill: 'reading', response: { kind: 'evidence', materialKey: 'm1' },
+        rule: { kind: 'exact', answer: { kind: 'evidence', ids: ['p2'] }, explanation: 'The second paragraph mentions shade.' },
+        answer: { kind: 'evidence', ids: ['p1'] } },
+    { name: 'listening comprehension', skill: 'listening', response: { kind: 'text' },
+        rule: { kind: 'semantic' }, answer: { kind: 'text', text: 'Trees provide shade.' } },
+    { name: 'reading comprehension', skill: 'reading', response: { kind: 'text' },
+        rule: { kind: 'semantic' }, answer: { kind: 'text', text: 'Trees provide shade.' } },
+]) {
+    test(`an added ${extra.name} question retains its material through grading and archiving`, async () => {
+        const h = harness(); await h.repository.read(); await h.service.saveSettings('en', {}, () => true);
+        await h.write(profile => { profile.unit = rwUnit(); });
+        const edit = h.session({ kind: 'talk' });
+        const added = edit.executeTool('LearningLessonEdit', { exercises: [{ key: 'extra', skill: extra.skill,
+            materialKeys: ['m1'], prompt: 'What does the article say about shade?', response: extra.response, rule: extra.rule }] });
+        assert.equal(added.ok, true, JSON.stringify(added));
+        assert.equal((await edit.commit(() => true)).status, 'confirmed');
+        const question = h.read().unit.exercises.at(-1);
+        const pending = h.service.prepareAttempt({ language: 'en', unitId: 'u1', exerciseId: question.id, scope, osId: 'story-a',
+            answer: extra.answer, replays: 0, slowPlayback: false });
+        assert.equal((await pending.save(() => true)).status, 'confirmed');
+        const answer = h.read().unit.attempts.at(-1);
+        const grade = h.session({ kind: 'assess', attemptId: answer.id, review: false });
+        const marked = grade.executeTool('LearningAssess', { ...(extra.rule.kind === 'semantic' ? h.assess(answer.id) : { attemptId: answer.id }),
+            items: [{ label: 'Understand the supporting material' }] });
+        assert.equal(marked.ok, true, JSON.stringify(marked));
+        assert.equal((await grade.commit(() => true)).status, 'confirmed');
+        await h.repository.read();
+        const evidence = h.read().items[0].evidence[0];
+        assert.deepEqual(evidence.materials, h.read().unit.materials);
+        assert.deepEqual(evidence.exercise, question);
+        assert.deepEqual(evidence.attempt, answer);
+        assert.deepEqual(evidence.assessment, h.read().unit.assessments[0]);
+        // Retained evidence must still be readable when the original lesson no longer exists.
+        await h.write(profile => { profile.unit = null; });
+        await h.repository.read();
+        assert.deepEqual(h.read().items[0].evidence[0], evidence);
+    });
+}
+
+for (const objective of [false, true]) {
+    for (const archived of [false, true]) {
+        test(`${objective ? 'objective' : 'semantic'} review replay and old rejudgement preserve the newer schedule, ${archived ? 'archived' : 'current'}`, async () => {
+            const h = harness(); await h.repository.read(); await h.service.saveSettings('en', {}, () => true);
+            await h.write(profile => {
+                profile.items = [{ id: 'i1', label: 'shade', scope, skill: 'vocabulary', evidence: [], schedule: newLearningSchedule(T0) }];
+                profile.review = { id: 'rv', kind: 'review', title: 'Review', goal: 'Recall shade', scope, originOsId: 'story-a',
+                    reward: { tier: 'short', amount: 17 }, materials: [],
+                    exercises: [{ id: 'r1', skill: 'vocabulary', materialIds: [], prompt: 'Use shade.', hint: '', itemId: 'i1',
+                        response: objective ? { kind: 'choice', options: [{ id: 'a', text: 'shade' }, { id: 'b', text: 'sunlight' }], multiple: false } : { kind: 'text' },
+                        rule: objective ? { kind: 'exact', answer: { kind: 'choice', ids: ['a'] }, explanation: 'Shade blocks sunlight.' } : { kind: 'semantic' } }],
+                    attempts: [], assessments: [], revealed: { answers: [], hints: [] } };
+            });
+            const assess = async args => {
+                const run = h.session({ kind: 'talk' });
+                const result = run.executeTool('LearningAssess', args);
+                assert.equal(result.ok, true, JSON.stringify(result));
+                assert.ok(['confirmed', 'unchanged'].includes((await run.commit(() => true)).status));
+                await h.repository.read();
+            };
+            const answers = [];
+            for (const text of ['The tree gives shade.', 'People rest in the shade.']) {
+                const pending = h.service.prepareAttempt({ language: 'en', unitId: 'rv', exerciseId: 'r1', scope, osId: 'story-a',
+                    answer: objective ? { kind: 'choice', ids: ['a'] } : { kind: 'text', text }, replays: 0, slowPlayback: false });
+                assert.equal((await pending.save(() => true)).status, 'confirmed');
+                const answer = h.read().review.attempts.at(-1);
+                if (!objective) { await assess(h.assess(answer.id, { signal: 'clean' })); }
+                answers.push(answer.id);
+            }
+            const [first, second] = answers;
+            const original = structuredClone(h.read().review.assessments.find(entry => entry.attemptId === first));
+            delete original.scope;
+            const before = h.read().items[0].schedule;
+            assert.equal(h.read().review.attempts.length, 2);
+            assert.deepEqual([before.repetitions, before.intervalDays, before.lastAttemptId, before.lastQuality], [2, 6, second, 3]);
+            if (archived) { await h.write(profile => { profile.review = null; }); }
+
+            await assess(original);
+            assert.deepEqual(h.read().items[0].schedule, before);
+            // Adding a learning-item link is not another recall attempt either.
+            await assess({ attemptId: first, items: [{ label: 'Use shade in context' }] });
+            assert.equal(h.read().items[1].evidence[0].attempt.id, first);
+            assert.deepEqual(h.read().items[0].schedule, before);
+            await assess({ ...original, verdict: 'partial', review: true });
+            assert.equal(h.read().items[0].evidence.find(entry => entry.attempt.id === first).assessment.verdict, 'partial');
+            assert.deepEqual(h.read().items[0].schedule, before);
+            assert.equal((await h.service.dispute('en', first, () => true)).status, 'confirmed');
+            await assess({ ...original, review: true });
+            assert.deepEqual(h.read().items[0].schedule, before);
+
+            // The latest answer still can be corrected, withdrawn and re-judged once.
+            await assess(h.assess(second, { verdict: 'partial', review: true }));
+            const corrected = h.read().items[0].schedule;
+            assert.deepEqual([corrected.repetitions, corrected.intervalDays, corrected.lastAttemptId, corrected.lastQuality], [0, 1, second, 2]);
+            await assess(h.assess(second, { verdict: 'partial' }));
+            assert.deepEqual(h.read().items[0].schedule, corrected);
+            assert.equal((await h.service.dispute('en', second, () => true)).status, 'confirmed');
+            assert.deepEqual(h.read().items[0].schedule, newLearningSchedule(T0));
+            await assess(h.assess(second, { review: true }));
+            const restored = h.read().items[0].schedule;
+            assert.deepEqual([restored.repetitions, restored.lastAttemptId, restored.lastQuality], [1, second, 3]);
+        });
+    }
+}
 
 test('a disputed review answer moves its item again from the re-judged verdict, in the review or archived', async () => {
     const h = harness(); await h.repository.read();
@@ -332,7 +433,7 @@ test('submitting a semantic review answer grades it without any mounted review c
     assert.deepEqual(h.profile().unit, before); assert.deepEqual(h.failures, []);
 });
 
-test('payment follows only a new completion, including one a cleanup finishes', async t => {
+test('payment follows confirmed completions, including one a cleanup finishes', async t => {
     const h = await createClassroomFixture(); t.after(h.dispose);
     await h.openLesson();
     const lesson = h.profile().unit;

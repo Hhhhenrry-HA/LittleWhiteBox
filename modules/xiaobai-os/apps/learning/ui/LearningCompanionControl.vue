@@ -5,7 +5,7 @@ import { useLearningUiSession } from './learning-session.js';
 const enabled = toRef(useLearningUiSession().companion, 'enabled');
 defineProps<{ name?: string }>();
 const copy = {
-    title: '陪读', on: '一起学习中', off: '未开启', description: '开启后语伴会和你一起学习',
+    title: '陪读', on: '陪你学习中', off: '未开启', description: '开启后，你安静阅读时语伴会偶尔搭句话',
     costTitle: '费用说明', cost: '陪读消息和聊天一样，按你所用的 AI 服务计费。',
 };
 </script>

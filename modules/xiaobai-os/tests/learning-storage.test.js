@@ -39,10 +39,11 @@ function harness() {
 
 test('learning profiles survive reopening; reading empty storage does not create a file', async () => {
     const { state, repository, make } = harness();
+    const receipts = [];
     assert.deepEqual(await repository.read(), { status: 'ready', document: null });
     assert.equal(state.uploads.length, 0);
     const original = data(profile());
-    const first = await repository.save(null, original, () => true);
+    const first = await repository.save(null, original, () => true, receipt => receipts.push(receipt));
     original.profiles[0].goal.description = '修改调用方对象';
     assert.equal(first.status, 'confirmed');
     assert.equal(first.document.data.profiles[0].goal.description, '读懂英文报道');
@@ -50,9 +51,10 @@ test('learning profiles survive reopening; reading empty storage does not create
     const second = await repository.save(first.document, data(profile(), profile('ja', '日常阅读')), () => true);
     assert.equal(second.document.revision, 2);
     assert.deepEqual(second.document.data.profiles.map(item => item.language), ['en', 'ja']);
-    const noChange = await repository.save(second.document, second.document.data, () => true);
+    const noChange = await repository.save(second.document, second.document.data, () => true, receipt => receipts.push(receipt));
     assert.equal(noChange.status, 'unchanged');
     assert.equal(state.uploads.length, 2);
+    assert.deepEqual(receipts, [first, noChange]);
 });
 
 test('invalid files and failed reads are not converted into empty writable profiles', async () => {
@@ -94,9 +96,10 @@ test('confirmed uploads and ordinary reads reuse the session; only explicit refr
 
 test('unknown writes keep the old facts; ordinary reads do not retry; recovery has an adoption exit', async () => {
     const { state, repository } = harness();
+    const receipts = [];
     const initial = await repository.save(null, data(profile()), () => true);
     state.upload = () => { throw new TypeError('response lost'); };
-    const saved = await repository.save(initial.document, data(profile('ja')), () => true);
+    const saved = await repository.save(initial.document, data(profile('ja')), () => true, receipt => receipts.push(receipt));
     assert.equal(saved.status, 'unconfirmed');
     assert.deepEqual(repository.snapshot().document, initial.document);
     const reads = state.requests.length;
@@ -109,6 +112,7 @@ test('unknown writes keep the old facts; ordinary reads do not retry; recovery h
     assert.equal((await repository.adoptServer()).status, 'ready');
     assert.equal(state.uploads.length, 2);
     assert.equal(repository.snapshot().document.commitId, 'other-writer');
+    assert.deepEqual(receipts, []);
     assert.equal((await repository.clear(repository.snapshot().document, () => true)).status, 'unconfirmed');
 });
 
@@ -131,8 +135,12 @@ test('an unchanged server baseline permits explicit retry of exactly the origina
 
 test('response loss after writing confirms the saved file without resending', async () => {
     const { state, repository } = harness();
+    const receipts = [];
     state.upload = document => { state.file = structuredClone(document); throw new TypeError('disconnected'); };
-    assert.equal((await repository.save(null, data(profile()), () => true)).status, 'confirmed');
+    const result = await repository.save(null, data(profile()), () => true, receipt => receipts.push(receipt));
+    assert.equal(result.status, 'confirmed');
+    await repository.verify(); await repository.refresh();
+    assert.deepEqual(receipts, [result]);
     assert.equal(state.uploads.length, 1);
 });
 
@@ -140,7 +148,8 @@ test('definite HTTP rejection is retryable by the user, whereas 408/429/5xx need
     for (const status of [400, 403, 408, 429, 500]) {
         const { state, repository } = harness();
         state.upload = () => new Response('do not expose this response', { status });
-        const attempt = repository.save(null, data(profile()), () => true);
+        const receipts = [];
+        const attempt = repository.save(null, data(profile()), () => true, receipt => receipts.push(receipt));
         if (status === 400 || status === 403) {
             await assert.rejects(attempt, { code: 'learning_write_rejected', message: 'learning_write_rejected' });
             state.upload = null;
@@ -151,13 +160,16 @@ test('definite HTTP rejection is retryable by the user, whereas 408/429/5xx need
             assert.equal((await repository.retry(() => true)).status, 'unconfirmed');
             assert.equal(state.uploads.length, 1);
         }
+        assert.deepEqual(receipts, []);
     }
 });
 
 test('queued stale edits are cancelled locally; cancellation after send still confirms facts', async () => {
     const { state, repository } = harness();
+    const receipts = [];
     let active = false;
-    assert.equal((await repository.save(null, data(profile()), () => active)).status, 'cancelled');
+    assert.equal((await repository.save(null, data(profile()), () => active, receipt => receipts.push(receipt))).status, 'cancelled');
+    assert.deepEqual(receipts, []);
     assert.equal(state.requests.length, 0);
     active = true;
     const first = repository.save(null, data(profile()), () => active);
@@ -168,9 +180,10 @@ test('queued stale edits are cancelled locally; cancellation after send still co
     assert.equal(adopted.status, 'ready');
     assert.equal(state.requests.length, 2);
     state.upload = document => { active = false; state.file = document; return new Response('{}'); };
-    const afterSend = await repository.save(adopted.document, data(profile('ja')), () => active);
+    const afterSend = await repository.save(adopted.document, data(profile('ja')), () => active, receipt => receipts.push(receipt));
     assert.equal(afterSend.status, 'confirmed');
     assert.equal(state.uploads.length, 2);
+    assert.deepEqual(receipts, [afterSend]);
 });
 
 test('clearing user assets is an explicit confirmed write and never touches a chat file', async () => {

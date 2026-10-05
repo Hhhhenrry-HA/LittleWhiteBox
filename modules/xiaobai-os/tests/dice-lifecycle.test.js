@@ -44,7 +44,7 @@ const compiled = await build({
             export const saveChatConditional = async () => {};
             export const createDiceGenerationAdapter = (_enabled, frequency, changed) => {
                 host.frequency = frequency;
-                return { start() { host.actionStarted = true; }, stop() { host.actionStarted = false; changed(); }, isBusy: () => host.busy, isReplyPaused: () => _enabled() && host.paused, cancel() { host.cancelled = true; changed(); } };
+                return { start() { host.actionStarted = true; }, stop() { host.actionStarted = false; changed(); }, isBusy: () => host.busy, isReplyPaused: message => _enabled() && message === host.pausedMessage, cancel() { host.cancelled = true; changed(); } };
             };
             export const createEncounterRuntime = () => ({ start() { host.encounterStarted = true; }, stop() { host.encounterStarted = false; }, cancel() {} });
             export const createEncounterDisplay = () => ({ start() {}, stop() {}, refresh() {} });
@@ -73,8 +73,9 @@ for (const startsWithChat of [false, true]) {
         let userDocument = null;
         const dice = createProductionDiceModule(settings, async () => ({world:false,summary:false}), () => false,
             () => upgradeDiceUserFile(kernel.userTransactions));
-        host.paused = true;
-        assert.equal(dice.replyPause.isPaused(), false, 'an uninstalled Dice module has no display hold');
+        const pausedMessage = { mes: 'Paused reply' };
+        host.pausedMessage = pausedMessage;
+        assert.equal(dice.replyPause.isPaused(pausedMessage), false, 'an uninstalled Dice module has no display hold');
         const kernel = createKernelComposition({
             modules: [dice], capabilities: [...createEconomyCapabilityRegistrations(), headlessPromptInjection()],
             user: { storage: { read: async () => userDocument, replace: async (_name, value) => { userDocument = value; } },
@@ -111,9 +112,10 @@ for (const startsWithChat of [false, true]) {
         if (!startsWithChat) { await selectChat('chat-a', true); }
         await kernel.apps.handleChatChanged();
         assert.equal(host.displayEnabled, true, 'The display uses global preferences without reopening Dice');
-        assert.equal(dice.replyPause.isPaused(), true);
+        assert.equal(dice.replyPause.isPaused(pausedMessage), true);
+        assert.equal(dice.replyPause.isPaused({ mes: 'Another reply' }), false, 'the port forwards the caller-selected message');
         await settings.setDiceFeature('actionChecksEnabled', false);
-        assert.equal(dice.replyPause.isPaused(), false, 'global opt-out releases the display hold');
+        assert.equal(dice.replyPause.isPaused(pausedMessage), false, 'global opt-out releases the display hold');
         await settings.setDiceFeature('actionChecksEnabled', true);
         assert.equal(kernel.apps.status('dice').state, 'ready');
         let state = await kernel.apps.activate('dice', { isCurrent: () => true, post() {} });
@@ -123,7 +125,7 @@ for (const startsWithChat of [false, true]) {
         kernel.transactions.invalidateCurrent();
         await kernel.apps.handleChatChanged();
         assert.equal(kernel.apps.status('dice').state, 'ready');
-        assert.equal(dice.replyPause.isPaused(), false, 'no current chat leaves no hold');
+        assert.equal(dice.replyPause.isPaused(pausedMessage), false, 'no current chat leaves no hold');
 
         await selectChat('chat-b', false);
         await kernel.apps.handleChatChanged();
@@ -134,7 +136,7 @@ for (const startsWithChat of [false, true]) {
         assert.equal(state.actionCheckFrequency, 'active');
         assert.equal(writes, 0);
         await kernel.dispose();
-        assert.equal(dice.replyPause.isPaused(), false, 'removing Dice unregisters its display state');
+        assert.equal(dice.replyPause.isPaused(pausedMessage), false, 'removing Dice unregisters its display state');
     });
 }
 

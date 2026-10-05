@@ -42,7 +42,7 @@ export function learningReviewQuality(attempt: Pick<LearningAttempt, 'help'>, as
     return assessment.signal === 'hesitant' ? 4 : 5;
 }
 
-/** One SM-2 step. The same attempt never advances an item twice. */
+/** One SM-2 step; assessment transitions decide whether a judgement is new. Consecutive duplicates are a no-op. */
 export function advanceLearningSchedule(schedule: LearningSchedule, quality: number, attemptId: string, now: string): LearningSchedule {
     if (schedule.lastAttemptId === attemptId) { return schedule; }
     if (quality < 3) {

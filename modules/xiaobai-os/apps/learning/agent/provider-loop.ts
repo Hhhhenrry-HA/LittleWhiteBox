@@ -12,6 +12,7 @@ import { isLearningContextOverflow, learningHistoryMessage, learningTurnMessages
 import { LEARNING_PRESERVED_TURNS, LEARNING_SUMMARY_TRIGGER_TOKENS, summariseLearningHistory } from './history-compaction.js';
 
 type RecordValue = Record<string, unknown>;
+const MAX_TOOL_ROUNDS = 48;
 export type LearningLoopResult = { status: 'finished'; messages: RecordValue[]; removedTurns: number }
     | { status: 'failed'; reason: string; details: LearningFailureDetails } | { status: 'cancelled' };
 
@@ -28,12 +29,10 @@ export async function runLearningProviderLoop(options: {
     onProgress?: (progress: LearningProgress) => void;
     transcript?: LearningMessage[];
     onResponseStart?: (message: LearningMessage) => void;
-    onResponseComplete?: (message: LearningMessage) => void;
+    onResponseComplete?: (message: LearningMessage, toolsSucceeded: boolean) => void;
     summaryPrompt: string;
     onMessages?: () => void;
     allowSilence?: boolean;
-    /** A bounded preparation task ends on its accepted content, without a closing model round. */
-    completeOnTool?: (name: string, result: unknown) => boolean;
 }): Promise<LearningLoopResult> {
     const { signal, guard } = options;
     let agent = options.agent;
@@ -45,12 +44,9 @@ export async function runLearningProviderLoop(options: {
     const outputStart = state.messages.length;
     const tools = new Set(options.tools.map(tool => String((tool.function as RecordValue).name)));
     let responses: RecordValue[] | undefined;
-    let previousResult = '';
-    let repeated = 0;
     let reminderSent = false;
     let pendingReminder = '';
     const finalReminder = 'The tool results are available. Reply to the learner with the outcome or the obstacle that needs their input.';
-    const stepComplete = { ok: false, message: 'This preparation step already has its content. Remaining calls were not executed.' };
     const cancelled = () => signal.aborted || !guard();
     let open = true;
     const stream = createStreamingMessageController({ state, minRenderIntervalMs: 80,
@@ -97,7 +93,7 @@ export async function runLearningProviderLoop(options: {
         return false;
     }
     try {
-        for (let round = 1; !cancelled(); round++) {
+        for (let round = 1; round <= MAX_TOOL_ROUNDS && !cancelled(); round++) {
             if (cancelled()) { return { status: 'cancelled' }; }
             let result: RecordValue;
             let assistant: LearningMessage | null = null;
@@ -171,12 +167,12 @@ export async function runLearningProviderLoop(options: {
                         continue;
                     }
                     if (!text) { return failure('learning_empty_response'); }
-                    options.onResponseComplete?.(assistant!);
+                    options.onResponseComplete?.(assistant!, true);
                     stream.scheduleStreamRender();
                     return { status: 'finished', messages: protocolMessages(), removedTurns };
                 }
                 responses = [];
-                let completed = false;
+                let toolsSucceeded = true;
                 for (const call of calls) {
                     if (cancelled()) { return { status: 'cancelled' }; }
                     advance({ stage: 'tools', round, tool: call.name });
@@ -185,7 +181,7 @@ export async function runLearningProviderLoop(options: {
                     let args: unknown = null;
                     try { args = JSON.parse(call.arguments); } catch { /* The owning tool records an invalid proposal. */ }
                     let value: unknown;
-                    try { value = completed ? stepComplete : tools.has(call.name) ? await options.executeTool(call.name, args)
+                    try { value = tools.has(call.name) ? await options.executeTool(call.name, args)
                         : { ok: false, message: 'Choose a tool from the supplied definitions.', tools: [...tools] }; }
                     catch (error) {
                         if (cancelled()) { return { status: 'cancelled' }; }
@@ -194,22 +190,20 @@ export async function runLearningProviderLoop(options: {
                         return failure('learning_tool_failed', error);
                     }
                     if (cancelled()) { return { status: 'cancelled' }; }
+                    if (value && typeof value === 'object') {
+                        const result = value as { ok?: boolean; status?: string };
+                        if (result.ok === false || result.status === 'declined') { toolsSucceeded = false; }
+                    }
                     entry.content = safePromptJson(value); entry.streaming = false;
                     stream.scheduleStreamRender();
                     responses.push({ id: call.id, name: call.name, response: value,
                         ...(Object.hasOwn(call, 'providerId') ? { providerId: call.providerId } : {}) });
-                    completed ||= options.completeOnTool?.(call.name, value) ?? false;
                 }
-                options.onResponseComplete?.(assistant!);
+                options.onResponseComplete?.(assistant!, toolsSucceeded);
                 stream.scheduleStreamRender();
-                if (completed) { return { status: 'finished', messages: protocolMessages(), removedTurns }; }
-                const signature = JSON.stringify(calls.map((call, index) => ({ name: call.name, arguments: call.arguments, response: responses![index].response })));
-                repeated = signature === previousResult ? repeated + 1 : 1;
-                previousResult = signature;
-                if (repeated >= 3) { return failure('learning_stalled'); }
             } catch (error) { return failure('learning_protocol_failed', error); }
         }
-        return { status: 'cancelled' };
+        return cancelled() ? { status: 'cancelled' } : failure('learning_round_limit');
     } finally {
         open = false;
         signal.removeEventListener('abort', finishStream);

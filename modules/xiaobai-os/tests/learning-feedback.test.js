@@ -49,9 +49,9 @@ test('profile failures identify their stage, log one bounded diagnostic and neve
     for (const [mode, reason, stage, tool] of [
         ['config', 'learning_config_failed', 'config'],
         ['session', 'learning_session_failed', 'session'], ['provider', 'provider-request', 'provider'],
-        ['protocol', 'learning_protocol_failed', 'provider'], ['unknown', 'learning_stalled', 'tools', 'NotProvided'],
-        ['limit', 'learning_stalled', 'tools', 'LearningRead'],
-        ['save', 'learning_save_failed', 'save'],
+        ['protocol', 'learning_protocol_failed', 'provider'], ['unknown', 'learning_round_limit', 'tools', 'NotProvided'],
+        ['limit', 'learning_round_limit', 'tools', 'LearningRead'],
+        ['save', 'learning_tool_failed', 'tools'],
     ]) {
         await t.test(mode, async sub => {
             const logs = sub.mock.method(console, 'error', () => {});
@@ -62,7 +62,7 @@ test('profile failures identify their stage, log one bounded diagnostic and neve
             assert.equal(logs.mock.calls.length, 1);
             const diagnostic = logs.mock.calls[0].arguments[1];
             assert.equal(diagnostic.action, 'profile'); assert.equal(diagnostic.stage, stage); assert.equal(diagnostic.reason, reason);
-            if (tool) { assert.equal(diagnostic.tool, tool); assert.equal(diagnostic.round, 3); }
+            if (tool) { assert.equal(diagnostic.tool, tool); assert.equal(diagnostic.round, 48); }
             if (mode === 'provider') { assert.equal(diagnostic.httpStatus, 400); }
             assert.ok(!JSON.stringify([result, logs.mock.calls.map(call => call.arguments)]).includes(privateText));
             assert.equal(h.repository.snapshot().document, null); assert.equal(h.counts().writes, 0);

@@ -4,6 +4,9 @@ import { parseHTML } from 'linkedom';
 import { createMapProjectionDisplay } from '../apps/map/host/projection-display.js';
 import { createMainGenerationRuntime } from '../host/main-generation-runtime.js';
 import { createEmptyMapDomain } from '../domains/map/state.js';
+import { isDiceContinuationPending } from '../apps/dice/application/continuation-state.js';
+import { prepareActionCheck } from '../apps/dice/application/prepare-action-check.js';
+import { DICE_MESSAGE_KEY } from '../apps/dice/domain/check-records.js';
 import { mapBrowseFixture } from './fixtures/map-browse.js';
 
 function displayDom() {
@@ -135,7 +138,7 @@ test('projection follows only the final assistant, survives rerenders, and owns 
 
 test('projection stays absent throughout main generation and resumes passively from the latest state', async t => {
     const { document, frames, flush, cleanup } = displayDom();
-    let hostGenerating = false, replyPaused = false, lifecycle, notify, reads = 0, captures = 0, disposed = 0;
+    let hostGenerating = false, lifecycle, notify, reads = 0, captures = 0, disposed = 0;
     const generation = createMainGenerationRuntime({ readHostGenerating: () => hostGenerating,
         subscribe(handlers) { lifecycle = handlers; return () => { lifecycle = null; }; } });
     generation.startBackground();
@@ -149,7 +152,7 @@ test('projection stays absent throughout main generation and resumes passively f
     }
     let latest = mountFloor(0);
     const display = createMapProjectionDisplay({ enabled: () => state.projectToChat, isGenerationActive: generation.isActive,
-        isReplyPaused: () => replyPaused,
+        isReplyPaused: isDiceContinuationPending,
         readState: () => { reads++; return structuredClone(state); }, captureChat: () => { captures++; return source; },
         readTheme: () => 'light', frameSrc: '/projection.html', subscribe(handlers) {
             notify = handlers;
@@ -200,19 +203,33 @@ test('projection stays absent throughout main generation and resumes passively f
 
     const beforePause = reads;
     lifecycle.started({ type: 'normal', dryRun: false }); hostState(true);
-    replyPaused = true; notify.activityChanged(); hostState(false);
+    const reply = source.messages.at(-1);
+    const request = '<xb_action_check>{"action":"Climb","stat":"Agility","difficulty":"hard"}</xb_action_check>\n</fictional_scenarios>';
+    reply.mes = request; notify.activityChanged(); hostState(false);
     state.map.revision++; notify.stateChanged(); notify.messagesChanged(); await flush();
     assert.equal(surface(), null, 'native stop at a Dice choice is not a completed reply');
     assert.equal(reads, beforePause, 'map publications remain deferred throughout a Dice pause');
+    const candidate = prepareActionCheck({ body: request, generatedFrom: 0, id: 'projection-check', random: () => .3 });
+    assert.equal(candidate.kind, 'candidate');
+    reply.mes = candidate.body; reply.extra = { [DICE_MESSAGE_KEY]: candidate.records };
+    source.messages.push({ is_user: true, mes: 'Continue' }, { is_system: true, extra: { type: 'narrator' }, mes: 'Note' });
+    notify.activityChanged(); notify.messagesChanged(); await flush();
+    assert.equal(surface(), null, 'a later User/system message cannot release the target AI floor');
+    assert.equal(reads, beforePause);
     display.stop(); display.start(); await flush();
     assert.equal(surface(), null, 'a restored Dice pause does not depend on seeing generation start');
     lifecycle.started({ type: 'continue', dryRun: false }); hostState(true);
-    replyPaused = false; notify.activityChanged(); await flush();
+    reply.mes += '\nAfterward.'; notify.activityChanged(); await flush();
     assert.equal(surface(), null, 'releasing Dice cannot reveal the map during native continuation');
-    hostState(false); await flush(); assert.ok(surface());
-    replyPaused = true; notify.messagesChanged(); await flush();
+    hostState(false); await flush(); assert.equal(surface().closest('.mes'), latest);
+    const beforePausedSwipe = disposed;
+    reply.mes = candidate.body; notify.messagesChanged(); await flush();
     assert.equal(surface(), null, 'switching to a saved paused swipe hides an already visible map');
-    replyPaused = false; notify.activityChanged(); await flush(); assert.ok(surface());
+    assert.equal(disposed, beforePausedSwipe + 1, 'a content pause disposes the projection channel');
+    reply.mes += '\nAfterward.'; notify.activityChanged(); await flush(); assert.ok(surface());
+    reply.mes += '\n' + request; notify.messagesChanged(); await flush();
+    assert.equal(surface(), null, 'editing in another executable request hides the projection');
+    reply.mes = candidate.body + '\nAfterward.'; notify.messagesChanged(); await flush(); assert.ok(surface());
 
     const beforePreflight = surface();
     lifecycle.started({ type: 'normal', dryRun: false }); lifecycle.hostStateChanged(); await flush();

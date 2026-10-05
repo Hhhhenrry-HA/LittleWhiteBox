@@ -23,11 +23,10 @@ export function completeLearningByFacts(profile: LearningLanguage, slot: 'unit' 
     return completion;
 }
 
-/** The model essay is the last reading-writing step; saving it completes the unit. */
+/** A model essay is available as soon as saved; completion still follows actual learner work. */
 export function saveLearningModelEssay(profile: LearningLanguage, unitId: string, value: unknown, now: string): void {
     const unit = profile.unit;
     requireLearning(unit?.kind === 'reading-writing' && unit.id === unitId, 'unitId', 'Select the current reading-writing unit');
-    requireLearning(learningUnitStage(unit).stage === 'model', 'unitId', 'The model essay follows grading and revision review');
     const essay = learningRecord(value, 'modelEssay', ['text', 'level']);
     unit.modelEssay = { text: learningText(essay.text, 'modelEssay.text', L.materialText), level: learningText(essay.level, 'modelEssay.level', L.name) };
     completeLearningByFacts(profile, 'unit', now);
@@ -38,9 +37,8 @@ export function completeLearning(profile: LearningLanguage, args: unknown, optio
 }): LearningLanguage {
     const input = learningRecord(args, 'LearningComplete', ['unitId', 'attemptIds', 'summary']);
     const unitId = learningId(input.unitId, 'unitId');
-    const unit = profile.unit;
+    const unit = [profile.unit, profile.review].find(entry => entry?.id === unitId);
     requireLearning(unit && unit.id === unitId && canReadLearningScope(unit.scope, options.osId), 'unitId', 'Use the current readable unit');
-    requireLearning(unit.kind === 'lesson', 'unitId', 'Reading-writing and review units complete from their own saved steps');
     const attemptIds = learningIds(input.attemptIds, 'attemptIds');
     requireLearning(attemptIds.length > 0, 'attemptIds', 'Completion requires actual practice with feedback');
     const summary = learningText(input.summary, 'summary', L.explanation);

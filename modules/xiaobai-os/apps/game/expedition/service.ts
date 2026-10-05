@@ -1,7 +1,7 @@
 import { ECONOMY_TRANSACTION_CAPABILITY, type EconomyReadCapability } from '../../../capabilities/economy/index.js';
 import type { PartitionStore, XiaobaiOsFileControls, XiaobaiOsFileState } from '../../../kernel/contracts.js';
 import { advanceExpedition, emptyExpedition, expeditionProgress } from './domain.js';
-import { postAwards, validateEconomy } from './economy.js';
+import { postExpeditionMoney, validateEconomy } from './economy.js';
 import { EXPEDITION_PARTITION, expeditionId, parseCommand } from './partition.js';
 import { fault } from './random.js';
 import type { Command, ExpeditionData } from './types.js';
@@ -30,7 +30,7 @@ export function createExpeditionService(store: PartitionStore<ExpeditionData>, f
             if (data.revision !== input.revision) { fault('stale'); }
             const seed = command.type === 'start' ? (dependencies.seed?.() ?? crypto.getRandomValues(new Uint32Array(1))[0]) : 0;
             const next = advanceExpedition(data, command, input.actionId, seed);
-            postAwards(data, next, money); validateEconomy(next, money); transaction.replace(next); accepted = true;
+            postExpeditionMoney(data, next, money); validateEconomy(next, money); transaction.replace(next); accepted = true;
         }, { retainFailedCandidate: true, commitGuard: () => (accepted || guard()) && (dependencies.idle?.() ?? true) });
         if (result.status !== 'confirmed' && result.status !== 'unchanged') { throw Object.assign(new Error(`expedition_save_${result.status}`), { code: `expedition_save_${result.status}` }); }
         return view();

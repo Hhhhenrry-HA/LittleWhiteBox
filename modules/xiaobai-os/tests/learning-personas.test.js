@@ -161,7 +161,7 @@ test('workbench private exchanges and summaries survive another story without be
     assert.deepEqual(await port.read(), emptyLearningMemory());
 });
 
-test('a new public lesson cannot consume the private lesson it replaces through context, history or reads', async t => {
+test('reading private lesson content makes the replacement private without copying private history', async t => {
     const h = await createClassroomFixture(); t.after(h.dispose); await h.openLesson();
     const document = structuredClone(h.repository.snapshot().document);
     document.data.profiles[0].unit.scope = { kind: 'story', osId: h.profile().unit.originOsId };
@@ -176,14 +176,14 @@ test('a new public lesson cannot consume the private lesson it replaces through 
         assert.ok(!JSON.stringify(request.messages).includes('PRIVATE_STUDY_CONTEXT'));
         if (round === 1) { return { toolCalls: [{ id: 'read', name: 'LearningRead', arguments: JSON.stringify({ section: 'unit' }) }] }; }
         if (round === 2) {
-            assert.equal(JSON.parse(request.messages.findLast(message => message.role === 'tool').content).data, null);
+            assert.equal(JSON.parse(request.messages.findLast(message => message.role === 'tool').content).data.id, previousId);
             return { toolCalls: [{ id: 'new', name: 'LearningLessonEdit', arguments: JSON.stringify(fixtureLesson) }] };
         }
         return { text: 'The new public lesson is ready.' };
     };
     await h.command('replace-lesson', { unitId: previousId, message: 'Replace the lesson.' });
     assert.notEqual(h.profile().unit.id, previousId);
-    assert.deepEqual(h.profile().unit.scope, { kind: 'public' });
+    assert.deepEqual(h.profile().unit.scope, { kind: 'story', osId: h.profile().unit.originOsId });
 });
 
 for (const target of ['companion', 'workbench']) {
