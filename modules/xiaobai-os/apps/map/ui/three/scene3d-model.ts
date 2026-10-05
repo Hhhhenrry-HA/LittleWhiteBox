@@ -24,7 +24,7 @@ export function createSceneModel(data: MapScene, dark: boolean, assets?: { get(k
     const resources = new Scene3DResources();
     const group = new Group();
     try {
-        const materials = createSceneMaterials(resources, dark);
+        const materials = createSceneMaterials(resources, dark, data.lighting);
         const template = createTemplates(resources, materials);
         const cube = resources.own(new BoxGeometry(1, 1, 1));
         const crownShape = resources.own(new SphereGeometry(.5, 8, 6));

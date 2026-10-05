@@ -1,6 +1,6 @@
 /* eslint-disable */
 import { B as G, C as c, D as U, I as K, O as $, Q as L, S as Y, U as r, _ as W, at as P, b as A, et as M, ft as d, k as F, lt as e, st as X, ut as J, w as b, x as i } from "./xiaobai-os-frame-bridge-CrPFvkI3.js";
-import { h as S, m as q, p as C, t as Z } from "./xiaobai-os-MapBrowser-CSDGp-Hv.js";
+import { _ as q, g as C, t as Z, v as S } from "./xiaobai-os-MapBrowser-BlYLo2KN.js";
 import { t as x } from "./xiaobai-os-AppDialog-Ce_C5VGF.js";
 var _ = { class: "map-dialog-header" }, ee = { key: 0 }, te = { class: "map-settings-content" }, ae = { class: "map-auto-setting" }, ne = ["aria-checked", "disabled"], se = { class: "map-auto-setting" }, ie = [
   "aria-checked",

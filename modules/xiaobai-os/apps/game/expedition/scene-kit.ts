@@ -1,0 +1,65 @@
+import { BoxGeometry, type BufferGeometry, CircleGeometry, ConeGeometry, CylinderGeometry, DoubleSide, ExtrudeGeometry, Group, IcosahedronGeometry,
+    Mesh, MeshBasicMaterial, MeshStandardMaterial, RingGeometry, Shape, ShapeGeometry, SphereGeometry, TorusGeometry,
+    type Material, type Object3D } from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+export type Vec3 = [number, number, number];
+/** Scene-owned shared resources. Static architecture is baked by material, not drawn block by block. */
+export function createSceneKit() {
+    const archProfile = new Shape(); archProfile.absarc(0, 0, 1.1, 0, Math.PI, false);
+    archProfile.lineTo(-.86, 0); archProfile.absarc(0, 0, .86, Math.PI, 0, true); archProfile.closePath();
+    const geometries = {
+        box: new BoxGeometry(1, 1, 1), sphere: new SphereGeometry(1, 20, 14), rock: new IcosahedronGeometry(1, 0),
+        cylinder: new CylinderGeometry(1, 1, 1, 12), cone: new ConeGeometry(1, 1, 8),
+        disc: new CircleGeometry(1, 48), ring: new RingGeometry(.965, 1, 64),
+        arc: new RingGeometry(.77, 1, 40, 1, -.2, Math.PI * 1.3), torus: new TorusGeometry(1, .08, 6, 32),
+        crescent: new TorusGeometry(1, .14, 6, 24, Math.PI * 1.45),
+        arch: new ExtrudeGeometry(archProfile, { depth: 1, bevelEnabled: false, curveSegments: 24 }).translate(0, 0, -.5),
+    };
+    const shapes = new Map<string, ShapeGeometry>(), materials = new Map<string, MeshStandardMaterial | MeshBasicMaterial>();
+    function material(color: string, flat = false, opacity = 1, metal = false) {
+        const key = `${color}/${flat}/${opacity}/${metal}`;
+        let m = materials.get(key);
+        if (!m) {
+            m = flat ? new MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity === 1, side: DoubleSide })
+                : new MeshStandardMaterial({ color, roughness: metal ? .34 : .88, metalness: metal ? .45 : .02, side: DoubleSide });
+            materials.set(key, m);
+        }
+        return m;
+    }
+    function mesh(parent: Object3D, kind: keyof typeof geometries, color: string, size: Vec3, pos: Vec3 = [0, 0, 0], flat = false, opacity = 1, metal = false) {
+        const m = new Mesh(geometries[kind], material(color, flat, opacity, metal));
+        m.scale.set(...size); m.position.set(...pos); m.castShadow = !flat; m.receiveShadow = !flat; parent.add(m); return m;
+    }
+    function group(parent: Object3D, pos: Vec3 = [0, 0, 0]) { const g = new Group(); g.position.set(...pos); parent.add(g); return g; }
+    function ring(parent: Object3D, color: string, radius: number, x: number, z: number, opacity = 1, filled = false, height = .04) {
+        const m = mesh(parent, filled ? 'disc' : 'ring', color, [radius, radius, 1], [x, height, z], true, opacity); m.rotation.x = -Math.PI / 2; return m;
+    }
+    function shape(parent: Object3D, points: readonly [number, number][], color: string, pos: Vec3 = [0, 0, 0]) {
+        const key = JSON.stringify(points); let geo = shapes.get(key);
+        if (!geo) { const s = new Shape(); points.forEach(([x, y], i) => i ? s.lineTo(x, y) : s.moveTo(x, y)); s.closePath(); geo = new ShapeGeometry(s); shapes.set(key, geo); }
+        const m = new Mesh(geo, material(color)); m.position.set(...pos); m.castShadow = true; parent.add(m); return m;
+    }
+    function bake(root: Group) {
+        root.updateMatrixWorld(true);
+        const batches = new Map<Material, BufferGeometry[]>();
+        root.traverse(o => {
+            if (!(o instanceof Mesh) || Array.isArray(o.material)) { return; }
+            const geo = (o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone()).applyMatrix4(o.matrixWorld);
+            // All environment primitives have position/normal/uv; batching preserves their lighting.
+            const list = batches.get(o.material) ?? []; list.push(geo); batches.set(o.material, list);
+        });
+        root.clear();
+        const baked: BufferGeometry[] = [];
+        for (const [mat, list] of batches) {
+            const merged = mergeGeometries(list); list.forEach(g => g.dispose());
+            if (!merged) { throw new Error('expedition_geometry_merge'); }
+            const mesh = new Mesh(merged, mat); mesh.castShadow = !(mat instanceof MeshBasicMaterial); mesh.receiveShadow = true;
+            root.add(mesh); baked.push(merged);
+        }
+        return () => { root.clear(); baked.forEach(g => g.dispose()); };
+    }
+    return { mesh, group, ring, shape, material, bake, geometries,
+        dispose() { Object.values(geometries).forEach(g => g.dispose()); shapes.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); } };
+}
+export type SceneKit = ReturnType<typeof createSceneKit>;

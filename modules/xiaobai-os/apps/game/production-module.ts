@@ -4,6 +4,7 @@ import { createGameController } from './host/controller.js';
 import { createGameModule } from './module.js';
 import { withMovingRuntime } from './moving/host.js';
 import { withBuildingRuntime } from './building/host.js';
+import { withExpeditionRuntime } from './expedition/host.js';
 import type { XiaobaiOsSettingsRepository } from '../../host/settings-repository.js';
 
 export interface ProductionGameModuleDependencies {
@@ -17,8 +18,8 @@ export function createProductionGameModule(dependencies: ProductionGameModuleDep
         service: { isMainGenerationActive: dependencies.mainGeneration.isActive },
         movingSoundEnabled: () => dependencies.settings.read()!.apps.game.movingSoundEnabled,
         buildingSoundEnabled: () => dependencies.settings.read()!.apps.game.buildingSoundEnabled,
-        async install({ game, moving, building, economy, execution }) {
-            return withBuildingRuntime(withMovingRuntime(createGameController({
+        async install({ game, moving, building, expedition, economy, execution }) {
+            return withExpeditionRuntime(withBuildingRuntime(withMovingRuntime(createGameController({
                 game,
                 economy,
                 getChatIdentity: dependencies.getChatIdentity,
@@ -26,7 +27,8 @@ export function createProductionGameModule(dependencies: ProductionGameModuleDep
                 subscribeGeneration: dependencies.mainGeneration.subscribe,
                 execution,
             }), moving, () => dependencies.getChatIdentity()?.key ?? '', dependencies.settings),
-            building, () => dependencies.getChatIdentity()?.key ?? '', dependencies.settings);
+            building, () => dependencies.getChatIdentity()?.key ?? '', dependencies.settings),
+            expedition, () => dependencies.getChatIdentity()?.key ?? '');
         },
         async dispose(runtime) { await runtime.stopBackground?.(); },
     });

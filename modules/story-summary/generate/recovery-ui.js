@@ -49,18 +49,20 @@ export function protectGenerationDraft(document, getContext) {
     const chat = getContext().chat;
     const chatId = getContext().chatId;
     const saved = {
-        value: textarea.value, disabled: textarea.disabled,
+        value: textarea.value, readOnly: textarea.readOnly,
         start: textarea.selectionStart, end: textarea.selectionEnd,
         direction: textarea.selectionDirection, scrollTop: textarea.scrollTop,
         focused: document.activeElement === textarea,
     };
-    textarea.disabled = true;
+    // Read-only blocks draft edits without the host's disabled-field dimming
+    // or focus loss every time a new native generation reads the composer.
+    textarea.readOnly = true;
     textarea.value = '';
     let released = false;
     return () => {
         if (released) return;
         released = true;
-        textarea.disabled = saved.disabled;
+        textarea.readOnly = saved.readOnly;
         if (getContext().chatId !== chatId || getContext().chat !== chat
             || document.getElementById('send_textarea') !== textarea) return;
         textarea.value = saved.value;

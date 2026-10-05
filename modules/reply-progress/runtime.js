@@ -50,18 +50,25 @@ export function createReplyProgressRuntime({
 
     function paint() {
         if (!run) return;
-        if (getChat() !== run.chat || !isConnected() || run.dispatch?.signal.aborted) {
+        const recovering = hasGenerationRecovery();
+        if (getChat() !== run.chat || !isConnected() || (run.dispatch?.signal.aborted && !recovering)) {
             stop();
             return;
         }
         // This is a composer hint, not a concurrent-request tracker. When the
-        // host releases its send state, restore the composer even if a
-        // background request released it before the foreground finished.
+        // host releases its send state, restore the composer except during
+        // recall recovery: a cancelled dispatch and native idle are required
+        // between its independent host calls, not the end of the reply.
         const busy = isGenerating();
         if (busy) run.seenBusy = true;
-        if (run.seenBusy && !busy) {
+        if (run.seenBusy && !busy && !recovering) {
             stop();
             return;
+        }
+        if (run.dispatch?.signal.aborted && recovering) {
+            run.recall = null;
+            run.handler = null;
+            setStage('recovery');
         }
         if (run.recall) {
             const detail = run.recall.stage;
@@ -74,6 +81,9 @@ export function createReplyProgressRuntime({
 
     function start(type, params, dryRun, afterCommands = false) {
         if (!isVisibleGeneration(type, params, dryRun)) return;
+        // Owner-driven continuations emit visible STARTED events again. Keep
+        // the same presenter across those rounds, just like automatic replay.
+        if (run && hasGenerationRecovery() && run.chat === getChat()) return;
         stop();
         const textarea = getTextarea();
         if (!textarea || !isConnected()) return;
@@ -100,12 +110,15 @@ export function createReplyProgressRuntime({
 
     function onInterceptor({ phase, id, type, run: dispatch, detail }) {
         if (phase === 'dispatch-start' && run && hasGenerationRecovery()
+            && run.dispatch?.signal.aborted
             && run.chat === getChat() && VISIBLE_TYPES.has(String(type || ''))) {
             run.unobserveRequest?.();
             run.unobserveRequest = null;
             run.dispatch = null;
+            run.handler = null;
+            run.recall = null;
             run.type = String(type || 'normal');
-            run.phase = 'context';
+            setStage('context');
         }
         if (!run || !run.afterCommands || run.chat !== getChat()
             || HOST_PHASES.has(run.phase)
@@ -118,6 +131,11 @@ export function createReplyProgressRuntime({
             run.dispatch = dispatch;
             setStage('context');
         } else if (run.dispatch !== dispatch) {
+            return;
+        } else if (dispatch.signal.aborted) {
+            // Late progress/end events from the failed round cannot turn the
+            // cleanup interval into prompt assembly or install a request watch.
+            paint();
             return;
         } else if (phase === 'handler-progress' && run.handler === 'story-summary') {
             if (detail) {

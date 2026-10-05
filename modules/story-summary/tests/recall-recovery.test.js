@@ -22,7 +22,7 @@ function fixture(t, { group = false, type = 'normal', cleanupMs = 40, preambleMs
     t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 0 });
     const state = { busy: true, ui: false, plans: 0, rounds: 0, main: 0, commits: 0, notices: 0,
         stops: 0, history: [], errors: [], requests: [], prepares: 0, released: 0 };
-    const textarea = { value: '', disabled: false, selectionStart: 0, selectionEnd: 0,
+    const textarea = { value: '', disabled: false, readOnly: false, selectionStart: 0, selectionEnd: 0,
         selectionDirection: 'none', scrollTop: 0, dispatchEvent() {},
         setSelectionRange(start, end, direction) { Object.assign(this, { selectionStart: start, selectionEnd: end, selectionDirection: direction }); } };
     const document = { getElementById: () => textarea };
@@ -249,6 +249,7 @@ for (const reason of ['generation-stopped', 'chat-changed', 'message-edited', 'd
             assert.equal(f.state.main, 0);
             assert.equal(f.state.ui, false);
             assert.equal(f.textarea.disabled, false);
+            assert.equal(f.textarea.readOnly, false);
             assert.equal(f.recovery.getCurrent(), null);
             assert.deepEqual(f.state.errors, []);
         });
@@ -350,6 +351,7 @@ test('a recovered group protects the next draft again before every subsequent me
     assert.equal(f.state.main, 3);
     assert.equal(f.textarea.value, '/a command for a later message');
     assert.equal(f.textarea.disabled, false);
+    assert.equal(f.textarea.readOnly, false);
     assert.equal(f.context.chat.length, 1);
 });
 
@@ -358,12 +360,14 @@ test('stop during host input preparation keeps the send gate until that cancelle
     f.context.chat.push({ is_user: true, mes: 'source' });
     void f.start(); await f.advance(100);
     await f.advance(7000); await f.advance(0); await f.advance(40); await f.advance(20);
-    assert.equal(f.textarea.disabled, true);
+    assert.equal(f.textarea.readOnly, true);
+    assert.equal(f.textarea.disabled, false);
     f.cancel('generation-stopped');
     assert.equal(f.recovery.getCurrent(), null);
     assert.equal(f.state.ui, true, 'do not expose Send while the old host can still consume input');
     await f.advance(100); await f.advance(40);
     assert.equal(f.state.ui, false);
     assert.equal(f.textarea.disabled, false);
+    assert.equal(f.textarea.readOnly, false);
     assert.equal(f.state.main, 0);
 });

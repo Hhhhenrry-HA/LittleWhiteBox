@@ -18,7 +18,7 @@ NovelAI V5 作为新增能力接入，不替代 V4.5，也不改变现有默认�
 - 选择 V5 后应实际使用其自然语言、自由角色定位、更多角色、交互和文字描述能力，而不只是换一个模型 ID。
 - V5 参数区新增 `Transparent BG` 勾选项；启用时自动追加 `transparent background`，并发送透明背景协议参数。该开关属于参数预设，不属于提示词预设。
 - V5 的默认质量词由官方 Quality Standard 与 UC Heavy 提供。`positivePrefix` 与 `negativePrefix` 属于用户预设内容，代码不会因切换模型而改写；把 V4.5 预设切到 V5 的用户如果保留了原有 V4.5 质量词表，需要自行清空以免与官方预设重复。
-- 本期同时在 V5 UI 开放 Quality `standard / light / none` 与 UC `heavy / light / humanFocus / furryFocus / none`。
+- V5 UI 提供 Quality `standard / light / none` 与 UC `heavy / light / humanFocus / furryFocus / none`。
 - V4.5 与 V5 分别使用 Provider 内明确命名的静态指南作为默认值；提示词预设只保存用户实际编辑过的对应模型指南覆盖。
 
 ## 2. 名词与所有权
@@ -158,7 +158,7 @@ V5 继续发送 `characterPrompts`、`v4_prompt` 和 `v4_negative_prompt`。字�
 
 用户在 V5 Full、Quality None、UC None 下启用官方 `Transparent BG` 后，生产请求确认出现以下变化：
 
-- 最终 `input` 与 `v4_prompt.caption.base_caption` 的自动后缀包含 `transparent background`；在本次无 Quality 后缀、无 `Text:` 块的抓包中，它位于 Prompt 最末尾。
+- 最终 `input` 与 `v4_prompt.caption.base_caption` 的自动后缀包含 `transparent background`；确认的官方请求中，无 Quality 后缀、无 `Text:` 块时，它位于 Prompt 最末尾。
 - `parameters.tag_hint_transparent_background` 为 `true`。
 - 同一请求包含 V5 固定参数 `parameters.straight_alpha: true`，输出格式为 PNG；该字段并非 Transparent BG 开关产生。
 
@@ -702,7 +702,7 @@ MessagePack 解码使用锁定版本的成熟依赖（`@msgpack/msgpack`），�
 
 ## 14. 外部服务验证
 
-实现和自动测试完成后，使用已经重新签发的 NovelAI Token 做最少两次真实生成：
+真实服务验收须另获 API 调用授权，并分别覆盖：
 
 1. V5 Full：两个角色、两个不同自由坐标、Quality Standard、UC Heavy、Transparent BG 开启。
 2. V5 Curated：自然语言场景、角色互动或带样式的短文字、Quality Light、UC Furry Focus。

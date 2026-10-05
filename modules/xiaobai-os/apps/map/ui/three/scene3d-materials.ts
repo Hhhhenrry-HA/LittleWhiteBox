@@ -1,9 +1,10 @@
 import { Color, type DataTexture, DoubleSide, LineDashedMaterial, MeshStandardMaterial } from 'three';
-import type { MapElement } from '../../../../domains/map/types.js';
+import type { MapElement, MapSceneLighting } from '../../../../domains/map/types.js';
 import { SCENE_MATERIAL_COLORS } from '../scene-materials.js';
 import { elementPresentation } from '../map-presentation.js';
 import type { Scene3DResources } from './scene3d-resources.js';
 import { createSurfaceTexture } from './scene3d-textures.js';
+import { sceneLighting } from '../scene-lighting.js';
 
 const SURFACE_COLORS = {
     ...SCENE_MATERIAL_COLORS,
@@ -12,7 +13,8 @@ const SURFACE_COLORS = {
     marble: '#e5e6e7', water: '#6aabbf', grass: '#b7cba0', forest: '#6d957d',
 };
 
-export function createSceneMaterials(resources: Scene3DResources, dark: boolean) {
+export function createSceneMaterials(resources: Scene3DResources, dark: boolean, lighting?: MapSceneLighting) {
+    const illumination = sceneLighting(lighting);
     const meshes = new Map<string, MeshStandardMaterial>();
     const lines = new Map<string, LineDashedMaterial>();
     const textures = new Map<string, DataTexture>();
@@ -37,7 +39,8 @@ export function createSceneMaterials(resources: Scene3DResources, dark: boolean)
                 metalness: token === 'metal' ? .32 : 0, transparent: opacity < 1, opacity,
                 depthWrite: opacity >= 1, side: DoubleSide, map: texture,
                 bumpMap: texture, bumpScale: token === 'wood' ? .018 : .009,
-                emissive: ['rune', 'warm-light', 'cold-light'].includes(token) ? color : '#000000', emissiveIntensity: .18,
+                emissive: ['rune', 'warm-light', 'cold-light'].includes(token) ? color : '#000000',
+                emissiveIntensity: token === 'warm-light' || token === 'cold-light' ? illumination.lampEmission : .18,
             }));
             meshes.set(key, material);
         }
@@ -57,5 +60,10 @@ export function createSceneMaterials(resources: Scene3DResources, dark: boolean)
         }
         return material;
     }
-    return { mesh, line };
+    function lampShade(element: MapElement, tint = 0): MeshStandardMaterial {
+        const material = lighting?.artificial === 'on'
+            ? (element.material === 'cold-light' ? 'cold-light' : 'warm-light') : 'bed-sheet';
+        return mesh({ ...element, material }, tint);
+    }
+    return { mesh, line, lampShade };
 }

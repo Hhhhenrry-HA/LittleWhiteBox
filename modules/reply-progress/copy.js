@@ -7,6 +7,7 @@ export const REPLY_PROGRESS_COPY = Object.freeze({
     waiting: '等待回复',
     interceptor: '小白x插件处理',
     recall: '小白x记忆处理',
+    recovery: '小白x召回重试',
 });
 
 export const REPLY_PROGRESS_ERRORS = Object.freeze({

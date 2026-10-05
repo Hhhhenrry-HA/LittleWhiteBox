@@ -6,6 +6,7 @@ import { observeHostRequest } from '../request-observer.js';
 import { HOST_CHAT_COMPLETIONS_GENERATE_ENDPOINT } from '../../../shared/host-llm/chat-completions/client.js';
 import { formatReplyProgress, interceptorLabel, recallLabel, REPLY_PROGRESS_COPY } from '../copy.js';
 import { registerGenerateInterceptor, unregisterGenerateInterceptor } from '../../../shared/common/generate-interceptor.js';
+import { holdGenerationRecovery } from '../../../shared/common/generation-retry-owner.js';
 
 const TYPES = Object.fromEntries([
     'GENERATION_STARTED', 'GENERATION_AFTER_COMMANDS', 'MESSAGE_SENT', 'USER_MESSAGE_RENDERED',
@@ -62,6 +63,7 @@ function harness(t, beforeEnable = () => {}) {
     let chat = [];
     let stream = null;
     let progress = null;
+    let restores = 0;
     let requestBoundary = true;
     const nativeFetch = () => Promise.resolve({ ok: true });
     const transport = { fetch: nativeFetch };
@@ -90,7 +92,7 @@ function harness(t, beforeEnable = () => {}) {
             });
             return {
                 show(value) { progress = value; presenter.show(value); },
-                restore() { progress = null; presenter.restore(); },
+                restore() { restores++; progress = null; presenter.restore(); },
             };
         },
     });
@@ -110,6 +112,7 @@ function harness(t, beforeEnable = () => {}) {
         switchChat: value => { chat = value; },
         stream: value => { stream = value; },
         progress: () => progress,
+        restores: () => restores,
         current: () => textarea.getAttribute('placeholder'),
         advance: ms => { clock += ms; tick?.(); },
         busy: value => { busy = value; },
@@ -518,6 +521,107 @@ test('an interceptor abort restores the placeholder without waiting for host com
     }
     assert.equal(h.progress(), null);
 });
+
+for (const originalType of ['normal', 'regenerate', 'continue']) {
+    test(`${originalType}: recall tracking spans native cleanup and automatic retries until its own reply`, async t => {
+        const h = harness(t);
+        let releaseRecovery;
+        t.after(() => releaseRecovery?.());
+        let attempts = 0;
+        let oldContext;
+        const queried = deferred();
+        const ready = deferred();
+        const observedRecallStages = [];
+        register(t, 'story-summary', async (_chat, _size, _abort, _type, context) => {
+            if (_type === 'quiet') return;
+            context.reportProgress({ stage: 'round1-embed' });
+            if (++attempts < 3) {
+                oldContext = context;
+                // The required-recall gate aborts first, then acquires recovery
+                // synchronously before summary's final progress/dispatch events.
+                context.abort(true);
+                releaseRecovery ??= holdGenerationRecovery();
+                context.reportProgress(null);
+            } else {
+                queried.resolve();
+                await ready.promise;
+                context.reportProgress({ stage: 'round2-embed' });
+                observedRecallStages.push(h.progress()?.detail);
+                context.reportProgress({ stage: 'event-rerank' });
+                observedRecallStages.push(h.progress()?.detail);
+                releaseRecovery();
+                releaseRecovery = null;
+                context.reportProgress(null);
+            }
+        });
+        await begin(h, originalType);
+        await dispatch(originalType);
+        const replayType = originalType === 'regenerate' ? 'normal' : originalType;
+        const params = originalType === 'continue' ? {} : { automatic_trigger: true };
+        for (let i = 0; i < 2; i++) {
+            h.busy(false);
+            await h.events.emit(TYPES.GENERATION_STOPPED);
+            await h.events.emit(TYPES.GENERATION_ENDED);
+            h.advance(200);
+            assert.equal(h.progress()?.phase, 'recovery');
+            assert.equal(h.restores(), 0);
+            await h.events.emit(TYPES.GENERATION_STARTED, 'quiet', {}, false);
+            await dispatch('quiet');
+            await h.events.emit(TYPES.GENERATION_ENDED);
+            assert.equal(h.progress()?.phase, 'recovery');
+            h.busy(true);
+            await h.events.emit(TYPES.GENERATION_STARTED, replayType, params, false);
+            await h.events.emit(TYPES.GENERATION_AFTER_COMMANDS, replayType, params, false);
+            if (i === 0) await dispatch(replayType);
+        }
+        const replay = dispatch(replayType);
+        try {
+            await queried.promise;
+            h.advance(1000);
+            const progress = h.progress();
+            assert.deepEqual(progress, { phase: 'recall', detail: 'round1-embed', elapsedMs: 1000 });
+            oldContext.reportProgress({ stage: 'prompt-assembly' });
+            assert.deepEqual(h.progress(), progress);
+            assert.equal(h.restores(), 0);
+        } finally {
+            ready.resolve();
+            await replay;
+        }
+        // Assert outside the interceptor: the dispatcher catches handler errors.
+        assert.deepEqual(observedRecallStages, ['round2-embed', 'event-rerank']);
+        assert.equal(h.progress().phase, 'assembly');
+        await h.request(replayType);
+        assert.equal(h.progress().phase, 'request');
+        h.chat().push({ is_user: false, mes: 'reply with memory' });
+        await h.events.emit(TYPES.MESSAGE_RECEIVED, 0, replayType === 'continue' ? 'appendFinal' : replayType);
+        assert.equal(h.progress(), null);
+        assert.equal(h.restores(), 1);
+    });
+}
+
+for (const terminal of [TYPES.GENERATION_STOPPED, TYPES.CHAT_CHANGED]) {
+    test(`a cancelled recovery releases tracking and automatic generation cannot revive it: ${terminal}`, async t => {
+        const h = harness(t);
+        let releaseRecovery;
+        t.after(() => releaseRecovery?.());
+        register(t, 'story-summary', async (_chat, _size, _abort, _type, context) => {
+            context.reportProgress({ stage: 'round1-embed' });
+            context.abort(true);
+            releaseRecovery ??= holdGenerationRecovery();
+        });
+        await begin(h);
+        await dispatch();
+        releaseRecovery();
+        await h.events.emit(terminal);
+        h.busy(false);
+        h.advance(200);
+        assert.equal(h.progress(), null);
+        await h.events.emit(TYPES.GENERATION_STARTED, 'normal', { automatic_trigger: true }, false);
+        await h.events.emit(TYPES.GENERATION_AFTER_COMMANDS, 'normal', { automatic_trigger: true }, false);
+        assert.equal(h.progress(), null);
+        assert.equal(h.restores(), 1);
+    });
+}
 
 test('dispatch ownership requires a matching foreground post-command lifecycle, not busy', async t => {
     const h = harness(t);

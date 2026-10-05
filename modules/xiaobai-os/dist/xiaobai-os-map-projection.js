@@ -1,6 +1,6 @@
 /* eslint-disable */
-import { B as u, C as l, I as d, S as m, U as o, at as _, et as v, ft as n, k as f, lt as y, r as g, u as h, w as p, x as k } from "./xiaobai-os-frame-bridge-CrPFvkI3.js";
-import { p as B, t as b } from "./xiaobai-os-MapBrowser-CSDGp-Hv.js";
+import { B as u, C as l, I as d, S as m, U as o, at as _, et as v, ft as n, k as f, lt as g, r as y, u as h, w as p, x as k } from "./xiaobai-os-frame-bridge-CrPFvkI3.js";
+import { g as B, t as b } from "./xiaobai-os-MapBrowser-BlYLo2KN.js";
 var j = {
   key: 0,
   class: "map-notice",
@@ -12,7 +12,7 @@ var j = {
 }, M = /* @__PURE__ */ f({
   __name: "MapProjection",
   setup(r) {
-    const e = _(null), a = g(), i = a.subscribe((t) => {
+    const e = _(null), a = y(), i = a.subscribe((t) => {
       if (t.type !== "map/projection-state") return;
       const s = t.payload;
       document.documentElement.classList.toggle("theme-dark", s.theme === "dark"), e.value = s.state;
@@ -28,7 +28,7 @@ var j = {
     }, {
       feedback: v(() => [e.value.message ? (o(), p("aside", j, [k("p", null, n(e.value.message), 1)])) : l("", !0)]),
       _: 1
-    }, 8, ["map", "chat-identity"])) : (o(), p("div", w, n(y(B).loading), 1));
+    }, 8, ["map", "chat-identity"])) : (o(), p("div", w, n(g(B).loading), 1));
   }
 }), C = M, c = h(C);
 c.mount("#app");

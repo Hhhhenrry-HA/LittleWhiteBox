@@ -1,0 +1,225 @@
+.game-scroll > .exp-app { max-width:none; }
+.exp-app {
+    --exp-ink:#f1f1dd; --exp-surface:#183d43; --exp-muted:#b5cbc7; --exp-line:#96b6ac38; --exp-gold:#e0c58c;
+    position:relative; min-height:0; height:100%; overflow:hidden; isolation:isolate; color:var(--exp-ink); background:#bfe3e8;
+    font-family:inherit; container-type:inline-size;
+}
+.exp-app[data-zone="1"] { --exp-surface:#303f61; --exp-muted:#c0cce3; --exp-line:#b9c7e738; --exp-gold:#d7cff2; }
+.exp-app[data-zone="2"] { --exp-surface:#423c3c; --exp-muted:#dbcdba; --exp-gold:#f1cf90; }
+.exp-app::after { content:""; position:absolute; inset:0; pointer-events:none; z-index:0; background:linear-gradient(180deg,#15343d4d,transparent 24%,transparent 69%,#163c4740); }
+.exp-is-camp::after { background:linear-gradient(90deg,transparent 20%,#14383c20 42%,#123238ed 74%); }
+.exp-is-between::after { background:#102e38ba; backdrop-filter:blur(5px); }
+.exp-app button { font:inherit; color:inherit; cursor:pointer; border:1px solid var(--exp-line); background:transparent; min-height:44px; padding:10px 14px; border-radius:4px; transition:border-color .16s,transform .16s,box-shadow .16s; }
+.exp-app button:disabled { cursor:not-allowed; opacity:.5; }
+.exp-app button:not(:disabled):hover { border-color:var(--exp-gold); }
+.exp-app button:not(:disabled):active { transform:translateY(1px); }
+.exp-app button:focus-visible, .exp-app summary:focus-visible { outline:2px solid #fff2ba; outline-offset:4px; }
+.exp-app h2,.exp-app h3,.exp-app p { margin:0; }
+.exp-icon { width:28px; height:28px; display:inline-block; flex-shrink:0; vertical-align:middle; }
+.exp-field { position:absolute; inset:0; outline:none; }
+.exp-canvas,.exp-canvas canvas { display:block; width:100%; height:100%; }
+.exp-world-labels { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+.exp-threat { position:absolute; top:0; left:0; width:20px; height:20px; margin:-10px; border-radius:50%; background:#203b48cc; border:1px solid #f2cd9680; }
+.exp-threat[hidden] { display:none; }.exp-threat::before { content:""; position:absolute; top:4px; left:4px; border-left:5px solid transparent; border-right:5px solid transparent; border-bottom:8px solid #ef997b; }.exp-threat.is-boss::before { border-bottom-color:#ffe2a4; }
+.exp-damage { position:absolute; top:0; left:0; margin:-12px 0 0 -8px; color:#fff9d5; font:800 17px/1 Georgia,serif; text-shadow:0 2px 2px #183b3e,1px 0 #183b3e,-1px 0 #183b3e; }
+.exp-damage.is-player { color:#ffb2a1; font-size:20px; }.exp-damage.is-heal { color:#b3ffca; }
+.exp-hud { position:absolute; top:18px; left:22px; right:22px; display:flex; align-items:flex-start; justify-content:space-between; gap:12px; pointer-events:none; z-index:2; }
+.exp-hud button { pointer-events:auto; }
+.exp-tools { display:flex; gap:7px; }
+.exp-tools button { display:grid; place-items:center; min-width:44px; min-height:44px; padding:8px; color:#f5f1db; border:1px solid #e1e6cf45; background:#173b43d9; border-radius:6px; box-shadow:0 2px 6px #193d4220; }
+.exp-tools .exp-icon { width:25px; height:25px; }
+.exp-wallet { display:flex; align-items:center; gap:7px; color:#fff2cf; background:#173b43d9; padding:6px 13px 6px 9px; border:1px solid #e1e6cf45; border-radius:6px; font:600 15px/1.6 Georgia,serif; }
+.exp-wallet .exp-icon { color:#e9c381; width:25px; }
+.exp-health { width:190px; max-width:40%; text-shadow:0 1px 3px #173b43; }
+.exp-health>span { display:block; font-size:12px; font-weight:600; color:#fffbea; margin-bottom:7px; }
+.exp-health-track { position:relative; background:#1f3d43d9; height:18px; border:1px solid #f0e8cb77; border-radius:3px; padding:2px; overflow:hidden; }
+.exp-health-track i { display:block; height:100%; background:linear-gradient(90deg,#438c80,#93d8ad); transition:width .15s; border-radius:1px; }
+.exp-health-track b { position:absolute; inset:0; text-align:center; color:#fffdec; font-size:11px; line-height:17px; font-variant-numeric:tabular-nums; }
+.exp-health-track b small { opacity:.75; font-size:9px; }
+.exp-health>small { display:flex; gap:4px; align-items:center; margin-top:4px; color:#fff4d5; font-size:11px; }
+.exp-health>small .exp-icon { width:16px; height:20px; color:#f0d7a4; }
+.exp-boss { position:absolute; top:24px; left:50%; transform:translateX(-50%); width:34%; max-width:440px; text-align:center; color:#fff2d7; pointer-events:none; z-index:2; filter:drop-shadow(0 1px 2px #173b4399); }
+.exp-boss>span { display:flex; align-items:center; justify-content:center; gap:8px; font:600 18px/1.4 "Songti SC","Noto Serif CJK SC",SimSun,serif; letter-spacing:.07em; }
+.exp-boss .exp-icon { color:var(--exp-gold); width:24px; }
+.exp-boss small { font:10px/1.2 sans-serif; opacity:.8; letter-spacing:0; }
+.exp-boss>div { height:8px; margin-top:7px; padding:1px; background:#26343de0; border:1px solid #ddc89aa6; transform:skewX(-18deg); }
+.exp-boss i { display:block; background:linear-gradient(90deg,#974d4e,#e29478); height:100%; transition:width .15s; }
+.exp-wave { position:absolute; top:24px; left:50%; transform:translateX(-50%); padding:5px 14px; background:#1e45495c; border-bottom:1px solid #e4ddbd73; color:#fff9e4; font-size:12px; z-index:1; pointer-events:none; }
+.exp-encounter { position:absolute; left:50%; top:30%; transform:translate(-50%,-50%); width:max-content; max-width:90%; text-align:center; pointer-events:none; z-index:2; animation:exp-encounter 1.8s both; text-shadow:0 3px 12px #173c47; }
+.exp-encounter small { display:block; font-size:12px; letter-spacing:.3em; color:#fff1c8; margin-bottom:9px; }
+.exp-encounter strong { display:block; font:500 34px/1.3 "Songti SC","Noto Serif CJK SC",SimSun,serif; letter-spacing:.16em; color:#fff9e7; }
+@keyframes exp-encounter { 0% { opacity:0; translate:0 10px; } 18%,70% { opacity:1; translate:0 0; } 100% { opacity:0; translate:0 -8px; } }
+.exp-camp { position:absolute; z-index:1; right:7%; top:50%; transform:translateY(-47%); width:min(355px,40%); max-height:calc(100% - 110px); overflow:auto; padding:6px 6px 12px; scrollbar-width:thin; }
+.exp-title { display:flex; gap:.16em; align-items:center; margin:0 0 24px; color:#fff4d5; font:500 clamp(34px,4.8cqw,58px)/1.15 "Songti SC","Noto Serif CJK SC",SimSun,serif; letter-spacing:.07em; text-shadow:0 3px 18px #142e38; }
+.exp-title span:last-child { color:#d9bc80; }
+.exp-weapon-select { display:flex; gap:7px; }
+.exp-weapon-select button { position:relative; display:flex; flex:1; flex-direction:column; align-items:center; min-width:0; padding:11px 4px 9px; background:#b0cebc08; border-color:#d0d9b530; }
+.exp-weapon-select button>.exp-icon { width:42px; height:42px; color:#e2cc9c; margin-bottom:6px; }
+.exp-weapon-select button>span { font-size:11px; text-align:center; }
+.exp-weapon-select small { display:block; font-size:9px; line-height:1.5; margin-top:4px; color:#bfd2c9; }
+.exp-weapon-select button .exp-lock { position:absolute; top:5px; right:5px; width:14px; height:14px; }
+.exp-weapon-select [aria-pressed=true] { background:#c9dbb41a; border-color:#e3c78c; box-shadow:inset 0 -2px #d5b979; }
+.exp-weapon-select button:disabled { opacity:.6; }
+.exp-weapon-detail { font-size:12px; color:#e0e8d6; line-height:1.65; min-height:5.6em; padding-top:13px; }
+.exp-weapon-detail>span { display:block; font-size:11px; color:var(--exp-muted); margin-top:4px; }
+.exp-camp .exp-next-unlock { font-size:11px; color:var(--exp-gold); line-height:1.6; margin:0 0 8px; }
+.exp-camp-options { display:flex; justify-content:space-between; align-items:center; margin:5px 0 12px; }
+.exp-cloaks { display:flex; gap:4px; }
+.exp-cloaks button { width:44px; height:44px; padding:11px; min-height:44px; position:relative; border-color:transparent; }
+.exp-cloaks button i { display:block; width:21px; height:23px; background:var(--cloak); clip-path:polygon(23% 0,77% 0,100% 87%,50% 100%,0 87%); box-shadow:inset 0 2px #ffffff70; }
+.exp-cloaks button>.exp-icon { position:absolute; width:14px; height:14px; inset:16px auto auto 15px; color:#fff9e3; }
+.exp-cloaks [aria-pressed=true] { border-color:#d8c38e; }
+.exp-help-button { display:grid; place-items:center; width:44px; min-height:44px!important; height:44px; padding:8px!important; border-radius:50%!important; }.exp-help-button .exp-icon { width:23px; height:23px; }
+.exp-oaths { border-top:1px solid var(--exp-line); padding:10px 0; font-size:12px; }
+.exp-oaths summary { cursor:pointer; min-height:24px; color:var(--exp-gold); }
+.exp-oaths label { display:flex; gap:9px; padding:8px 0; align-items:center; }.exp-oaths label>span { flex:1; }
+.exp-oaths small { display:block; color:var(--exp-muted); margin-top:4px; font-size:11px; line-height:1.5; }.exp-oaths input { width:18px; height:18px; accent-color:#b3bd87; }
+.exp-app .exp-primary { display:flex; width:100%; max-width:380px; align-items:center; justify-content:center; gap:18px; min-height:50px; background:linear-gradient(110deg,#dec48d,#f0dbab 55%,#c9aa70); color:#233c3d; border:1px solid #f8e5b5; border-radius:3px; font-size:15px; font-weight:650; letter-spacing:.12em; box-shadow:0 4px 14px #071b2e30; }
+.exp-app .exp-primary:not(:disabled):hover { background:#f5e4bd; border-color:#fff4d7; }
+.exp-primary .exp-icon { width:26px; height:26px; }.exp-free { display:block; font-size:10px; color:var(--exp-muted); margin:10px 0 0; text-align:center; letter-spacing:.05em; }
+.exp-app .exp-quiet { display:block; margin:10px auto 0; border:0; background:transparent; padding:10px 14px; color:var(--exp-muted); font-size:12px; text-decoration:underline; text-underline-offset:4px; text-decoration-color:#c5d5c54d; }
+.exp-camp-location { color:var(--exp-gold); font-size:19px; line-height:1.8; }.exp-camp-location>span { display:block; font-size:13px; color:var(--exp-muted); }
+.exp-camp-relics { display:flex; gap:10px; margin:22px 0; }.exp-camp-relics .exp-icon { width:32px; height:40px; color:#e5d0a3; }
+.exp-between { position:absolute; z-index:1; left:50%; top:53%; transform:translate(-50%,-50%); width:min(620px,calc(100% - 48px)); max-height:calc(100% - 140px); overflow:auto; padding:8px 8px 12px; text-align:center; scrollbar-width:thin; }
+.exp-between>.exp-primary { margin:22px auto 0; }
+.exp-decision-screen { display:flex; flex-direction:column; overflow:hidden; max-height:calc(100% - 100px); }
+.exp-decision-content { min-height:0; overflow:auto; padding:6px 2px 2px; scrollbar-width:thin; }
+.exp-decision-screen>button { flex-shrink:0; }
+.exp-screen-heading { margin-bottom:24px; }
+.exp-screen-heading>small { display:block; color:var(--exp-gold); font-size:12px; letter-spacing:.16em; margin-bottom:10px; }
+.exp-screen-heading h2 { font:500 30px/1.4 "Songti SC","Noto Serif CJK SC",SimSun,serif; letter-spacing:.08em; color:#fff3d7; }
+.exp-screen-heading p { color:var(--exp-muted); font-size:12px; line-height:1.8; margin-top:9px; }
+.exp-map { display:flex; list-style:none; align-items:center; justify-content:space-between; margin:0 10% 30px; padding:0; position:relative; }
+.exp-map::before { content:""; position:absolute; left:0; right:0; top:50%; height:1px; background:#d4ceaf50; z-index:-1; }
+.exp-map li { display:grid; place-items:center; width:32px; height:32px; border:1px solid #c2cbb56b; border-radius:50%; background:var(--exp-surface); font:13px Georgia,serif; color:#91a9a5; }
+.exp-map li:last-child { border:0; width:42px; height:42px; border-radius:0; }.exp-map li .exp-icon { width:38px; height:38px; }
+.exp-map .is-current { background:#e4cb98; color:#243e40; border-color:#f1dab0; box-shadow:0 0 0 5px #d3bd8730; }
+.exp-map .is-past { color:#b9dbcb; border-color:#9fc2ae; }
+.exp-section-label { font-size:11px; font-weight:500; color:var(--exp-muted); letter-spacing:.14em; margin-bottom:12px!important; text-align:left; }
+.exp-route-options { display:grid; gap:12px; }
+.exp-route-options button { display:flex; align-items:center; text-align:left; padding:20px; gap:18px; background:#13383cc9; border-color:#d9d5b54f; }
+.exp-route-options button>.exp-icon { width:50px; height:50px; color:#e0c28c; }
+.exp-route-options button>span { flex:1; }.exp-route-options strong { font-weight:500; font-size:18px; letter-spacing:.08em; }.exp-route-options small { display:block; color:#b9d0c9; font-size:12px; line-height:1.65; margin-top:7px; }
+.exp-route-options button .exp-option-arrow { width:25px; height:25px; opacity:.65; }
+.exp-loot-screen { width:min(880px,calc(100% - 56px)); }
+.exp-prize { display:flex; justify-content:center; align-items:center; gap:10px; padding:12px 18px; width:fit-content; max-width:100%; margin:0 auto 20px; border-top:1px solid #e0c58c4f; border-bottom:1px solid #e0c58c4f; color:#f2d69d; font-size:13px; text-align:left; }
+.exp-prize>.exp-icon { width:32px; height:32px; }.exp-prize small { display:block; margin-top:4px; font-size:11px; color:#c4d8c5; line-height:1.6; }
+.exp-relic-options { display:flex; align-items:stretch; gap:13px; }
+.exp-relic-options button { position:relative; display:flex; flex:1; flex-direction:column; align-items:center; min-width:0; padding:18px 17px 24px; border:1px solid #d9cfad; border-radius:5px; background:linear-gradient(150deg,#fffae9,#e8e7d8); color:#263f43; box-shadow:0 10px 24px #03192330; }
+.exp-relic-options button:not(:disabled):hover { background:#fffbee; border-color:#ffedb5; transform:translateY(-5px); box-shadow:0 14px 30px #05172050; }
+.exp-relic-art { width:112px; height:100px; display:grid; place-items:center; margin:4px 0 10px; position:relative; color:var(--relic); }
+.exp-relic-art::before { content:""; position:absolute; width:86px; height:86px; border:1px solid currentColor; border-radius:50%; opacity:.2; }
+.exp-relic-art::after { content:""; position:absolute; width:104px; height:104px; border-top:1px solid currentColor; border-bottom:1px solid currentColor; border-radius:50%; transform:rotate(-30deg); opacity:.14; }
+.exp-relic-art>.exp-icon { width:82px; height:82px; filter:drop-shadow(0 5px 2px #25494a18); }
+.exp-relic-options button>span { display:flex; flex-direction:column; align-items:center; width:100%; }
+.exp-relic-family { color:var(--relic); font-size:10px; margin-bottom:7px; border:1px solid currentColor; padding:1px 6px; border-radius:2px; }
+.exp-relic-options strong { font:600 19px/1.4 "Songti SC","Noto Serif CJK SC",SimSun,serif; letter-spacing:.05em; }
+.exp-relic-options strong+small { display:block; margin-top:13px; color:#546564; line-height:1.75; font-size:12px; text-align:left; }
+.exp-landmark { display:block; width:96px; height:110px; margin:0 auto 18px; color:var(--exp-gold); }
+.exp-muted { color:var(--exp-muted); font-size:12px; line-height:1.8; }.exp-between>.exp-muted,.exp-decision-content>.exp-muted { max-width:440px; margin:16px auto 0; }
+.exp-result-stats { color:var(--exp-muted); letter-spacing:.08em; margin-bottom:18px!important; font-size:15px; }
+.exp-result-build { display:flex; justify-content:center; gap:12px; margin:14px 0; }.exp-result-build .exp-icon { color:var(--exp-gold); width:38px; height:42px; }
+.exp-panel { background:var(--exp-surface); border:1px solid #a9bda85c; border-radius:8px; box-shadow:0 20px 70px #061d335c; padding:28px; }
+.exp-panel h2 { font:500 25px/1.4 "Songti SC","Noto Serif CJK SC",SimSun,serif; color:#ffefce; margin-bottom:18px; }
+.exp-panel p { line-height:1.8; margin:12px 0; font-size:13px; }.exp-panel>.exp-primary { margin-top:22px; max-width:none; }
+.exp-pause-overlay { position:absolute; inset:0; z-index:5; display:grid; place-items:center; padding:24px; background:#102c38a6; backdrop-filter:blur(5px); }
+.exp-pause-overlay>.exp-panel { width:min(410px,100%); text-align:center; }.exp-pause-emblem { width:48px; height:48px; color:var(--exp-gold); margin-bottom:14px; }
+.exp-notice { position:absolute; z-index:12; top:85px; left:16px; right:16px; background:#183a43; color:#fff3d4; border:1px solid #ecbf81; padding:16px; border-radius:6px; box-shadow:0 8px 30px #09212f60; }
+.exp-notice p { line-height:1.7; font-size:13px; margin-bottom:10px; }
+.exp-touch { position:absolute; bottom:26px; left:24px; right:24px; display:flex; align-items:flex-end; justify-content:space-between; pointer-events:none; z-index:2; }
+.exp-stick { width:108px; height:108px; position:relative; border-radius:50%; background:#173d4729; border:1px solid #f0efcf80; box-shadow:inset 0 0 0 10px #f4f4df0d,0 3px 14px #173b4020; touch-action:none; pointer-events:auto; }
+.exp-stick>span { position:absolute; width:46px; height:46px; top:30px; left:30px; border-radius:50%; border:1px solid #f3e8c3cc; background:#174a55a6; box-shadow:inset 0 0 0 4px #e5e6c515,0 3px 7px #0b2c3c30; }
+.exp-stick>i { position:absolute; inset:9px; border:1px dashed #f1edd440; border-radius:50%; pointer-events:none; }
+.exp-combat-buttons { display:flex; align-items:flex-end; gap:14px; pointer-events:auto; }
+.exp-combat-buttons button { display:flex; flex-direction:column; align-items:center; justify-content:center; position:relative; width:66px; height:66px; padding:3px; min-height:0; border-radius:50%; color:#fff0ca; border:1px solid #f1d4a0b3; background:#244c55dc; box-shadow:inset 0 0 0 4px #e3d2a91a,0 4px 12px #112c384d; touch-action:none; }
+.exp-combat-buttons button:last-child { width:82px; height:82px; margin-bottom:24px; background:linear-gradient(145deg,#f0d69f,#b49966); color:#27454a; border:2px solid #ffedc4; }
+.exp-combat-buttons .exp-icon { width:27px; height:27px; }.exp-combat-buttons button:last-child .exp-icon { width:34px; height:34px; }
+.exp-combat-buttons span { font-size:10px; line-height:1.4; font-variant-numeric:tabular-nums; }
+.exp-combat-buttons kbd { position:absolute; bottom:-22px; font:10px/1.5 inherit; color:#f4f5de; background:#153c4766; padding:1px 5px; border-radius:3px; white-space:nowrap; }
+.exp-combat-buttons button.is-cooling { background:#2e5056eb; color:#b6c8bd; border-color:#a7bcaa; }
+.exp-keyboard-hint { position:absolute; bottom:20px; left:50%; transform:translateX(-50%); font-size:10px; color:#fff4d6; text-shadow:0 1px 3px #163942; pointer-events:none; z-index:1; text-align:center; letter-spacing:.08em; }.exp-keyboard-hint span { display:block; margin-top:5px; opacity:.8; }
+.exp-equipped-strip { position:absolute; bottom:68px; left:50%; transform:translateX(-50%); display:flex; gap:6px; padding:4px 9px; border:1px solid #d0cfac50; background:#173d4370; border-radius:5px; pointer-events:none; z-index:1; }
+.exp-equipped-strip .exp-icon { width:26px; height:26px; color:#eed8a5; }
+.exp-modal-wrap { position:absolute; inset:0; padding:22px; display:grid; place-items:center; background:#122d3acf; backdrop-filter:blur(5px); z-index:10; }
+.exp-modal { width:min(620px,100%); max-height:100%; overflow:auto; scrollbar-width:thin; }
+.exp-modal>header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; }.exp-modal h2 { margin:0; font-size:23px; }
+.exp-modal>header button { display:grid; place-items:center; padding:8px; border:0; width:44px; min-height:44px; }
+.exp-modal h3 { font-size:13px; font-weight:500; color:var(--exp-gold); margin:18px 0 12px; }
+.exp-inventory { list-style:none; margin:12px 0; padding:0; display:grid; gap:10px; }
+.exp-inventory>li,.exp-inventory>button { display:flex; gap:15px; align-items:center; padding:13px 0; border-bottom:1px solid var(--exp-line); text-align:left; }
+.exp-inventory>button { padding:12px; }.exp-inventory .exp-icon { width:48px; height:48px; color:var(--relic); }
+.exp-inventory strong { font-size:14px; font-weight:550; }.exp-inventory small { display:block; font-size:12px; line-height:1.65; margin-top:5px; color:var(--exp-muted); }
+.exp-collection { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; list-style:none; padding:0; margin:14px 0 28px; }
+.exp-collection li { border:1px solid var(--exp-line); padding:12px; text-align:center; }.exp-collection .exp-icon { display:block; width:40px; height:46px; margin:0 auto 9px; color:var(--exp-gold); }
+.exp-collection strong { display:block; font-size:12px; font-weight:500; }.exp-collection small { display:block; margin-top:7px; font-size:11px; line-height:1.6; color:var(--exp-muted); }.exp-collection .is-unknown { opacity:.45; }
+.exp-list { list-style:none; padding:0; margin:12px 0; }.exp-list li { padding:11px 0; border-bottom:1px solid var(--exp-line); }.exp-list strong { font-size:13px; font-weight:500; }.exp-list small { display:block; margin-top:5px; font-size:12px; color:var(--exp-muted); }
+@container moving-frame (max-width:600px) {
+    .exp-is-camp::after { background:linear-gradient(180deg,#183c4210 13%,#183c4210 25%,#12383cdb 49%,#12383cfa 68%); }
+    .exp-camp { top:auto; bottom:12px; right:24px; left:24px; width:auto; transform:none; max-height:calc(100% - 220px); padding:8px 0 2px; }
+    .exp-title { font-size:38px; margin-bottom:17px; justify-content:center; }
+    .exp-weapon-select { gap:7px; }.exp-weapon-select button { flex-direction:row; justify-content:center; padding:8px 4px; min-height:70px; }.exp-weapon-select button>.exp-icon { width:28px; height:35px; margin:0 4px 0 0; }
+    .exp-weapon-select button>span { font-size:11px; }.exp-weapon-select small { font-size:10px; }.exp-weapon-select button .exp-lock { width:10px; height:10px; }
+    .exp-weapon-detail { min-height:5.2em; padding-top:10px; font-size:11px; }.exp-weapon-detail>span { font-size:10px; }
+    .exp-camp-options { margin:2px 0 10px; }.exp-free { margin-top:8px; font-size:9px; }
+    .exp-camp .exp-primary { max-width:none; min-height:47px; }
+    .exp-hud { top:13px; left:14px; right:14px; }.exp-health { width:150px; max-width:43%; }.exp-health>span { font-size:10px; }.exp-health-track { height:17px; }
+    .exp-tools { gap:5px; }.exp-tools button { min-width:44px; width:44px; min-height:44px; padding:8px; }.exp-tools .exp-icon { width:23px; height:23px; }
+    .exp-wallet { font-size:13px; padding:4px 10px 4px 7px; }
+    .exp-boss { top:91px; width:72%; }.exp-boss>span { font-size:17px; gap:5px; }.exp-boss .exp-icon { width:22px; }.exp-boss small { font-size:9px; }.exp-boss>div { height:7px; margin-top:4px; }
+    .exp-wave { top:89px; font-size:10px; padding:4px 11px; }
+    .exp-encounter { top:30%; }.exp-encounter strong { font-size:28px; }
+    .exp-between { width:calc(100% - 36px); top:calc(50% + 35px); max-height:calc(100% - 100px); padding:7px 2px 10px; }
+    .exp-screen-heading { margin-bottom:22px; }.exp-screen-heading h2 { font-size:27px; }.exp-screen-heading>small { font-size:10px; }
+    .exp-screen-heading p { font-size:11px; }.exp-map { margin:0 6% 25px; }
+    .exp-route-options button { padding:17px 14px; gap:12px; }.exp-route-options button>.exp-icon { width:42px; height:46px; }.exp-route-options strong { font-size:17px; }.exp-route-options small { font-size:11px; }
+    .exp-loot-screen { width:calc(100% - 32px); }.exp-loot-screen .exp-screen-heading { margin-bottom:16px; }.exp-loot-screen .exp-screen-heading h2 { font-size:25px; }
+    .exp-relic-options { flex-direction:column; gap:9px; }
+    .exp-relic-options button { flex-direction:row; align-items:center; padding:11px 14px 11px 8px; gap:12px; }
+    .exp-relic-art { width:72px; height:68px; flex-shrink:0; margin:0; }.exp-relic-art>.exp-icon { width:56px; height:56px; }.exp-relic-art::before { width:58px; height:58px; }.exp-relic-art::after { width:67px; height:67px; }
+    .exp-relic-options button>span { align-items:flex-start; text-align:left; }.exp-relic-family { display:none; }.exp-relic-options strong { font-size:17px; }
+    .exp-relic-options strong+small { font-size:12px; margin-top:6px; line-height:1.6; }
+    .exp-prize { padding:9px 13px; margin-bottom:14px; font-size:12px; }.exp-prize small { font-size:10px; }
+    .exp-touch { bottom:28px; left:19px; right:19px; }.exp-stick { width:96px; height:96px; }.exp-stick>span { top:24px; left:24px; }
+    .exp-combat-buttons { gap:10px; }.exp-combat-buttons button { width:59px; height:59px; }.exp-combat-buttons button:last-child { width:74px; height:74px; margin-bottom:24px; }
+    .exp-combat-buttons kbd { display:none; }.exp-keyboard-hint { display:none; }
+    .exp-equipped-strip { bottom:8px; padding:2px 7px; gap:3px; }.exp-equipped-strip .exp-icon { width:21px; height:21px; }
+    .exp-modal-wrap { padding:13px; }.exp-panel { padding:22px; }.exp-modal h2 { font-size:21px; }.exp-collection { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .exp-landmark { width:82px; height:94px; }.exp-result-build { gap:8px; }.exp-result-build .exp-icon { width:32px; }
+}
+@media (prefers-reduced-motion:reduce) {
+    .exp-app *, .exp-app *::before,.exp-app *::after { animation:none!important; transition:none!important; }
+}
+@container moving-frame (max-height:440px) and (min-width:600px) {
+    .exp-hud { top:9px; }.exp-tools button { min-height:44px; }
+    .exp-camp { top:62px; bottom:12px; right:24px; left:auto; width:45%; transform:none; max-height:none; display:flex; flex-direction:column; overflow:hidden; }
+    .exp-camp-loadout { flex:1; min-height:0; overflow:auto; margin-bottom:10px; scrollbar-width:thin; }
+    .exp-camp>.exp-primary,.exp-camp>.exp-title { flex-shrink:0; }.exp-free { display:none; }
+    .exp-title { font-size:28px; margin-bottom:12px; }.exp-weapon-select button { padding:6px 4px; }
+    .exp-camp-options { margin:0 0 7px; }.exp-weapon-detail { padding-top:8px; min-height:0; margin-bottom:9px; }
+    .exp-between { top:calc(50% + 30px); max-height:calc(100% - 80px); width:min(820px,calc(100% - 48px)); }
+    .exp-screen-heading { margin-bottom:12px; }.exp-screen-heading h2 { font-size:24px; }.exp-screen-heading>small { margin-bottom:4px; }
+    .exp-between:has(.exp-route-options) { display:grid; grid-template-columns:1fr 1.3fr; column-gap:30px; align-items:center; }
+    .exp-between:has(.exp-route-options) .exp-screen-heading { grid-column:1; grid-row:1; }
+    .exp-between:has(.exp-route-options) .exp-map { grid-column:1; grid-row:2; margin:12px 7%; }
+    .exp-between:has(.exp-route-options) .exp-section-label { display:none; }
+    .exp-between:has(.exp-route-options) .exp-route-options { grid-column:2; grid-row:1 / span 2; gap:7px; }
+    .exp-route-options button { padding:10px 13px; }.exp-route-options button>.exp-icon { width:34px; height:34px; }
+    .exp-route-options strong { font-size:15px; }.exp-route-options small { margin-top:4px; font-size:11px; }
+    .exp-touch { bottom:12px; left:18px; right:18px; }.exp-stick { width:84px; height:84px; }.exp-stick>span { top:18px; left:18px; }
+    .exp-combat-buttons button { width:58px; height:58px; }.exp-combat-buttons button:last-child { width:70px; height:70px; margin-bottom:12px; }
+    .exp-combat-buttons kbd,.exp-keyboard-hint { display:none; }.exp-equipped-strip { bottom:10px; }
+    .exp-pause-overlay { padding:12px; }.exp-pause-overlay>.exp-panel { max-height:100%; overflow:auto; padding:18px; }.exp-pause-emblem { display:none; }
+    .exp-relic-art { height:65px; width:70px; margin:0 0 8px; }.exp-relic-art>.exp-icon { width:54px; height:54px; }.exp-relic-art::before { width:58px; height:58px; }.exp-relic-art::after { display:none; }
+    .exp-relic-options button { padding:10px 13px; }.exp-relic-options strong { font-size:17px; }.exp-relic-options strong+small { margin-top:6px; }.exp-relic-family { display:none; }
+    .exp-loot-screen { display:grid; grid-template-columns:minmax(160px,1fr) minmax(0,2.8fr); grid-template-rows:auto minmax(0,1fr) auto; gap:0 20px; height:calc(100% - 80px); }
+    .exp-loot-screen .exp-decision-content { display:contents; }
+    .exp-loot-screen .exp-screen-heading { grid-column:1; grid-row:1; margin:0; }.exp-loot-screen .exp-screen-heading h2 { font-size:21px; }
+    .exp-loot-screen .exp-prize,.exp-loot-screen .exp-muted { grid-column:1; grid-row:2; align-self:center; margin:6px 0; padding:6px 0; font-size:11px; }
+    .exp-loot-screen .exp-prize small { font-size:10px; }.exp-loot-screen .exp-prize>.exp-icon { width:24px; }
+    .exp-loot-screen>.exp-quiet { grid-column:1; grid-row:3; margin:0; }
+    .exp-loot-screen .exp-relic-options { grid-column:2; grid-row:1 / -1; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; overflow:auto; scrollbar-width:thin; padding:3px; }
+    .exp-loot-screen .exp-relic-options button { flex-direction:row; gap:8px; padding:9px; }
+    .exp-loot-screen .exp-relic-options button>span { align-items:flex-start; text-align:left; }.exp-loot-screen .exp-relic-options strong { font-size:14px; }.exp-loot-screen .exp-relic-options strong+small { font-size:11px; line-height:1.5; }
+    .exp-loot-screen .exp-relic-art { width:34px; height:44px; margin:0; flex-shrink:0; }.exp-loot-screen .exp-relic-art>.exp-icon { width:34px; height:40px; }.exp-loot-screen .exp-relic-art::before { display:none; }
+    .exp-loot-screen .exp-relic-options button:not(:disabled):hover { transform:none; }
+}

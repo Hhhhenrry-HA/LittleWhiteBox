@@ -122,7 +122,7 @@ node scripts/story-summary-replay-runner.mjs --config="C:\path\to\prepared.json"
 
 连接中断、响应体未读全、收据写入失败或飞行中进程退出，均可能已计费而结果未知，恢复入口会在读取凭据前停止；
 不能用自动重发声称exactly-once。格式错误200保留原始响应，重复执行不会再次购买它。
-旧run若没有journal或缺失L0/Summary正文，不能追溯伪造或静默重新购买。旧300中断run仍禁止重开。
+旧run若没有journal或缺失L0/Summary正文，不能追溯伪造或静默重新购买。
 
 只有请求授权方明确接受某一个未知请求可能重复计费时，才使用四个精确批准参数：
 `--retry-unknown=<id> --retry-journal-sha256=<hash> --retry-source-manifest=<path> --retry-source-sha256=<hash>`，
@@ -162,7 +162,7 @@ browser-e2e → recommendation → complete` 推进；candidate 验证失败可�
 
 `scoreCase()` 接收：
 
-- `case`：由 `CASE_SCHEMA.md` 定义并经 `validateCase()` 规范化的金标准。
+- `case`：由 [用例契约](./lib/cases.mjs)中的 `validateCase()` 校验并规范化的金标准。
 - `observation`：replay 适配层产生的 JSON 可序列化结果。
 
 `observation.stages` 的每个阶段都是按排名排列的
@@ -359,7 +359,4 @@ node scripts/story-summary-replay-runner.mjs reader-only `
 模型、参数、Prompt、代码 bundle 与 cases 不变时，可用 `--gold-reader-resume-run=<invalid-run>`
 创建新 run 并复用成功 checkpoint；配置 fingerprint 或 bundle 不一致会在 API 前拒绝。
 
-旧 `real-800-tpm-safe-baseline-v1` 与旧名 `production capture` 产物只保留为历史观察，不能作为新工具 source。
-后续若 Query、
-Embedding 输入、Rerank 文档/参数或 Prompt 装配变量越过当前冻结边界，必须按 `RUNBOOK.md` 重新申请
-对应 product-aligned Natural capture；reader 仍需单独披露评测 API。
+不符合现行执行契约或来源轨道的历史 capture 不能作为当前工具 source。Query、Embedding 输入、Rerank 文档/参数或 Prompt 装配变量越过冻结边界时，须按本文的预检与授权边界重新申请对应 product-aligned Natural capture；reader 仍需单独披露评测 API。

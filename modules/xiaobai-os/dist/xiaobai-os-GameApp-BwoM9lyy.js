@@ -1,7 +1,7 @@
 /* eslint-disable */
 import { C as k, D as te, G as J, I as ne, P as Z, Q as P, S as x, U as o, _ as j, at as h, b as B, ft as b, k as X, lt as t, m as re, o as oe, ot as ie, p as ue, q as W, st as F, tt as le, ut as Y, v as se, w as m, x as a } from "./xiaobai-os-frame-bridge-CrPFvkI3.js";
 import { n as de } from "./xiaobai-os-assets-BT5gX6Sf.js";
-import { n as ve, r as K, t as ee } from "./xiaobai-os-room-catalog-Bzs0OwJl.js";
+import { n as ve, r as K, t as ee } from "./xiaobai-os-room-catalog-BvINPEju.js";
 function ae(i) {
   return i && typeof i == "object" && "code" in i ? String(i.code) : "";
 }

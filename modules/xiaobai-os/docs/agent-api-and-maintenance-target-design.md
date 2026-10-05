@@ -47,18 +47,9 @@ modules/xiaobai-os/
 
 Maintenance Capability 不得出现 Map/Tasks 字段、Prompt 文本或状态分支。新增自动领域只能通过注册一个 participant 接入。
 
-OS Agent bundle 取代当前由 Fourth Wall 命名和拥有的 Agent bundle。供应商适配、配置规范化和设置表单行为继续复用`agent-core`；四次元壁只向 gateway 提交自己的 prompt 和请求选项。
+OS Agent bundle 由 Agent Capability 拥有，四次元壁及其他已注册消费者共用 Agent gateway，不建立第二套配置与传输。供应商适配、配置规范化和设置表单行为复用`agent-core`；四次元壁只向 gateway 提交自己的 prompt 和请求选项。
 
-### 3.1 已落地业务能力与迁移边界
-
-Agent 与 Maintenance 已分别归 `capabilities/agent/`和 `capabilities/maintenance/`；Host 仅组合注册，不重新建立旧集中入口。
-
-- Agent API APP、Agent gateway 和通用 Agent bundle 由现有四次元壁及其他已注册消费者共用，不建立第二套配置与传输。
-- Map 交付自己的领域、Prompt、工具、Session、UI 和 participant 时，同阶段引入了 accepted-turn source 与业务无关 runner；Map 固定注册桌面入口，自动维护开关只在 APP 内。
-- Tasks 已交付自己的领域、Prompt、工具、Session、UI、资金事务和 participant，没有在通用 runner 中增加 Tasks 状态分支。
-- Map 与 Tasks 是两个真实 participant；同一接受轮可共用一个 Provider Session，但各自拥有 staging、结果和提交事务。
-
-“打开 APP 不检查 API”“关闭自动维护不调用 API”“只由已保存 User 确认上一轮”是现行运行契约。未来增加自动领域时，仍必须先有完整业务所有者和真实消费者，再通过 participant 注册接入，不能预建空基础设施。
+Map 与 Tasks 是两个真实 participant；同一接受轮可共用一个 Provider Session，但各自拥有领域、Prompt、工具、Session、UI、staging、结果和提交事务。Host 仅组合注册，不重新建立集中业务入口。
 
 ## 4. 统一 Agent API 设置
 
@@ -130,7 +121,7 @@ Map 和 Tasks 是与银行相同的固定桌面 APP，不存在各自的产品�
 
 自动维护开关只保存用户级偏好，不读取 Agent 配置、不发请求，也不创建聊天数据。APP Controller 通过唯一 settings repository 的窄命令保存，shell 不自行解释或保存设置。
 
-终态 settings repository 为`map|tasks`分别提供类型化的`setAutoMaintenance`和当前运行内变更订阅，但命令与字段随对应完整 APP 一起加入：Map 阶段只加入 Map，Tasks 阶段再加入 Tasks，不预建尚无所有者的配置。APP Controller 只能调用这些命令；repository 在确定保存成功后发布新快照，确定失败则恢复旧值。若宿主保存结果不确定，沿用现有 settings 候选语义：保留当前内存候选、按候选执行并明确提示“保存未确认”，不另造第二套 pending 开关。
+settings repository 为`map|tasks`分别提供类型化的`setAutoMaintenance`和当前运行内变更订阅。APP Controller 只能调用这些命令；repository 在确定保存成功后发布新快照，确定失败则恢复旧值。若宿主保存结果不确定，沿用现有 settings 候选语义：保留当前内存候选、按候选执行并明确提示“保存未确认”，不另造第二套 pending 开关。
 
 完整 APP 在 production composition 和 shell 中静态注册 descriptor、runtime、主 Prompt runtime 与 participant；OS cleanup 统一清 Prompt、取消请求并停止后台。对应 APP 完成前，其配置字段和注册入口均不存在，不能先交付没有完整页面与领域行为的占位图标。
 

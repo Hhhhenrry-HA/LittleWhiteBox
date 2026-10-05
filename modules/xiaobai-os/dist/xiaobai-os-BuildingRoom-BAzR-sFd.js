@@ -1,9 +1,10 @@
 /* eslint-disable */
-import { B as Tt, C as B, D as At, E as ct, F as qt, G as ke, I as Wt, O as Ye, P as vt, Q as Ue, R as Zt, S as Ve, U as c, _ as V, at as J, b as F, dt as _t, ft as k, g as Ut, k as Ee, lt as t, o as Gt, ot as mt, s as Yt, ut as tt, w as m, x as v } from "./xiaobai-os-frame-bridge-CrPFvkI3.js";
-import { A as Ft, B as Kt, C as Xt, D as Jt, E as Pt, F as Qt, H as Mt, I as Bt, L as Ot, M as Ae, N as W, O as ea, P as De, R as st, S as ta, T as aa, U as St, V as N, _ as Ct, a as Lt, b as at, c as $t, d as la, f as ia, g as na, h as wt, i as Ge, j as oa, k as sa, l as ra, m as ua, n as o, o as lt, p as da, r as It, s as ca, t as va, u as Nt, v as jt, w as xt, x as Vt, y as ma, z as it } from "./xiaobai-os-copy-KuhUsS8Y.js";
-import { At as bt, K as fa, Ot as pa, S as ha, St as ba, X as ya, _t as ka, a as ga, g as wa, gt as xa, m as _a, n as Ma, o as Sa, q as ft, rt as Ca, t as $a, u as Ia, x as Pe } from "./xiaobai-os-RoundedBoxGeometry-CpWqoTdO.js";
-import { a as za, i as Ea, o as Ra, r as Ta } from "./xiaobai-os-performance-DI1X_0MO.js";
-import { t as Aa } from "./xiaobai-os-BufferGeometryUtils-lRQBSDG9.js";
+import { B as Tt, C as B, D as At, E as ct, F as qt, G as ke, I as Wt, O as Ye, P as vt, Q as Ue, R as Zt, S as Ve, U as c, _ as V, at as X, b as F, dt as _t, ft as k, g as Ut, k as Ee, lt as t, o as Gt, ot as mt, s as Yt, ut as tt, w as m, x as v } from "./xiaobai-os-frame-bridge-CrPFvkI3.js";
+import { A as Ft, B as Kt, C as Jt, D as Xt, E as Pt, F as Qt, H as Mt, I as Bt, L as Ot, M as Ae, N as W, O as ea, P as De, R as st, S as ta, T as aa, U as St, V as N, _ as Ct, a as Lt, b as at, c as $t, d as la, f as ia, g as na, h as wt, i as Ge, j as oa, k as sa, l as ra, m as ua, n as o, o as lt, p as da, r as It, s as ca, t as va, u as Nt, v as jt, w as xt, x as Vt, y as ma, z as it } from "./xiaobai-os-copy-KuhUsS8Y.js";
+import { C as fa, Et as pa, J as ha, Mt as ba, Pt as bt, Q as ya, S as Pe, Y as ft, a as ka, at as ga, bt as wa, g as xa, i as _a, m as Ma, t as Sa, u as Ca, yt as $a } from "./xiaobai-os-three.module-Bh6B3L2B.js";
+import { a as Ia, i as za, o as Ea, s as Ra } from "./xiaobai-os-performance-C5Lr0_LZ.js";
+import { t as Ta } from "./xiaobai-os-RoundedBoxGeometry-DmqQlBB-.js";
+import { t as Aa } from "./xiaobai-os-BufferGeometryUtils-BKRv0Kh0.js";
 function Pa(e, l) {
   const a = wt(e, l), n = {
     bedroom: a.habitable,
@@ -207,7 +208,7 @@ function ja(e) {
   }
 }
 function Va(e, l, a) {
-  const n = mt(null), u = J(!1), b = J(""), i = J(!1), y = mt(null), d = J(!1), h = mt(null), R = F(() => !p.value && n.value?.active?.state !== "abandoned" && h.value?.runId === n.value?.active?.id && h.value?.revision === n.value?.revision && !!h.value?.layouts.length);
+  const n = mt(null), u = X(!1), b = X(""), i = X(!1), y = mt(null), d = X(!1), h = mt(null), R = F(() => !p.value && n.value?.active?.state !== "abandoned" && h.value?.runId === n.value?.active?.id && h.value?.revision === n.value?.revision && !!h.value?.layouts.length);
   let S = !1, s = null;
   const p = F(() => u.value || d.value || !!y.value || !n.value?.ready || n.value.writeState !== "ready" || n.value.pending);
   function x(z) {
@@ -268,8 +269,8 @@ function Va(e, l, a) {
       actionId: Na(),
       revision: T.revision,
       command: z
-    }), X = n.value;
-    if (U && L && X && X.active?.id === T.active?.id && X.revision === T.revision + 1) {
+    }), J = n.value;
+    if (U && L && J && J.active?.id === T.active?.id && J.revision === T.revision + 1) {
       const H = z.type === "restore" ? P.slice(0, -1) : [
         "put",
         "remove",
@@ -277,7 +278,7 @@ function Va(e, l, a) {
       ].includes(z.type) ? [...P, L] : [];
       h.value = {
         runId: T.active.id,
-        revision: X.revision,
+        revision: J.revision,
         layouts: H
       };
     } else h.value = null;
@@ -334,11 +335,11 @@ var Da = {
 };
 function Ha() {
   const e = {
-    box: new $a(1, 1, 1, 2, 0.055),
-    flat: new Sa(1, 1, 1),
-    sphere: new ba(1, 24, 16),
-    rod: new _a(1, 1, 1, 16),
-    ring: new pa(1, 0.1, 8, 24)
+    box: new Ta(1, 1, 1, 2, 0.055),
+    flat: new ka(1, 1, 1),
+    sphere: new pa(1, 24, 16),
+    rod: new Ma(1, 1, 1, 16),
+    ring: new ba(1, 0.1, 8, 24)
   }, l = /* @__PURE__ */ new Map(), a = /* @__PURE__ */ new Set();
   function n(i, y = "chalk") {
     const d = `${i}:${y}`;
@@ -358,7 +359,7 @@ function Ha() {
     i.traverse((S) => {
       if (!(S instanceof ft)) return;
       const s = S.geometry.index ? S.geometry.toNonIndexed() : S.geometry.clone();
-      s.applyMatrix4(new fa().multiplyMatrices(y, S.matrixWorld));
+      s.applyMatrix4(new ha().multiplyMatrices(y, S.matrixWorld));
       const p = S.material, x = d.get(p) ?? [];
       x.push(s), d.set(p, x);
     }), i.clear();
@@ -459,7 +460,7 @@ function Me(e, l) {
 function Za(e, l, a, n, u, b) {
   const i = new Pe(), y = De[n.kind], d = y.width * W.width, h = W.height;
   i.position.set(ze(l, n.x) + (y.width - 1) * W.width / 2, n.y * h, Me(l, n.z));
-  const R = Pt(a), S = Xt(l, a), s = (x, $, E, C = "chalk") => e.mesh(i, "box", x, $, E, C), p = (x, $, E) => e.mesh(i, "sphere", x, $, E);
+  const R = Pt(a), S = Jt(l, a), s = (x, $, E, C = "chalk") => e.mesh(i, "box", x, $, E, C), p = (x, $, E) => e.mesh(i, "sphere", x, $, E);
   if (St(n.kind)) {
     s(r.porcelain, [
       d,
@@ -1487,7 +1488,7 @@ var Ya = {
   garden: "looking"
 }, Fa = 3600;
 function Ka(e, l, a, n) {
-  const u = Ea(l), b = Ta(l), i = new Pe();
+  const u = Ia(l), b = za(l), i = new Pe();
   i.position.set(0, -0.01, 0.39), i.rotation.x = -0.35, l.add(i);
   for (const O of [-1, 1]) {
     const A = e.mesh(i, "box", r.mint, [
@@ -1555,7 +1556,7 @@ function Ka(e, l, a, n) {
     const A = j(O.part);
     return O.activity === "read" && (A.x -= 0.18, A.z = Me(h, O.part.z) + 0.06, A.y += 0.15), O.activity === "sunbathe" && (A.x -= 0.31, A.z = Me(h, O.part.z) + 0.03, A.y += 0.18), O.activity === "rest" && (A.z = Me(h, O.part.z) - 0.13, A.y = O.part.y * W.height + 0.68), O.activity === "relax" && (A.x += 0.2, A.z = Me(h, O.part.z) + 0.1, A.y += 0.23), A;
   }
-  function X(O) {
+  function J(O) {
     const A = p.space;
     i.visible = A.activity === "read", d.visible = A.activity === "relax", b.pose(Ya[A.activity], I, $, O);
     const w = O ? 0 : Math.max(0, Math.sin($ / 470));
@@ -1570,7 +1571,7 @@ function Ka(e, l, a, n) {
     }, $ = 0, z({
       phase: "using",
       space: A
-    }), X(O);
+    }), J(O);
   }
   function ve(O) {
     const A = s.shift();
@@ -1578,7 +1579,7 @@ function Ka(e, l, a, n) {
       x = !1;
       return;
     }
-    const w = Jt(h, R, A.part, S ?? void 0);
+    const w = Xt(h, R, A.part, S ?? void 0);
     if (!w.length) throw new Error("building_life_route");
     L(), I = U(A), C = [l.position.clone()], w.forEach((D, Se) => {
       const se = w[Se - 1];
@@ -1597,7 +1598,7 @@ function Ka(e, l, a, n) {
     w.length && (s = w, E = !0, (!x || A || p?.phase === "using") && (E = !1, ve(A)));
   }
   function ae(O) {
-    return !x || !p ? !1 : ($ += O, p.phase === "walking" ? u.walk(C, $) || (H(!1), E && (E = !1, ve(!1))) : (X(!1), $ >= Fa && ve(!1)), x);
+    return !x || !p ? !1 : ($ += O, p.phase === "walking" ? u.walk(C, $) || (H(!1), E && (E = !1, ve(!1))) : (J(!1), $ >= Fa && ve(!1)), x);
   }
   function te() {
     s = [], x = !1, p && (I = U(p.space), H(!0));
@@ -1610,23 +1611,23 @@ function Ka(e, l, a, n) {
   };
 }
 var ot = Oa(17, Ot[0]), Et = xt(ot, La(ot)[1]);
-function Xa(e, l, a, n, u, b) {
+function Ja(e, l, a, n, u, b) {
   return qa((i) => {
-    const y = new Ma({
+    const y = new Sa({
       antialias: !0,
       alpha: !1,
       powerPreference: "low-power"
     });
-    i.defer(() => y.domElement.remove()), i.defer(() => y.forceContextLoss()), i.own(y), y.domElement.className = "build-canvas", e.append(y.domElement), y.outputColorSpace = xa, y.toneMapping = 7, y.shadowMap.enabled = !0, y.shadowMap.type = 2;
-    const d = new ka();
-    d.background = new Ia(r.sky);
-    const h = new Ca(-5, 5, 5, -5, 0.1, 100), R = i.own(Ha());
-    d.add(new ha(r.porcelain, r.mint, 2.1));
-    const S = new wa(r.milk, 2.6);
+    i.defer(() => y.domElement.remove()), i.defer(() => y.forceContextLoss()), i.own(y), y.domElement.className = "build-canvas", e.append(y.domElement), y.outputColorSpace = $a, y.toneMapping = 7, y.shadowMap.enabled = !0, y.shadowMap.type = 2;
+    const d = new wa();
+    d.background = new Ca(r.sky);
+    const h = new ga(-5, 5, 5, -5, 0.1, 100), R = i.own(Ha());
+    d.add(new fa(r.porcelain, r.mint, 2.1));
+    const S = new xa(r.milk, 2.6);
     S.position.set(-5, 10, 8), S.castShadow = !0, S.shadow.mapSize.setScalar(kt.shadow), S.shadow.camera.left = -8, S.shadow.camera.right = 8, S.shadow.camera.top = 8, S.shadow.camera.bottom = -8, S.shadow.normalBias = 0.03, i.own(S.shadow), d.add(S, S.target);
     const s = new Pe();
     d.add(s);
-    const p = za({
+    const p = Ea({
       group(g, G) {
         const Z = new Pe();
         return Z.position.set(...G), g.add(Z), Z;
@@ -1641,14 +1642,14 @@ function Xa(e, l, a, n, u, b) {
     ]);
     p.scale.setScalar(0.7);
     let x = null, $ = !1, E = null;
-    const C = -new ga().setFromObject(p).min.y, I = Ka(R, p, C, (g) => {
+    const C = -new _a().setFromObject(p).min.y, I = Ka(R, p, C, (g) => {
       E = g, g?.phase === "using" && (x = null), b(g), $ && re();
     });
     let j = [], z = null, T = [], L = {
       project: null,
       enabled: !0,
       floor: null
-    }, P = ot, U = Et, X = "", H = 1, ve = 1, ie = 1, ae = 0.55, te = null, O = 0, A = 0, w = 0, D = !1, Se = !1, se = !1, ye = !1, le = null, ne = null;
+    }, P = ot, U = Et, J = "", H = 1, ve = 1, ie = 1, ae = 0.55, te = null, O = 0, A = 0, w = 0, D = !1, Se = !1, se = !1, ye = !1, le = null, ne = null;
     const ge = matchMedia("(prefers-reduced-motion: reduce)"), ce = /* @__PURE__ */ new Map();
     let me = !1;
     i.defer(() => {
@@ -1699,8 +1700,8 @@ function Xa(e, l, a, n, u, b) {
       ]), oe = L.project?.id !== g.project?.id;
       oe && (x = null, ie = 1, ae = 0.55, $ = !1, ce.clear());
       const Ce = oe ? null : Z.find((ee) => ee.kind !== "roof" && !U.some((fe) => fe.kind !== "roof" && N(fe) === N(ee))), _e = oe ? null : g.project?.memories.find((ee) => !L.project?.memories.includes(ee)), Te = !oe && L.project?.state === "building" && g.project?.state === "living", je = new Set(Vt(P, U).filter((ee) => !ee.issue).map((ee) => `${N(ee.part)}:${ee.activity}`));
-      if (L = g, P = G, X !== Q) {
-        Ie(), le = null, ne = null, a(!1), T.forEach((K) => K.dispose()), j.forEach((K) => K.model.dispose()), s.clear(), z?.dispose(), z && d.remove(z.root), U = Z, X = Q, z = Ua(R, P), d.add(z.root);
+      if (L = g, P = G, J !== Q) {
+        Ie(), le = null, ne = null, a(!1), T.forEach((K) => K.dispose()), j.forEach((K) => K.model.dispose()), s.clear(), z?.dispose(), z && d.remove(z.root), U = Z, J = Q, z = Ua(R, P), d.add(z.root);
         const ee = g.project ? Nt(P, g.project.rooms, g.project.memories) : [];
         T = U.map((K) => {
           const Y = Za(R, P, U, K, !0, ee.filter(($e) => N($e.part) === N(K) && $e.part.kind === K.kind).map(($e) => $e.id));
@@ -1779,7 +1780,7 @@ function Xa(e, l, a, n, u, b) {
     function Oe(g) {
       ie = Math.max(0.48, Math.min(2, ie * g)), re(), pe();
     }
-    function Xe(g) {
+    function Je(g) {
       g.preventDefault(), Oe(Math.exp(g.deltaY * (g.deltaMode === 1 ? 16 : g.deltaMode === 2 ? ve : 1) * 1e-3));
     }
     function dt(g) {
@@ -1804,15 +1805,15 @@ function Xa(e, l, a, n, u, b) {
     function Ne(g) {
       ce.delete(g.pointerId);
     }
-    function Je(g) {
+    function Xe(g) {
       me && (g.preventDefault(), g.stopPropagation(), me = !1);
     }
-    e.addEventListener("click", Je, !0), i.defer(() => e.removeEventListener("click", Je, !0));
+    e.addEventListener("click", Xe, !0), i.defer(() => e.removeEventListener("click", Xe, !0));
     const he = [
       [
         e,
         "wheel",
-        Xe
+        Je
       ],
       [
         e,
@@ -1886,7 +1887,7 @@ function Xa(e, l, a, n, u, b) {
     };
   });
 }
-function Ja() {
+function Xa() {
   let e = null, l = null;
   const a = /* @__PURE__ */ new Set();
   function n(y, d, h) {
@@ -2071,7 +2072,7 @@ var el = {
   },
   emits: ["choose"],
   setup(e) {
-    const l = J(null);
+    const l = X(null);
     return Tt(() => l.value?.focus({ preventScroll: !0 })), (a, n) => (c(), m("section", {
       class: "build-supply",
       "aria-label": t(o).supplies,
@@ -2338,10 +2339,10 @@ var el = {
   "aria-label",
   "aria-busy",
   "data-build-presenting"
-], Xl = {
+], Jl = {
   key: 0,
   class: "build-topbar"
-}, Jl = {
+}, Xl = {
   key: 0,
   class: "build-budget"
 }, Ql = ["aria-label"], ei = {
@@ -2417,7 +2418,7 @@ var el = {
 }, Gi = ["data-build-award"], Yi = {
   key: 2,
   class: "build-finished-actions"
-}, Fi = ["disabled"], Ki = { id: "build-dialog-title" }, Xi = ["aria-label"], Ji = {
+}, Fi = ["disabled"], Ki = { id: "build-dialog-title" }, Ji = ["aria-label"], Xi = {
   key: 0,
   class: "build-menu"
 }, Qi = ["data-build-balance"], en = ["disabled"], tn = ["disabled"], an = ["disabled", "aria-pressed"], ln = ["disabled"], nn = {
@@ -2438,9 +2439,9 @@ var el = {
       getItem: (M) => localStorage.getItem(M),
       setItem: (M, _) => localStorage.setItem(M, _),
       removeItem: (M) => localStorage.removeItem(M)
-    }), n = Va(l.bridge, l.chatIdentity, a), { view: u, busy: b, blocked: i, failed: y, notice: d, generating: h, canUndo: R } = n, S = J(null), s = J(null), p = J(null), x = J("desk"), $ = J(!1), E = J(null), C = J("room"), I = J(null), j = J([]), z = J(!1), T = J(!0), L = J(!1), P = J(""), U = J(!1), X = J(!1), H = J(null), ve = J(""), ie = J(null), ae = J(null);
+    }), n = Va(l.bridge, l.chatIdentity, a), { view: u, busy: b, blocked: i, failed: y, notice: d, generating: h, canUndo: R } = n, S = X(null), s = X(null), p = X(null), x = X("desk"), $ = X(!1), E = X(null), C = X("room"), I = X(null), j = X([]), z = X(!1), T = X(!0), L = X(!1), P = X(""), U = X(!1), J = X(!1), H = X(null), ve = X(""), ie = X(null), ae = X(null);
     let te = null, O = !1;
-    const A = Ja(), w = F(() => E.value ? u.value?.collection.find((M) => M.id === E.value) ?? null : u.value?.active ?? null), D = F(() => w.value ? Fe(w.value) : null), Se = F(() => D.value && w.value ? wt(D.value, w.value.rooms) : null), se = F(() => D.value && w.value ? Pa(D.value, w.value.rooms) : null), ye = F(() => w.value?.supply ? Ft(w.value.supply, w.value.rooms) : null), le = F(() => w.value?.supply?.offers ?? []), ne = F(() => x.value === "house" && !E.value && !!w.value?.supply?.remaining), ge = F(() => w.value && se.value?.bonus ? st[w.value.tier].award : Ae.habitableAward), ce = F(() => D.value && w.value?.state === "living" ? ua(D.value, w.value.rooms, w.value.memories) : null), me = F(() => Pt(w.value?.rooms ?? [])), q = F(() => I.value ? me.value.get(N(I.value)) ?? null : null), re = F(() => x.value === "house" && !!w.value && !E.value && !ne.value && (w.value.state === "building" || X.value)), Re = F(() => T.value && !l.generationActive && !p.value && !L.value), ue = F(() => !Re.value || i.value || z.value), Ke = F(() => Bt.filter((M) => M !== "terrace" || D.value?.terraces)), rt = F(() => D.value && w.value && C.value ? new Set(na(D.value, w.value.rooms, C.value).map(N)) : /* @__PURE__ */ new Set()), pe = F(() => j.value.filter((M) => H.value !== null && (me.value.has(N(M)) || re.value && M.y < Kt(D.value, M.x, M.z)))), Ie = F(() => Se.value?.spaces.find((M) => q.value && N(M.part) === N(q.value))), we = F(() => D.value && w.value && q.value ? pt(w.value, w.value.rooms.filter((M) => N(M) !== N(q.value))) : null), xe = F(() => {
+    const A = Xa(), w = F(() => E.value ? u.value?.collection.find((M) => M.id === E.value) ?? null : u.value?.active ?? null), D = F(() => w.value ? Fe(w.value) : null), Se = F(() => D.value && w.value ? wt(D.value, w.value.rooms) : null), se = F(() => D.value && w.value ? Pa(D.value, w.value.rooms) : null), ye = F(() => w.value?.supply ? Ft(w.value.supply, w.value.rooms) : null), le = F(() => w.value?.supply?.offers ?? []), ne = F(() => x.value === "house" && !E.value && !!w.value?.supply?.remaining), ge = F(() => w.value && se.value?.bonus ? st[w.value.tier].award : Ae.habitableAward), ce = F(() => D.value && w.value?.state === "living" ? ua(D.value, w.value.rooms, w.value.memories) : null), me = F(() => Pt(w.value?.rooms ?? [])), q = F(() => I.value ? me.value.get(N(I.value)) ?? null : null), re = F(() => x.value === "house" && !!w.value && !E.value && !ne.value && (w.value.state === "building" || J.value)), Re = F(() => T.value && !l.generationActive && !p.value && !L.value), ue = F(() => !Re.value || i.value || z.value), Ke = F(() => Bt.filter((M) => M !== "terrace" || D.value?.terraces)), rt = F(() => D.value && w.value && C.value ? new Set(na(D.value, w.value.rooms, C.value).map(N)) : /* @__PURE__ */ new Set()), pe = F(() => j.value.filter((M) => H.value !== null && (me.value.has(N(M)) || re.value && M.y < Kt(D.value, M.x, M.z)))), Ie = F(() => Se.value?.spaces.find((M) => q.value && N(M.part) === N(q.value))), we = F(() => D.value && w.value && q.value ? pt(w.value, w.value.rooms.filter((M) => N(M) !== N(q.value))) : null), xe = F(() => {
       if (!q.value || !w.value || !D.value) return null;
       const M = q.value.kind === "room" ? "study" : "room", _ = ma(w.value.rooms, q.value, M);
       return _ ? {
@@ -2458,10 +2459,10 @@ var el = {
         floor: H.value
       });
     }
-    function Xe() {
+    function Je() {
       te?.dispose(), te = null, L.value = !1, z.value = !1;
       try {
-        te = Xa(S.value, (M) => {
+        te = Ja(S.value, (M) => {
           j.value = M;
         }, (M) => {
           z.value = M;
@@ -2491,7 +2492,7 @@ var el = {
         P.value = o.soundError;
       }
     }
-    async function Je() {
+    async function Xe() {
       if (!(U.value || !u.value)) {
         U.value = !0;
         try {
@@ -2506,7 +2507,7 @@ var el = {
     }
     async function he(M) {
       const _ = M.type === "remember" ? ce.value?.part : null;
-      Ne(), P.value = "", await n.act(M) && (I.value = null, M.type === "start" && (E.value = null, x.value = "house", $.value = !1, C.value = "room", X.value = !1, H.value = 0), M.type === "remember" && w.value?.memories.includes(M.memory) && (ie.value = M.memory, X.value = !1, H.value = _?.y ?? null), M.type === "finish" && (X.value = !1, $.value = !0, H.value = null), M.type === "reside" && (E.value = null, x.value = "house", $.value = !1, X.value = !0, H.value = 0), M.type === "collect" && !M.save && (E.value = null));
+      Ne(), P.value = "", await n.act(M) && (I.value = null, M.type === "start" && (E.value = null, x.value = "house", $.value = !1, C.value = "room", J.value = !1, H.value = 0), M.type === "remember" && w.value?.memories.includes(M.memory) && (ie.value = M.memory, J.value = !1, H.value = _?.y ?? null), M.type === "finish" && (J.value = !1, $.value = !0, H.value = null), M.type === "reside" && (E.value = null, x.value = "house", $.value = !1, J.value = !0, H.value = 0), M.type === "collect" && !M.save && (E.value = null));
     }
     function Qe(M) {
       if (ue.value) return;
@@ -2534,7 +2535,7 @@ var el = {
       }
     }
     function et() {
-      X.value = !0, H.value = 0, ie.value = null;
+      J.value = !0, H.value = 0, ie.value = null;
     }
     function g() {
       !ue.value && ce.value?.part && he({
@@ -2549,13 +2550,13 @@ var el = {
       !ue.value && await n.undo() && (I.value = null);
     }
     function Q() {
-      w.value?.state === "living" ? (X.value = !1, I.value = null, H.value = null) : se.value?.ready && (p.value = "deliver");
+      w.value?.state === "living" ? (J.value = !1, I.value = null, H.value = null) : se.value?.ready && (p.value = "deliver");
     }
     function oe() {
-      u.value?.active?.state === "living" ? (E.value = null, x.value = "house", $.value = !1, X.value = !1, H.value = null, I.value = null) : p.value = "collection";
+      u.value?.active?.state === "living" ? (E.value = null, x.value = "house", $.value = !1, J.value = !1, H.value = null, I.value = null) : p.value = "collection";
     }
     function Ce() {
-      x.value = "desk", E.value = null, I.value = null, X.value = !1, ie.value = null, $.value = !1;
+      x.value = "desk", E.value = null, I.value = null, J.value = !1, ie.value = null, $.value = !1;
     }
     function _e() {
       x.value = "house", $.value = !1, H.value = 0;
@@ -2578,10 +2579,10 @@ var el = {
       });
     }
     function ee(M) {
-      x.value = "house", $.value = !1, X.value = !1, H.value = null, E.value = M, I.value = null, p.value = null;
+      x.value = "house", $.value = !1, J.value = !1, H.value = null, E.value = M, I.value = null, p.value = null;
     }
     function fe() {
-      E.value = null, I.value = null, X.value = !1, $.value = !1, H.value = u.value?.active?.state === "building" ? 0 : null;
+      E.value = null, I.value = null, J.value = !1, $.value = !1, H.value = u.value?.active?.state === "building" ? 0 : null;
     }
     async function K() {
       if (!(!te || !w.value))
@@ -2613,7 +2614,7 @@ var el = {
       Re,
       H
     ], Oe), Ue(() => w.value?.id, () => {
-      X.value = !1, $.value = !1, ie.value = null, H.value = w.value?.state === "building" ? 0 : null, ve.value = "", I.value = null;
+      J.value = !1, $.value = !1, ie.value = null, H.value = w.value?.state === "building" ? 0 : null, ve.value = "", I.value = null;
     }), Ue(() => u.value?.active?.state, (M, _) => {
       M === "living" && _ === "building" && ($.value = !0, H.value = null, I.value = null);
     }), Ue(ae, () => {
@@ -2621,7 +2622,7 @@ var el = {
     }), Ue(Re, (M) => {
       M || Le();
     }), Tt(async () => {
-      Xe(), document.addEventListener("visibilitychange", Y), await n.read(), u.value?.active?.state === "building" && (x.value = "house"), O = !0;
+      Je(), document.addEventListener("visibilitychange", Y), await n.read(), u.value?.active?.state === "building" && (x.value = "house"), O = !0;
     }), qt(() => {
       T.value = !0, te?.resume(), O && n.read();
     }), Zt(() => {
@@ -2630,7 +2631,7 @@ var el = {
       n.dispose(), te?.dispose(), document.removeEventListener("visibilitychange", Y), A.dispose().catch((M) => console.error(o.audioDispose, M));
     });
     async function Ze() {
-      await vt(), Xe();
+      await vt(), Je();
     }
     return (M, _) => (c(), m("section", {
       class: tt(["building-room", { "is-desk": x.value === "desk" }]),
@@ -2638,7 +2639,7 @@ var el = {
       "aria-busy": t(b),
       "data-build-presenting": z.value
     }, [
-      x.value === "house" ? (c(), m("header", Xl, [
+      x.value === "house" ? (c(), m("header", Jl, [
         v("button", {
           type: "button",
           class: "build-location",
@@ -2649,7 +2650,7 @@ var el = {
           v("strong", null, k(t(o).name), 1),
           _[28] || (_[28] = v("span", { "aria-hidden": "true" }, "⌄", -1))
         ]),
-        re.value && D.value && Se.value ? (c(), m("span", Jl, k(t(o).budget(D.value.materials - Se.value.materials)), 1)) : B("", !0),
+        re.value && D.value && Se.value ? (c(), m("span", Xl, k(t(o).budget(D.value.materials - Se.value.materials)), 1)) : B("", !0),
         v("button", {
           type: "button",
           "aria-label": t(o).menu,
@@ -2682,7 +2683,7 @@ var el = {
         class: "build-stage",
         "aria-label": t(o).scene
       }, [
-        x.value === "house" && (X.value && w.value?.state === "living" || ve.value || ie.value) ? (c(), m("p", ri, k(ve.value || (ie.value ? t(Ge)[ie.value].thanks : ut.value)), 1)) : B("", !0),
+        x.value === "house" && (J.value && w.value?.state === "living" || ve.value || ie.value) ? (c(), m("p", ri, k(ve.value || (ie.value ? t(Ge)[ie.value].thanks : ut.value)), 1)) : B("", !0),
         D.value?.tier === "sunroom" && re.value ? (c(), m("span", {
           key: 1,
           class: tt(["build-sun", { "from-left": D.value.sunSide === -1 }]),
@@ -2965,7 +2966,7 @@ var el = {
         type: "button",
         "aria-label": t(o).close,
         onClick: _[17] || (_[17] = (f) => p.value = null)
-      }, "×", 8, Xi)]), p.value === "menu" ? (c(), m("div", Ji, [
+      }, "×", 8, Ji)]), p.value === "menu" ? (c(), m("div", Xi, [
         v("p", { "data-build-balance": t(u)?.balance }, k(t(u) ? t(o).balance(t(u).balance) : t(o).loading), 9, Qi),
         v("button", {
           type: "button",
@@ -3012,7 +3013,7 @@ var el = {
           type: "button",
           disabled: U.value || t(b) || !t(u),
           "aria-pressed": t(u)?.soundEnabled,
-          onClick: Je
+          onClick: Xe
         }, k(t(u)?.soundEnabled ? t(o).soundOn : t(o).soundOff), 9, an),
         v("button", {
           type: "button",
@@ -3061,7 +3062,7 @@ var el = {
       ], 64))], 512)])) : B("", !0)
     ], 10, Kl));
   }
-}), gn = mn;
+}), wn = mn;
 export {
-  gn as default
+  wn as default
 };

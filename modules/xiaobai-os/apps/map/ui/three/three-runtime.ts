@@ -1,4 +1,4 @@
-import { Box3, DirectionalLight, HemisphereLight, MathUtils, NeutralToneMapping, OrthographicCamera, PCFSoftShadowMap, Scene, Spherical, SRGBColorSpace, TOUCH, Vector2, Vector3, WebGLRenderer } from 'three';
+import { Box3, MathUtils, NeutralToneMapping, OrthographicCamera, PCFSoftShadowMap, Scene, Spherical, SRGBColorSpace, TOUCH, Vector2, Vector3, WebGLRenderer } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { MapScene } from '../../../../domains/map/types.js';
 import { createSceneModel } from './scene3d-model.js';
@@ -6,6 +6,7 @@ import { createSceneLabels } from './scene3d-labels.js';
 import { createSceneAssetSession, decodeSceneAsset } from './scene3d-assets.js';
 import { SCENE_ASSET_URLS } from './scene3d-asset-catalog.js';
 import { sceneAssetKind } from './scene3d-asset-fit.js';
+import { createSceneLighting } from './scene3d-lighting.js';
 
 export function createThreeRuntime(host: HTMLElement, labelHost: HTMLElement, options: { fallback: (reason: string) => void }) {
     let renderer: WebGLRenderer | undefined;
@@ -24,15 +25,7 @@ export function createThreeRuntime(host: HTMLElement, labelHost: HTMLElement, op
     const scene = new Scene();
     const camera = new OrthographicCamera(-10, 10, 10, -10, .01, 1000);
     const drawingSize = new Vector2();
-    const ambient = new HemisphereLight('#f5f8ff', '#9c8c7a', 1.65);
-    const key = new DirectionalLight('#fff3df', 3.1);
-    key.castShadow = true;
-    key.shadow.mapSize.set(1024, 1024);
-    key.shadow.normalBias = .012;
-    key.shadow.bias = -.00015;
-    key.shadow.radius = 2;
-    const fill = new DirectionalLight('#daeaff', .65);
-    scene.add(ambient, key, key.target, fill);
+    const lighting = createSceneLighting(scene);
     const isDark = () => !!host.closest('.theme-dark');
     let dark = isDark();
     function cancelFrame() {if (raf) {cancelAnimationFrame(raf); raf = 0;}}
@@ -40,7 +33,7 @@ export function createThreeRuntime(host: HTMLElement, labelHost: HTMLElement, op
         if (disposed) {return;}
         disposed = true; cancelFrame(); abort.abort();
         resizeObserver?.disconnect(); visibilityObserver?.disconnect(); themeObserver?.disconnect();
-        controls?.dispose(); labels?.dispose(); model?.dispose(); assets?.dispose(); key.shadow.dispose();
+        controls?.dispose(); labels?.dispose(); model?.dispose(); assets?.dispose(); lighting.dispose();
         renderer?.dispose(); renderer?.forceContextLoss(); renderer?.domElement.remove();
         scene.clear();
     }
@@ -66,23 +59,6 @@ export function createThreeRuntime(host: HTMLElement, labelHost: HTMLElement, op
         const [x, y, w, h] = data!.viewBox;
         const { frame } = model!;
         return new Box3(frame.point(x, y), frame.point(x + w, y + h)).union(model!.bounds);
-    }
-    function lightScene() {
-        const bounds = sceneBounds();
-        const center = bounds.getCenter(new Vector3());
-        const span = Math.max(1, bounds.getSize(new Vector3()).length());
-        key.position.copy(center).add(new Vector3(-span / 2, span, span / 2));
-        key.target.position.copy(center);
-        fill.position.copy(center).add(new Vector3(span, span / 2, -span));
-        key.updateMatrixWorld(true); key.target.updateMatrixWorld(true);
-        key.shadow.updateMatrices(key);
-        const shadowBounds = bounds.clone().applyMatrix4(key.shadow.camera.matrixWorldInverse);
-        Object.assign(key.shadow.camera, {
-            left: shadowBounds.min.x - .3, right: shadowBounds.max.x + .3,
-            top: shadowBounds.max.y + .3, bottom: shadowBounds.min.y - .3,
-            near: Math.max(.01, -shadowBounds.max.z - 1), far: -shadowBounds.min.z + 1,
-        });
-        key.shadow.camera.updateProjectionMatrix(); key.shadow.needsUpdate = true;
     }
     function fit() {
         if (!controls || !model) {return;}
@@ -138,7 +114,7 @@ export function createThreeRuntime(host: HTMLElement, labelHost: HTMLElement, op
             data = next; model = candidate; scene.add(model.group); model.updateWalls(lowWalls);
             labels = createSceneLabels(labelHost, next, model.anchors);
             labels.symbols(symbolsReady);
-            lightScene();
+            lighting.update(next, model.frame, sceneBounds(), model.anchors);
             if (reset) {fit();}
             // Release obsolete prototypes only after removing their old instances.
             assets?.sync(next.elements.flatMap(element => {const kind = sceneAssetKind(element); return kind ? [kind] : [];}));
@@ -197,7 +173,7 @@ export function createThreeRuntime(host: HTMLElement, labelHost: HTMLElement, op
         return {
             dispose, setScene, fit, zoom,
             labels(show: boolean) {showLabels = show; invalidate();},
-            walls(low: boolean) {lowWalls = low; model?.updateWalls(low); invalidate();},
+            walls(low: boolean) {lowWalls = low; model?.updateWalls(low); lighting.invalidateShadows(); invalidate();},
             symbols(ready: boolean) {symbolsReady = ready; labels?.symbols(ready); invalidate();},
         };
     } catch (error) {dispose(); throw error;}

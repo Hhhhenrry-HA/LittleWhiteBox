@@ -26,7 +26,7 @@ export function communicationBreak(stage: CommunicationStage): string {
     if (gap.kind === 'unplaced') {
         return '<communication_break kind="unplaced">前后通讯的原始剧情位置无法完整定位，记录相邻不代表故事中紧接着发生。</communication_break>';
     }
-    return `<communication_break kind="story" from_story_floor="${gap.fromFloor}" through_story_floor="${gap.throughFloor}">上段通讯之后，主剧情继续发展；下面是在这些剧情之后重新联系。上段言行属于当时的关系与处境。楼层表示叙事顺序，具体相隔多久以剧情记忆为准。</communication_break>`;
+    return `<communication_break kind="story" from_story_floor="${gap.fromFloor}" through_story_floor="${gap.throughFloor}">上段私信之后已有主剧情推进，下面是在推进后的处境下重新联系。旧私信属于当时，不默认仍在接着上一句话。楼层表示叙事位置，不代表时长；相隔多久以剧情内容为准，未说明就保持未知。</communication_break>`;
 }
 
 export function communicationBlock(stage: CommunicationStage, content: string): string {

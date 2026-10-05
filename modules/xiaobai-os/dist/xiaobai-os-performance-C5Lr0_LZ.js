@@ -132,54 +132,60 @@ var c = {
     color: "cheeks"
   }
 ];
-function h(e, r, i) {
-  const a = e.group(r, i);
-  for (const t of f) e.ball(a, [
-    t.radius[0],
-    t.radius[1],
-    t.radius[2]
-  ], c[t.color], [
-    t.center[0],
-    t.center[1],
-    t.center[2]
+function l(e, t, i) {
+  const a = e.group(t, i);
+  for (const r of f) e.ball(a, [
+    r.radius[0],
+    r.radius[1],
+    r.radius[2]
+  ], c[r.color], [
+    r.center[0],
+    r.center[1],
+    r.center[2]
   ]);
   return a;
 }
-var l = 1100;
+var h = 1100;
 function M(e) {
-  return { walk(r, i) {
-    if (!r.length) return !1;
-    const a = Math.max(0, i / l), t = Math.min(r.length - 1, Math.floor(a)), n = r[Math.min(t + 1, r.length - 1)], o = r[t], s = Math.min(1, Math.max(0, (a - t - 0.16) / 0.84));
-    return e.position.copy(o).lerp(n, s), e.position.y += Math.abs(Math.sin(s * Math.PI * 4)) * 0.045, e.rotation.y = Math.sign(n.x - o.x) * 0.4, t < r.length - 1;
+  return { walk(t, i) {
+    if (!t.length) return !1;
+    const a = Math.max(0, i / h), r = Math.min(t.length - 1, Math.floor(a)), n = t[Math.min(r + 1, t.length - 1)], s = t[r], o = Math.min(1, Math.max(0, (a - r - 0.16) / 0.84));
+    return e.position.copy(s).lerp(n, o), e.position.y += Math.abs(Math.sin(o * Math.PI * 4)) * 0.045, e.rotation.y = Math.sign(n.x - s.x) * 0.4, r < t.length - 1;
   } };
 }
 function u(e) {
   return {
-    pose(r, i, a, t = !1) {
-      const n = t ? 0 : Math.sin(a / 520) * 0.012;
-      e.position.copy(i), e.rotation.set(0, 0, 0), r === "reading" && (e.rotation.x = 0.2 + n), r === "reclining" && e.rotation.set(-0.23, -0.15, -0.14 + n), r === "sleeping" && (e.rotation.z = Math.PI / 2), r === "sipping" && (e.rotation.x = -0.08 + n), r === "looking" && (e.rotation.y = t ? 0.25 : Math.sin(a / 850) * 0.3), e.position.y += n;
+    pose(t, i, a, r = !1) {
+      const n = r ? 0 : Math.sin(a / 520) * 0.012;
+      e.position.copy(i), e.rotation.set(0, 0, 0), t === "reading" && (e.rotation.x = 0.2 + n), t === "reclining" && e.rotation.set(-0.23, -0.15, -0.14 + n), t === "sleeping" && (e.rotation.z = Math.PI / 2), t === "sipping" && (e.rotation.x = -0.08 + n), t === "looking" && (e.rotation.y = r ? 0.25 : Math.sin(a / 850) * 0.3), e.position.y += n;
     },
     reset() {
       e.rotation.set(0, 0, 0);
     }
   };
 }
-function y(e, r) {
+function y(e) {
+  return { pose(t, i, a, r, n, s, o) {
+    e.position.set(t, 0.48 + (n && !o ? Math.abs(Math.sin(r * 0.5)) * 0.075 : 0), i), e.rotation.set(s && !o ? 0.22 : 0, Math.PI / 2 - a, n && !o ? Math.sin(r * 0.5) * 0.07 : 0);
+  } };
+}
+function g(e, t) {
   return {
     rest(i) {
-      e.position.copy(r), e.rotation.y = 0, i.visible = !1;
+      e.position.copy(t), e.rotation.y = 0, i.visible = !1;
     },
-    carry(i, a, t) {
+    carry(i, a, r) {
       const n = Math.max(0, (i - 0.2) / 0.8);
-      t.visible = n > 0 && n < 0.92, e.position.x = r.x + n * (a - r.x), e.position.y = r.y + Math.abs(Math.sin(n * 22)) * 0.1, e.rotation.y = 0.6;
+      r.visible = n > 0 && n < 0.92, e.position.x = t.x + n * (a - t.x), e.position.y = t.y + Math.abs(Math.sin(n * 22)) * 0.1, e.rotation.y = 0.6;
     }
   };
 }
 export {
-  h as a,
-  M as i,
+  M as a,
+  u as i,
   y as n,
-  c as o,
-  u as r,
-  l as t
+  l as o,
+  g as r,
+  c as s,
+  h as t
 };

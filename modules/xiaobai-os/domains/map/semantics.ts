@@ -27,6 +27,10 @@ export const MAP_MATERIALS: readonly MapMaterial[] = Object.freeze([
 
 export const MAP_CERTAINTIES = Object.freeze(['confirmed', 'inferred', 'unknown'] as const);
 
+export const MAP_LIGHTING_SPACES = Object.freeze(['indoor', 'outdoor'] as const);
+export const MAP_NATURAL_LIGHTS = Object.freeze(['sunlight', 'daylight', 'night'] as const);
+export const MAP_ARTIFICIAL_LIGHTS = Object.freeze(['on', 'off'] as const);
+
 /** Object vocabulary shared by tool guidance and sized-object recognition, not rendering assets. */
 export const MAP_OBJECT_GROUPS = Object.freeze([
     { name: 'Seating and sleeping', icons: ['chair', 'stool', 'bench', 'sofa', 'bed'], hint: 'chair has a back; stool has none; bench is a long shared seat.' },

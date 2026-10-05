@@ -1,6 +1,7 @@
 /* eslint-disable */
-import { B as $, C as M, G as p, Q as O, S as E, U as l, V, _ as g, at as G, dt as Y, ft as f, k as w, lt as u, ut as A, w as c, x as i } from "./xiaobai-os-frame-bridge-CrPFvkI3.js";
+import { B as V, C as E, G as p, Q as $, S as G, U as l, V as P, _ as g, at as A, dt as Y, ft as n, k as x, lt as u, ut as L, w as c, x as i } from "./xiaobai-os-frame-bridge-CrPFvkI3.js";
 import { n as h } from "./xiaobai-os-copy-KuhUsS8Y.js";
+import { n as w } from "./xiaobai-os-copy-CQ9firSJ.js";
 import { r as m } from "./xiaobai-os-copy-Bo3eHGxn.js";
 var N = {
   1: [[2, 2]],
@@ -32,16 +33,16 @@ var N = {
     [3, 3]
   ]
 };
-var P = 80, T = 180, F = 200;
-function u2(e) {
-  const t = Math.max(0, e - 1) * 45 + 720 + P, a = t + T;
+var T = 80, H = 180, F = 200;
+function v2(e) {
+  const t = Math.max(0, e - 1) * 45 + 720 + T, a = t + H;
   return {
     countAt: t,
     verdictAt: a,
     settledAt: a + F
   };
 }
-var Q = ["aria-label"], j = { class: "game-die-stage" }, H = { class: "game-die-pips" }, X = /* @__PURE__ */ w({
+var Q = ["aria-label"], X = { class: "game-die-stage" }, j = { class: "game-die-pips" }, q = /* @__PURE__ */ x({
   __name: "Die",
   props: {
     value: {},
@@ -81,7 +82,7 @@ var Q = ["aria-label"], j = { class: "game-die-stage" }, H = { class: "game-die-
         side: "is-right",
         face: 3
       }
-    ], o = {
+    ], d = {
       1: [0, 0],
       2: [90, 180],
       3: [0, -90],
@@ -89,37 +90,37 @@ var Q = ["aria-label"], j = { class: "game-die-stage" }, H = { class: "game-die-
       5: [-90, 0],
       6: [180, 0]
     };
-    function r(d, s) {
-      return `rotateX(${d}deg) rotateY(${s}deg)`;
+    function r(o, s) {
+      return `rotateX(${o}deg) rotateY(${s}deg)`;
     }
-    function C() {
+    function I() {
       return typeof window < "u" && typeof window.matchMedia == "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     }
-    const v = G(null), R = G(null);
+    const v = A(null), R = A(null);
     let k = null, y = null;
     function U() {
-      const [d, s] = o[t.value];
-      v.value && (v.value.style.transform = r(d, s));
+      const [o, s] = d[t.value];
+      v.value && (v.value.style.transform = r(o, s));
     }
     function z() {
-      const d = v.value;
-      if (!d) return;
-      if (k?.cancel(), y?.cancel(), k = null, y = null, !t.animate || C() || typeof d.animate != "function") {
+      const o = v.value;
+      if (!o) return;
+      if (k?.cancel(), y?.cancel(), k = null, y = null, !t.animate || I() || typeof o.animate != "function") {
         U();
         return;
       }
-      const [s, n] = o[t.value], x = 360 * (2 + Math.floor(Math.random() * 2)) + 146, _ = 360 * (1 + Math.floor(Math.random() * 2)) + 101;
-      k = d.animate([
+      const [s, f] = d[t.value], _ = 360 * (2 + Math.floor(Math.random() * 2)) + 146, b = 360 * (1 + Math.floor(Math.random() * 2)) + 101;
+      k = o.animate([
         {
-          transform: r(s - x, n - _),
+          transform: r(s - _, f - b),
           easing: "cubic-bezier(.11,.58,.32,1)"
         },
         {
-          transform: r(s + 13, n + 9),
+          transform: r(s + 13, f + 9),
           offset: 0.84,
           easing: "cubic-bezier(.36,0,.4,1)"
         },
-        { transform: r(s, n) }
+        { transform: r(s, f) }
       ], {
         duration: 720,
         delay: t.delay,
@@ -155,28 +156,28 @@ var Q = ["aria-label"], j = { class: "game-die-stage" }, H = { class: "game-die-
         fill: "both"
       }) ?? null;
     }
-    return $(z), V(() => {
+    return V(z), P(() => {
       k?.cancel(), y?.cancel();
-    }), O(() => t.value, z), (d, s) => (l(), c("div", {
+    }), $(() => t.value, z), (o, s) => (l(), c("div", {
       ref_key: "shell",
       ref: R,
-      class: A(["game-die", { "is-hit": e.highlight }]),
+      class: L(["game-die", { "is-hit": e.highlight }]),
       role: "img",
       "aria-label": `骰子 ${e.value} 点`
-    }, [i("div", j, [i("div", {
+    }, [i("div", X, [i("div", {
       ref_key: "cube",
       ref: v,
       class: "game-die-cube"
-    }, [(l(), c(g, null, p(a, (n) => i("div", {
-      key: n.side,
-      class: A(["game-die-face", [n.side, { "is-result": n.face === e.value }]])
-    }, [i("div", H, [(l(!0), c(g, null, p(u(N)[n.face], ([x, _], I) => (l(), c("i", {
-      key: I,
+    }, [(l(), c(g, null, p(a, (f) => i("div", {
+      key: f.side,
+      class: L(["game-die-face", [f.side, { "is-result": f.face === e.value }]])
+    }, [i("div", j, [(l(!0), c(g, null, p(u(N)[f.face], ([_, b], O) => (l(), c("i", {
+      key: O,
       class: "game-die-pip",
-      style: Y({ gridArea: `${x} / ${_}` })
+      style: Y({ gridArea: `${_} / ${b}` })
     }, null, 4))), 128))])], 2)), 64))], 512)])], 10, Q));
   }
-}), B = X, L = [
+}), Z = q, B = [
   "零",
   "一",
   "二",
@@ -190,53 +191,53 @@ var Q = ["aria-label"], j = { class: "game-die-stage" }, H = { class: "game-die-
   "十"
 ];
 function D(e) {
-  return `${L[e.count] || e.count}个${L[e.face]}`;
+  return `${B[e.count] || e.count}个${B[e.face]}`;
 }
-function p2(e, t) {
+function k2(e, t) {
   return e.filter((a) => a.count === t).map((a) => a.face);
 }
 function S(e, t) {
   return e === 1 || e === t;
 }
-var q = {
+var J = {
   key: 0,
   class: "dice-record"
-}, J = { class: "game-dice-row" }, K = { class: "game-dice-row" }, W = /* @__PURE__ */ w({
+}, K = { class: "game-dice-row" }, W = { class: "game-dice-row" }, e2 = /* @__PURE__ */ x({
   __name: "DiceRecord",
   props: { detail: {} },
   setup(e) {
-    return (t, a) => e.detail.kind === "dice" ? (l(), c("div", q, [
-      i("p", null, f(e.detail.finalBid.by === "player" ? "你" : "对方") + "叫" + f(u(D)(e.detail.finalBid)) + " · " + f(e.detail.challenger === "player" ? "你" : "对方") + "开盅 ", 1),
-      i("p", null, " 实际有" + f(u(D)({
+    return (t, a) => e.detail.kind === "dice" ? (l(), c("div", J, [
+      i("p", null, n(e.detail.finalBid.by === "player" ? "你" : "对方") + "叫" + n(u(D)(e.detail.finalBid)) + " · " + n(e.detail.challenger === "player" ? "你" : "对方") + "开盅 ", 1),
+      i("p", null, " 实际有" + n(u(D)({
         count: e.detail.matchingDiceCount,
         face: e.detail.finalBid.face
       })) + "（一点百搭） ", 1),
       a[0] || (a[0] = i("span", null, "对方的骰子", -1)),
-      i("div", J, [(l(!0), c(g, null, p(e.detail.dealerDice, (o, r) => (l(), E(B, {
+      i("div", K, [(l(!0), c(g, null, p(e.detail.dealerDice, (d, r) => (l(), G(Z, {
         key: r,
-        value: o,
+        value: d,
         animate: !1,
-        highlight: u(S)(o, e.detail.finalBid.face)
+        highlight: u(S)(d, e.detail.finalBid.face)
       }, null, 8, ["value", "highlight"]))), 128))]),
       a[1] || (a[1] = i("span", null, "你的骰子", -1)),
-      i("div", K, [(l(!0), c(g, null, p(e.detail.playerDice, (o, r) => (l(), E(B, {
+      i("div", W, [(l(!0), c(g, null, p(e.detail.playerDice, (d, r) => (l(), G(Z, {
         key: r,
-        value: o,
+        value: d,
         animate: !1,
-        highlight: u(S)(o, e.detail.finalBid.face)
+        highlight: u(S)(d, e.detail.finalBid.face)
       }, null, 8, ["value", "highlight"]))), 128))])
-    ])) : M("", !0);
+    ])) : E("", !0);
   }
-}), e2 = W, t2 = { key: 0 }, a2 = /* @__PURE__ */ w({
+}), t2 = e2, a2 = { key: 0 }, r2 = /* @__PURE__ */ x({
   __name: "PushRecord",
   props: { detail: {} },
   setup(e) {
-    return (t, a) => e.detail.kind === "push" ? (l(), c("p", t2, "这局找到了 " + f(e.detail.revealedCoins) + " 张金币。", 1)) : M("", !0);
+    return (t, a) => e.detail.kind === "push" ? (l(), c("p", a2, "这局找到了 " + n(e.detail.revealedCoins) + " 张金币。", 1)) : E("", !0);
   }
-}), r2 = a2, l2 = {
+}), l2 = r2, c2 = {
   key: 0,
   class: "game-record-steps"
-}, c2 = /* @__PURE__ */ w({
+}, i2 = /* @__PURE__ */ x({
   __name: "LadderRecord",
   props: { detail: {} },
   setup(e) {
@@ -245,9 +246,9 @@ var q = {
       medium: "跨一步",
       risky: "大胆跃"
     };
-    return (a, o) => e.detail.kind === "ladder" ? (l(), c("ol", l2, [(l(!0), c(g, null, p(e.detail.steps, (r) => (l(), c("li", { key: r.floor }, " 第 " + f(r.floor) + " 层 · " + f(t[r.choice]) + " · " + f(r.success ? "走过了，攒下 ¤ " + r.amountAfterStep : "没站稳"), 1))), 128))])) : M("", !0);
+    return (a, d) => e.detail.kind === "ladder" ? (l(), c("ol", c2, [(l(!0), c(g, null, p(e.detail.steps, (r) => (l(), c("li", { key: r.floor }, " 第 " + n(r.floor) + " 层 · " + n(t[r.choice]) + " · " + n(r.success ? "走过了，攒下 ¤ " + r.amountAfterStep : "没站稳"), 1))), 128))])) : E("", !0);
   }
-}), i2 = c2, o2 = [
+}), d2 = i2, o2 = [
   {
     id: "dice",
     name: "大话骰",
@@ -279,10 +280,10 @@ var q = {
     tone: "amber"
   }
 ];
-function b(e) {
+function M(e) {
   return o2.find((t) => t.id === e);
 }
-var d2 = {
+var s2 = {
   id: "moving",
   name: m.name,
   category: m.category,
@@ -291,7 +292,7 @@ var d2 = {
   entry: m.entry,
   mark: m.mark,
   tone: "moving"
-}, s2 = {
+}, f2 = {
   id: "building",
   name: h.name,
   category: h.category,
@@ -300,58 +301,71 @@ var d2 = {
   entry: h.entry,
   mark: h.mark,
   tone: "building"
-}, Z = [
+}, n2 = {
+  id: "expedition",
+  name: w.name,
+  category: w.category,
+  tagline: w.tagline,
+  entry: w.entry,
+  tone: "expedition"
+}, C = [
   {
-    ...b("dice"),
-    record: e2,
+    ...M("dice"),
+    record: t2,
     artwork: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20360%20230'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='cup'%20x1='115'%20y1='50'%20x2='245'%20y2='140'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23b4cce2'/%3e%3cstop%20offset='.5'%20stop-color='%23edf6ff'/%3e%3cstop%20offset='1'%20stop-color='%237295b4'/%3e%3c/linearGradient%3e%3clinearGradient%20id='die'%20x2='1'%20y2='1'%3e%3cstop%20stop-color='%23fff'/%3e%3cstop%20offset='1'%20stop-color='%23dce7f2'/%3e%3c/linearGradient%3e%3c/defs%3e%3cellipse%20cx='180'%20cy='190'%20rx='111'%20ry='23'%20fill='%230c6c83'%20opacity='.25'/%3e%3cg%20transform='rotate(-12%20184%20123)'%3e%3cpath%20d='M129%2057Q181%2027%20230%2057L245%20159Q183%20202%20113%20164Z'%20fill='url(%23cup)'%20stroke='%23fff'%20stroke-width='2'/%3e%3cellipse%20cx='180'%20cy='59'%20rx='51'%20ry='19'%20fill='%23bdd5e7'%20stroke='%23fff'%20stroke-width='3'/%3e%3cellipse%20cx='180'%20cy='59'%20rx='39'%20ry='12'%20fill='%23375675'/%3e%3cpath%20d='M116%20151Q183%20185%20243%20146'%20stroke='%23fff'%20stroke-width='4'/%3e%3cpath%20d='M137%2088L132%20140M146%2094L143%20145'%20stroke='%23fff'%20opacity='.3'%20stroke-width='2'/%3e%3c/g%3e%3cg%20transform='translate(232%20137)%20rotate(16)'%3e%3crect%20width='56'%20height='56'%20rx='12'%20fill='url(%23die)'%20stroke='%23fff'/%3e%3cg%20fill='%2322364d'%3e%3ccircle%20cx='16'%20cy='15'%20r='4'/%3e%3ccircle%20cx='40'%20cy='15'%20r='4'/%3e%3ccircle%20cx='16'%20cy='28'%20r='4'/%3e%3ccircle%20cx='40'%20cy='28'%20r='4'/%3e%3ccircle%20cx='16'%20cy='41'%20r='4'/%3e%3ccircle%20cx='40'%20cy='41'%20r='4'/%3e%3c/g%3e%3c/g%3e%3cg%20transform='translate(88%20164)%20rotate(-16)'%3e%3crect%20width='49'%20height='49'%20rx='11'%20fill='url(%23die)'%20stroke='%23fff'/%3e%3ccircle%20cx='24.5'%20cy='24.5'%20r='7'%20fill='%23f14260'/%3e%3c/g%3e%3cpath%20d='m282%2068%205-11m-2%2026%2014-4M90%2091l-10-7'%20stroke='%231db49c'%20stroke-width='3'%20stroke-linecap='round'/%3e%3c/svg%3e", "" + import.meta.url).href,
-    load: () => import("./xiaobai-os-DiceRoom-BW04oByB.js")
+    load: () => import("./xiaobai-os-DiceRoom-6-sOPQip.js")
   },
   {
-    ...b("push"),
-    record: r2,
+    ...M("push"),
+    record: l2,
     artwork: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20360%20230'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='gold'%20x2='1'%20y2='1'%3e%3cstop%20stop-color='%23ffdf62'/%3e%3cstop%20offset='1'%20stop-color='%23ffae1a'/%3e%3c/linearGradient%3e%3c/defs%3e%3cellipse%20cx='180'%20cy='198'%20rx='106'%20ry='19'%20fill='%23302470'%20opacity='.18'/%3e%3cg%20transform='translate(85%2060)%20rotate(-17%2055%2072)'%3e%3crect%20width='110'%20height='145'%20rx='12'%20fill='%235961cc'%20stroke='%23bac8ff'%20stroke-width='3'/%3e%3crect%20x='9'%20y='9'%20width='92'%20height='127'%20rx='7'%20stroke='%23bac8ff'/%3e%3cpath%20d='m55%2033%2028%2039-28%2039-28-39Z'%20fill='%238598f0'/%3e%3cpath%20d='m55%2048%2016%2024-16%2024-16-24Z'%20stroke='%23fff'/%3e%3c/g%3e%3cg%20transform='translate(169%2039)%20rotate(13%2054%2074)'%3e%3crect%20width='110'%20height='150'%20rx='12'%20fill='%23fff'%20stroke='%23dee5ff'%20stroke-width='2'/%3e%3ccircle%20cx='55'%20cy='75'%20r='30'%20fill='url(%23gold)'%20stroke='%23eea522'%20stroke-width='3'/%3e%3ccircle%20cx='55'%20cy='75'%20r='23'%20stroke='%23fff4be'%20stroke-width='2'/%3e%3cpath%20d='m55%2055%206%2013%2014%202-10%2010%203%2015-13-7-13%207%203-15-10-10%2014-2Z'%20fill='%23cb7a00'/%3e%3cpath%20d='M13%2017h10m-5-5v10M87%20130h10m-5-5v10'%20stroke='%23ffc14d'%20stroke-width='2'/%3e%3c/g%3e%3cg%20stroke='%23eea522'%20stroke-width='2'%3e%3cellipse%20cx='262'%20cy='192'%20rx='26'%20ry='11'%20fill='%23c98712'/%3e%3cellipse%20cx='262'%20cy='186'%20rx='26'%20ry='11'%20fill='url(%23gold)'/%3e%3cellipse%20cx='247'%20cy='172'%20rx='26'%20ry='11'%20fill='url(%23gold)'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href,
-    load: () => import("./xiaobai-os-PushRoom-DMqqcsaF.js")
+    load: () => import("./xiaobai-os-PushRoom-BF2OEAl1.js")
   },
   {
-    ...b("ladder"),
-    record: i2,
+    ...M("ladder"),
+    record: d2,
     artwork: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20360%20230'%20fill='none'%3e%3cellipse%20cx='178'%20cy='201'%20rx='118'%20ry='18'%20fill='%232054a0'%20opacity='.16'/%3e%3cpath%20d='M70%20164h43v-29h43v-29h43V77h43V48h45v146H70Z'%20fill='%23549cec'/%3e%3cpath%20d='m70%20164%2019-11h43l-19%2011Zm43-29%2019-11h43l-19%2011Zm43-29%2019-11h43l-19%2011Zm43-29%2019-11h43l-19%2011Zm43-29%2019-11h45l-19%2011Z'%20fill='%23d9f0ff'/%3e%3cpath%20d='m287%2048%2019-11v146l-19%2011Z'%20fill='%23246bc8'/%3e%3cpath%20d='M70%20194h217'%20stroke='%231f5db3'%20stroke-width='3'/%3e%3ccircle%20cx='134'%20cy='107'%20r='12'%20fill='%23fff'/%3e%3cpath%20d='m129%20122-8%2014%2025%201-1-16Z'%20fill='%23fa6957'/%3e%3cpath%20d='m128%20137-9%2014m20-14%208%204m-4-17%2017-11'%20stroke='%23cc3b47'%20stroke-width='6'%20stroke-linecap='round'/%3e%3cpath%20d='m266%2014%204%207%209%202-6%207%201%208-8-4-8%204%201-8-6-7%209-2Z'%20fill='%23ffdf60'%20stroke='%23e9a31a'/%3e%3cpath%20d='m83%2057%205-10m-4%2024%2012-3m115-44%204-8'%20stroke='%235da8ed'%20stroke-width='3'%20stroke-linecap='round'/%3e%3c/svg%3e", "" + import.meta.url).href,
-    load: () => import("./xiaobai-os-LadderRoom-CkqwROC7.js")
+    load: () => import("./xiaobai-os-LadderRoom-CybluJZz.js")
   }
 ];
-function g2(e) {
-  return Z.find((t) => t.id === e);
+function y2(e) {
+  return C.find((t) => t.id === e);
 }
-var n2 = [
+var h2 = [
+  {
+    ...n2,
+    mode: "standalone",
+    artwork: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20360%20300'%3e%3crect%20width='360'%20height='300'%20rx='26'%20fill='%23dceef5'/%3e%3ccircle%20cx='252'%20cy='66'%20r='35'%20fill='%23fff8df'/%3e%3cpath%20d='M0%20178%2068%2086l47%2051%2056-66%2071%2080%2063-47%2055%2062v134H0Z'%20fill='%23b0cbd7'/%3e%3cpath%20d='m0%20213%20106-54%20121%2037%20133-53v157H0Z'%20fill='%238fadb9'/%3e%3cpath%20d='m39%20267%20143-107%20139%20107-143%2029Z'%20fill='%23d5e5df'/%3e%3cpath%20d='M82%20198V92h38v92m120%200V92h38v106'%20fill='%23f6f3e4'/%3e%3cpath%20d='M76%2092h50L101%2053Zm158%200h50l-25-39Z'%20fill='%23426a7d'/%3e%3cpath%20d='M114%20114h132v18H114'%20fill='%23f6f3e4'/%3e%3cpath%20d='M92%2099h17v57H92m158-57h17v57h-17'%20fill='%2365a89e'/%3e%3cpath%20d='m170%20215%2011-58%2011%2058-11-8Z'%20fill='%23e9fafc'%20stroke='%23598394'%20stroke-width='3'/%3e%3cpath%20d='m157%20212%2049%200m-24%200v24'%20stroke='%23d9ad58'%20stroke-width='6'/%3e%3ccircle%20cx='181'%20cy='259'%20r='24'%20fill='none'%20stroke='%23f9f6df'%20stroke-width='3'/%3e%3c/svg%3e", "" + import.meta.url).href,
+    load: () => import("./xiaobai-os-ExpeditionRoom-DkJp8PBd.js")
+  },
+  {
+    ...f2,
+    mode: "standalone",
+    artwork: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20360%20240'%3e%3crect%20width='360'%20height='240'%20rx='24'%20fill='%23d9eef2'/%3e%3cellipse%20cx='182'%20cy='197'%20rx='134'%20ry='20'%20fill='%23c5e0dc'/%3e%3cpath%20d='m49%20184%2024-25h224l19%2025-20%2014H70Z'%20fill='%23fff9e9'/%3e%3cpath%20d='M105%20166V92h146v74'%20fill='%23fffdf6'%20stroke='%23dacdb9'%20stroke-width='3'/%3e%3cpath%20d='M177%2092V50h74v116'%20fill='%23fffdf6'%20stroke='%23dacdb9'%20stroke-width='3'/%3e%3cpath%20d='m96%2094%2046-37%2043%2037m-18-44%2047-37%2047%2037'%20fill='%23b8d6c8'%20stroke='%2389b3a1'%20stroke-width='4'%20stroke-linejoin='round'/%3e%3cpath%20d='M174%2094h78m-78-43h84'%20stroke='%23fffaf1'%20stroke-width='6'/%3e%3cpath%20d='M122%20114h25v28h-25zm73-47h27v24h-27z'%20fill='%23b4dbe7'/%3e%3cpath%20d='M177%20166v-45h28v45'%20fill='%23b8d6c8'/%3e%3cpath%20d='M137%20144v-30m-15%2014h25m61-61v24m-13-12h27'%20stroke='%23fffdf6'%20stroke-width='3'/%3e%3cpath%20d='M227%20166v-37h25'%20fill='none'%20stroke='%23d7b38f'%20stroke-width='5'/%3e%3cpath%20d='M74%20166v-38'%20stroke='%23c7a479'%20stroke-width='6'/%3e%3cpath%20d='M59%20120c-23-33%2022-52%2035-29%2032%205%2015%2049-15%2038-9%209-22%201-20-9Z'%20fill='%23b9d7c4'/%3e%3cpath%20d='M272%20167v-24m-7%209h14'%20stroke='%23d9a294'%20stroke-width='4'/%3e%3c/svg%3e", "" + import.meta.url).href,
+    load: () => import("./xiaobai-os-BuildingRoom-BAzR-sFd.js")
+  },
   {
     ...s2,
     mode: "standalone",
-    artwork: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20360%20240'%3e%3crect%20width='360'%20height='240'%20rx='24'%20fill='%23d9eef2'/%3e%3cellipse%20cx='182'%20cy='197'%20rx='134'%20ry='20'%20fill='%23c5e0dc'/%3e%3cpath%20d='m49%20184%2024-25h224l19%2025-20%2014H70Z'%20fill='%23fff9e9'/%3e%3cpath%20d='M105%20166V92h146v74'%20fill='%23fffdf6'%20stroke='%23dacdb9'%20stroke-width='3'/%3e%3cpath%20d='M177%2092V50h74v116'%20fill='%23fffdf6'%20stroke='%23dacdb9'%20stroke-width='3'/%3e%3cpath%20d='m96%2094%2046-37%2043%2037m-18-44%2047-37%2047%2037'%20fill='%23b8d6c8'%20stroke='%2389b3a1'%20stroke-width='4'%20stroke-linejoin='round'/%3e%3cpath%20d='M174%2094h78m-78-43h84'%20stroke='%23fffaf1'%20stroke-width='6'/%3e%3cpath%20d='M122%20114h25v28h-25zm73-47h27v24h-27z'%20fill='%23b4dbe7'/%3e%3cpath%20d='M177%20166v-45h28v45'%20fill='%23b8d6c8'/%3e%3cpath%20d='M137%20144v-30m-15%2014h25m61-61v24m-13-12h27'%20stroke='%23fffdf6'%20stroke-width='3'/%3e%3cpath%20d='M227%20166v-37h25'%20fill='none'%20stroke='%23d7b38f'%20stroke-width='5'/%3e%3cpath%20d='M74%20166v-38'%20stroke='%23c7a479'%20stroke-width='6'/%3e%3cpath%20d='M59%20120c-23-33%2022-52%2035-29%2032%205%2015%2049-15%2038-9%209-22%201-20-9Z'%20fill='%23b9d7c4'/%3e%3cpath%20d='M272%20167v-24m-7%209h14'%20stroke='%23d9a294'%20stroke-width='4'/%3e%3c/svg%3e", "" + import.meta.url).href,
-    load: () => import("./xiaobai-os-BuildingRoom-IqDefrGW.js")
-  },
-  {
-    ...d2,
-    mode: "standalone",
     artwork: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20320%20270'%3e%3crect%20width='320'%20height='270'%20rx='24'%20fill='%23e1eee8'/%3e%3cellipse%20cx='162'%20cy='231'%20rx='122'%20ry='20'%20fill='%23bbd1c6'/%3e%3cpath%20d='m35%20172%20123-68%20125%2070-123%2073z'%20fill='%2382b4a6'/%3e%3cpath%20d='m35%20159%20123-68%20125%2070-123%2073z'%20fill='%23fff0d7'/%3e%3cpath%20d='M35%20159V61l123-35v99z'%20fill='%23cae3d7'/%3e%3cpath%20d='M158%2026%20283%2093v68l-125-36z'%20fill='%23deece3'/%3e%3cpath%20d='m182%2060%2053%2027v39l-53-19z'%20fill='%23fff8ea'/%3e%3cpath%20d='m189%2071%2039%2020v26l-39-14z'%20fill='%23a8d2df'/%3e%3cpath%20d='m209%2082v29m-20-19%2039%2016'%20stroke='%23fff8ea'%20stroke-width='4'/%3e%3cpath%20d='m63%20152%2072-31%2040%2020-72%2037z'%20fill='%23f4aeb8'/%3e%3cpath%20d='m63%20152v-30l72-30v29z'%20fill='%23e49ca9'/%3e%3cpath%20d='m64%20154%2040%2023v19l-40-23zm40%2023%2071-36v19l-71%2036z'%20fill='%23edbdc6'/%3e%3cpath%20d='m187%20153%2042-17%2034%2019-42%2019z'%20fill='%23f6d4a2'/%3e%3cpath%20d='m187%20153v39l34%2019v-37zm34%2021%2042-19v37l-42%2019z'%20fill='%23e3b77f'/%3e%3cpath%20d='m237%20174%2013-6'%20stroke='%23fff1d4'%20stroke-width='4'%20stroke-linecap='round'/%3e%3cg%20transform='translate(175%20200)'%3e%3cellipse%20rx='17'%20ry='6'%20fill='%2377bba8'/%3e%3cpath%20d='M-9-3a9%209%200%200%201%2018%200'%20fill='%23b5e5e6'/%3e%3cpath%20d='M-14%200q14%208%2028%200'%20fill='none'%20stroke='%23f8e3a2'%20stroke-width='2'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href,
-    load: () => import("./xiaobai-os-MovingRoom-CJMHX2Hb.js")
+    load: () => import("./xiaobai-os-MovingRoom--Rgwb-Tj.js")
   },
-  ...Z.map((e) => ({
+  ...C.map((e) => ({
     ...e,
     mode: "wager"
   }))
 ];
-function v2(e) {
-  return n2.find((t) => t.id === e);
+function w2(e) {
+  return h2.find((t) => t.id === e);
 }
 export {
-  p2 as a,
-  B as c,
-  b as i,
-  u2 as l,
-  v2 as n,
+  k2 as a,
+  Z as c,
+  M as i,
+  v2 as l,
+  w2 as n,
   D as o,
-  g2 as r,
+  y2 as r,
   S as s,
-  n2 as t
+  h2 as t
 };

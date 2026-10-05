@@ -20,6 +20,9 @@ import {
     MAP_ICON_TOKENS,
     MAP_MATERIALS,
     MAP_OBJECT_GROUPS,
+    MAP_LIGHTING_SPACES,
+    MAP_NATURAL_LIGHTS,
+    MAP_ARTIFICIAL_LIGHTS,
 } from '../../../domains/map/semantics.js';
 import { DEFAULT_ATLAS_READ_LIMIT, MAX_ATLAS_QUERY_LENGTH, MAX_ATLAS_READ_LIMIT } from './atlas-reader.js';
 
@@ -46,7 +49,8 @@ const READ_REPORT = 'Returns {ok,status,changed,applied,skipped,warnings,data}. 
 
 /** Result fields shared by the maintenance and administrator atlas reads. */
 export const MAP_ATLAS_READ_RESULT = [
-    'data contains mode and revision. Summary adds counts for locations/links/actors/needsRegion and player (null when unrecorded); collection modes add the named collection, count, returned, truncated and nextOffset.',
+    'data contains mode and revision. Summary adds counts for locations/links/actors/needsRegion, player (null when unrecorded) and currentScene; collection modes add the named collection, count, returned, truncated and nextOffset.',
+    'currentScene is {scene,hasLighting} for the player\'s recorded location, or null when there is no scene there. scene is the owning location key; hasLighting reports whether lighting is recorded, not whether it still matches the story.',
     'Continue collection reads with nextOffset while it is not null, keeping the same mode and filters.',
     'Locations include hasScene, which indicates whether a layout exists, not whether it is complete.',
     'Read status includes containment: visiting a place also means its containing locations have been visited.',
@@ -54,7 +58,7 @@ export const MAP_ATLAS_READ_RESULT = [
 ].join('\n');
 
 export const MAP_SCENE_READ_DESCRIPTION = [
-    'Read one scene layout in MapSceneEdit vocabulary: {scene,viewBox,mood?,elements}, or null when no layout exists.',
+    'Read one scene layout in MapSceneEdit vocabulary: {scene,viewBox,mood?,lighting?,elements}, or null when no layout exists.',
     'Use it to assess a layout or obtain current element IDs before patching it. Location names, scales and visit status belong to the atlas.',
 ].join('\n');
 
@@ -87,7 +91,7 @@ export function mapTools(saveDescription: string): readonly MaintenanceFunctionD
                 'Read locations, links and actor positions in the current atlas draft.',
                 READ_REPORT,
                 MAP_ATLAS_READ_RESULT,
-                'Document mode adds the complete atlas.',
+                'Document mode adds the complete atlas and currentScene.',
                 'Use it to page an atlas injected as a summary, to confirm a key, or to see edits made during this run.',
             ].join('\n'),
             parameters: {
@@ -217,7 +221,7 @@ export function mapTools(saveDescription: string): readonly MaintenanceFunctionD
                 'Create or patch the internal layout of an existing concrete atlas place with a containing region.',
                 saveDescription,
                 EDIT_ITEM_REPORTS,
-                'Use it for the spatial arrangement of a place and visible actor positions. Elements absent from the call remain untouched.',
+                'Use it for the spatial arrangement, lighting and visible actor positions of a place. Elements absent from the call remain untouched.',
             ].join('\n'),
             parameters: {
                 type: 'object',
@@ -236,6 +240,18 @@ export function mapTools(saveDescription: string): readonly MaintenanceFunctionD
                         description: 'Full-map extent [x,y,width,height], with positive size. New scenes default to [0,0,400,300]; omission preserves an existing extent. Include the whole layout and label margins. Used on scene entry or Fit; updates do not pan/zoom the current user viewport. Grow it only when the place itself needs more room, not to move an actor.',
                     },
                     mood: nullableEnum(mood, 'Optional scene atmosphere used for rendering. Use null to clear it.'),
+                    lighting: {
+                        anyOf: [{
+                            type: 'object',
+                            description: 'Environmental illumination. Supply all three fields together. On an existing scene, omission preserves lighting and null clears it.',
+                            properties: {
+                                space: { type: 'string', enum: [...MAP_LIGHTING_SPACES], description: 'Whether this scene is inside an enclosure or outdoors.' },
+                                natural: { type: 'string', enum: [...MAP_NATURAL_LIGHTS], description: 'Natural light reaching the scene: sunlight is direct sun; daylight is diffuse daytime light without direct sun; night is little or no natural light, including enclosed spaces without daylight.' },
+                                artificial: { type: 'string', enum: [...MAP_ARTIFICIAL_LIGHTS], description: 'Whether lamps or other artificial illumination are on in this scene.' },
+                            },
+                            required: ['space', 'natural', 'artificial'], additionalProperties: false,
+                        }, { type: 'null' }],
+                    },
                     elements: {
                         type: 'array',
                         maxItems: MAX_SCENE_ELEMENTS,

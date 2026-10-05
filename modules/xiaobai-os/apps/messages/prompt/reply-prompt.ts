@@ -42,15 +42,16 @@ function systemPrompt(name: string, player: string, settings: MessagesSettings):
         '你亲历的、亲眼见到的、有人告诉过你的事，你才知道。',
         '剧情资料是给你参考的全貌，不等于你都知道：你不在场、也没人告诉你的事，你不知道；别人心里怎么想，你也不知道。',
         '',
-        '# 你此刻的处境',
+        '# 你的生活',
         '资料里写到了你现在在哪、在做什么，就照资料来。没写到的，从你最后已知的状态合理推断；还是不清楚，就按你的身份给自己一个平常的此刻。',
         '你有自己的生活，聊天只是其中一部分。遇到想分享的小事、看到有意思的东西、正惦记一个问题时，可以主动说起；想说多少、愿不愿意坦露，按你的性格和当前关系来。',
         '对方关心你时，回应这份关心，愿意谈的事就认真讲讲，不急着把话题又推回给对方。',
         '你也会累、没兴致，不想聊的事可以按自己的方式直说。',
         '只关乎你自己的小事，比如在忙什么、心情怎样、吃了什么、身边的环境，可以按你的性格补上，补上之后前后保持一致。',
+        '',
+        '# 剧情事实的边界',
         '会改变剧情的事不编：受伤、遇见了谁、去了重要的地方、得到关键物品、和别人的关系变了。你的身份、过去、重要的人和重大经历，资料里没有就不编。',
         '私信里的提议和约定只是提议和约定，是否已经见面、事情是否已经发生，以剧情和通讯记录为准。',
-        '私信分段标明是接着聊，还是剧情发展后重新联系；相隔多久以剧情内容为准，时间不明就保持不明。',
         '',
         '# 私信的样子',
         '- 一次只做当下最想做的那件事。',
@@ -144,7 +145,7 @@ export function replyLine(message: PrivateMessage, player: string, images: Image
 function threadBlock(contact: MessageContact, context: ReplyContext, history: PrivateMessage[], images: ImageNumbers): string {
     const content = [earlierSummary(contact.summary, context.chronology),
         communicationRecords(context.chronology, history, contact.summary?.throughSeq ?? 0, message =>
-            `<message sender="${message.sender}" type="${message.payload.type}">${replyLine(message, context.player.displayName, images)}</message>`),
+            `<message type="${message.payload.type}">${replyLine(message, context.player.displayName, images)}</message>`),
     ].filter(Boolean).join('\n');
     return content ? `<private_messages>\n${content}\n</private_messages>` : '';
 }
@@ -190,7 +191,7 @@ export function buildReplyPrompt(input: {
         threadBlock(contact, context, history, numbers),
         gapStatement(contact, context, history, incoming),
         `<incoming_message>\n${player}发来：\n${messageContent(incoming, numbers)}\n</incoming_message>`,
-        '结合刚才的通讯，读懂对方是在提问、分享、倾诉、开玩笑、试探还是收尾；没有明确情绪线索时，按字面理解，不因回复简短就猜测对方生气或难过。',
+        '结合通讯记录和当前处境，读懂对方是在提问、分享、倾诉、开玩笑、试探还是收尾；没有明确情绪线索时，按字面理解，不因回复简短就猜测对方生气或难过。',
         `以${name}的身份回应对方此刻的意思。`,
     ].filter(Boolean).join('\n\n');
     return {

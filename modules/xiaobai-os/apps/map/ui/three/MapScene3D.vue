@@ -3,7 +3,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { MapScene } from '../../../../domains/map/types.js';
 import type { createThreeRuntime } from './three-runtime.js';
 import { loadMapSymbols } from '../map-symbols.js';
-import { MAP_MOOD_RECIPES } from '../map-presentation.js';
+import { sceneLightingStyle } from '../scene-lighting.js';
 import './scene3d.css';
 
 const props = defineProps<{ scene: MapScene; lowWalls: boolean; showLabels: boolean }>();
@@ -31,7 +31,7 @@ watch(() => props.showLabels, value => runtime?.labels(value));
 onBeforeUnmount(() => {mounted = false; runtime?.dispose(); runtime = undefined;});
 </script>
 <template>
-    <div ref="host" class="map-scene-three" :style="{ '--scene-glow': MAP_MOOD_RECIPES[scene.mood || 'neutral'].glow }">
+    <div ref="host" class="map-scene-three" :style="sceneLightingStyle(scene)">
         <div ref="labelHost" class="map-3d-labels" />
         <div v-if="loading" class="map-3d-loading" role="status">正在打开三维…</div>
         <div class="map-viewport-controls" aria-label="三维视角">

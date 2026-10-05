@@ -105,6 +105,7 @@ interface MapScene {
     status: 'uninitialized' | 'active';
     viewBox: [number, number, number, number];
     mood?: 'neutral' | 'warm' | 'cold' | 'dark' | 'mystic' | 'danger' | 'calm';
+    lighting?: MapSceneLighting; // 环境光事实，类型及词表见 domains/map
     elements: MapElement[];
 }
 ```
@@ -112,6 +113,8 @@ interface MapScene {
 玩家当前位置只以`atlas.actors`中`actorKey: "player"`的记录为准，UI 的“当前地点”由它派生；不再额外持久化第二个`activeLocationKey`。
 
 地点 position/terrain 是地点长期事实，不是视口缓存；省略保留已有值，null 清除。terrain 只决定地点的示意背景，不表示一块有真实轮廓的地形。
+
+场景 `lighting` 保存室内／室外、可用自然光和人工照明开关，区别于风格 `mood`。这些剧情事实需要重开地图后保留，随所属场景删除，不建独立配置或缓存。工具传入完整对象替换，省略保留，null 清除；持久数据只保存对象或不保存该字段。无字段时保持原有默认颜色和光照，不按主题、时钟或地点名称猜测。非法值拒绝本次场景调用，不部分修改地图。渲染参数由前端派生，见 [场景绘制设计](./map-scene-rendering-design.md)。
 
 Scene element 使用闭合语义，不保存任意 SVG/CSS：
 
@@ -160,18 +163,18 @@ Map 是“接受后提交的 OS 事实”，不是随消息数组实时重算的
 
 ## 6. Agent 工具与维护规则
 
-每轮 Map Session 将初始 staging 的 Atlas 投影注入 `<map_atlas_state>`；rebuild 从空 Atlas 开始。`mode: document` 包含全部已记录的地点、路线和人物位置；超过 20,000 码点预算时改为 `mode: summary`，仅含数量与已知玩家位置，模型按需分页读取。摘要未列出的集合不等于空集合，`<current_map>` 也只是有界的玩家侧概览，不能当完整清单。地点投影中的 `hasScene` 只表示场景是否存在，不表示布局完整。
+每轮 Map Session 将初始 staging 的 Atlas 投影注入 `<map_atlas_state>`；rebuild 从空 Atlas 开始。`mode: document` 包含全部已记录的地点、路线和人物位置；超过 20,000 码点预算时改为 `mode: summary`，保留数量与已知玩家位置，模型按需分页读取。两种模式均保留 `currentScene: {scene,hasLighting} | null`，由玩家记录位置所关联的 Scene 即时派生；`scene` 是所属地点 key，`hasLighting` 只表示字段是否存在，不等于光照仍符合当前剧情。无关联场景时为 null。注入与工具读取共用同一投影，不存第二份光照状态。摘要未列出的集合不等于空集合，`<current_map>` 也只是有界的玩家侧概览，不能当完整清单。地点投影中的 `hasScene` 只表示场景是否存在，不表示布局完整。
 
-需要修改当前已有场景或评估其普通布局是否稀疏时，允许 `MapSceneRead`；完整性评估不以新剧情空间事件为前提。同一轮复用已经读取的布局，不因新一轮到来就例行复查。不新增完整性标记或持久状态；是否写入仍遵循设定补全与事件证据边界。
+需要修改当前已有场景或评估其完整性时，允许 `MapSceneRead`；当前剧情仍使用的场景缺少光照就是读取并补齐的理由，不必等待新空间事件。剧情已移往别处时评估目的地，不为补光照回头改旧场景。完成标准只在维护与管理员共用的绘图规则中定义，覆盖空间布局、标签与当前环境光照。同一轮复用已经读取的布局，不因新一轮到来就例行复查。不新增完整性标记或持久状态；是否写入仍遵循设定补全与事件证据边界。
 
 Map participant 自己提供四个高层工具：
 
 正常维护与管理员共用以下读回投影和编辑编译器，分别沿用各自的分页与保存边界。
 
-- `MapAtlasRead`：默认返回地点/路线/Actor 数量、缺失地区归属数量与玩家位置；`locations/links/actors`按`offset/limit`分页并支持各自过滤，`document`仅供确需完整 Atlas 时显式读取；
+- `MapAtlasRead`：默认返回地点/路线/Actor 数量、缺失地区归属数量、玩家位置与上述 `currentScene`；`locations/links/actors`按`offset/limit`分页并支持各自过滤，`document`仅供确需完整 Atlas 时显式读取；
 - `MapAtlasEdit`：声明式提交`locations/links/actors/remove`，并写入 staging context；地点 key 是稳定身份，parent 可引用同次调用创建或修正的父级，具体地点必须有地区祖先，地区与世界可处于根级或用`parent:null`脱离父级；拒绝让已归属的后代脱离地区。路线默认双向且可省略派生 id；
-- `MapSceneRead`：按明确地点 key、地点名或内部 Scene key 读取一个 Scene，返回 `data.scene:{scene,viewBox,mood?,elements}`；`scene` 使用唯一所属地点 key，元素使用与写入相同的 `cat/geo`（矩形 `center/size`，曲线 `curve`），不暴露内部存储字段与 Scene 生命周期状态。地点名称、scale/到访状态仍从 Atlas 读取；缺少场景返回 null；
-- `MapSceneEdit`：接收`scene/playerHere/viewBox/mood/elements/remove`绘图意图；只为 Atlas 中已有且具有地区归属的具体地点建立 Location→Scene 关联，不创建地点或改写其名称、scale、到访状态。
+- `MapSceneRead`：按明确地点 key、地点名或内部 Scene key 读取一个 Scene，返回 `data.scene:{scene,viewBox,mood?,lighting?,elements}`；`scene` 使用唯一所属地点 key，元素使用与写入相同的 `cat/geo`（矩形 `center/size`，曲线 `curve`），不暴露内部存储字段与 Scene 生命周期状态。地点名称、scale/到访状态仍从 Atlas 读取；缺少场景返回 null；
+- `MapSceneEdit`：接收`scene/playerHere/viewBox/mood/lighting/elements/remove`绘图意图；只为 Atlas 中已有且具有地区归属的具体地点建立 Location→Scene 关联，不创建地点或改写其名称、scale、到访状态。
 
 当前格式中缺少地区归属的记录保持可读，不猜测归属、不删除 Scene、不清空地图。Atlas 投影提供只读 `needsRegion` 标志、摘要数量及同名分页过滤；正常维护按设定补全这些地点的 parent，保留 key、布局与到访事实。工具拒绝新增无归属地点时，将结构化原因反馈给同一工具循环；没有额外模型请求、用户弹窗或手工整理任务。无法修正的工具错误仍沿用现有维护结果规则，不隐瞒失败。此标志是派生信息，不是新 schema 字段或迁移状态。
 

@@ -36,6 +36,16 @@ export function createMascotPoses(mascot: Group) {
     };
 }
 
+/** Combat uses the same body, with a planted stance, running gait and a dash lean. */
+export function createMascotFighter(mascot: Group) {
+    return {
+        pose(x: number, z: number, facing: number, tick: number, moving: boolean, dashing: boolean, reduced: boolean) {
+            mascot.position.set(x, .48 + (moving && !reduced ? Math.abs(Math.sin(tick * .5)) * .075 : 0), z);
+            mascot.rotation.set(dashing && !reduced ? .22 : 0, Math.PI / 2 - facing, moving && !reduced ? Math.sin(tick * .5) * .07 : 0);
+        },
+    };
+}
+
 // Motion belongs to the performer, not to the game that happens to host it.
 export function createMascotPerformer(mascot: Group, home: Vector3) {
     return {

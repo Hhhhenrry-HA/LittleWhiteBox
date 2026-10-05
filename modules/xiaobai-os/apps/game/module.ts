@@ -18,6 +18,8 @@ import { MOVING_PARTITION } from './moving/partition.js';
 import { createMovingService, type MovingService } from './moving/service.js';
 import { BUILDING_PARTITION } from './building/partition.js';
 import { createBuildingService, type BuildingService } from './building/service.js';
+import { EXPEDITION_PARTITION } from './expedition/partition.js';
+import { createExpeditionService, type ExpeditionService } from './expedition/service.js';
 
 export { GAME_PARTITION } from './partition.js';
 
@@ -26,6 +28,7 @@ export interface GameModuleInstallContext {
     game: GameService;
     moving: MovingService;
     building: BuildingService;
+    expedition: ExpeditionService;
     economy: EconomyReadCapability;
     execution: AppInstallContext['execution'];
 }
@@ -42,7 +45,7 @@ export function createGameModule(dependencies: GameModuleDependencies): XiaobaiO
     return {
         descriptor: GAME_APP_DESCRIPTOR,
         partition: GAME_PARTITION,
-        additionalPartitions: [MOVING_PARTITION, BUILDING_PARTITION],
+        additionalPartitions: [MOVING_PARTITION, BUILDING_PARTITION, EXPEDITION_PARTITION],
         capabilities: [ECONOMY_READ_CAPABILITY, ECONOMY_TRANSACTION_CAPABILITY],
         install(context) {
             if (!context.partition) {throw new Error('Game partition store is unavailable');}
@@ -62,6 +65,8 @@ export function createGameModule(dependencies: GameModuleDependencies): XiaobaiO
                 moving,
                 building: createBuildingService(context.storeFor(BUILDING_PARTITION), context.filesFor(BUILDING_PARTITION), economy,
                     { idle: () => !dependencies.service?.isMainGenerationActive?.(), soundEnabled: dependencies.buildingSoundEnabled }),
+                expedition: createExpeditionService(context.storeFor(EXPEDITION_PARTITION), context.filesFor(EXPEDITION_PARTITION), economy,
+                    { idle: () => !dependencies.service?.isMainGenerationActive?.() }),
                 economy,
                 execution: context.execution,
             });

@@ -14,6 +14,8 @@ scripts/.story-summary-replay-cache/
 .playwright-cli/
 output/playwright/
 output/*-tests.txt
+output/expedition-build/
+output/expedition-*.txt
 
 # One-off local model probes
 output/dice-frequency-eval*.json
