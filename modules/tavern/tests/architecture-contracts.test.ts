@@ -3,6 +3,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { test } from 'node:test';
 import { Script, createContext } from 'node:vm';
+import { collectWorkspaceFiles } from '../../../scripts/workspace-files.mjs';
 import type { Component } from 'vue';
 import { defineTavernPhoneApps } from '../app-src/features/phone-os/phone-os-types';
 
@@ -11,7 +12,6 @@ const tavernRoot = resolve(root, 'modules/tavern');
 const sourceExtensions = new Set(['.ts', '.vue']);
 const ignoredPathParts = new Set(['dist', 'tests']);
 const repositoryTextExtensions = new Set(['.js', '.mjs', '.cjs', '.ts', '.tsx', '.vue', '.html', '.css', '.json', '.md', '.txt']);
-const repositoryIgnoredDirNames = new Set(['.git', 'node_modules', 'coverage']);
 const externalGoogleFontEndpointPattern = /fonts\.(?:googleapis|gstatic)/i;
 
 function collectSourceFiles(dir: string): string[] {
@@ -26,21 +26,9 @@ function collectSourceFiles(dir: string): string[] {
         });
 }
 
-function collectRepositoryTextFiles(dir: string = root, files: string[] = []): string[] {
-    for (const name of readdirSync(dir)) {
-        const path = join(dir, name);
-        const stat = statSync(path);
-        if (stat.isDirectory()) {
-            if (!repositoryIgnoredDirNames.has(name)) {
-                collectRepositoryTextFiles(path, files);
-            }
-            continue;
-        }
-        const extension = path.slice(path.lastIndexOf('.')).toLowerCase();
-        if (name.endsWith('.min.js') || !repositoryTextExtensions.has(extension)) {continue;}
-        files.push(path);
-    }
-    return files;
+function collectRepositoryTextFiles(): string[] {
+    return collectWorkspaceFiles(root, repositoryTextExtensions, new Set(['coverage']))
+        .filter((path: string) => !path.endsWith('.min.js'));
 }
 
 function readRepoFile(path: string): string {
