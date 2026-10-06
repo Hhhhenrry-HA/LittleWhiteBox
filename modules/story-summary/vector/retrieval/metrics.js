@@ -256,7 +256,6 @@ export function createMetrics() {
             runtimeDiffuseL0: 0,
             runtimeEndSession: 0,
             round1Embed: 0,
-            round1EmbedRetryWait: 0,
             round1AnchorSearch: 0,
             round1EventRetrieval: 0,
             round2Embed: 0,
@@ -287,7 +286,7 @@ export function createMetrics() {
     };
 }
 
-// Parent spans exclude their separately measured children. Retry backoff is not API time.
+// Parent spans exclude their separately measured children.
 export function finalizeMetricsTiming(metrics, totalMs) {
     const t = metrics.timing;
     // L1 selection is entirely local (including Worker scheduling/waiting),
@@ -295,7 +294,7 @@ export function finalizeMetricsTiming(metrics, totalMs) {
     const directEvidenceLocal = Math.max(0, t.directEvidenceRetrieval);
     t.total = Math.round(totalMs);
     t.externalTotal = Math.round(
-        Math.max(0, t.round1Embed - t.round1EmbedRetryWait)
+        t.round1Embed
         + t.round2Embed + t.evidenceRerank + t.eventRerank,
     );
     t.localKnownTotal = Math.round(
@@ -306,7 +305,7 @@ export function finalizeMetricsTiming(metrics, totalMs) {
         + t.constraintFilter + t.evidenceRetrieval + t.diffusion + t.evidenceAssembly + t.formatting
         + directEvidenceLocal,
     );
-    t.unattributed = Math.max(0, Math.round(t.total - t.externalTotal - t.localKnownTotal - t.round1EmbedRetryWait));
+    t.unattributed = Math.max(0, Math.round(t.total - t.externalTotal - t.localKnownTotal));
 }
 
 /**
@@ -673,9 +672,6 @@ export function formatMetricsLog(metrics, { complete = true } = {}) {
     lines.push(`├─ query_build: ${m.query.buildTime}ms`);
     lines.push(`├─ query_refine: ${m.query.refineTime}ms`);
     lines.push(`├─ round1_embed: ${m.timing.round1Embed || 0}ms`);
-    if ((m.timing.round1EmbedRetryWait || 0) > 0) {
-        lines.push(`│   └─ retry_wait: ${m.timing.round1EmbedRetryWait}ms`);
-    }
     lines.push(`├─ round1_anchor_search: ${m.timing.round1AnchorSearch || 0}ms`);
     lines.push(`├─ round1_event_retrieval: ${m.timing.round1EventRetrieval || 0}ms`);
     lines.push(`├─ round2_embed: ${m.timing.round2Embed || 0}ms`);
@@ -716,7 +712,7 @@ export function formatMetricsLog(metrics, { complete = true } = {}) {
     lines.push(`│   └─ runtime_diffuse_l0: ${m.timing.runtimeDiffuseL0 || 0}ms`);
     lines.push(`├─ evidence_assembly: ${m.timing.evidenceAssembly}ms`);
     lines.push(`├─ formatting: ${m.timing.formatting}ms`);
-    lines.push(`├─ external_total: ${m.timing.externalTotal || 0}ms (embed+rerank, excludes retry wait)`);
+    lines.push(`├─ external_total: ${m.timing.externalTotal || 0}ms (embed+rerank)`);
     lines.push(`├─ local_known_total: ${m.timing.localKnownTotal || 0}ms`);
     lines.push(`├─ unattributed: ${m.timing.unattributed || 0}ms`);
     lines.push(`├─ runtime_end_session: ${m.timing.runtimeEndSession || 0}ms`);

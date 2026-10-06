@@ -30,7 +30,7 @@ const context = {
         let aborted = false;
         for (const fn of handlers.values()) await fn([], 0, () => { aborted = true; });
         if (!aborted && !params.signal.aborted) {
-            if (failed) recovery.retry({ request, startedAt: performance.now() });
+            if (failed) retryRecall();
             else { recovery.succeeded(); state.main++; }
         }
         context.activateSendButtons(); render();
@@ -56,9 +56,13 @@ const planner = createEnaPlannerSendInterceptor({ eventTarget: document, getChat
 planner.install();
 const request = { type: 'normal', params: {} };
 function render() { document.getElementById('status').textContent = JSON.stringify(state); }
+function retryRecall() {
+    const startedAt = performance.now();
+    recovery.retry({ request, startedAt, requestStartedAt: startedAt });
+}
 document.getElementById('start').onclick = () => {
     failed = true; state.busy = true; context.deactivateSendButtons();
-    recovery.retry({ request, startedAt: performance.now() });
+    retryRecall();
     setTimeout(() => { context.activateSendButtons(); render(); }, 200);
 };
 document.getElementById('ready').onclick = () => ready?.();

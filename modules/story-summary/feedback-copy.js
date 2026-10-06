@@ -49,7 +49,6 @@ export const SUMMARY_FEEDBACK_COPY = Object.freeze({
     }),
     recallEmbeddingRequestFailed: 'Embedding query request failed',
     queryActivityLog: '[Query Activity] 查询期间任务时间线：remaining 为本批剩余处理量，deferredUnits 为未纳入本批的待办，均非缓存校验结果；activeUnits 为处理中条目，非 HTTP 并发数；sameOrigin 仅表示同源，不代表共享限额。空 activities 仅表示所记录阶段未运行；dropped > 0 表示记录已截断。',
-    recallEmbeddingRetry: delayMs => `查询向量化暂时失败，${delayMs}ms 后重试`,
     recallHostTimeout: seconds => `剧情记忆等待本轮用户消息超过 ${seconds} 秒，尚未开始召回，本次生成已停止。请检查酒馆生成准备流程。`,
     recallComputeTimeout: seconds => `剧情记忆召回计算超过 ${seconds} 秒，本次生成已停止。请查看召回日志中的阶段和错误详情。`,
     recallFailed: '剧情记忆召回失败，本次生成已停止。请查看召回日志中的阶段和错误详情。',

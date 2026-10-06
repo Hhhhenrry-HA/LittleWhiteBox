@@ -4315,7 +4315,8 @@ async function runStorySummaryRecallInterceptor(_interceptorChat, _contextSize, 
                 const text = formatRecallDiagnostics(diagnostics, { status: 'retrying', error });
                 xbLog.warn(MODULE_ID, text);
                 postToFrame({ type: 'RECALL_LOG', text });
-                recallRecovery.retry({ request, startedAt: run.computeStartedAt ?? waitStartedAt });
+                recallRecovery.retry({ request, startedAt: run.computeStartedAt ?? waitStartedAt,
+                    requestStartedAt: error.requestStartedAt });
             },
             onFailure: async error => {
                 recallRecovery.cancel('recall-failed');

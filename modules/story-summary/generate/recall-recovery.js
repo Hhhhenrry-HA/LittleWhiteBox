@@ -2,6 +2,7 @@ import { createAbortError, waitForAbortableDelay } from '../../../shared/common/
 import { holdGenerationRecovery } from '../../../shared/common/generation-retry-owner.js';
 
 export const RECALL_RECOVERY_NOTICE_MS = 30_000;
+const RECALL_RECOVERY_MIN_INTERVAL_MS = 1000;
 
 // Owns only the unresolved logical recall, across independent host generations.
 // No persisted retry state, no recursion, and no host restart before cleanup.
@@ -38,6 +39,10 @@ export function createRecallRecovery({ getContext, host, acquireUi, createNotice
             // Let the failed interceptor return so the real host can unblock.
             await waitForAbortableDelay(0, session.controller.signal);
             while (current === session && session.pending) {
+                // Pace rapid failures from the actual query start. Host cleanup
+                // overlaps this wait; an expired 3s query adds no delay here.
+                const delay = session.retryAt - now();
+                if (delay > 0) await waitForAbortableDelay(delay, session.controller.signal);
                 await host.waitForIdle(session.controller.signal);
                 if (current !== session) return;
                 if (!matches(session)) { cancel('history-changed'); return; }
@@ -55,14 +60,15 @@ export function createRecallRecovery({ getContext, host, acquireUi, createNotice
         }
     }
 
-    function retry({ request, startedAt }) {
+    function retry({ request, startedAt, requestStartedAt }) {
+        const retryAt = requestStartedAt + RECALL_RECOVERY_MIN_INTERVAL_MS;
         let session = current;
         if (!session) {
             const context = getContext();
             session = {
                 request, chatId: context.chatId, chat: context.chat,
                 length: context.chat.length, last: context.chat.at(-1),
-                controller: new AbortController(), cycle: 1, pending: true,
+                controller: new AbortController(), cycle: 1, pending: true, retryAt,
                 notice: createNotice(), releaseUi: acquireUi(() => cancel('generation-stopped')),
                 releaseRecovery: holdGenerationRecovery(),
                 noticeTimer: null,
@@ -75,6 +81,7 @@ export function createRecallRecovery({ getContext, host, acquireUi, createNotice
             void pump(session);
         } else {
             session.pending = true;
+            session.retryAt = retryAt;
             host.stopForRetry(session.request);
         }
     }

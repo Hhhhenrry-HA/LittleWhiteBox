@@ -46,14 +46,16 @@ export async function runDiagnosticsCheck() {
         globalThis.fetch = async () => { requests++; return new Response('', { status: 429 }); };
         const failed = createRecallDiagnostics(chatId);
         await assert.rejects(buildVectorPromptText(false, { diagnostics: failed }), error => {
-            const report = formatRecallDiagnostics(failed, { status: 'failed', error });
-            assert.match(report, /round1-embed: http \| HTTP 429 \| attempt=2/);
-            assert.match(report, /Caused by: Error: Embedding HTTP 429/);
-            assert.ok(failed.metrics.timing.round1Embed >= failed.metrics.timing.round1EmbedRetryWait);
+            const failure = failed.metrics.external.failures[0];
+            assert.equal(failure.stage, 'round1-embed');
+            assert.equal(failure.status, 429);
+            assert.equal(failure.attempt, 1);
+            assert.equal(error.cause.embeddingFailure.status, 429);
+            assert.ok(failed.metrics.timing.round1Embed >= 0);
             return true;
         });
-        assert.equal(requests, 2);
-        passed.push('embedding retry retains HTTP status and cause');
+        assert.equal(requests, 1);
+        passed.push('embedding failure retains HTTP status and cause without an in-round retry');
 
         const config = getVectorConfig();
         assert.equal(Object.hasOwn(config, 'eventRerankEnabled'), false);

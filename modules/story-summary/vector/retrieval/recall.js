@@ -1255,7 +1255,6 @@ export async function recallMemory(allEvents, vectorConfig, options = {}) {
         r1Vectors = await embedRecallQuery(segmentTexts, vectorConfig, {
             signal,
             onFailure: failure => recordExternalFailure(metrics, { stage: 'round1-embed', kind: 'request', ...failure }),
-            onRetryWait: elapsedMs => { metrics.timing.round1EmbedRetryWait = elapsedMs; },
             onActivity: trace => { metrics.external.queryActivity = trace; },
         });
     } finally {

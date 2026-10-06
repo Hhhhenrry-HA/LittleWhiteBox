@@ -8,11 +8,12 @@ import { protectGenerationDraft } from '../generate/recovery-ui.js';
 import { createEnaPlannerSendInterceptor } from '../../ena-planner/ena-planner-interceptor.js';
 import { waitForAbortableDelay } from '../../../shared/common/abort-utils.js';
 import { getGenerationRetryOwner, runOwnedGeneration } from '../../../shared/common/generation-retry-owner.js';
+import { QUERY_EMBEDDING_TIMEOUT_MS } from '../vector/retrieval/query-embedding-policy.js';
 
 const flush = async () => { for (let i = 0; i < 60; i++) await Promise.resolve(); };
-const embeddingError = () => Object.assign(new Error('fixture', {
-    cause: Object.assign(new Error(), { embeddingFailure: { kind: 'timeout', timeoutMs: 3000 } }),
-}), { code: 'RECALL_EMBEDDING_FAILED' });
+const embeddingError = (requestStartedAt, failure = { kind: 'timeout', timeoutMs: QUERY_EMBEDDING_TIMEOUT_MS }) => Object.assign(new Error('fixture', {
+    cause: Object.assign(new Error(), { embeddingFailure: failure }),
+}), { code: 'RECALL_EMBEDDING_FAILED', requestStartedAt });
 
 // Native boundaries are represented by their observed 1.14/1.18 contracts:
 // input consumption -> interceptor -> unblock -> group finally. Everything
@@ -41,8 +42,9 @@ function fixture(t, { group = false, type = 'normal', cleanupMs = 40, preambleMs
         listeners.get('stop')?.();
     };
     let prepare = async (_type, signal) => {
-        await waitForAbortableDelay(7_000, signal);
-        throw embeddingError();
+        const requestStartedAt = Date.now();
+        await waitForAbortableDelay(QUERY_EMBEDDING_TIMEOUT_MS, signal);
+        throw embeddingError(requestStartedAt);
     };
     const coordinator = createRecallPrefetchCoordinator({ getContext: () => context, now: () => Date.now(),
         prepare: (...args) => { state.prepares++; return prepare(...args); } });
@@ -70,7 +72,7 @@ function fixture(t, { group = false, type = 'normal', cleanupMs = 40, preambleMs
         const { slot: run } = coordinator.join({ chatId: context.chatId, type: roundType, focusRef: context.chat.at(-1), runContext });
         const outcome = await runRequiredRecall({ coordinator, run, abort,
             commit: value => { state.commits++; return value; },
-            onRetry: () => recovery.retry({ request, startedAt: run.computeStartedAt }),
+            onRetry: error => recovery.retry({ request, startedAt: run.computeStartedAt, requestStartedAt: error.requestStartedAt }),
             onFailure: () => recovery.cancel('recall-failed'),
         });
         if (outcome.ok) recovery.succeeded();
@@ -132,7 +134,7 @@ test('recovery delegates each fresh request signal to the initiating owner', asy
     f.context.chat.push({ is_user: false, mes: 'retained result' });
     const pending = f.startOwned();
     await flush();
-    await f.advance(7000); await f.advance(0);
+    await f.advance(QUERY_EMBEDDING_TIMEOUT_MS); await f.advance(0);
     assert.equal(f.state.main, 0);
     assert.equal(f.state.requests[0].signal.aborted, true);
     f.setPrepare(async () => ({ text: 'memory' }));
@@ -152,7 +154,7 @@ test('cancelling the initiating continuation in the recovery gap releases UI and
     const logical = new AbortController();
     const pending = f.startOwned(logical);
     await flush();
-    await f.advance(7000); await f.advance(0); await f.advance(40);
+    await f.advance(QUERY_EMBEDDING_TIMEOUT_MS); await f.advance(0); await f.advance(40);
     assert.equal(f.state.busy, false);
     assert.equal(f.state.ui, true);
     assert.equal(f.state.rounds, 1);
@@ -168,7 +170,7 @@ test('cancelling the initiating continuation in the recovery gap releases UI and
 
     // Another normal send can recover too: no stale replay can trap waitForIdle.
     const next = f.generate('normal');
-    await flush(); await f.advance(7000); await f.advance(0);
+    await flush(); await f.advance(QUERY_EMBEDDING_TIMEOUT_MS); await f.advance(0);
     assert.equal(f.state.ui, true);
     f.setPrepare(async () => ({ text: 'memory' }));
     await f.advance(40); await f.advance(20); await f.advance(40);
@@ -184,7 +186,9 @@ for (const group of [false, true]) {
         const f = fixture(t, { group });
         f.textarea.value = 'message with completed plan';
         void f.start(); await flush();
-        await f.advance(7000);
+        await f.advance(QUERY_EMBEDDING_TIMEOUT_MS - 1);
+        assert.equal(f.state.stops, 0);
+        await f.advance(1);
         assert.equal(f.state.main, 0);
         assert.equal(f.state.stops, 1);
         assert.equal(f.state.ui, true);
@@ -206,27 +210,162 @@ for (const group of [false, true]) {
     });
 }
 
+for (const [failure, duration] of [[{ kind: 'http', status: 503 }, 0], [{ kind: 'network' }, 400]]) {
+    test(`rapid ${failure.kind} failures stop immediately but pace every host replay from the query start`, async t => {
+        const f = fixture(t);
+        const queryStarts = [];
+        f.setPrepare(async (_type, signal) => {
+            const startedAt = Date.now();
+            queryStarts.push(startedAt);
+            if (queryStarts.length === 3) return { text: 'memory' };
+            if (duration) await waitForAbortableDelay(duration, signal);
+            throw embeddingError(startedAt, failure);
+        });
+        f.textarea.value = 'only one user message';
+        void f.start(); await flush();
+        for (let failedRound = 1; failedRound <= 2; failedRound++) {
+            if (duration) await f.advance(duration);
+            assert.equal(f.state.stops, failedRound);
+            assert.equal(f.state.main, 0);
+            assert.equal(f.state.ui, true);
+            await f.advance(0); await f.advance(40);
+            assert.equal(f.state.busy, false);
+            const dueAt = queryStarts.at(-1) + 1000;
+            await f.advance(dueAt - Date.now() - 1);
+            assert.equal(f.state.rounds, failedRound);
+            await f.advance(1); await f.advance(20);
+            assert.equal(f.state.rounds, failedRound + 1);
+            assert.ok(queryStarts.at(-1) >= dueAt);
+        }
+        assert.equal(f.state.main, 1);
+        assert.equal(f.state.ui, false);
+        assert.equal(f.context.chat.length, 1);
+        assert.deepEqual(f.state.errors, []);
+    });
+}
+
+test('slow preparation cannot consume the rapid-query pacing interval', async t => {
+    const f = fixture(t);
+    const queryStarts = [];
+    f.setPrepare(async (_type, signal) => {
+        if (!queryStarts.length) await waitForAbortableDelay(1500, signal);
+        const startedAt = Date.now();
+        queryStarts.push(startedAt);
+        if (queryStarts.length > 1) return { text: 'memory' };
+        throw embeddingError(startedAt, { kind: 'http', status: 503 });
+    });
+    void f.start(); await flush(); await f.advance(1500);
+    assert.equal(f.state.stops, 1);
+    await f.advance(0); await f.advance(40);
+    await f.advance(959);
+    assert.equal(f.state.rounds, 1);
+    await f.advance(1); await f.advance(20);
+    assert.equal(f.state.main, 1);
+    assert.ok(queryStarts[1] - queryStarts[0] >= 1000);
+});
+
+test('slow host cleanup overlaps pacing rather than adding another second afterwards', async t => {
+    const f = fixture(t, { cleanupMs: 1400 });
+    f.setPrepare(async () => { throw embeddingError(Date.now(), { kind: 'http', status: 503 }); });
+    void f.start(); await flush(); await f.advance(0);
+    await f.advance(1000); await f.advance(20);
+    assert.equal(f.state.rounds, 1);
+    assert.equal(f.state.busy, true);
+    f.setPrepare(async () => ({ text: 'memory' }));
+    await f.advance(380); await f.advance(20);
+    assert.equal(f.state.rounds, 2);
+    assert.equal(f.state.main, 1);
+});
+
+for (const cancelOwner of [false, true]) {
+    test(`owned continuation respects rapid-failure pacing without losing ownership or locking UI (cancel: ${cancelOwner})`, async t => {
+        const f = fixture(t, { type: 'continue' });
+        f.context.chat.push({ is_user: false, mes: 'retained result' });
+        f.setPrepare(async () => { throw embeddingError(Date.now(), { kind: 'http', status: 503 }); });
+        const logical = new AbortController();
+        const pending = f.startOwned(logical);
+        await flush(); await f.advance(0); await f.advance(40);
+        assert.equal(f.state.ui, true);
+        assert.equal(f.state.requests[0].signal.aborted, true);
+        if (cancelOwner) { logical.abort(); await pending; }
+        f.setPrepare(async () => ({ text: 'memory' }));
+        await f.advance(959);
+        assert.equal(f.state.rounds, 1);
+        await f.advance(1); await f.advance(20); await f.advance(40);
+        await pending;
+        assert.equal(f.state.rounds, cancelOwner ? 1 : 2);
+        assert.equal(f.state.main, cancelOwner ? 0 : 1);
+        if (!cancelOwner) {
+            assert.notEqual(f.state.requests[0].signal, f.state.requests[1].signal);
+            assert.equal(f.state.requests[1].signal.aborted, false);
+        }
+        assert.equal(f.state.ui, false);
+        assert.equal(f.recovery.getCurrent(), null);
+        assert.deepEqual(f.context.chat.map(message => message.mes), ['retained result']);
+        assert.deepEqual(f.state.errors, []);
+    });
+}
+
+for (const reason of ['generation-stopped', 'chat-changed', 'message-edited', 'disabled']) {
+    test(`${reason} during rapid-failure pacing releases UI and never replays`, async t => {
+        const f = fixture(t);
+        f.setPrepare(async () => { throw embeddingError(Date.now(), { kind: 'http', status: 503 }); });
+        void f.start(); await flush(); await f.advance(0); await f.advance(40);
+        assert.equal(f.state.ui, true);
+        f.cancel(reason);
+        assert.equal(f.state.ui, false);
+        await f.advance(1000); await f.advance(40);
+        assert.equal(f.state.rounds, 1);
+        assert.equal(f.state.main, 0);
+        assert.equal(f.recovery.getCurrent(), null);
+        assert.deepEqual(f.state.errors, []);
+    });
+}
+
+test('rapid failure pacing never resets the cumulative notice or starts an empty-memory reply', async t => {
+    const f = fixture(t);
+    const queryStarts = [];
+    f.setPrepare(async () => {
+        const startedAt = Date.now();
+        queryStarts.push(startedAt);
+        throw embeddingError(startedAt, { kind: 'http', status: 503 });
+    });
+    void f.start(); await flush();
+    for (let i = 0; i < 299; i++) await f.advance(100);
+    await f.advance(99);
+    assert.equal(f.state.notices, 0);
+    await f.advance(1);
+    assert.equal(f.state.notices, 1);
+    assert.equal(f.state.ui, true);
+    const before = queryStarts.length;
+    for (let i = 0; i < 20; i++) await f.advance(100);
+    assert.ok(queryStarts.length > before);
+    assert.equal(f.state.notices, 1);
+    assert.equal(f.state.main, 0);
+    assert.ok(queryStarts.every((start, i) => i === 0 || start - queryStarts[i - 1] >= 1000));
+});
+
 test('30 seconds is cumulative across actual host restarts, warns once, and does not stop recovery', async t => {
     const f = fixture(t);
     f.context.chat.push({ is_user: true, mes: 'source' });
     void f.start(); await flush();
-    for (let i = 0; i < 4; i++) {
-        await f.advance(7000); await f.advance(0); await f.advance(40); await f.advance(20);
+    for (let i = 0; i < 9; i++) {
+        await f.advance(QUERY_EMBEDDING_TIMEOUT_MS); await f.advance(0); await f.advance(40); await f.advance(20);
     }
-    assert.equal(f.state.rounds, 5);
+    assert.equal(f.state.rounds, 10);
     assert.equal(f.state.notices, 0);
     await f.advance(29999 - Date.now());
     assert.equal(f.state.notices, 0);
     await f.advance(1);
     assert.equal(f.state.notices, 1);
     assert.equal(f.state.ui, true);
-    await f.advance(7000); await f.advance(0); await f.advance(40); await f.advance(20);
-    assert.equal(f.state.rounds, 6);
+    await f.advance(QUERY_EMBEDDING_TIMEOUT_MS); await f.advance(0); await f.advance(40); await f.advance(20);
+    assert.equal(f.state.rounds, 11);
     assert.equal(f.state.notices, 1);
     f.cancel('generation-stopped');
     await f.advance(100000);
     await f.advance(40);
-    assert.equal(f.state.rounds, 6);
+    assert.equal(f.state.rounds, 11);
     assert.equal(f.state.ui, false);
     assert.equal(f.state.main, 0);
 });
@@ -237,7 +376,7 @@ for (const reason of ['generation-stopped', 'chat-changed', 'message-edited', 'd
             const f = fixture(t, { preambleMs: 100 });
             f.context.chat.push({ is_user: true, mes: 'source' });
             void f.start(); await f.advance(100);
-            await f.advance(7000); await f.advance(0);
+            await f.advance(QUERY_EMBEDDING_TIMEOUT_MS); await f.advance(0);
             if (phase !== 'idle-gap') { await f.advance(40); await f.advance(20); }
             if (phase === 'query') await f.advance(100);
             const before = f.state.rounds;
@@ -260,7 +399,7 @@ test('regenerate does not delete a second old answer; swipe/continue preserve th
     const f = fixture(t, { type: 'regenerate' });
     f.context.chat.push({ is_user: false, mes: 'earlier answer' }, { is_user: false, mes: 'answer being rerolled' });
     void f.start(); await flush();
-    await f.advance(7000); await f.advance(0);
+    await f.advance(QUERY_EMBEDDING_TIMEOUT_MS); await f.advance(0);
     f.setPrepare(async () => ({ text: 'memory' }));
     await f.advance(40); await f.advance(20);
     assert.deepEqual(f.context.chat.map(x => x.mes), ['earlier answer']);
@@ -272,7 +411,7 @@ for (const type of ['swipe', 'continue', 'impersonate']) {
         const f = fixture(t, { type });
         f.context.chat.push({ is_user: true, mes: 'source' }, { is_user: false, mes: 'answer' });
         void f.start(); await flush();
-        await f.advance(7000); await f.advance(0);
+        await f.advance(QUERY_EMBEDDING_TIMEOUT_MS); await f.advance(0);
         f.setPrepare(async () => ({ text: 'memory' }));
         await f.advance(40); await f.advance(20);
         assert.equal(f.context.chat.length, 2);
@@ -302,7 +441,7 @@ test('automatic replay never enters the send interceptor or duplicates the compl
     button.click(); await flush();
     assert.equal(f.state.plans, 1);
     const sent = structuredClone(f.context.chat);
-    await f.advance(7000); await f.advance(0);
+    await f.advance(QUERY_EMBEDDING_TIMEOUT_MS); await f.advance(0);
     f.setPrepare(async () => ({ text: 'memory' }));
     await f.advance(40); await f.advance(20);
     assert.equal(f.state.rounds, 2);
@@ -342,7 +481,7 @@ test('a recovered group protects the next draft again before every subsequent me
     const f = fixture(t, { group: true, groupMembers: 3 });
     f.context.chat.push({ is_user: true, mes: 'source' });
     void f.start(); await flush();
-    await f.advance(7000); await f.advance(0);
+    await f.advance(QUERY_EMBEDDING_TIMEOUT_MS); await f.advance(0);
     f.textarea.value = '/a command for a later message';
     f.setPrepare(async () => ({ text: 'memory' }));
     await f.advance(40); await f.advance(20);
@@ -359,7 +498,7 @@ test('stop during host input preparation keeps the send gate until that cancelle
     const f = fixture(t, { preambleMs: 100 });
     f.context.chat.push({ is_user: true, mes: 'source' });
     void f.start(); await f.advance(100);
-    await f.advance(7000); await f.advance(0); await f.advance(40); await f.advance(20);
+    await f.advance(QUERY_EMBEDDING_TIMEOUT_MS); await f.advance(0); await f.advance(40); await f.advance(20);
     assert.equal(f.textarea.readOnly, true);
     assert.equal(f.textarea.disabled, false);
     f.cancel('generation-stopped');
