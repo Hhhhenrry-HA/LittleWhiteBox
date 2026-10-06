@@ -120,7 +120,32 @@
 .exp-relic-price { display:block; margin-top:12px; color:#5c715a; font-size:11px; }
 .exp-supply { display:flex; align-items:center; gap:12px; margin:18px auto 5px; text-align:left; }.exp-supply small { display:block; font-size:11px; color:var(--exp-muted); margin-top:4px; }
 .exp-resource { display:block; width:100%; height:6px; margin-top:4px; accent-color:var(--exp-gold); }
-.exp-health>.exp-ward-stat { font-size:10px; color:#bbfff1; margin:4px 0 0; }
+.exp-contract-power { display:block; margin-top:5px; color:#fff3d3; font-size:11px; }
+.exp-contract-power>span { display:flex; justify-content:space-between; gap:6px; }
+.exp-contract-power b,.exp-resonance-status b { font-variant-numeric:tabular-nums; }
+.exp-combat-buttons .exp-resonance-status { position:absolute; right:0; bottom:calc(100% + 12px); display:flex; align-items:center; gap:7px; padding:7px 10px; white-space:nowrap; border:1px solid #dcc08a; border-radius:5px; color:#f1e4bc; background:#2d4357ed; font-size:12px; pointer-events:none; }
+.exp-resonance-status .exp-icon { width:23px; height:23px; }
+.exp-health>.exp-sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+.exp-world-beacon,.exp-world-defense { position:absolute; transform:translate(-50%,-100%); color:#fff6df; text-align:center; text-shadow:0 1px 2px #102535; }
+.exp-world-beacon[hidden],.exp-world-defense[hidden] { display:none; }
+.exp-world-beacon { width:126px; padding:5px 7px 7px; border:1px solid #ffda96; border-radius:5px; background:#253641eb; box-shadow:0 2px 8px #14273570; }
+.exp-world-beacon strong { display:block; font-size:12px; line-height:1.4; margin-bottom:4px; }
+.exp-world-beacon::after { content:""; position:absolute; top:100%; left:calc(50% - 5px); border:5px solid transparent; border-top-color:#ffda96; }
+.exp-objective-track { position:relative; height:15px; border:1px solid #ffe4b178; background:#14202f; overflow:hidden; border-radius:2px; }
+.exp-objective-track i { display:block; height:100%; background:#dfae55; transition:width .15s; }
+.exp-objective-track b { position:absolute; inset:0; font:700 10px/13px sans-serif; color:#fff; text-shadow:0 1px 2px #131e28,1px 0 2px #131e28; }
+.exp-world-beacon.is-hit { border-color:#fff; box-shadow:0 0 0 3px #ffb36d88,0 3px 12px #112738; }
+.exp-world-beacon.is-critical,.exp-beacon-hud.is-critical { color:#ffe0d8; border-color:#ff927b; }
+.is-critical>.exp-objective-track i { background:#e35e4f; }
+.exp-world-beacon.is-critical::after { border-top-color:#ff927b; }
+.exp-world-beacon.is-critical { background:#592e35f2; }
+.exp-world-defense { padding:4px 9px; border:1px solid #a1e7ff; background:#174868ed; border-radius:5px; font:700 12px/1.4 sans-serif; white-space:nowrap; box-shadow:0 2px 7px #10263760; }
+.exp-world-defense::before { content:""; display:inline-block; width:10px; height:12px; margin-right:5px; vertical-align:-2px; background:#bcefff; clip-path:polygon(50% 0,100% 20%,87% 73%,50% 100%,13% 73%,0 20%); }
+.exp-world-defense[data-state=blocking],.exp-world-defense[data-state=block],.exp-world-defense[data-state=parry] { background:#574326ed; border-color:#ffe0a1; color:#fff0c8; }
+.exp-world-defense[data-state=parry] { box-shadow:0 0 0 2px #ffedb966,0 2px 8px #10263780; }
+.exp-world-defense[data-state=ward-break] { border-style:dashed; background:#243a53ed; }
+.exp-beacon-hud { position:absolute; top:20px; left:50%; transform:translateX(-50%); width:190px; padding:7px 10px; background:#213642ed; border:1px solid #e4c087aa; border-radius:4px; text-align:center; pointer-events:none; z-index:2; }
+.exp-beacon-hud>strong { display:block; font-size:12px; margin-bottom:5px; }.exp-beacon-hud>small { display:block; font-size:10px; margin-top:4px; }
 .exp-encounter p { margin-top:10px; color:#fff4d7; font-size:13px; }
 .exp-relic-options button>span { display:flex; flex-direction:column; align-items:center; width:100%; }
 .exp-relic-family { color:var(--relic); font-size:10px; margin-bottom:7px; border:1px solid currentColor; padding:1px 6px; border-radius:2px; }
@@ -140,16 +165,20 @@
 .exp-dialog-notice-host { flex-shrink:0; }
 .exp-dialog-notice-host .exp-notice { position:static; padding:12px; margin-bottom:12px; box-shadow:none; }
 .exp-touch { position:absolute; bottom:26px; left:24px; right:24px; display:flex; align-items:flex-end; justify-content:space-between; pointer-events:none; z-index:2; }
-.exp-stick { width:108px; height:108px; position:relative; border-radius:50%; background:#173d4729; border:1px solid #f0efcf80; box-shadow:inset 0 0 0 10px #f4f4df0d,0 3px 14px #173b4020; touch-action:none; pointer-events:auto; }
+.exp-stick { width:108px; height:108px; position:relative; border-radius:50%; background:#173d4729; border:1px solid #f0efcf60; box-shadow:inset 0 0 0 10px #f4f4df0a; touch-action:none; pointer-events:auto; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
 .exp-stick>span { position:absolute; width:46px; height:46px; top:30px; left:30px; border-radius:50%; border:1px solid #f3e8c3cc; background:#174a55a6; box-shadow:inset 0 0 0 4px #e5e6c515,0 3px 7px #0b2c3c30; }
-.exp-stick>i { position:absolute; inset:9px; border:1px dashed #f1edd440; border-radius:50%; pointer-events:none; }
-.exp-combat-buttons { display:flex; align-items:flex-end; gap:14px; pointer-events:auto; }
+.exp-stick>span { pointer-events:none; }
+.exp-stick>i { position:absolute; inset:9px; border:1px solid #f1edd425; border-radius:50%; pointer-events:none; }
+.exp-combat-buttons { position:relative; display:flex; align-items:flex-end; gap:14px; pointer-events:auto; }
 .exp-combat-buttons button { display:flex; flex-direction:column; align-items:center; justify-content:center; position:relative; width:66px; height:66px; padding:3px; min-height:0; border-radius:50%; color:#fff0ca; border:1px solid #f1d4a0b3; background:#244c55dc; box-shadow:inset 0 0 0 4px #e3d2a91a,0 4px 12px #112c384d; touch-action:none; }
 .exp-combat-buttons button:last-child { width:82px; height:82px; margin-bottom:24px; background:linear-gradient(145deg,#f0d69f,#b49966); color:#27454a; border:2px solid #ffedc4; }
 .exp-combat-buttons .exp-icon { width:27px; height:27px; }.exp-combat-buttons button:last-child .exp-icon { width:34px; height:34px; }
 .exp-combat-buttons span { font-size:10px; line-height:1.4; font-variant-numeric:tabular-nums; }
 .exp-combat-buttons kbd { position:absolute; bottom:-22px; font:10px/1.5 inherit; color:#f4f5de; background:#153c4766; padding:1px 5px; border-radius:3px; white-space:nowrap; }
 .exp-combat-buttons button.is-cooling { background:#2e5056eb; color:#b6c8bd; border-color:#a7bcaa; }
+.exp-combat-buttons button.is-guarding { background:#705531; color:#fff1c8; border-color:#ffe0a1; box-shadow:0 0 0 4px #ffe0a130; }
+.exp-combat-buttons button.is-resonating { opacity:1; color:#f1e4bc; border-color:#dcc08a; background:#2d4357ed; box-shadow:inset 0 0 0 2px #dcc08a25; }
+.exp-combat-buttons button>small { font-size:10px; line-height:1.2; font-variant-numeric:tabular-nums; }
 .exp-keyboard-hint { position:absolute; bottom:20px; left:50%; transform:translateX(-50%); font-size:10px; color:#fff4d6; text-shadow:0 1px 3px #163942; pointer-events:none; z-index:1; text-align:center; letter-spacing:.08em; }.exp-keyboard-hint span { display:block; margin-top:5px; opacity:.8; }
 .exp-equipped-strip { position:absolute; bottom:68px; left:50%; transform:translateX(-50%); display:flex; gap:6px; padding:4px 9px; border:1px solid #d0cfac50; background:#173d4370; border-radius:5px; pointer-events:none; z-index:1; }
 .exp-equipped-strip .exp-icon { width:26px; height:26px; color:#eed8a5; }
@@ -201,6 +230,8 @@
     .exp-wallet { font-size:13px; padding:4px 10px 4px 7px; }
     .exp-boss { top:91px; width:72%; }.exp-boss>span { font-size:17px; gap:5px; }.exp-boss .exp-icon { width:22px; }.exp-boss small { font-size:9px; }.exp-boss>div { height:7px; margin-top:4px; }
     .exp-wave { top:89px; font-size:10px; padding:4px 11px; }
+    .exp-beacon-hud { top:85px; width:164px; padding:5px 8px; }.exp-beacon-hud>small { font-size:9px; }
+    .exp-world-beacon { width:110px; }.exp-world-beacon strong,.exp-world-defense { font-size:11px; }
     .exp-encounter { top:30%; }.exp-encounter strong { font-size:28px; }
     .exp-between { width:calc(100% - 36px); top:calc(50% + 35px); max-height:calc(100% - 100px); padding:7px 2px 10px; }
     .exp-screen-heading { margin-bottom:22px; }.exp-screen-heading h2 { font-size:27px; }.exp-screen-heading>small { font-size:10px; }

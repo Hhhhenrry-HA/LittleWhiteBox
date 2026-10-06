@@ -1,4 +1,4 @@
-import { ENEMIES, isBoss, RULES } from '../content.js';
+import { CONTRACT, ENEMIES, isBoss, RULES } from '../content.js';
 import { random } from '../random.js';
 import type { Battle, Companion, DamageSource, Effect, EnemyKind, Hazard, Point, Shot } from '../types.js';
 import { TAU } from './geometry.js';
@@ -33,7 +33,7 @@ export function ringShots(b: Battle, p: Point, count: number, angle: number, dam
     for (let i = 0; i < count; i++) { shot(b, p, angle + i * TAU / count, damage, false, { speed }); }
 }
 export function companion(b: Battle, kind: Companion['kind'], p: Point, life: number, empowered = 0) {
-    const ally: Companion = { id: ++b.serial, kind, x: p.x, y: p.y, hp: kind === 'turret' ? 65 : 38, life, cooldown: 12, angle: 0, empowered };
+    const ally: Companion = { id: ++b.serial, kind, x: p.x, y: p.y, hp: kind === 'turret' ? 65 : kind === 'familiar' ? CONTRACT.familiarHp : 38, life, cooldown: 12, angle: 0, empowered };
     b.companions.push(ally); return ally;
 }
 export const sourceIsDirect = (source: DamageSource) => source === 'attack' || source === 'skill';

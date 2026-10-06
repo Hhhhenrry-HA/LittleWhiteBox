@@ -1,5 +1,5 @@
-import { BOSS_SPECS, ENEMIES, REGIONS, RULES } from './content.js';
-import { BOSS_IDS, ENCOUNTER_IDS } from './ids.js';
+import { BOSS_SPECS, CONTRACT, ENEMIES, REGIONS, RULES } from './content.js';
+import { BOSS_IDS, EFFECT_IDS, ENCOUNTER_IDS } from './ids.js';
 import { fault } from './random.js';
 import type { Battle } from './types.js';
 import { boolean, finite, integer, list, member, object, point, unique } from './validation.js';
@@ -12,7 +12,7 @@ export function validateBattle(raw: unknown): asserts raw is Battle {
     const boss = member(b.bossKind, BOSS_IDS); if (BOSS_SPECS[boss].region !== zone) { fault('invalid'); }
     const p = point(b.player); finite(p.hp, 0, RULES.maxHp); finite(p.facing, -100, 100); finite(p.dashAngle, -100, 100);
     for (const k of ['attack', 'dash', 'skill', 'invulnerable', 'dashTime', 'swing', 'shield', 'combo', 'guard', 'lastHit', 'rescues']) { integer(p[k]); }
-    finite(p.ward, 0, 100); finite(p.resource, 0, 100); finite(p.travel, 0, 1e8);
+    finite(p.ward, 0, 100); finite(p.resource, 0, 100); finite(p.resonance, 0, CONTRACT.resonanceTicks + CONTRACT.maxPower); finite(p.travel, 0, 1e8);
     const ids: number[] = [];
     const id = (v: unknown) => { const n = integer(v, 1, serial); ids.push(n); return n; };
     list(b.enemies, 50, raw => {
@@ -33,11 +33,11 @@ export function validateBattle(raw: unknown): asserts raw is Battle {
         member(h.source, ['attack', 'skill', 'passive', 'lightning', 'companion']);
         finite(h.angle, -1e8, 1e8); finite(h.length, 0, 40); finite(h.width, 0, 10); finite(h.inner, 0, Number(h.radius)); return h;
     });
-    list(b.effects, 2000, raw => { const e = point(raw); id(e.id); member(e.kind, ['hit', 'heal', 'slash', 'lightning', 'burst', 'guard']); integer(e.life, 0, 20); finite(e.angle, -100, 100); finite(e.size, 0, 20); return e; });
+    list(b.effects, 2000, raw => { const e = point(raw); id(e.id); member(e.kind, EFFECT_IDS); integer(e.life, 0, 20); finite(e.angle, -100, 100); finite(e.size, 0, 20); return e; });
     list(b.obstacles, 10, raw => { const p = point(raw); finite(p.radius, .1, 5); return p; });
     list(b.companions, 15, raw => {
         const c = point(raw); id(c.id); member(c.kind, ['familiar', 'turret', 'shade']); finite(c.hp, -1e5, 1000); integer(c.life, 0, 36000); integer(c.cooldown, 0, 500);
-        finite(c.angle, -100, 100); finite(c.empowered, 0, 500); return c;
+        finite(c.angle, -100, 100); finite(c.empowered, 0, c.kind === 'familiar' ? 0 : 500); return c;
     });
     unique(ids);
     const o = point(b.objective); finite(o.hp, 0, 100); integer(o.progress, 0); integer(o.target, 0);

@@ -1,4 +1,5 @@
 import { createBattle, replayInputs } from './combat.js';
+import { EXPEDITION_FORMAT_VERSION } from './ids.js';
 import { BOSSES, BOSS_SPECS, OATHS, REGION_TIERS, REGIONS, RELIC_RULES, RULES, WEAPONS } from './content.js';
 import { OUTFITS, ownsOutfit } from './outfits.js';
 import { fault, random, sample } from './random.js';
@@ -6,7 +7,7 @@ import { breaksRelicTrigger, compatibleRelics, eligibleRelics, relicPrice, relic
 import type { Command, ExpeditionData, RelicStack, RouteKind, Run, Weapon } from './types.js';
 
 export function emptyExpedition(): ExpeditionData {
-    return { formatVersion: 2, revision: 0, last: null, active: null, victories: 0, discoveries: [], records: [], awards: [], purchases: [], equippedOutfit: 'traveler' };
+    return { formatVersion: EXPEDITION_FORMAT_VERSION, revision: 0, last: null, active: null, victories: 0, discoveries: [], records: [], awards: [], purchases: [], equippedOutfit: 'traveler' };
 }
 export function expeditionProgress(data: ExpeditionData) {
     const earned = new Set(data.awards.map(a => a.key));

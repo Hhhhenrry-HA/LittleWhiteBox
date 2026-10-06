@@ -7,8 +7,11 @@ import { CAMERA_EIGHTH_TURNS } from '../apps/game/expedition/visuals.ts';
 import { createBattle as initializeBattle, tickBattle } from '../apps/game/expedition/combat.ts';
 import { createSceneKit } from '../apps/game/expedition/scene-kit.ts';
 import { buildWorld } from '../apps/game/expedition/scene-world.ts';
+import { createHero } from '../apps/game/expedition/scene-actors.ts';
+import { createWardShell } from '../apps/game/expedition/scene-defense.ts';
 
-import { REGIONS } from '../apps/game/expedition/content.ts';
+import { REGIONS, WEAPON_LIST } from '../apps/game/expedition/content.ts';
+import { OUTFIT_IDS } from '../apps/game/expedition/ids.ts';
 const createBattle = (seed, zone, elite, boss, hp, gear) => initializeBattle({ seed, zone, chapter: zone % 3, elite, boss, hp, bossKind: REGIONS[zone].bosses[0], encounter: 'skirmish' }, gear);
 
 function withControls(run) {
@@ -66,4 +69,33 @@ test('every region builds valid camp, ordinary and boss geometry without changin
             }
         }
     } finally { kit.dispose(); }
+});
+
+test('equipped defense and casting poses remain finite across outfit changes, and the ward owns its material lifetime', () => {
+    const kit = createSceneKit(), root = new Group(), hero = createHero(kit, root), wardRoot = new Group();
+    const ward = createWardShell(kit, wardRoot), b = createBattle(7, 0, false, false, 100, { weapon: 'blade', relics: [], oaths: [] });
+    try {
+        b.player.ward = 20;
+        const before = structuredClone(b);
+        for (const outfit of OUTFIT_IDS) for (const weapon of WEAPON_LIST) {
+            for (const reduced of [false, true]) {
+                for (let tick = 0; tick < 12; tick++) {
+                    hero.update({ ...b.player, facing: tick < 6 ? 3.1 : -3.1, shield: tick < 6 ? 5 : 0, guard: 0, resonance: 50 }, weapon, outfit, tick, reduced, false, tick < 6);
+                }
+            }
+        }
+        root.updateMatrixWorld(true);
+        root.traverse(object => {
+            assert.ok(object.matrixWorld.elements.every(Number.isFinite));
+            if (!(object instanceof Mesh)) return;
+            object.geometry.computeBoundingBox();
+            assert.ok([...object.geometry.boundingBox.min, ...object.geometry.boundingBox.max].every(Number.isFinite));
+        });
+        ward.update(b.player, .5); assert.equal(wardRoot.children[0].visible, true);
+        const shell = wardRoot.children[0].children[0]; let disposed = false;
+        shell.material.addEventListener('dispose', () => disposed = true);
+        ward.update(null, 0); assert.equal(wardRoot.children[0].visible, false);
+        ward.dispose(); assert.equal(disposed, true); assert.equal(wardRoot.children.length, 0);
+        assert.deepEqual(b, before);
+    } finally { ward.dispose(); kit.dispose(); }
 });

@@ -10,9 +10,8 @@ export type LearningDialogueView = Omit<LearningDialogue, 'messages'> & { messag
 const toolNames = new Set([...learningToolNames(), 'LearningSearch', 'LearningExtract', 'LearningContextRead']);
 const toolName = (name: string) => toolNames.has(name) ? name : '未知工具';
 const sections = new Set(['overview', 'training', 'unit', 'materials', 'exercises', 'attempts', 'notes', 'listening', 'items', 'review', 'evidence', 'completions', 'sources']);
-export const LEARNING_PROCESS_FIELDS = ['language', 'explanationLanguage', 'goal', 'title', 'kind', 'tier', 'materials', 'materialKeys', 'exercises', 'paragraphId', 'explanations', 'response', 'options', 'rule', 'answer', 'attemptId', 'unitId', 'verdict', 'annotations', 'exerciseIds', 'materialIds', 'instruction', 'action'] as const;
 
-/** One positive projection for every tool. Even titles, URLs, keys and errors can contain teaching text. */
+/** Results expose validation issues, not unpublished materials, answers or tool argument drafts. */
 function toolMetadata(value: unknown): unknown {
     if (!value || typeof value !== 'object' || Array.isArray(value)) { return {}; }
     const source = value as Record<string, unknown>;
@@ -25,11 +24,8 @@ function toolMetadata(value: unknown): unknown {
     }
     if (typeof source.section === 'string' && sections.has(source.section)) { result.section = source.section; }
     if (Array.isArray(source.errors)) {
-        result.errorFields = [...new Set(source.errors.flatMap(error => {
-            if (!error || typeof error.path !== 'string') { return []; }
-            const field = error.path.split('.').reverse().find((part: string) => (LEARNING_PROCESS_FIELDS as readonly string[]).includes(part));
-            return field ? [field] : [];
-        }))];
+        result.errors = source.errors.filter(error => error && typeof error.path === 'string' && typeof error.message === 'string')
+            .map(({ path, message }) => ({ path, message }));
     }
     for (const key of ['ok', 'changed', 'omitted', 'newLesson', 'review', 'textComplete']) {
         if (typeof source[key] === 'boolean') { result[key] = source[key]; }
@@ -37,7 +33,7 @@ function toolMetadata(value: unknown): unknown {
     for (const key of ['offset', 'nextOffset', 'limit', 'total', 'maxResults', 'paragraphCount', 'materialCount', 'exerciseCount', 'attemptCount', 'itemCount', 'noteCount', 'listeningCount']) {
         if (source[key] === null || typeof source[key] === 'number' && Number.isFinite(source[key])) { result[key] = source[key]; }
     }
-    for (const key of ['materials', 'exercises', 'attempts', 'items', 'evidence', 'results', 'failed', 'errors', 'ids', 'exerciseIds', 'materialIds', 'candidateIds', 'attemptIds', 'removeMaterials', 'removeExercises']) {
+    for (const key of ['materials', 'exercises', 'attempts', 'items', 'evidence', 'results', 'failed', 'ids', 'exerciseIds', 'materialIds', 'candidateIds', 'attemptIds', 'removeMaterials', 'removeExercises']) {
         if (Array.isArray(source[key])) { result[key + 'Count'] = source[key].length; }
     }
     for (const key of ['data', 'unit']) {

@@ -1,5 +1,4 @@
 /** Shared user-facing wording; action IDs and saved state never depend on these labels. */
-import type { LEARNING_PROCESS_FIELDS } from '../application/message-view.js';
 
 export const LEARNING_REQUEST_COPY = {
     busy: '上一件事还没做完，等它完成后再试一次吧。这次没有开始。',
@@ -21,7 +20,6 @@ export const LEARNING_PROCESS_COPY = {
     title: '学习动态', unknownTool: '准备下一步', stop: '停止本次操作', round: (count: number) => `第 ${count} 轮`,
     history: (count: number) => `${count} 个步骤`, received: (count: number) => `已收到 ${count} 字，正在整理`,
     preparing: '准备中', running: '进行中', done: '完成', failed: '未完成', cancelled: '已停止', 'not-run': '未执行', thinking: '正在思考…',
-    issues: (count: number) => `${count} 项内容未通过检查`, checkFields: (fields: string) => `需要调整：${fields}`,
     results: (count: number) => `找到 ${count} 个候选网页`, extracted: (count: number) => `取回 ${count} 个网页的文字，待选材`,
     paragraphs: (count: number) => `读到 ${count} 段文字`,
     entries: (count: number) => `读到 ${count} 条记录`, sourcesFailed: (count: number) => `${count} 个网页未能用于本次取材`,
@@ -33,12 +31,6 @@ export const LEARNING_PROCESS_COPY = {
         LearningAssess: '批改作答', LearningPresent: '打开练习', LearningReveal: '展示学习帮助', LearningSubmit: '保存原答', LearningComplete: '整理学习收获' } as Record<string, string>,
     sections: { overview: '学习概况', training: '本次阅读材料', unit: '本次练习', materials: '阅读材料', exercises: '练习题', attempts: '你的作答',
         notes: '笔记', listening: '听力记录', items: '知识点', review: '到期复习', evidence: '学习记录', completions: '已完成练习', sources: '文章来源' } as Record<string, string>,
-};
-export const LEARNING_PROCESS_FIELD_LABELS: Record<typeof LEARNING_PROCESS_FIELDS[number], string> = {
-    language: '学习语言', explanationLanguage: '讲解语言', goal: '学习目标', title: '标题', kind: '练习形式', tier: '练习规模',
-    materials: '阅读材料', materialKeys: '材料关联', exercises: '练习题', paragraphId: '段落关联', explanations: '段落讲解',
-    response: '作答形式', options: '选项', rule: '评改规则', answer: '参考答案', attemptId: '作答关联', unitId: '练习关联',
-    verdict: '评改结论', annotations: '批注', exerciseIds: '题目关联', materialIds: '材料关联', instruction: '操作依据', action: '本次操作',
 };
 export const LEARNING_MASTERY_LABELS = { unassessed: '还没练过', review: '待确认', independent: '已能独立使用', practised: '练过一次', strengthen: '再练练' };
 

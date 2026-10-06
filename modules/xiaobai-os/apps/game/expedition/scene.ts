@@ -7,6 +7,8 @@ import { createEnemyActor, createHero } from './scene-actors.js';
 import { createBattleEffects } from './scene-effects.js';
 import { CAMERA_EIGHTH_TURNS, PALETTES } from './visuals.js';
 import { RULES, isBoss } from './content.js';
+import { createWardShell } from './scene-defense.js';
+import { createWorldStatus } from './scene-status.js';
 
 export type SceneMode = 'camp' | 'battle' | 'between';
 /** Owns presentation lifetime only: camera, meshes and transient damage labels. */
@@ -17,13 +19,14 @@ export function createExpeditionScene(host: HTMLElement, onError: () => void) {
     host.append(renderer.domElement);
     const labels = document.createElement('div'); labels.className = 'exp-world-labels'; labels.setAttribute('aria-hidden', 'true'); host.append(labels);
     const scene = new Scene(), camera = new OrthographicCamera(-10, 10, 10, -10, .1, 180), k = createSceneKit();
-    scene.add(new HemisphereLight('#effbff', '#74918a', 1.7));
-    const sun = new DirectionalLight('#fff1d6', 2.2); sun.position.set(-12, 25, 13); sun.castShadow = true;
+    scene.add(new HemisphereLight('#effbff', '#74918a', 2));
+    const sun = new DirectionalLight('#fff4e5', 1.9); sun.position.set(-12, 25, 13); sun.castShadow = true;
     sun.shadow.mapSize.set(1536, 1536); Object.assign(sun.shadow.camera, { left: -23, right: 23, top: 24, bottom: -24, far: 80 });
     sun.shadow.bias = -.0004; sun.shadow.normalBias = .035; sun.shadow.radius = 3; scene.add(sun);
     const rim = new DirectionalLight('#c3edff', 1.1); rim.position.set(7, 8, -15); scene.add(rim);
     const environment = new Group(), actors = new Group(), effects = new Group(); scene.add(environment, actors, effects);
     const hero = createHero(k, actors), fx = createBattleEffects(k, effects);
+    const ward = createWardShell(k, effects), status = createWorldStatus(labels);
     const enemies = new Map<number, { actor: ReturnType<typeof createEnemyActor>; hp: number; death: number | null; marker: HTMLElement }>();
     const floaters: { element: HTMLElement; position: Vector3; born: number }[] = [];
     const reduced = matchMedia('(prefers-reduced-motion: reduce)'), target = new Vector3(), projection = new Vector3();
@@ -67,7 +70,7 @@ export function createExpeditionScene(host: HTMLElement, onError: () => void) {
             camera.left = -horizontal / 2; camera.right = horizontal / 2; camera.top = horizontal / aspect / 2; camera.bottom = -camera.top;
             const bearing = portrait ? 0 : CAMERA_EIGHTH_TURNS * Math.PI / 4;
             camera.position.set(target.x + Math.sin(bearing) * 25, 28, target.z + Math.cos(bearing) * 25); camera.lookAt(target.x, 0, target.z); camera.updateProjectionMatrix(); camera.updateMatrixWorld();
-            hero.update(b?.player ?? null, loadout.weapon, loadout.outfit, time, reduced.matches, portrait);
+            hero.update(b?.player ?? null, loadout.weapon, loadout.outfit, time, reduced.matches, portrait, !!b?.effects.some(e => e.kind === 'resonance'));
             for (const e of b?.enemies ?? []) {
                 let entry = enemies.get(e.id);
                 if (!entry) {
@@ -90,6 +93,9 @@ export function createExpeditionScene(host: HTMLElement, onError: () => void) {
             }
             if (b && tickChanged) { if (lastHp !== b.player.hp) { label(lastHp - b.player.hp, b.player.x, b.player.y, b.tick, lastHp > b.player.hp); } lastHp = b.player.hp; }
             fx.update(b, reduced.matches);
+            const wardHit = b?.effects.filter(e => e.kind === 'ward-hit').at(-1);
+            ward.update(b?.player ?? null, wardHit ? Math.max(0, (wardHit.life - 5) / 10) : 0);
+            status.update(b, camera, width, height);
             for (let i = floaters.length - 1; i >= 0; i--) {
                 const f = floaters[i], age = ((b?.tick ?? 0) - f.born) / 27;
                 if (age >= 1 || !b) { f.element.remove(); floaters.splice(i, 1); continue; }
@@ -101,7 +107,7 @@ export function createExpeditionScene(host: HTMLElement, onError: () => void) {
         },
         dispose() {
             disposed = true; observer.disconnect(); renderer.domElement.removeEventListener('webglcontextlost', contextLost);
-            clearActors(); disposeWorld?.(); sun.shadow.dispose(); k.dispose(); scene.clear(); renderer.dispose(); renderer.forceContextLoss(); renderer.domElement.remove(); labels.remove();
+            clearActors(); status.dispose(); ward.dispose(); disposeWorld?.(); sun.shadow.dispose(); k.dispose(); scene.clear(); renderer.dispose(); renderer.forceContextLoss(); renderer.domElement.remove(); labels.remove();
         },
     };
 }

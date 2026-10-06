@@ -11,6 +11,7 @@ import { createGameService } from '../../apps/game/application/service.ts';
 import { GAME_PARTITION } from '../../apps/game/partition.ts';
 import { createGameController } from '../../apps/game/host/controller.ts';
 import { driveExpedition } from './expedition-service-driver.mjs';
+import { feedbackFixture } from './expedition-feedback.mjs';
 let harness, expedition, game, runtime, events = [], seed = 7;
 const identity = 'expedition-preview';
 async function reset(files, initialPartitions) {
@@ -48,6 +49,7 @@ createServer(async (req, res) => {
                 case 'deactivate': await runtime.deactivate('preview'); break;
                 case 'reset': seed = Number(url.searchParams.get('seed') ?? 7); await reset(); result = await activate(); break;
                 case 'v1': { const fixture = JSON.parse(await readFile(new URL('./expedition-v1.json', import.meta.url), 'utf8')); await reset(undefined, async () => fixture); result = await activate(); break; }
+                case 'feedback': await reset(undefined, async () => feedbackFixture(url.searchParams.get('scenario'))); result = await activate(); break;
                 case 'reload': await reset(harness.state.files); result = await activate(); break;
                 case 'mode': harness.state.mode = url.searchParams.get('value'); result = harness.state.mode; break;
                 case 'view': result = expedition.view(); break;

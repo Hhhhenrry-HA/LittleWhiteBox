@@ -3,14 +3,15 @@ import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMoun
 import type { XiaobaiOsFrameBridge } from '../../../shell/app-src/frame-bridge.js';
 import { useAppBack, useAppLayer } from '../../../shell/app-src/navigation/app-navigation.js';
 import { createExpeditionClient } from './client.js';
-import { awardTitle, COPY as c, ENCOUNTER_COPY, ENEMY_NAMES, OUTFIT_COPY, OATH_COPY, RELIC_COPY, ROUTE_COPY, WEAPON_COPY, ZONE_NAMES } from './copy.js';
-import { isBoss, OATHS, RELICS, RULES, WEAPONS } from './content.js';
+import { awardTitle, COPY as c, ENCOUNTER_COPY, ENEMY_NAMES, OUTFIT_COPY, OATH_COPY, RELIC_COPY, ROUTE_COPY, skillDetail, WEAPON_COPY, ZONE_NAMES } from './copy.js';
+import { CONTRACT, isBoss, OATHS, RELICS, RULES, WEAPONS } from './content.js';
 import { chapterOf, isFinished, restAmount, weaponUnlocked, zoneOf } from './domain.js';
 import ExpeditionField from './ExpeditionField.vue';
 import type { BattleHud, Oath, PresentationError, Relic, Weapon } from './types.js';
 import './expedition.css';
 import ExpeditionIcon from './ExpeditionIcon.vue';
-import { RELIC_TINT } from './visuals.js';
+import { BEACON_CRITICAL_HP, RELIC_TINT } from './visuals.js';
+import { defeatReason } from './combat/outcome.js';
 
 import { breaksRelicTrigger, relicPrice } from './relics.js';
 import { OUTFITS } from './outfits.js';
@@ -32,6 +33,8 @@ const live = computed(() => run.value && !isFinished(run.value));
 const inBattle = computed(() => !camp.value && run.value?.phase === 'battle');
 const stopped = computed(() => paused.value || camp.value || props.generationActive || !!notice.value || !!modal.value || !!sceneError.value);
 const boss = computed(() => hud.value?.enemies.find(e => isBoss(e.kind)));
+const defeat = computed(() => run.value?.phase === 'lost' && run.value.battle ? defeatReason(run.value.battle) : null);
+const defendingBeacon = computed(() => inBattle.value && !run.value?.battle?.boss && hud.value?.encounter === 'siege');
 const hp = computed(() => inBattle.value && hud.value ? hud.value.player.hp : run.value?.hp ?? RULES.maxHp);
 const full = computed(() => run.value?.relics.length === RULES.relicSlots);
 const zone = computed(() => run.value ? zoneOf(run.value) : 0);
@@ -41,7 +44,6 @@ const outfit = computed(() => view.value?.data.equippedOutfit ?? 'traveler');
 const objectiveText = computed(() => {
     const h = hud.value; if (!h) { return ''; }
     if (h.encounter === 'ritual') { return c.objectiveProgress(h.objective.progress, h.objective.target); }
-    if (h.encounter === 'siege') { return c.beacon(h.objective.hp); }
     if (h.encounter === 'survival') { return c.survive(h.objective.target - h.objective.progress); }
     if (h.encounter === 'pursuit' && h.wave < h.waves) { return c.reinforcement(h.objective.target - h.objective.progress); }
     return c.wave(h.wave, h.waves);
@@ -91,8 +93,9 @@ onBeforeUnmount(client.dispose);
             <div v-if="!camp && run" class="exp-health">
                 <span>{{ c.progress(ZONE_NAMES[zone], run.step % RULES.zoneSteps) }}</span>
                 <div class="exp-health-track" role="progressbar" :aria-label="c.hp" :aria-valuenow="Math.ceil(hp)" :aria-valuemin="0" :aria-valuemax="RULES.maxHp"><i :style="{ width: hp / RULES.maxHp * 100 + '%' }" /><b>{{ Math.ceil(hp) }}<small> / {{ RULES.maxHp }}</small></b></div>
-                <span v-if="hud && hud.player.ward > 0" class="exp-ward-stat">{{ c.ward }} {{ Math.ceil(hud.player.ward) }}</span>
-                <meter v-if="hud && ['blade', 'staff', 'grimoire'].includes(run.weapon)" class="exp-resource" min="0" max="100" :value="hud.player.resource" :aria-label="c.resource" />
+                <span v-if="hud && hud.player.ward > 0" class="exp-sr-only">{{ c.wardValue(hud.player.ward) }}</span>
+                <label v-if="hud && run.weapon === 'grimoire'" class="exp-contract-power"><span>{{ c.contractPower }}<b>{{ Math.floor(hud.player.resource) }}</b></span><meter class="exp-resource" min="0" :max="CONTRACT.maxPower" :value="hud.player.resource" :aria-label="c.contractPower" /></label>
+                <meter v-else-if="hud && ['blade', 'staff'].includes(run.weapon)" class="exp-resource" min="0" max="100" :value="hud.player.resource" :aria-label="c.resource" />
                 <small :aria-label="c.shards + ' ' + run.shards"><ExpeditionIcon name="shrine" />{{ run.shards }} <span v-if="busy"> · {{ c.saving }}</span></small>
             </div>
             <span v-else class="exp-wallet" :aria-label="view ? c.wallet(view.balance) : c.preparing"><ExpeditionIcon name="coin" />{{ view ? view.balance : c.preparing }}</span>
@@ -109,6 +112,11 @@ onBeforeUnmount(client.dispose);
         <div v-if="boss && !camp" class="exp-boss" role="progressbar" :aria-label="ENEMY_NAMES[boss.kind]" :aria-valuenow="Math.ceil(boss.hp)" :aria-valuemin="0" :aria-valuemax="Math.ceil(boss.maxHp)">
             <span><ExpeditionIcon name="boss" />{{ ENEMY_NAMES[boss.kind] }}<small>{{ c.bossPhase(boss.phase) }}</small></span>
             <div><i :style="{ width: boss.hp / boss.maxHp * 100 + '%' }" /></div>
+        </div>
+        <div v-else-if="defendingBeacon && hud" class="exp-beacon-hud" :class="{ 'is-critical': hud.objective.hp <= BEACON_CRITICAL_HP }">
+            <strong>{{ hud.objective.hp <= BEACON_CRITICAL_HP ? c.beaconDanger : ENCOUNTER_COPY.siege.name }}</strong>
+            <div class="exp-objective-track" role="progressbar" :aria-label="c.beaconName" :aria-valuenow="Math.ceil(hud.objective.hp)" :aria-valuemin="0" :aria-valuemax="100"><i :style="{ width: hud.objective.hp + '%' }" /><b>{{ Math.ceil(hud.objective.hp) }} / 100</b></div>
+            <small>{{ c.beaconRule }}</small>
         </div>
         <span v-else-if="hud && inBattle" class="exp-wave"><strong>{{ ENCOUNTER_COPY[hud.encounter].name }}</strong> · {{ objectiveText }}</span>
         <div v-if="inBattle && hud && hud.tick < 54 && !stopped" class="exp-encounter" aria-hidden="true">
@@ -131,7 +139,7 @@ onBeforeUnmount(client.dispose);
                             <ExpeditionIcon v-if="!weaponUnlocked(view.data, id)" class="exp-lock" name="lock" />
                         </button>
                     </div>
-                    <p class="exp-weapon-detail">{{ WEAPON_COPY[weapon].detail }}<span>{{ WEAPON_COPY[weapon].skill }}</span></p>
+                    <p class="exp-weapon-detail">{{ WEAPON_COPY[weapon].detail }}<span>{{ skillDetail(weapon) }}</span></p>
                     <p v-if="nextWeapon" class="exp-next-unlock">{{ c.weaponUnlock(WEAPONS[nextWeapon].unlock) + ' · ' + WEAPON_COPY[nextWeapon].name }}</p>
                 </div>
                 <div class="exp-camp-options">
@@ -175,7 +183,7 @@ onBeforeUnmount(client.dispose);
             <template v-else-if="isFinished(run)">
                 <div class="exp-decision-content">
                     <ExpeditionIcon class="exp-landmark" :name="run.phase === 'won' ? 'crown' : 'renewal'" />
-                    <header class="exp-screen-heading"><small>{{ WEAPON_COPY[run.weapon].name }}</small><h2>{{ run.phase === 'won' ? c.won : run.phase === 'lost' ? c.lost : c.abandoned }}</h2></header>
+                    <header class="exp-screen-heading"><small>{{ WEAPON_COPY[run.weapon].name }}</small><h2>{{ run.phase === 'won' ? c.won : defeat ? c.defeat[defeat] : run.phase === 'lost' ? c.lost : c.abandoned }}</h2><p v-if="defeat">{{ c.defeatDetail[defeat] }}</p></header>
                     <p class="exp-result-stats">{{ c.stats(run.kills, run.ticks) }}</p><div class="exp-prize"><ExpeditionIcon name="coin" /><strong>{{ c.gold(runAward) }}</strong></div>
                     <div class="exp-result-build"><ExpeditionIcon v-for="relic in run.relics" :key="relic.id" :name="relic.id" :title="RELIC_COPY[relic.id].name + ' · ' + c.rank(relic.rank)" /></div>
                     <p class="exp-muted">{{ c.resultDetail }}</p>
@@ -184,7 +192,7 @@ onBeforeUnmount(client.dispose);
             </template>
         </section>
 
-        <div v-if="inBattle && stopped && !modal && !notice && !sceneError" class="exp-pause-overlay"><section class="exp-panel"><ExpeditionIcon class="exp-pause-emblem" name="pause" /><h2>{{ c.paused }}</h2><p class="exp-muted">{{ c.controls }}</p><p>{{ WEAPON_COPY[run!.weapon].skill }}</p><button type="button" class="exp-primary" :disabled="blocked || generationActive" @click="paused = false">{{ c.continue }}<ExpeditionIcon name="arrow" /></button><button type="button" class="exp-quiet" @click="camp = true">{{ c.return }}</button></section></div>
+        <div v-if="inBattle && stopped && !modal && !notice && !sceneError" class="exp-pause-overlay"><section class="exp-panel"><ExpeditionIcon class="exp-pause-emblem" name="pause" /><h2>{{ c.paused }}</h2><p class="exp-muted">{{ c.controls }}</p><p>{{ skillDetail(run!.weapon) }}</p><button type="button" class="exp-primary" :disabled="blocked || generationActive" @click="paused = false">{{ c.continue }}<ExpeditionIcon name="arrow" /></button><button type="button" class="exp-quiet" @click="camp = true">{{ c.return }}</button></section></div>
         <div v-if="inBattle && !stopped" class="exp-keyboard-hint">{{ c.moveKeys }}<span>{{ c.autoAttack }}</span></div>
         <div v-if="inBattle && run!.relics.length" class="exp-equipped-strip" :aria-label="c.equipped"><ExpeditionIcon v-for="relic in run!.relics" :key="relic.id" :name="relic.id" :title="RELIC_COPY[relic.id].name + ' · ' + c.rank(relic.rank)" /></div>
 

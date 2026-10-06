@@ -1,13 +1,15 @@
-import { isTavilyConfigured, searchWithTavily } from '../../../../agent-core/tavily-search.js';
+import { isWebConfigured } from '../../../../agent-core/web/settings.js';
+import { searchWeb, WEB_LIMITS } from '../../../../agent-core/web/retrieval.js';
+import { WebRequestError } from '../../../../agent-core/web/transport.js';
 import { safePromptJson } from '../../../capabilities/maintenance/prompt-safety.js';
 import { learningRecord, learningText, LearningValidationError } from '../../../domains/learning/profile.js';
 import { learningArray, learningId, learningInteger, requireLearning } from '../../../domains/learning/validation.js';
 import type { createLearningSourceRegistry, LearningSource } from './lesson-sources.js';
 import { createLearningId } from '../application/identity.js';
-import { extractLearningSources, LearningMaterialError, learningPublicUrl } from './tavily-extract.js';
+import { extractLearningSources, LearningMaterialError, learningPublicUrl } from './web-extract.js';
 
 export const LEARNING_RESEARCH_LIMITS = Object.freeze({ query: 400,
-    results: 8, defaultResults: 5, page: 4500, chunk: 500 });
+    results: WEB_LIMITS.maxResults, defaultResults: WEB_LIMITS.defaultResults, page: 4500, chunk: 500 });
 const L = LEARNING_RESEARCH_LIMITS;
 type Candidate = { id: string; url: string; title: string; summary: string };
 
@@ -40,26 +42,20 @@ export function createLearningResearchCache() {
 }
 
 /** Search/extraction identities remain valid for the live classroom, not just one button press. */
-export function createLearningResearch(config: { tavilyApiKey?: string; tavilyBaseUrl?: string }, options: {
+export function createLearningResearch(config: Record<string, unknown>, options: {
     sources: ReturnType<typeof createLearningSourceRegistry>; signal: AbortSignal;
     cache?: ReturnType<typeof createLearningResearchCache>;
     createId?: () => string; now?: () => string; timeoutMs?: number;
 }) {
     const { candidates, extracted } = options.cache ?? createLearningResearchCache();
     const createId = options.createId ?? createLearningId;
-    const available = isTavilyConfigured(config);
+    const available = isWebConfigured(config);
     async function search(args: unknown) {
         const input = learningRecord(args, 'LearningSearch', ['query', 'maxResults']);
         const query = learningText(input.query, 'query', L.query);
         const maxResults = learningInteger(input.maxResults ?? L.defaultResults, 'maxResults', 1, L.results);
-        const controller = new AbortController();
-        const abort = () => controller.abort();
-        options.signal.addEventListener('abort', abort, { once: true });
-        const timer = setTimeout(abort, options.timeoutMs ?? 30_000);
         try {
-            if (options.signal.aborted) { abort(); throw new LearningMaterialError('learning_research_cancelled'); }
-            const results = await searchWithTavily(config, { query, maxResults, signal: controller.signal });
-            if (controller.signal.aborted) { throw new LearningMaterialError('learning_search_timeout'); }
+            const results = await searchWeb(config, { query, maxResults, signal: options.signal, timeoutMs: options.timeoutMs });
             const selected: Candidate[] = [];
             for (const result of results.slice(0, maxResults)) {
                 let url;
@@ -73,10 +69,8 @@ export function createLearningResearch(config: { tavilyApiKey?: string; tavilyBa
             return { ok: true, results: selected };
         } catch (error) {
             const status = error && typeof error === 'object' && 'httpStatus' in error && typeof error.httpStatus === 'number' ? error.httpStatus : undefined;
-            throw new LearningMaterialError(controller.signal.aborted ? 'learning_search_timeout' : 'learning_search_failed', status);
-        } finally {
-            clearTimeout(timer);
-            options.signal.removeEventListener('abort', abort);
+            throw new LearningMaterialError(error instanceof WebRequestError && error.code === 'web_timeout'
+                ? 'learning_search_timeout' : 'learning_search_failed', status);
         }
     }
     async function extract(args: unknown) {
@@ -124,7 +118,7 @@ export function createLearningResearch(config: { tavilyApiKey?: string; tavilyBa
         available,
         async executeTool(name: string, args: unknown): Promise<unknown> {
             try {
-                requireLearning(available, 'tool', 'Configure the shared Tavily key in API settings to use web research');
+                requireLearning(available, 'tool', 'Configure the selected web provider in Agent API settings to use web research');
                 if (options.signal.aborted) { throw new LearningMaterialError('learning_research_cancelled'); }
                 if (name === 'LearningSearch') { return await search(args); }
                 if (name === 'LearningExtract') { return await extract(args); }

@@ -1,3 +1,4 @@
+import { removeWebSettings } from '../../agent-core/web/settings.js';
 import {
     saveChatAndConfirm,
     withConfirmableChatMutation,
@@ -67,8 +68,7 @@ function sanitizePreparedAgent(agent) {
     if (!snapshot.providerConfig || typeof snapshot.providerConfig !== 'object') {
         throw new TypeError('Scene Planner 缺少可提交的 Agent Provider 配置');
     }
-    delete snapshot.providerConfig.tavilyApiKey;
-    delete snapshot.providerConfig.tavilyBaseUrl;
+    removeWebSettings(snapshot.providerConfig);
     return snapshot;
 }
 

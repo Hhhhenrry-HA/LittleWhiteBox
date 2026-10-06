@@ -10,13 +10,14 @@ export function createSceneKit() {
     archProfile.lineTo(-.86, 0); archProfile.absarc(0, 0, .86, Math.PI, 0, true); archProfile.closePath();
     const geometries = {
         box: new BoxGeometry(1, 1, 1), sphere: new SphereGeometry(1, 20, 14), rock: new IcosahedronGeometry(1, 0),
-        cylinder: new CylinderGeometry(1, 1, 1, 12), cone: new ConeGeometry(1, 1, 8),
+        cylinder: new CylinderGeometry(1, 1, 1, 24), cone: new ConeGeometry(1, 1, 12),
         disc: new CircleGeometry(1, 48), ring: new RingGeometry(.965, 1, 64),
-        arc: new RingGeometry(.77, 1, 40, 1, -.2, Math.PI * 1.3), torus: new TorusGeometry(1, .08, 6, 32),
+        arc: new RingGeometry(.87, 1, 40, 1, -.2, Math.PI * 1.3), torus: new TorusGeometry(1, .08, 8, 40),
+        stroke: new RingGeometry(.975, 1, 48, 1, -.2, Math.PI * 1.3),
         crescent: new TorusGeometry(1, .14, 6, 24, Math.PI * 1.45),
         arch: new ExtrudeGeometry(archProfile, { depth: 1, bevelEnabled: false, curveSegments: 24 }).translate(0, 0, -.5),
     };
-    const shapes = new Map<string, ShapeGeometry>(), materials = new Map<string, MeshStandardMaterial | MeshBasicMaterial>();
+    const shapes = new Map<string, BufferGeometry>(), materials = new Map<string, MeshStandardMaterial | MeshBasicMaterial>();
     function material(color: string, flat = false, opacity = 1, metal = false) {
         const key = `${color}/${flat}/${opacity}/${metal}`;
         let m = materials.get(key);
@@ -35,9 +36,13 @@ export function createSceneKit() {
     function ring(parent: Object3D, color: string, radius: number, x: number, z: number, opacity = 1, filled = false, height = .04) {
         const m = mesh(parent, filled ? 'disc' : 'ring', color, [radius, radius, 1], [x, height, z], true, opacity); m.rotation.x = -Math.PI / 2; return m;
     }
-    function shape(parent: Object3D, points: readonly [number, number][], color: string, pos: Vec3 = [0, 0, 0]) {
-        const key = JSON.stringify(points); let geo = shapes.get(key);
-        if (!geo) { const s = new Shape(); points.forEach(([x, y], i) => i ? s.lineTo(x, y) : s.moveTo(x, y)); s.closePath(); geo = new ShapeGeometry(s); shapes.set(key, geo); }
+    function shape(parent: Object3D, points: readonly [number, number][], color: string, pos: Vec3 = [0, 0, 0], depth = 0) {
+        const key = JSON.stringify([points, depth]); let geo = shapes.get(key);
+        if (!geo) {
+            const s = new Shape(); points.forEach(([x, y], i) => i ? s.lineTo(x, y) : s.moveTo(x, y)); s.closePath();
+            geo = depth ? new ExtrudeGeometry(s, { depth, steps: 1, bevelEnabled: true, bevelThickness: depth * .3, bevelSize: depth * .3, bevelSegments: 2 }) : new ShapeGeometry(s);
+            shapes.set(key, geo);
+        }
         const m = new Mesh(geo, material(color)); m.position.set(...pos); m.castShadow = true; parent.add(m); return m;
     }
     function bake(root: Group) {

@@ -31,7 +31,7 @@ const lesson = (materials = [{ key: 'article', title: '短文', kind: 'authored'
 function results(request) {
     return request.toolResponses ?? request.messages.filter(message => message.role === 'tool').map(message => ({ name: message.toolName, response: JSON.parse(message.content) }));
 }
-async function harness(handler, { session = false, search = false, beforeWrite } = {}) {
+async function harness(handler, { session = false, search = false, webConfig = config, beforeWrite } = {}) {
     let file = null;
     let id = 0;
     let failWrite = false;
@@ -53,7 +53,7 @@ async function harness(handler, { session = false, search = false, beforeWrite }
     await profile.commit(() => true);
     const teaching = createLearningTeaching({ actor: 'workbench', memory: (() => { const port = learningMemory(); return () => port; })(), repository, createId, now, current: () => current,
         capture: async () => { captures++; return structuredClone(context); }, gateway: {
-            loadConfig: async () => search ? config : {}, openSession: async () => ({ providerConfig: {}, supportsSessionToolLoop: session,
+            loadConfig: async () => search ? webConfig : {}, openSession: async () => ({ providerConfig: {}, supportsSessionToolLoop: session,
                 run: (async request => { requests.push(structuredClone({ ...request, signal: undefined, onStreamProgress: undefined })); return handler(request, requests.length); }) }),
         } });
     const read = () => repository.snapshot().document.data.profiles[0];
@@ -157,13 +157,13 @@ for (const responseLost of [false, true]) {
     });
 }
 
-for (const session of [false, true]) {
-    test(`the independent workbench searches, extracts and saves the actual article (${session ? 'session' : 'ordinary'} continuation)`, async t => {
+for (const session of [false, true]) for (const webProvider of ['tavily', 'exa']) {
+    test(`the independent workbench searches, extracts and saves the actual article (${webProvider}, ${session ? 'session' : 'ordinary'} continuation)`, async t => {
         const http = [];
         t.mock.method(globalThis, 'fetch', async (url, options) => {
             http.push({ url, body: JSON.parse(options.body) });
-            return Response.json(url.endsWith('/search') ? { results: [{ title: 'Urban trees', url: 'https://www.bbc.com/trees', content: 'A search summary, not the article.' }] }
-                : { results: [{ url: 'https://www.bbc.com/trees', raw_content: 'Trees cool streets.\n\nThey provide shade.' }] });
+            return Response.json(url.endsWith('/search') ? { results: [{ title: 'Urban trees', url: 'https://www.bbc.com/trees', content: 'A search summary, not the article.', highlights: ['A search summary, not the article.'] }] }
+                : { results: [{ url: 'https://www.bbc.com/trees', raw_content: 'Trees cool streets.\n\nThey provide shade.', text: 'Trees cool streets.\n\nThey provide shade.' }], statuses: [{ id: 'https://www.bbc.com/trees', status: 'success' }] });
         });
         const h = await harness((request, round) => {
             if (round === 1) {
@@ -184,12 +184,12 @@ for (const session of [false, true]) {
             }
             assert.equal(results(request).find(result => result.name === 'LearningLessonEdit').response.ok, true);
             return { text: '来练习抓住文章的主要观点。' };
-        }, { session, search: true });
+        }, { session, search: true, webConfig: { ...config, webProvider, exaApiKey: 'exa-fixture' } });
         assert.equal(h.requests.length, 0);
         const result = await h.teaching.run({ action, message: '找篇适合我的 BBC 短文。' });
         assert.equal(result.status, 'finished', JSON.stringify(result));
         assert.deepEqual(result.appliedTools, ['LearningLessonEdit']);
-        assert.deepEqual(http.map(request => request.url), ['https://tavily.example.com/search', 'https://tavily.example.com/extract']);
+        assert.deepEqual(http.map(request => request.url), webProvider === 'exa' ? ['https://api.exa.ai/search', 'https://api.exa.ai/contents'] : ['https://tavily.example.com/search', 'https://tavily.example.com/extract']);
         assert.equal(http[0].body.query, 'BBC urban trees beginner reading');
         assert.equal(h.captures(), 0);
         assert.equal(h.read().unit.materials[0].paragraphs[0].text, 'Trees cool streets.');
@@ -245,9 +245,10 @@ test('real submitted answer survives failed assessment and is evaluated under th
     let phase = 'prepare';
     let step = 0;
     let attemptId;
+    const providerError = Object.assign(new Error('API authentication rejected the assessment request.'), { status: 401 });
     const h = await harness(request => {
         if (phase === 'prepare') { return ++step === 1 ? { toolCalls: [call('LearningLessonEdit', lesson())] } : { text: '开始练习。' }; }
-        if (phase === 'fail') { throw Object.assign(new Error('private API response'), { status: 401 }); }
+        if (phase === 'fail') { throw providerError; }
         if (++step === 1) {
             assert.ok(request.messages.some(message => message.content.includes('Trees keep the street cool.')));
             return { toolCalls: [call('LearningAssess', { attemptId, verdict: 'correct', understanding: '抓住了要点', expression: '表达自然', guidance: '再试着补充一个依据', items: [{ label: '概括要点' }] }),
@@ -265,7 +266,7 @@ test('real submitted answer survives failed assessment and is evaluated under th
     const input = { action: { kind: 'assess', attemptId, review: false }, message: '请看我的答案。' };
     const failed = await h.teaching.run(input);
     assert.equal(failed.reason, 'provider-auth');
-    assert.ok(!JSON.stringify(failed).includes('private API response'));
+    assert.ok(failed.message.includes(providerError.message));
     assert.equal(h.read().unit.attempts[0].id, attemptId);
     assert.equal(h.read().unit.assessments.length, 0);
     phase = 'assess'; step = 0;

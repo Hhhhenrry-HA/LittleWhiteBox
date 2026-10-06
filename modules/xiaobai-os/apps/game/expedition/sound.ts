@@ -47,6 +47,9 @@ export function createExpeditionSound(onError: () => void) {
                 tone(660, .36, .035, 'sine', 440, .02);
             }
             if (b.effects.some(e => e.id > lastEffect && e.kind === 'lightning')) { air(.12, .1, 4400, 1000); tone(1200, .08, .018, 'sine', 210); }
+            if (b.effects.some(e => e.id > lastEffect && (e.kind === 'block' || e.kind === 'parry'))) { tone(1350, .18, .07, 'triangle', 740); tone(2200, .11, .025, 'sine', 1600); }
+            if (b.effects.some(e => e.id > lastEffect && e.kind === 'ward-hit')) { tone(510, .16, .06, 'sine', 250); }
+            if (b.effects.some(e => e.id > lastEffect && e.kind === 'ward-break')) { air(.25, .1, 3600, 650); tone(720, .3, .05, 'sine', 120); }
             if (b.status === 'won') { [392, 494, 587, 784].forEach((n, i) => tone(n, .65, .04, 'sine', n, i * .075)); }
             if (b.status === 'lost') { tone(147, .7, .06, 'triangle', 73); }
             lastHp = b.player.hp; lastKills = b.kills; lastSkill = b.player.skill; lastEffect = b.serial;

@@ -2,6 +2,9 @@ import type { Relic } from './types.js';
 import { RELIC_SPECS, type RelicFamily } from './relics.js';
 
 export const CAMERA_EIGHTH_TURNS = 1;
+export const BEACON_CRITICAL_HP = 30;
+export const DEFENSE_COLORS = { ward: '#75c7eb', edge: '#e5f6ff', block: '#dcc08a', parry: '#fff2c9', enamel: '#42647c', silver: '#e4e7df' } as const;
+export const CONTRACT_COLORS = { familiar: '#8cc9bc', empowered: '#f1d89e', crest: '#9daedc', page: '#f2ecda', cover: '#4d5876' } as const;
 
 /** Presentation only. Combat distances, damage and rewards never depend on this palette. */
 export const PALETTES = [

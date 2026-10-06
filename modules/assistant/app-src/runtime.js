@@ -1,6 +1,6 @@
 import { analyzeJavaScriptApiRequest } from '../runtime-src/jsapi-runtime.js';
 import { createDelegateRunner } from '../../agent-core/runtime/delegate-runner.js';
-import { runTavilySearchTool } from '../../agent-core/tavily-search.js';
+import { runWebSearchTool } from '../../agent-core/web/tools.js';
 import {
     buildProviderMessagesFromHistory,
     filterThoughtsForTurn,
@@ -535,7 +535,7 @@ export function createAssistantRuntime(deps) {
                     const providerConfig = options.role === 'delegate'
                         ? getDelegateProviderConfig?.(run)
                         : getActiveProviderConfig();
-                    toolResult = await runTavilySearchTool(providerConfig || {}, parsedArguments, {
+                    toolResult = await runWebSearchTool(providerConfig || {}, parsedArguments, {
                         signal: run.controller.signal,
                         isAbortError,
                     });

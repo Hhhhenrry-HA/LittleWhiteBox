@@ -7,7 +7,9 @@ import type { SceneKit } from './scene-kit.js';
 import type { Palette } from './visuals.js';
 import { dressHero } from './scene-outfits.js';
 import { sculptBoss } from './scene-bosses.js';
-export type HeroPose = Pick<Player, 'x' | 'y' | 'facing' | 'dashTime' | 'swing'>;
+import { createGuardShield } from './scene-defense.js';
+import { createGrimoire } from './scene-grimoire.js';
+export type HeroPose = Pick<Player, 'x' | 'y' | 'facing' | 'dashTime' | 'swing' | 'shield' | 'guard' | 'resonance'>;
 
 function addBow(k: SceneKit, parent: Group, scale = 1) {
     const bow = k.group(parent); bow.scale.setScalar(scale);
@@ -22,16 +24,19 @@ export function createHero(k: SceneKit, parent: Group) {
     const fighter = createMascotFighter(body);
     const shadow = k.ring(root, '#193f49', .6, 0, 0, .14, true);
     const equipment = k.group(body), hand = k.group(equipment, [.3, .05, .17]), clothing = k.group(equipment);
+    const guardShield = createGuardShield(k, equipment);
+    let grimoire: ReturnType<typeof createGrimoire> | null = null;
+    let motionTime = -1, facing = Math.PI / 2;
     let wardrobe: ReturnType<typeof dressHero> | null = null, weapon: Weapon | null = null, outfit: Outfit | null = null, lastX = 0, lastY = 0;
     function equip(nextWeapon: Weapon, nextOutfit: Outfit) {
         if (nextWeapon === weapon && nextOutfit === outfit) { return; }
-        weapon = nextWeapon; outfit = nextOutfit; clothing.clear(); hand.clear(); wardrobe = dressHero(k, clothing, outfit);
+        weapon = nextWeapon; outfit = nextOutfit; clothing.clear(); hand.clear(); grimoire = null; wardrobe = dressHero(k, clothing, outfit);
         k.mesh(hand, 'sphere', '#fffaf2', [.1, .1, .09]);
         if (weapon === 'blade') {
             k.mesh(hand, 'cylinder', '#624d42', [.035, .28, .035], [0, -.08, .06]);
             k.mesh(hand, 'box', '#d4b470', [.32, .05, .11], [0, .07, .06], false, 1, true);
-            k.shape(hand, [[-.07, .1], [.07, .1], [.07, .65], [0, .83], [-.07, .65]], '#f5f8ef', [0, 0, .07]);
-            k.shape(hand, [[0, .1], [.07, .1], [.07, .65], [0, .83]], '#9cc6ce', [0, 0, .076]);
+            k.shape(hand, [[-.07, .1], [.07, .1], [.07, .65], [0, .83], [-.07, .65]], '#f5f8ef', [0, 0, .07], .018);
+            k.shape(hand, [[0, .1], [.07, .1], [.07, .65], [0, .83]], '#9cc6ce', [0, 0, .094]);
         } else if (weapon === 'bow') {
             addBow(k, hand);
         } else if (weapon === 'staff') {
@@ -41,9 +46,7 @@ export function createHero(k: SceneKit, parent: Group) {
         } else if (weapon === 'daggers') {
             for (const side of [-1, 1]) { const blade = k.group(hand, [side < 0 ? -.58 : 0, 0, 0]); k.mesh(blade, 'box', '#974953', [.07, .2, .07]); k.shape(blade, [[-.045, .1], [.05, .1], [.035, .34], [0, .47], [-.06, .27]], '#dce9ed', [0, 0, .03]); }
         } else if (weapon === 'grimoire') {
-            const book = k.group(hand, [0, .15, .12]); book.rotation.set(-.45, 0, -.2);
-            k.mesh(book, 'box', '#5d618a', [.34, .06, .42]); k.mesh(book, 'box', '#eee5c9', [.29, .075, .36], [0, .03, 0]);
-            k.mesh(book, 'rock', '#b4eed5', [.07, .1, .07], [0, .22, 0]);
+            grimoire = createGrimoire(k, hand);
         } else if (weapon === 'cannon') {
             const barrel = k.group(hand, [.02, .08, .17]); barrel.rotation.x = Math.PI / 2;
             k.mesh(barrel, 'cylinder', '#586e77', [.12, .55, .12], [0, .1, 0], false, 1, true);
@@ -52,17 +55,25 @@ export function createHero(k: SceneKit, parent: Group) {
         }
     }
     return { root,
-        update(p: HeroPose | null, nextWeapon: Weapon, nextOutfit: Outfit, time: number, reduced: boolean, portrait: boolean) {
+        update(p: HeroPose | null, nextWeapon: Weapon, nextOutfit: Outfit, time: number, reduced: boolean, portrait: boolean, casting = false) {
             equip(nextWeapon, nextOutfit);
+            guardShield.update(nextWeapon, !!p?.shield, !!p?.guard, time, reduced);
+            const blend = reduced || motionTime < 0 || time < motionTime ? 1 : 1 - Math.exp(-Math.min(4, time - motionTime) * .65); motionTime = time;
+            const desiredFacing = portrait ? Math.PI / 2 + .23 : p?.facing ?? Math.PI / 2;
+            facing += Math.atan2(Math.sin(desiredFacing - facing), Math.cos(desiredFacing - facing)) * blend;
             const moving = !!p && (Math.abs(p.x - lastX) + Math.abs(p.y - lastY) > .001), dash = !!p?.dashTime;
             root.position.set(p?.x ?? 0, portrait ? .3 : 0, p?.y ?? -8);
             root.scale.setScalar(portrait ? 1.65 : 1);
-            fighter.pose(0, 0, portrait ? Math.PI / 2 + .23 : p?.facing ?? Math.PI / 2, time, moving, dash, reduced);
+            fighter.pose(0, 0, facing, time, moving, dash, reduced);
             body.position.y += .3;
             wardrobe!.cape.rotation.x = !reduced ? -.15 - (moving ? .5 : .06) - Math.sin(time * .15) * .12 : -.15;
             wardrobe!.animate(time, reduced);
-            hand.rotation.z = p?.swing && !reduced ? -1.7 * Math.sin(p.swing / 9 * Math.PI) + .3 : -.2;
-            hand.rotation.x = p?.swing && !reduced ? .8 : .1;
+            const swing = p?.swing && !reduced ? Math.sin(p.swing / (nextWeapon === 'cannon' ? 16 : 9) * Math.PI) : 0;
+            hand.rotation.z += ((casting ? -.3 : -.2 - swing * 1.3) - hand.rotation.z) * blend;
+            hand.rotation.x += ((casting ? -.25 : .1 + swing * .6) - hand.rotation.x) * blend;
+            if (grimoire) {
+                grimoire.update(!!p?.resonance, casting, time, reduced);
+            }
             shadow.scale.set(.6 + (dash ? .25 : 0), .6, 1);
             if (p) { lastX = p.x; lastY = p.y; }
         },

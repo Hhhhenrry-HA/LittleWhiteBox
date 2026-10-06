@@ -25,7 +25,9 @@ export const COPY = {
     rest: '休整', restDetail: (n: number) => `恢复 ${n} 生命`, shrine: '献祭',
     sacrifice: `献出 ${RULES.sacrificeHp} 生命，换取一件遗物`, merchant: '遗物商人',
     buy: (n: number) => `${n} 碎晶 · 购买`, shards: '碎晶', hp: '生命', leave: '继续前行',
-    abandoned: '远征已结束', lost: '倒在黎明之前', won: '王城的钟声再次响起',
+    abandoned: '远征已结束', lost: '远征未完成', won: '王城的钟声再次响起',
+    defeat: { fallen: '小白倒下了', beacon: '烽火被摧毁' },
+    defeatDetail: { fallen: '生命耗尽，本次远征结束。', beacon: '守护目标的生命耗尽，本次远征结束。' },
     resultDetail: '解锁、发现和已到账奖励永久保留；本局遗物与碎晶不带入下一局。',
     restart: '再次启程', return: '返回营地', abandon: '结束本次远征',
     abandonBody: '放弃当前远征？本局构筑将结束，已经获得的解锁与奖励保留。',
@@ -41,8 +43,12 @@ export const COPY = {
     supply: '购买补给', supplyDetail: (heal: number) => `恢复 ${heal} 生命`, normal: '普通远征',
     weaponUnlock: (n: number) => `击败 ${n} 位不同首领后解锁`, reached: (n: number) => `抵达第 ${n + 1} 章`,
     resource: '蓄势', ward: '护盾', achievement: '首胜奖励',
+    contractPower: '契约之力', resonanceActive: '使魔强化', secondsLeft: (ticks: number) => `${(ticks / RULES.hz).toFixed(1)}秒`,
+    wardValue: (n: number) => `护盾 ${Math.ceil(n)}`, guardActive: '格挡中',
+    defenseFeedback: { block: '格挡', parry: '完美格挡', 'ward-hit': '护盾吸收', 'ward-break': '护盾破碎' },
+    beaconName: '烽火', beaconDanger: '烽火危急', beaconHit: '烽火受袭', beaconRule: '烽火被摧毁即失败',
     objectiveProgress: (n: number, total: number) => `${Math.floor(n / total * 100)}%`,
-    survive: (ticks: number) => `坚守 ${Math.ceil(ticks / RULES.hz)} 秒`, beacon: (hp: number) => `烽火 ${Math.ceil(hp)}%`,
+    survive: (ticks: number) => `坚守 ${Math.ceil(ticks / RULES.hz)} 秒`,
     reinforcement: (ticks: number) => `增援 ${Math.ceil(ticks / RULES.hz)} 秒`,
     unlockWeapon: (name: string) => `击败${name}后解锁`, unlockCloak: (n: number) => `击败第 ${n} 位首领后解锁`,
     sound: '声音',
@@ -66,14 +72,15 @@ export const OUTFIT_COPY: Record<Outfit, { name: string; detail: string }> = {
     machinist: { name: '铜翼工匠', detail: '护目镜、皮革长衣与铜制动力背包。' }, beastcaller: { name: '森之契约', detail: '鹿角、叶羽披肩与发光的契约石。' },
     frostbound: { name: '霜海巡礼', detail: '晶冠、雪绒长衣与冰晶背饰。' }, stargazer: { name: '观星使徒', detail: '星环冠、层叠长袍与悬浮的星轨。' },
 };
-export const WEAPON_COPY: Record<Weapon, { name: string; detail: string; skill: string }> = {
-    blade: { name: '破晓剑士', detail: '近身横斩蓄势，三连击打断敌人。', skill: '回旋斩：消耗蓄势重击、破招并短暂格挡。格挡起手反击回充蓄势。' },
-    bow: { name: '逐风射手', detail: '长距离连射；射击时走位减慢。', skill: '穿云箭：五束贯穿箭矢，后撤拉开距离。' },
-    staff: { name: '星灯术士', detail: '溅射星弹蓄能；施法时走位较慢。', skill: '星落：消耗蓄能，在敌群中心落下三次冲击。' },
-    daggers: { name: '绯影双刃', detail: '极近距离快攻，在敌人身后寻找破绽。', skill: '影袭：突进目标背后重击，使其短暂易伤。' },
-    grimoire: { name: '契约使', detail: '使魔近身缠斗，咒弹积攒契约之力。', skill: '共鸣：消耗契约之力，强化使魔并诅咒目标。' },
-    cannon: { name: '机巧炮手', detail: '重炮范围爆破；开火时难以迅速转移。', skill: '部署：放置可承伤的自动炮台，建立火力阵地。' },
+export const WEAPON_COPY: Record<Weapon, { name: string; detail: string; action: string; skill: string }> = {
+    blade: { name: '破晓剑士', detail: '近身横斩蓄势，三连击打断敌人。', action: '回旋斩', skill: '消耗蓄势重击，同时举盾格挡。接住攻击可回充蓄势，举盾瞬间接招为完美格挡。' },
+    bow: { name: '逐风射手', detail: '长距离连射；射击时走位减慢。', action: '穿云箭', skill: '五束贯穿箭矢，后撤拉开距离。' },
+    staff: { name: '星灯术士', detail: '溅射星弹蓄能；施法时走位较慢。', action: '星落', skill: '消耗蓄能，在敌群中心落下三次冲击。' },
+    daggers: { name: '绯影双刃', detail: '极近距离快攻，在敌人身后寻找破绽。', action: '影袭', skill: '突进目标背后重击，使其短暂易伤。' },
+    grimoire: { name: '契约使', detail: '自动召出使魔缠斗，咒弹积攒契约之力。', action: '共鸣', skill: '恢复在场使魔生命，让所有使魔的伤害与攻速提高，并诅咒目标。契约之力越多，强化越久；期间补召同样生效。' },
+    cannon: { name: '机巧炮手', detail: '重炮范围爆破；开火时难以迅速转移。', action: '部署', skill: '放置可承伤的自动炮台，建立火力阵地。' },
 };
+export const skillDetail = (weapon: Weapon) => `${WEAPON_COPY[weapon].action}：${WEAPON_COPY[weapon].skill}`;
 export const ENEMY_NAMES: Record<EnemyKind, string> = {
     soldier: '失落卫兵', archer: '逐风射手', guard: '重盾守卫', priest: '月灯祭司', charger: '裂角兽',
     stalker: '影爪猎手', bomber: '熔火投弹手', wisp: '游灯',
@@ -82,7 +89,7 @@ export const ENEMY_NAMES: Record<EnemyKind, string> = {
 };
 export const ENCOUNTER_COPY: Record<EncounterKind, { name: string; detail: string }> = {
     skirmish: { name: '肃清', detail: '击败全部守军' }, pursuit: { name: '追猎', detail: '增援不会等待，尽快击破敌群' },
-    siege: { name: '守护烽火', detail: '拦截进攻，保护中央烽火' }, ritual: { name: '三重封印', detail: '清开敌人，站入封印逐个解除' },
+    siege: { name: '守护烽火', detail: `保护中央烽火，击败守军。${COPY.beaconRule}。` }, ritual: { name: '三重封印', detail: '清开敌人，站入封印逐个解除' },
     survival: { name: '长夜坚守', detail: '留在安全区域，坚守后清除余敌' }, crossfire: { name: '交叉火线', detail: '穿越交错射线，击败守军' },
 };
 export const ROUTE_COPY: Record<RouteKind, { name: string; detail: string; mark: string }> = {
@@ -112,7 +119,7 @@ export const RELIC_COPY: Record<Relic, { name: string; detail: string; family: s
     piercing: { name: '穿心羽', detail: '远程弹体穿透更多敌人；近战攻击范围扩大。强化增加穿透与范围。', family: '锋' },
     orbit: { name: '卫星', detail: '周期性向身边敌人释放雷击。强化提高威力并缩短间隔。', family: '雷' },
     thorns: { name: '荆棘银环', detail: '受伤时反击；格挡反击额外打断敌人。强化提升反击伤害。', family: '守' },
-    aegis: { name: '镜盾', detail: '技能附加护盾与反射格挡；剑士延长原有格挡。强化增加护盾和时长。', family: '守' },
+    aegis: { name: '镜盾', detail: '释放技能时生成护盾，并短暂举盾格挡、反射弹体；剑士延长原有格挡。强化增加护盾和格挡时长。', family: '守' },
     siphon: { name: '温血石', detail: `每击败 ${R.siphonEvery} 名敌人恢复生命；击败首领恢复更多。强化增加恢复量。`, family: '生' },
     focus: { name: '澄明', detail: `技能冷却缩短，但普攻间隔延长 ${Math.round((R.focusAttack - 1) * 100)}%。强化进一步缩短技能冷却。`, family: '技' },
     renewal: { name: '归途灯', detail: '取得或强化遗物时恢复生命，击败首领额外恢复。强化增加恢复量。', family: '生' },

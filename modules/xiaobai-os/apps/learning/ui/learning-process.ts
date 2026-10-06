@@ -3,8 +3,8 @@ import type { LearningResearchFailure } from '../application/research-feedback.j
 
 export interface LearningProcessMetadata {
     ok?: boolean; changed?: boolean; section?: string;
-    resultsCount?: number; paragraphCount?: number; dataCount?: number; failedCount?: number; errorsCount?: number;
-    materialsCount?: number; exercisesCount?: number; errorFields?: string[];
+    resultsCount?: number; paragraphCount?: number; dataCount?: number; failedCount?: number;
+    materialsCount?: number; exercisesCount?: number; errors?: { path: string; message: string }[];
     error?: LearningResearchFailure; httpStatus?: number;
 }
 export interface LearningProcessTool {

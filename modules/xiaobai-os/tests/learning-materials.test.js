@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { extractLearningSources } from '../apps/learning/materials/tavily-extract.js';
+import { extractLearningSources } from '../apps/learning/materials/web-extract.js';
 
 const config = { tavilyApiKey: 'fixture-key', tavilyBaseUrl: 'https://tavily.example.com/' };
 const urls = ['https://www.bbc.com/article', 'https://example.com/article'];

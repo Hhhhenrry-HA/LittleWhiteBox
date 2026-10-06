@@ -86,7 +86,7 @@ AssistantStorage / LittleWhiteBox_Assistant.json / settings
 - 不依赖`color: inherit`猜测 WebView 的原生下拉配色；
 - 页面在 OS iframe 内渲染，不再创建宿主 DOM overlay。
 
-OS 页面只展示 API 供应商相关能力。Assistant 权限、delegate、Tavily 等不属于普通 OS 当前需求的区块不显示，但共享配置中的既有值必须原样保留。
+OS 页面展示模型供应商与共享联网渠道设置。Assistant 权限、delegate 等不属于普通 OS 当前需求的区块不显示，但共享配置中的既有值必须原样保留。
 
 ## 5. Agent gateway
 

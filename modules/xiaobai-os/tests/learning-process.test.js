@@ -16,11 +16,12 @@ test('research failures expose only an allowed category and HTTP status, never p
 });
 test('the process retains completed and failed steps while another round is preparing, and after cancellation', () => {
     const secret = 'unpublished answer and private source text';
+    const issue = { path: 'exercises.0.paragraphId', message: 'exercises.0.paragraphId: Select a paragraph in the article' };
     const messages = [
         { role: 'assistant', content: '', toolCalls: [call('read', 'LearningRead', { section: 'overview' })] },
         { role: 'tool', toolCallId: 'read', toolName: 'LearningRead', content: JSON.stringify({ section: 'overview', data: { goal: secret } }) },
         { role: 'assistant', content: '', toolCalls: [call('edit', 'LearningLessonEdit', { materials: [{ text: secret }], exercises: [{ prompt: secret }] })] },
-        { role: 'tool', toolCallId: 'edit', toolName: 'LearningLessonEdit', content: JSON.stringify({ ok: false, errors: [{ path: 'exercises.0.paragraphId', message: secret }] }) },
+        { role: 'tool', toolCallId: 'edit', toolName: 'LearningLessonEdit', content: JSON.stringify({ ok: false, errors: [issue] }) },
         { role: 'assistant', content: secret, contentVisibility: 'pending-response', streaming: true, toolCalls: [call('retry', 'LearningLessonEdit', { title: secret })] },
     ].map(learningMessageView);
     assert.ok(!JSON.stringify(messages).includes(secret));
@@ -28,8 +29,7 @@ test('the process retains completed and failed steps while another round is prep
     const rounds = learningProcessRounds(turn);
     assert.deepEqual(rounds.map(round => round.tools.map(tool => tool.status)), [['done'], ['failed'], ['preparing']]);
     assert.equal(rounds[0].tools[0].input.section, 'overview');
-    assert.deepEqual(rounds[1].tools[0].result.errorFields, ['paragraphId']);
-    assert.equal(rounds[1].tools[0].result.errorsCount, 1);
+    assert.deepEqual(rounds[1].tools[0].result.errors, [issue]);
     assert.equal(rounds[2].text, '');
     assert.equal(rounds[2].receivedChars, secret.length);
     assert.deepEqual(learningProcessRounds({ ...turn, status: 'cancelled' }).flatMap(round => round.tools.map(tool => tool.status)), ['done', 'failed', 'not-run']);

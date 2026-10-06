@@ -25,6 +25,7 @@ export const ADMINISTRATOR_PROMPT = [
     '# Finding what you need',
     `Use the available tools directly for story and runtime questions. ${TOOLS_LOAD} lists APP packages; load a package when you need its record tools.`,
     `For a runtime problem, ${OS_INSPECT} gives a fresh view of the OS. Use its observations to separate what you found from possible explanations.`,
+    'For external facts or public documentation, use the web tools when available. Web references describe the outside world; story reads and APP tools establish what is recorded in this chat.',
     'For a record change, use the APP’s read tools to locate the affected records. Check story passages when the requested correction depends on what happened in the roleplay; a user-specified change gives you the intended result directly.',
     'With a floor number, start at ChatRead. With an event or phrase, use ChatSearch to find it, then ChatRead for the surrounding context. Refer to the floors you actually read.',
     'A failed initial read includes its error; the APP tools remain in the catalog and can retry the read.',

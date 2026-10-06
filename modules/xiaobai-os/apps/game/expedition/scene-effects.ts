@@ -2,19 +2,20 @@ import type { Group, Mesh } from 'three';
 import { ENEMIES, isBoss } from './content.js';
 import type { Battle } from './types.js';
 import type { SceneKit } from './scene-kit.js';
+import { CONTRACT_COLORS as C, DEFENSE_COLORS } from './visuals.js';
 
 const FX = { danger: '#c34740', warning: '#ec8754', magic: '#8bd9f2', frost: '#addffc', gold: '#fff0bb', heal: '#75dbb0', fire: '#f0ad55' };
 /** Reusable effect meshes: no geometry allocation in the combat frame loop. */
 export function createBattleEffects(k: SceneKit, root: Group) {
     const pools = new Map<string, { list: Mesh[]; used: number }>();
-    function draw(kind: keyof SceneKit['geometries'], color: string, opacity = 1) {
-        const alpha = Math.max(.1, Math.min(1, Math.round(opacity * 10) / 10)), key = `${kind}/${color}/${alpha}`;
+    function draw(kind: keyof SceneKit['geometries'], color: string, opacity = 1, lit = false) {
+        const alpha = Math.max(.1, Math.min(1, Math.round(opacity * 10) / 10)), key = `${kind}/${color}/${alpha}/${lit}`;
         let pool = pools.get(key); if (!pool) { pool = { list: [], used: 0 }; pools.set(key, pool); }
         let mesh = pool.list[pool.used++];
-        if (!mesh) { mesh = k.mesh(root, kind, color, [1, 1, 1], [0, 0, 0], true, alpha); pool.list.push(mesh); }
+        if (!mesh) { mesh = k.mesh(root, kind, color, [1, 1, 1], [0, 0, 0], !lit, alpha); pool.list.push(mesh); }
         mesh.visible = true; mesh.rotation.set(0, 0, 0); mesh.scale.set(1, 1, 1); return mesh;
     }
-    function ground(kind: 'ring' | 'disc' | 'arc', color: string, radius: number, x: number, z: number, opacity = 1, y = .09) {
+    function ground(kind: 'ring' | 'disc' | 'arc' | 'stroke', color: string, radius: number, x: number, z: number, opacity = 1, y = .09) {
         const mesh = draw(kind, color, opacity); mesh.position.set(x, y, z); mesh.scale.set(radius, radius, 1); mesh.rotation.x = -Math.PI / 2; return mesh;
     }
     return { update(b: Battle | null, reduced: boolean) {
@@ -29,8 +30,6 @@ export function createBattleEffects(k: SceneKit, root: Group) {
                 streak.scale.set(.13, p.dashTime / 8 * 1.7, .13); streak.rotation.set(0, -p.dashAngle, -Math.PI / 2);
             }
         }
-        if (p.shield) { ground('ring', FX.magic, .9, p.x, p.y); }
-        if (p.ward > 0) { ground('ring', FX.heal, .8, p.x, p.y, .7); }
         if (!b.boss && (b.encounter === 'siege' || b.encounter === 'ritual')) {
             const o = b.objective;
             if (b.encounter === 'ritual') {
@@ -39,6 +38,11 @@ export function createBattleEffects(k: SceneKit, root: Group) {
             }
             const plinth = draw('cylinder', '#526b79'); plinth.position.set(o.x, .3, o.y); plinth.scale.set(.5, .6, .5);
             const core = draw('rock', b.encounter === 'siege' ? FX.fire : FX.magic); core.position.set(o.x, 1, o.y); core.scale.set(.23, .5, .23);
+            if (b.encounter === 'siege') {
+                core.position.y = 1.35; core.scale.set(.4, .85, .4);
+                const flame = draw('cone', FX.gold, .8); flame.position.set(o.x, 1.4, o.y); flame.scale.set(.2, .85, .2);
+                ground('ring', FX.fire, .9, o.x, o.y, .8);
+            }
             if (!reduced) { core.rotation.y = b.tick * .025; }
         }
         for (const ally of b.companions) {
@@ -49,10 +53,20 @@ export function createBattleEffects(k: SceneKit, root: Group) {
                 const cannon = draw('box', '#bd9a68'); cannon.position.set(ally.x, .65, ally.y); cannon.scale.set(.9, .2, .25); cannon.rotation.y = -ally.angle;
                 const glow = draw('sphere', FX.magic); glow.position.set(ally.x + Math.cos(ally.angle) * .45, .65, ally.y + Math.sin(ally.angle) * .45); glow.scale.setScalar(.11);
             } else {
-                const glow = draw('sphere', ally.kind === 'shade' ? '#a6acd8' : ally.empowered ? FX.gold : FX.heal, .8);
-                glow.position.set(ally.x, .55 + (reduced ? 0 : Math.sin(b.tick * .1 + ally.id) * .08), ally.y); glow.scale.set(.3, .36, .3);
-                for (const side of [-1, 1]) { const ear = draw('cone', ally.kind === 'shade' ? '#a6acd8' : FX.heal); ear.position.set(ally.x + side * .2, .93, ally.y); ear.scale.set(.08, .22, .08); }
-                const eye = draw('sphere', '#fff9d3'); eye.position.set(ally.x + Math.cos(ally.angle) * .26, .63, ally.y + Math.sin(ally.angle) * .26); eye.scale.setScalar(.07);
+                const empowered = ally.kind === 'familiar' && p.resonance > 0, size = empowered ? 1.5 : 1;
+                const color = ally.kind === 'shade' ? '#a6acd8' : empowered ? C.empowered : C.familiar;
+                const bob = reduced ? 0 : Math.sin(b.tick * .1 + ally.id) * .08;
+                const glow = draw('sphere', color, 1, true);
+                glow.position.set(ally.x, .55 * size + bob, ally.y); glow.scale.set(.3 * size, .36 * size, .3 * size);
+                for (const side of [-1, 1]) { const ear = draw('cone', color, 1, true); ear.position.set(ally.x + side * .2 * size, .93 * size + bob, ally.y); ear.scale.set(.08 * size, .22 * size, .08 * size); }
+                const eye = draw('sphere', '#35475b'); eye.position.set(ally.x + Math.cos(ally.angle) * .28 * size, .63 * size + bob, ally.y + Math.sin(ally.angle) * .28 * size); eye.scale.setScalar(.07 * size);
+                if (empowered) {
+                    const crown = draw('torus', C.crest, 1, true); crown.position.set(ally.x, 1.45 + bob, ally.y); crown.rotation.x = Math.PI / 2; crown.scale.setScalar(.32);
+                    for (let i = 0; i < 3; i++) {
+                        const a = i * Math.PI * 2 / 3, jewel = draw('rock', C.crest, 1, true);
+                        jewel.position.set(ally.x + Math.cos(a) * .32, 1.55 + bob, ally.y + Math.sin(a) * .32); jewel.scale.set(.08, .17, .08);
+                    }
+                }
             }
         }
         for (const e of b.enemies) {
@@ -120,14 +134,40 @@ export function createBattleEffects(k: SceneKit, root: Group) {
         for (const e of b.effects) {
             const t = 1 - e.life / (e.kind === 'slash' ? 9 : 15);
             if (e.kind === 'slash') {
-                const arc = ground('arc', FX.gold, e.size, e.x, e.y, 1 - t * .6, .42); arc.rotation.z = -e.angle - .9 + t * .4;
-                const inner = ground('arc', '#ffffff', e.size * .86, e.x, e.y, 1 - t * .8, .43); inner.rotation.z = arc.rotation.z;
+                const arc = ground('arc', FX.gold, e.size, e.x, e.y, .3 * (1 - t), .42); arc.rotation.z = -e.angle - .9 + t * .4;
+                const edge = ground('stroke', '#fff4d2', e.size, e.x, e.y, .9 * (1 - t), .43); edge.rotation.z = arc.rotation.z;
+            } else if (e.kind === 'resonance') {
+                ground('ring', C.crest, e.size * (reduced ? 1 : .6 + t * (2 - t)), e.x, e.y, .8 - t * .6, .16);
+                for (const ally of b.companions) {
+                    if (ally.kind !== 'familiar' || ally.hp <= 0 || ally.life <= 0) { continue; }
+                    const dx = ally.x - p.x, dy = ally.y - p.y;
+                    const link = draw('box', C.empowered, 1 - t * .7);
+                    link.position.set((p.x + ally.x) / 2, 1.1, (p.y + ally.y) / 2); link.scale.set(Math.hypot(dx, dy), .045, .045); link.rotation.y = -Math.atan2(dy, dx);
+                }
+                for (let i = 0; i < 4; i++) {
+                    const a = i * Math.PI / 2 + (reduced ? 0 : t), rune = draw('rock', C.empowered, 1 - t * .4);
+                    rune.position.set(p.x + Math.cos(a) * .95, 1.7 + (reduced ? 0 : t * .5), p.y + Math.sin(a) * .95); rune.scale.set(.08, .18, .08);
+                }
             } else if (e.kind === 'lightning') {
                 for (let i = 0; i < 4; i++) {
                     const bolt = draw('box', i % 2 ? '#ffffff' : FX.magic, 1 - t * .6); bolt.scale.set(.09 + (1 - t) * .09, 1.05, .08);
                     bolt.position.set(e.x + (i % 2 ? .14 : -.14), .5 + i * .85, e.y); bolt.rotation.z = i % 2 ? -.35 : .35;
                 }
                 ground('ring', FX.magic, .4 + t, e.x, e.y, 1 - t);
+            } else if (e.kind === 'block' || e.kind === 'parry' || e.kind === 'ward-hit' || e.kind === 'ward-break') {
+                const blocking = e.kind === 'block' || e.kind === 'parry', broken = e.kind === 'ward-break';
+                const color = blocking ? e.kind === 'parry' ? DEFENSE_COLORS.parry : DEFENSE_COLORS.block : DEFENSE_COLORS.ward;
+                if (blocking) {
+                    const impact = draw('ring', color, 1 - t);
+                    impact.position.set(e.x + Math.cos(e.angle) * .7, 1.3, e.y + Math.sin(e.angle) * .7);
+                    impact.rotation.y = Math.PI / 2 - e.angle; impact.scale.setScalar(.6 + t * (e.kind === 'parry' ? 1.3 : .6));
+                }
+                for (let i = 0; i < (broken ? 6 : 4); i++) {
+                    const a = i * 2.4 + e.id, shard = draw(broken ? 'rock' : 'box', color, 1 - t);
+                    const spread = reduced ? 1.1 : .7 + t * (broken ? 1.5 : .6);
+                    shard.position.set(e.x + Math.cos(a) * spread, .7 + (i % 3) * .55, e.y + Math.sin(a) * spread);
+                    shard.scale.set(.07 * (1 - t), (broken ? .3 : .16) * (1 - t), .04); shard.rotation.set(a, a, a);
+                }
             } else if (e.kind === 'heal') { ground('ring', FX.heal, .4 + t, e.x, e.y, 1 - t); }
             else {
                 const color = e.kind === 'hit' ? FX.danger : FX.gold;

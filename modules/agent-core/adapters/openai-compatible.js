@@ -945,33 +945,8 @@ async function readSseEventsFromResponse(response, onEvent) {
     let buffer = '';
     const boundaryPattern = /\r?\n\r?\n/;
 
-    while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        while (true) {
-            const boundaryMatch = buffer.match(boundaryPattern);
-            if (!boundaryMatch || typeof boundaryMatch.index !== 'number') break;
-            const boundaryIndex = boundaryMatch.index;
-            const rawEvent = buffer.slice(0, boundaryIndex);
-            buffer = buffer.slice(boundaryIndex + boundaryMatch[0].length);
-            const data = rawEvent
-                .split(/\r?\n/)
-                .filter((line) => line.startsWith('data:'))
-                .map((line) => line.slice(5).trimStart())
-                .join('\n')
-                .trim();
-            if (!data || data === '[DONE]') {
-                continue;
-            }
-            onEvent(JSON.parse(data));
-        }
-    }
-
-    const trailing = buffer.trim();
-    if (trailing && trailing !== '[DONE]') {
-        const data = trailing
+    const consume = (rawEvent) => {
+        const data = rawEvent
             .split(/\r?\n/)
             .filter((line) => line.startsWith('data:'))
             .map((line) => line.slice(5).trimStart())
@@ -980,6 +955,35 @@ async function readSseEventsFromResponse(response, onEvent) {
         if (data && data !== '[DONE]') {
             onEvent(JSON.parse(data));
         }
+    };
+
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+
+            while (true) {
+                const boundaryMatch = buffer.match(boundaryPattern);
+                if (!boundaryMatch || typeof boundaryMatch.index !== 'number') break;
+                const boundaryIndex = boundaryMatch.index;
+                const rawEvent = buffer.slice(0, boundaryIndex);
+                buffer = buffer.slice(boundaryIndex + boundaryMatch[0].length);
+                consume(rawEvent);
+            }
+        }
+
+        const trailing = buffer.trim();
+        if (trailing) consume(trailing);
+    } catch (error) {
+        try {
+            await reader.cancel();
+        } catch {
+            // A failed stream can also reject cancellation; preserve the original failure.
+        }
+        throw error;
+    } finally {
+        reader.releaseLock();
     }
 }
 
@@ -1037,8 +1041,8 @@ export class OpenAICompatibleAdapter {
                     : { max_tokens: task.maxTokens })
                 : {}),
         };
-        // Only direct requests guarantee that DeepSeek receives thinking: enabled.
-        // SillyTavern's OpenAI forwarding path does not pass that field through.
+        // Inherit can enable thinking too. Only an explicit off permits forced tools;
+        // the separate SillyTavern adapter cannot guarantee delivery of that control.
         if (deepSeekThinkingWithTools && (body.tool_choice === 'required' || body.tool_choice?.type === 'function')) {
             body.tool_choice = 'auto';
         }
@@ -1113,6 +1117,10 @@ export class OpenAICompatibleAdapter {
         let lastModel = this.config.model;
 
         await readSseEventsFromResponse(response, (payload) => {
+            if (payload?.error) {
+                // Match the SDK's tagged-stream error contract without inventing an HTTP status.
+                throw new OpenAI.APIError(undefined, payload.error, undefined, response.headers);
+            }
             lastModel = payload?.model || lastModel;
             const choice = payload?.choices?.[0];
             accumulateStreamedAssistantSnapshot(assistantSnapshot, choice);

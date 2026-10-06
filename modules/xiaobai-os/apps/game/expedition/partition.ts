@@ -1,9 +1,10 @@
 import type { PartitionRegistration } from '../../../kernel/contracts.js';
 import { BOSS_SPECS, OATHS, REGIONS, RELICS, RULES, WEAPON_LIST } from './content.js';
 import { awardAmount, awardKeys, chapterOf, emptyExpedition, zoneOf } from './domain.js';
-import { BOSS_IDS, ENCOUNTER_IDS, OUTFIT_IDS } from './ids.js';
+import { BOSS_IDS, ENCOUNTER_IDS, EXPEDITION_FORMAT_VERSION, OUTFIT_IDS } from './ids.js';
 import { OUTFITS, ownsOutfit } from './outfits.js';
 import { upgradeV1 } from './migration/upgrade.js';
+import { upgradeV2 } from './migration/upgrade-v2.js';
 import { validateBattle } from './battle-validation.js';
 import { fault } from './random.js';
 import { compatibleRelics } from './relics.js';
@@ -60,7 +61,7 @@ function validateRun(raw: unknown, data: ExpeditionData) {
     } else if (phase === 'battle') { fault('invalid'); }
 }
 export function validateExpedition(value: unknown): asserts value is ExpeditionData {
-    const v = object(value); if (v.formatVersion !== 2) { fault('invalid'); }
+    const v = object(value); if (v.formatVersion !== EXPEDITION_FORMAT_VERSION) { fault('invalid'); }
     const revision = integer(v.revision);
     if (v.last === null) { if (revision !== 0) { fault('invalid'); } }
     else { const last = object(v.last); expeditionId(last.id); parseCommand(last.command); if (!revision) { fault('invalid'); } }
@@ -78,10 +79,11 @@ export function validateExpedition(value: unknown): asserts value is ExpeditionD
     if (v.active !== null) { validateRun(v.active, data); }
 }
 export const EXPEDITION_PARTITION: PartitionRegistration<ExpeditionData> = {
-    key: 'expedition', ownerId: 'game', storage: 'user', schemaVersion: 2, createInitial: emptyExpedition,
+    key: 'expedition', ownerId: 'game', storage: 'user', schemaVersion: EXPEDITION_FORMAT_VERSION, createInitial: emptyExpedition,
     parse(raw) {
         try {
-            const value = object(raw).formatVersion === undefined ? upgradeV1(raw) : structuredClone(raw);
+            const version = object(raw).formatVersion;
+            const value = version === undefined ? upgradeV1(raw) : version === 2 ? upgradeV2(raw) : structuredClone(raw);
             validateExpedition(value); return { ok: true, value };
         } catch (error) { return { ok: false, error: { code: 'partition_invalid', message: error instanceof Error ? error.message : 'expedition_invalid' } }; }
     },

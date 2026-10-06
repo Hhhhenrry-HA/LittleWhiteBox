@@ -76,13 +76,14 @@
 .learning-process-steps li { display: flex; align-items: baseline; gap: 8px; padding: 10px 0; font-size: 13px; }
 .learning-process-steps li > div { min-width: 0; flex: 1; overflow-wrap: anywhere; }
 .learning-process-steps li > div > small { display: block; color: var(--learn-muted); font-size: 12px; line-height: 1.7; margin-top: 3px; }
+.learning-process-steps li > div > .learning-process-error { color: var(--learn-danger); white-space: pre-wrap; }
 .learning-process-dot { width: 16px; text-align: center; flex-shrink: 0; color: var(--learn-muted); }
 .learning-process-result { color: var(--learn-muted); font-size: 12px; flex-shrink: 0; }
 .learning-process-steps [data-status=done] .learning-process-dot { color: var(--learn-green); }
 .learning-process-steps [data-status=failed] .learning-process-dot, .learning-process-steps [data-status=failed] .learning-process-result { color: var(--learn-danger); }
 .learning-process-steps [data-status=running] .learning-process-dot, .learning-process-steps [data-status=preparing] .learning-process-dot { color: var(--learn-blue); }
 .learning-app .learning-process-status { display: flex; align-items: center; gap: 8px; padding: 9px 12px; font-size: 12px; color: var(--learn-muted); line-height: 1.6; }
-.learning-turn-notice { font-size: 13px; line-height: 1.7; }
+.learning-turn-notice { font-size: 13px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
 .learning-turn-notice { color: var(--learn-muted); border-left: 2px solid var(--learn-rule); padding-left: 12px; }
 .learning-turn-notice.is-error { color: var(--learn-danger); border-color: var(--learn-danger); }
 .learning-turn-recovery { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 4px 12px; }
@@ -504,4 +505,5 @@
 }
 .learning-source-choice, .learning-preparation { margin-block: 12px 20px; }
 .learning-source-choice p, .learning-preparation p { margin-block: 0 10px; }
+.learning-source-choice p { white-space: pre-wrap; overflow-wrap: anywhere; }
 .learning-knowledge-pending { font-size: .85em; margin-block: 12px; }

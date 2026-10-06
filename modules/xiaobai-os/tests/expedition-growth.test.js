@@ -217,7 +217,7 @@ test('all twelve bosses produce legal deterministic encounters throughout a full
 test('the real v1 fixture upgrades once while preserving award identities and the in-progress room', async () => {
     const fixture = JSON.parse(await readFile(new URL('./fixtures/expedition-v1.json', import.meta.url), 'utf8'));
     const parsed = EXPEDITION_PARTITION.parse(fixture.expedition); assert.equal(parsed.ok, true);
-    const next = parsed.value; assert.equal(next.formatVersion, 2); assert.deepEqual(next.awards, fixture.expedition.awards);
+    const next = parsed.value; assert.equal(next.formatVersion, emptyExpedition().formatVersion); assert.deepEqual(next.awards, fixture.expedition.awards);
     assert.equal(next.active.id, fixture.expedition.active.id); assert.equal(next.active.battle.tick, fixture.expedition.active.battle.tick);
     assert.equal(next.active.hp, fixture.expedition.active.hp); assert.deepEqual(next.active.regions, [0, 1, 2]);
     assert.deepEqual(next.active.offers.map(r => r.id), fixture.expedition.active.offers);

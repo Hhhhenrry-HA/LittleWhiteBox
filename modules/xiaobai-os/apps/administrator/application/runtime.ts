@@ -82,7 +82,7 @@ export function createAdministratorRuntime(deps: {
         try {
             const config = await deps.gateway.loadConfig();
             active.executor = await createAdministratorToolExecutor({ registry: deps.management, reader: active.reader,
-                readEnvironment: deps.readEnvironment,
+                readEnvironment: deps.readEnvironment, webConfig: config as Record<string, unknown>, signal: active.abort.signal,
                 operations: active.turn.operations,
                 guard: () => sameChat(active) && active.reader.isCurrent(), onChange: () => { if (sameChat(active)) { changed(true); } },
                 saveReceipts: confirmation => persistTurn(active, confirmation),
@@ -192,11 +192,12 @@ export function createAdministratorRuntime(deps: {
             const sourceIdentity = deps.capture()?.identityKey;
             if (!sourceIdentity) { return; }
             const current = conversation.capture();
-            const agent = await deps.gateway.openSession(await deps.gateway.loadConfig());
+            const config = await deps.gateway.loadConfig();
+            const agent = await deps.gateway.openSession(config);
             if (!current() || run?.promise || deps.capture()?.identityKey !== sourceIdentity) { return; }
             const abort = new AbortController();
             const reader = createAdministratorChatReader(deps.capture, () => abort.signal);
-            const executor = await createAdministratorToolExecutor({ registry: deps.management, reader, readEnvironment: deps.readEnvironment, operations: [], guard: () => false, onChange() {}, async saveReceipts() {} });
+            const executor = await createAdministratorToolExecutor({ registry: deps.management, reader, webConfig: config as Record<string, unknown>, signal: abort.signal, readEnvironment: deps.readEnvironment, operations: [], guard: () => false, onChange() {}, async saveReceipts() {} });
             if (!current() || run?.promise || deps.capture()?.identityKey !== sourceIdentity) { return; }
             const projected = administratorContext(conversation.read());
             usage = contextUsage([ADMINISTRATOR_PROMPT, executor.prompt].join('\n\n'), executor.getTools(),

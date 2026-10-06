@@ -7,6 +7,8 @@ export const RULES = Object.freeze({ hz: 30, arena: 11, playerRadius: .34, speed
     battleShards: 28, eliteShards: 52, bossShards: 80, restHeal: 35, sacrificeHp: 20,
     firstBossAward: 80, firstVictoryAward: 200, masteryAward: 120, oathAward: 100, recordLimit: 20 });
 export interface WeaponSpec { damage: number; period: number; range: number; skill: number; skillCooldown: number; moveFire: number; unlock: number; guard: number }
+export const CONTRACT = Object.freeze({ resonanceTicks: 90, maxPower: 100, familiarHp: 38,
+    damage: 10, empoweredDamage: 17, attackTicks: 32, empoweredAttackTicks: 20 });
 export const WEAPONS: Record<Weapon, WeaponSpec> = {
     blade: { damage: 24, period: 20, range: 2.45, skill: 48, skillCooldown: 105, moveFire: 1, unlock: 0, guard: .8 },
     bow: { damage: 15, period: 25, range: 8.2, skill: 24, skillCooldown: 165, moveFire: .65, unlock: 0, guard: 1 },

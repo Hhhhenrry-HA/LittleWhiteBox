@@ -34,7 +34,7 @@ onMounted(() => {
     renderer.setSize(144, 144, false);
     try {
         for (const id of OUTFIT_IDS) {
-            hero.update({ x: 0, y: 0, facing: Math.PI / 2, dashTime: 0, swing: 0 }, props.weapon, id, 0, true, false);
+            hero.update({ x: 0, y: 0, facing: Math.PI / 2, dashTime: 0, swing: 0, shield: 0, guard: 0, resonance: 0 }, props.weapon, id, 0, true, false);
             hero.root.position.set(0, .1, 0); hero.root.rotation.y = -.2; hero.root.scale.setScalar(1.35);
             renderer.render(scene, camera); thumbnails.value[id] = renderer.domElement.toDataURL('image/png');
         }
@@ -54,7 +54,7 @@ onMounted(() => {
         frame = requestAnimationFrame(draw);
         if (!dirty && (now > actionUntil || reduced.matches)) { return; }
         const playing = now < actionUntil && !reduced.matches, tick = now * .03;
-        hero.update({ x: playing ? Math.sin(tick * .4) * .03 : 0, y: 0, facing: Math.PI / 2, dashTime: 0, swing: playing ? 8 - tick % 8 : 0 }, props.weapon, selected.value, tick, reduced.matches, false);
+        hero.update({ x: playing ? Math.sin(tick * .4) * .03 : 0, y: 0, facing: Math.PI / 2, dashTime: 0, swing: playing ? 8 - tick % 8 : 0, shield: 0, guard: 0, resonance: 0 }, props.weapon, selected.value, tick, reduced.matches, false);
         hero.root.position.set(0, .1, 0); hero.root.rotation.y = Number(rotation.value) * Math.PI / 180; hero.root.scale.setScalar(1.35);
         try { renderer.render(scene, camera); dirty = false; }
         catch { failed.value = true; cancelAnimationFrame(frame); }

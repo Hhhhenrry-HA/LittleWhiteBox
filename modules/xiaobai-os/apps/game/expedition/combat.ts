@@ -3,6 +3,7 @@ import { companionsTick, playerTick } from './combat/actions.js';
 import { encounterTick, encounterWon, initializeObjective, spawnWave } from './combat/encounters.js';
 import { enemiesTick } from './combat/enemies.js';
 import { projectilesTick } from './combat/projectiles.js';
+import { defeatReason } from './combat/outcome.js';
 export { distance, moveBody } from './combat/geometry.js';
 
 export interface BattleSetup { seed: number; zone: number; chapter: number; elite: boolean; boss: boolean; bossKind: BossKind; encounter: EncounterKind; hp: number }
@@ -10,7 +11,7 @@ export function createBattle(setup: BattleSetup, loadout: Loadout): Battle {
     const { seed, zone, chapter, elite, boss, bossKind, encounter, hp } = setup;
     const b: Battle = { tick: 0, seed, serial: 0,
         player: { x: 0, y: 5, hp, facing: -Math.PI / 2, attack: 0, dash: 0, skill: 0, invulnerable: 30,
-            dashTime: 0, dashAngle: 0, swing: 0, shield: 0, combo: 0, guard: 0, resource: 0, ward: 0, lastHit: 0, travel: 0, rescues: 0 },
+            dashTime: 0, dashAngle: 0, swing: 0, shield: 0, combo: 0, guard: 0, resource: 0, resonance: 0, ward: 0, lastHit: 0, travel: 0, rescues: 0 },
         enemies: [], shots: [], hazards: [], effects: [], companions: [],
         obstacles: boss ? (bossKind === 'warden' || bossKind === 'colossus' ? [{ x: -5, y: 0, radius: .85 }, { x: 5, y: 0, radius: .85 }] : [])
             : [{ x: -5, y: -4, radius: .9 }, { x: 5, y: 3, radius: .9 }],
@@ -25,7 +26,7 @@ export function tickBattle(b: Battle, input: InputFrame, loadout: Loadout): void
     const velocity = playerTick(b, input, loadout);
     companionsTick(b, loadout); enemiesTick(b, loadout, velocity); projectilesTick(b, loadout);
     b.enemies = b.enemies.filter(e => e.hp > 0);
-    if (b.player.hp <= 0 || !b.boss && b.encounter === 'siege' && b.objective.hp <= 0) { b.status = 'lost'; }
+    if (defeatReason(b)) { b.status = 'lost'; }
     else { encounterTick(b, loadout); if (encounterWon(b)) { b.status = 'won'; b.shots = []; b.hazards = []; } }
 }
 export function replayInputs(battle: Battle, spans: readonly InputSpan[], loadout: Loadout): Battle {

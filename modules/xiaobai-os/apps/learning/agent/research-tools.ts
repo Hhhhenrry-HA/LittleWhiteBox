@@ -7,7 +7,7 @@ export function learningResearchTools() {
             description: [
                 'Search the public web for teaching materials or factual references. You choose the query from the current teaching need.',
                 'Returns {ok,results:[{id,url,title,summary}]}; on failure returns {ok:false,error,httpStatus?,path?,message?}. Results are search summaries, not article text.',
-                'Available with the shared Tavily key. Use LearningExtract to read a selected page; candidate IDs remain available throughout this classroom conversation.',
+                'Use LearningExtract to read a selected page; candidate IDs remain available throughout this classroom conversation.',
             ].join('\n'),
             parameters: { type: 'object', properties: {
                 query: { type: 'string', maxLength: L.query, description: 'A focused search query.' },

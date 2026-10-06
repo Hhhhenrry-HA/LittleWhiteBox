@@ -3,11 +3,23 @@ import { createServer } from 'vite';
 import process from 'node:process';
 import vue from '@vitejs/plugin-vue';
 import { createClassroomFixture, fixtureLesson } from './learning-classroom.js';
+import { extractTaggedToolCalls } from '../../../agent-core/adapters/openai-compatible.js';
 
 const h = await createClassroomFixture({ lesson: { ...fixtureLesson, kind: 'reading-writing' } });
-await h.openLesson();
-if (h.state().sourceChoice) { await h.command('choose-original'); }
 const call = (name, args) => ({ id: name, name, arguments: JSON.stringify(args) });
+if (process.argv.includes('--failure')) {
+    await h.command('settings', { value: { level: 'B1' } });
+    h.flags.teacherResponse = (request, round) => {
+        if (round === 1) { return { toolCalls: [call('LearningArticle', { title: 'A short article' })] }; }
+        request.onStreamProgress({ toolCalls: [call('LearningArticle', {})] });
+        extractTaggedToolCalls('<｜DSML｜function_calls><｜DSML｜invoke name="LearningArticle"><｜DSML｜parameter name="text" string="true">unfinished');
+    };
+    await h.command('prepare', { kind: 'reading-writing', message: '准备一篇短文。' });
+    await h.command('choose-original');
+} else {
+    await h.openLesson();
+    if (h.state().sourceChoice) { await h.command('choose-original'); }
+}
 if (process.argv.includes('--review')) {
     h.flags.teacherResponse = (_request, round) => round === 1 ? { toolCalls: [call('LearningReadingNotes', {
         explanations: [{ paragraphId: 'p1', explanation: '注意 tree 在这段中的含义。', terms: [{ text: 'tree', note: '树' }] }],

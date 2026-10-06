@@ -1,4 +1,4 @@
-import { ENEMIES, isBoss, RELIC_RULES as R, RULES, WEAPONS } from '../content.js';
+import { CONTRACT, ENEMIES, isBoss, RELIC_RULES as R, RULES, WEAPONS } from '../content.js';
 import { relicRank as rank } from '../relics.js';
 import type { Battle, DamageSource, Enemy, Loadout, Point } from '../types.js';
 import { effect, hazard, shot, sourceIsDirect } from './events.js';
@@ -47,7 +47,7 @@ export function hurtEnemy(b: Battle, e: Enemy, amount: number, loadout: Loadout,
     }
     if (rank(loadout, 'siphon') && (b.kills % R.siphonEvery === 0 || isBoss(e.kind))) { heal(b, (isBoss(e.kind) ? R.siphonBossHeal : R.siphonHeal) + rank(loadout, 'siphon') - 1); }
     if (rank(loadout, 'execution-chain')) { b.player.dash = Math.max(0, b.player.dash - 12 * rank(loadout, 'execution-chain')); b.player.skill = Math.max(0, b.player.skill - 8); }
-    if (rank(loadout, 'soul-harvest')) { b.player.resource = Math.min(100, b.player.resource + 9 * rank(loadout, 'soul-harvest')); }
+    if (rank(loadout, 'soul-harvest')) { b.player.resource = Math.min(CONTRACT.maxPower, b.player.resource + 9 * rank(loadout, 'soul-harvest')); }
     if (source === 'companion' && rank(loadout, 'salvage')) { b.player.skill = Math.max(0, b.player.skill - 12 * rank(loadout, 'salvage')); }
     if (rank(loadout, 'magnet')) { for (const other of b.enemies) { if (other.hp > 0 && distance(e, other) < 3 + rank(loadout, 'magnet')) { moveBody(b, other, angleTo(other, e), .7, ENEMIES[other.kind].radius); } } }
 }
@@ -59,7 +59,7 @@ export function lightning(b: Battle, target: Enemy, loadout: Loadout, damage: nu
 export function block(b: Battle, loadout: Loadout) {
     const p = b.player, perfect = p.guard > 0;
     p.resource = Math.min(100, p.resource + (perfect ? 25 : 8));
-    effect(b, p, 'guard', perfect ? 2 : 1);
+    effect(b, p, perfect ? 'parry' : 'block', perfect ? 2 : 1, p.facing);
     if (perfect) { p.skill = Math.max(35, p.skill - 15); }
     const riposte = rank(loadout, 'riposte'), thorns = rank(loadout, 'thorns');
     if (riposte || thorns) { for (const e of b.enemies) { if (distance(e, p) < 3.2 + riposte * .3) { hurtEnemy(b, e, (perfect ? 20 : 8) * riposte + 9 * thorns, loadout, 'passive'); stagger(b, e, perfect ? 20 : 7); } } }
@@ -70,7 +70,8 @@ export function hurtPlayer(b: Battle, damage: number, loadout: Loadout) {
     if (p.shield > 0) { block(b, loadout); p.invulnerable = p.guard > 0 ? 8 : 4; return; }
     let amount = damage * WEAPONS[loadout.weapon].guard * (rank(loadout, 'blood-price') ? R.bloodHurt : 1) * (rank(loadout, 'gambit') ? 1.2 : 1);
     const absorbed = Math.min(p.ward, amount); p.ward -= absorbed; amount -= absorbed;
-    if (p.hp <= amount && rank(loadout, 'last-stand') && !p.rescues) { p.rescues++; p.hp = 15 + rank(loadout, 'last-stand') * 8; p.invulnerable = 60; effect(b, p, 'guard', 3); return; }
-    p.hp = Math.max(0, p.hp - amount); b.damageTaken += amount; p.invulnerable = 18; p.lastHit = b.tick; effect(b, p, 'hit');
+    if (p.hp <= amount && rank(loadout, 'last-stand') && !p.rescues) { p.rescues++; p.hp = 15 + rank(loadout, 'last-stand') * 8; p.invulnerable = 60; effect(b, p, absorbed > 0 ? 'ward-break' : 'guard', 3); return; }
+    p.hp = Math.max(0, p.hp - amount); b.damageTaken += amount; p.invulnerable = 18; p.lastHit = b.tick;
+    effect(b, p, absorbed > 0 ? p.ward > 0 ? 'ward-hit' : 'ward-break' : 'hit');
     if (rank(loadout, 'thorns')) { for (const e of b.enemies) { if (distance(e, p) < 3) { hurtEnemy(b, e, 10 * rank(loadout, 'thorns'), loadout, 'passive'); } } }
 }

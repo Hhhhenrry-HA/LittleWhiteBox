@@ -1,4 +1,4 @@
-import { ENEMIES, isBoss, RELIC_RULES as R, RULES, WEAPONS } from '../content.js';
+import { CONTRACT, ENEMIES, isBoss, RELIC_RULES as R, RULES, WEAPONS } from '../content.js';
 import { relicRank as rank } from '../relics.js';
 import type { Battle, Enemy, InputFrame, Loadout, Player } from '../types.js';
 import { heal, hurtEnemy, lightning, stagger } from './damage.js';
@@ -31,7 +31,7 @@ function attack(b: Battle, loadout: Loadout, target: Enemy, extra = false) {
     let damage = spec.damage * power;
     if (rank(loadout, 'distance-draw')) { damage *= 1 + Math.min(1, distance(p, target) / 8) * .15 * rank(loadout, 'distance-draw'); }
     if (loadout.weapon === 'staff') { p.resource = Math.min(100, p.resource + 18); }
-    if (loadout.weapon === 'grimoire') { p.resource = Math.min(100, p.resource + 12); }
+    if (loadout.weapon === 'grimoire') { p.resource = Math.min(CONTRACT.maxPower, p.resource + 12); }
     const pierce = rank(loadout, 'piercing') * R.extraPierce + rank(loadout, 'railgun') * 2;
     const projectile = shot(b, p, angle, damage, true, { pierce, speed: loadout.weapon === 'bow' ? .38 : .28,
         splash: loadout.weapon === 'staff' ? 1.4 : loadout.weapon === 'cannon' ? 1.8 + rank(loadout, 'shrapnel') * .3 : 0,
@@ -92,7 +92,11 @@ function skill(b: Battle, loadout: Loadout, target: Enemy | undefined) {
         }
         case 'grimoire': {
             const power = p.resource; p.resource = 0;
-            for (const ally of b.companions) { if (ally.kind === 'familiar') { ally.empowered = 90 + power; ally.hp = Math.max(ally.hp, 38); ally.cooldown = 0; } }
+            p.resonance = CONTRACT.resonanceTicks + power;
+            effect(b, p, 'resonance', 2);
+            for (const ally of b.companions) {
+                if (ally.kind === 'familiar' && ally.hp > 0 && ally.life > 0) { ally.hp = Math.max(ally.hp, CONTRACT.familiarHp); ally.cooldown = 0; }
+            }
             if (target) { target.exposed = 100; hurtEnemy(b, target, spec.skill + power * .3, loadout, 'skill'); }
             if (rank(loadout, 'command')) { hazard(b, target ?? p, 'storm', 2.4 + rank(loadout, 'command') * .3, 10, 65, 7 * rank(loadout, 'command'), true, { source: 'skill' }); }
             break;
@@ -157,13 +161,14 @@ export function playerTick(b: Battle, input: InputFrame, loadout: Loadout) {
 }
 
 export function companionsTick(b: Battle, loadout: Loadout) {
+    // One window belongs to the caster, including frames with no living familiars.
+    b.player.resonance = Math.max(0, b.player.resonance - 1);
     if (loadout.weapon === 'grimoire' && b.tick % 45 === 1) {
         const wanted = 2 + rank(loadout, 'pack-bond');
-        if (b.companions.filter(c => c.kind === 'familiar' && c.hp > 0).length < wanted) { companion(b, 'familiar', atAngle(b.player, b.tick, 1), 36000); }
+        if (b.companions.filter(c => c.kind === 'familiar' && c.hp > 0 && c.life > 0).length < wanted) { companion(b, 'familiar', atAngle(b.player, b.tick, 1), 36000); }
     }
     for (const ally of b.companions) {
         ally.life--; ally.cooldown = Math.max(0, ally.cooldown - 1);
-        if (ally.kind === 'familiar') { ally.empowered = Math.max(0, ally.empowered - 1); }
         const target = b.enemies.filter(e => e.hp > 0).sort((a, c) => distance(a, ally) - distance(c, ally))[0];
         if (ally.hp <= 0 || ally.life <= 0 || !target) { continue; }
         ally.angle = angleTo(ally, target);
@@ -175,10 +180,11 @@ export function companionsTick(b: Battle, loadout: Loadout) {
         if (!ally.cooldown && distance(ally, target) < reach) {
             if (ally.kind === 'turret') { shot(b, ally, ally.angle, WEAPONS.cannon.skill * (1 + ally.empowered * .15), true, { source: 'companion', speed: .35 }); ally.cooldown = 28 - ally.empowered * 3; }
             else {
-                const empowered = ally.kind === 'familiar' && ally.empowered > 0;
-                const damage = ally.kind === 'shade' ? 9 + ally.empowered * 4 : (empowered ? 17 : 10) * (1 + rank(loadout, 'covenant') * .15);
+                const empowered = ally.kind === 'familiar' && b.player.resonance > 0;
+                const damage = ally.kind === 'shade' ? 9 + ally.empowered * 4 : (empowered ? CONTRACT.empoweredDamage : CONTRACT.damage) * (1 + rank(loadout, 'covenant') * .15);
                 hurtEnemy(b, target, damage, loadout, 'companion', ally); effect(b, ally, 'slash', 1.2, ally.angle);
-                ally.cooldown = Math.round((empowered ? 20 : 32) / (1 + rank(loadout, 'frenzy') * .18));
+                const period = ally.kind === 'shade' ? 32 : empowered ? CONTRACT.empoweredAttackTicks : CONTRACT.attackTicks;
+                ally.cooldown = Math.round(period / (1 + rank(loadout, 'frenzy') * .18));
             }
         }
     }

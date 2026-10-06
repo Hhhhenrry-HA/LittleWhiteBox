@@ -1,4 +1,4 @@
-import type { BOSS_IDS, ENCOUNTER_IDS, MOB_IDS, OATH_IDS, OUTFIT_IDS, RELIC_IDS, WEAPON_IDS } from './ids.js';
+import type { BOSS_IDS, EFFECT_IDS, ENCOUNTER_IDS, EXPEDITION_FORMAT_VERSION, MOB_IDS, OATH_IDS, OUTFIT_IDS, RELIC_IDS, WEAPON_IDS } from './ids.js';
 export type Weapon = typeof WEAPON_IDS[number];
 export type Oath = typeof OATH_IDS[number];
 export type Relic = typeof RELIC_IDS[number];
@@ -16,7 +16,7 @@ export interface RelicStack { id: Relic; rank: number }
 export interface Player extends Point {
     hp: number; facing: number; attack: number; dash: number; skill: number; invulnerable: number;
     dashTime: number; dashAngle: number; swing: number; shield: number; combo: number;
-    guard: number; resource: number; ward: number; lastHit: number; travel: number; rescues: number;
+    guard: number; resource: number; resonance: number; ward: number; lastHit: number; travel: number; rescues: number;
 }
 export interface Enemy extends Point {
     id: number; kind: EnemyKind; hp: number; maxHp: number; angle: number; cooldown: number;
@@ -33,7 +33,7 @@ export interface Hazard extends Point {
     kind: 'storm' | 'fire' | 'slam' | 'frost' | 'poison' | 'beam' | 'ring' | 'mine';
     angle: number; length: number; width: number; inner: number; source: DamageSource;
 }
-export interface Effect extends Point { id: number; kind: 'hit' | 'heal' | 'slash' | 'lightning' | 'burst' | 'guard'; life: number; angle: number; size: number }
+export interface Effect extends Point { id: number; kind: typeof EFFECT_IDS[number]; life: number; angle: number; size: number }
 export interface Obstacle extends Point { radius: number }
 export interface Companion extends Point { id: number; kind: 'familiar' | 'turret' | 'shade'; hp: number; life: number; cooldown: number; angle: number; empowered: number }
 export interface Objective extends Point { hp: number; progress: number; target: number }
@@ -65,7 +65,7 @@ export type Command =
     | { type: 'supply' }
     | { type: 'leave' } | { type: 'rest' } | { type: 'sacrifice' } | { type: 'abandon' };
 export interface ExpeditionData {
-    formatVersion: 2; revision: number; last: { id: string; command: Command } | null; active: Run | null;
+    formatVersion: typeof EXPEDITION_FORMAT_VERSION; revision: number; last: { id: string; command: Command } | null; active: Run | null;
     victories: number; discoveries: Relic[]; records: RecordEntry[]; awards: Award[];
     purchases: Purchase[]; equippedOutfit: Outfit;
 }

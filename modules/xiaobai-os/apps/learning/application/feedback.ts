@@ -22,7 +22,7 @@ const providerCopy: Record<ProviderFailureReason, string> = {
     'provider-rate-limit': 'AI 服务暂时无法继续，请稍后重试，并检查剩余额度。',
     'provider-timeout': '等了有一会儿，还是没收到回复。请检查连接后重试。',
     'provider-unavailable': 'AI 服务暂时不可用，请稍后重试。',
-    'provider-failed': '这次没能收到回复，请检查 AI 连接后重试。',
+    'provider-failed': '模型请求未完成，未提供具体错误。',
 };
 
 export interface LearningProgress {
@@ -46,7 +46,13 @@ export function learningProgressMessage(progress: LearningProgress): string {
     return `正在${stages[progress.stage]}…`;
 }
 
-export function learningTeachingFailure(reason: string): string {
+export function learningTeachingFailure(reason: string, cause?: unknown): string {
+    const detail = learningFailureCause(cause);
+    const metadata = [detail.httpStatus ? `HTTP ${detail.httpStatus}` : '', detail.errorCode, detail.responseReason].filter(Boolean);
+    if (detail.errorMessage && detail.errorMessage !== reason || metadata.length) {
+        return [detail.errorMessage && detail.errorMessage !== reason ? detail.errorMessage : learningTeachingFailure(reason),
+            metadata.join(' · ')].filter(Boolean).join('\n');
+    }
     const provider = providerCopy[reason as ProviderFailureReason];
     if (provider) { return provider; }
     switch (reason) {
@@ -76,18 +82,28 @@ function diagnosticToken(value: unknown): string | undefined {
     return typeof value === 'string' && /^[a-zA-Z][\w.[\]-]{0,119}$/.test(value) ? value : undefined;
 }
 
+/** Error messages explain the failure; request/response objects, headers and provider settings are not display data. */
+function learningFailureCause(cause: unknown) {
+    const value = cause && typeof cause === 'object'
+        ? cause as { name?: unknown; code?: unknown; status?: unknown; httpStatus?: unknown; message?: unknown; reason?: unknown } : {};
+    const status = value.status ?? value.httpStatus;
+    const message = typeof cause === 'string' ? cause : typeof value.message === 'string' ? value.message : undefined;
+    return { errorMessage: message, errorName: diagnosticToken(value.name),
+        errorCode: typeof value.code === 'string' ? value.code : message && /^learning_[a-z_]+$/.test(message) ? message : undefined,
+        httpStatus: typeof status === 'number' && status >= 100 && status <= 599 ? status : undefined,
+        responseReason: typeof value.reason === 'string' ? value.reason : undefined };
+}
+
 /** Keep local validation rules, not the user/model field values or a provider's response body. */
 function diagnosticIssue(issue: { path: string; message: string }) {
     const rule = issue.message.startsWith(`${issue.path}: `) ? issue.message.slice(issue.path.length + 2) : issue.message;
     return { path: diagnosticToken(issue.path) ?? '(non-standard field)', rule: rule.slice(0, 240) };
 }
 
-/** One terminal diagnostic; raw errors, requests, tool arguments, settings and story text never enter it. */
+/** Preserve the actual error alongside its stage, without serializing request payloads or credentials. */
 export function reportLearningFailure(action: string, reason: string, details: LearningFailureDetails): string {
     const cause = details.cause && typeof details.cause === 'object'
-        ? details.cause as { name?: unknown; code?: unknown; status?: unknown; httpStatus?: unknown; message?: unknown; stack?: unknown } : {};
-    const status = cause.status ?? cause.httpStatus;
-    const localCode = typeof cause.message === 'string' && /^learning_[a-z_]+$/.test(cause.message) ? cause.message : undefined;
+        ? details.cause as { stack?: unknown } : {};
     // Only source basenames and line/column positions: omit stack messages, URL queries, hosts and filesystem directories.
     const locations = typeof cause.stack === 'string' ? cause.stack.split('\n').slice(1, 9).flatMap(frame => {
         const location = frame.match(/([^/\\\s():?#]{1,100}\.(?:[cm]?js|ts|vue)):(\d+):(\d+)/);
@@ -97,9 +113,8 @@ export function reportLearningFailure(action: string, reason: string, details: L
     console.error('[LittleWhiteBox][Learning] 学习操作失败', {
         action: diagnosticToken(action), reason, stage: details.stage, round: details.round,
         tool: diagnosticToken(details.tool),
-        httpStatus: typeof status === 'number' && status >= 100 && status <= 599 ? status : undefined,
-        errorName: diagnosticToken(cause.name), errorCode: diagnosticToken(cause.code) ?? localCode,
+        ...learningFailureCause(details.cause),
         locations, issues: issues.slice(0, 16).map(diagnosticIssue),
     });
-    return learningTeachingFailure(reason);
+    return learningTeachingFailure(reason, details.cause);
 }

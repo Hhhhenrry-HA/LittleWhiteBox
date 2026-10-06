@@ -4,7 +4,7 @@ import type { LearningDialogueView } from '../application/message-view.js';
 import { learningProgressMessage } from '../application/feedback.js';
 import MessageMarkdown from '../../../shell/app-src/components/MessageMarkdown.vue';
 import { learningProcessRounds, type LearningProcessTool } from './learning-process.js';
-import { LEARNING_PROCESS_COPY as copy, LEARNING_PROCESS_FIELD_LABELS as fields } from './learning-copy.js';
+import { LEARNING_PROCESS_COPY as copy } from './learning-copy.js';
 import { LEARNING_PREPARATION_COPY } from '../application/preparation-copy.js';
 import { learningResearchFailure } from '../application/research-feedback.js';
 
@@ -45,9 +45,6 @@ function details(tool: LearningProcessTool) {
         if (tool.input.materialsCount) { items.push(copy.proposedMaterials(tool.input.materialsCount)); }
         if (tool.input.exercisesCount) { items.push(copy.proposedExercises(tool.input.exercisesCount)); }
     }
-    if (tool.result.errorsCount) { items.push(copy.issues(tool.result.errorsCount)); }
-    const labels = (tool.result.errorFields ?? []).map(field => fields[field as keyof typeof fields]).filter(Boolean);
-    if (labels.length) { items.push(copy.checkFields([...new Set(labels)].join('、'))); }
     return items.join(' · ');
 }
 watch(running, () => { opened.value = null; });
@@ -74,7 +71,10 @@ watch(() => props.turn.messages, async () => {
                 <ol v-if="round.tools.length" class="learning-process-steps" :aria-label="copy.round(round.index)">
                     <li v-for="tool in round.tools" :key="tool.id" :data-status="tool.status">
                         <span class="learning-process-dot" aria-hidden="true">{{ tool.status === 'done' ? '✓' : tool.status === 'failed' ? '!' : '·' }}</span>
-                        <div><span>{{ copy.tools[tool.name] ?? copy.unknownTool }}</span><small v-if="details(tool)">{{ details(tool) }}</small></div>
+                        <div>
+                            <span>{{ copy.tools[tool.name] ?? copy.unknownTool }}</span><small v-if="details(tool)">{{ details(tool) }}</small>
+                            <small v-for="(error, index) in tool.result.errors" :key="index" class="learning-process-error">{{ error.message }}</small>
+                        </div>
                         <small class="learning-process-result">{{ copy[tool.status] }}</small>
                     </li>
                 </ol>

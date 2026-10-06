@@ -33,7 +33,7 @@ import { sameLearningDocument, type LearningDocument } from '../storage/document
 import type { LearningClientState } from '../types.js';
 import type { LearningTtsFacade } from './media-adapter.js';
 import type { LearningRewardPolicy } from '../reward-partition.js';
-import { isTavilyConfigured } from '../../../../agent-core/tavily-search.js';
+import { isWebConfigured } from '../../../../agent-core/web/tools.js';
 import { learningPreparation } from '../../../domains/learning/preparation.js';
 import { LEARNING_PREPARATION_COPY as prepCopy } from '../application/preparation-copy.js';
 import { learningActionBusy, learningActionLane } from '../application/action-availability.js';
@@ -322,7 +322,7 @@ export function createLearningRuntime(deps: {
         if (source === 'web') {
             const config = await deps.agent.loadConfig();
             if (!guard()) { return; }
-            if (!isTavilyConfigured(config)) { sourceChoice = { reason: 'unconfigured', source, input: structuredClone(input), unitId: profile?.unit?.id ?? null }; return; }
+            if (!isWebConfigured(config)) { sourceChoice = { reason: 'unconfigured', source, input: structuredClone(input), unitId: profile?.unit?.id ?? null }; return; }
         }
         if (guard()) { startPreparation({ source, replaceCurrent, message: learningText(input.message, 'message', 4000) }); }
     }

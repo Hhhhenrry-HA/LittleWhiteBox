@@ -17,7 +17,7 @@ import {
     normalizeJsApiPermission,
     normalizeAssistantConfig,
 } from '../../agent-core/config.js';
-import { isTavilyConfigured } from '../../agent-core/tavily-search.js';
+import { isWebConfigured } from '../../agent-core/web/tools.js';
 import {
     normalizeSlashCommand,
     normalizeSlashSkillTrigger,
@@ -1160,7 +1160,7 @@ function getEnabledToolDefinitions(options = {}) {
         ? TOOL_DEFINITIONS
         : TOOL_DEFINITIONS.filter((tool) => tool?.function?.name !== TOOL_NAMES.RUN_JAVASCRIPT_API);
     const providerConfig = getActiveProviderConfig(role === 'delegate' ? { role: 'delegate' } : {});
-    if (!isTavilyConfigured(providerConfig)) {
+    if (!isWebConfigured(providerConfig)) {
         definitions = definitions.filter((tool) => tool?.function?.name !== TOOL_NAMES.WEB_SEARCH);
     }
     return definitions;
