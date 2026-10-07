@@ -1,5 +1,7 @@
 import type { LearningAssessment, LearningAttempt, LearningUnit } from './types.js';
 import { learningPreparation } from './preparation.js';
+import { learningWorkInScope } from './work.js';
+import { requireLearning } from './validation.js';
 
 export type LearningUnitStage = 'lesson' | 'writing' | 'grading' | 'revising' | 'reviewing' | 'model' | 'answering' | 'complete';
 export type LearningExerciseStatus = 'writing' | 'grading' | 'revising' | 'reviewing' | 'done';
@@ -18,7 +20,9 @@ export function learningLatestDraft(unit: LearningUnit, exerciseId: string): Lea
 }
 
 /** Derived from saved attempts and feedback only; no step number is stored beside them. */
-export function learningUnitStage(unit: LearningUnit): { stage: LearningUnitStage; exercises: LearningExerciseStage[] } {
+export function learningUnitStage(source: LearningUnit, osId: string | null): { stage: LearningUnitStage; exercises: LearningExerciseStage[] } {
+    const unit = learningWorkInScope(source, osId);
+    requireLearning(unit, 'unitId', 'Select an available learning unit');
     // Disputed feedback is waiting to be judged again, so it does not move the unit forward.
     const assessed = (attempt: LearningAttempt | undefined) => unit.assessments.find(entry => entry.attemptId === attempt?.id && entry.verdict !== 'disputed');
     const rows = unit.exercises.map(exercise => {
@@ -42,7 +46,8 @@ export function learningUnitStage(unit: LearningUnit): { stage: LearningUnitStag
     const status = (row: typeof rows[number]): LearningExerciseStatus => !row.draft ? 'writing'
         : row.revision && !row.revisionAssessment ? 'reviewing'
             : !row.draftAssessment ? 'grading'
-        : !unit.revisionSkipped && learningNeedsRevision(row.revision ? row.revisionAssessment : row.draftAssessment) ? 'revising' : 'done';
+        : !unit.skippedRevisionAttemptIds?.includes((row.revision ?? row.draft)!.id)
+            && learningNeedsRevision(row.revision ? row.revisionAssessment : row.draftAssessment) ? 'revising' : 'done';
     if (!learningPreparation(unit).ready || rows.some(row => !row.draft)) { return { stage: 'writing', exercises: exercises(status) }; }
     if (rows.some(row => !row.draftAssessment)) { return { stage: 'grading', exercises: exercises(status) }; }
     if (rows.some(row => row.revision && !row.revisionAssessment)) { return { stage: 'reviewing', exercises: exercises(status) }; }

@@ -28,7 +28,7 @@ export function learningTurnMessages(turn: LearningTurn): Record<string, unknown
 /** An interrupted draft is not a saved tool result. Retain the visible exchange without replaying uncommitted writes. */
 export function learningInterruptedMessages(turn: LearningDialogue): Record<string, unknown>[] {
     const text = learningReplyText(turn.messages);
-    return [{ role: 'user', content: turn.user }, ...(text ? [{ role: 'assistant', content: text }] : []),
+    return [...(turn.user ? [{ role: 'user', content: turn.user }] : []), ...(text ? [{ role: 'assistant', content: text }] : []),
         { role: 'system', content: `Classroom operation status (reference data): ${safePromptJson({
             status: turn.status, message: turn.message, learningChanges: 'Each confirmed tool edit is saved independently. Earlier successful edits survive interruption. Read current records before continuing unfinished work.',
         })}` }];

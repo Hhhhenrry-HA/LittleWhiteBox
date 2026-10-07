@@ -15,7 +15,7 @@ import { learningAnswerText } from '../application/answer-text.js';
 import { createLearningAnswerDraft, type LearningAnswerDraft } from './answer-draft.js';
 import { useLearningUnitSession } from './learning-session.js';
 
-const props = defineProps<{ state: LearningClientState; target: LearningPresentation; disabled: boolean }>();
+const props = defineProps<{ state: LearningClientState; target: LearningPresentation; active: boolean; disabled: boolean }>();
 const emit = defineEmits<{ action: [name: string, input?: Record<string, unknown>]; close: []; ask: [exerciseId: string | undefined, selection?: LearningSelection] }>();
 const body = ref<HTMLElement | null>(null);
 const session = useLearningUnitSession(() => props.target.unitId);
@@ -31,7 +31,8 @@ function back() {
     else if (retry.value) { retry.value = false; }
     else { emit('close'); }
 }
-useAppLayer(layer, back);
+// This sheet belongs to the workbench, not to the whole app. Hidden panes must not consume Back.
+useAppLayer(computed(() => props.active ? layer.value : null), back, () => false);
 const drafts = computed(() => session.value.activityDrafts);
 let submitting: { id: string; before: string | undefined } | null = null;
 const question = computed(() => props.target?.kind === 'exercise' ? props.state.unit?.exercises.find(entry => entry.id === props.target?.id) : undefined);
@@ -48,7 +49,8 @@ watch(() => question.value, value => {
 }, { immediate: true });
 const draft = computed({ get: () => drafts.value[question.value!.id].value,
     set: (value: LearningAnswerDraft) => { drafts.value[question.value!.id].value = value; } });
-onMounted(() => { closeButton.value?.focus({ preventScroll: true }); if (body.value) { body.value.scrollTop = local.value.scroll; } });
+watch([() => props.active, closeButton], ([active, button]) => { if (active) { button?.focus({ preventScroll: true }); } }, { flush: 'post' });
+onMounted(() => { if (body.value) { body.value.scrollTop = local.value.scroll; } });
 onBeforeUnmount(() => { if (body.value) { local.value.scroll = body.value.scrollTop; } });
 watch(() => props.state.unit?.attempts, attempts => {
     if (!submitting) { return; }
@@ -81,7 +83,7 @@ function submit(answer: LearningAnswer) {
                     <p v-if="question.hint" class="learning-margin-note">{{ question.hint }}</p>
                     <div v-if="question.solution" class="learning-margin-note"><p v-if="question.solution.kind === 'exact'">{{ learningAnswerText(question.solution.answer, question.response, paragraphs) }}</p><p v-else-if="question.solution.kind === 'gaps'">{{ question.solution.accepted.map(entry => entry.forms.join(' / ')).join('\n') }}</p><p v-if="question.solution.kind !== 'semantic'">{{ question.solution.explanation }}</p><button v-else type="button" @click="emit('ask', question.id)">请语伴讲解</button></div>
                     <AnswerInput v-if="(!attempt || retry) && drafts[question.id]" :key="question.id" v-model="draft" :response="question.response" :paragraphs="paragraphs" :disabled="disabled" @submit="submit" />
-                    <AttemptFeedback v-if="attempt" :attempt="attempt" :feedback="feedback" :response="question.response" :paragraphs="paragraphs" :disabled="disabled" :revised="!!state.unit?.attempts.some(entry => entry.revisesAttemptId === attempt?.id)" @action="(name, input) => { emit('action', name, input); emit('close'); }" />
+                    <AttemptFeedback v-if="attempt" :attempt="attempt" :feedback="feedback" :response="question.response" :paragraphs="paragraphs" :disabled="disabled" :reviewable="state.unit!.attemptActions[attempt.id].review" @action="(name, input) => { emit('action', name, input); emit('close'); }" />
                     <button v-if="attempt" type="button" :disabled="disabled" @click="retry = !retry; drafts[question.id] ??= { response: JSON.stringify(question.response), value: createLearningAnswerDraft(question.response) }">{{ retry ? '收起再练' : '再试一次' }}</button>
                 </section>
             </div>

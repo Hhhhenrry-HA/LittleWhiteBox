@@ -1,6 +1,7 @@
 import { safePromptJson } from '../../../capabilities/maintenance/prompt-safety.js';
 import { learningRecord } from '../../../domains/learning/profile.js';
 import { learningProgress } from '../../../domains/learning/progress.js';
+import { learningWorkInScope } from '../../../domains/learning/work.js';
 import { canReadLearningScope, LEARNING_LIMITS as L, type LearningData, type LearningScope } from '../../../domains/learning/types.js';
 import { learningEnum, learningId, learningInteger, requireLearning } from '../../../domains/learning/validation.js';
 import { learningProgressOverview } from './progress-overview.js';
@@ -18,7 +19,7 @@ export function readLearning(data: LearningData, language: string, accessOsId: s
     const unitId = input.unitId === undefined ? null : learningId(input.unitId, 'unitId');
     const current = unitId ? [profile?.unit, profile?.review].find(entry => entry?.id === unitId) : profile?.[unitKey];
     requireLearning(!unitId || current && readable(current.scope), 'unitId', 'Select an available lesson or review');
-    const unit = current && readable(current.scope) ? current : null;
+    const unit = learningWorkInScope(current, accessOsId);
     const training = unit ? reading.include(learningTrainingView(unit), unit.scope, [unit.id]) : null;
     if (training) {
         for (const material of training.materials) { reading.include(material, unit!.scope, [material.id]); }
@@ -27,8 +28,8 @@ export function readLearning(data: LearningData, language: string, accessOsId: s
     if (section === 'training') {
         return { section, data: training, nextOffset: null, omitted: false };
     }
-    const attempts = unit?.attempts.filter(attempt => readable(attempt.scope)).map(({ scope, ...attempt }) => reading.include({ ...attempt,
-        assessment: unit.assessments.filter(assessment => assessment.attemptId === attempt.id && readable(assessment.scope))
+    const attempts = unit?.attempts.map(({ scope, ...attempt }) => reading.include({ ...attempt,
+        assessment: unit.assessments.filter(assessment => assessment.attemptId === attempt.id)
             .map(({ scope: assessmentScope, ...assessment }) => reading.include({ ...assessment, shared: assessmentScope.kind === 'public' }, assessmentScope, [attempt.id]))[0] ?? null,
         shared: scope.kind === 'public',
     }, scope, [unit.id, attempt.id, attempt.exerciseId, ...attempt.revisesAttemptId ? [attempt.revisesAttemptId] : []])) ?? [];

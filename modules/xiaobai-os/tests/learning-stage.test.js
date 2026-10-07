@@ -3,10 +3,13 @@ import test from 'node:test';
 
 import { parseLearningUnit, parseLearningData } from '../domains/learning/data.js';
 import { learningUnitStage } from '../domains/learning/stage.js';
-import { assessLearning } from '../domains/learning/assessment.js';
+import { assessLearning, projectLearningEvidence } from '../domains/learning/assessment.js';
 import { checkLearningAnnotations } from '../domains/learning/facts.js';
 import { learningScheduleAt, newLearningSchedule } from '../domains/learning/schedule.js';
 import { createLearningService } from '../apps/learning/application/service.js';
+import { shareLearningCourse } from '../apps/learning/application/course-sharing.js';
+import { buildLearningContext } from '../apps/learning/agent/context.js';
+import { readLearning } from '../apps/learning/agent/data-projection.js';
 import { createLearningLessonCompiler } from '../apps/learning/application/lesson.js';
 import { learningClassView } from '../apps/learning/application/projection.js';
 import { createLearningRepository } from '../apps/learning/storage/repository.js';
@@ -24,13 +27,13 @@ const explanations = [
 ];
 const rwUnit = (overrides = {}) => ({ id: 'u1', kind: 'reading-writing', title: '城市公园', goal: '概括并写作', scope, originOsId: 'story-a',
     reward: { tier: 'short', amount: 17 }, materials: [article], exercises: [writing('s1', 'p1'), writing('s2', 'p2'), writing('e1')],
-    attempts: [], assessments: [], revealed: { answers: [], hints: [] }, explanations, modelEssay: null, revisionSkipped: false, ...overrides });
+    attempts: [], assessments: [], revealed: { answers: [], hints: [] }, explanations, modelEssay: null, skippedRevisionAttemptIds: [], ...overrides });
 const help = { answer: false, hint: false, feedback: false, transcript: false, replays: 0, slowPlayback: false };
 const attempt = (id, exerciseId, text, extra = {}) => ({ id, exerciseId, answer: { kind: 'text', text }, submittedAt: T0, help, scope, ...extra });
 const assessment = (attemptId, extra = {}) => ({ attemptId, verdict: 'correct', understanding: '', expression: '', guidance: '清楚。', scope, ...extra });
-const annotation = (id, extra = {}) => ({ id, category: 'grammar', severity: 'error', paragraphIndex: 0, quote: 'is go', explanation: '时态', suggestion: 'went', ...extra });
+const annotation = (id, extra = {}) => ({ ...(id ? { id } : {}), category: 'grammar', severity: 'error', paragraphIndex: 0, quote: 'is go', explanation: '时态', suggestion: 'went', ...extra });
 const drafts = [attempt('a1', 's1', 'Parks cool cities.'), attempt('a2', 's2', 'Trees give shade.'), attempt('a3', 'e1', 'I like parks.\nYesterday he is go there.')];
-const stage = unit => learningUnitStage(parseLearningUnit(unit)).stage;
+const stage = unit => learningUnitStage(parseLearningUnit(unit), 'story-a').stage;
 
 test('reading-writing stage is derived from saved drafts, feedback, revision and the model essay', () => {
     assert.equal(stage(rwUnit()), 'writing');
@@ -40,13 +43,13 @@ test('reading-writing stage is derived from saved drafts, feedback, revision and
     assert.equal(stage(rwUnit({ attempts: drafts, assessments: clean })), 'model');
     const marked = [assessment('a1'), assessment('a2'), assessment('a3', { verdict: 'partial', annotations: [annotation('n1', { paragraphIndex: 1 })] })];
     const graded = rwUnit({ attempts: drafts, assessments: marked });
-    const derived = learningUnitStage(parseLearningUnit(graded));
+    const derived = learningUnitStage(parseLearningUnit(graded), 'story-a');
     assert.equal(derived.stage, 'revising');
     assert.deepEqual(derived.exercises.map(row => row.status), ['done', 'done', 'revising']);
     // Alternatives are offered, not demanded.
     const offered = [...marked.slice(0, 2), assessment('a3', { annotations: [annotation('n1', { paragraphIndex: 1, severity: 'alternative' })] })];
     assert.equal(stage(rwUnit({ attempts: drafts, assessments: offered })), 'model');
-    assert.equal(stage({ ...graded, revisionSkipped: true }), 'model');
+    assert.equal(stage({ ...graded, skippedRevisionAttemptIds: ['a3'] }), 'model');
     // Disputed feedback waits for a new judgement.
     assert.equal(stage(rwUnit({ attempts: drafts, assessments: [...marked.slice(0, 2), { ...marked[2], verdict: 'disputed' }] })), 'grading');
     const revision = attempt('a4', 'e1', 'I like parks.\nYesterday he went there.', { revisesAttemptId: 'a3', help: { ...help, feedback: true } });
@@ -58,7 +61,7 @@ test('reading-writing stage is derived from saved drafts, feedback, revision and
 
 test('lessons have no steps; a review is answered, graded, then complete', () => {
     const lesson = { ...rwUnit({ kind: 'lesson' }), exercises: [writing('q1')] };
-    delete lesson.explanations; delete lesson.modelEssay; delete lesson.revisionSkipped;
+    delete lesson.explanations; delete lesson.modelEssay; delete lesson.skippedRevisionAttemptIds;
     assert.equal(stage(lesson), 'lesson');
     const review = { ...lesson, kind: 'review', exercises: [{ ...writing('r1'), skill: 'vocabulary', itemId: 'i1' }, { ...writing('r2'), skill: 'vocabulary', itemId: 'i2' }] };
     assert.equal(stage(review), 'answering');
@@ -100,7 +103,7 @@ test('annotations quote the learner\'s own words inside the paragraph they name'
 });
 
 function harness() {
-    let file = null; let id = 0; let date = T0;
+    let file = null; let id = 0; let date = T0; let osId = 'story-a';
     const files = createSillyTavernUserJsonFilePort({ fetch: async (_url, options) => {
         if (options.method === 'POST') {
             const body = JSON.parse(options.body);
@@ -120,16 +123,178 @@ function harness() {
         change(data.profiles[0]);
         assert.equal((await repository.save(document, data, () => true)).status, 'confirmed');
     };
-    const submit = async (unitId, exerciseId, text) => {
-        const pending = service.prepareAttempt({ language: 'en', unitId, exerciseId, answer: { kind: 'text', text }, scope, osId: 'story-a', replays: 0, slowPlayback: false });
+    const submit = async (unitId, exerciseId, text, answerScope = scope) => {
+        const pending = service.prepareAttempt({ language: 'en', unitId, exerciseId, answer: { kind: 'text', text }, scope: answerScope, osId, replays: 0, slowPlayback: false });
         assert.equal((await pending.save(() => true)).status, 'confirmed');
         return pending.attemptId;
     };
     const assess = (attemptId, args, review = false) => write(profile => {
         Object.assign(profile, assessLearning(profile, { attemptId, verdict: 'correct', understanding: '', expression: '', guidance: '好。', ...args },
-            { attemptId, review, inputScope: scope, osId: 'story-a', createId, now }).profile);
+            { attemptId, review, inputScope: scope, osId, createId, now }).profile);
     });
-    return { repository, service, read, write, submit, assess, setDate: value => { date = value; }, createId };
+    return { repository, service, read, write, submit, assess, setDate: value => { date = value; }, setStory: value => { osId = value; }, createId };
+}
+
+function requestWork(h, osId, action) {
+    const context = buildLearningContext({ data: h.repository.snapshot().document.data, language: 'en', osId,
+        actor: 'workbench', teacher: null, context: null, action, message: '', asOf: T0 });
+    return JSON.parse(context.messages[0].content.split('<learning_request>\n')[1].split('\n</learning_request>')[0]);
+}
+
+test('shared coursework runs submission, grading, revision and completion without removing another story’s drafts', async () => {
+    const h = harness(); await h.repository.read(); await h.service.saveSettings('en', {}, () => true);
+    const privateA = { kind: 'story', osId: 'story-a' };
+    await h.write(profile => { profile.unit = rwUnit({ scope: privateA }); });
+    await h.submit('u1', 's1', 'An original private summary.');
+    await h.submit('u1', 'e1', 'An original private essay.');
+    const originals = structuredClone(h.read().unit.attempts);
+    await shareLearningCourse(h.repository, { language: 'en', unitId: 'u1', osId: 'story-a',
+        commitId: h.repository.snapshot().document.commitId, approved: true }, () => true);
+    h.setStory('story-b');
+    assert.equal(learningUnitStage(h.read().unit, 'story-b').stage, 'writing');
+    const replaced = await h.submit('u1', 'e1', 'My first try.');
+    const essay = await h.submit('u1', 'e1', 'Yesterday he is go there.');
+    const first = await h.submit('u1', 's1', 'Parks cool cities.');
+    const second = await h.submit('u1', 's2', 'Trees give shade.');
+    assert.equal(h.read().unit.attempts.some(entry => entry.id === replaced), false);
+    assert.deepEqual(h.read().unit.attempts.filter(entry => entry.scope.kind === 'story'), originals);
+    const visible = learningClassView(h.repository.snapshot().document.data, 'en', 'story-b').unit;
+    const request = requestWork(h, 'story-b', { kind: 'grade', unitId: 'u1' });
+    const expected = [essay, first, second];
+    assert.deepEqual(visible.attempts.map(entry => entry.id), expected);
+    assert.deepEqual(readLearning(h.repository.snapshot().document.data, 'en', 'story-b', { section: 'attempts' }).data.map(entry => entry.id), expected);
+    assert.deepEqual(request.focus.drafts.map(entry => entry.attempt.id).sort(), [...expected].sort());
+    assert.equal(visible.stage.stage, 'grading');
+    await h.assess(first, {}); await h.assess(second, {});
+    await h.assess(essay, { verdict: 'partial', annotations: [annotation()] });
+    const mark = h.read().unit.assessments.find(entry => entry.attemptId === essay).annotations[0].id;
+    assert.equal(learningUnitStage(h.read().unit, 'story-b').stage, 'revising');
+    await h.service.submitRevision('en', 'u1', [{ attemptId: essay, text: 'Yesterday he went there.' }], 'story-b', () => true);
+    const revision = h.read().unit.attempts.at(-1).id;
+    assert.deepEqual(requestWork(h, 'story-b', { kind: 'revision-review', unitId: 'u1' }).focus.revisions.map(entry => entry.revision.id), [revision]);
+    await h.assess(revision, { resolvedAnnotationIds: [mark] });
+    assert.deepEqual(requestWork(h, 'story-b', { kind: 'model-essay', unitId: 'u1' }).focus.work.map(entry => entry.attempt.id), [essay, revision]);
+    await h.service.saveModelEssay('en', 'u1', { text: 'Parks cool cities.', level: 'B1' }, 'story-b', () => true);
+    assert.equal(learningUnitStage(h.read().unit, 'story-b').stage, 'complete');
+    const completed = structuredClone(h.read().completions);
+    assert.deepEqual(completed[0].attemptIds, [first, second, essay, revision]);
+    assert.equal(completed[0].reward.originOsId, 'story-a');
+    await h.repository.read(); h.setStory('story-a');
+    assert.deepEqual(h.read().unit.attempts.filter(entry => originals.some(old => old.id === entry.id)), originals);
+    await h.assess(originals[0].id, {});
+    await h.service.saveModelEssay('en', 'u1', { text: 'Parks cool cities.', level: 'B1' }, 'story-a', () => true);
+    assert.deepEqual(h.read().completions, completed);
+});
+
+test('completion never assembles private answers from different stories or overwrites private feedback', async () => {
+    const h = harness(); await h.repository.read(); await h.service.saveSettings('en', {}, () => true);
+    const privateA = { kind: 'story', osId: 'story-a' };
+    const privateB = { kind: 'story', osId: 'story-b' };
+    await h.write(profile => { profile.unit = rwUnit({ modelEssay: { text: 'A model.', level: 'B1' } }); });
+    const first = await h.submit('u1', 's1', 'A private summary.', privateA);
+    await h.assess(first, {});
+    const essay = await h.submit('u1', 'e1', 'Public answer with private feedback.');
+    await h.write(profile => { profile.unit.assessments.push(assessment(essay, { scope: privateA })); });
+    const feedback = structuredClone(h.read().unit.assessments);
+    h.setStory('story-b');
+    const second = await h.submit('u1', 's2', 'B private summary.', privateB);
+    await h.assess(second, {});
+    assert.equal(h.read().completions.length, 0);
+    assert.deepEqual(learningUnitStage(h.read().unit, 'story-b').exercises.map(row => row.status), ['writing', 'done', 'writing']);
+    assert.deepEqual(requestWork(h, 'story-b', { kind: 'grade', unitId: 'u1' }).focus.drafts, []);
+    assert.throws(() => assessLearning(h.read(), { attemptId: essay }, { attemptId: essay, review: true, inputScope: scope,
+        osId: 'story-b', createId: h.createId }), error => error.path === 'attemptId');
+    assert.throws(() => h.service.dispute('en', essay, 'story-b', () => true), error => error.path === 'attemptId');
+    const newFirst = await h.submit('u1', 's1', 'B own first summary.', privateB); await h.assess(newFirst, {});
+    const newEssay = await h.submit('u1', 'e1', 'B own essay.', privateB); await h.assess(newEssay, {});
+    assert.deepEqual(h.read().completions[0].attemptIds, [second, newFirst, newEssay]);
+    assert.deepEqual(h.read().completions[0].scope, privateB);
+    assert.deepEqual(h.read().unit.assessments.slice(0, 2), feedback);
+    assert.equal(learningUnitStage(h.read().unit, 'story-a').stage, 'writing');
+});
+
+test('revision choices and answer deletion are local to the selected saved work', async () => {
+    const h = harness(); await h.repository.read(); await h.service.saveSettings('en', {}, () => true);
+    await h.write(profile => { profile.unit = rwUnit(); });
+    const privateA = { kind: 'story', osId: 'story-a' }; const privateB = { kind: 'story', osId: 'story-b' };
+    const a = await h.submit('u1', 'e1', 'Yesterday he is go there.', privateA);
+    await h.assess(a, { annotations: [annotation()] });
+    h.setStory('story-b');
+    const b = await h.submit('u1', 'e1', 'Yesterday he is go there.', privateB);
+    await h.assess(b, { annotations: [annotation()] });
+    await h.service.skipRevision('en', 'u1', 'story-b', () => true);
+    const row = story => learningUnitStage(h.read().unit, story).exercises.find(row => row.exerciseId === 'e1');
+    assert.equal(row('story-a').status, 'revising'); assert.equal(row('story-b').status, 'done');
+    await h.repository.read();
+    assert.deepEqual(h.read().unit.skippedRevisionAttemptIds, [b]);
+    await h.service.submitRevision('en', 'u1', [{ attemptId: b, text: 'Yesterday he is go home.' }], 'story-b', () => true);
+    const revised = h.read().unit.attempts.at(-1).id;
+    assert.deepEqual(h.read().unit.attempts.at(-1).scope, privateB);
+    await h.assess(revised, { annotations: [annotation()] });
+    assert.equal(row('story-b').status, 'revising');
+    assert.throws(() => h.service.submitRevision('en', 'u1', [{ attemptId: a, text: 'Someone else’s edit.' }], 'story-b', () => true), error => error.path === 'revisions[0].attemptId');
+    assert.throws(() => h.service.deleteAttempt('en', a, 'story-b', () => true), error => error.path === 'attemptId');
+    await h.service.skipRevision('en', 'u1', 'story-b', () => true);
+    await h.service.deleteAttempt('en', b, 'story-b', () => true);
+    assert.deepEqual(h.read().unit.attempts.map(entry => entry.id), [a]);
+    assert.deepEqual(h.read().unit.skippedRevisionAttemptIds, []);
+    assert.equal(row('story-a').status, 'revising');
+});
+
+test('revision provenance is retained and deleting a shared ancestor cannot erase a hidden revision', async () => {
+    const h = harness(); await h.repository.read(); await h.service.saveSettings('en', {}, () => true);
+    const privateA = { kind: 'story', osId: 'story-a' }; const privateB = { kind: 'story', osId: 'story-b' };
+    await h.write(profile => { profile.unit = rwUnit({ attempts: [attempt('public-draft', 'e1', 'Yesterday he is go there.')],
+        assessments: [assessment('public-draft', { scope: privateA, annotations: [annotation('mark')] })] }); });
+    await h.service.submitRevision('en', 'u1', [{ attemptId: 'public-draft', text: 'Yesterday he went there.' }], 'story-a', () => true);
+    assert.deepEqual(h.read().unit.attempts.at(-1).scope, privateA);
+    const invalid = structuredClone(h.read().unit); invalid.attempts.at(-1).scope = scope;
+    assert.throws(() => parseLearningUnit(invalid), error => error.path === 'unit.attempts');
+    await h.write(profile => { profile.unit = rwUnit({ attempts: [attempt('public-draft', 'e1', 'An original.'),
+        attempt('private-revision', 'e1', 'A private revision.', { scope: privateB, revisesAttemptId: 'public-draft' })],
+    assessments: [assessment('public-draft')] }); });
+    const before = structuredClone(h.read());
+    assert.throws(() => h.service.deleteAttempt('en', 'public-draft', 'story-a', () => true), error => error.path === 'attemptId');
+    assert.deepEqual(h.read(), before);
+    await h.service.deleteAttempt('en', 'private-revision', 'story-b', () => true);
+    await h.service.deleteAttempt('en', 'public-draft', 'story-a', () => true);
+    assert.deepEqual(h.read().unit.attempts, []);
+});
+
+for (const retired of [false, true]) {
+    for (const hiddenRevision of [false, true]) {
+        test(`retained revision dependencies govern buttons and mutations (retired: ${retired}, hidden revision: ${hiddenRevision})`, async () => {
+            const h = harness(); await h.repository.read(); await h.service.saveSettings('en', {}, () => true);
+            const privateScope = { kind: 'story', osId: 'story-b' };
+            const revisionScope = hiddenRevision ? privateScope : scope;
+            await h.write(profile => {
+                const unit = rwUnit({ scope: privateScope,
+                    attempts: [attempt('original', 'e1', 'An original.'),
+                        attempt('revision', 'e1', 'A revision.', { scope: revisionScope, revisesAttemptId: 'original' })],
+                    assessments: [assessment('original'), assessment('revision', { scope: revisionScope })] });
+                profile.unit = retired ? null : unit;
+                // Representative evidence can be stored in a different order than the original submissions.
+                profile.items = [{ id: 'writing-record', label: 'Writing', skill: 'writing', scope,
+                    evidence: ['revision', 'original'].map(id => projectLearningEvidence(unit, id)) }];
+            });
+            const before = structuredClone(h.read());
+            const view = learningClassView(h.repository.snapshot().document.data, 'en', 'story-a', 0, 'writing-record');
+            assert.equal(view.unit, null);
+            assert.deepEqual(view.record.evidence.find(entry => entry.attempt.id === 'original').actions,
+                { review: false, remove: !hiddenRevision });
+            assert.throws(() => h.service.dispute('en', 'original', 'story-a', () => true), error => error.path === 'attemptId');
+            assert.throws(() => assessLearning(h.read(), { attemptId: 'original', verdict: 'partial', understanding: '', expression: '', guidance: 'Compare the drafts.' },
+                { attemptId: 'original', review: true, inputScope: scope, osId: 'story-a', createId: h.createId }), error => error.path === 'attemptId');
+            if (hiddenRevision) {
+                assert.throws(() => h.service.deleteAttempt('en', 'original', 'story-a', () => true), error => error.path === 'attemptId');
+                assert.deepEqual(h.read(), before);
+            } else {
+                await h.service.deleteAttempt('en', 'original', 'story-a', () => true);
+                assert.deepEqual(h.read().items[0].evidence, []);
+                assert.deepEqual(h.read().unit?.attempts ?? [], []);
+            }
+        });
+    }
 }
 
 test('settings create a profile with defaults before any lesson', async () => {
@@ -177,20 +342,21 @@ test('a reading-writing unit runs draft, grading, revision, review and model ess
     const noteId = h.read().unit.assessments.find(entry => entry.attemptId === essay).annotations[0].id;
     assert.equal(h.read().unit.assessments.find(entry => entry.attemptId === essay).annotations[0].itemId, grammar.id);
 
-    await h.service.submitRevision('en', 'u1', [{ attemptId: essay, text: 'I like parks.\nYesterday he went there.' }], () => true);
+    await h.service.submitRevision('en', 'u1', [{ attemptId: essay, text: 'I like parks.\nYesterday he went there.' }], 'story-a', () => true);
     const revision = h.read().unit.attempts.at(-1);
     assert.equal(revision.revisesAttemptId, essay);
     assert.equal(revision.help.feedback, true);
-    assert.equal(learningUnitStage(h.read().unit).stage, 'reviewing');
+    assert.equal(learningUnitStage(h.read().unit, 'story-a').stage, 'reviewing');
     await h.assess(revision.id, { resolvedAnnotationIds: [noteId] });
-    assert.equal(learningUnitStage(h.read().unit).stage, 'model');
+    assert.equal(learningUnitStage(h.read().unit, 'story-a').stage, 'model');
     assert.equal(h.read().completions.length, 0);
-    await h.service.saveModelEssay('en', 'u1', { text: 'Parks keep cities cool.', level: 'B1' }, () => true);
-    assert.equal(learningUnitStage(h.read().unit).stage, 'complete');
-    assert.deepEqual(h.read().completions.map(entry => [entry.unitId, entry.reward.amount, entry.attemptIds.length]), [['u1', 17, 5]]);
+    await h.service.saveModelEssay('en', 'u1', { text: 'Parks keep cities cool.', level: 'B1' }, 'story-a', () => true);
+    assert.equal(learningUnitStage(h.read().unit, 'story-a').stage, 'complete');
+    assert.deepEqual(h.read().completions.map(entry => [entry.unitId, entry.reward.amount, entry.attemptIds.length]), [['u1', 17, 4]]);
+    assert.equal(h.read().completions[0].attemptIds.includes(first), false);
 
     // Deleting a graded draft takes its revision along; that exercise may then be written again.
-    await h.service.deleteAttempt('en', essay, () => true);
+    await h.service.deleteAttempt('en', essay, 'story-a', () => true);
     assert.equal(h.read().unit.attempts.some(entry => entry.exerciseId === 'e1'), false);
     assert.equal(h.read().items.find(item => item.id === grammar.id).evidence.length, 0);
     await h.submit('u1', 'e1', 'A new essay.');
@@ -203,14 +369,14 @@ test('partial drafts accept separate revision batches and further revisions with
     const second = await h.submit('u1', 's2', 'Trees good.');
     const mark = { annotations: [{ category: 'grammar', severity: 'improve', paragraphIndex: 0, quote: 'good', explanation: 'Add a verb.', suggestion: 'are good' }] };
     await h.assess(first, mark); await h.assess(second, mark);
-    await h.service.submitRevision('en', 'u1', [{ attemptId: first, text: 'Parks are good.' }], () => true);
+    await h.service.submitRevision('en', 'u1', [{ attemptId: first, text: 'Parks are good.' }], 'story-a', () => true);
     const revision = h.read().unit.attempts.at(-1).id;
     await h.assess(revision, mark);
-    await h.service.submitRevision('en', 'u1', [{ attemptId: second, text: 'Trees are helpful.' }], () => true);
-    await h.service.submitRevision('en', 'u1', [{ attemptId: revision, text: 'Parks cool cities.' }], () => true);
+    await h.service.submitRevision('en', 'u1', [{ attemptId: second, text: 'Trees are helpful.' }], 'story-a', () => true);
+    await h.service.submitRevision('en', 'u1', [{ attemptId: revision, text: 'Parks cool cities.' }], 'story-a', () => true);
     const latest = h.read().unit.attempts.at(-1);
     await h.assess(latest.id, {});
-    const progress = learningUnitStage(h.read().unit);
+    const progress = learningUnitStage(h.read().unit, 'story-a');
     assert.equal(progress.stage, 'writing');
     assert.equal(progress.exercises[0].revisionAttemptId, latest.id);
     assert.deepEqual(progress.exercises.map(row => row.status), ['done', 'reviewing', 'writing']);
@@ -223,7 +389,7 @@ test('an early model essay helps future essay attempts without rewriting earlier
     await h.write(profile => { profile.unit = rwUnit(); });
     const earlier = await h.submit('u1', 'e1', 'Parks are good.'); await h.assess(earlier, {});
     const basis = { document: h.repository.snapshot().document, submittedAt: T0 };
-    await h.service.saveModelEssay('en', 'u1', { text: 'Parks keep cities cool.', level: 'B1' }, () => true);
+    await h.service.saveModelEssay('en', 'u1', { text: 'Parks keep cities cool.', level: 'B1' }, 'story-a', () => true);
     const later = await h.submit('u1', 'e1', 'Parks keep cities cool.');
     assert.equal(h.read().unit.attempts.find(entry => entry.id === earlier).help.answer, false);
     assert.equal(h.read().unit.attempts.find(entry => entry.id === later).help.answer, true);
@@ -242,8 +408,8 @@ test('skipping a revision goes straight to the model essay', async () => {
     const ids = [await h.submit('u1', 's1', 'Parks cool cities.'), await h.submit('u1', 's2', 'Trees give shade.'), await h.submit('u1', 'e1', 'He is go.')];
     await h.assess(ids[0], {}); await h.assess(ids[1], {});
     await h.assess(ids[2], { annotations: [{ category: 'content', severity: 'improve', paragraphIndex: 0, quote: 'He', explanation: '主语不清', suggestion: '' }] });
-    await h.service.skipRevision('en', 'u1', () => true);
-    assert.equal(learningUnitStage(h.read().unit).stage, 'model');
+    await h.service.skipRevision('en', 'u1', 'story-a', () => true);
+    assert.equal(learningUnitStage(h.read().unit, 'story-a').stage, 'model');
 });
 
 test('a review asks about exactly the due items, moves each schedule once, and completes by itself', async () => {
@@ -285,11 +451,11 @@ test('a review asks about exactly the due items, moves each schedule once, and c
     assert.equal(view.records.items.find(item => item.id === 'i1').scheduleReason, '上次独立答对，1 天后复习');
 
     // Disputing the judgement withdraws its schedule move; deleting an item removes its question.
-    await h.service.dispute('en', wrong.attemptId, () => true);
+    await h.service.dispute('en', wrong.attemptId, 'story-a', () => true);
     assert.deepEqual(h.read().items.find(item => item.id === 'i2').schedule, newLearningSchedule(T0));
-    await h.service.deleteItem('en', 'i1', () => true);
+    await h.service.deleteItem('en', 'i1', 'story-a', () => true);
     assert.deepEqual(h.read().review.exercises.map(exercise => exercise.itemId), ['i2']);
-    await h.service.deleteItem('en', 'i2', () => true);
+    await h.service.deleteItem('en', 'i2', 'story-a', () => true);
     assert.equal(h.read().review, null);
     await h.service.abandonReview('en', () => true);
     parseLearningData(h.repository.snapshot().document.data);

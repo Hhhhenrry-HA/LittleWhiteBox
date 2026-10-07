@@ -4,6 +4,7 @@ import { useAppBack } from '../../../shell/app-src/navigation/app-navigation.js'
 import AttemptFeedback from './AttemptFeedback.vue';
 import { learningSeeAgainLabel } from './workbench.js';
 import { LEARNING_MASTERY_LABELS as labels, LEARNING_EVIDENCE_LABEL } from './learning-copy.js';
+import { LEARNING_WORK_COPY } from '../../../domains/learning/work.js';
 const props = defineProps<{ state: LearningClientState; disabled: boolean; embedded?: boolean }>();
 const emit = defineEmits<{ action: [name: string, input?: Record<string, unknown>]; remove: [name: string, input: Record<string, unknown>, message: string] }>();
 useAppBack(() => {
@@ -33,10 +34,11 @@ const copy = {
                 </details>
                 <AttemptFeedback
                     :attempt="evidence.attempt" :feedback="evidence.assessment" :response="evidence.exercise.response" :paragraphs="evidence.materials.flatMap(material => material.paragraphs)" :disabled="disabled"
-                    :revised="!!state.unit?.attempts.some(entry => entry.revisesAttemptId === evidence.attempt.id)"
+                    :reviewable="evidence.actions.review"
                     @action="(name, input) => $emit('action', name, input)"
                 />
-                <button type="button" :disabled="disabled" @click="$emit('remove', 'delete-attempt', { id: evidence.attempt.id }, copy.answerWarning)">{{ copy.deleteAnswer }}</button>
+                <button type="button" :disabled="disabled || !evidence.actions.remove" @click="$emit('remove', 'delete-attempt', { id: evidence.attempt.id }, copy.answerWarning)">{{ copy.deleteAnswer }}</button>
+                <p v-if="!evidence.actions.remove" class="learning-muted">{{ LEARNING_WORK_COPY.hiddenRevisions }}</p>
             </article>
             <button type="button" :disabled="disabled" @click="$emit('remove', 'delete-item', { id: state.record.id }, copy.recordWarning)">{{ copy.deleteRecord }}</button>
         </template>

@@ -7,6 +7,7 @@ import { learningListeningBasis, learningSpeechParts } from '../../../domains/le
 import { canReadLearningScope, type LearningLanguage, type LearningScope, type LearningUnit } from '../../../domains/learning/types.js';
 import { combineLearningScope, learningId, learningTimestamp, parseLearningScope, requireLearning } from '../../../domains/learning/validation.js';
 import type { LearningDocument } from '../storage/document.js';
+import { learningWorkInScope } from '../../../domains/learning/work.js';
 
 /** Frozen when a real message arrives; never supplied by the model or persisted as another snapshot. */
 export interface LearningAttemptBasis { document: LearningDocument | null; submittedAt: string }
@@ -25,12 +26,14 @@ export function learningAttemptUnit(basis: LearningAttemptBasis | undefined, lan
 export function learningAttemptConditions(unit: LearningUnit, exerciseId: string, osId: string | null, replays = 0, slowPlayback = false) {
     const exercise = unit.exercises.find(entry => entry.id === exerciseId);
     requireLearning(exercise, 'exerciseId', 'Select an exercise in this unit');
+    const work = learningWorkInScope(unit, osId);
+    requireLearning(work, 'unitId', 'Select work available in this story');
     const listening = exercise.skill === 'listening' ? learningListeningBasis(unit.listening ?? [],
         unit.materials.filter(material => exercise.materialIds.includes(material.id)).flatMap(learningSpeechParts).map(part => part.key)) : null;
     return { help: parseLearningHelp({ answer: unit.revealed.answers.includes(exercise.id)
         || Boolean(unit.modelEssay && exercise.skill === 'writing' && !exercise.paragraphId), hint: unit.revealed.hints.includes(exercise.id),
-        feedback: unit.attempts.some(attempt => attempt.exerciseId === exercise.id
-            && unit.assessments.some(assessment => assessment.attemptId === attempt.id && canReadLearningScope(assessment.scope, osId))),
+        feedback: work.attempts.some(attempt => attempt.exerciseId === exercise.id
+            && work.assessments.some(assessment => assessment.attemptId === attempt.id)),
         transcript: exercise.skill === 'listening' && unit.materials.some(material => exercise.materialIds.includes(material.id) && material.transcriptRevealed),
         replays: listening?.replays ?? replays, slowPlayback: listening?.slowPlayback ?? slowPlayback }),
     ...(listening ? { listening: structuredClone(listening.parts) } : {}) };
@@ -49,7 +52,9 @@ export function appendLearningAttempt(profile: LearningLanguage, input: {
     const conditions = input.basis ?? unit;
     if (unit.kind === 'reading-writing') {
         // Replace an ungraded draft, while preserving feedback and the basis of every revision.
+        const available = new Set(learningWorkInScope(unit, input.osId)!.attempts.map(attempt => attempt.id));
         unit.attempts = unit.attempts.filter(entry => entry.exerciseId !== exercise.id
+            || !available.has(entry.id)
             || unit.assessments.some(assessment => assessment.attemptId === entry.id)
             || unit.attempts.some(revision => revision.revisesAttemptId === entry.id));
     }
@@ -67,7 +72,7 @@ export function appendLearningAttempt(profile: LearningLanguage, input: {
         if (unit.kind === 'review') {
             const now = attempt.submittedAt;
             scheduleLearningReview(profile, projectLearningEvidence(unit, attempt.id), now);
-            completeLearningByFacts(profile, 'review', now);
+            completeLearningByFacts(profile, 'review', now, input.osId);
         }
     }
     return attempt;

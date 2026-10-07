@@ -5,7 +5,7 @@ import type { LearningAction, createLearningSession } from '../agent/session.js'
 import type { LearningActor } from '../domain/conversation.js';
 import { createLearningService, type LearningRepository } from './service.js';
 import type { LearningAttemptBasis } from './attempt.js';
-import type { LearningWorkRequest } from './delegation.js';
+import { LEARNING_DELEGATION_LIMITS as D, type LearningWorkRequest, type LearningRequestResult, type LearningDelegationReceipts, type LearningWorkTarget } from './delegation.js';
 import type { LearningSelection } from '../../../domains/learning/notes.js';
 import type { LearningSaveConfirmation } from '../storage/repository.js';
 
@@ -21,10 +21,15 @@ export function createLearningToolExecution(options: {
     actor: LearningActor; action: LearningAction; language: string; osId: string;
     message: string; answerBasis: LearningAttemptBasis; exerciseId?: string;
     submissions: LearningSubmissionReceipts;
+    delegations?: LearningDelegationReceipts;
     selection?: LearningSelection | null;
     signal: AbortSignal; guard: () => boolean;
     confirm?: (unit: { id: string; title: string }, signal: AbortSignal) => Promise<boolean>;
-    delegate?: (request: LearningWorkRequest, signal: AbortSignal) => Promise<unknown>;
+    delegate?: (request: LearningWorkRequest, signal: AbortSignal) => Promise<LearningRequestResult>;
+    taskGet?: (taskId?: string) => unknown;
+    workbenchBusy?: () => boolean;
+    target?: LearningWorkTarget;
+    references?: string[];
     onSaved: (result: Awaited<ReturnType<LearningRepository['save']>>) => void;
 }) {
     const { repository, session, guard } = options;
@@ -47,11 +52,29 @@ export function createLearningToolExecution(options: {
             if (!guard()) { return { ok: false, status: 'cancelled' }; }
             requireLearning(session.toolNames.includes(name), 'tool', 'Select an available tool');
             if (name === 'LearningRequest') {
-                learningRecord(args, name, []);
+                const input = learningRecord(args, name, ['task', 'context', 'deliverable']);
+                const delegation = { task: learningText(input.task, 'task', D.task),
+                    ...(input.context === undefined ? {} : { context: learningText(input.context, 'context', D.context) }),
+                    ...(input.deliverable === undefined ? {} : { deliverable: learningText(input.deliverable, 'deliverable', D.deliverable) }) };
                 requireLearning(options.actor === 'companion' && options.delegate, 'tool', 'Select an available tool');
-                return options.delegate({ message: options.message, exerciseId: options.exerciseId,
-                    selection: options.selection,
-                    ...(options.action.kind === 'talk' ? { unitId: options.action.unitId } : {}), answerBasis: options.answerBasis, submissions: options.submissions }, options.signal);
+                const key = JSON.stringify(delegation);
+                const prior = options.delegations?.get(key);
+                if (prior) { return prior; }
+                const reading = session.reading();
+                const result = await options.delegate({ delegation, message: options.message, scope: reading.scope,
+                    references: [...new Set([...(options.references ?? []), ...reading.references])],
+                    target: options.target ?? session.target({ unitKey: 'unit', exerciseId: options.exerciseId, selection: options.selection }),
+                    answerBasis: options.answerBasis, submissions: options.submissions }, options.signal);
+                if (result.status === 'accepted') { options.delegations?.set(key, result); }
+                return result;
+            }
+            if (name === 'LearningTaskGet') {
+                const input = learningRecord(args, name, ['taskId']);
+                requireLearning(options.taskGet, 'tool', 'Select an available tool');
+                return options.taskGet(input.taskId === undefined ? undefined : learningId(input.taskId, 'taskId'));
+            }
+            if (options.actor === 'companion' && name === 'LearningPresent' && options.workbenchBusy?.()) {
+                return { ok: false, status: 'busy' };
             }
             session.refresh();
             if (name === 'LearningSubmit') {
@@ -71,7 +94,7 @@ export function createLearningToolExecution(options: {
                     const service = createLearningService(repository, { onConfirmed: saved => {
                         options.submissions.set(receiptKey, { unitId }); confirmed(saved);
                     } });
-                    const result = await service.submitRevision(options.language, unitId, [{ attemptId, text }], guard, options.answerBasis);
+                    const result = await service.submitRevision(options.language, unitId, [{ attemptId, text }], options.osId, guard, options.answerBasis);
                     unresolved(result);
                     if (result.status === 'cancelled') { return unsavedEdit(); }
                     if (result.status === 'confirmed' || result.status === 'unchanged') { session.refresh(); session.recordAppliedTool(name); }

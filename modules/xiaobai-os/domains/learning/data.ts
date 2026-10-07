@@ -6,7 +6,7 @@ import { learningScheduled, parseLearningSchedule } from './schedule.js';
 import { parseLearningListening, parseLearningVoice } from './speech.js';
 import { parseLearningSelection } from './notes.js';
 import { LEARNING_LIMITS as L, LEARNING_SKILLS, type LearningAssessment, type LearningAttempt, type LearningCompletion, type LearningData, type LearningEvidence, type LearningExercise, type LearningExplanation, type LearningItem, type LearningLanguage, type LearningMaterial, type LearningUnit } from './types.js';
-import { combineLearningScope, learningArray, learningBoolean, learningEnum, learningId, learningIds, learningInteger, learningTimestamp, parseLearningScope, requireLearning, sameLearningScope, uniqueLearning } from './validation.js';
+import { combineLearningScope, learningArray, learningEnum, learningId, learningIds, learningInteger, learningTimestamp, parseLearningScope, requireLearning, sameLearningScope, uniqueLearning } from './validation.js';
 
 function parseExplanation(value: unknown, path: string): LearningExplanation {
     const item = learningRecord(value, path, ['materialId', 'paragraphId', 'explanation', 'terms']);
@@ -35,14 +35,17 @@ function checkReadingWriting(path: string, materials: LearningMaterial[], exerci
     for (const [index, attempt] of attempts.entries()) {
         if (attempt.revisesAttemptId === undefined) { continue; }
         const draft = attempts.slice(0, index).find(entry => entry.id === attempt.revisesAttemptId);
+        const feedback = assessments.find(entry => entry.attemptId === draft?.id);
         requireLearning(draft && draft.exerciseId === attempt.exerciseId
-            && assessments.some(entry => entry.attemptId === draft.id), `${path}.attempts`, 'A revision revises an earlier, assessed draft of the same exercise');
+            && feedback, `${path}.attempts`, 'A revision revises an earlier, assessed draft of the same exercise');
+        requireLearning(sameLearningScope(combineLearningScope(feedback.scope, attempt.scope), attempt.scope),
+            `${path}.attempts`, 'A revision retains the scope of the feedback it uses');
     }
 }
 
 export function parseLearningUnit(value: unknown, path = 'unit'): LearningUnit {
     const item = learningRecord(value, path, ['id', 'kind', 'title', 'goal', 'scope', 'originOsId', 'reward', 'materials', 'exercises', 'attempts', 'assessments', 'revealed', 'listening', 'notes',
-        'explanations', 'modelEssay', 'revisionSkipped']);
+        'explanations', 'modelEssay', 'skippedRevisionAttemptIds']);
     const kind = learningEnum(item.kind, `${path}.kind`, ['reading-writing', 'review', 'lesson']);
     const materials = learningArray(item.materials, `${path}.materials`, parseLearningMaterial);
     const exercises = learningArray(item.exercises, `${path}.exercises`, (raw, p) => parseLearningExercise(raw, materials, p));
@@ -53,7 +56,8 @@ export function parseLearningUnit(value: unknown, path = 'unit'): LearningUnit {
     uniqueLearning(assessments.map(assessment => assessment.attemptId), `${path}.assessments`);
     const scope = parseLearningScope(item.scope, `${path}.scope`);
     const originOsId = learningId(item.originOsId, `${path}.originOsId`);
-    if (scope.kind === 'story') { requireLearning(scope.osId === originOsId, path, 'Story unit must belong to its source story'); }
+    // Coursework may be shared, then edited in another story. Reward origin is immutable;
+    // access follows the current content, while each saved answer retains its own scope.
     const rw = kind === 'reading-writing';
     requireLearning(exercises.every(exercise => rw || exercise.paragraphId === undefined), `${path}.exercises`, 'Only reading-writing summaries name a paragraph');
     requireLearning(exercises.every(exercise => (exercise.itemId !== undefined) === (kind === 'review')), `${path}.exercises`, 'Review exercises, and only they, name the item they review');
@@ -73,9 +77,6 @@ export function parseLearningUnit(value: unknown, path = 'unit'): LearningUnit {
                 `${path}.assessments`, 'Resolved annotations belong to the revised draft');
         }
     }
-    for (const attempt of attempts) {
-        requireLearning(sameLearningScope(combineLearningScope(scope, attempt.scope), attempt.scope), path, 'Attempt must retain the source scope');
-    }
     const reward = learningRecord(item.reward, `${path}.reward`, ['tier', 'amount']);
     const revealed = learningRecord(item.revealed, `${path}.revealed`, ['answers', 'hints']);
     const answers = learningIds(revealed.answers, `${path}.revealed.answers`);
@@ -89,16 +90,19 @@ export function parseLearningUnit(value: unknown, path = 'unit'): LearningUnit {
             selection: note.selection === null ? null : parseLearningSelection(note.selection, materials) };
     }, 12);
     if (notes) { uniqueLearning(notes.map(note => note.id), 'notes'); }
-    requireLearning([item.explanations, item.modelEssay, item.revisionSkipped].every(field => (field !== undefined) === rw), path,
+    requireLearning([item.explanations, item.modelEssay, item.skippedRevisionAttemptIds].every(field => (field !== undefined) === rw), path,
         'Reading-writing units, and only they, carry explanations, a model essay and the revision choice');
-    let writing: Pick<LearningUnit, 'explanations' | 'modelEssay' | 'revisionSkipped'> = {};
+    let writing: Pick<LearningUnit, 'explanations' | 'modelEssay' | 'skippedRevisionAttemptIds'> = {};
     if (rw) {
         const explanations = learningArray(item.explanations, `${path}.explanations`, parseExplanation);
         checkReadingWriting(path, materials, exercises, explanations, attempts, assessments);
         const essay = item.modelEssay === null ? null : learningRecord(item.modelEssay, `${path}.modelEssay`, ['text', 'level']);
+        const skippedRevisionAttemptIds = learningIds(item.skippedRevisionAttemptIds, `${path}.skippedRevisionAttemptIds`);
+        requireLearning(skippedRevisionAttemptIds.every(id => attempts.some(attempt => attempt.id === id)
+            && assessments.some(assessment => assessment.attemptId === id)), path, 'A skipped revision belongs to a saved answer with feedback');
         writing = { explanations, modelEssay: essay && { text: learningText(essay.text, `${path}.modelEssay.text`, L.materialText),
             level: learningText(essay.level, `${path}.modelEssay.level`, L.name) },
-        revisionSkipped: learningBoolean(item.revisionSkipped, `${path}.revisionSkipped`) };
+        skippedRevisionAttemptIds };
     }
     return { id: learningId(item.id, `${path}.id`), kind, title: learningText(item.title, `${path}.title`, L.name),
         goal: learningText(item.goal, `${path}.goal`, L.goal), scope, originOsId,
@@ -192,8 +196,11 @@ function parseLanguage(value: unknown, path: string): LearningLanguage {
         if (!completed) { continue; }
         requireLearning(completed.reward.amount === source.reward.amount && completed.reward.originOsId === source.originOsId,
             path, 'Completed reward must match the published unit');
-        requireLearning(sameLearningScope(combineLearningScope(source.scope, completed.scope), completed.scope),
-            path, 'Completion must retain the lesson scope');
+        // Later coursework edits do not rewrite an already earned completion's provenance.
+        for (const attempt of source.attempts.filter(entry => completed.attemptIds.includes(entry.id))) {
+            requireLearning(sameLearningScope(combineLearningScope(attempt.scope, completed.scope), completed.scope),
+                path, 'Completion must retain its original answer scope');
+        }
     }
     return { ...profile, unit, review, items, completions, ...(voice === undefined ? {} : { voice: parseLearningVoice(voice, `${path}.voice`) }) };
 }

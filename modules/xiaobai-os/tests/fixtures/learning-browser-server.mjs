@@ -3,11 +3,15 @@ import { createServer } from 'vite';
 import process from 'node:process';
 import vue from '@vitejs/plugin-vue';
 import { createClassroomFixture, fixtureLesson } from './learning-classroom.js';
+import { prepareRetainedLearningWork } from './learning-retained-work.js';
 import { extractTaggedToolCalls } from '../../../agent-core/adapters/openai-compatible.js';
 
-const h = await createClassroomFixture({ lesson: { ...fixtureLesson, kind: 'reading-writing' } });
+const retainedEvidence = process.argv.includes('--retained-evidence');
+const h = await createClassroomFixture({ lesson: { ...fixtureLesson, kind: process.argv.includes('--lesson') || retainedEvidence ? 'lesson' : 'reading-writing' } });
 const call = (name, args) => ({ id: name, name, arguments: JSON.stringify(args) });
-if (process.argv.includes('--failure')) {
+if (retainedEvidence) {
+    await prepareRetainedLearningWork(h);
+} else if (process.argv.includes('--failure')) {
     await h.command('settings', { value: { level: 'B1' } });
     h.flags.teacherResponse = (request, round) => {
         if (round === 1) { return { toolCalls: [call('LearningArticle', { title: 'A short article' })] }; }
@@ -34,9 +38,9 @@ if (process.argv.includes('--review')) {
     })] } : { text: '复习已准备好。' };
     await h.command('talk', { target: 'workbench', message: '复习这个词。' });
 }
-h.flags.teacherResponse = (request, round) => {
+if (!retainedEvidence) { h.flags.teacherResponse = (request, round) => {
     if (request.tools.some(tool => tool.function.name === 'LearningRequest')) {
-        return round === 1 ? { toolCalls: [call('LearningRequest', {})] } : { text: '老师已经按你的选择处理了。' };
+        return round === 1 ? { toolCalls: [call('LearningRequest', { task: '按对方的要求处理当前课程，需要换课时先征求确认。' })] } : { text: '交给老师了，我们可以接着聊。' };
     }
     const user = request.messages.findLast(message => message.role === 'user' && message.content.includes('<learning_request>'));
     const text = user?.content.split('<learning_request>')[0] ?? '';
@@ -54,19 +58,28 @@ h.flags.teacherResponse = (request, round) => {
                 annotations: [{ category: 'vocabulary', severity: 'improve', paragraphIndex: 0, quote: attempt.answer.text.split(' ')[0], explanation: '可以选一个更具体的表达。', suggestion: 'Trees' }] })) };
     }
     return { text: '已经处理好了，保存的内容就在工作台。' };
-};
+}; }
+if (process.argv.includes('--notification-failure')) {
+    let failed = false;
+    h.flags.notificationResponse = () => {
+        if (!failed) { failed = true; throw Object.assign(new Error('Fixture notification connection failed'), { status: 503 }); }
+        return { text: '老师把新课准备好了。刚才我们聊到的那点，也可以接着说。' };
+    };
+}
 
 const html = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Learning isolated verification</title>
-<style>html,body,#app{margin:0;height:100%;font:15px system-ui}body{--os-status-height:0px}button{font:inherit}</style></head><body><div id="app"></div>
+<style>html,body,#app,.xiaobai-os-app-route{margin:0;height:100%;font:15px system-ui}body{--os-status-height:0px}button{font:inherit}</style></head><body><div id="app"></div>
 <script type="module">
-import { createApp } from 'vue';
+import { createApp, h, ref } from 'vue';
 import LearningApp from '/modules/xiaobai-os/apps/learning/ui/LearningApp.vue';
+import AppNavigationScope from '/modules/xiaobai-os/shell/app-src/components/AppNavigationScope.vue';
 const listeners=new Set();
 const bridge={subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn)},async request(type,payload){return await(await fetch('/__learning/action',{method:'POST',body:JSON.stringify({type,payload})})).json()}};
 const initialState=await(await fetch('/__learning/state')).json();
-const app=createApp(LearningApp,{initialState,bridge,app:{id:'learning'},chat:{},theme:'light'});app.mount('#app');
+const navigation=ref(null);
+const app=createApp({setup:()=>()=>h(AppNavigationScope,{ref:navigation,owner:'learning'},{default:()=>h(LearningApp,{initialState,bridge,app:{id:'learning'},chat:{},theme:'light'})})});app.mount('#app');
 const stream=new EventSource('/__learning/events');stream.onmessage=e=>{const event=JSON.parse(e.data);for(const listener of listeners)listener(event)};
-window.learningPreview={state:()=>fetch('/__learning/state').then(r=>r.json()),theme:dark=>document.body.classList.toggle('theme-dark',dark)};
+window.learningPreview={state:()=>fetch('/__learning/state').then(r=>r.json()),theme:dark=>document.body.classList.toggle('theme-dark',dark),back:()=>navigation.value.back()};
 </script></body></html>`;
 const clients = new Set();
 h.bridge.subscribe(event => { for (const client of clients) { client.write(`data: ${JSON.stringify(event)}\n\n`); } });

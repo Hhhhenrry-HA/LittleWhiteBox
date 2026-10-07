@@ -105,7 +105,7 @@ export interface LearningUnit {
     /** Reading-writing only (present iff kind is reading-writing). */
     explanations?: LearningExplanation[];
     modelEssay?: { text: string; level: string } | null;
-    revisionSkipped?: boolean;
+    skippedRevisionAttemptIds?: string[];
 }
 export interface LearningEvidence {
     unitId: string; scope: LearningScope;

@@ -2,6 +2,7 @@ import { LEARNING_ANNOTATION_CATEGORIES, LEARNING_LIMITS as L, LEARNING_SKILLS }
 import type { LearningAction } from './session.js';
 import type { LearningActor } from '../domain/conversation.js';
 import { learningPreparationTools } from './preparation-tools.js';
+import { LEARNING_DELEGATION_LIMITS as D } from '../application/delegation.js';
 
 const text = (maxLength: number, description: string) => ({ type: 'string', maxLength, description });
 const nullableText = (maxLength: number, description: string) => ({ anyOf: [text(maxLength, description), { type: 'null' }], description: 'Omit to keep; null clears.' });
@@ -45,11 +46,20 @@ const tools = [
     { type: 'function', function: {
         name: 'LearningRequest',
         description: [
-            'Ask the workbench teacher to carry out the learner’s current request. The complete original message and selected learning objects are passed along, including requests with several operations.',
+            'Delegate work to the workbench teacher. Write the task in your own words, with the background and expected outcome they need. The app separately supplies the learner’s original message and selected learning objects.',
             'Use for requested changes, preparation, formal assessment or review. An explanation you can give directly needs no handoff.',
-            'Waits for the workbench and returns {ok,status,text,changed?,appliedTools?}. The text describes the actual result or obstacle. Confirmation happens while the workbench works; a declined operation is not executed. Continue the conversation from the returned result.',
+            'Returns immediately with {ok:true,status:"accepted",taskId}, or {ok:false,status:"busy"|"cancelled"}. An accepted task runs independently while you continue chatting; stopping your reply does not stop it. Its result starts a separate conversation turn when you are free, even while the learner views the workbench.',
+            'LearningTaskGet checks accepted work without starting it again. Replacement decisions are asked on the workbench while that task runs.',
+            'Follow-up work from a result notification keeps that task’s lesson or review target. Coursework written from your story context stays in this story; the learner can share it with their other stories on the workbench.',
         ].join('\n'),
-        parameters: object({}),
+        parameters: object({ task: text(D.task, 'Concrete work to do, in natural language.'),
+            context: text(D.context, 'Optional background, constraints and prior discussion needed for this work.'),
+            deliverable: text(D.deliverable, 'Optional expected outcome and what to report back.') }, ['task']),
+    } },
+    { type: 'function', function: {
+        name: 'LearningTaskGet',
+        description: 'Check work delegated during this learning session. Omit taskId to list {ok,tasks:[{taskId,task,status,notification}]}, also supplied in learning_request.workbench.tasks. With taskId, each entry additionally has context?, deliverable?, target, result and notificationError. target identifies the lesson or review in unitKey, with unitId, exerciseId and selection when available; it follows replacements saved by that task. status is running, awaiting-approval, or the returned workbench status; result contains status and, when finished, text, changed, appliedTools and historySaved. notification describes result delivery, not work completion. An unknown taskId returns {ok:false,status:"not-found"}. This only reads tasks; it does not repeat work.',
+        parameters: object({ taskId: id('Task ID returned by LearningRequest. Omit to list tasks.') }),
     } },
     { type: 'function', function: {
         name: 'LearningPresent',
@@ -200,8 +210,8 @@ const ALL_TOOLS = [...tools, ...learningPreparationTools].map(tool => tool.funct
 /** The same allowlist is used in the provider request and at execution. */
 export function learningToolNamesFor(action?: LearningAction, actor: LearningActor = 'workbench'): string[] {
     if (action?.kind === 'companion') { return ['LearningRead']; }
-    return actor === 'companion' ? ['LearningRead', 'LearningPresent', 'LearningRequest']
-        : ALL_TOOLS.filter(name => name !== 'LearningRequest');
+    return actor === 'companion' ? ['LearningRead', 'LearningPresent', 'LearningRequest', 'LearningTaskGet']
+        : ALL_TOOLS.filter(name => name !== 'LearningRequest' && name !== 'LearningTaskGet');
 }
 
 export function learningTools(action?: LearningAction, actor: LearningActor = 'workbench') {

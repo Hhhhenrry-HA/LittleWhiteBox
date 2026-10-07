@@ -13,11 +13,14 @@ import LearningMessages from './LearningMessages.vue';
 import { isLearningConversation, isLearningPreparation } from '../agent/access.js';
 import { useLearningUiSession } from './learning-session.js';
 import { rememberLearningEditor as vRememberEditor } from './learning-editor.js';
+import { LEARNING_CONVERSATION_COPY as conversationCopy } from '../application/conversation-copy.js';
+import { learningReplyNote } from '../application/reply-note.js';
 
 const props = defineProps<{ target: LearningActor; state: LearningClientState; disabled: boolean; pending: boolean }>();
 const dialogue = computed(() => props.target === 'workbench' ? props.state.workbenchConversation : props.state.conversation);
 const busy = computed(() => props.target === 'workbench' ? props.state.workbenchBusy : props.state.chatBusy);
 const notice = computed(() => props.target === 'workbench' ? props.state.workbenchMessage : props.state.chatMessage);
+const failedNotifications = computed(() => props.target === 'companion' ? props.state.delegatedTasks.filter(task => task.notification === 'failed') : []);
 const storage = computed(() => props.target === 'workbench' ? props.state.workbenchStorage : props.state.chatStorage);
 const reply = computed(() => props.target === 'workbench' ? props.state.reply : props.state.companionReply);
 const title = computed(() => props.target === 'workbench' ? dialogueCopy.assistant : props.state.teacher?.name ?? '语伴');
@@ -88,6 +91,7 @@ function available(target: LearningPresentation) {
 }
 // Notes are read back in the lesson workspace; a review reply must not be saved into that lesson.
 const replyUnit = computed(() => props.state.unit?.id === reply.value?.unitId ? props.state.unit : null);
+const replyNote = computed(() => learningReplyNote(replyUnit.value, reply.value));
 defineExpose({ async ask(exerciseId?: string, selection?: LearningSelection, unitId = props.state.unit?.id) {
     focus.value = { unitId, exerciseId, selection, help: !!exerciseId && !selection };
     session.study = unitId ? { unitId, exerciseId } : null;
@@ -104,15 +108,19 @@ defineExpose({ async ask(exerciseId?: string, selection?: LearningSelection, uni
             <div v-for="({ turn, index }, position) in conversationTurns" :key="dialogue.removedTurns + index" class="learning-conversation-turn">
                 <p v-if="turn.user && !internalRequests.has(turn.purpose) && !isLearningPreparation({ kind: turn.purpose ?? 'talk' })" class="learning-conversation-user">{{ turn.user }}</p>
                 <LearningMessages :turn="turn" :disabled="pending" @stop="action(isLearningConversation({ kind: turn.purpose ?? 'talk' }) ? 'cancel-chat' : isLearningPreparation({ kind: turn.purpose ?? 'talk' }) ? 'cancel-preparation' : 'cancel')" />
-                <div v-if="learningTurnNotice(turn, storage, state.storage) || turn.retryable" class="learning-turn-recovery">
+                <div v-if="turn.purpose !== 'task-result' && (learningTurnNotice(turn, storage, state.storage) || turn.retryable)" class="learning-turn-recovery">
                     <p v-if="learningTurnNotice(turn, storage, state.storage)" class="learning-turn-notice" :class="{ 'is-error': turn.status === 'failed' }" role="status">{{ learningTurnNotice(turn, storage, state.storage) }}</p>
                     <button v-if="turn.retryable" type="button" :disabled="disabled || pending" @click="action('retry-chat', { id: turn.id })">{{ dialogueCopy.retry }}</button>
                 </div>
                 <button v-if="turn.presentation" type="button" class="learning-activity-link" :disabled="!available(turn.presentation)" @click="emit('present', turn.presentation)"><LearningIcon :name="turn.presentation.kind === 'material' ? 'book' : 'records'" /><span>{{ turn.presentation.title }}</span><LearningIcon name="arrow" /></button>
-                <div v-if="position === conversationTurns.length - 1 && reply?.text === turn.teacher" class="learning-conversation-tools"><button v-if="[...turn.teacher].length <= 1000" type="button" :disabled="disabled" @click="action('say-reply')"><LearningIcon name="sound" />{{ dialogueCopy.listen }}</button><button v-if="reply.exerciseId && replyUnit && [...turn.teacher].length <= 4000" type="button" :disabled="disabled || replyUnit.notes.some(note => note.text === turn.teacher)" @click="action('save-note', { unitId: replyUnit.id })">{{ dialogueCopy.saveNote }}</button></div>
+                <div v-if="position === conversationTurns.length - 1 && reply && reply.id === turn.id" class="learning-conversation-tools"><button v-if="[...turn.teacher].length <= 1000" type="button" :disabled="disabled" @click="action('say-reply', { id: turn.id })"><LearningIcon name="sound" />{{ dialogueCopy.listen }}</button><button v-if="replyNote && replyUnit && [...turn.teacher].length <= 4000" type="button" :disabled="disabled || replyNote.saved" @click="action('save-note', { id: turn.id, unitId: replyUnit.id })">{{ dialogueCopy.saveNote }}</button></div>
             </div>
             <div v-if="busy && !dialogue.turns.some(turn => turn.status === 'running' && isLearningConversation({ kind: turn.purpose ?? 'talk' }))" class="learning-working" role="status"><span class="learning-working-dot" aria-hidden="true" /><span>{{ notice }}</span></div>
             <p v-else-if="!busy && notice && storage === 'ready'" class="learning-turn-notice is-error" role="status">{{ notice }}</p>
+            <div v-for="task in failedNotifications" :key="task.taskId" class="learning-turn-recovery">
+                <p class="learning-turn-notice is-error" role="status">{{ task.notificationError }}</p>
+                <button type="button" :disabled="pending || state.chatBusy || !['ready', 'unconfirmed'].includes(storage)" @click="action('retry-notification', { id: task.taskId })">{{ conversationCopy.notificationRetry }}</button>
+            </div>
             <div v-if="!conversationTurns.length && !busy" class="learning-conversation-empty"><LearningIcon name="chat" /><p>{{ target === 'workbench' ? dialogueCopy.assistantEmpty : state.teacher ? copy.empty : copy.select }}</p><button v-if="target === 'companion' && !state.teacher" class="learning-primary" type="button" @click="emit('profile')">{{ copy.select }}</button><button v-else-if="target === 'companion'" type="button" :disabled="disabled" @click="action('talk', { message: state.profile ? LEARNING_OPENING_MESSAGES.returning : LEARNING_OPENING_MESSAGES.initial })">{{ copy.opening }}</button></div>
         </div>
         <form v-if="target === 'workbench' || state.teacher" class="learning-conversation-compose" @submit.prevent="send">

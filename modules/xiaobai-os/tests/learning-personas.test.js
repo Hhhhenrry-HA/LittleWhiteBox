@@ -299,7 +299,7 @@ test('formal grading and companion chat run concurrently; results stay in their 
 });
 
 for (const change of ['article', 'language', 'companion']) {
-    test(`a late companion response after changing ${change} is neither published nor persisted`, async t => {
+    test(`changing ${change} ${change === 'article' ? 'preserves an ordinary conversation' : 'retires the previous companion response'}`, async t => {
         let release; let entered;
         const h = await createClassroomFixture(); t.after(() => { release?.(); return h.dispose(); }); await h.openLesson();
         const gate = new Promise(resolve => { release = resolve; });
@@ -320,9 +320,9 @@ for (const change of ['article', 'language', 'companion']) {
         }
         release(); await until(h, state => !state.chatBusy);
         h.runtime.handleChatChanged(); await h.reenter();
-        assert.ok(h.state().conversation.turns.every(turn => turn.teacher !== 'STALE_REPLY'));
+        assert.equal(h.state().conversation.turns.some(turn => turn.teacher === 'STALE_REPLY'), change === 'article');
         const saved = (await h.store.read()).value;
-        assert.ok(saved.sessions.every(session => session.memory.exchanges.every(exchange => exchange.reply !== 'STALE_REPLY')));
+        assert.equal(saved.sessions.some(session => session.memory.exchanges.some(exchange => exchange.reply === 'STALE_REPLY')), change === 'article');
     });
 }
 

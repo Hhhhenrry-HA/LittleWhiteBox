@@ -17,6 +17,7 @@ import { isLearningConversation, learningReadUnit } from './access.js';
 import type { LearningActor } from '../domain/conversation.js';
 import { createLearningReading } from './reading.js';
 import type { LearningSaveConfirmation } from '../storage/repository.js';
+import type { LearningWorkTarget } from '../application/delegation.js';
 
 /**
  * Request purposes select the initial context and teaching guidance, not tool permissions.
@@ -27,6 +28,7 @@ export type LearningAction =
     | { kind: 'assess'; attemptId: string; review: boolean }
     | { kind: 'complete' }
     | { kind: 'talk'; unitId?: string }
+    | { kind: 'task-result'; taskId: string }
     /** A reply focused on one paragraph summary. */
     | { kind: 'summary-review'; attemptId: string }
     | { kind: 'grade'; unitId: string }
@@ -97,8 +99,6 @@ export function createLearningSession(repository: LearningRepository, options: {
     const canReplace = (profile: LearningLanguage, unit: LearningUnit | null) => !unit
         || replacements.has(unit.id) || profile.completions.some(entry => entry.unitId === unit.id)
         || unit.id === preapprovedUnitId;
-    const writableContent = (unit: LearningUnit) => requireLearning(unit.scope.kind !== 'public' || inputScope.kind === 'public', 'unit',
-        'This shared lesson cannot acquire private story details. Start a new lesson in this classroom');
     async function checkpoint(guard: () => boolean, onConfirmed?: LearningSaveConfirmation) {
         active();
         if (actor === 'companion') { return { status: guard() ? 'unchanged' as const : 'cancelled' as const, document: repository.snapshot().document ?? null }; }
@@ -137,6 +137,14 @@ export function createLearningSession(repository: LearningRepository, options: {
         toolNames: [...names],
         appliedTools: () => [...applied],
         reading: () => ({ scope: structuredClone(inputScope), references: [...readReferences] }),
+        target(focus?: LearningWorkTarget): LearningWorkTarget {
+            const unit = staged.profiles.find(entry => entry.language === canonicalLanguage)?.[unitKey];
+            const exerciseId = unit?.id === knownUnits[unitKey] && unit?.exercises.some(entry => entry.id === focus?.exerciseId) ? focus?.exerciseId : undefined;
+            const selection = unit?.id === knownUnits[unitKey] && focus?.selection && unit?.materials.some(material => material.id === focus.selection!.materialId
+                && material.paragraphs.some(paragraph => paragraph.id === focus.selection!.paragraphId
+                    && paragraph.text.slice(focus.selection!.start, focus.selection!.end) === focus.selection!.quote)) ? focus.selection : null;
+            return { unitKey, unitId: knownUnits[unitKey], ...(exerciseId ? { exerciseId } : {}), selection };
+        },
         recordAppliedTool(name: string) { active(); applied.add(name); },
         authorizeReplacement(unitId: string) { active(); replacements.add(unitId); },
         refresh() {
@@ -201,7 +209,6 @@ export function createLearningSession(repository: LearningRepository, options: {
                         const key = currentSlot(profile, input.unitId);
                         const unit = profile[key];
                         requireLearning(unit?.kind === 'reading-writing' && canReadLearningScope(unit.scope, accessOsId), 'unitId', 'Select an available reading article');
-                        writableContent(unit);
                         if (name === 'LearningReadingNotes') {
                             requireLearning(Array.isArray(input.explanations), 'explanations', 'Supply paragraph explanations');
                             const entries = new Map<string, Record<string, unknown>>(unit.explanations!.map(({ materialId, ...entry }) => [entry.paragraphId, { materialKey: materialId, ...entry }]));
@@ -233,7 +240,6 @@ export function createLearningSession(repository: LearningRepository, options: {
                         requireLearning(startNew || !profile[key] || canReadLearningScope(profile[key].scope, accessOsId), 'unitId', 'This lesson belongs to another story');
                         const confirmed = expected?.data.profiles.find(entry => entry.language === canonicalLanguage);
                         const current = startNew ? null : profile[key];
-                        if (current) { writableContent(current); }
                         const kind = lesson.kind ?? (key === 'review' ? 'review' : !current && action.kind === 'prepare' ? action.unit : undefined);
                         const edited = revealKnownText(compileLesson({ ...lesson, ...(kind ? { kind } : {}) }, current,
                             previous?.id === current?.id ? previous ?? null : null, { profile, now: asOf }), confirmed);
@@ -257,8 +263,8 @@ export function createLearningSession(repository: LearningRepository, options: {
                     } else if (name === 'LearningModelEssay') {
                         const input = learningRecord(args, name, ['unitId', 'text', 'level']);
                         requireLearning(profile.unit && canReadLearningScope(profile.unit.scope, accessOsId), 'unitId', 'This unit is outside the action reading scope');
-                        writableContent(profile.unit);
-                        saveLearningModelEssay(profile, learningId(input.unitId, 'unitId'), { text: input.text, level: input.level }, now());
+                        saveLearningModelEssay(profile, learningId(input.unitId, 'unitId'), { text: input.text, level: input.level },
+                            { now: now(), osId: options.osId, inputScope });
                         ids = [profile.unit.id];
                     } else if (name === 'LearningReveal') {
                         const input = learningRecord(args, name, ['unitId', 'kind', 'id']);
@@ -272,10 +278,7 @@ export function createLearningSession(repository: LearningRepository, options: {
                         const key = currentSlot(profile, input.unitId);
                         const unit = profile[key];
                         requireLearning(unit && canReadLearningScope(unit.scope, accessOsId), 'unitId', 'This unit is outside the action reading scope');
-                        // Scope follows every piece of feedback the completion is allowed to consume.
-                        const visible = structuredClone(profile);
-                        visible[key]!.assessments = visible[key]!.assessments.filter(entry => canReadLearningScope(entry.scope, accessOsId));
-                        const completed = completeLearning(visible, args, { osId: options.osId, inputScope, now });
+                        const completed = completeLearning(profile, args, { osId: options.osId, inputScope, now });
                         next.profiles[index].completions = completed.completions;
                         ids = [unit.id];
                     } else { requireLearning(false, 'tool', 'This tool requires the application executor'); }

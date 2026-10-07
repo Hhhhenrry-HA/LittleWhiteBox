@@ -18,7 +18,7 @@ export type LearningLoopResult = { status: 'finished'; messages: RecordValue[]; 
 
 /** Same text/tool continuation as ebook; classroom data validation belongs to the tools. */
 export async function runLearningProviderLoop(options: {
-    agent: XiaobaiOsAgentSession; systemPrompt: string; messages: readonly RecordValue[];
+    agent: XiaobaiOsAgentSession; systemPrompt: string; messages: readonly RecordValue[] | (() => readonly RecordValue[]);
     tools: readonly RecordValue[]; signal: AbortSignal; guard: () => boolean;
     executeTool: (name: string, args: unknown) => unknown | Promise<unknown>;
     history?: readonly LearningTurn[];
@@ -44,6 +44,7 @@ export async function runLearningProviderLoop(options: {
     const outputStart = state.messages.length;
     const tools = new Set(options.tools.map(tool => String((tool.function as RecordValue).name)));
     let responses: RecordValue[] | undefined;
+    let sessionInput = '';
     let reminderSent = false;
     let pendingReminder = '';
     const finalReminder = 'The tool results are available. Reply to the learner with the outcome or the obstacle that needs their input.';
@@ -66,9 +67,10 @@ export async function runLearningProviderLoop(options: {
     const advance = (next: LearningProgress) => { progress = next; options.onProgress?.(next); };
     const failure = (reason: string, cause?: unknown): LearningLoopResult => cancelled() ? { status: 'cancelled' }
         : { status: 'failed', reason, details: { ...progress, cause } };
-    const replay = (candidateSummary = summary, candidateHistory = history) => [
+    const inputMessages = () => typeof options.messages === 'function' ? options.messages() : options.messages;
+    const replay = (candidateSummary = summary, candidateHistory = history, input = inputMessages()) => [
         ...(options.prefix ?? []), ...(candidateSummary ? [learningHistoryMessage(candidateSummary)] : []),
-        ...candidateHistory.flatMap(learningTurnMessages), ...options.messages, ...protocolMessages()];
+        ...candidateHistory.flatMap(learningTurnMessages), ...input, ...protocolMessages()];
     const contextTokens = (candidateMessages = replay()) => estimateConversationTokens({
         messages: [{ role: 'system', content: options.systemPrompt }, ...candidateMessages],
         tools: [...options.tools], providerConfig: agent.providerConfig,
@@ -108,8 +110,13 @@ export async function runLearningProviderLoop(options: {
                 if (compacted && (responses || pendingReminder)) { advance({ stage: 'session', round }); agent = await options.reopen!(); responses = undefined; pendingReminder = ''; }
                 if (cancelled()) { return { status: 'cancelled' }; }
                 advance({ stage: 'provider', round });
-                const continueSession = agent.supportsSessionToolLoop && (responses !== undefined || !!pendingReminder);
-                const requestMessages = continueSession ? [] : replay();
+                const input = inputMessages();
+                const inputKey = agent.supportsSessionToolLoop ? JSON.stringify(input) : '';
+                // Full replay replaces changed request data in session-based providers; appending
+                // a new reminder would retain stale workbench state in their existing history.
+                const continueSession = agent.supportsSessionToolLoop && inputKey === sessionInput && (responses !== undefined || !!pendingReminder);
+                const requestMessages = continueSession ? [] : replay(summary, history, input);
+                sessionInput = inputKey;
                 assistant = stream.createStreamingAssistantMessage();
                 options.onResponseStart?.(assistant);
                 let streaming = true;

@@ -1,4 +1,5 @@
 import { completeLearningByFacts } from './completion.js';
+import { LEARNING_WORK_COPY, createLearningAttemptAccess, learningUnitOfAttempt } from './work.js';
 import { checkLearningAnnotations, parseLearningAssessment } from './facts.js';
 import { learningRecord, learningText } from './profile.js';
 import { selectLearningEvidence } from './progress.js';
@@ -23,11 +24,6 @@ export function projectLearningEvidence(unit: LearningUnit, attemptId: string): 
     const kept = materials.map(material => material.id);
     return structuredClone({ unitId: unit.id, scope: assessment.scope,
         exercise: { ...exercise, materialIds: exercise.materialIds.filter(id => kept.includes(id)) }, materials, attempt, assessment });
-}
-
-/** The current unit or review that holds this attempt. */
-export function learningUnitOfAttempt(profile: LearningLanguage, attemptId: string): LearningUnit | undefined {
-    return [profile.unit, profile.review].find(unit => unit?.attempts.some(entry => entry.id === attemptId)) ?? undefined;
 }
 
 export function learningEvidence(profile: LearningLanguage, attemptId: string): LearningEvidence {
@@ -101,14 +97,11 @@ export function assessLearning(profile: LearningLanguage, args: unknown, options
     requireLearning(attemptId === options.attemptId, 'attemptId', 'This action evaluates its submitted attempt');
     const now = (options.now ?? (() => new Date().toISOString()))();
     const next = structuredClone(profile);
-    const unit = learningUnitOfAttempt(next, attemptId);
-    const currentAttempt = unit?.attempts.find(entry => entry.id === attemptId);
-    const archived = currentAttempt ? null : next.items.flatMap(item => item.evidence).find(entry => entry.attempt.id === attemptId);
-    const attempt = currentAttempt ?? archived?.attempt;
-    requireLearning(attempt && canReadLearningScope(attempt.scope, options.osId), 'attemptId', 'Submit and save an available learner answer before evaluation');
-    const scope = combineLearningScope(attempt.scope, options.inputScope);
+    const access = createLearningAttemptAccess(next, options.osId).get(attemptId);
+    requireLearning(access.work, 'attemptId', LEARNING_WORK_COPY.unavailable);
+    const { attempt, assessment: prior } = access.work;
+    const scope = combineLearningScope(access.work.scope, options.inputScope);
     const { items: rawItems, annotations: rawAnnotations, ...rawAssessment } = input;
-    const prior = currentAttempt ? unit!.assessments.find(entry => entry.attemptId === attemptId) : archived?.assessment;
     const evidenceOnly = prior && Object.keys(rawAssessment).length === 1 && rawAnnotations === undefined;
     const createItem = (label: string, skill: LearningSkill) => {
         const found = next.items.find(entry => entry.label === label && entry.skill === skill && JSON.stringify(entry.scope) === JSON.stringify(scope));
@@ -146,12 +139,9 @@ export function assessLearning(profile: LearningLanguage, args: unknown, options
     const assessment = evidenceOnly ? prior : parseLearningAssessment({ ...rawAssessment, ...(annotations ? { annotations } : {}), scope });
     const rejudged = prior !== undefined && JSON.stringify(prior) !== JSON.stringify(assessment);
     requireLearning(!rejudged || options.review, 'attemptId', 'Existing feedback can be changed in an explicit review');
-    requireLearning(!rejudged || !unit?.attempts.some(entry => entry.revisesAttemptId === attemptId), 'attemptId',
-        'This draft has a revision that answered its feedback; review the revision instead');
-    if (currentAttempt) {
-        // Validate before any copy is made, so a wrong quote fails here with its own message.
-        checkLearningAnnotations(assessment, currentAttempt);
-    }
+    requireLearning(!rejudged || access.actions.review, 'attemptId', LEARNING_WORK_COPY.revised);
+    // Validate the selected answer before updating its authoritative feedback and representative copies.
+    checkLearningAnnotations(assessment, attempt);
     const changes = learningArray(rawItems ?? [], 'items', parseItemRef, L.itemChanges);
     uniqueLearning(changes.flatMap(item => item.itemId === null ? [] : [item.itemId]), 'items');
     replaceLearningAssessment(next, assessment);
@@ -164,7 +154,7 @@ export function assessLearning(profile: LearningLanguage, args: unknown, options
     // Decide against the saved answers before new item links can prune their representative evidence.
     if (!prior || rejudged) { scheduleLearningReview(next, evidence, now, prior); }
     for (const item of linked) { attachLearningEvidence(item, evidence); ids.push(item.id); }
-    completeLearningByFacts(next, 'unit', now);
-    completeLearningByFacts(next, 'review', now);
+    completeLearningByFacts(next, 'unit', now, options.osId);
+    completeLearningByFacts(next, 'review', now, options.osId);
     return { profile: next, ids };
 }

@@ -8,7 +8,7 @@ export function isLearningPreparation(action: Pick<LearningAction, 'kind'>) {
 
 /** Conversation has its own run; only a requested workbench action can change training facts. */
 export function isLearningConversation(action: Pick<LearningAction, 'kind'>) {
-    return action.kind === 'talk' || action.kind === 'companion';
+    return action.kind === 'talk' || action.kind === 'companion' || action.kind === 'task-result';
 }
 
 /** Public lesson preparation cannot copy story-private assets; existing work retains its original access. */

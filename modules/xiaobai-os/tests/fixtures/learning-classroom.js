@@ -24,7 +24,7 @@ export const fixtureLesson = {
 export async function createClassroomFixture({ listening = false, lesson: lessonInput = fixtureLesson, getTtsFacade = () => undefined, agentConfig = {} } = {}) {
     let chat = 'runtime-a'; let envelope = null; let userFile = null; let walletFile = null; let serial = 0;
     const flags = { userFailure: false, userRejected: false, heldUser: null, ledgerFailure: false, ledgerUnknown: false, heldLedger: null, teacherReceiptLost: false, teacherWriteApplied: true,
-        providerFailure: false, providerGate: null, prepareReply: null, profileReply: null, talkTools: null, teacherResponse: null };
+        providerFailure: false, providerGate: null, prepareReply: null, profileReply: null, talkTools: null, teacherResponse: null, notificationResponse: null };
     const requests = [];
     const counts = { captures: 0, provider: 0, userWrites: 0, ledgerWrites: 0, teacherWrites: 0 };
     const failures = [];
@@ -108,6 +108,11 @@ export async function createClassroomFixture({ listening = false, lesson: lesson
             counts.provider++; requests.push({ systemPrompt: request.systemPrompt, messages: structuredClone(request.messages), tools: request.tools.map(tool => tool.function.name) });
             if (flags.providerGate) { await flags.providerGate; }
             if (flags.providerFailure) { throw Object.assign(new Error('fixture secret must stay hidden'), { status: 401 }); }
+            const latest = request.messages.findLast(entry => entry.role === 'user' && entry.content.includes('<learning_request>'));
+            const input = latest && JSON.parse(latest.content.split('<learning_request>\n')[1].split('\n</learning_request>')[0]);
+            if (input?.action.kind === 'task-result') {
+                return flags.notificationResponse ? flags.notificationResponse(request, ++customRound) : { text: '老师把委托的结果交回来了，我们接着聊。' };
+            }
             return flags.teacherResponse ? flags.teacherResponse(request, ++customRound) : respond(request);
         } };
     } };
@@ -139,6 +144,7 @@ export async function createClassroomFixture({ listening = false, lesson: lesson
         // This fixture prepares the supplied lesson kind; production buttons supply their own kind.
         const response = await bridge.request(`learning/${name}`, { chatIdentity: chat,
             ...(['talk', 'cancel-chat', 'forget-conversation', 'say-reply', 'save-note'].includes(name) ? { target: 'companion' } : {}),
+            ...(['say-reply', 'save-note'].includes(name) ? { id: (input.target === 'workbench' ? state.reply : state.companionReply)?.id } : {}),
             ...(['prepare', 'replace-lesson'].includes(name) ? { kind: lessonInput.kind ?? 'lesson' } : {}), ...input });
         state = response.result.state;
         if (state.busy || state.chatBusy || state.workbenchBusy || state.companionBusy || state.preparation?.running) { await new Promise(resolve => waiters.add(resolve)); }

@@ -1,7 +1,7 @@
 import { learningReferenceScopes } from '../application/conversation-references.js';
 import type { AgentCapability } from '../../../capabilities/agent/index.js';
 import type { EconomyReadCapability } from '../../../capabilities/economy/index.js';
-import { parseLearningSelection, type LearningSelection } from '../../../domains/learning/notes.js';
+import { parseLearningSelection } from '../../../domains/learning/notes.js';
 import { learningRecord, learningText, LearningValidationError, parseLearningLanguageTag, type LearningTeacherPreference } from '../../../domains/learning/profile.js';
 import type { LearningAnswer } from '../../../domains/learning/types.js';
 import { learningInteger, requireLearning } from '../../../domains/learning/validation.js';
@@ -11,7 +11,6 @@ import type { PartitionStore, XiaobaiOsFileControls } from '../../../kernel/cont
 import type { XiaobaiOsExecutionScope } from '../../../kernel/execution-scope.js';
 import type { XiaobaiOsAppActivationContext, XiaobaiOsAppRuntime } from '../../../types.js';
 import type { LearningTeacherContext } from '../agent/context.js';
-import type { LearningAction } from '../agent/session.js';
 import { parseLearningActor, type LearningActor } from '../domain/conversation.js';
 import type { LearningStoredWorkbench } from '../workbench-partition.js';
 import type { LearningStoredCompanions } from '../partition.js';
@@ -20,6 +19,7 @@ import { LEARNING_CONVERSATION_COPY as conversationCopy } from '../application/c
 import { isLearningConversation } from '../agent/access.js';
 import { learningClassView } from '../application/projection.js';
 import { createLearningId } from '../application/identity.js';
+import { learningReplyNote } from '../application/reply-note.js';
 import type { LearningAttemptBasis } from '../application/attempt.js';
 import { createLearningPractice } from '../application/practice.js';
 import { createLearningRewards } from '../application/rewards.js';
@@ -38,6 +38,8 @@ import { learningPreparation } from '../../../domains/learning/preparation.js';
 import { LEARNING_PREPARATION_COPY as prepCopy } from '../application/preparation-copy.js';
 import { learningActionBusy, learningActionLane } from '../application/action-availability.js';
 import { createLearningApprovals } from '../application/approval.js';
+import { createLearningDelegatedWork } from './delegated-work.js';
+import { shareLearningCourse } from '../application/course-sharing.js';
 
 export function createLearningRuntime(deps: {
     repository: LearningRepository; store: PartitionStore<LearningStoredCompanions>; files: XiaobaiOsFileControls;
@@ -65,10 +67,6 @@ export function createLearningRuntime(deps: {
     let message = '';
     let progress = '';
     let loadFailed = false;
-    let reply: LearningClientState['reply'] = null;
-    let replySelection: LearningSelection | null = null;
-    let companionReply: LearningClientState['reply'] = null;
-    let companionSelection: LearningSelection | null = null;
     let pendingCleanup: { commitId: string; before: LearningDocument | null; language?: string; clearAll: boolean } | null = null;
     // A lost clear receipt belongs to this conversation, not to the next language or companion.
     const pendingConversationClears = new Map<LearningActor, string>();
@@ -79,6 +77,7 @@ export function createLearningRuntime(deps: {
     const activity = () => ({ busy: !!job,
         chatBusy: !!chats.companion.job && chats.companion.kind !== 'companion', workbenchBusy: !!chats.workbench.job, preparation });
     const canWork = (name: string) => !learningActionBusy(name, activity());
+    const workbenchBusy = () => !!chats.workbench.job || !!job || !!preparationJob;
     const service = createLearningService(repository);
     const teacher = createLearningTeacherService(deps.store, { knownPeople: deps.people, playerName: deps.playerName });
     const rewards = createLearningRewards({ repository: deps.repository, store: deps.rewardStore, files: deps.rewardFiles, economy: deps.economy });
@@ -98,21 +97,9 @@ export function createLearningRuntime(deps: {
             current: actor === 'workbench' ? current : companionCurrent, capture: deps.capture,
             memory: () => histories.port(actor, language, teacher.selected()?.id ?? null),
             onConversation: publish, confirm: approvals.request, onSettled: payPending,
-            delegate: async (request, signal, onSaved) => {
-                if (signal.aborted) { return { ok: false, status: 'cancelled' }; }
-                if (chats.workbench.job || job || preparationJob) { return { ok: false, status: 'busy' }; }
-                const token = {};
-                chats.workbench.job = token; chats.workbench.kind = 'talk'; publish();
-                const cancel = () => { if (chats.workbench.job === token) { teaching.cancel('conversation'); } };
-                signal.addEventListener('abort', cancel, { once: true });
-                try {
-                    const result = await teaching.run({ ...request, action: { kind: 'talk', unitId: request.unitId } }, undefined, onSaved);
-                    return { ok: result.status === 'finished', ...result, text: result.status === 'finished' ? result.text : result.status === 'failed' ? result.message : '' };
-                } finally {
-                    signal.removeEventListener('abort', cancel);
-                    if (chats.workbench.job === token) { chats.workbench.job = null; chats.workbench.kind = ''; chats.workbench.progress = ''; publish(); }
-                }
-            },
+            delegate: (request, signal) => delegated.start(request, signal),
+            taskGet: taskId => delegated.get(taskId),
+            workbench: () => ({ busy: workbenchBusy(), tasks: delegated.list() }),
             onProgress: (next, action) => {
                 const text = learningProgressMessage(next);
                 if (isLearningConversation(action)) { chats[actor].progress = text; } else { progress = text; }
@@ -122,13 +109,48 @@ export function createLearningRuntime(deps: {
     }
     const teaching = persona('workbench');
     const companion = persona('companion');
+    const delegated = createLearningDelegatedWork({
+        owner: () => companionCurrent() ? JSON.stringify(companionCurrent()) : null,
+        workBusy: workbenchBusy,
+        canNotify: retrySave => !!companionCurrent() && !chats.companion.job
+            && (deps.files.getFileState() === 'ready' || retrySave === true && deps.files.getFileState() === 'unconfirmed'),
+        awaitingApproval: () => !!approvals.current(),
+        run: work => deps.execution.run(work), changed: publish,
+        notificationTurn: taskId => companion.notificationTurn(taskId),
+        resetNotification: taskId => companion.resetNotification(taskId),
+        saveNotification: taskId => runDelegatedLane('companion', async () => {
+            if (deps.files.getFileState() === 'unconfirmed') { await deps.files.retryPending(); }
+            if (deps.files.getFileState() !== 'ready') { return false; }
+            await companion.verifyHistory();
+            return companion.notificationTurn(taskId)?.notice === 'history-save' ? companion.saveNotification(taskId) : true;
+        }, 'task-result', false),
+        work: (request, taskId, retryId) => runDelegatedLane('workbench', () => teaching.run({ ...request, taskId,
+            displayMessage: '', action: { kind: 'talk', unitId: request.target.unitId } }, retryId), 'talk', { status: 'cancelled' }),
+        notify: (taskResult, retryId) => runDelegatedLane('companion', () => companion.run({
+            message: '', action: { kind: 'task-result', taskId: taskResult.taskId }, taskResult, target: structuredClone(taskResult.target),
+        }, retryId), 'task-result', { status: 'cancelled' }),
+    });
+    function runDelegatedLane<T>(actor: LearningActor, run: () => Promise<T>, kind: string, cancelled: T): Promise<T> {
+        const token = {};
+        const owned = epoch;
+        const lane = chats[actor];
+        lane.job = token; lane.kind = kind; lane.progress = '';
+        if (actor === 'companion') { remark = null; }
+        return deps.execution.run(async () => {
+            try { return active() && owned === epoch && lane.job === token ? await run() : cancelled; }
+            finally {
+                if (lane.job === token) { lane.job = null; lane.kind = ''; lane.progress = ''; }
+                // The delegation owner publishes after recording the outcome and reserving delivery.
+            }
+        });
+    }
     const runner = (actor: LearningActor) => actor === 'workbench' ? teaching : companion;
     const conversationKey = (actor: LearningActor) => JSON.stringify(actor === 'workbench' ? current() : companionCurrent());
     async function restoreConversation(actor: LearningActor, adopted = false) {
         const pendingKey = pendingConversationClears.get(actor);
         if (adopted || pendingKey === conversationKey(actor)) {
+            if (actor === 'companion') { delegated.clear(); }
             runner(actor).reset();
-            if (actor === 'workbench') { reply = null; replySelection = null; } else { companionReply = null; companionSelection = null; }
             chats[actor].progress = '';
         }
         pendingConversationClears.delete(actor);
@@ -151,25 +173,28 @@ export function createLearningRuntime(deps: {
         // Keep navigation on the displayed page when deletion or a server read shrinks the list.
         offset = view.records.offset;
         return { ...view,
-            chatIdentity, language, teacher: teacher.selected()?.person ?? null, companionSessionId: teacher.selected()?.id ?? null,
+            chatIdentity, commitId: snapshot.document?.commitId ?? null, language, teacher: teacher.selected()?.person ?? null, companionSessionId: teacher.selected()?.id ?? null,
             candidates: teacher.candidates().map(person => ({ name: person.name, aliases: person.aliases })),
             storage: loadFailed ? 'unloaded' : snapshot.status, chatStorage: deps.files.getFileState(), workbenchStorage: deps.workbenchFiles.getFileState(), walletStorage: deps.rewardFiles.getFileState(),
             sourceChoice: !preparationJob && snapshot.status === 'ready' && sourceChoice?.unitId === view.currentUnitId ? sourceChoice.reason : null, ...activity(), approval: approvals.current(),
             companionBusy: !!chats.companion.job && chats.companion.kind === 'companion', chatMessage: chats.companion.progress, workbenchMessage: chats.workbench.progress,
-            message: job ? progress : message, reply, pending, remark, companionReply, conversation: companion.conversation(), workbenchConversation: teaching.conversation(),
+            message: job ? progress : message, reply: teaching.reply(), pending, remark, companionReply: companion.reply(), delegatedTasks: delegated.views(),
+            conversation: companion.conversation(), workbenchConversation: teaching.conversation(),
             walletOpen: deps.economy.isOpen(), media: speech.media.snapshot(), voices: speech.media.capabilities() };
     }
     function publish() { if (active()) { activation!.post('learning/state', { state: state() }); } }
     /** No learner job is running; a companion remark does not count, it gives way. */
     function idle() { return !learningActionBusy('language', activity()); }
     function cancel() {
+        delegated.clear();
         epoch++; teaching.cancel(); companion.cancel(); speech.stop(); job = null; progress = ''; pending = null;
         for (const lane of Object.values(chats)) { lane.job = null; lane.kind = ''; lane.progress = ''; }
         preparationJob = null; preparation = null; sourceChoice = null;
-        reply = null; replySelection = null; companionReply = null; companionSelection = null; remark = null;
+        remark = null;
     }
     function cancelConversation(actor: LearningActor) {
         runner(actor).cancel('conversation'); chats[actor].job = null; chats[actor].kind = ''; chats[actor].progress = '';
+        delegated.cancel(actor);
     }
     /** Abort only the unprompted conversation lane; a workbench request has an independent lifetime. */
     function yieldRemark() {
@@ -202,12 +227,10 @@ export function createLearningRuntime(deps: {
             }
         }
     }
-    async function afterTeaching(result: LearningTeachingResult, guard: () => boolean, action: LearningAction['kind'], exerciseId?: string, selection: LearningSelection | null = null) {
+    async function afterTeaching(result: LearningTeachingResult, guard: () => boolean) {
         if (!guard()) { return; }
         if (result.status === 'failed') { if (!result.displayed) { message = result.message; } return; }
         if (result.status !== 'finished') { saved(result); return; }
-        const target = [profileNow()?.unit, profileNow()?.review].find(unit => unit?.exercises.some(exercise => exercise.id === exerciseId));
-        reply = { text: result.text, action, ...(exerciseId ? { exerciseId, unitId: target?.id } : {}) }; replySelection = selection;
     }
     function profileNow() { return confirmedLearning(repository)?.data.profiles.find(entry => entry.language === language) ?? null; }
     /** The current lesson or review group with this id, when this story may read it. */
@@ -229,21 +252,22 @@ export function createLearningRuntime(deps: {
     async function advance(unitId: string, guard: () => boolean, intent?: keyof typeof stageRequests) {
         if (!guard()) { return; }
         const target = slot(unitId);
-        const progress = learningUnitStage(target);
+        const progress = learningUnitStage(target, current()!.osId);
         const purpose = intent ?? (target.kind === 'review' ? 'review-assess'
             : progress.exercises.some(row => row.status === 'grading') ? 'grade'
                 : progress.exercises.some(row => row.status === 'reviewing') ? 'revision-review' : nextStage[progress.stage] ?? 'grade');
         pending = { purpose, unitId }; publish();
         const result = await teaching.run({ action: { kind: purpose, unitId }, message: stageRequests[purpose] });
         pending = null;
-        await afterTeaching(result, guard, purpose);
+        await afterTeaching(result, guard);
     }
     async function cleanHistories(before: LearningDocument | null, guard: () => boolean, deletedLanguage?: string, clearAll = false) {
         const remaining = learningReferenceScopes(repository.snapshot().document?.data);
         const removed = new Set([...learningReferenceScopes(before?.data).keys()].filter(id => !remaining.has(id)));
         if (!removed.size && !deletedLanguage && !clearAll) { return; }
+        delegated.clear();
         cancelConversation('workbench'); cancelConversation('companion');
-        teaching.reset(); companion.reset(); reply = null; replySelection = null; companionReply = null; companionSelection = null;
+        teaching.reset(); companion.reset();
         const result = await histories.prune(removed, guard, deletedLanguage, clearAll);
         if (result.status !== 'confirmed' && result.status !== 'unchanged') { message = conversationCopy.memoryClearFailed; }
         if (guard()) { await teaching.hydrate(); await companion.hydrate(); }
@@ -255,13 +279,7 @@ export function createLearningRuntime(deps: {
             }
             pendingCleanup = null;
         }
-        const recovered = await teaching.recoverConfirmed();
-        if (recovered) {
-            const { result, request } = recovered;
-            const target = [profileNow()?.unit, profileNow()?.review].find(unit => unit?.exercises.some(exercise => exercise.id === request.exerciseId));
-            reply = { text: result.text, action: request.action.kind, ...(request.exerciseId ? { exerciseId: request.exerciseId, unitId: target?.id } : {}) };
-            replySelection = request.selection ?? null;
-        }
+        await teaching.recoverConfirmed();
     }
     function unit() {
         const classroom = current();
@@ -293,12 +311,12 @@ export function createLearningRuntime(deps: {
                 }
                 if (article && (profileNow()?.unit?.id ?? null) === sourceChoice?.unitId) {
                     preparation!.message = result.text;
-                    await afterTeaching(result, guard, 'prepare');
+                    await afterTeaching(result, guard);
                     return;
                 }
                 sourceChoice = null;
                 preparation = null;
-                await afterTeaching(result, guard, 'prepare');
+                await afterTeaching(result, guard);
             } catch (error) {
                 if (guard() && preparation) { preparation.message = reportLearningFailure('prepare', error instanceof LearningStorageError ? error.code : 'learning_action_failed', { stage: 'action', cause: error }); }
             } finally {
@@ -346,12 +364,12 @@ export function createLearningRuntime(deps: {
             const before = repository.snapshot();
             if (name === 'verify') { saved(await repository.verify()); }
             else if (name === 'retry-save') { saved(await repository.retry(guard)); }
-            else if (name === 'adopt-server') { await repository.adoptServer(); teaching.reset(); reply = null; replySelection = null; pendingCleanup = null; }
+            else if (name === 'adopt-server') { await repository.adoptServer(); teaching.reset(); pendingCleanup = null; }
             else { await repository.refresh(); }
             await teacher.read(); await deps.economy.refresh(); loadFailed = false;
             if (!guard()) { return; }
             if (name === 'read' && before.status === 'ready' && !sameLearningDocument(before.document ?? null, repository.snapshot().document ?? null)) {
-                teaching.reset(); reply = null; replySelection = null;
+                teaching.reset();
             }
             await restoreTeaching();
             // Reading or confirming a save may reveal a completion that is now certain; the wallet takes it once.
@@ -374,6 +392,7 @@ export function createLearningRuntime(deps: {
         }
         if (name === 'forget-conversation') {
             const actor = parseLearningActor(input.target);
+            if (actor === 'companion') { delegated.clear(); }
             cancelConversation(actor);
             const key = conversationKey(actor);
             const cleared = await histories.clear(actor, language, teacher.selected()?.id ?? null, guard);
@@ -382,7 +401,6 @@ export function createLearningRuntime(deps: {
             else {
                 if (cleared.status === 'unconfirmed' || cleared.status === 'conflict') {
                     pendingConversationClears.set(actor, key); runner(actor).forgetHistory();
-                    if (actor === 'workbench') { reply = null; replySelection = null; } else { companionReply = null; companionSelection = null; }
                 }
                 chats[actor].progress = conversationCopy.memoryClearFailed;
             }
@@ -403,12 +421,12 @@ export function createLearningRuntime(deps: {
             const before = await teacher.read();
             const selected = input.teacher as LearningTeacherPreference['teacher'];
             if (JSON.stringify(teacher.selected()?.person ?? null) === JSON.stringify(selected)) { return; }
-            if (saved(await teacher.select(before.identityKey, input.teacher as LearningTeacherPreference['teacher'], guard))) { companion.reset(); companionReply = null; await companion.hydrate(); }
+            if (saved(await teacher.select(before.identityKey, input.teacher as LearningTeacherPreference['teacher'], guard))) { delegated.clear(); companion.reset(); await companion.hydrate(); }
             if (deps.files.getFileState() !== 'ready') { message = ''; }
             return;
         }
         if (name === 'profile') {
-            await afterTeaching(await teaching.run({ action: { kind: 'profile' }, message: learningText(input.message, 'message', 4000) }), guard, 'profile'); return;
+            await afterTeaching(await teaching.run({ action: { kind: 'profile' }, message: learningText(input.message, 'message', 4000) }), guard); return;
         }
         if (name === 'prepare' || name === 'replace-lesson') {
             if (!profileNow() && !saved(await service.saveSettings(language, {}, guard))) { return; }
@@ -421,25 +439,23 @@ export function createLearningRuntime(deps: {
             const profile = profileNow();
             // A completed unit is put aside by the next one without asking again.
             const finished = !!profile?.unit && profile.completions.some(entry => entry.unitId === profile.unit!.id);
-            reply = null;
             if (input.kind !== 'lesson') {
                 await prepareReading({ ...input, replaceCurrent: name === 'replace-lesson' || input.replaceCurrent === true || finished }, guard); return;
             }
             await afterTeaching(await teaching.run({ action: { kind: 'prepare', replaceCurrent: name === 'replace-lesson' || input.replaceCurrent === true || finished,
                 ...(input.kind ? { unit: input.kind as 'reading-writing' | 'lesson' } : {}) },
-                message: learningText(input.message, 'message', 4000) }), guard, 'prepare'); return;
+                message: learningText(input.message, 'message', 4000) }), guard); return;
         }
         if (name === 'submit') {
-            const purpose = slot(String(input.unitId)).kind === 'lesson' ? 'assess' : 'summary-review';
             const result = await practice.submit({ unitId: learningText(input.unitId, 'unitId', 128), exerciseId: learningText(input.exerciseId, 'exerciseId', 128),
                 answer: input.answer as LearningAnswer, replays: 0, slowPlayback: false }, guard, answerBasis);
             if (result.status === 'saved' && result.teaching) {
-                await afterTeaching(result.teaching, guard, purpose, String(input.exerciseId));
+                await afterTeaching(result.teaching, guard);
             }
             else if (result.status !== 'saved') { saved(result); }
             if (result.status === 'saved' && guard()) {
                 const target = profileNow()?.review;
-                if (target && target.id === input.unitId && target.attempts.some(attempt => !target.assessments.some(entry => entry.attemptId === attempt.id && entry.verdict !== 'disputed'))) {
+                if (target && target.id === input.unitId && learningUnitStage(target, current()!.osId).stage === 'grading') {
                     await advance(target.id, guard);
                 } else if (!result.teaching) { await payPending(guard); }
             }
@@ -447,10 +463,10 @@ export function createLearningRuntime(deps: {
         }
         if (name === 'assess') {
             const attemptId = learningText(input.attemptId, 'attemptId', 128);
-            if (input.review === true && !saved(await service.dispute(language, attemptId, guard))) { return; }
+            if (input.review === true && !saved(await service.dispute(language, attemptId, current()!.osId, guard))) { return; }
             if (!guard()) { return; }
             await afterTeaching(await teaching.run({ action: { kind: 'assess', attemptId, review: input.review === true },
-                message: learningText(input.message, 'message', 4000) }), guard, 'assess'); return;
+                message: learningText(input.message, 'message', 4000) }), guard); return;
         }
         if (name === 'settings') { saved(await service.saveSettings(language, input.value, guard)); return; }
         if (name === 'bookmark') {
@@ -459,8 +475,8 @@ export function createLearningRuntime(deps: {
         }
         if (name === 'skip-revision' || name === 'submit-revision') {
             const unitId = slot(learningText(input.unitId, 'unitId', 128)).id;
-            const result = name === 'skip-revision' ? await service.skipRevision(language, unitId, guard)
-                : await service.submitRevision(language, unitId, input.revisions, guard, answerBasis);
+            const result = name === 'skip-revision' ? await service.skipRevision(language, unitId, current()!.osId, guard)
+                : await service.submitRevision(language, unitId, input.revisions, current()!.osId, guard, answerBasis);
             if (saved(result) && guard()) { await advance(unitId, guard, name === 'submit-revision' ? 'revision-review' : 'model-essay'); }
             return;
         }
@@ -477,11 +493,11 @@ export function createLearningRuntime(deps: {
             pending = { purpose: 'review-prepare' }; publish();
             const result = await teaching.run({ action: { kind: 'review-prepare', itemIds: due.itemIds, asOf }, message: '开始今天的复习。' });
             pending = null;
-            await afterTeaching(result, guard, 'review-prepare'); return;
+            await afterTeaching(result, guard); return;
         }
         if (name === 'abandon-review') { saved(await service.abandonReview(language, guard)); return; }
         if (name === 'complete') {
-            await afterTeaching(await teaching.run({ action: { kind: 'complete' }, message: '请根据已经保存的练习和反馈，看看这一课是否已经达到可以收课的程度。' }), guard, 'complete'); return;
+            await afterTeaching(await teaching.run({ action: { kind: 'complete' }, message: '请根据已经保存的练习和反馈，看看这一课是否已经达到可以收课的程度。' }), guard); return;
         }
         if (name === 'reveal') {
             const lesson = input.unitId === undefined ? unit() : slot(learningText(input.unitId, 'unitId', 128));
@@ -490,12 +506,16 @@ export function createLearningRuntime(deps: {
                 learningText(input.id, 'id', 128), current()!.osId, guard)); return;
         }
         if (name === 'voice') { saved(await service.setVoice(language, input.voice, guard)); return; }
+        if (name === 'share-course') {
+            saved(await shareLearningCourse(repository, { language, unitId: learningText(input.unitId, 'unitId', 128), osId: current()!.osId,
+                commitId: learningText(input.commitId, 'commitId', 128), approved: input.approved === true }, guard)); return;
+        }
         if (name === 'play') {
             await speech.play({ materialId: String(input.materialId), partKey: String(input.partKey), exerciseId: typeof input.exerciseId === 'string' ? input.exerciseId : undefined }); return;
         }
         if (name === 'say') { await speech.say(selection(input.selection).quote); return; }
         if (name === 'say-reply') {
-            const spoken = input.target === 'companion' ? companionReply : reply;
+            const spoken = runner(parseLearningActor(input.target)).reply(learningText(input.id, 'id', 128));
             requireLearning(spoken?.text, 'reply', 'Select a current reply');
             await speech.say(spoken.text); return;
         }
@@ -505,13 +525,12 @@ export function createLearningRuntime(deps: {
             await speech.say(exercise.prompt); return;
         }
         if (name === 'save-note') {
-            const noteReply = input.target === 'companion' ? companionReply : reply;
-            const noteSelection = input.target === 'companion' ? companionSelection : replySelection;
+            const noteReply = runner(parseLearningActor(input.target)).reply(learningText(input.id, 'id', 128));
             const lesson = input.unitId === undefined ? unit() : slot(learningText(input.unitId, 'unitId', 128));
-            requireLearning(noteReply?.exerciseId && lesson.exercises.some(exercise => exercise.id === noteReply!.exerciseId), 'reply', 'Choose a current explanation');
-            if (lesson.notes?.some(note => note.exerciseId === noteReply!.exerciseId && note.text === noteReply!.text
-                && JSON.stringify(note.selection) === JSON.stringify(noteSelection))) { return; }
-            saved(await service.note(language, lesson.id, { id: createLearningId(), text: noteReply.text, exerciseId: noteReply.exerciseId, selection: noteSelection }, guard)); return;
+            const target = learningReplyNote(lesson, noteReply);
+            requireLearning(noteReply && target, 'reply', 'Choose a current explanation');
+            if (target.saved) { return; }
+            saved(await service.note(language, lesson.id, { id: createLearningId(), ...target.note }, guard, noteReply.scope)); return;
         }
         if (name === 'delete-note') {
             const lesson = input.unitId === undefined ? unit() : slot(learningText(input.unitId, 'unitId', 128));
@@ -519,14 +538,14 @@ export function createLearningRuntime(deps: {
         }
         if (name === 'reward') { await pay(String(input.unitId), input.openWallet === true, guard); return; }
         if (name === 'delete-item') {
-            if (saved(await service.deleteItem(language, String(input.id), guard))) { await payPending(guard); }
+            if (saved(await service.deleteItem(language, String(input.id), current()!.osId, guard))) { await payPending(guard); }
             recordId = ''; return;
         }
-        if (name === 'delete-attempt') { saved(await service.deleteAttempt(language, String(input.id), guard)); return; }
+        if (name === 'delete-attempt') { saved(await service.deleteAttempt(language, String(input.id), current()!.osId, guard)); return; }
         requireLearning(!deps.rewardFiles.hasPendingCommit(), 'wallet', 'Resolve pending wallet changes before deleting learning data');
-        if (name === 'abandon') { saved(await service.abandonUnit(language, guard)); reply = null; return; }
-        if (name === 'delete-language') { saved(await service.deleteLanguage(language, guard)); reply = null; return; }
-        if (name === 'clear') { saved(await repository.clear(confirmedLearning(repository), guard)); reply = null; return; }
+        if (name === 'abandon') { saved(await service.abandonUnit(language, guard)); return; }
+        if (name === 'delete-language') { saved(await service.deleteLanguage(language, guard)); return; }
+        if (name === 'clear') { saved(await repository.clear(confirmedLearning(repository), guard)); return; }
         throw new Error('learning_unknown_action');
     }
     function launch(name: string, input: Record<string, unknown>, answerBasis?: LearningAttemptBasis) {
@@ -568,7 +587,7 @@ export function createLearningRuntime(deps: {
                 if (cleanup && guard() && !sameLearningDocument(before ?? null, repository.snapshot().document ?? null)) {
                     await cleanHistories(before ?? null, guard, name === 'delete-language' ? language : undefined, name === 'clear');
                 }
-                if (job === token) { job = null; progress = ''; pending = null; publish(); }
+                if (job === token) { job = null; progress = ''; pending = null; delegated.drain(); publish(); }
             }
         });
         publish();
@@ -585,6 +604,7 @@ export function createLearningRuntime(deps: {
             original = retryId ? runner(actor).retryRequest(retryId) : null;
             const storageReady = (actor === 'workbench' ? deps.workbenchFiles : deps.files).getFileState() === 'ready';
             if (!original || !storageReady) { lane.progress = conversationCopy.retryUnavailable; publish(); return; }
+            if (original.taskId) { return delegated.retryWork(original.taskId, retryId!); }
             input = { ...original, unitId: original.action.kind === 'talk' ? original.action.unitId : undefined };
         }
         if (actor === 'companion') { remark = null; }
@@ -607,8 +627,8 @@ export function createLearningRuntime(deps: {
                     const exposed = await service.reveal(language, unitId, 'hints', exerciseId, current()!.osId, guard);
                     if (!saved(exposed) || !guard()) { return; }
                 }
-                const result = await runner(actor).run({ action: name === 'companion' ? { kind: name, materialId, paragraphId } : { kind: 'talk', ...(unitId ? { unitId } : {}) },
-                    exerciseId, selection: selected, message: text, answerBasis, submissions: original?.submissions,
+                const result = await runner(actor).run(original ?? { action: name === 'companion' ? { kind: name, materialId, paragraphId } : { kind: 'talk', ...(unitId ? { unitId } : {}) },
+                    exerciseId, selection: selected, message: text, answerBasis,
                     displayMessage: selected ? `${text}\n\n${selected.quote}` : text }, retryId);
                 if (!guard()) { return; }
                 // The runner owns a failed turn's notice; the outer lane reports only failures before a turn exists.
@@ -617,17 +637,14 @@ export function createLearningRuntime(deps: {
                 if (result.status === 'finished') {
                     if (name === 'companion') {
                         if (result.text.trim()) { remark = { text: result.text, materialId, paragraphId }; }
-                    } else if (actor === 'companion') {
-                        companionReply = { text: result.text, action: 'talk', unitId, ...(exerciseId ? { exerciseId } : {}) }; companionSelection = selected;
-                    } else {
-                        reply = { text: result.text, action: 'talk', unitId, ...(exerciseId ? { exerciseId } : {}) }; replySelection = selected;
                     }
                 }
             } catch (error) {
                 if (guard()) { lane.progress = reportLearningFailure(name, error instanceof LearningStorageError ? error.code
                     : error instanceof LearningValidationError ? 'learning_input_invalid' : 'learning_action_failed', { stage: 'action', cause: error }); }
             } finally {
-                if (lane.job === token) { lane.job = null; lane.kind = ''; publish(); }
+                if (lane.job === token) { lane.job = null; lane.kind = ''; }
+                delegated.drain(); publish();
             }
         });
         publish();
@@ -661,7 +678,7 @@ export function createLearningRuntime(deps: {
             const name = messageInput.type.replace(/^learning\//, '');
             const input = learningRecord(messageInput.payload ?? {}, 'request', ['chatIdentity', 'language', 'teacher', 'message', 'replaceCurrent',
                 'unitId', 'exerciseId', 'answer', 'attemptId', 'review', 'selection', 'kind', 'id', 'voice', 'materialId', 'partKey', 'openWallet', 'offset', 'value',
-                'paragraphId', 'termText', 'revisions', 'target', 'help', 'approved']);
+                'paragraphId', 'termText', 'revisions', 'target', 'help', 'approved', 'commitId']);
             if (!active() || input.chatIdentity !== chatIdentity) { return { state: state() }; }
             if (learningActionBusy(learningActionLane(name, input.target), activity())) { return { state: state(), rejected: 'busy' }; }
             if (name === 'approve-operation') {
@@ -679,11 +696,15 @@ export function createLearningRuntime(deps: {
             else if (name === 'dismiss-source') { sourceChoice = null; preparation = null; }
             else if (name === 'cancel-preparation') { stopPreparation(); }
             else if (name === 'cancel-chat') { cancelConversation(parseLearningActor(input.target)); publish(); }
+            else if (name === 'retry-notification') {
+                const rejected = delegated.retry(learningText(input.id, 'id', 128));
+                if (rejected) { return { state: state(), rejected }; }
+            }
             else if (name === 'cancel-companion') { yieldRemark(); publish(); }
             else if (name === 'cancel') {
                 stopPreparation();
                 teaching.cancel('work'); speech.stop(); job = null; progress = ''; pending = null;
-                message = '已停止训练操作；如果保存已经开始，仍需检查是否成功。'; publish();
+                message = '已停止训练操作；如果保存已经开始，仍需检查是否成功。'; delegated.drain(); publish();
             }
             else if (name === 'language' && idle()) {
                 const selected = parseLearningLanguageTag(input.language, 'language');

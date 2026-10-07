@@ -15,7 +15,9 @@ import type { LearningMessage } from './messages.js';
 import { learningExerciseView, learningTrainingView } from '../application/projection.js';
 import { learningReadAudience, learningReadUnit } from './access.js';
 import { learningUnitStage, type LearningExerciseStatus } from '../../../domains/learning/stage.js';
+import { LEARNING_WORK_COPY, createLearningAttemptAccess, learningWorkInScope } from '../../../domains/learning/work.js';
 import { createLearningReading, type LearningReading } from './reading.js';
+import type { LearningDelegation, LearningTaskResult, LearningWorkbenchActivity, LearningWorkTarget } from '../application/delegation.js';
 
 export interface LearningDialogue {
     user: string; teacher: string; presentation?: LearningPresentation;
@@ -30,6 +32,7 @@ export interface LearningDialogue {
     status: 'running' | 'finished' | 'failed' | 'cancelled' | 'unconfirmed' | 'conflict';
     message: string;
     notice?: 'history-save' | 'learning-save';
+    target?: LearningWorkTarget;
 }
 export interface LearningTeacherContext { snapshot: PromptContextSnapshot; teacherDetails: string }
 // Scope is an access fact for the Host; the model sees the answer, its conditions and numbered paragraphs.
@@ -44,8 +47,9 @@ function feedbackView(assessment: LearningAssessment | undefined, reading: Learn
     return reading.include(feedback, assessment.scope, [assessment.attemptId, ...(assessment.annotations ?? []).flatMap(entry => entry.itemId ? [entry.itemId] : [])]);
 }
 function readableUnit(unit: LearningUnit | null | undefined, osId: string | null, unitId: string) {
-    requireLearning(unit && unit.id === unitId && canReadLearningScope(unit.scope, osId), 'unitId', 'Select the current available unit');
-    return unit;
+    const work = learningWorkInScope(unit, osId);
+    requireLearning(work?.id === unitId, 'unitId', 'Select the current available unit');
+    return work;
 }
 function workView(unit: LearningUnit, attempts: LearningAttempt[], osId: string | null, reading: LearningReading) {
     return attempts.map(attempt => {
@@ -58,8 +62,8 @@ function workView(unit: LearningUnit, attempts: LearningAttempt[], osId: string 
     });
 }
 
-function pendingAttempts(unit: LearningUnit, status: LearningExerciseStatus) {
-    const ids = new Set(learningUnitStage(unit).exercises.filter(entry => entry.status === status)
+function pendingAttempts(unit: LearningUnit, status: LearningExerciseStatus, osId: string | null) {
+    const ids = new Set(learningUnitStage(unit, osId).exercises.filter(entry => entry.status === status)
         .map(entry => status === 'reviewing' ? entry.revisionAttemptId : entry.draftAttemptId));
     return unit.attempts.filter(attempt => ids.has(attempt.id));
 }
@@ -69,7 +73,7 @@ function purposeFocus(data: LearningData, language: string, osId: string | null,
     const profile = data.profiles.find(entry => entry.language === language);
     switch (action.kind) {
     case 'summary-review': {
-        const unit = profile?.unit && canReadLearningScope(profile.unit.scope, osId) ? profile.unit : null;
+        const unit = learningWorkInScope(profile?.unit, osId);
         const attempt = unit?.attempts.find(entry => entry.id === action.attemptId);
         const exercise = attempt && unit!.exercises.find(entry => entry.id === attempt.exerciseId);
         requireLearning(unit && attempt && exercise?.paragraphId, 'attemptId', 'Select a saved paragraph summary');
@@ -80,12 +84,12 @@ function purposeFocus(data: LearningData, language: string, osId: string | null,
     }
     case 'grade': {
         const unit = readableUnit(profile?.unit, osId, action.unitId);
-        const drafts = pendingAttempts(unit, 'grading');
+        const drafts = pendingAttempts(unit, 'grading', osId);
         return { unitId: unit.id, drafts: workView(unit, drafts, osId, reading) };
     }
     case 'revision-review': {
         const unit = readableUnit(profile?.unit, osId, action.unitId);
-        const revisions = pendingAttempts(unit, 'reviewing');
+        const revisions = pendingAttempts(unit, 'reviewing', osId);
         return { unitId: unit.id, revisions: revisions.map(revision => {
             const draft = unit.attempts.find(entry => entry.id === revision.revisesAttemptId)!;
             const [original, edited] = workView(unit, [draft, revision], osId, reading);
@@ -104,7 +108,7 @@ function purposeFocus(data: LearningData, language: string, osId: string | null,
     }
     case 'review-assess': {
         const unit = readableUnit(profile?.review, osId, action.unitId);
-        const answers = pendingAttempts(unit, 'grading');
+        const answers = pendingAttempts(unit, 'grading', osId);
         return { unitId: unit.id, answers: workView(unit, answers, osId, reading).map(work => {
             const item = profile!.items.find(item => item.id === work.exercise.itemId && canReadLearningScope(item.scope, osId));
             const projected = reading.include({ ...work, item: item?.label ?? null }, unit.scope, [unit.id, work.exercise.id]);
@@ -130,7 +134,7 @@ function focus(data: LearningData, language: string, osId: string | null, action
     if (purpose !== undefined) { return purpose; }
     const profile = data.profiles.find(entry => entry.language === language);
     const current = profile?.[unitKey];
-    const unit = current && canReadLearningScope(current.scope, osId) ? current : null;
+    const unit = learningWorkInScope(current, osId);
     if (action.kind === 'talk') {
         // Selection belongs to the original message; retries and handoffs project today's saved content.
         const original = requestData.profiles.find(entry => entry.language === language)?.[unitKey];
@@ -140,15 +144,8 @@ function focus(data: LearningData, language: string, osId: string | null, action
         if (unit?.id !== selected?.id || exerciseId && !unit?.exercises.some(entry => entry.id === exerciseId)) { return null; }
     }
     if (action.kind === 'assess') {
-        const attempt = unit?.attempts.find(entry => entry.id === action.attemptId);
-        const archived = action.review ? profile?.items.flatMap(item => item.evidence).find(entry => entry.attempt.id === action.attemptId) : null;
-        const target = attempt && unit ? {
-            unitId: unit.id, exercise: unit.exercises.find(entry => entry.id === attempt.exerciseId)!,
-            attempt, assessment: unit.assessments.find(entry => entry.attemptId === attempt.id) ?? null,
-            materials: unit.materials.filter(material => unit.exercises.find(entry => entry.id === attempt.exerciseId)!.materialIds.includes(material.id)),
-        } : archived;
-        requireLearning(target && canReadLearningScope(target.attempt.scope, osId)
-            && (!target.assessment || canReadLearningScope(target.assessment.scope, osId)), 'attemptId', 'Select an available saved answer');
+        const target = createLearningAttemptAccess(profile, osId).work(action.attemptId);
+        requireLearning(target, 'attemptId', LEARNING_WORK_COPY.unavailable);
         // Focused questions and submitted answers are complete or the request is stopped before calling a model.
         const feedback = target.assessment;
         const { scope: _attemptScope, ...answer } = target.attempt;
@@ -161,14 +158,14 @@ function focus(data: LearningData, language: string, osId: string | null, action
             attempt: reading.include(answer, target.attempt.scope, [target.attempt.id]),
             assessment: feedback ? reading.include({ attemptId: feedback.attemptId, verdict: feedback.verdict,
                 understanding: feedback.understanding, expression: feedback.expression, guidance: feedback.guidance }, feedback.scope, [feedback.attemptId]) : null },
-        archived && !attempt ? archived.scope : unit!.scope, [target.unitId, target.exercise.id, ...target.materials.map(material => material.id)]);
+        target.scope, [target.unitId, target.exercise.id, ...target.materials.map(material => material.id)]);
     }
     if (exerciseId) {
         const exercise = unit?.exercises.find(entry => entry.id === exerciseId);
         requireLearning(unit && exercise, 'exerciseId', 'Select an available exercise');
         const training = learningTrainingView(unit);
-        const attempt = unit.attempts.filter(entry => entry.exerciseId === exercise.id && canReadLearningScope(entry.scope, osId)).at(-1);
-        const assessment = unit.assessments.find(entry => entry.attemptId === attempt?.id && canReadLearningScope(entry.scope, osId));
+        const attempt = unit.attempts.filter(entry => entry.exerciseId === exercise.id).at(-1);
+        const assessment = unit.assessments.find(entry => entry.attemptId === attempt?.id);
         return reading.include({ unitId: unit.id, exercise: training.exercises.find(entry => entry.id === exercise.id),
             attempt: attempt ? answerView(attempt, reading) : null, assessment: feedbackView(assessment, reading) }, unit.scope, [unit.id, exercise.id]);
     }
@@ -178,30 +175,43 @@ function focus(data: LearningData, language: string, osId: string | null, action
 export function buildLearningContext(options: {
     data: LearningData; language: string; osId: string | null; actor: LearningActor; teacher: LearningTeacherPreference['teacher'];
     context: LearningTeacherContext | null; selection?: LearningSelection | null; action: LearningAction; message: string; exerciseId?: string; asOf?: string; requestData?: LearningData;
+    delegation?: LearningDelegation; taskResult?: LearningTaskResult; workbench?: () => LearningWorkbenchActivity;
+    target?: LearningWorkTarget;
 }) {
     const { data, language, osId, action, context } = options;
     const currentTime = options.asOf ?? new Date().toISOString();
     const background = options.actor === 'companion' && context ? createLearningBackground(context) : null;
     const requestData = options.requestData ?? data;
-    const unitKey = learningReadUnit(action, requestData.profiles.find(entry => entry.language === language));
+    const unitKey = options.target?.unitKey ?? learningReadUnit(action, requestData.profiles.find(entry => entry.language === language));
+    const targetAvailable = action.kind === 'assess' || !options.target?.unitId || data.profiles.find(profile => profile.language === language)?.[unitKey]?.id === options.target.unitId;
     const reading = createLearningReading();
     const read = (args: unknown) => readLearning(data, language, osId, args, currentTime, learningReadAudience(action), unitKey, reading);
     const request = { language, action, currentTime,
+        ...(options.delegation ? { delegation: options.delegation } : {}),
+        ...(options.taskResult ? { taskResult: options.taskResult } : {}),
         profile: read({}).data,
         items: read({ section: 'items' }),
         review: read({ section: 'review' }),
         training: read({ section: 'training' }).data,
-        focus: focus(data, language, osId, action, reading, unitKey, requestData, options.exerciseId), selection: options.selection ?? null,
+        focus: targetAvailable ? focus(data, language, osId, action, reading, unitKey, requestData, options.exerciseId) : null, selection: options.selection ?? null,
+        ...(options.target ? { target: options.target } : {}),
         ...(background ? { background: background.initial() } : {}) };
     // Core settings have no clock, progress or recent-story fields. Dynamic data belongs at the tail.
     const reference = { teacher: options.teacher, characters: context?.snapshot.characters.map(character => ({
         cardName: character.displayName, description: character.description, personality: character.personality, scenario: character.scenario,
     })) ?? [] };
-    const userText = `[学生本轮发言]\n${options.message}`;
+    const userText = action.kind === 'task-result' ? '[工作台委托结果，由应用送达]' : `[学生本轮发言]\n${options.message}`;
     return { ...reading.inspect(request),
         taskReferences: reading.inspect(request.focus).references,
         prefix: options.actor === 'companion' && context ? [{ role: 'system' as const, content: `人物与故事核心设定，作为身份背景资料。\n<teacher_reference>\n${safePromptJson(reference)}\n</teacher_reference>` }] : [],
-        messages: [{ role: 'user' as const, content: `${userText}\n\n本轮学习状态与背景资料：\n<learning_request>\n${safePromptJson(request)}\n</learning_request>` }],
+        get messages() {
+            const workbench = options.actor === 'companion' ? options.workbench?.() : undefined;
+            const current = { ...request, ...(workbench ? { workbench: { ...workbench, ...(workbench.busy ? {
+                notice: '工作台正在更新任务，你看到的进度可能慢一拍；现在先聊，暂时别操作工作台。',
+            } : {}) } } : {}) };
+            const dataText = `本轮学习状态与背景资料：\n<learning_request>\n${safePromptJson(current)}\n</learning_request>`;
+            return [{ role: 'user' as const, content: options.actor === 'companion' ? `${dataText}\n\n${userText}` : `${userText}\n\n${dataText}` }];
+        },
         // Like ebook, replay the actual exchange, not an obsolete copy of every injected asset.
         turn: { role: 'user', content: `${userText}\n\n<learning_turn>\n${safePromptJson({ action })}\n</learning_turn>` } };
 }

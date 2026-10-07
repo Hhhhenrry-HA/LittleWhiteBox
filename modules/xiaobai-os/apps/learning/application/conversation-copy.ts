@@ -7,6 +7,8 @@ export const LEARNING_CONVERSATION_COPY = {
     workStopped: '已停止。已保存的学习内容保留。',
     changed: '学习内容已变化，这次操作没有继续。',
     delegatedBusy: '当前训练操作尚未完成，这次委托没有执行。',
+    notificationFailed: '工作台的结果已保留，但语伴还没收到。可以重试通知，不会重新执行任务。',
+    notificationRetry: '重试通知',
     memoryClearFailed: '对话记录尚未确认清理，请检查保存状态。',
     learningSaveUnconfirmed: '学习修改尚未确认保存，请检查保存。',
     learningSaveConflict: '学习记录有冲突，请检查保存。',

@@ -142,7 +142,7 @@ test('identity/core settings form a stable prefix, while one latest user message
     assert.notEqual(buildLearningSystemPrompt('companion', '林老师', input.action), buildLearningSystemPrompt('companion', '林老师', { kind: 'companion' }));
     const reference = JSON.parse(first.prefix[0].content.split('<teacher_reference>\n')[1].split('\n</teacher_reference>')[0]);
     assert.equal(reference.characters[0].description, context.snapshot.characters[0].description);
-    assert.ok(first.messages[0].content.startsWith(`[学生本轮发言]\n${input.message}`));
+    assert.ok(first.messages[0].content.split('</learning_request>')[1].endsWith(input.message));
     const request = readRequest(first.messages[0]);
     assert.equal(request.message, undefined, 'the learner speaks directly, rather than through a nested JSON field');
     assert.equal(request.background.teacher.text, context.teacherDetails);
@@ -160,6 +160,40 @@ test('identity/core settings form a stable prefix, while one latest user message
     changed.context.snapshot.characters[0].personality = '更新的核心设定';
     assert.notDeepEqual(buildLearningContext(changed).prefix, first.prefix);
 });
+
+for (const session of [false, true]) {
+    test(`live request data replaces stale state without altering the stable prefix or repeating tools (session: ${session})`, async () => {
+        const states = [false, true, true, false, false];
+        let round = 0; let executions = 0; let providerMessages = [];
+        const requests = []; const transcript = [];
+        const history = [turn('earlier', 'An earlier exchange.')];
+        const prefix = [{ role: 'system', content: 'Character reference.' }];
+        const result = await runLearningProviderLoop({
+            systemPrompt: 'Companion identity.', prefix, history, summaryPrompt: 'Summarise conversation.',
+            messages: () => [{ role: 'user', content: JSON.stringify({ busy: states[round] }) }],
+            tools: [{ function: { name: 'Read' } }], signal: new AbortController().signal, guard: () => true, transcript,
+            executeTool: () => { executions++; round++; return { ok: true }; },
+            agent: { providerConfig: {}, supportsSessionToolLoop: session, run: async request => {
+                requests.push(request);
+                const continuing = session && (round === 2 || round === 4);
+                assert.equal(request.toolResponses !== undefined, continuing);
+                if (continuing) { assert.deepEqual(request.messages, []); assert.equal(request.toolResponses.length, 1); }
+                else {
+                    providerMessages = request.messages;
+                    assert.deepEqual(providerMessages.slice(0, 1), prefix);
+                    assert.deepEqual(providerMessages.slice(1, 3), history[0].messages);
+                    assert.equal(providerMessages.filter(message => message.role === 'tool').length, round);
+                }
+                assert.equal(JSON.parse(providerMessages[3].content).busy, states[round]);
+                return round === 4 ? { text: 'Let us keep talking.' }
+                    : { toolCalls: [{ id: `read-${round}`, name: 'Read', arguments: '{}' }] };
+            } },
+        });
+        assert.equal(result.status, 'finished'); assert.equal(executions, 4); assert.equal(requests.length, 5);
+        assert.equal(new Set(requests.map(request => request.systemPrompt)).size, 1);
+        assert.equal(transcript.filter(message => message.role === 'user').length, 0);
+    });
+}
 
 test('proactive summarisation precedes the teacher request and leaves subsequent tool exchanges append-only', async () => {
     const history = bigHistory(); const original = structuredClone(history);

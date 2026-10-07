@@ -10,6 +10,34 @@ import { createLearningPractice } from '../apps/learning/application/practice.js
 import { independentLearningSuccess } from '../domains/learning/progress.js';
 import { MAX_LEARNING_WRITE_BYTES } from '../apps/learning/storage/document.js';
 
+test('an uncertain cross-story draft replacement preserves hidden originals through receipt recovery', async t => {
+    t.mock.method(console, 'error', () => {});
+    const h = await createClassroomFixture({ lesson: { ...fixtureLesson, kind: 'reading-writing' } });
+    t.after(h.dispose); await h.openLesson(); await h.command('choose-original');
+    const document = h.repository.snapshot().document; const data = structuredClone(document.data);
+    data.profiles[0].unit.scope = { kind: 'story', osId: h.profile().unit.originOsId };
+    await h.repository.save(document, data, () => true);
+    const unit = h.profile().unit; const exerciseId = unit.exercises.find(entry => !entry.paragraphId).id;
+    await h.command('submit', { unitId: unit.id, exerciseId, answer: { kind: 'text', text: 'Original private writing.' } });
+    const original = structuredClone(h.profile().unit.attempts[0]);
+    await h.command('share-course', { unitId: unit.id, commitId: h.repository.snapshot().document.commitId, approved: true });
+    await h.changeChat();
+    await h.command('submit', { unitId: unit.id, exerciseId, answer: { kind: 'text', text: 'B initial writing.' } });
+    const oldB = h.profile().unit.attempts.at(-1).id;
+    h.flags.userFailure = true;
+    await h.command('submit', { unitId: unit.id, exerciseId, answer: { kind: 'text', text: 'B revised writing.' } });
+    assert.equal(h.repository.snapshot().status, 'unconfirmed');
+    assert.deepEqual(h.profile().unit.attempts[0], original);
+    assert.equal(h.state().unit.attempts[0].id, oldB);
+    h.confirmUser(); await h.command('verify');
+    assert.equal(h.repository.snapshot().status, 'ready');
+    assert.deepEqual(h.profile().unit.attempts[0], original);
+    assert.equal(h.profile().unit.attempts.some(entry => entry.id === oldB), false);
+    assert.equal(h.state().unit.attempts.length, 1);
+    assert.equal(h.state().unit.attempts[0].answer.text, 'B revised writing.');
+    await h.reenter(); assert.deepEqual(h.profile().unit.attempts[0], original);
+});
+
 test('unconfirmed global rewards block learning deletion until the saved wallet is explicitly adopted', async t => {
     t.mock.method(console, 'error', () => {});
     const h = await createClassroomFixture(); t.after(h.dispose);
@@ -41,7 +69,9 @@ test('profile clarification returns the teacher reply without inventing a saved 
     assert.equal(question.profile, null);
     assert.equal(question.busy, false);
     assert.equal(question.message, '');
-    assert.deepEqual(question.reply, { action: 'profile', text: h.flags.profileReply });
+    assert.equal(question.reply.action, 'profile');
+    assert.equal(question.reply.text, h.flags.profileReply);
+    assert.equal(question.reply.id, question.workbenchConversation.turns.at(-1).id);
     assert.equal(h.counts.userWrites, writes);
     h.flags.profileReply = null;
     const saved = await h.command('profile', { message: '准备十二月四级，先练听力。' });

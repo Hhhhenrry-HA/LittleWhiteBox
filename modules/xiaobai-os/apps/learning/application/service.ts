@@ -1,4 +1,4 @@
-import { learningEvidence, learningUnitOfAttempt, replaceLearningAssessment } from '../../../domains/learning/assessment.js';
+import { replaceLearningAssessment } from '../../../domains/learning/assessment.js';
 import { completeLearningByFacts, saveLearningModelEssay } from '../../../domains/learning/completion.js';
 import { parseLearningAnswer } from '../../../domains/learning/exercise.js';
 import { exposeLearningContent } from '../../../domains/learning/exposure.js';
@@ -7,10 +7,12 @@ import { correctLearningSchedules, learningReviewTier, newLearningSchedule, sele
 import { learningSpeechParts, parseLearningVoice } from '../../../domains/learning/speech.js';
 import type { LearningNote } from '../../../domains/learning/notes.js';
 import { canReadLearningScope, type LearningData, type LearningLanguage, type LearningScope } from '../../../domains/learning/types.js';
-import { learningArray, learningId, learningTimestamp, requireLearning, uniqueLearning } from '../../../domains/learning/validation.js';
+import { combineLearningScope, learningArray, learningId, learningTimestamp, requireLearning, uniqueLearning } from '../../../domains/learning/validation.js';
 import type { createLearningRepository, LearningSaveConfirmation } from '../storage/repository.js';
 import { createLearningId } from './identity.js';
 import { appendLearningAttempt, learningAttemptConditions, learningAttemptUnit, type LearningAttemptBasis } from './attempt.js';
+import { LEARNING_WORK_COPY, createLearningAttemptAccess, learningWorkInScope } from '../../../domains/learning/work.js';
+import { learningUnitStage } from '../../../domains/learning/stage.js';
 
 export type LearningRepository = ReturnType<typeof createLearningRepository>;
 
@@ -42,13 +44,12 @@ export function createLearningService(repository: LearningRepository, options: {
     /** The current lesson or the review group, whichever has this id. */
     const slot = (profile: LearningLanguage, unitId: string) => [profile.unit, profile.review].find(unit => unit?.id === unitId) ?? null;
     /** Removing an answer also removes its revision, their feedback and evidence, and withdraws any schedule move they made. */
-    const removeAttempts = (profile: LearningLanguage, attemptIds: string[]) => {
-        const ids = new Set(attemptIds);
+    const removeAttempts = (profile: LearningLanguage, ids: Set<string>) => {
         for (const unit of [profile.unit, profile.review]) {
             if (!unit) { continue; }
-            for (const attempt of unit.attempts) { if (attempt.revisesAttemptId && ids.has(attempt.revisesAttemptId)) { ids.add(attempt.id); } }
             unit.attempts = unit.attempts.filter(entry => !ids.has(entry.id));
             unit.assessments = unit.assessments.filter(entry => !ids.has(entry.attemptId));
+            if (unit.skippedRevisionAttemptIds) { unit.skippedRevisionAttemptIds = unit.skippedRevisionAttemptIds.filter(id => !ids.has(id)); }
         }
         for (const item of profile.items) { item.evidence = item.evidence.filter(entry => !ids.has(entry.attempt.id)); }
         const at = stamp();
@@ -87,16 +88,21 @@ export function createLearningService(repository: LearningRepository, options: {
                     evidence: [], schedule: newLearningSchedule(stamp()) });
             }, guard);
         },
-        skipRevision(language: string, unitId: string, guard: () => boolean) {
+        skipRevision(language: string, unitId: string, osId: string, guard: () => boolean) {
             return mutate(language, (data, index) => {
                 const unit = readingWriting(data.profiles[index], unitId);
-                unit.revisionSkipped = true;
+                const stage = learningUnitStage(unit, osId);
+                const skipped = stage.exercises.filter(row => row.status === 'revising').map(row => (row.revisionAttemptId ?? row.draftAttemptId)!);
+                unit.skippedRevisionAttemptIds = [...new Set([...unit.skippedRevisionAttemptIds!, ...skipped])];
+                completeLearningByFacts(data.profiles[index], 'unit', stamp(), osId);
             }, guard);
         },
         /** Revisions are new learner attempts; batches and further revisions preserve the earlier work. */
-        submitRevision(language: string, unitId: string, revisions: unknown, guard: () => boolean, basis?: LearningAttemptBasis) {
+        submitRevision(language: string, unitId: string, revisions: unknown, osId: string, guard: () => boolean, basis?: LearningAttemptBasis) {
             return mutate(language, (data, index) => {
                 const unit = readingWriting(data.profiles[index], unitId);
+                const work = learningWorkInScope(unit, osId);
+                requireLearning(work, 'unitId', 'Select work available in this story');
                 const entries = learningArray(revisions, 'revisions', (raw, path) => {
                     const entry = learningRecord(raw, path, ['attemptId', 'text']);
                     return { attemptId: learningId(entry.attemptId, `${path}.attemptId`), text: entry.text, path };
@@ -105,21 +111,22 @@ export function createLearningService(repository: LearningRepository, options: {
                 uniqueLearning(entries.map(entry => entry.attemptId), 'revisions');
                 const submittedAt = basis?.submittedAt ?? stamp();
                 for (const entry of entries) {
-                    const draft = unit.attempts.find(attempt => attempt.id === entry.attemptId);
-                    requireLearning(draft && unit.assessments.some(assessment => assessment.attemptId === draft.id),
+                    const draft = work.attempts.find(attempt => attempt.id === entry.attemptId);
+                    const assessment = work.assessments.find(assessment => assessment.attemptId === draft?.id);
+                    requireLearning(draft && assessment && assessment.verdict !== 'disputed',
                         `${entry.path}.attemptId`, 'Revise a saved answer with feedback');
                     const conditions = learningAttemptUnit(basis, language, unit, draft.exerciseId);
-                    const help = learningAttemptConditions(conditions, draft.exerciseId, draft.scope.kind === 'story' ? draft.scope.osId : null);
+                    const help = learningAttemptConditions(conditions, draft.exerciseId, osId);
                     unit.attempts.push({ id: learningId(createId(), 'attemptId'), exerciseId: draft.exerciseId,
                         answer: parseLearningAnswer({ kind: 'text', text: entry.text }, { kind: 'text' }, [], `${entry.path}.text`), submittedAt,
                         ...help, help: { ...help.help, feedback: true },
-                        scope: structuredClone(draft.scope), revisesAttemptId: draft.id });
+                        scope: combineLearningScope(unit.scope, assessment.scope), revisesAttemptId: draft.id });
                 }
-                unit.revisionSkipped = false;
             }, guard);
         },
-        saveModelEssay(language: string, unitId: string, value: unknown, guard: () => boolean) {
-            return mutate(language, (data, index) => { saveLearningModelEssay(data.profiles[index], unitId, value, stamp()); }, guard);
+        saveModelEssay(language: string, unitId: string, value: unknown, osId: string, guard: () => boolean) {
+            return mutate(language, (data, index) => { saveLearningModelEssay(data.profiles[index], unitId, value,
+                { now: stamp(), osId, inputScope: readingWriting(data.profiles[index], unitId).scope }); }, guard);
         },
         /** What a new review would cover now; null when nothing is due. */
         reviewSelection(language: string, at = now(), osId?: string | null) {
@@ -157,13 +164,16 @@ export function createLearningService(repository: LearningRepository, options: {
         setVoice(language: string, value: unknown, guard: () => boolean) {
             return mutate(language, (data, index) => { data.profiles[index].voice = parseLearningVoice(value); }, guard);
         },
-        note(language: string, unitId: string, note: LearningNote | string, guard: () => boolean) {
+        note(language: string, unitId: string, note: LearningNote | string, guard: () => boolean, scope?: LearningScope) {
             return mutate(language, (data, index) => {
                 const unit = slot(data.profiles[index], unitId);
                 requireLearning(unit, 'unitId', 'Select the current unit');
                 unit.notes ??= [];
                 if (typeof note === 'string') { unit.notes = unit.notes.filter(entry => entry.id !== note); }
-                else if (!unit.notes.some(entry => entry.id === note.id)) { unit.notes.push(structuredClone(note)); }
+                else if (!unit.notes.some(entry => entry.id === note.id)) {
+                    unit.notes.push(structuredClone(note));
+                    if (scope) { unit.scope = combineLearningScope(unit.scope, scope); }
+                }
             }, guard);
         },
         listening(language: string, unitId: string, exerciseId: string, voice: unknown, partKey: string,
@@ -188,31 +198,36 @@ export function createLearningService(repository: LearningRepository, options: {
                 record.slowPlayback ||= slow;
             }, guard);
         },
-        dispute(language: string, attemptId: string, guard: () => boolean) {
+        dispute(language: string, attemptId: string, osId: string, guard: () => boolean) {
             return mutate(language, (data, index) => {
                 const profile = data.profiles[index];
-                const current = learningUnitOfAttempt(profile, attemptId)?.assessments.find(entry => entry.attemptId === attemptId)
-                    ?? learningEvidence(profile, attemptId).assessment;
-                requireLearning(current, 'attemptId', 'Select saved feedback to review');
+                const access = createLearningAttemptAccess(profile, osId).get(attemptId);
+                const current = access.work?.assessment;
+                requireLearning(current, 'attemptId', LEARNING_WORK_COPY.feedbackRequired);
                 // The revision already answered this feedback; its own review is what can still change.
-                requireLearning(!learningUnitOfAttempt(profile, attemptId)?.attempts.some(entry => entry.revisesAttemptId === attemptId), 'attemptId',
-                    '这篇初稿已经有修改稿，结果以修改稿的批改为准；如有疑问，请对修改稿的反馈申请复核。');
+                requireLearning(access.actions.review, 'attemptId', LEARNING_WORK_COPY.revised);
                 replaceLearningAssessment(profile, { ...current, verdict: 'disputed' });
                 // A disputed judgement no longer supports the memory move it made.
                 correctLearningSchedules(profile.items, attemptId, stamp());
             }, guard);
         },
-        deleteAttempt(language: string, attemptId: string, guard: () => boolean) {
-            return mutate(language, (data, index) => { removeAttempts(data.profiles[index], [attemptId]); }, guard);
+        deleteAttempt(language: string, attemptId: string, osId: string, guard: () => boolean) {
+            return mutate(language, (data, index) => {
+                const profile = data.profiles[index];
+                const access = createLearningAttemptAccess(profile, osId).get(attemptId);
+                requireLearning(access.work, 'attemptId', LEARNING_WORK_COPY.unavailable);
+                requireLearning(access.actions.remove, 'attemptId', LEARNING_WORK_COPY.hiddenRevisions);
+                removeAttempts(profile, access.family);
+            }, guard);
         },
         /** Its links in feedback go too, and a review stops asking about it. */
-        deleteItem: (language: string, id: string, guard: () => boolean) => mutate(language, (data, index) => {
+        deleteItem: (language: string, id: string, osId: string, guard: () => boolean) => mutate(language, (data, index) => {
             const profile = data.profiles[index];
             profile.items = profile.items.filter(item => item.id !== id);
             const review = profile.review;
             if (review) {
                 const removed = review.exercises.filter(exercise => exercise.itemId === id).map(exercise => exercise.id);
-                removeAttempts(profile, review.attempts.filter(attempt => removed.includes(attempt.exerciseId)).map(attempt => attempt.id));
+                removeAttempts(profile, createLearningAttemptAccess(profile, osId).family(review.attempts.filter(attempt => removed.includes(attempt.exerciseId)).map(attempt => attempt.id)));
                 review.exercises = review.exercises.filter(exercise => !removed.includes(exercise.id));
                 review.revealed = { answers: review.revealed.answers.filter(entry => !removed.includes(entry)),
                     hints: review.revealed.hints.filter(entry => !removed.includes(entry)) };
@@ -225,7 +240,7 @@ export function createLearningService(repository: LearningRepository, options: {
             for (const annotation of assessments.flatMap(assessment => assessment.annotations ?? [])) {
                 if (annotation.itemId === id) { delete annotation.itemId; }
             }
-            completeLearningByFacts(profile, 'review', stamp());
+            completeLearningByFacts(profile, 'review', stamp(), osId);
         }, guard),
         abandonUnit: (language: string, guard: () => boolean) => mutate(language, (data, index) => { data.profiles[index].unit = null; }, guard),
         deleteLanguage: (language: string, guard: () => boolean) => mutate(language, (data, index) => { data.profiles.splice(index, 1); }, guard),

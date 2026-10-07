@@ -3,7 +3,7 @@ import { LEARNING_SUMMARY_PROMPT } from '../../../domains/learning/preparation.j
 import { learningRecord, learningText } from '../../../domains/learning/profile.js';
 import { learningReviewTier } from '../../../domains/learning/schedule.js';
 import { LEARNING_LIMITS as L, type LearningLanguage, type LearningScope, type LearningUnit, type RewardTier } from '../../../domains/learning/types.js';
-import { learningArray, learningEnum, learningId, learningIds, learningInteger, requireLearning, uniqueLearning } from '../../../domains/learning/validation.js';
+import { combineLearningScope, learningArray, learningEnum, learningId, learningIds, learningInteger, requireLearning, uniqueLearning } from '../../../domains/learning/validation.js';
 import { compileLearningMaterial, type createLearningSourceRegistry } from '../materials/lesson-sources.js';
 
 /** One lesson editor per teacher turn. New local keys are resolved once; saved IDs work directly. */
@@ -96,7 +96,7 @@ export function createLearningLessonCompiler(options: {
             return { materialId: materialId(learningId(materialKey, `${path}.materialKey`)), ...entry };
         });
         const writing = kind === 'reading-writing' ? { explanations: explanations ?? [], modelEssay: current?.modelEssay ?? null,
-            revisionSkipped: current?.revisionSkipped ?? false } : {};
+            skippedRevisionAttemptIds: current?.skippedRevisionAttemptIds ?? [] } : {};
         requireLearning(kind === 'reading-writing' || input.explanations === undefined, 'explanations', 'Only reading-writing units explain paragraphs');
         const next = parseLearningUnit({ ...current, ...writing, id: current?.id ?? unitId, kind,
             title: learningText(input.title ?? current?.title, 'title', L.name), goal: input.goal ?? current?.goal,
@@ -120,6 +120,7 @@ export function createLearningLessonCompiler(options: {
             }
             requireLearning(!current.attempts.length || next.goal === current.goal, 'goal', 'Keep the objective attached to saved answers; add practice within it or ask the learner to start a new lesson');
         }
+        if (current && JSON.stringify(current) !== JSON.stringify(next)) { next.scope = combineLearningScope(current.scope, options.scope); }
         return next;
     };
 }

@@ -115,7 +115,7 @@ function locate(exerciseId: string) {
             <section v-for="exercise in extras" :key="exercise.id" class="learning-essay" :data-exercise-id="exercise.id">
                 <h2>{{ exercise.prompt }}</h2>
                 <AnswerInput v-if="session.activityDrafts[exercise.id]" v-model="session.activityDrafts[exercise.id].value" :response="exercise.response" :paragraphs="unit.materials.filter(material => exercise.materialIds.includes(material.id)).flatMap(material => material.paragraphs)" :disabled="disabled" @submit="answer => submit(exercise.id, answer)" />
-                <AttemptFeedback v-for="entry in extraAnswers.filter(entry => entry.exercise.id === exercise.id)" :key="entry.attempt.id" :attempt="entry.attempt" :feedback="entry.feedback" :response="exercise.response" :paragraphs="unit.materials.flatMap(material => material.paragraphs)" :disabled="disabled" @action="action" />
+                <AttemptFeedback v-for="entry in extraAnswers.filter(entry => entry.exercise.id === exercise.id)" :key="entry.attempt.id" :attempt="entry.attempt" :feedback="entry.feedback" :response="exercise.response" :paragraphs="unit.materials.flatMap(material => material.paragraphs)" :disabled="disabled" :reviewable="unit.attemptActions[entry.attempt.id].review" @action="action" />
             </section>
             <ol class="learning-steps" :aria-label="copy.progress">
                 <li v-for="([id, label], index) in steps" :key="id" :class="{ 'is-done': index < stepIndex, 'is-current': index === stepIndex }" :aria-current="index === stepIndex ? 'step' : undefined">{{ label }}</li>

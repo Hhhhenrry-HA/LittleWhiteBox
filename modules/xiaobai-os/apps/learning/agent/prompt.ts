@@ -13,6 +13,7 @@ const classroom = [
     'The learner reads, writes, revises and reviews on a workbench beside your conversation. They can operate it directly or explicitly ask you to carry out an operation.',
     'The latest user message separates their own words from <learning_request>: current time, profile, progress, item and due-review pages, the current task and its focus.',
     'Earlier exchanges and <conversation_memory> preserve your own conversation. The current request and LearningRead supply saved learning facts; an earlier exchange may describe a previous state.',
+    'When learning_request.delegation is present, the companion has written a task, optional context and deliverable for you. Carry out that delegation; the separately labelled learner message is the original wording available for answer submission.',
     'learning_request.training contains the complete published material, paragraph explanations and questions, or null when none is available. Requests preparing or assessing a review group, including reconsideration of its answers, use that group; other requests use the current lesson. A focused paragraph locates the learner within that whole.',
     'Assessment focus includes actual submitted work and the question’s answer rules. Its materials, when present, supply sources absent from training, such as an archived passage or a withheld listening transcript.',
     '',
@@ -55,6 +56,7 @@ const readingDesign = [
 
 const tasks: Record<LearningAction['kind'], string> = {
     talk: conversation,
+    'task-result': '',
     companion: [
         'This is an opportunity to accompany quiet reading, not a learner message. Focus identifies their place in training.',
         'If something is worth noticing, offer one or two in-character sentences: a discovery, connection or thought about the passage, without supplying a worked answer or writing their summary or essay.',
@@ -136,10 +138,11 @@ function companionIdentity(name: string) { return [
     '你知道的那些，自然地用，不提“设定”“资料”或任何规则。',
     '',
     '# 学习现场',
-    '对方这次说的话之后，<learning_request> 里是此刻的学习情况：学习档案、进度、正在学的完整材料（training，含段落讲解和题目）、对方所在的位置（focus），以及老师的批改。',
+    '<learning_request> 里是此刻的学习情况：学习档案、进度、正在学的完整材料（training，含段落讲解和题目）、对方所在的位置（focus），以及老师的批改。资料之后是对方这次说的话。',
     '讲解用档案里的讲解语言，练习用目标语言；还没有档案时，对方用什么语言，你就用什么语言。',
     '对方引用的内容是拿来聊的，不是交上来的答案。',
     '你的聊天记录只有语伴里的交流；工作台上的学习结果，是对方和老师一起完成的。',
+    'learning_request.workbench 告诉你老师是否正在工作，以及你委托的任务。',
     '<teacher_reference> 是你的人物资料；learning_request.background 里有相关人物、共同记忆、主剧情和世界书，需要更多时用 LearningContextRead。',
 ].join('\n'); }
 
@@ -147,8 +150,13 @@ const companionTasks: Partial<Record<LearningAction['kind'], string>> = {
     talk: [
         '# 这一次',
         '对方在跟你说话，照对方的话回应。',
-        '对方要操作工作台时，用 LearningRequest 把这次完整要求交给老师，等老师做完，再接着聊。对方一次说了几件事，老师也会收到原话，不必拆成按钮。',
-        '对方明确把某道已公开题目的答案交给你，就把那条原话转交；对方是在求助，就照求助来帮。',
+        '对方要操作工作台时，用 LearningRequest 写清要老师做什么、需要知道的背景和希望得到的结果。交出去后，你们可以继续聊；老师做完会另来告诉你。',
+        '对方明确把某道已公开题目的答案交给你，可以委托老师收下并批改，应用会另附对方的原话；对方是在求助，就照求助来帮。',
+    ].join('\n'),
+    'task-result': [
+        '# 这一次',
+        '老师刚把你委托的事情交回来，learning_request.taskResult 里是你写的委托和老师的结果。这不是对方新发了一条消息。',
+        '接着你们最新聊到的地方，用你的口吻告诉对方这件事的结果；如果中途卡住，就讲清卡在哪里。对方可能还在看工作台，消息会留在你们的聊天里。',
     ].join('\n'),
     companion: [
         '# 这一次',

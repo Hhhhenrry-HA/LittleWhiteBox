@@ -58,7 +58,7 @@ test('an explicit chat delegation is rejected while work is running, without que
     let chatCalls = 0;
     h.flags.teacherResponse = (async request => {
         if (requestData(request)?.action.kind === 'prepare') { workCalls++; await gate; return { text: 'Preparation remains unchanged.' }; }
-        if (++chatCalls === 1) { return { toolCalls: [call('LearningRequest', {})] }; }
+        if (++chatCalls === 1) { return { toolCalls: [call('LearningRequest', { task: 'Set the learner target to B2.' })] }; }
         response = JSON.parse(request.messages.findLast(entry => entry.role === 'tool' && entry.toolName === 'LearningRequest').content);
         return { text: 'That operation has not run while preparation is active.' };
     });

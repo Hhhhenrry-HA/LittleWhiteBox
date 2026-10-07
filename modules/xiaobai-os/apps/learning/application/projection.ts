@@ -1,6 +1,7 @@
 import { learningProgress } from '../../../domains/learning/progress.js';
 import { learningScheduleReason, selectDueLearningItems } from '../../../domains/learning/schedule.js';
 import { learningUnitStage } from '../../../domains/learning/stage.js';
+import { createLearningAttemptAccess, learningWorkInScope } from '../../../domains/learning/work.js';
 import { learningPreparation } from '../../../domains/learning/preparation.js';
 import { learningSpeechParts } from '../../../domains/learning/speech.js';
 import { canReadLearningScope, type LearningCompletion, type LearningData, type LearningItem, type LearningExercise, type LearningMaterial, type LearningUnit } from '../../../domains/learning/types.js';
@@ -33,15 +34,16 @@ export function learningClassView(data: LearningData, language: string, osId: st
     now = new Date().toISOString()) {
     const profile = data.profiles.find(entry => entry.language === language);
     const visible = (scope: Parameters<typeof canReadLearningScope>[0]) => canReadLearningScope(scope, osId);
-    const unit = profile?.unit && visible(profile.unit.scope) ? profile.unit : null;
-    const review = profile?.review && visible(profile.review.scope) ? profile.review : null;
-    const unitView = (unit: LearningUnit) => ({ ...learningTrainingView(unit), stage: learningUnitStage(unit), reward: unit.reward,
+    const unit = learningWorkInScope(profile?.unit, osId);
+    const review = learningWorkInScope(profile?.review, osId);
+    const attempts = createLearningAttemptAccess(profile, osId);
+    const unitView = (unit: LearningUnit) => ({ ...learningTrainingView(unit), stage: learningUnitStage(unit, osId), reward: unit.reward,
+        shared: unit.scope.kind === 'public',
         notes: unit.notes ?? [],
         // Current attempts are paged by question in the UI; keys and transcript never travel with them.
-        attempts: unit.attempts.filter(attempt => visible(attempt.scope)),
-        assessments: unit.assessments.filter(assessment => visible(assessment.scope)
-            && unit.attempts.some(attempt => attempt.id === assessment.attemptId && visible(attempt.scope))),
-        revisionSkipped: unit.revisionSkipped ?? false,
+        attempts: unit.attempts,
+        attemptActions: Object.fromEntries(unit.attempts.map(attempt => [attempt.id, attempts.get(attempt.id).actions])),
+        assessments: unit.assessments,
     });
     const items = profile?.items ?? [];
     const item = items.find(entry => entry.id === recordId);
@@ -75,6 +77,7 @@ export function learningClassView(data: LearningData, language: string, osId: st
         savedTerms: [...new Set(items.filter(entry => entry.skill === 'vocabulary' && visible(entry.scope)).map(entry => entry.label))],
         record: item && visible(item.scope) ? { id: item.id, label: item.label, evidence: item.evidence.filter(entry => visible(entry.scope)).map(entry => ({
             unitId: entry.unitId, exercise: learningExerciseView(entry.exercise), attempt: entry.attempt, assessment: entry.assessment,
+            actions: attempts.get(entry.attempt.id).actions,
             materials: entry.materials.map(material => learningMaterialView(material, entry.exercise.skill === 'listening' && !material.transcriptRevealed)),
         })) } : null,
         completions: completions.map(completion => ({ unitId: completion.unitId,

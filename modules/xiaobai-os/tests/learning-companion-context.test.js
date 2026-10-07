@@ -26,6 +26,31 @@ function injected(data, action = { kind: 'companion', materialId: 'm1', paragrap
     return JSON.parse(result.messages[0].content.split('<learning_request>\n')[1].split('\n</learning_request>')[0]);
 }
 
+test('workbench guidance is current companion request data, appears only while busy, and precedes the learner', () => {
+    let busy = false;
+    const message = 'Can we talk about my weekend?';
+    for (const kind of ['talk', 'companion', 'task-result']) {
+        const context = buildLearningContext({ actor: 'companion', data: fixture(), language: 'en', osId: 'story-a',
+            teacher: { name: 'Companion', note: '' }, context: { snapshot, teacherDetails: '' }, action: { kind }, message,
+            workbench: () => ({ busy, tasks: [] }) });
+        const prefix = structuredClone(context.prefix); const turn = structuredClone(context.turn);
+        const requests = [false, true, false].map(value => {
+            busy = value;
+            const messages = context.messages;
+            assert.equal(messages.length, 1); assert.equal(messages[0].role, 'user');
+            const [dataText, learnerText] = messages[0].content.split('</learning_request>');
+            const data = JSON.parse(dataText.split('<learning_request>\n')[1]);
+            assert.equal(data.workbench.busy, busy);
+            assert.equal(Object.hasOwn(data.workbench, 'notice'), busy);
+            if (busy) { assert.equal(typeof data.workbench.notice, 'string'); assert.ok(data.workbench.notice.length); }
+            if (kind === 'talk') { assert.ok(learnerText.endsWith(message)); }
+            assert.deepEqual(context.prefix, prefix); assert.deepEqual(context.turn, turn);
+            return messages;
+        });
+        assert.deepEqual(requests[0], requests[2]);
+    }
+});
+
 test('conversation and unprompted reading always receive the complete workbench material and actual settings', () => {
     const data = fixture();
     for (const kind of ['companion', 'talk']) {

@@ -9,7 +9,7 @@ import { buildLearningContext } from '../apps/learning/agent/context.js';
 import { createLearningUiSession, hasLearningUnsavedInput } from '../apps/learning/ui/learning-session.js';
 import { newLearningSchedule } from '../domains/learning/schedule.js';
 
-const call = (name, args = {}) => ({ id: name, name, arguments: JSON.stringify(args) });
+const call = (name, args = name === 'LearningRequest' ? { task: 'Carry out the learner request, preserving its selected question and original answer.' } : {}) => ({ id: name, name, arguments: JSON.stringify(args) });
 const textLesson = () => {
     const lesson = structuredClone(fixtureLesson);
     lesson.exercises[0].response = { kind: 'text' }; lesson.exercises[0].rule = { kind: 'semantic' };
@@ -28,7 +28,7 @@ async function until(check) {
     while (!check()) { assert.ok(Date.now() < deadline, 'Expected workflow state'); await setImmediate(); }
 }
 
-test('companion delegates a complete compound request and waits while the workbench edits settings and adds practice', async t => {
+test('companion delegates a complete compound request and receives a separate workbench result', async t => {
     const h = await createClassroomFixture({ agentConfig: { tavilyApiKey: 'fixture-no-network' } }); t.after(h.dispose); await h.openLesson();
     const before = structuredClone(h.profile().unit);
     const message = '把我的水平改成B2，目标日期设到明年六月一日。本课再加一道写作题，不换课。';
@@ -49,7 +49,9 @@ test('companion delegates a complete compound request and waits while the workbe
     await h.command('talk', { message });
     assert.equal(h.profile().level, 'B2'); assert.equal(h.profile().goal.targetDate, '2027-06-01');
     assert.equal(h.profile().unit.id, before.id); assert.equal(h.profile().unit.exercises.length, before.exercises.length + 1);
-    assert.equal(h.state().approval, null); assert.equal(handedBack.status, 'finished'); assert.equal(handedBack.changed, true);
+    assert.equal(h.state().approval, null); assert.equal(handedBack.status, 'accepted');
+    assert.equal(h.state().delegatedTasks[0].result.changed, true);
+    assert.equal(h.state().delegatedTasks[0].notification, 'delivered');
     assert.deepEqual(h.profile().unit.reward, before.reward);
 });
 
@@ -151,7 +153,7 @@ test('companion continues its original exchange after the delegated task replace
     };
     await send(h, 'talk', { target: 'companion', message: '换一课。' }); await until(() => h.state().approval);
     await send(h, 'approve-operation', { id: h.state().approval.id, approved: true });
-    await until(() => !h.state().chatBusy);
+    await until(() => !h.state().chatBusy && !h.state().workbenchBusy);
     assert.notEqual(h.profile().unit.id, oldId);
     assert.equal(h.state().conversation.turns.at(-1).status, 'finished');
     assert.equal(h.state().workbenchConversation.turns.at(-1).presentation, undefined);
@@ -278,7 +280,7 @@ for (const target of ['workbench', 'companion']) {
         };
         await h.command('talk', { target, unitId: unit.id, exerciseId: args.exerciseId, message: text });
         const lane = target === 'workbench' ? 'workbenchConversation' : 'conversation';
-        const failed = h.state()[lane].turns.at(-1); const original = structuredClone(h.profile().unit.attempts);
+        const failed = h.state()[lane].turns.findLast(turn => turn.purpose === 'talk'); const original = structuredClone(h.profile().unit.attempts);
         assert.equal(failed.retryable, true); assert.equal(original.length, 1);
         failing = false;
         await h.command('retry-chat', { target, id: failed.id });
@@ -415,25 +417,22 @@ test('an invalid tool hides only its own response while correction and subsequen
     assert.ok(!h.state().workbenchConversation.turns.at(-1).teacher.includes(hidden));
 });
 
-for (const target of ['workbench', 'companion']) {
     for (const ending of ['failure', 'cancel']) {
-        test(`${target} can retry its own replacement after ${ending}, retaining the original selection`, async t => {
+        test(`workbench can retry its own replacement after ${ending}, retaining the original selection`, async t => {
             t.mock.method(console, 'error', () => {});
             const h = await createClassroomFixture(); t.after(h.dispose); await h.openLesson();
             const unit = h.profile().unit;
             const selection = { materialId: unit.materials[0].id, paragraphId: 'p1', start: 0, end: 6, quote: 'A tree' };
             let release; let waiting = false;
-            h.flags.teacherResponse = (request, round) => {
-                const companion = request.tools.some(tool => tool.function.name === 'LearningRequest');
-                if (round === 1) { return { toolCalls: [companion ? call('LearningRequest') : call('LearningLessonEdit', { ...fixtureLesson, newLesson: true })] }; }
-                if (target === 'companion' && !companion) { return { text: 'Replaced.' }; }
+            h.flags.teacherResponse = (_request, round) => {
+                if (round === 1) { return { toolCalls: [call('LearningLessonEdit', { ...fixtureLesson, newLesson: true })] }; }
                 if (ending === 'failure') { throw new Error('Interrupted after replacement'); }
                 waiting = true; return new Promise(resolve => { release = () => resolve({ text: 'Late text' }); });
             };
-            await send(h, 'talk', { target, unitId: unit.id, exerciseId: unit.exercises[0].id, selection, message: 'Replace this lesson.' });
+            await send(h, 'talk', { target: 'workbench', unitId: unit.id, exerciseId: unit.exercises[0].id, selection, message: 'Replace this lesson.' });
             await until(() => h.state().approval); await send(h, 'approve-operation', { id: h.state().approval.id, approved: true });
-            if (ending === 'cancel') { await until(() => waiting); await send(h, 'cancel-chat', { target }); release(); }
-            const lane = target === 'workbench' ? 'workbenchConversation' : 'conversation';
+            if (ending === 'cancel') { await until(() => waiting); await send(h, 'cancel-chat', { target: 'workbench' }); release(); }
+            const lane = 'workbenchConversation';
             await until(() => h.state()[lane].turns.at(-1).retryable);
             const failed = h.state()[lane].turns.at(-1); const newUnitId = h.profile().unit.id;
             assert.notEqual(newUnitId, unit.id);
@@ -441,9 +440,6 @@ for (const target of ['workbench', 'companion']) {
             h.flags.teacherResponse = (request, round) => {
                 const input = request.messages.find(message => message.role === 'user' && message.content.includes('<learning_request>'));
                 resumed = JSON.parse(input.content.split('<learning_request>\n')[1].split('\n</learning_request>')[0]);
-                if (request.tools.some(tool => tool.function.name === 'LearningRequest')) {
-                    return round === 1 ? { toolCalls: [call('LearningRequest')] } : { text: 'Continued.' };
-                }
                 if (round === 1) { return { toolCalls: [call('LearningRead', { section: 'unit' })] }; }
                 if (round === 2) {
                     readUnit = results(request).at(-1).data;
@@ -453,7 +449,7 @@ for (const target of ['workbench', 'companion']) {
                 editReceipt = results(request).at(-1);
                 return { text: 'Continued.' };
             };
-            await h.command('retry-chat', { target, id: failed.id });
+            await h.command('retry-chat', { target: 'workbench', id: failed.id });
             assert.equal(h.state()[lane].turns.at(-1).status, 'finished'); assert.equal(h.profile().unit.id, newUnitId);
             assert.deepEqual(resumed.selection, selection); assert.equal(resumed.action.unitId, unit.id);
             assert.equal(resumed.focus, null);
@@ -461,20 +457,24 @@ for (const target of ['workbench', 'companion']) {
             assert.equal(h.profile().unit.exercises.length, unit.exercises.length + 1);
         });
     }
-}
 
-test('a second handoff continues work on the replacement within the same companion message', async t => {
+test('a result turn can delegate follow-up work against the latest lesson', async t => {
     const h = await createClassroomFixture(); t.after(h.dispose); await h.openLesson();
     const old = structuredClone(h.profile().unit); let handoffs = 0; const receipts = [];
     h.flags.teacherResponse = (request, round) => {
         if (request.tools.some(tool => tool.function.name === 'LearningRequest')) {
             if (round > 1) { receipts.push(results(request).at(-1)); }
-            if (round <= 2) { handoffs++; return { toolCalls: [call('LearningRequest')] }; }
+            if (round === 1) { handoffs++; return { toolCalls: [call('LearningRequest', { task: 'Replace the lesson.' })] }; }
             return { text: 'Finished.' };
         }
         return round === 1 ? { toolCalls: [call('LearningLessonEdit', handoffs === 1 ? { ...fixtureLesson, newLesson: true }
             : { exercises: [{ key: 'extra', skill: 'writing', materialKeys: [], prompt: 'Describe a tree.', response: { kind: 'text' }, rule: { kind: 'semantic' } }] })] }
             : { text: 'Saved.' };
+    };
+    h.flags.notificationResponse = (request, round) => {
+        if (handoffs === 1 && round === 1) { handoffs++; return { toolCalls: [call('LearningRequest', { task: 'Add a writing question to the new lesson.' })] }; }
+        if (round > 1) { receipts.push(results(request).at(-1)); }
+        return { text: 'Follow-up received.' };
     };
     await send(h, 'talk', { target: 'companion', unitId: old.id, exerciseId: old.exercises[0].id, message: 'Replace this lesson and add a writing question.' });
     await until(() => h.state().approval);
@@ -482,10 +482,10 @@ test('a second handoff continues work on the replacement within the same compani
     await until(() => !h.state().chatBusy && !h.state().workbenchBusy);
     assert.notEqual(h.profile().unit.id, old.id);
     assert.equal(h.profile().unit.exercises.length, old.exercises.length + 1);
-    assert.equal(receipts.length, 2); assert.ok(receipts.every(result => result.ok && result.status === 'finished'));
+    assert.equal(receipts.length, 2); assert.ok(receipts.every(result => result.ok && result.status === 'accepted'));
 });
 
-test('a replaced review keeps its review focus in the next handoff without editing the lesson', async t => {
+test('a delegated review replacement keeps its focus through subsequent tools without editing the lesson', async t => {
     const h = await createClassroomFixture(); t.after(h.dispose); await h.openLesson();
     const document = h.repository.snapshot().document; const data = structuredClone(document.data);
     const profile = data.profiles[0]; const lesson = structuredClone(profile.unit);
@@ -494,16 +494,16 @@ test('a replaced review keeps its review focus in the next handoff without editi
     profile.review = { ...lesson, id: 'review-original', kind: 'review', materials: [],
         exercises: [{ ...lesson.exercises[0], id: 'review-question', skill: 'vocabulary', materialIds: [], itemId: 'review-item' }] };
     await h.repository.save(document, data, () => true);
-    let handoffs = 0; let read; let edit;
+    let read; let edit;
     h.flags.teacherResponse = (request, round) => {
         if (request.tools.some(tool => tool.function.name === 'LearningRequest')) {
-            if (round <= 2) { handoffs++; return { toolCalls: [call('LearningRequest')] }; }
+            if (round === 1) { return { toolCalls: [call('LearningRequest')] }; }
             return { text: 'Finished.' };
         }
-        if (handoffs === 1) { return round === 1 ? { toolCalls: [call('LearningLessonEdit', { kind: 'review', newLesson: true,
-            title: 'Next review', goal: 'Recall shade.', exercises: [question] })] } : { text: 'Saved.' }; }
-        if (round === 1) { return { toolCalls: [call('LearningRead', { section: 'unit' })] }; }
-        if (round === 2) {
+        if (round === 1) { return { toolCalls: [call('LearningLessonEdit', { kind: 'review', newLesson: true,
+            title: 'Next review', goal: 'Recall shade.', exercises: [question] })] }; }
+        if (round === 2) { return { toolCalls: [call('LearningRead', { section: 'unit' })] }; }
+        if (round === 3) {
             read = results(request).at(-1).data; return { toolCalls: [call('LearningLessonEdit', { title: 'Revised review' })] };
         }
         edit = results(request).at(-1); return { text: 'Saved.' };
@@ -567,46 +567,46 @@ for (const recovery of ['verify', 'retry-save', 'adopt-server', 'adopt-missing']
             };
             h.flags.userFailure = true;
             await h.command('talk', { target: 'companion', unitId: unit.id, exerciseId, message: args.text });
-            const failed = h.state().conversation.turns.at(-1);
+            const failed = h.state().conversation.turns.findLast(turn => turn.purpose === 'talk');
             assert.equal(h.state().storage, 'unconfirmed'); assert.equal(receipt.status, 'unconfirmed');
             if (recovery === 'retry-save' || recovery === 'adopt-missing') { h.flags.userFailure = false; } else { h.confirmUser(); }
             await h.command(recovery === 'adopt-missing' ? 'adopt-server' : recovery);
             const saved = structuredClone(h.profile().unit.attempts);
             assert.equal(saved.length, Number(revision) + Number(recovery !== 'adopt-missing'));
-            assert.equal(h.state().conversation.turns.at(-1).retryable, true);
+            assert.equal(h.state().conversation.turns.find(turn => turn.id === failed.id).retryable, true);
             failing = false;
             await h.command('retry-chat', { target: 'companion', id: failed.id });
-            assert.equal(h.state().conversation.turns.at(-1).status, 'finished');
-            if (recovery === 'adopt-missing') {
-                assert.equal(receipt.status, 'confirmed'); assert.equal(h.profile().unit.attempts.length, saved.length + 1);
-            } else { assert.equal(receipt.status, 'unchanged'); assert.deepEqual(h.profile().unit.attempts, saved); }
+            assert.equal(h.state().conversation.turns.find(turn => turn.id === failed.id).status, 'finished');
+            assert.deepEqual(h.profile().unit.attempts, saved);
+            assert.equal(h.state().delegatedTasks.length, 1);
         });
     }
 }
 
 test('verification after cancelling an in-flight handoff still acknowledges its saved submission', async t => {
     let release; let waiting = false;
+    const gate = new Promise(resolve => { release = () => resolve({ text: 'Late response.' }); });
     const h = await createClassroomFixture({ lesson: textLesson() }); t.after(() => { release?.(); return h.dispose(); }); await h.openLesson();
     const unit = h.profile().unit; const args = { unitId: unit.id, exerciseId: unit.exercises[0].id, text: 'Trees help people.' };
     h.flags.userFailure = true;
     h.flags.teacherResponse = (request, round) => {
         if (round === 1) { return { toolCalls: [request.tools.some(tool => tool.function.name === 'LearningRequest')
             ? call('LearningRequest') : call('LearningSubmit', args)] }; }
-        waiting = true; return new Promise(resolve => { release = () => resolve({ text: 'Late response.' }); });
+        waiting = true; return gate;
     };
     await send(h, 'talk', { target: 'companion', unitId: unit.id, message: args.text });
     await until(() => waiting); await send(h, 'cancel-chat', { target: 'companion' }); release();
     await until(() => !h.state().chatBusy && !h.state().workbenchBusy);
-    const failed = h.state().conversation.turns.at(-1);
+    const failed = h.state().conversation.turns.findLast(turn => turn.purpose === 'talk');
     h.confirmUser(); await h.command('verify');
-    const saved = structuredClone(h.profile().unit.attempts); let receipt;
+    const saved = structuredClone(h.profile().unit.attempts); let repeatedWork = 0;
     h.flags.teacherResponse = (request, round) => {
         const companion = request.tools.some(tool => tool.function.name === 'LearningRequest');
         if (round === 1) { return { toolCalls: [companion ? call('LearningRequest') : call('LearningSubmit', args)] }; }
-        if (!companion) { receipt = results(request).at(-1); } return { text: 'Saved.' };
+        if (!companion) { repeatedWork++; } return { text: 'Saved.' };
     };
     await h.command('retry-chat', { target: 'companion', id: failed.id });
-    assert.equal(receipt.status, 'unchanged'); assert.equal(saved.length, 1); assert.deepEqual(h.profile().unit.attempts, saved);
+    assert.equal(repeatedWork, 0); assert.equal(saved.length, 1); assert.deepEqual(h.profile().unit.attempts, saved);
 });
 
 for (const firstTool of ['LearningSubmit', 'LearningProfileEdit']) {
@@ -634,7 +634,7 @@ test(`verification of ${firstTool} while the model is still running lets its nex
 });
 }
 
-test('a replacement confirmed later belongs to its original handoff and can be edited on retry', async t => {
+test('a replacement confirmed later can be edited by a new delegation, not by replaying the original task', async t => {
     t.mock.method(console, 'error', () => {});
     const h = await createClassroomFixture(); t.after(h.dispose); await h.openLesson();
     const old = structuredClone(h.profile().unit);
@@ -647,10 +647,10 @@ test('a replacement confirmed later belongs to its original handoff and can be e
     await until(() => h.state().approval); h.flags.userFailure = true;
     await send(h, 'approve-operation', { id: h.state().approval.id, approved: true });
     await until(() => !h.state().chatBusy && !h.state().workbenchBusy);
-    const failed = h.state().conversation.turns.at(-1);
     h.confirmUser(); await h.command('verify');
     const replacement = structuredClone(h.profile().unit);
-    assert.notEqual(replacement.id, old.id); assert.equal(h.state().conversation.turns.at(-1).retryable, true);
+    assert.notEqual(replacement.id, old.id);
+    assert.equal(h.state().conversation.turns.findLast(turn => turn.purpose === 'talk').retryable, false);
     let receipt;
     h.flags.teacherResponse = (request, round) => {
         const companion = request.tools.some(tool => tool.function.name === 'LearningRequest');
@@ -658,7 +658,7 @@ test('a replacement confirmed later belongs to its original handoff and can be e
             exercises: [{ key: 'extra', skill: 'writing', materialKeys: [], prompt: 'Describe a tree.', response: { kind: 'text' }, rule: { kind: 'semantic' } }] })] }; }
         if (!companion) { receipt = results(request).at(-1); } return { text: 'Saved.' };
     };
-    await h.command('retry-chat', { target: 'companion', id: failed.id });
+    await h.command('talk', { target: 'companion', unitId: replacement.id, message: 'Add the writing question to this lesson.' });
     assert.equal(receipt.status, 'confirmed'); assert.equal(h.profile().unit.id, replacement.id);
     assert.equal(h.profile().unit.exercises.length, replacement.exercises.length + 1);
 });

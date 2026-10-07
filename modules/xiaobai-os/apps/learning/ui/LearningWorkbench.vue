@@ -6,6 +6,7 @@ import LearningIcon from './LearningIcon.vue';
 import LearningReading from './LearningReading.vue';
 import LearningReview from './LearningReview.vue';
 import LearningPreparation from './LearningPreparation.vue';
+import LearningCourseSharing from './LearningCourseSharing.vue';
 import { LEARNING_DISCARD_COPY, LEARNING_DUE_LABEL } from './learning-copy.js';
 import type { LearningSelection } from '../../../domains/learning/notes.js';
 import { learningActionAvailable } from '../application/action-availability.js';
@@ -54,8 +55,10 @@ const ask = (name: string, input: Record<string, unknown>, text: string) => emit
             <p class="learning-muted">有一组复习在另一个故事中进行。回到那个故事可以接着做；也可以放下它，在这里重新出题。</p>
             <button type="button" :disabled="blocked('abandon-review')" @click="ask('abandon-review', {}, LEARNING_DISCARD_COPY.review)">放下</button>
         </div>
+        <LearningCourseSharing v-if="state.review" :state="state" :unit="state.review" :disabled="disabled" @confirm="ask" />
         <LearningReview v-if="state.review" :state="state" :review="state.review" :disabled="disabled" :pending="pending" @action="forward" @confirm="ask" @ask="(id, unitId) => emit('ask', id, undefined, unitId)" />
 
+        <LearningCourseSharing v-if="unit" :state="state" :unit="unit" :disabled="disabled" @confirm="ask" />
         <LearningReading v-if="unit?.kind === 'reading-writing'" :data-learning-unit-id="unit.id" :state="state" :unit="unit" :disabled="disabled" :pending="pending" @action="forward" @confirm="ask" @ask="(id, selection) => emit('ask', id, selection, unit!.id)" @assistant="id => emit('assistant', id, unit!.id)" @record="id => emit('record', id)" />
         <section v-else-if="unit" class="learning-lesson" :data-learning-unit-id="unit.id">
             <p class="learning-eyebrow">专项小课 · 完成可得 {{ unit.reward.amount }} 小白币</p>

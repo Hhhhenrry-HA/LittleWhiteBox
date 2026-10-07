@@ -50,6 +50,7 @@ export const LEARNING_FLOW_COPY = {
 
 const contextSwitchConfirmation = { title: '还有内容没提交', accept: '放弃并切换' };
 export const LEARNING_CONFIRM_COPY: Record<string, { title: string; accept: string }> = {
+    'share-course': { title: '允许这份课件跨故事使用？', accept: '允许跨故事使用' },
     language: contextSwitchConfirmation,
     teacher: contextSwitchConfirmation,
     'replace-lesson': { title: '换一篇练习？', accept: '换一篇' },
@@ -73,6 +74,11 @@ export const LEARNING_DISCARD_COPY = {
     keepEditing: '继续编辑',
     lesson: '本次练习的材料、作答和笔记会删除；已收入学习本的记录和已获得的奖励会保留。',
     review: '这组已答的题会删除，复习时间安排不变。',
+};
+
+export const LEARNING_SHARING_COPY = {
+    private: '仅当前故事', action: '跨故事使用',
+    confirm: '这份课件、参考答案、讲解和笔记将可用于你的其他故事，里面可能有当前剧情。语伴私聊和原有作答不公开。',
 };
 
 export const LEARNING_REVIEW_COPY = {
