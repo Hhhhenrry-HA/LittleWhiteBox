@@ -1636,7 +1636,7 @@ export async function buildVectorPromptForReplay(store, recallResult, focusChara
  */
 export async function buildVectorPromptText(excludeLastAi = false, options = {}) {
     const { signal = null, diagnostics = createRecallDiagnostics(getContext()?.chatId),
-        stageObserver = null, captureEvidenceTrace = false } = options;
+        stageObserver = null, captureEvidenceTrace = false, withQueryEmbedding } = options;
     let recallResult = null;
     let meta = null;
     let assembly = null;
@@ -1682,6 +1682,7 @@ export async function buildVectorPromptText(excludeLastAi = false, options = {})
                 deferRuntimeRelease: true,
                 diagnostics,
                 stageObserver,
+                withQueryEmbedding,
             });
 
             recallResult = {

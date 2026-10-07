@@ -16,7 +16,7 @@ export function recordRecallFallback(diagnostics, stage, error) {
 export function formatRecallDiagnostics(diagnostics, { status, reason = '', error = null }) {
     const d = diagnostics;
     const outcome = status === 'success' && d.fallbacks.length ? 'degraded' : status;
-    const labels = { success: '成功', degraded: '降级完成', empty: '空结果', failed: '失败', cancelled: '已取消', retrying: '等待重试' };
+    const labels = { success: '成功', degraded: '降级完成', empty: '空结果', failed: '失败', cancelled: '已取消' };
     const lines = [
         '[Recall Result] 本轮召回',
         `status: ${outcome} (${labels[outcome] || outcome})`,
@@ -24,7 +24,6 @@ export function formatRecallDiagnostics(diagnostics, { status, reason = '', erro
         `stage: ${d.stage}`,
         `elapsed: ${Math.max(0, Math.round((d.finishedAt ?? performance.now()) - d.startedAt))}ms`,
     ];
-    if (d.cycle > 1) lines.push(`recall cycle: ${d.cycle}`);
     if (reason || d.reason) lines.push(`reason: ${reason || d.reason}`);
     if (error) lines.push(`error: ${formatErrorDetails(error)}`);
     for (const fallback of d.fallbacks) lines.push(`fallback [${fallback.stage}]: ${fallback.detail}`);

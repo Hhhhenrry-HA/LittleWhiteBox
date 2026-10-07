@@ -16,10 +16,7 @@ import {
     extension_prompt_roles,
     getRequestHeaders,
     chat_metadata,
-    setExternalAbortController,
 } from "../../../../../../script.js";
-import { generateGroupWrapper } from '../../../../../group-chats.js';
-import { isGenerating } from '../../shared/common/sillytavern-generation-state.js';
 import { EXT_ID, extensionFolderPath } from "../../core/constants.js";
 import { xbLog, CacheRegistry } from "../../core/debug-core.js";
 import { formatErrorDetails } from '../../core/error-details.js';
@@ -112,11 +109,7 @@ import { selectBestStoryMemoryResult } from "./generate/story-memory-result.js";
 import { createRecallReuse, recallConfigKey } from './generate/recall-reuse.js';
 import { createRecallDiagnostics, formatRecallDiagnostics, formatRecallReuseDiagnostics, recordRecallFallback } from './recall-diagnostics.js';
 import { RECALL_TIMEOUT_MS, RECALL_TIMEOUT_REASONS, recallFailureNotice, recallCancellationNotice } from './generate/recall-failure.js';
-import { getGenerationRetryOwner } from '../../shared/common/generation-retry-owner.js';
 import { runRequiredRecall } from './generate/required-recall.js';
-import { createRecallRecovery } from './generate/recall-recovery.js';
-import { createRecallRecoveryHost } from './generate/recovery-host.js';
-import { acquireRecallRecoveryUi, protectGenerationDraft } from './generate/recovery-ui.js';
 
 // summary generation
 import { runSummaryGeneration } from "./generate/generator.js";
@@ -3994,28 +3987,14 @@ const RECALL_REASONS_THAT_ABORT_GENERATION = new Set([
 ]);
 
 const recallReuse = createRecallReuse();
-let recallGenerationRequest = null;
-const recallRecoveryHost = createRecallRecoveryHost({
-    getContext, isGenerating, generateGroup: generateGroupWrapper,
-    setAbortController: setExternalAbortController,
-    protectDraft: () => protectGenerationDraft(document, getContext),
-    registerInterceptor: registerGenerateInterceptor,
-    unregisterInterceptor: unregisterGenerateInterceptor,
-});
-const recallRecovery = createRecallRecovery({
-    getContext, host: recallRecoveryHost,
-    acquireUi: onStop => acquireRecallRecoveryUi({ document, window, getContext, isGenerating, onStop }),
-    createNotice: createRecallRetryNotice,
-    onError: error => {
-        xbLog.error(MODULE_ID, SUMMARY_FEEDBACK_COPY.recallRestartFailed, error);
-        toastr.warning(SUMMARY_FEEDBACK_COPY.recallRestartFailed, SUMMARY_FEEDBACK_COPY.title);
-    },
-});
+// AFTER_COMMANDS provides the initiating signal; the native interceptor does not.
+let recallSourceSignal = null;
 
 const recallPrefetch = createRecallPrefetchCoordinator({
     getContext,
     waitForStable: waitForMemoryCommit,
-    prepare: (type, signal, diagnostics) => prepareMemoryPrompt(type, signal, diagnostics),
+    prepare: prepareMemoryPrompt,
+    createRetryNotice: createRecallRetryNotice,
     pollMs: 16,
     maxAgeMs: RECALL_TIMEOUT_MS,
     onJoinedCancel: (run) => {
@@ -4032,8 +4011,8 @@ const recallPrefetch = createRecallPrefetchCoordinator({
 });
 
 function cancelActiveRecall(reason = 'cancelled', options = {}) {
-    const interrupted = recallRecovery.getCurrent() || recallPrefetch.getActive();
-    recallRecovery.cancel(reason);
+    const interrupted = recallPrefetch.getActive();
+    recallSourceSignal = null;
     const result = recallPrefetch.cancel(reason, {
         abortDispatch: RECALL_REASONS_THAT_ABORT_GENERATION.has(reason),
         ...options,
@@ -4070,7 +4049,7 @@ async function changeRecallData(chatId, change) {
  * safe to start immediately after the host pushes the real USER object while
  * save/render continue in parallel.
  */
-async function prepareMemoryPrompt(type, signal, diagnostics = createRecallDiagnostics(getContext()?.chatId, type)) {
+async function prepareMemoryPrompt(type, signal, diagnostics = createRecallDiagnostics(getContext()?.chatId, type), withQueryEmbedding) {
     const T0 = performance.now();
     let preparedChatId = null;
     let reuseTicket = null;
@@ -4184,6 +4163,7 @@ async function prepareMemoryPrompt(type, signal, diagnostics = createRecallDiagn
         const r = await buildVectorPromptText(excludeLastAi, {
             signal,
             diagnostics,
+            withQueryEmbedding,
         });
         if (signal?.aborted) {
             return finish('aborted_after_build');
@@ -4300,26 +4280,16 @@ async function runStorySummaryRecallInterceptor(_interceptorChat, _contextSize, 
         type: normalizedType,
         focusRef,
         runContext,
+        sourceSignal: recallSourceSignal,
     });
     const waitStartedAt = performance.now();
     let joinStatus = 'pending';
-    run.diagnostics.cycle = recallRecovery.getCurrent()?.cycle || 1;
-    const request = recallGenerationRequest;
     try {
         const outcome = await runRequiredRecall({
             coordinator: recallPrefetch, run, abort,
             commit: commitMemoryPrompt,
             onProgress: diagnostics => runContext?.reportProgress?.(diagnostics),
-            onRetry: (error, diagnostics) => {
-                joinStatus = 'retrying';
-                const text = formatRecallDiagnostics(diagnostics, { status: 'retrying', error });
-                xbLog.warn(MODULE_ID, text);
-                postToFrame({ type: 'RECALL_LOG', text });
-                recallRecovery.retry({ request, startedAt: run.computeStartedAt ?? waitStartedAt,
-                    requestStartedAt: error.requestStartedAt });
-            },
             onFailure: async error => {
-                recallRecovery.cancel('recall-failed');
                 const failure = recallFailureNotice(run.cancelReason, error);
                 if (!failure) {
                     joinStatus = `cancelled:${run.cancelReason}`;
@@ -4336,7 +4306,6 @@ async function runStorySummaryRecallInterceptor(_interceptorChat, _contextSize, 
             },
         });
         if (!outcome.ok) return;
-        recallRecovery.succeeded();
         const recallResult = outcome.value;
         joinStatus = String(recallResult?.text || '').trim() ? 'committed' : 'empty';
         if (String(recallResult?.text || '').trim()) {
@@ -4361,15 +4330,10 @@ function handleGenerationAfterCommands(type, params, isDryRun) {
 
     // 新 Generate 只作废旧计算，不碰上一轮 Prompt；Prompt 的唯一清理点
     // 仍是上面的 generate interceptor。
-    if (recallRecoveryHost.ownsReplay(params)) {
-        recallPrefetch.cancel('superseded', { abortDispatch: true });
-    } else {
-        cancelActiveRecall('superseded');
-    }
+    cancelActiveRecall('superseded');
+    recallSourceSignal = params?.signal || null;
 
     const normalizedType = type || 'normal';
-    recallGenerationRequest = { type: normalizedType, params: { ...params, signal: undefined },
-        owner: getGenerationRetryOwner(params?.signal) };
     if (action !== 'watch') return;
     if (!isStorySummaryConsumableForCurrentChat() || !getVectorConfig()?.enabled) return;
 
@@ -4379,7 +4343,7 @@ function handleGenerationAfterCommands(type, params, isDryRun) {
         chatId,
         type: normalizedType,
         initialLength: chat.length,
-        signal: params?.signal || null,
+        signal: recallSourceSignal,
     });
 }
 
@@ -4405,9 +4369,6 @@ function scheduleWithChatGuard(fn, delay = 0, ...args) {
  * 重排，不会丢活。
  */
 function runContentChangeSync(handler, ...args) {
-    // Capture a live recovery before cancelling it; the later edit path must
-    // neither lose that interruption notice nor report the same stop twice.
-    if (recallRecovery.getCurrent()) cancelActiveRecall('history-changed');
     memoryMaintenance.cancel();
     const chatId = getContext()?.chatId || null;
     if (!chatId || !isStorySummaryEnabledForCurrentChat()) return undefined;
@@ -4576,7 +4537,7 @@ async function registerEvents() {
         runStorySummaryRecallInterceptor,
         GENERATE_INTERCEPTOR_ORDER.STORY_SUMMARY,
     );
-    recallRecoveryHost.install(() => {
+    events.on(event_types.GENERATION_STOPPED, () => {
         const { chatId } = getContext();
         cancelActiveRecall('generation-stopped', {
             retainForJoin: true,
@@ -4587,7 +4548,6 @@ async function registerEvents() {
         clearExtensionPrompt();
     });
     events.on(event_types.GENERATION_ENDED, (data) => {
-        if (recallRecovery.getCurrent()) return;
         // ENDED 没有请求身份，quiet 结束也会触发；这里只通知后续维护，
         // 不能清掉另一个前台请求已提交、尚未组装的记忆。
         notifyStorySummaryAfterAi(data, "generation_ended");
@@ -4614,8 +4574,6 @@ async function runStorySummaryTeardown() {
     cancelActiveSummaryExecution();
     activeSummaryExecution = null;
     cancelRecallAndClearPrompt('unregistered');
-    recallRecoveryHost.dispose();
-    recallGenerationRequest = null;
     postToFrame({ type: 'RECALL_LOG', text: '' });
     postToFrame({ type: 'SUMMARY_STATUS', statusText: '' });
     invalidateLexicalIndex();

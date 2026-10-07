@@ -25,12 +25,12 @@ async function fixture() {
     const eventTypes = Object.fromEntries([
         'CHAT_CHANGED', 'MESSAGE_DELETED', 'MESSAGE_RECEIVED', 'MESSAGE_SENT',
         'MESSAGE_SWIPED', 'MESSAGE_EDITED', 'USER_MESSAGE_RENDERED',
-        'CHARACTER_MESSAGE_RENDERED', 'GENERATION_AFTER_COMMANDS', 'GENERATION_ENDED',
+        'CHARACTER_MESSAGE_RENDERED', 'GENERATION_AFTER_COMMANDS', 'GENERATION_ENDED', 'GENERATION_STOPPED',
     ].map(type => [type, type]));
     const prompts = {};
     const notifications = [];
     const cancellations = [];
-    let interceptor, stop, recovery = null;
+    let interceptor;
     const promptKey = 'fixture-memory';
     const noOp = () => {};
     const context = vm.createContext({
@@ -45,8 +45,6 @@ async function fixture() {
         handleVisibilityChangeForBackground: noOp, handleViewportChangeForBackground: noOp,
         registerGenerateInterceptor: (_id, handler) => { interceptor = handler; },
         GENERATE_INTERCEPTOR_ORDER: { STORY_SUMMARY: 200 },
-        recallRecoveryHost: { install: handler => { stop = handler; } },
-        recallRecovery: { getCurrent: () => recovery },
         notifyStorySummaryAfterAi: (...args) => notifications.push(args),
         cancelActiveRecall: reason => cancellations.push(reason),
         usesStoryRecall, getRecallPrefetchStartAction,
@@ -61,8 +59,7 @@ async function fixture() {
             eventSource.emit(eventTypes.GENERATION_AFTER_COMMANDS, 'quiet', {}, false);
             await interceptor([], 0, () => assert.fail('quiet must not abort'), 'quiet', {});
         },
-        stop: () => stop(),
-        setRecovering: value => { recovery = value ? { chatId: 'chat' } : null; },
+        stop: () => eventSource.emit(eventTypes.GENERATION_STOPPED),
     };
 }
 
@@ -91,15 +88,4 @@ test('an unattributed end leaves explicit Stop responsible for clearing the memo
     assert.equal(host.prompts[host.promptKey], undefined);
     assert.equal(host.cancellations.length, 1);
     assert.equal(host.notifications.length, 1);
-});
-
-test('an end during recall recovery still skips after-AI maintenance and does not touch memory', async () => {
-    const host = await fixture();
-    const prepared = { value: 'memory' };
-    host.commit(prepared);
-    host.setRecovering(true);
-    host.ended();
-    assert.equal(host.prompts[host.promptKey], prepared);
-    assert.deepEqual(host.notifications, []);
-    assert.deepEqual(host.cancellations, []);
 });

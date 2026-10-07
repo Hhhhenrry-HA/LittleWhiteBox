@@ -1,5 +1,4 @@
 import { observeGenerateInterceptors } from '../../shared/common/generate-interceptor.js';
-import { hasGenerationRecovery } from '../../shared/common/generation-retry-owner.js';
 import { createPlaceholderPresenter } from './placeholder.js';
 import { REPLY_PROGRESS_ERRORS } from './copy.js';
 
@@ -71,15 +70,6 @@ export function createReplyProgressRuntime({
         };
     }
 
-    function recovering() {
-        // A global recovery elsewhere cannot keep this reply alive. Only a
-        // cancellation of the recall handler joined to our own dispatch can.
-        if (run?.dispatch?.signal.aborted && run.handler === 'story-summary' && hasGenerationRecovery()) {
-            run.recovery = true;
-        }
-        return !!run?.recovery && hasGenerationRecovery();
-    }
-
     function setStage(phase, detail = null) {
         if (!run || run.phase === phase && run.detail === detail) return;
         run.phase = phase;
@@ -99,9 +89,8 @@ export function createReplyProgressRuntime({
 
     function paint() {
         if (!run) return;
-        const recovery = recovering();
         if (getChat() !== run.chat || !isConnected()
-            || (!recovery && (run.signal?.aborted || run.dispatch?.signal.aborted))) {
+            || run.signal?.aborted || run.dispatch?.signal.aborted) {
             stop();
             return;
         }
@@ -112,13 +101,10 @@ export function createReplyProgressRuntime({
             complete(run.chat[stream.messageId]);
             return;
         }
-        if (recovery && run.dispatch?.signal.aborted) {
-            run.recall = null;
-            setStage('recovery');
-        } else if (run.recall) {
+        if (run.recall) {
             setStage('recall', run.recall.stage);
         }
-        if (!stream && !run.handler && !recovery && now() - run.evidenceAt >= UNCONFIRMED_HINT_MS) {
+        if (!stream && !run.handler && now() - run.evidenceAt >= UNCONFIRMED_HINT_MS) {
             stop();
             return;
         }
@@ -127,12 +113,6 @@ export function createReplyProgressRuntime({
 
     function start(type, params, dryRun) {
         const normalized = generationType(type);
-        if (run && recovering() && run.chat === getChat() && !dryRun && VISIBLE_TYPES.has(normalized)
-            && (params?.automatic_trigger || run.type === normalized)) {
-            run.type = normalized;
-            run.signal = params?.signal;
-            return;
-        }
         if (!isVisibleGeneration(type, params, dryRun)) return;
         if (normalized === 'normal' && getTextarea()?.value?.trimStart().startsWith('/')) return;
         // ST's automatic continuation clicks the same control as manual
@@ -160,7 +140,7 @@ export function createReplyProgressRuntime({
             previousStream: getStream(), stream: null, replyIndex: null,
             startedAt, evidenceAt: startedAt, phase: 'context', detail: null,
             afterCommands: false, dispatch: null,
-            handler: null, recall: null, recovery: false, unobserveRequest: null,
+            handler: null, recall: null, unobserveRequest: null,
             presenter: createPresenter(textarea),
         };
         paint();
@@ -169,15 +149,6 @@ export function createReplyProgressRuntime({
 
     function onInterceptor({ phase, id, type, run: dispatch, detail }) {
         if (!run || run.chat !== getChat() || generationType(type) !== run.type || !run.afterCommands) return;
-        if (phase === 'dispatch-start' && recovering() && run.dispatch?.signal.aborted) {
-            cleanup(run.unobserveRequest);
-            run.unobserveRequest = null;
-            run.dispatch = null;
-            run.handler = null;
-            run.recall = null;
-            run.stream = null;
-            run.previousStream = getStream();
-        }
         if (phase === 'dispatch-start') {
             if (run.dispatch) return;
             run.dispatch = dispatch;
@@ -233,7 +204,7 @@ export function createReplyProgressRuntime({
             // Never start here: delayed/background post-command notifications
             // cannot resurrect a reply that already produced text.
             if (!run || run.chat !== getChat() || generationType(type) !== run.type
-                || (!isVisibleGeneration(type, params, dryRun) && !recovering())) return;
+                || !isVisibleGeneration(type, params, dryRun)) return;
             run.afterCommands = true;
             paint();
         });
@@ -270,7 +241,7 @@ export function createReplyProgressRuntime({
         });
         on('GROUP_WRAPPER_FINISHED', ({ selected_group, type }) => {
             if (!group || group.chat !== getChat() || group.id !== selected_group || !VISIBLE_TYPES.has(generationType(type))) return;
-            if (run?.groupId === selected_group && !recovering()) stop();
+            if (run?.groupId === selected_group) stop();
             group = null;
         });
         on('CHAT_CHANGED', () => { stop(); group = null; completedReply = null; });

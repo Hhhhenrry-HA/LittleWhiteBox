@@ -1,12 +1,8 @@
 import { throwIfSignalAborted } from '../../../shared/common/abort-utils.js';
-import { usesStoryRecall } from './recall-policy.js';
-import { canRetryRecallEmbedding } from '../vector/retrieval/query-embedding-policy.js';
 
-// One invocation belongs to exactly one host Generate. A failed query exits
-// that Generate; the recovery owner, not this gate, starts the next one.
-export async function runRequiredRecall({ coordinator, run, commit, abort, onRetry, onProgress, onFailure }) {
+// One invocation belongs to exactly one host Generate, including query retries.
+export async function runRequiredRecall({ coordinator, run, commit, abort, onProgress, onFailure }) {
     let completed = false;
-    let retryError = null;
     try {
         onProgress?.(run.diagnostics);
         for (;;) {
@@ -21,19 +17,12 @@ export async function runRequiredRecall({ coordinator, run, commit, abort, onRet
             return { ok: true, value };
         }
     } catch (error) {
-        if (usesStoryRecall(run.type)
-            && !run.cancelReason && !run.controller.signal.aborted
-            && error?.code === 'RECALL_EMBEDDING_FAILED' && canRetryRecallEmbedding(error)) {
-            retryError = error;
-        } else {
-            await onFailure?.(error);
-        }
+        await onFailure?.(error);
         return { ok: false };
     } finally {
         // Detach before aborting the dispatch: a real failure must not be
         // overwritten by a second, synthetic "dispatch cancelled" report.
         coordinator.finish(run);
         if (!completed) abort(true);
-        if (retryError) onRetry(retryError, run.diagnostics);
     }
 }

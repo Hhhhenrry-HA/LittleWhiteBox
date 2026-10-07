@@ -5,7 +5,7 @@ import { build } from 'esbuild';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// Protect the foreground request contract: one request per host round,
+// Protect the foreground request contract: retry inside one host round,
 // cancellation stays silent, and diagnostics
 // classify real transport failures rather than guessing from elapsed time.
 // Real request policy, transport, validation and presentation; only host config,
@@ -20,6 +20,8 @@ const bundle = await build({
         export * from './modules/story-summary/vector/retrieval/query-embedding.js';
         export * from './modules/story-summary/generate/recall-failure.js';
         export * from './modules/story-summary/vector/runtime/vector-activity.js';
+        export * from './modules/story-summary/generate/recall-prefetch.js';
+        export * from './modules/story-summary/generate/required-recall.js';
     ` },
     bundle: true, write: false, format: 'esm', platform: 'node',
     plugins: [{ name: 'query-host-boundaries', setup(api) {
@@ -54,26 +56,86 @@ beforeEach(() => {
 });
 after(() => { globalThis.fetch = originalFetch; });
 
+for (const type of ['normal', 'regenerate', 'continue', 'swipe', 'impersonate']) {
+    test(`${type}: one joined host gate survives 40 seconds of retries then commits once`, async t => {
+        t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 0 });
+        t.mock.method(performance, 'now', () => Date.now());
+        const context = { chatId: 'fixture', chat: [] };
+        const state = { prepares: 0, commits: 0, aborts: 0, failures: 0, notices: 0, visible: false };
+        respond = signal => requests.length <= 10 ? stalled(signal) : success();
+        const coordinator = mod.createRecallPrefetchCoordinator({
+            getContext: () => context,
+            prepare: async (_type, signal, _diagnostics, withQueryEmbedding) => {
+                state.prepares++;
+                return mod.embedRecallQuery(['fixture query'], config, { signal, withQueryEmbedding });
+            },
+            createRetryNotice: () => ({
+                show() { state.notices++; state.visible = true; },
+                clear() { state.visible = false; },
+            }),
+        });
+        const dispatch = new AbortController();
+        const { slot } = coordinator.join({ chatId: context.chatId, type, runContext: { signal: dispatch.signal } });
+        const pending = mod.runRequiredRecall({ coordinator, run: slot,
+            commit: value => { state.commits++; return value; },
+            abort: () => state.aborts++, onFailure: () => state.failures++,
+        });
+        await flush();
+        for (let attempt = 1; attempt <= 10; attempt++) {
+            t.mock.timers.tick(3000);
+            await flush();
+            assert.equal(requests.length, attempt);
+            assert.equal(state.commits, 0);
+            assert.equal(state.aborts, 0);
+            assert.equal(slot.controller.signal.aborted, false);
+            assert.equal(dispatch.signal.aborted, false);
+            if (attempt >= 8) assert.equal(state.visible, true);
+            t.mock.timers.tick(1000);
+            await flush();
+        }
+        assert.deepEqual(await pending, { ok: true, value: [[1, 0]] });
+        assert.deepEqual(state, { prepares: 1, commits: 1, aborts: 0, failures: 0, notices: 1, visible: false });
+        assert.equal(coordinator.getCurrent(), null);
+        t.mock.timers.runAll();
+        await flush();
+        assert.equal(requests.length, 11);
+    });
+}
+
+for (const phase of ['request', 'delay']) {
+    test(`initiating continuation signal cancels the joined gate during ${phase} without a global stop`, async t => {
+        t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 0 });
+        t.mock.method(performance, 'now', () => Date.now());
+        const source = new AbortController();
+        let commits = 0, aborts = 0;
+        respond = signal => stalled(signal);
+        const coordinator = mod.createRecallPrefetchCoordinator({
+            getContext: () => ({ chatId: 'fixture', chat: [] }),
+            prepare: (_type, signal, _diagnostics, withQueryEmbedding) =>
+                mod.embedRecallQuery(['fixture query'], config, { signal, withQueryEmbedding }),
+        });
+        const { slot } = coordinator.join({ chatId: 'fixture', type: 'continue', sourceSignal: source.signal });
+        const pending = mod.runRequiredRecall({ coordinator, run: slot,
+            commit: () => commits++, abort: () => aborts++,
+        });
+        await flush();
+        if (phase === 'delay') { t.mock.timers.tick(3000); await flush(); }
+        source.abort();
+        assert.deepEqual(await pending, { ok: false });
+        assert.equal(slot.cancelReason, 'generation-signal-aborted');
+        assert.equal(commits, 0);
+        assert.equal(aborts, 1);
+        assert.equal(requests[0].options.signal.aborted, true);
+        t.mock.timers.runAll();
+        await flush();
+        assert.equal(requests.length, 1);
+    });
+}
+
 test('successful query makes one request and preserves validated vectors', async () => {
     assert.deepEqual(await query(), { vectors: [[1, 0]] });
     assert.equal(requests.length, 1);
     assert.equal(failures.length, 0);
-});
-
-test('failure carries the actual query start for cross-generation pacing, not its completion time', async t => {
-    let clock = 1500;
-    t.mock.method(performance, 'now', () => clock);
-    respond = () => {
-        clock += 200;
-        return new Response('{}', { status: 503 });
-    };
-    const first = await query();
-    assert.equal(first.error.requestStartedAt, 1500);
-    assert.equal(failures[0].elapsedMs, 200);
-    clock = 5000;
-    const second = await query();
-    assert.equal(second.error.requestStartedAt, 5000);
-    assert.equal(requests.length, 2);
 });
 
 test('a query timeout keeps overlapping floor work even when that work failed before the timeout', async t => {
@@ -85,13 +147,15 @@ test('a query timeout keeps overlapping floor work even when that work failed be
         return { failed: 1 };
     });
     let trace;
-    respond = signal => stalled(signal);
+    respond = signal => requests.length === 1 ? stalled(signal) : success();
     const pending = query({ onActivity: value => { trace = value; } });
     await flush();
     finishBackground();
     await background;
     t.mock.timers.tick(3000);
-    assert.equal((await pending).error.code, 'RECALL_EMBEDDING_FAILED');
+    await flush();
+    t.mock.timers.tick(1000);
+    assert.deepEqual(await pending, { vectors: [[1, 0]] });
     assert.ok(trace.timeline.some(entry => entry.activities.some(activity => activity.activeFloors.includes(30))));
     assert.ok(trace.timeline.some(entry => entry.activities.some(activity => activity.outcome?.failed === 1)));
     assert.deepEqual(trace.timeline.at(-1).activities, []);
@@ -150,66 +214,74 @@ for (const entry of permanent) {
 }
 
 for (const status of [408, 500, 503, 599, null]) {
-    test(`${status == null ? 'network failure' : `HTTP ${status}`} exits immediately without an in-round retry`, async t => {
+    test(`${status == null ? 'network failure' : `HTTP ${status}`} waits one second then retries in the same call`, async t => {
         t.mock.timers.enable({ apis: ['setTimeout'] });
         respond = () => {
+            if (requests.length === 2) return success();
             if (status == null) throw new TypeError('fixture network failure');
             return new Response('{}', { status });
         };
         let outcome;
-        query().then(value => { outcome = value; });
+        const pending = query().then(value => { outcome = value; });
         await flush();
-        assert.equal(outcome?.error?.code, 'RECALL_EMBEDDING_FAILED');
-        assert.equal(outcome.error.cause, failures[0].error);
-        assert.deepEqual(outcome.error.errors, [failures[0].error]);
-        const notice = mod.recallFailureNotice(null, outcome.error);
-        assert.equal(notice.reason, status == null ? 'network' : status === 408 ? 'request_timeout' : 'server');
-        assert.equal(notice.httpStatus, status);
+        assert.equal(outcome, undefined);
         assert.equal(requests.length, 1);
-        t.mock.timers.runAll();
+        t.mock.timers.tick(999);
         await flush();
         assert.equal(requests.length, 1);
+        t.mock.timers.tick(1);
+        await pending;
+        assert.deepEqual(outcome, { vectors: [[1, 0]] });
+        assert.equal(requests.length, 2);
         assert.equal(failures.length, 1);
     });
 }
 
 for (const phase of ['headers', 'body']) {
-    test(`${phase} timeout exits at the first deadline, retaining the cause and attempt`, async t => {
+    test(`${phase} timeout retries with a fresh 3-second deadline after every 1-second wait`, async t => {
         t.mock.timers.enable({ apis: ['setTimeout'] });
-        respond = signal => phase === 'headers' ? stalled(signal) : { ok: true, json: () => stalled(signal) };
+        respond = signal => requests.length === 11 ? success()
+            : phase === 'headers' ? stalled(signal) : { ok: true, json: () => stalled(signal) };
         let outcome;
-        query().then(value => { outcome = value; });
+        const pending = query().then(value => { outcome = value; });
         await flush();
-        t.mock.timers.tick(2999);
-        await flush();
-        assert.equal(outcome, undefined);
-        assert.equal(failures.length, 0);
-        t.mock.timers.tick(1);
-        await flush();
-        assert.equal(outcome?.error?.code, 'RECALL_EMBEDDING_FAILED');
-        assert.equal(failures.length, 1);
-        assert.equal(failures[0].attempt, 1);
-        const { error } = outcome;
-        assert.deepEqual(error.errors, [failures[0].error]);
-        assert.equal(mod.recallFailureNotice(null, error).reason, 'timeout');
-        assert.deepEqual(mod.recallFailureNotice(null, error).timeouts, [
-            { attempt: 1, timeoutMs: 3000 },
-        ]);
-        t.mock.timers.runAll();
-        await flush();
-        assert.equal(requests.length, 1);
+        for (let attempt = 1; attempt <= 10; attempt++) {
+            t.mock.timers.tick(2999);
+            await flush();
+            assert.equal(outcome, undefined);
+            assert.equal(failures.length, attempt - 1);
+            t.mock.timers.tick(1);
+            await flush();
+            assert.equal(failures.length, attempt);
+            assert.equal(failures.at(-1).attempt, attempt);
+            assert.equal(failures.at(-1).error.embeddingFailure.kind, 'timeout');
+            assert.equal(requests.length, attempt);
+            t.mock.timers.tick(999);
+            await flush();
+            assert.equal(requests.length, attempt);
+            t.mock.timers.tick(1);
+            await flush();
+            assert.equal(requests.length, attempt + 1);
+            assert.notEqual(requests.at(-1).options.signal, requests.at(-2).options.signal);
+            assert.equal(requests.at(-1).options.signal.aborted, false);
+        }
+        await pending;
+        assert.deepEqual(outcome, { vectors: [[1, 0]] });
     });
 }
 
-test('a new query after a failed round uses a fresh signal and can succeed', async t => {
+test('a later permanent failure ends retries and reports that terminal cause', async t => {
     t.mock.timers.enable({ apis: ['setTimeout'] });
-    respond = signal => requests.length === 1 ? stalled(signal) : success();
+    respond = signal => requests.length === 1 ? stalled(signal) : new Response('{}', { status: 401 });
     const pending = query();
     await flush();
     t.mock.timers.tick(3000);
-    assert.equal((await pending).error.code, 'RECALL_EMBEDDING_FAILED');
-    assert.equal(requests.length, 1);
-    assert.deepEqual(await query(), { vectors: [[1, 0]] });
+    await flush();
+    t.mock.timers.tick(1000);
+    const { error } = await pending;
+    assert.equal(error.code, 'RECALL_EMBEDDING_FAILED');
+    assert.equal(mod.recallFailureNotice(null, error).reason, 'credentials');
+    assert.equal(error.cause, failures.at(-1).error);
     assert.equal(requests.length, 2);
     assert.equal(requests[0].options.signal.aborted, true);
     assert.equal(requests[1].options.signal.aborted, false);
@@ -217,7 +289,7 @@ test('a new query after a failed round uses a fresh signal and can succeed', asy
     assert.equal(failures[0].error.embeddingFailure.kind, 'timeout');
 });
 
-for (const phase of ['before', 'request']) {
+for (const phase of ['before', 'request', 'delay', 'later-request']) {
     test(`cancellation during ${phase} does not retry or become an Embedding failure`, async t => {
         t.mock.timers.enable({ apis: ['setTimeout'] });
         const controller = new AbortController();
@@ -225,14 +297,22 @@ for (const phase of ['before', 'request']) {
         respond = signal => stalled(signal);
         const pending = query({ signal: controller.signal });
         await flush();
+        if (phase === 'delay' || phase === 'later-request') {
+            t.mock.timers.tick(3000);
+            await flush();
+            if (phase === 'later-request') {
+                t.mock.timers.tick(1000);
+                await flush();
+            }
+        }
         controller.abort();
         const { error } = await pending;
         assert.equal(error.name, 'AbortError');
         assert.notEqual(error.code, 'RECALL_EMBEDDING_FAILED');
         assert.equal(mod.recallFailureNotice('generation-stopped', error), null);
-        assert.equal(failures.length, 0);
+        assert.equal(failures.length, ['delay', 'later-request'].includes(phase) ? 1 : 0);
         t.mock.timers.runAll();
         await flush();
-        assert.equal(requests.length, phase === 'before' ? 0 : 1);
+        assert.equal(requests.length, phase === 'before' ? 0 : phase === 'later-request' ? 2 : 1);
     });
 }

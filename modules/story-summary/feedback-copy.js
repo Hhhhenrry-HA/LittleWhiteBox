@@ -25,7 +25,6 @@ export const SUMMARY_FEEDBACK_COPY = Object.freeze({
     statsRefreshFailed: '向量统计刷新失败。',
     embeddingRecall: detail => `记忆召回失败，本次生成已停止。${detail}`,
     recallRetrying: '向量无法成功，建议终止生成后检查向量模型连接状态。',
-    recallRestartFailed: '自动重新生成失败，本次生成已停止。请查看控制台中的错误详情。',
     recallInterrupted: Object.freeze({
         edited: '聊天内容已修改，本次生成已停止，请重新发送。',
         configuration: '记忆设置已变更，本次生成已停止，请重新发送。',

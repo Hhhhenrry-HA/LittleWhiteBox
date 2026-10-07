@@ -58,6 +58,7 @@ import {
 } from './event-recall-classification.js';
 
 const MODULE_ID = 'recall';
+const MAX_EXTERNAL_FAILURES = 100;
 
 function observeRecallStage(observer, stage, ranked, value = undefined) {
     if (typeof observer !== 'function') return;
@@ -80,6 +81,8 @@ function recordExternalFailure(metrics, failure) {
         elapsedMs: Number.isFinite(failure.elapsedMs) ? failure.elapsedMs : null,
         message: failure.error ? formatErrorDetails(failure.error, { includeStack: false }) : '',
     });
+    // Query retries are unbounded; retain recent receipts with absolute attempt numbers.
+    if (metrics.external.failures.length > MAX_EXTERNAL_FAILURES) metrics.external.failures.shift();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1169,6 +1172,7 @@ export async function recallMemory(allEvents, vectorConfig, options = {}) {
         deferRuntimeRelease = false,
         signal = null,
         diagnostics = null,
+        withQueryEmbedding,
     } = options;
     const captureStages = typeof stageObserver === 'function';
     const events = Array.isArray(allEvents) ? allEvents : [];
@@ -1254,6 +1258,7 @@ export async function recallMemory(allEvents, vectorConfig, options = {}) {
     try {
         r1Vectors = await embedRecallQuery(segmentTexts, vectorConfig, {
             signal,
+            withQueryEmbedding,
             onFailure: failure => recordExternalFailure(metrics, { stage: 'round1-embed', kind: 'request', ...failure }),
             onActivity: trace => { metrics.external.queryActivity = trace; },
         });

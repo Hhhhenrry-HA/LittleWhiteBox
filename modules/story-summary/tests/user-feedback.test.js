@@ -149,7 +149,6 @@ for (const cause of [
             await runRequiredRecall({ coordinator, run,
                 commit: () => assert.fail('failed recall cannot commit'),
                 abort: () => { stopped++; },
-                onRetry: () => assert.fail('terminal failure cannot restart'),
                 onFailure: failure => notifyRecallFailure(recallFailureNotice(run.cancelReason, failure)),
             });
             assert.equal(stopped, attempt + 1);

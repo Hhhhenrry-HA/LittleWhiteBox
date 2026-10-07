@@ -61,6 +61,7 @@ function createHarness(prepare, options = {}) {
         clearTimeout: scheduler.clearTimeout,
         now: scheduler.now,
         onJoinedCancel: options.onJoinedCancel,
+        createRetryNotice: options.createRetryNotice,
     });
     return { context, coordinator, scheduler };
 }
@@ -68,6 +69,55 @@ function createHarness(prepare, options = {}) {
 async function flushMicrotasks() {
     await Promise.resolve();
     await Promise.resolve();
+}
+
+test('long query waiting can join prefetch; remaining preparation budget resumes without resetting', async () => {
+    let finishQuery;
+    const { context, coordinator, scheduler } = createHarness(async (_type, _signal, _diagnostics, withQueryEmbedding) => {
+        scheduler.advanceBy(40);
+        await withQueryEmbedding(() => new Promise(resolve => { finishQuery = resolve; }));
+        return new Promise(() => {});
+    });
+    coordinator.startWatching({ chatId: context.chatId, initialLength: 0 });
+    const user = { is_user: true, mes: 'fixture' };
+    context.chat.push(user);
+    scheduler.advanceBy(16);
+    await flushMicrotasks();
+    scheduler.advanceBy(60_000);
+    const { slot, path } = coordinator.join({ chatId: context.chatId, type: 'normal', focusRef: user });
+    assert.equal(path, 'prefetch');
+    assert.equal(slot.controller.signal.aborted, false);
+    finishQuery();
+    await flushMicrotasks();
+    scheduler.advanceBy(59);
+    assert.equal(slot.controller.signal.aborted, false);
+    scheduler.advanceBy(1);
+    assert.equal(slot.cancelReason, RECALL_TIMEOUT_REASONS.compute);
+    assert.equal(slot.controller.signal.aborted, true);
+    assert.equal(scheduler.pendingCount(), 0);
+});
+
+for (const reason of ['generation-stopped', 'chat-changed', 'message-edited', 'unregistered']) {
+    test(`${reason} immediately cancels a joined long query and clears its notice`, async () => {
+        let finishQuery;
+        let visible = false;
+        const { context, coordinator, scheduler } = createHarness(async (_type, _signal, _diagnostics, withQueryEmbedding) => {
+            await withQueryEmbedding(() => new Promise(resolve => { finishQuery = resolve; }));
+            return { text: 'late' };
+        }, { createRetryNotice: () => ({ show() { visible = true; }, clear() { visible = false; } }) });
+        const { slot } = coordinator.join({ chatId: context.chatId, type: 'normal' });
+        await flushMicrotasks();
+        scheduler.advanceBy(30_000);
+        assert.equal(visible, true);
+        const pending = coordinator.waitForOutcome(slot);
+        coordinator.cancel(reason);
+        await assert.rejects(pending, { name: 'AbortError' });
+        assert.equal(visible, false);
+        finishQuery();
+        await slot.outcome;
+        assert.equal(coordinator.getCurrent(), null);
+        assert.equal(scheduler.pendingCount(), 0);
+    });
 }
 
 for (const alreadyRunning of [false, true]) {

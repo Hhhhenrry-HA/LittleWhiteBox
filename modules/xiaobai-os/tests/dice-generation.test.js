@@ -27,7 +27,6 @@ const compiled = await build({
         export { captureDiceChat, waitForDiceHost } from '../apps/dice/host/sillytavern-port.ts';
         export { commitChatImagePlacement } from '../../draw/shared/chat-image-placement.js';
         export { parseChatImageTags } from '../../draw/shared/chat-message-image-markup.js';
-        export { getGenerationRetryOwner } from '../../../shared/common/generation-retry-owner.js';
         export { host } from 'dice-generation-host';`,
         resolveDir: fileURLToPath(new URL('.', import.meta.url)) },
     bundle: true, write: false, format: 'esm', platform: 'node', logLevel: 'silent',
@@ -170,11 +169,11 @@ const compiled = await build({
 });
 const { createDiceGenerationAdapter, createDiceMessageDisplay, captureDiceChat, waitForDiceHost, host,
     // eslint-disable-next-line no-unsanitized/method -- Compiled repository modules and fixed native I/O fixture only.
-    commitChatImagePlacement, parseChatImageTags, getGenerationRetryOwner } = await import(`data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`);
+    commitChatImagePlacement, parseChatImageTags } = await import(`data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`);
 
 const call = 'Attempt.\n\n<xb_action_check>{"action":"Climb","stat":"Agility","difficulty":"hard"}</xb_action_check>';
 
-for (const cancel of ['none', 'owner', 'initiator']) test(`Dice owns recall-recovery attempts without rerolling; cancel=${cancel}`, async t => {
+for (const cancel of ['none', 'stop', 'initiator']) test(`Dice keeps one continuation while recall waits without rerolling; cancel=${cancel}`, async t => {
     const adapter = setup(t);
     await begin();
     await host.intercept('normal');
@@ -184,39 +183,30 @@ for (const cancel of ['none', 'owner', 'initiator']) test(`Dice owns recall-reco
     assert.equal(saved.checks.length, 1);
     const ids = host.ids;
     const intercept = host.intercept.bind(host);
-    let owner;
-    let firstSignal;
+    let release;
+    const ready = new Promise(resolve => { release = resolve; });
+    let requestSignal;
+    let entries = 0;
     t.mock.method(host, 'intercept', async type => {
-        if (!owner) {
-            firstSignal = host.controller.signal;
-            owner = getGenerationRetryOwner(firstSignal);
-            assert.ok(owner);
-            owner.requestRetry();
-            host.stop();
-            return true;
-        }
-        assert.notEqual(host.controller.signal, firstSignal);
-        assert.equal(getGenerationRetryOwner(host.controller.signal), owner);
+        entries++;
+        requestSignal = host.controller.signal;
+        await ready;
         return intercept(type);
     });
     const pending = choose(adapter, 1);
     await setImmediate();
-    assert.equal(firstSignal.aborted, true);
-    assert.equal(host.busy, false);
+    assert.equal(requestSignal.aborted, false);
+    assert.equal(host.busy, true);
     assert.equal(adapter.view().phase.kind, 'continuing');
     await host.emit('GENERATION_STARTED', 'quiet', {}, false);
     await host.emit('GENERATION_ENDED');
     assert.equal(adapter.view().phase.kind, 'continuing');
     if (cancel === 'initiator') adapter.cancel();
-    else if (cancel === 'owner') owner.cancel();
-    else await owner.replay();
+    else if (cancel === 'stop') host.stop();
+    release();
     await pending;
-    if (cancel !== 'none') {
-        let settled = false;
-        void owner.replay().then(() => { settled = true; });
-        await setImmediate();
-        assert.equal(settled, true, 'late recovery must be able to finish its UI cleanup');
-    }
+    assert.equal(entries, 1);
+    assert.equal(requestSignal.aborted, cancel !== 'none');
     assert.equal(host.requests.length, cancel === 'none' ? 1 : 0);
     assert.equal(host.ids, ids);
     assert.deepEqual(adapter.records(host.source.chat.at(-1)), saved);

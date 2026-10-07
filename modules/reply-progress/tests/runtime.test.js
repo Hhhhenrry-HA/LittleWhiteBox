@@ -4,7 +4,6 @@ import { createReplyProgressRuntime, UNCONFIRMED_HINT_MS } from '../runtime.js';
 import { createPlaceholderPresenter } from '../placeholder.js';
 import { observeHostRequest } from '../request-observer.js';
 import { registerGenerateInterceptor, unregisterGenerateInterceptor } from '../../../shared/common/generate-interceptor.js';
-import { holdGenerationRecovery } from '../../../shared/common/generation-retry-owner.js';
 
 const TYPES = Object.fromEntries([
     'GENERATION_STARTED', 'GENERATION_AFTER_COMMANDS', 'MESSAGE_SENT', 'USER_MESSAGE_RENDERED',
@@ -342,10 +341,8 @@ test('a user stop click or this request signal ends only the hint; observers do 
     assert.equal(h.progress(), null);
 });
 
-test('an unrelated recovery cannot hold open an aborted foreground dispatch', async t => {
+test('an aborted foreground dispatch closes its hint', async t => {
     const h = harness(t);
-    const release = holdGenerationRecovery();
-    t.after(release);
     register(t, 'draw', async (_chat, _size, abort) => abort(true));
     await begin(h);
     await dispatch();
@@ -353,30 +350,25 @@ test('an unrelated recovery cannot hold open an aborted foreground dispatch', as
 });
 
 for (const originalType of ['normal', 'regenerate', 'continue']) {
-    test(`${originalType}: this reply's joined recall recovery preserves total waiting time`, async t => {
+    test(`${originalType}: in-round recall waiting preserves total waiting time`, async t => {
         const h = harness(t);
-        let releaseRecovery;
-        t.after(() => releaseRecovery?.());
-        let attempts = 0;
+        const ready = deferred();
         register(t, 'story-summary', async (_chat, _size, _abort, type, context) => {
             if (type === 'quiet') return;
             context.reportProgress({ stage: 'round1-embed' });
-            if (++attempts === 1) {
-                context.abort(true);
-                releaseRecovery = holdGenerationRecovery();
-            } else { releaseRecovery(); releaseRecovery = null; context.reportProgress(null); }
+            await ready.promise;
+            context.reportProgress(null);
         });
         if (originalType === 'continue') h.chat().push({ is_user: false, mes: 'old' });
         await begin(h, originalType);
-        await dispatch(originalType);
+        const pending = dispatch(originalType);
         h.advance(5000);
         await begin(h, 'quiet');
         await h.events.emit(TYPES.GENERATION_ENDED);
-        assert.equal(h.progress().phase, 'recovery');
-        const replayType = originalType === 'regenerate' ? 'normal' : originalType;
-        await begin(h, replayType, { automatic_trigger: true });
-        await dispatch(replayType);
-        await h.prepared(replayType);
+        assert.equal(h.progress().phase, 'recall');
+        ready.resolve();
+        await pending;
+        await h.prepared(originalType);
         assert.equal(h.progress().elapsedMs, 5000);
         if (originalType === 'continue') h.chat()[0].mes += ' next';
         else h.chat().push({ is_user: false, mes: 'answer' });
