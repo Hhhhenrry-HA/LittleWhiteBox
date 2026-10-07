@@ -1,39 +1,13 @@
-/* global Buffer */
 import assert from 'node:assert/strict';
 import { after, beforeEach, test } from 'node:test';
-import { build } from 'esbuild';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { getEventListeners } from 'node:events';
+import mod from './fixtures/recall-query.mjs';
 
 // Protect the foreground request contract: retry inside one host round,
 // cancellation stays silent, and diagnostics
 // classify real transport failures rather than guessing from elapsed time.
 // Real request policy, transport, validation and presentation; only host config,
 // diagnostics and HTTP are replaced. No provider requests or paid API calls.
-const root = fileURLToPath(new URL('../../../', import.meta.url));
-const shims = {
-    'config.js': 'export const getVectorConfig=()=>({});',
-    'debug-core.js': 'export const xbLog={isEnabled:()=>false,warn(){}};',
-};
-const bundle = await build({
-    stdin: { resolveDir: root, contents: `
-        export * from './modules/story-summary/vector/retrieval/query-embedding.js';
-        export * from './modules/story-summary/generate/recall-failure.js';
-        export * from './modules/story-summary/vector/runtime/vector-activity.js';
-        export * from './modules/story-summary/generate/recall-prefetch.js';
-        export * from './modules/story-summary/generate/required-recall.js';
-    ` },
-    bundle: true, write: false, format: 'esm', platform: 'node',
-    plugins: [{ name: 'query-host-boundaries', setup(api) {
-        api.onResolve({ filter: /.*/ }, args => {
-            const name = path.basename(args.path);
-            return Object.hasOwn(shims, name) ? { path: name, namespace: 'host' } : null;
-        });
-        api.onLoad({ filter: /.*/, namespace: 'host' }, args => ({ contents: shims[args.path] }));
-    } }],
-});
-// eslint-disable-next-line no-unsanitized/method -- locally bundled production modules and fixed host shims only
-const mod = await import('data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].text).toString('base64'));
 const originalFetch = globalThis.fetch;
 const flush = async () => { for (let i = 0; i < 40; i++) await Promise.resolve(); };
 const success = () => new Response(JSON.stringify({ data: [{ index: 0, embedding: [1, 0] }] }));
@@ -55,6 +29,62 @@ beforeEach(() => {
     };
 });
 after(() => { globalThis.fetch = originalFetch; });
+
+for (const outcome of ['success', 'http', 'network', 'response', 'timeout', 'cancel', 'already-cancelled']) {
+    test(`Embedding request releases its external cancellation listener on ${outcome}`, async t => {
+        t.mock.timers.enable({ apis: ['setTimeout'] });
+        const source = new AbortController();
+        if (outcome === 'already-cancelled') source.abort();
+        respond = signal => {
+            assert.equal(getEventListeners(source.signal, 'abort').length, 1);
+            if (outcome === 'http') return new Response('{}', { status: 503 });
+            if (outcome === 'network') throw new TypeError('fixture network failure');
+            if (outcome === 'response') return new Response('{');
+            if (outcome === 'timeout' || outcome === 'cancel') return stalled(signal);
+            return success();
+        };
+        const pending = mod.embedVectors(['fixture'], { apiConfig: config.embeddingApi, signal: source.signal, timeout: 3000 })
+            .then(value => ({ value }), error => ({ error }));
+        await flush();
+        if (outcome === 'timeout') t.mock.timers.tick(3000);
+        if (outcome === 'cancel') source.abort();
+        const result = await pending;
+        assert.equal(Boolean(result.error), outcome !== 'success');
+        assert.equal(getEventListeners(source.signal, 'abort').length, 0);
+        assert.equal(requests.length, outcome === 'already-cancelled' ? 0 : 1);
+        const settledSignal = requests[0]?.options.signal;
+        const aborted = settledSignal?.aborted;
+        t.mock.timers.runAll();
+        source.abort();
+        assert.equal(settledSignal?.aborted, aborted, 'completed requests retain no timer or external forwarding listener');
+    });
+}
+
+for (const failure of ['http', 'network']) {
+    test(`old browsers retain no completed request listeners across 300 ${failure} retries`, async t => {
+        t.mock.timers.enable({ apis: ['setTimeout'] });
+        const originalAny = AbortSignal.any;
+        AbortSignal.any = undefined;
+        t.after(() => { AbortSignal.any = originalAny; });
+        const source = new AbortController();
+        respond = () => {
+            if (requests.length > 300) return success();
+            if (failure === 'network') throw new TypeError('fixture network failure');
+            return new Response('{}', { status: 503 });
+        };
+        const pending = query({ signal: source.signal });
+        await flush();
+        for (let attempt = 1; attempt <= 300; attempt++) {
+            assert.equal(requests.length, attempt);
+            // Only the current retry delay may listen; completed requests own nothing.
+            assert.equal(getEventListeners(source.signal, 'abort').length, 1);
+            t.mock.timers.tick(1000);
+            await flush();
+        }
+        assert.deepEqual(await pending, { vectors: [[1, 0]] });
+        assert.equal(getEventListeners(source.signal, 'abort').length, 0);
+    });
+}
 
 for (const type of ['normal', 'regenerate', 'continue', 'swipe', 'impersonate']) {
     test(`${type}: one joined host gate survives 40 seconds of retries then commits once`, async t => {

@@ -6,6 +6,13 @@ import vm from 'node:vm';
 import { parse } from 'acorn';
 import { usesStoryRecall } from '../generate/recall-policy.js';
 import { getRecallPrefetchStartAction } from '../generate/recall-prefetch.js';
+import mod from './fixtures/recall-query.mjs';
+
+const flush = async () => { for (let i = 0; i < 40; i++) await Promise.resolve(); };
+const success = () => new Response(JSON.stringify({ data: [{ index: 0, embedding: [1, 0] }] }));
+const stalled = signal => new Promise((_, reject) => {
+    signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+});
 
 // Execute the production entry's registration and quiet hooks, rather than
 // duplicating its ENDED handler in a fixture. Only startup/UI/maintenance
@@ -15,21 +22,45 @@ const source = readFileSync(new URL('../story-summary.js', import.meta.url), 'ut
 const entryFunctions = new Set([
     'registerEvents', 'clearExtensionPrompt',
     'handleGenerationAfterCommands', 'runStorySummaryRecallInterceptor',
+    'discardIdleRecallPrefetch',
 ]);
 const executable = parse(source, { sourceType: 'module', ecmaVersion: 'latest' }).body
     .filter(node => node.type === 'FunctionDeclaration' && entryFunctions.has(node.id.name))
     .map(node => source.slice(node.start, node.end)).join('\n');
 
-async function fixture() {
+async function fixture(t) {
+    if (t) {
+        t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 0 });
+        t.mock.method(performance, 'now', () => Date.now());
+    }
     const eventSource = new EventEmitter();
     const eventTypes = Object.fromEntries([
         'CHAT_CHANGED', 'MESSAGE_DELETED', 'MESSAGE_RECEIVED', 'MESSAGE_SENT',
         'MESSAGE_SWIPED', 'MESSAGE_EDITED', 'USER_MESSAGE_RENDERED',
         'CHARACTER_MESSAGE_RENDERED', 'GENERATION_AFTER_COMMANDS', 'GENERATION_ENDED', 'GENERATION_STOPPED',
+        'GROUP_WRAPPER_FINISHED',
     ].map(type => [type, type]));
     const prompts = {};
     const notifications = [];
     const cancellations = [];
+    const requests = [];
+    const hostContext = { chatId: 'chat', chat: [] };
+    const state = { generating: false, group: false, commits: 0, aborted: 0, notice: false };
+    let respond = signal => stalled(signal);
+    if (t) t.mock.method(globalThis, 'fetch', (_url, options) => {
+        requests.push(options);
+        return respond(options.signal);
+    });
+    const coordinator = mod.createRecallPrefetchCoordinator({
+        getContext: () => hostContext,
+        prepare: async (_type, signal, _diagnostics, withQueryEmbedding) => {
+            await mod.embedRecallQuery(['fixture'], {
+                embeddingApi: { url: 'https://embedding.invalid/v1', key: 'fixture', model: 'fixture' },
+            }, { signal, withQueryEmbedding });
+            return { text: 'foreground memory' };
+        },
+        createRetryNotice: () => ({ show() { state.notice = true; }, clear() { state.notice = false; } }),
+    });
     let interceptor;
     const promptKey = 'fixture-memory';
     const noOp = () => {};
@@ -37,7 +68,15 @@ async function fixture() {
         events: null, storySummaryTeardown: null, activeChatId: null, MODULE_ID: 'fixture',
         EXT_PROMPT_KEY: promptKey, extension_prompts: prompts,
         event_types: eventTypes, createModuleEvents: () => eventSource,
-        getContext: () => ({ chatId: 'chat', chat: [] }),
+        getContext: () => hostContext,
+        isGenerating: () => state.generating || state.group,
+        isStorySummaryConsumableForCurrentChat: () => true, getVectorConfig: () => ({ enabled: true }),
+        recallPrefetch: coordinator, recallSourceSignal: null, performance,
+        runRequiredRecall: mod.runRequiredRecall,
+        commitMemoryPrompt: value => { state.commits++; prompts[promptKey] = value; return value; },
+        selectBestStoryMemoryResult: value => value,
+        recallFailureNotice: mod.recallFailureNotice,
+        xbLog: { info: noOp },
         window: { addEventListener: noOp }, document: { addEventListener: noOp },
         resumeVectorWriteCoordinator: noOp, memoryMaintenance: { start: noOp },
         registerAfterAiGateHandler: noOp, initButtonsForAll: noOp,
@@ -46,15 +85,36 @@ async function fixture() {
         registerGenerateInterceptor: (_id, handler) => { interceptor = handler; },
         GENERATE_INTERCEPTOR_ORDER: { STORY_SUMMARY: 200 },
         notifyStorySummaryAfterAi: (...args) => notifications.push(args),
-        cancelActiveRecall: reason => cancellations.push(reason),
+        cancelActiveRecall: (reason, options) => {
+            cancellations.push(reason);
+            context.recallSourceSignal = null;
+            return coordinator.cancel(reason, { abortDispatch: true, ...options });
+        },
         usesStoryRecall, getRecallPrefetchStartAction,
     });
     vm.runInContext(executable, context);
     await context.registerEvents();
     return {
-        prompts, promptKey, notifications, cancellations,
+        prompts, promptKey, notifications, cancellations, coordinator, state, requests,
+        respond: callback => { respond = callback; },
+        async begin(signal = null) {
+            state.generating = true;
+            eventSource.emit(eventTypes.GENERATION_AFTER_COMMANDS, 'normal', { signal }, false);
+            hostContext.chat.push({ is_user: true, mes: 'fixture' });
+            t.mock.timers.tick(16);
+            await flush();
+        },
+        join() {
+            const controller = new AbortController();
+            const abort = () => { state.aborted++; controller.abort(); };
+            return interceptor([], 0, abort, 'normal', { abort, signal: controller.signal });
+        },
         commit: value => { prompts[promptKey] = value; },
-        ended: () => eventSource.emit(eventTypes.GENERATION_ENDED, 12),
+        // ST clears is_send_press BEFORE emitting ENDED. The group flag remains
+        // true between members; its finally emits WRAPPER_FINISHED even when
+        // the stop button is already hidden and no second ENDED can be emitted.
+        ended: () => { state.generating = false; eventSource.emit(eventTypes.GENERATION_ENDED, 12); },
+        groupFinished: () => { state.group = false; eventSource.emit(eventTypes.GROUP_WRAPPER_FINISHED); },
         async quiet() {
             eventSource.emit(eventTypes.GENERATION_AFTER_COMMANDS, 'quiet', {}, false);
             await interceptor([], 0, () => assert.fail('quiet must not abort'), 'quiet', {});
@@ -78,6 +138,108 @@ test('quiet ending after foreground memory commit cannot erase memory before pro
     assert.equal(host.notifications.length, 1);
     assert.equal(host.notifications[0][0], 12);
     assert.deepEqual(host.cancellations, []);
+});
+
+for (const phase of ['request', 'delay']) {
+    test(`host exits before summary interception during ${phase}: no orphan requests or warning`, async t => {
+        const host = await fixture(t);
+        await host.begin();
+        if (phase === 'delay') { t.mock.timers.tick(3000); await flush(); }
+        const abandoned = host.coordinator.getCurrent();
+        assert.equal(abandoned.joinedAt, null);
+        host.ended();
+        await abandoned.outcome;
+        assert.equal(abandoned.controller.signal.aborted, true);
+        assert.equal(host.coordinator.getCurrent(), null);
+        assert.equal(host.requests[0].signal.aborted, true);
+        t.mock.timers.tick(60_000);
+        await flush();
+        assert.equal(host.requests.length, 1);
+        assert.equal(host.state.commits, 0);
+        assert.equal(host.state.aborted, 0);
+        assert.equal(host.state.notice, false);
+    });
+}
+
+test('quiet idle discards only prefetch; the original foreground can still join and commit, ignoring a late old result', async t => {
+    const host = await fixture(t);
+    let completeOldRequest;
+    host.respond(() => new Promise(resolve => { completeOldRequest = resolve; }));
+    await host.begin();
+    const abandoned = host.coordinator.getCurrent();
+    await host.quiet();
+    host.ended();
+    assert.equal(host.coordinator.getCurrent(), null);
+    host.respond(success);
+    const result = await host.join();
+    assert.equal(result.text, 'foreground memory');
+    assert.equal(host.state.commits, 1);
+    assert.equal(host.state.aborted, 0);
+    assert.equal(host.requests.length, 2);
+    completeOldRequest(success());
+    await abandoned.outcome;
+    assert.equal(host.state.commits, 1);
+    assert.equal(host.coordinator.getCurrent(), null);
+});
+
+test('discarding a speculative run does not lose the initiating signal for a later join', async t => {
+    const host = await fixture(t);
+    const source = new AbortController();
+    await host.begin(source.signal);
+    host.ended();
+    source.abort();
+    await host.join();
+    assert.equal(host.state.commits, 0);
+    assert.equal(host.state.aborted, 1);
+    assert.equal(host.requests.length, 1);
+});
+
+test('an untyped end cannot cancel joined foreground retries or their eventual memory commit', async t => {
+    const host = await fixture(t);
+    await host.begin();
+    const joined = host.coordinator.getCurrent();
+    const pending = host.join();
+    await host.quiet();
+    host.ended();
+    assert.equal(host.coordinator.getCurrent(), joined);
+    assert.equal(joined.controller.signal.aborted, false);
+    host.respond(success);
+    t.mock.timers.tick(3000);
+    await flush();
+    t.mock.timers.tick(1000);
+    const result = await pending;
+    assert.equal(result.text, 'foreground memory');
+    assert.equal(host.state.commits, 1);
+    assert.equal(host.state.aborted, 0);
+    assert.equal(host.requests.length, 2);
+});
+
+test('group member ending preserves prefetch; wrapper finish reclaims it without another ENDED', async t => {
+    const host = await fixture(t);
+    host.state.group = true;
+    await host.begin();
+    const run = host.coordinator.getCurrent();
+    host.ended();
+    assert.equal(host.coordinator.getCurrent(), run);
+    assert.equal(run.controller.signal.aborted, false);
+    host.groupFinished();
+    await run.outcome;
+    assert.equal(run.controller.signal.aborted, true);
+    assert.equal(host.coordinator.getCurrent(), null);
+    t.mock.timers.tick(60_000);
+    await flush();
+    assert.equal(host.requests.length, 1);
+});
+
+test('idle reclamation preserves a real Stop cancellation, so a late join cannot restart work', async t => {
+    const host = await fixture(t);
+    await host.begin();
+    host.stop();
+    host.ended();
+    await host.join();
+    assert.equal(host.state.commits, 0);
+    assert.equal(host.state.aborted, 1);
+    assert.equal(host.requests.length, 1);
 });
 
 test('an unattributed end leaves explicit Stop responsible for clearing the memory', async () => {

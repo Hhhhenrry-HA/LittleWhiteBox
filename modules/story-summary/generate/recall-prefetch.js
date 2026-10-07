@@ -428,6 +428,14 @@ export function createRecallPrefetchCoordinator(options) {
         return current && !['cancelled', 'idle'].includes(current.phase) ? current : null;
     }
 
+    function discardUnjoined() {
+        const slot = getActive();
+        if (!slot || slot.joinedAt !== null) return;
+        // An unattributed idle notification may belong to quiet. Discard only
+        // speculative work, never retain a cancellation for the host to join.
+        abortSlot(slot, 'host-idle');
+    }
+
     function invalidate() {
         const slot = getActive();
         if (!slot) return;
@@ -446,6 +454,7 @@ export function createRecallPrefetchCoordinator(options) {
         cancel,
         finish,
         invalidate,
+        discardUnjoined,
         getActive,
         getCurrent: () => current,
     });

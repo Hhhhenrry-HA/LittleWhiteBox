@@ -110,6 +110,7 @@ import { createRecallReuse, recallConfigKey } from './generate/recall-reuse.js';
 import { createRecallDiagnostics, formatRecallDiagnostics, formatRecallReuseDiagnostics, recordRecallFallback } from './recall-diagnostics.js';
 import { RECALL_TIMEOUT_MS, RECALL_TIMEOUT_REASONS, recallFailureNotice, recallCancellationNotice } from './generate/recall-failure.js';
 import { runRequiredRecall } from './generate/required-recall.js';
+import { isGenerating } from '../../shared/common/sillytavern-generation-state.js';
 
 // summary generation
 import { runSummaryGeneration } from "./generate/generator.js";
@@ -4347,6 +4348,10 @@ function handleGenerationAfterCommands(type, params, isDryRun) {
     });
 }
 
+function discardIdleRecallPrefetch() {
+    if (!isGenerating()) recallPrefetch.discardUnjoined();
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // 事件注册
 // ═══════════════════════════════════════════════════════════════════════════
@@ -4548,10 +4553,14 @@ async function registerEvents() {
         clearExtensionPrompt();
     });
     events.on(event_types.GENERATION_ENDED, (data) => {
-        // ENDED 没有请求身份，quiet 结束也会触发；这里只通知后续维护，
-        // 不能清掉另一个前台请求已提交、尚未组装的记忆。
+        discardIdleRecallPrefetch();
+        // ENDED 没有请求身份，quiet 结束也会触发。预取回收之外只通知后续维护，
+        // 不能清掉前台已提交、尚未组装的记忆。
         notifyStorySummaryAfterAi(data, "generation_ended");
     });
+    // A member can end while the group wrapper is still busy. Its final cleanup
+    // may find the stop button already hidden and therefore emit no more ENDED.
+    events.on(event_types.GROUP_WRAPPER_FINISHED, discardIdleRecallPrefetch);
 
 }
 
