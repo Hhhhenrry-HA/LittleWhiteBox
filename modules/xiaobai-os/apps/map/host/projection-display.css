@@ -1,0 +1,5 @@
+/* Follow the host editor DOM, including cancel, without resetting the map iframe. */
+#chat:has(.edit_textarea, .reasoning_edit_textarea) .xb-map-projection {
+    /* Override the projection container's inline display while leaving its layout intact. */
+    display: none !important;
+}
