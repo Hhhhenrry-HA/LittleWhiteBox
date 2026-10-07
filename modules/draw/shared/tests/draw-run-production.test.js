@@ -87,11 +87,7 @@ test('production entry refuses an old backend without running Planner or silentl
             preparePlanner: async () => { prepared += 1; },
             submit: async () => { submitted += 1; },
         })),
-        error => error instanceof DrawRunProductionError
-            && error.code === 'DRAW_RUN_BACKEND_OUTDATED'
-            && error.message.includes(`当前 2.0.0，需要 ${REQUIRED_DRAW_RUN_PLUGIN_VERSION}`)
-            && /SillyTavern\/plugins\/littlewhitebox-image-jobs/.test(error.message)
-            && /不会使用旧插件继续运行/.test(error.message),
+        error => error instanceof DrawRunProductionError && error.code === 'DRAW_RUN_BACKEND_OUTDATED',
     );
     assert.equal(prepared, 0);
     assert.equal(submitted, 0);

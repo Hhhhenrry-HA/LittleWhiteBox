@@ -4,6 +4,7 @@ const http = require('node:http');
 const https = require('node:https');
 const zlib = require('node:zlib');
 const { randomBytes } = require('node:crypto');
+const { name: pluginName } = require('../../manifest.json');
 const { readNovelV5FinalImage } = require('./v5-stream.js');
 
 const NOVELAI_DEFAULT_BASE_URL = 'https://image.novelai.net';
@@ -385,7 +386,7 @@ async function generateV5ImageBuffer(options) {
     const image = await readNovelV5FinalImage(result.response, { signal: options.signal });
     const elapsedMs = Date.now() - startedAt;
     console.info(
-        `[LittleWhiteBox Image Jobs] NovelAI V5 final arrived ${elapsedMs}ms after response opened; `
+        `[${pluginName}] NovelAI V5 final arrived ${elapsedMs}ms after response opened; `
         + `received ${image.streamBytes} stream bytes and retained ${image.buffer.length} PNG bytes`,
     );
     return {

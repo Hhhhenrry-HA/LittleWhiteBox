@@ -16,7 +16,7 @@ const {
     resolveLoopbackTarget,
 } = require('../draw-runs/loopback-probe.js');
 
-const LOOPBACK_VERIFY_REQUEST_PATH = `/api/plugins/littlewhitebox-image-jobs${LOOPBACK_VERIFY_PATH}`;
+const LOOPBACK_VERIFY_REQUEST_PATH = `/api/plugins/littlewhitebox-server${LOOPBACK_VERIFY_PATH}`;
 const TEST_CERT = fs.readFileSync(path.join(__dirname, 'fixtures', 'loopback-test-cert.pem'));
 const TEST_KEY = fs.readFileSync(path.join(__dirname, 'fixtures', 'loopback-test-key.pem'));
 

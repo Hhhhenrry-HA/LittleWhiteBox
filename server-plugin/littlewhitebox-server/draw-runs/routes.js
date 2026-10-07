@@ -1,6 +1,7 @@
 'use strict';
 
 const { MAX_ENVELOPE_BYTES } = require('./envelope.js');
+const { id: pluginId } = require('../manifest.json');
 
 const DRAW_RUNS_PATH = '/v1/draw-runs';
 
@@ -56,7 +57,7 @@ function registerDrawRunRoutes(router, { manager, logger = console }) {
             const status = Number.isInteger(error?.status) ? error.status : 503;
             if (status >= 500) {
                 logger.error?.(
-                    `[littlewhitebox-image-jobs] Draw Run create rejected: runId=${String(req.body?.runId || '<unknown>')} status=${status} code=${String(error?.code || 'draw_run_failed')}`,
+                    `[${pluginId}] Draw Run create rejected: runId=${String(req.body?.runId || '<unknown>')} status=${status} code=${String(error?.code || 'draw_run_failed')}`,
                     error,
                 );
             }

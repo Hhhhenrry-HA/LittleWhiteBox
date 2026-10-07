@@ -129,7 +129,7 @@ Draw Run 保存：
 
 ## 4. 后端 API
 
-基础路径：`/api/plugins/littlewhitebox-image-jobs/v1/draw-runs`
+基础路径：`/api/plugins/littlewhitebox-server/v1/draw-runs`
 
 | 方法 | 路径 | 用途 |
 |---|---|---|
@@ -206,11 +206,11 @@ req.socket.server.address() // 唯一可信的监听地址与端口
 - HTTP / 原生 HTTPS（含自签）。
 - 多用户并发不串身份。
 
-诊断端点为 `POST /api/plugins/littlewhitebox-image-jobs/v1/draw-runs/probe`。它只返回回环协议、地址族与各凭证是否通过验证，不回显 Cookie、CSRF token 或 Basic Auth 内容。内层校验路由要求当前进程生成的一次性 challenge，不能作为公开身份查询接口使用。
+诊断端点为 `POST /api/plugins/littlewhitebox-server/v1/draw-runs/probe`。它只返回回环协议、地址族与各凭证是否通过验证，不回显 Cookie、CSRF token 或 Basic Auth 内容。内层校验路由要求当前进程生成的一次性 challenge，不能作为公开身份查询接口使用。
 
 探针不调用 LLM、不产生费用；设置页的“后台 Agent 连接测试”复用同一诊断端点。
 
-部署矩阵由 `server-plugin/littlewhitebox-image-jobs/tests/loopback-deployment-matrix.js` 从源码建立隔离运行副本并启动真实 SillyTavern 1.18.0 进程，不以 Express mock 代替，也不加载现用 server plugin 或数据。已验证 HTTP/IPv4 双用户会话并发探针与 Cookie/CSRF、原生自签 HTTPS/IPv4 + Basic Auth、HTTP/IPv6、HTTPS 终止反代到 HTTP SillyTavern + Basic Auth，以及明确绑定 `127.0.0.2` 时同端口 `127.0.0.1` 诱饵服务收到零请求。`req.protocol` 与 socket 元数据冲突时仍以后者为准，由探针单测独立覆盖。
+部署矩阵由 `server-plugin/littlewhitebox-server/tests/loopback-deployment-matrix.js` 从源码建立隔离运行副本并启动真实 SillyTavern 1.18.0 进程，不以 Express mock 代替，也不加载现用 server plugin 或数据。已验证 HTTP/IPv4 双用户会话并发探针与 Cookie/CSRF、原生自签 HTTPS/IPv4 + Basic Auth、HTTP/IPv6、HTTPS 终止反代到 HTTP SillyTavern + Basic Auth，以及明确绑定 `127.0.0.2` 时同端口 `127.0.0.1` 诱饵服务收到零请求。`req.protocol` 与 socket 元数据冲突时仍以后者为准，由探针单测独立覆盖。
 
 ## 6. Agent 渠道
 
@@ -226,7 +226,7 @@ Host Client 边界：
 Node 发布边界：
 
 - `modules/agent-core/node-entry.js` 是后端唯一入口；酒馆三渠道在入口层强制要求实例 Host Client，不导出浏览器全局 setter。
-- `npm run build:agent-core:node` 用 esbuild 生成 `server-plugin/littlewhitebox-image-jobs/draw-runs/vendor/agent-core-node.cjs`，把 Agent Core、三个 SDK 及其实际依赖打成 CommonJS 单文件；产物只允许引用 Node 内置模块。
+- `npm run build:agent-core:node` 用 esbuild 生成 `server-plugin/littlewhitebox-server/draw-runs/vendor/agent-core-node.cjs`，把 Agent Core、三个 SDK 及其实际依赖打成 CommonJS 单文件；产物只允许引用 Node 内置模块。
 - 同一构建根据 esbuild metafile 生成 `draw-runs/vendor/THIRD_PARTY_LICENSES.txt`，逐项记录实际入包依赖的精确版本、许可证声明及上游随包附带的 LICENSE/NOTICE/COPYING 正文；未附带这些文件时回退提取 README 的 License 段，仍无正文则构建失败。
 - `npm run check:agent-core:node` 先核对实际入包依赖与 `package-lock.json` 的锁定版本，再无写入重建并逐字节比对 bundle 与许可证清单，防止提交陈旧产物；正式构建在同目录 staging，并以整个 `vendor` 目录为发布单元切换，失败时恢复上一份完整产物。
 - 运行时不安装 npm 依赖；bundle 编译目标与 server plugin 最低版本均为 Node.js 18。`npm run check:agent-core:node18` 固定在 Node.js 18.20.8 隔离加载 bundle、创建七类 Adapter，并通过本机模拟端点验证 Google SDK 的实际 `generateContent` 请求路径；虽然当前 `@google/genai` 声明 Node.js 20，锁定并打包的现用路径已验证支持 Node.js 18，后续 SDK 升级由该检查拦截。
@@ -278,7 +278,7 @@ Node 发布边界：
 
 NovelAI 自动学习在浏览器侧复用同一入口：未提供 `type` 的新角色可以出图，但不自动入库，避免角色库把缺失类型补成 `girl`；已有角色的匹配、停用保护与补空字段行为不变。
 
-前端同时校验当前 Planner 运行契约和 [整组取消能力](./image-backend-batch-jobs.md#整组取消)，部署版本与升级方式由 [后端 README](../server-plugin/littlewhitebox-image-jobs/README.md#升级) 维护。不保留后端重建旧 Schema 的分支；既有聊天标记和图片交付记录继续按现有身份接回。规划说明及其 Schema 不变更图片执行语义时，不要求升级后台。
+前端同时校验当前 Planner 运行契约和 [整组取消能力](./image-backend-batch-jobs.md#整组取消)，部署版本与升级方式由 [后端 README](../server-plugin/littlewhitebox-server/README.md#升级) 维护。不保留后端重建旧 Schema 的分支；既有聊天标记和图片交付记录继续按现有身份接回。规划说明及其 Schema 不变更图片执行语义时，不要求升级后台。
 
 服务端验证边界：
 

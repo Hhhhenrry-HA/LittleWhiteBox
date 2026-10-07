@@ -89,4 +89,6 @@ Exa 搜索使用 `POST /search` 的 `contents.highlights: true`，结果数量�
 
 正文提取返回成功正文及逐网址 `failures`（网址、错误码、供应商提供的状态码或消息），`failedUrls` 由失败项派生；供应商请求 ID 一并保留。部分失败不丢弃成功正文，也不把供应商错误当作材料正文。管理员向模型及操作记录传递诊断；语伴保持教学材料的领域投影，不把代理诊断写进教学来源。长结果的管理员缓存与分页规则见 [管理员设计](../xiaobai-os/docs/administrator-app-target-design.md#73-模型上下文管理)。
 
-浏览器直连要求服务或代理允许 CORS。App 中的 Exa Key 在 Agent API 设置填写；本机开发验证可从 `EXA_API_KEY` 环境变量读取，不能把 Key 写入源码、测试 fixture、日志或任务快照。
+浏览器访问 Exa 官方接口时使用[小白盒后端](../../server-plugin/littlewhitebox-server/README.md#exa-联网)，与绘图共用安装包；后端缺失时返回 `web_backend_unavailable`，不会改走直连或换渠道。Node 消费者直接请求供应商；Tavily 和显式配置的 Exa 自定义 Base URL 保持浏览器直连，所用服务或代理须允许 CORS。`http.js` 统一管理限时、响应大小和错误，`browser-backend.js` 只处理酒馆身份及后端协议，`server-entry.js` 限定后端可调用的 Exa 操作。
+
+App 中的 Exa Key 在 Agent API 设置填写；后端仅在当前请求内使用，不落盘。开发验证可从 `EXA_API_KEY` 环境变量读取，不能把 Key 写入源码、测试 fixture、日志或任务快照。

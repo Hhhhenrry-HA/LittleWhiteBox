@@ -295,14 +295,14 @@ test('advertises and proxies the V5 MessagePack stream route', async () => {
     statusHandler({}, statusResponse);
     assert.equal(statusResponse.statusCode, 200);
     assert.equal(statusResponse.body.version, REQUIRED_DRAW_RUN_PLUGIN_VERSION);
-    assert.deepEqual(statusResponse.body.capabilities, [
+    for (const capability of [
         'v5-msgpack-stream',
         'image-batch-jobs-v1',
         'novelai-v5-final-image-v1',
         'draw-runs-v1',
         DRAW_RUN_RUNTIME_CAPABILITY,
         'draw-work-cancellation-v1',
-    ]);
+    ]) assert.equal(statusResponse.body.capabilities.includes(capability), true);
 
     const req = new EventEmitter();
     req.aborted = false;

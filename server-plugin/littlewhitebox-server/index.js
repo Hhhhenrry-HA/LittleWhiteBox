@@ -1,15 +1,8 @@
 'use strict';
 
 /**
- * LittleWhiteBox background image jobs server plugin.
- *
- * 安装：把本文件夹整个放到 SillyTavern/plugins/littlewhitebox-image-jobs/ ，
- *       在 config.yaml 中开启 enableServerPlugins: true ，然后重启 SillyTavern。
- *
- * 本插件的身份（目录、info.id、路由命名空间）都是 littlewhitebox-image-jobs，
- * 与历史插件 littlewhitebox-nai 完全独立：ID 不同，不会互相顶掉，可以并存。
- * 小白X前端只请求本插件的命名空间，不探测、不回退旧插件；旧目录留着也不会被使用，
- * 建议直接删除 plugins/littlewhitebox-nai/，避免维护两份不再使用的代码。
+ * LittleWhiteBox server plugin. Feature routes are registered here; each feature owns its implementation.
+ * Installation and coordinated frontend/backend upgrades are documented in README.md.
  */
 
 const { pipeline } = require('node:stream/promises');
@@ -33,6 +26,8 @@ const novelai = require('./providers/novelai/adapter.js');
 const sdWebUi = require('./providers/sd-webui/adapter.js');
 const comfyui = require('./providers/comfyui/adapter.js');
 const pluginManifest = require('./manifest.json');
+const { createRequestAbortScope } = require('./request-abort.js');
+const { registerWebRoutes, EXA_BACKEND_CAPABILITY } = require('./web/routes.js');
 const { CANCELLATION_CAPABILITY, createCancellationRegistry, registerCancellationRoutes } = require('./cancellation.js');
 
 const providerAdapters = Object.freeze({
@@ -49,14 +44,15 @@ const PLUGIN_CAPABILITIES = Object.freeze([
     'draw-runs-v1',
     'draw-run-runtime-v4',
     CANCELLATION_CAPABILITY,
+    EXA_BACKEND_CAPABILITY,
 ]);
-const LOG_PREFIX = '[littlewhitebox-image-jobs]';
+const LOG_PREFIX = `[${pluginManifest.id}]`;
 
 const info = {
-    id: 'littlewhitebox-image-jobs',
-    name: 'LittleWhiteBox Image Jobs',
+    id: pluginManifest.id,
+    name: pluginManifest.name,
     version: PLUGIN_VERSION,
-    description: 'Background image job runner for LittleWhiteBox providers; also serves the NovelAI proxy routes.',
+    description: pluginManifest.description,
 };
 
 const cancellations = createCancellationRegistry();
@@ -84,44 +80,6 @@ function parseUpstreamUrl(value) {
     } catch {
         return null;
     }
-}
-
-function createRequestAbortScope(req, res) {
-    const controller = new AbortController();
-    let cause = null;
-    let timeoutId = null;
-    const abort = (nextCause) => {
-        if (nextCause === 'client' || cause === null) cause = nextCause;
-        if (controller.signal.aborted) return;
-        controller.abort();
-    };
-    const abortForClient = () => abort('client');
-    const abortIfIncomplete = () => {
-        if (!res.writableEnded) abortForClient();
-    };
-
-    req.once('aborted', abortForClient);
-    res.once('close', abortIfIncomplete);
-    // SillyTavern's global middleware may finish and destroy an already complete
-    // request body while the response socket is still alive. That is not a
-    // client disconnect and must not suppress the route response.
-    if (req.aborted || (!req.complete && req.destroyed) || res.destroyed) abortForClient();
-
-    return {
-        signal: controller.signal,
-        get cause() {
-            return cause;
-        },
-        setDeadline(timeout) {
-            timeoutId = setTimeout(() => abort('timeout'), timeout);
-            timeoutId.unref?.();
-        },
-        dispose() {
-            if (timeoutId !== null) clearTimeout(timeoutId);
-            req.off('aborted', abortForClient);
-            res.off('close', abortIfIncomplete);
-        },
-    };
 }
 
 function errorMessage(error) {
@@ -231,6 +189,7 @@ async function init(router) {
     registerLoopbackProbeRoutes(router);
     registerDrawRunRoutes(router, { manager: drawRunManager });
     registerCancellationRoutes(router, { registry: cancellations, jobManager, drawRunManager });
+    registerWebRoutes(router);
 
     // v1 is the frozen upstream 1.0.1 contract; URL resolution deliberately
     // stays inside the client so input validation runs in its original order.

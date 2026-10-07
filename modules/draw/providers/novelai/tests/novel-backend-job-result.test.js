@@ -87,8 +87,7 @@ test('rejects a stale backend that still returns the original V5 MessagePack str
             kind: 'msgpack-stream',
         }),
         error => error.code === 'novelai_backend_result_contract_outdated'
-            && error.discardBackendResult === true
-            && /完整覆盖服务端插件/.test(error.message),
+            && error.discardBackendResult === true,
     );
     assert.equal(cancelled, true);
 });

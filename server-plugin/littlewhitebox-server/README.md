@@ -1,19 +1,23 @@
-# LittleWhiteBox Image Jobs
+# LittleWhiteBox Server
 
-LittleWhiteBox 的可选 SillyTavern server plugin。开启小白X后台任务后，Scene Planner 与整批图片任务都在 Node 进程中执行；前端显示“提交后台”完成后，切后台、断网、刷新、WebView 冻结或关闭浏览器都不会暂停已创建的任务，重新打开后会自动接回。
+小白盒统一后端。绘图后台任务与 Exa 联网共用一个安装包，内部由 `image-jobs/`、`draw-runs/`、`providers/` 和 `web/` 分别所有。只需安装一次，不需要给每个 App 单独安装后端。
+
+开启小白X后台任务后，Scene Planner 与整批图片任务都在 Node 进程中执行；前端显示“提交后台”完成后，切后台、断网、刷新、WebView 冻结或关闭浏览器都不会暂停已创建的任务，重新打开后会自动接回。Exa 联网则是随当前调用结束的一次性请求，不进入绘图队列。
 
 ## 安装
 
 1. 确认 SillyTavern 使用 Node.js 18 或更新版本。
-2. 将本目录完整复制为 `SillyTavern/plugins/littlewhitebox-image-jobs/`。
+2. 将本目录完整复制为 `SillyTavern/plugins/littlewhitebox-server/`。
 3. 在 `config.yaml` 开启 `enableServerPlugins: true`，然后重启 SillyTavern。
-4. 如果装过旧的 `SillyTavern/plugins/littlewhitebox-nai/`，建议一并删除。它是独立插件 ID，不会和本插件冲突，但小白X已完全不再请求它。
+4. 装过旧后端的用户先按下节迁移，不要让新旧目录并存。
 
 ## 升级
 
-SillyTavern 的前端扩展更新不会改写 `plugins/`。LittleWhiteBox 更新后，如果界面提示后台插件版本不兼容，请用扩展内的 `server-plugin/littlewhitebox-image-jobs/` 完整覆盖 `SillyTavern/plugins/littlewhitebox-image-jobs/`，再重启 SillyTavern。前端会在提交场景分析前校验运行契约，不会继续调用不兼容的旧插件。
+SillyTavern 的前端扩展更新不会改写 `plugins/`。LittleWhiteBox 更新后，如果界面提示后台插件版本不兼容，请用扩展内的 `server-plugin/littlewhitebox-server/` 完整覆盖 `SillyTavern/plugins/littlewhitebox-server/`，再重启 SillyTavern。前端会在提交场景分析前校验运行契约，不会继续调用不兼容的旧插件。
 
-当前分发包为 2.4.0，前端通过 `draw-work-cancellation-v1` 检查整组取消能力。启用后台排队重绘需要完整更新一次插件目录；不能只替换入口文件，也不能只更新前端。此包同时包含现有 Planner、供应商适配与工具参数解析修补，不需要分别安装补丁。
+从 `littlewhitebox-image-jobs` 升级时：先等待任务完成并接回，停止酒馆，移除 `plugins/littlewhitebox-image-jobs/`（以及更早的 `littlewhitebox-nai/`），放入本目录，同步更新前端后重启。旧后端没有需要迁移的持久化任务数据；已落库的图片与聊天记录不删除。新前端只调用新插件 ID，不探测或回退旧接口。不能只更改旧目录名，也不能只更新前端。
+
+分发版本与插件身份由 [manifest.json](./manifest.json) 定义。前端通过 `draw-work-cancellation-v1` 检查整组取消能力；Exa 对应 `exa-web-v1`。升级必须包含整个目录及打包产物，不分别安装功能补丁。
 
 后台继续使用 `draw-run-runtime-v4`：提示词与 `submit_scene_plan` Tool Schema 随前端请求提供，后台只解释图片执行结果。只要图片执行契约不变，后续调整规划字段或前端卡片展示不需要替换后台；供应商协议变化或后台缺陷修复仍可能需要升级。
 
@@ -28,8 +32,16 @@ Scene Planner 支持免密反代，Agent API Key 可以留空；图片生成供�
 插件挂载在自己的命名空间：
 
 ```text
-/api/plugins/littlewhitebox-image-jobs/
+/api/plugins/littlewhitebox-server/
 ```
+
+## Exa 联网
+
+浏览器对 Exa 官方接口的搜索、正文提取经过当前酒馆的 `/v1/web/exa/search`、`/v1/web/exa/contents`；外部 CORS 不影响这条链路。Key 仍在前端 Agent API 设置填写，随请求发给用户自己的酒馆后端；后端不保存 Key、不记录请求正文、不自动重试、不切换供应商。超时、HTTP 状态和脱敏诊断返回原调用方，浏览器取消会中止上游请求。Tavily 保持直连；显式配置的 Exa 自定义 Base URL 也保持直连，由所用反代负责 CORS。
+
+联网接口受酒馆登录与 CSRF 保护，仅能调用固定 Exa 官方地址的两个操作，不接收任意目标地址、方法或转发头，不跟随重定向。请求体上限 32 KiB，供应商响应上限 2 MiB，上游请求限时 30 秒。每次请求独立，不新增数据库、缓存或恢复记录。
+
+联网协议与 HTTP 处理的源码在 `modules/agent-core/web/`，本包 `web/web-runtime.cjs` 由同一源码生成。开发时运行 `npm run build:server-plugin`；`npm run check:server-plugin` 检查产物和插件元数据是否同步。删除联网功能时删除 `web/`、入口注册、对应前端路由与生成任务即可，不影响绘图任务。
 
 ## Provider 边界
 
@@ -47,6 +59,7 @@ draw-work-cancellation-v1
 novelai-v5-final-image-v1
 draw-runs-v1
 draw-run-runtime-v4
+exa-web-v1
 ```
 
 通用任务接口位于 `/v1/jobs`：
@@ -71,7 +84,7 @@ draw-run-runtime-v4
 可从小白X目录运行真实部署矩阵（默认自动定位同一 SillyTavern 安装，也可把安装根目录作为参数传入）：
 
 ```sh
-node server-plugin/littlewhitebox-image-jobs/tests/loopback-deployment-matrix.js
+node server-plugin/littlewhitebox-server/tests/loopback-deployment-matrix.js
 ```
 
 该脚本从 SillyTavern 1.18.0 源码建立隔离运行副本并启动真实进程，验证 HTTP/IPv4 双用户会话并发探针、Cookie/CSRF、原生自签 HTTPS、IPv6、内置 Basic Auth、HTTPS 反向代理到 HTTP SillyTavern，以及明确绑定地址旁路的同端口凭证诱饵。临时配置、数据和目录联接会在正常完成或可处理错误后清理，不加载现用 server plugin，也不读取或修改现用数据。

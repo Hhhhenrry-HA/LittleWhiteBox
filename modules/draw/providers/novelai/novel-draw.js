@@ -8,6 +8,10 @@ import { getContext } from "../../../../../../../extensions.js";
 import { saveBase64AsFile } from "../../../../../../../utils.js";
 import { getRequestHeaders, syncMesToSwipe } from "../../../../../../../../script.js";
 import { extensionFolderPath } from "../../../../core/constants.js";
+import { SERVER_PLUGIN_BASE, SERVER_PLUGIN_VERSION } from '../../../../shared/server-plugin/identity.js';
+import { SERVER_PLUGIN_COPY } from '../../../../shared/server-plugin/copy.js';
+import { SERVER_PLUGIN_INSTALLATION } from '../../../../shared/server-plugin/installation.js';
+import { DRAW_BACKEND_COPY, createDrawBackendStatusCopy } from '../../shared/draw-backend-copy.js';
 import { createModuleEvents, event_types } from "../../../../core/event-manager.js";
 import { NovelDrawStorage } from "../../../../core/server-storage.js";
 import { initAfterAiGate, notifyAfterAiHint, registerAfterAiHandler } from "../../../../core/after-ai-gate.js";
@@ -149,17 +153,16 @@ const MODULE_KEY = 'novelDraw';
 const DRAW_RUN_PROVIDER = 'novelai';
 const SERVER_FILE_KEY = 'settings';
 const HTML_PATH = `${extensionFolderPath}/modules/draw/providers/novelai/novel-draw.html`;
-// 后端发送模式走 SillyTavern server plugin 转发（需安装 plugins/littlewhitebox-image-jobs 并开启 enableServerPlugins），
-// 用于绕过浏览器 CORS / 自签证书限制。历史插件 littlewhitebox-nai 是独立 ID，这里不探测、不回退。
-const NAI_BACKEND_BASE = '/api/plugins/littlewhitebox-image-jobs';
+// Provider requests share the unified server plugin installation.
+const NAI_BACKEND_BASE = SERVER_PLUGIN_BASE;
 const NAI_BACKEND_GENERATE = `${NAI_BACKEND_BASE}/v1/generate-image`;
 const NAI_BACKEND_GENERATE_V2 = `${NAI_BACKEND_BASE}/v2/generate-image`;
 const NAI_BACKEND_GENERATE_STREAM = `${NAI_BACKEND_BASE}/v1/generate-image-stream`;
 const NAI_BACKEND_TEST = `${NAI_BACKEND_BASE}/v1/test`;
 const NAI_BACKEND_TEST_V2 = `${NAI_BACKEND_BASE}/v2/test`;
 const NAI_BACKEND_STATUS = `${NAI_BACKEND_BASE}/status`;
-const NAI_BACKEND_MIN_VERSION = '1.0.1';
-const NAI_BACKEND_V5_MIN_VERSION = '1.2.0';
+const NAI_BACKEND_MIN_VERSION = SERVER_PLUGIN_VERSION;
+const NAI_BACKEND_V5_MIN_VERSION = SERVER_PLUGIN_VERSION;
 const NAI_BACKEND_STATUS_TIMEOUT = 5000;
 const NAI_BACKEND_STATUS_ATTEMPTS = 2;
 const NAI_BACKEND_STATUS_RETRY_DELAY_MS = 1000;
@@ -251,14 +254,14 @@ async function assertV5BackendCapability(signal) {
                 ? `版本过旧（当前 v${status.version || '未知'}）`
                 : '未就绪';
         throw new NovelDrawError(
-            `NovelAI V5 后端插件${reason}，请安装当前 littlewhitebox-image-jobs（兼容后端最低 v${NAI_BACKEND_V5_MIN_VERSION}）`,
+            `NovelAI V5 后端插件${reason}。${SERVER_PLUGIN_COPY.install}`,
             ErrorType.NETWORK,
         );
     }
     if (!isVersionAtLeast(status.version, NAI_BACKEND_V5_MIN_VERSION)
         || !status.capabilities?.includes('v5-msgpack-stream')) {
         throw new NovelDrawError(
-            `当前后端插件不支持 NovelAI V5 流协议，请安装当前 littlewhitebox-image-jobs（兼容后端最低 v${NAI_BACKEND_V5_MIN_VERSION}）`,
+            `当前后端插件不支持 NovelAI V5 流协议。${SERVER_PLUGIN_COPY.update}`,
             ErrorType.NETWORK,
         );
     }
@@ -1381,10 +1384,10 @@ async function generateViaBackend({ url, legacyBaseUrl, apiKey, insecure, payloa
         }
     } catch (e) {
         if (e?.name === 'AbortError') throw e;
-        throw new NovelDrawError('后端代发失败（未安装 littlewhitebox-image-jobs 插件或 SillyTavern 未开启 server plugins）', ErrorType.NETWORK);
+        throw new NovelDrawError(`后端代发失败。${SERVER_PLUGIN_COPY.install}`, ErrorType.NETWORK);
     }
     if (res.status === 404) {
-        throw imageHttpFailure(new NovelDrawError('后端端点不存在：请安装 plugins/littlewhitebox-image-jobs 并在 config.yaml 开启 enableServerPlugins 后重启酒馆', ErrorType.NETWORK), 404);
+        throw imageHttpFailure(new NovelDrawError(`后端端点不存在。${SERVER_PLUGIN_COPY.install}`, ErrorType.NETWORK), 404);
     }
     if (!res.ok) {
         throw parseApiError(res.status, await res.text().catch(() => ''));
@@ -1419,11 +1422,11 @@ async function generateV5ViaBackend({ url, apiKey, insecure, payload, signal, ti
         });
     } catch (error) {
         if (error?.name === 'AbortError') throw error;
-        throw new NovelDrawError('V5 后端代发失败，请检查 littlewhitebox-image-jobs 插件', ErrorType.NETWORK);
+        throw new NovelDrawError(`V5 后端代发失败。${SERVER_PLUGIN_COPY.install}`, ErrorType.NETWORK);
     }
     if (response.status === 404) {
         throw imageHttpFailure(new NovelDrawError(
-            `V5 后端端点不存在：请安装当前 littlewhitebox-image-jobs（兼容后端最低 v${NAI_BACKEND_V5_MIN_VERSION}）`,
+            `V5 后端端点不存在。${SERVER_PLUGIN_COPY.install}`,
             ErrorType.NETWORK,
         ), 404);
     }
@@ -1493,7 +1496,7 @@ async function testApiConnection(apiKey, baseUrl, opts = {}) {
                 await res.body?.cancel?.().catch(() => {});
                 res = await request(NAI_BACKEND_TEST);
             }
-            if (res.status === 404) throw new NovelDrawError('后端端点不存在：请安装 plugins/littlewhitebox-image-jobs 并开启 enableServerPlugins 后重启酒馆', ErrorType.NETWORK);
+            if (res.status === 404) throw new NovelDrawError(`后端端点不存在。${SERVER_PLUGIN_COPY.install}`, ErrorType.NETWORK);
             const data = await res.json().catch(() => null);
             if (data?.ok === true) return { success: true };
             if (data?.status === 401) throw new NovelDrawError('API Key 无效', ErrorType.AUTH);
@@ -1766,7 +1769,7 @@ async function runNovelImageBatch({
             if (prepared.some(item => item.isV5) && !hasNovelV5FinalImageCapability(backendStatus)) {
                 detachScope.dispose();
                 throw new NovelDrawError(
-                    '当前后端插件仍会把 NovelAI V5 原始流交给浏览器。请安装并启动当前 littlewhitebox-image-jobs，或关闭“小白X后台任务”。',
+                    `当前后端插件不支持 NovelAI V5 后台结果。${SERVER_PLUGIN_COPY.update}也可关闭“小白X后台任务”。`,
                     ErrorType.NETWORK,
                 );
             }
@@ -3054,6 +3057,8 @@ async function sendInitData() {
         settings.autoLearnCharacters, settings.advancedMode, settings.promptPresets?.length);
     const buildPayload = (stats = { count: 0, sizeMB: 0 }, gallerySummary = {}) => ({
         type: 'INIT_DATA',
+        backendInstallation: SERVER_PLUGIN_INSTALLATION,
+        backendCopy: DRAW_BACKEND_COPY,
         settings: {
             enabled: moduleInitialized,
             mode: settings.mode,
@@ -3265,9 +3270,11 @@ async function handleFrameMessage(event) {
         }
 
         case 'CHECK_BACKEND_PLUGIN': {
-            const status = await checkBackendPluginStatus();
+            const status = { ...await checkBackendPluginStatus(), minimumVersion: NAI_BACKEND_MIN_VERSION };
             const iframe = document.getElementById('xiaobaix-novel-draw-iframe');
-            if (iframe) postToIframe(iframe, { type: 'BACKEND_PLUGIN_STATUS', status }, 'LittleWhiteBox-NovelDraw');
+            if (iframe) postToIframe(iframe, {
+                type: 'BACKEND_PLUGIN_STATUS', status, copy: createDrawBackendStatusCopy(status),
+            }, 'LittleWhiteBox-NovelDraw');
             break;
         }
 

@@ -68,6 +68,13 @@ ${css.join('\n')}
 <div class="agent-api-content"><div id="panel" class="agent-api-panel xb-agent-settings-surface"></div></div>
 </div></main><script type="module" src="/app.js"></script></body></html>`;
 const page = createServer((request, response) => {
+    if (request.url.endsWith('/modules/agent-core/ui/web-settings.css')) {
+        readFile(new URL('../../ui/web-settings.css', import.meta.url), 'utf8').then(css => {
+            response.writeHead(200, { 'Content-Type': 'text/css' });
+            response.end(css);
+        }).catch(error => { console.error(error); response.writeHead(500).end(); });
+        return;
+    }
     const script = request.url === '/app.js', receipts = request.url === '/requests';
     response.writeHead(200, { 'Content-Type': script ? 'text/javascript' : receipts ? 'application/json' : 'text/html; charset=utf-8' });
     response.end(script ? bundle.outputFiles[0].text : receipts ? JSON.stringify(requests) : html);

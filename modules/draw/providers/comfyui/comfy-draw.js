@@ -19,6 +19,7 @@ import { getContext } from "../../../../../../../extensions.js";
 import { saveBase64AsFile } from "../../../../../../../utils.js";
 import { getRequestHeaders, syncMesToSwipe } from "../../../../../../../../script.js";
 import { extensionFolderPath } from "../../../../core/constants.js";
+import { DRAW_BACKEND_COPY } from '../../shared/draw-backend-copy.js';
 import { createModuleEvents, event_types } from "../../../../core/event-manager.js";
 import { ComfyDrawStorage } from "../../../../core/server-storage.js";
 import { generateAndParseScenePlan, prepareScenePlannerInput } from "../../shared/scene-planner.js";
@@ -2067,6 +2068,8 @@ function fillForm(settings) {
     setValue('comfy-connection-mode', settings.connectionMode || 'proxy');
     setValue('comfy-draw-auth', settings.auth || '');
     setChecked('comfy-use-image-backend-jobs', settings.useImageBackendJobs === true);
+    const backendRequirement = getSettingsElement('comfy-backend-requirement');
+    if (backendRequirement) backendRequirement.textContent = DRAW_BACKEND_COPY.requirement;
     updateConnectionModeUI(settings.connectionMode || 'proxy', settings.useImageBackendJobs === true);
     setValue('comfy-draw-host', settings.host);
     setValue('comfy-draw-timeout', settings.timeout);

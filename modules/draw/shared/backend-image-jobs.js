@@ -1,14 +1,17 @@
-const JOBS_ENDPOINT = '/api/plugins/littlewhitebox-image-jobs/v1/jobs';
-const STATUS_ENDPOINT = '/api/plugins/littlewhitebox-image-jobs/status';
-const CANCELLATION_ENDPOINT = '/api/plugins/littlewhitebox-image-jobs/v1/cancel';
+import { SERVER_PLUGIN_BASE, SERVER_PLUGIN_VERSION } from '../../../shared/server-plugin/identity.js';
+import { SERVER_PLUGIN_COPY } from '../../../shared/server-plugin/copy.js';
+
+const JOBS_ENDPOINT = `${SERVER_PLUGIN_BASE}/v1/jobs`;
+const STATUS_ENDPOINT = `${SERVER_PLUGIN_BASE}/status`;
+const CANCELLATION_ENDPOINT = `${SERVER_PLUGIN_BASE}/v1/cancel`;
 const DEFAULT_REQUEST_TIMEOUT = 15_000;
 const DEFAULT_MAX_CONSECUTIVE_RETRIES = 6;
 const DEFAULT_MAX_RETRY_DELAY = 10_000;
 
 export const IMAGE_BATCH_JOBS_CAPABILITY = 'image-batch-jobs-v1';
 export const DRAW_WORK_CANCELLATION_CAPABILITY = 'draw-work-cancellation-v1';
-export const REQUIRED_IMAGE_JOBS_PLUGIN_VERSION = '2.4.0';
-export const IMAGE_JOBS_UNAVAILABLE_MESSAGE = `小白X后台任务不可用：请完整安装或更新 littlewhitebox-image-jobs 至 ${REQUIRED_IMAGE_JOBS_PLUGIN_VERSION} 或更新版本，并重启酒馆。`;
+export const REQUIRED_IMAGE_JOBS_PLUGIN_VERSION = SERVER_PLUGIN_VERSION;
+export const IMAGE_JOBS_UNAVAILABLE_MESSAGE = `小白X后台任务不可用。${SERVER_PLUGIN_COPY.install}`;
 
 export function hasDrawWorkCancellationCapability(status) {
     return status?.ready === true && Array.isArray(status.capabilities)

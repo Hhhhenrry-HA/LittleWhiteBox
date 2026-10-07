@@ -1,9 +1,12 @@
+import { SERVER_PLUGIN_ID } from '../../../shared/server-plugin/identity.js';
+
 export const WEB_PROVIDERS = Object.freeze([
     { id: 'tavily', label: 'Tavily', baseUrl: 'https://api.tavily.com' },
     { id: 'exa', label: 'Exa', baseUrl: 'https://api.exa.ai' },
 ]);
 export const DEFAULT_WEB_PROVIDER = 'tavily';
-export const WEB_SETTINGS_COPY = Object.freeze({ provider: '联网渠道（全局）', key: 'API Key', show: '显示' });
+export const WEB_SETTINGS_COPY = Object.freeze({ provider: '联网渠道（全局）', key: 'API Key', show: '显示',
+    exaBackend: `Exa 官方接口需安装并启用 ${SERVER_PLUGIN_ID}。` });
 
 export function normalizeWebProvider(value) {
     return WEB_PROVIDERS.some(provider => provider.id === value) ? value : DEFAULT_WEB_PROVIDER;

@@ -35,7 +35,7 @@ import {
     normalizeReasoningConfig,
 } from '../reasoning-config.js';
 import { WEB_PROVIDERS, normalizeWebSettings } from '../web/settings.js';
-import { readWebSettingsForm, syncWebSettingsForm } from './web-settings.js';
+import { bindWebSettingsGuide, readWebSettingsForm, syncWebSettingsForm } from './web-settings.js';
 import { resolveAgentAuth } from '../provider-auth.js';
 import { MODEL_LIST_AUTH_OPTIONS, normalizeModelListAuth, supportsModelListAuth } from '../model-list-auth.js';
 
@@ -1273,6 +1273,7 @@ export function createAgentSettingsPanel(deps = {}) {
             syncConfigDraft(root);
         });
 
+        bindWebSettingsGuide(root);
         root.querySelector('#xb-assistant-web-provider')?.addEventListener('change', () => {
             const draft = syncConfigDraft(root);
             syncWebSettingsForm(root, draft);

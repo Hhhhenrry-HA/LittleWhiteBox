@@ -28,7 +28,7 @@ Image Job 接口不接收 Scene Planner、角色、楼层、slot 或正文信息
 
 ## 唯一事实来源与生命周期
 
-`server-plugin/littlewhitebox-image-jobs/image-jobs/job-manager.js` 是后端执行事实源，只管理状态、排队、冷却、取消、TTL 和结果字节；NovelAI、SD WebUI、ComfyUI 协议由各自 adapter 所有。任务仅存在于当前 Node 进程内，不落数据库、不写临时文件；Node 重启后全部丢失。
+`server-plugin/littlewhitebox-server/image-jobs/job-manager.js` 是后端执行事实源，只管理状态、排队、冷却、取消、TTL 和结果字节；NovelAI、SD WebUI、ComfyUI 协议由各自 adapter 所有。任务仅存在于当前 Node 进程内，不落数据库、不写临时文件；Node 重启后全部丢失。
 
 `pending-image-jobs.js` 的 journal 是前端恢复与交付事实源。它记录一个后端 job 应交付到哪个聊天、消息和 slot，以及当前租约与结算意图；不复制后端执行状态，也不保存 API Key、URL、payload 或图片字节。刷新后的前端只能凭 journal 接回自己的任务，不能凭服务端列表猜测交付目标。
 
@@ -89,7 +89,7 @@ A1 -> cooldown(A) -> B1 -> cooldown(B) -> A2
 
 ## 后端 API
 
-基础路径：`/api/plugins/littlewhitebox-image-jobs/v1/jobs`。插件 ID 与目录名一致，都是 `littlewhitebox-image-jobs`。历史插件 `littlewhitebox-nai` 是另一个独立 ID，可以并存；小白X前端不请求、不探测、不回退到它。
+基础路径：`/api/plugins/littlewhitebox-server/v1/jobs`。绘图与联网共用统一后端，安装和旧目录迁移见 [后端 README](../server-plugin/littlewhitebox-server/README.md#升级)。前端不请求、不探测、不回退旧插件命名空间。
 
 | 方法 | 路径 | 语义 |
 |---|---|---|
@@ -178,7 +178,7 @@ preparing -> active -> settling -> 删除
 
 ## 能力与版本
 
-server plugin 的分发版本以 `manifest.json` 为准，升级方式见 [后端 README](../server-plugin/littlewhitebox-image-jobs/README.md#升级)。`/status` 中与本链路相关的 capability 为：
+server plugin 的分发版本以 `manifest.json` 为准，升级方式见 [后端 README](../server-plugin/littlewhitebox-server/README.md#升级)。`/status` 中与本链路相关的 capability 为：
 
 ```text
 image-batch-jobs-v1

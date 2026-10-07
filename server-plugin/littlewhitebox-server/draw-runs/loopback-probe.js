@@ -7,7 +7,7 @@ const net = require('node:net');
 
 const LOOPBACK_PROBE_PATH = '/v1/draw-runs/probe';
 const LOOPBACK_VERIFY_PATH = '/v1/draw-runs/probe/verify';
-const LOOPBACK_VERIFY_REQUEST_PATH = `/api/plugins/littlewhitebox-image-jobs${LOOPBACK_VERIFY_PATH}`;
+const LOOPBACK_VERIFY_REQUEST_PATH = `/api/plugins/${require('../manifest.json').id}${LOOPBACK_VERIFY_PATH}`;
 const LOOPBACK_PROBE_HEADER = 'x-littlewhitebox-loopback-probe';
 const DEFAULT_PROBE_TIMEOUT_MS = 5_000;
 const MAX_PROBE_RESPONSE_BYTES = 16 * 1024;

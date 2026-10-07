@@ -1,4 +1,5 @@
 import { removeWebSettings } from '../../agent-core/web/settings.js';
+import { SERVER_PLUGIN_BASE } from '../../../shared/server-plugin/identity.js';
 import {
     saveChatAndConfirm,
     withConfirmableChatMutation,
@@ -23,7 +24,7 @@ import {
     listActiveSwipeDrawRunMarkers,
 } from './draw-run-markers.js';
 
-export const DRAW_RUNS_ENDPOINT = '/api/plugins/littlewhitebox-image-jobs/v1/draw-runs';
+export const DRAW_RUNS_ENDPOINT = `${SERVER_PLUGIN_BASE}/v1/draw-runs`;
 export const SUBMISSION_UNCERTAINTY_WINDOW_MS = 120_000;
 export const DRAW_RUN_REQUEST_TIMEOUT_MS = 15_000;
 

@@ -10,7 +10,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 
-const PLUGIN_ID = 'littlewhitebox-image-jobs';
+const PLUGIN_ID = require('../manifest.json').id;
 const REQUIRED_SILLYTAVERN_VERSION = '1.18.0';
 const PROBE_PATH = `/api/plugins/${PLUGIN_ID}/v1/draw-runs/probe`;
 const STATUS_PATH = `/api/plugins/${PLUGIN_ID}/status`;
