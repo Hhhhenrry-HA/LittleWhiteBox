@@ -1,8 +1,8 @@
-import { createXiaobaiOsFrameBridge, type XiaobaiOsFrameBridgeOptions, type XiaobaiOsHostFrameBridge } from '../../../host/frame-bridge.js';
 import { storyMessageRole } from '../../../host/story-message.js';
 import type { XiaobaiOsChatSurface } from '../../../host/sillytavern-context.js';
 import type { MapClientState } from '../types.js';
-import { MAP_PROJECTION_COPY } from '../ui/map-copy.js';
+import { MAP_NAV_COPY, MAP_PROJECTION_COPY } from '../ui/map-copy.js';
+import type { MapProjectionSurface, MountMapProjection } from '../ui/projection-surface.js';
 
 interface ProjectionDisplayOptions {
     enabled(): boolean;
@@ -12,8 +12,7 @@ interface ProjectionDisplayOptions {
     captureChat(): Pick<XiaobaiOsChatSurface, 'identityKey' | 'messages'> | null;
     readTheme(): 'light' | 'dark';
     subscribe(handlers: { stateChanged(): void; messagesChanged(): void; chatChanged(): void; activityChanged(): void }): () => void;
-    frameSrc: string;
-    bridgeFactory?: (options: XiaobaiOsFrameBridgeOptions) => XiaobaiOsHostFrameBridge;
+    loadSurface(): Promise<MountMapProjection>;
 }
 
 function isPendingSwipe(message: unknown): boolean {
@@ -25,14 +24,15 @@ function isPendingSwipe(message: unknown): boolean {
 }
 
 /** A single read-only surface; it never activates the APP or accepts model/storage commands. */
-export function createMapProjectionDisplay({ enabled, isGenerationActive, isReplyPaused = () => false, readState, captureChat, readTheme, subscribe, frameSrc,
-    bridgeFactory = createXiaobaiOsFrameBridge }: ProjectionDisplayOptions) {
+export function createMapProjectionDisplay({ enabled, isGenerationActive, isReplyPaused = () => false, readState, captureChat, readTheme, subscribe,
+    loadSurface }: ProjectionDisplayOptions) {
     let dispose: (() => void) | null = null;
     let themeObserver: MutationObserver | null = null;
     let swipeObserver: MutationObserver | null = null;
     let scheduled: number | null = null;
     let container: HTMLElement | null = null;
-    let bridge: XiaobaiOsHostFrameBridge | null = null;
+    let surface: MapProjectionSurface | null = null;
+    let mountSurface: MountMapProjection | null = null;
     let identity = '';
     // A run-local display snapshot, invalidated only by domain/settings/status events.
     let state: MapClientState | null = null;
@@ -42,12 +42,16 @@ export function createMapProjectionDisplay({ enabled, isGenerationActive, isRepl
     let publishedTheme = '';
 
     function clear(): void {
-        bridge?.dispose(); bridge = null;
+        surface?.dispose(); surface = null;
+        mountSurface = null;
         container?.remove(); container = null;
         identity = '';
         publishedState = null;
         publishedTheme = '';
     }
+    // Detaching ordinary DOM preserves Vue/canvas state. Unlike an iframe, moving
+    // this view between floors does not navigate or recreate a WebGL context.
+    function suspend(): void { container?.remove(); }
     function resetState(): void {
         state = null;
         stateSignature = '';
@@ -65,7 +69,7 @@ export function createMapProjectionDisplay({ enabled, isGenerationActive, isRepl
         swipeObserver?.disconnect();
         try {
             if (!enabled()) { clear(); resetState(); return; }
-            if (isGenerationActive()) { clear(); return; }
+            if (isGenerationActive()) { suspend(); return; }
             const source = captureChat();
             if (!source) { clear(); resetState(); return; }
             let index = source.messages.length - 1;
@@ -74,7 +78,7 @@ export function createMapProjectionDisplay({ enabled, isGenerationActive, isRepl
             const message = source.messages[index];
             const floor = document.querySelector<HTMLElement>(`#chat .mes[mesid="${index}"]`);
             if (isPendingSwipe(message)) {
-                clear();
+                suspend();
                 // Failed preflight has no completion event. Native rollback replaces
                 // floors (1.18) or rewrites swipeid (1.14), without streaming-text observation.
                 const chat = document.getElementById('chat');
@@ -82,7 +86,7 @@ export function createMapProjectionDisplay({ enabled, isGenerationActive, isRepl
                 if (floor) { swipeObserver?.observe(floor, { attributes: true, attributeFilter: ['swipeid'] }); }
                 return;
             }
-            if (isReplyPaused(message)) { clear(); return; }
+            if (isReplyPaused(message)) { suspend(); return; }
             if (stateDirty) {
                 const next = readState();
                 const signature = JSON.stringify(next);
@@ -92,25 +96,34 @@ export function createMapProjectionDisplay({ enabled, isGenerationActive, isRepl
             if (!state?.projectToChat || source.identityKey !== state.chatIdentity
                 || !state.map?.atlas.locations.length) { clear(); return; }
             const body = floor?.querySelector('.mes_text');
-            if (!body) { clear(); return; }
-            if (identity !== source.identityKey || !container || container.parentElement !== body.parentElement
-                || !(body.compareDocumentPosition(container) & Node.DOCUMENT_POSITION_FOLLOWING)) {
+            if (!body) { suspend(); return; }
+            if (identity !== source.identityKey || !container) {
                 clear();
                 identity = source.identityKey;
                 container = document.createElement('div');
                 container.className = 'xb-map-projection';
                 container.contentEditable = 'false';
-                container.style.cssText = 'display:block;margin:12px 0 0;overflow:hidden;border-radius:14px;container-type:inline-size;';
-                const iframe = document.createElement('iframe');
-                iframe.title = MAP_PROJECTION_COPY.label;
-                iframe.style.cssText = 'display:block;width:100%;height:clamp(260px,50cqw,280px);border:0;';
-                iframe.src = frameSrc;
-                bridge = bridgeFactory({ iframe, onReady() { publishedState = null; schedule(); } });
-                container.append(iframe);
+                container.setAttribute('role', 'region');
+                container.setAttribute('aria-label', MAP_PROJECTION_COPY.label);
+                container.textContent = MAP_NAV_COPY.loading;
+                const target = container;
+                void loadSurface().then(mount => {
+                    if (container !== target) { return; }
+                    mountSurface = mount;
+                    schedule();
+                }).catch(error => {
+                    console.error(MAP_PROJECTION_COPY.loadFailed, error);
+                    if (container === target) { target.setAttribute('role', 'alert'); target.textContent = MAP_PROJECTION_COPY.loadFailed; }
+                });
+            }
+            if (container.parentElement !== body.parentElement
+                || !(body.compareDocumentPosition(container) & Node.DOCUMENT_POSITION_FOLLOWING)) {
                 body.after(container);
             }
+            if (!surface && mountSurface) { surface = mountSurface(container); }
             const theme = readTheme();
-            if ((state !== publishedState || theme !== publishedTheme) && bridge?.post('map/projection-state', { state, theme })) {
+            if (surface && (state !== publishedState || theme !== publishedTheme)) {
+                surface.update(state, theme);
                 publishedState = state;
                 publishedTheme = theme;
             }
@@ -123,11 +136,16 @@ export function createMapProjectionDisplay({ enabled, isGenerationActive, isRepl
         if (scheduled !== null) { cancelAnimationFrame(scheduled); scheduled = null; }
     }
     function activityChanged(): void {
-        // Remove the whole surface before streaming, but leave all host scrolling alone.
-        if (!enabled() || isGenerationActive()) { cancelScheduled(); clear(); }
+        // Remove the occupied space before streaming without destroying the view.
+        if (!enabled()) { cancelScheduled(); clear(); resetState(); }
+        else if (isGenerationActive()) { cancelScheduled(); suspend(); }
         else { schedule(); }
     }
-    function stateChanged(): void { stateDirty = true; schedule(); }
+    function stateChanged(): void {
+        stateDirty = true;
+        if (!enabled()) { cancelScheduled(); clear(); resetState(); }
+        else { schedule(); }
+    }
     function chatChanged(): void { swipeObserver?.disconnect(); clear(); resetState(); schedule(); }
     return {
         stateChanged,

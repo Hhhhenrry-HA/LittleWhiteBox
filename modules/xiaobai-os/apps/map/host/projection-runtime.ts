@@ -8,6 +8,7 @@ import type { MapService } from '../application/service.js';
 import type { MapClientState } from '../types.js';
 import type { MaintenanceRunner } from '../../../capabilities/maintenance/runner.js';
 import { createMapProjectionDisplay } from './projection-display.js';
+import type { MountMapProjection } from '../ui/projection-surface.js';
 
 export interface MapProjectionReplyPause {
     isPaused(message: unknown): boolean;
@@ -27,7 +28,13 @@ export function createMapProjectionRuntime(map: MapService, settings: XiaobaiOsS
         isReplyPaused: message => replyPause?.isPaused(message) ?? false,
         captureChat: getSillyTavernChatSurface,
         readTheme: () => getSillyTavernShellSnapshot().theme,
-        frameSrc: `/${extensionFolderPath}/modules/xiaobai-os/apps/map/ui/projection.html`,
+        loadSurface: async () => {
+            const url = `/${extensionFolderPath}/modules/xiaobai-os/dist/xiaobai-os-map-projection.js`;
+            // Fixed packaged extension asset; no model/user-controlled module path.
+            // eslint-disable-next-line no-unsanitized/method
+            const module = await import(/* @vite-ignore */ url) as { mountMapProjection: MountMapProjection };
+            return module.mountMapProjection;
+        },
         subscribe({ stateChanged, messagesChanged, chatChanged, activityChanged }) {
             const events = createModuleEvents('xiaobaiOsMapProjection');
             events.on(event_types.CHAT_CHANGED, chatChanged);

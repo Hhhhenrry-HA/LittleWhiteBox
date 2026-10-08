@@ -15,14 +15,15 @@ const root = ref<HTMLElement | null>(null);
 const trigger = ref<HTMLButtonElement | null>(null);
 const panelId = `map-projection-options-${useId()}`;
 function close(): void { open.value = false; legend.value = false; }
-function dismiss(event: PointerEvent): void { if (!root.value?.contains(event.target as Node)) { close(); } }
+function dismiss(event: PointerEvent): void { if (!root.value || !event.composedPath().includes(root.value)) { close(); } }
 function escape(event: KeyboardEvent): void {
     if (event.key !== 'Escape' || !open.value) { return; }
     event.preventDefault(); event.stopPropagation(); close(); trigger.value?.focus({ preventScroll: true });
 }
 watch(() => props.view, close);
-onMounted(() => document.addEventListener('pointerdown', dismiss));
-onBeforeUnmount(() => document.removeEventListener('pointerdown', dismiss));
+// Capture sees local map clicks before the projection stops input bubbling to ST.
+onMounted(() => document.addEventListener('pointerdown', dismiss, true));
+onBeforeUnmount(() => document.removeEventListener('pointerdown', dismiss, true));
 </script>
 <template>
     <div ref="root" class="map-projection-controls" @keydown="escape">

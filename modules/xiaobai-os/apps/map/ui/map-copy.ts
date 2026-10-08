@@ -6,6 +6,7 @@ export const MAP_PROJECTION_COPY = {
     enabled: '地图投影已开启。', disabled: '地图投影已关闭。',
     views: { world: '世界', region: '地区', scene: '场景' },
     options: '地图显示选项', location: '回到当前位置',
+    loadFailed: '地图投影加载失败，请刷新页面重试。',
 } as const;
 
 export const MAP_SCENE_COPY = {

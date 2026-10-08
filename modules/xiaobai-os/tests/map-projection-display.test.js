@@ -23,7 +23,7 @@ function displayDom() {
     const cleanup = () => { for (const [key, descriptor] of globals) {
         if (descriptor) { Object.defineProperty(globalThis, key, descriptor); } else { delete globalThis[key]; }
     } };
-    const flush = async () => { await Promise.resolve(); const work = [...frames.values()]; frames.clear(); work.forEach(fn => fn()); };
+    const flush = async () => { for (let pass = 0; pass < 3; pass++) { await Promise.resolve(); const work = [...frames.values()]; frames.clear(); work.forEach(fn => fn()); } };
     return { document, frames, flush, cleanup };
 }
 
@@ -32,7 +32,7 @@ test('projection follows only the final assistant, survives rerenders, and owns 
     const { document, frames, flush, cleanup } = displayDom();
     const source = { identityKey: 'a', messages: [{ is_user: true }, { is_user: false }, { is_user: true }] };
     const state = { chatIdentity: 'a', projectToChat: false, map: null };
-    const posts = [], channels = [];
+    const posts = [], mounts = [];
     let notify, disposed = 0, reads = 0, captures = 0, theme = 'light';
     function floor(index) {
         const root = document.createElement('div'); root.className = 'mes'; root.setAttribute('mesid', index);
@@ -43,32 +43,29 @@ test('projection follows only the final assistant, survives rerenders, and owns 
     const original = structuredClone(source.messages);
     const display = createMapProjectionDisplay({ enabled: () => state.projectToChat, readState: () => { reads++; return structuredClone(state); }, captureChat: () => { captures++; return source; },
         isGenerationActive: () => false,
-        readTheme: () => theme, frameSrc: '/projection.html', subscribe(handlers) { notify = handlers; return () => { notify = null; }; },
-        bridgeFactory(options) {
-            channels.push(options);
-            return { post: (type, payload) => { posts.push({ type, payload: structuredClone(payload) }); return true; }, dispose: () => { disposed++; } };
+        readTheme: () => theme, subscribe(handlers) { notify = handlers; return () => { notify = null; }; },
+        loadSurface: async () => target => {
+            mounts.push(target);
+            return { update: (state, theme) => { posts.push(structuredClone({ state, theme })); }, dispose: () => { disposed++; } };
         },
     });
     t.after(() => { display.stop(); cleanup(); });
-    display.start(); await flush(); assert.equal(document.querySelector('iframe'), null);
+    display.start(); await flush(); assert.equal(document.querySelector('.xb-map-projection'), null);
     assert.equal(reads, 0, 'disabled projection never reads map data');
     state.projectToChat = true; notify.stateChanged(); await flush();
     assert.equal(document.querySelector('.xb-map-projection'), null, 'no saved map must leave no wrapper or reserved space');
     state.map = createEmptyMapDomain(); notify.stateChanged(); await flush();
     assert.equal(document.querySelector('.xb-map-projection'), null, 'an empty map document must not reserve space either');
-    assert.equal(channels.length, 0, 'empty maps never create a projection iframe channel');
+    assert.equal(mounts.length, 0, 'empty maps never create a projection view');
     state.map = mapBrowseFixture(); notify.stateChanged(); await flush();
-    const frame = document.querySelector('iframe');
+    const frame = document.querySelector('.xb-map-projection');
     assert.equal(frame.closest('.mes'), assistant);
-    assert.equal(frame.parentElement.previousElementSibling, assistant.querySelector('.mes_text'));
-    assert.equal(first.querySelector('iframe'), null);
-    assert.equal(channels[0].onMessage, undefined, 'projection channel has no write/request handler');
-    const beforeReady = reads;
-    channels[0].onReady(); await flush();
-    assert.equal(reads, beforeReady, 'iframe readiness reuses the display snapshot');
+    assert.equal(frame.previousElementSibling, assistant.querySelector('.mes_text'));
+    assert.equal(first.querySelector('.xb-map-projection'), null);
+    assert.equal(mounts.length, 1);
     state.map.revision = 2; notify.stateChanged(); await flush();
-    assert.equal(document.querySelector('iframe'), frame);
-    assert.equal(posts.at(-1).payload.state.map.revision, 2);
+    assert.equal(document.querySelector('.xb-map-projection'), frame);
+    assert.equal(posts.at(-1).state.map.revision, 2);
     const beforeStream = { reads, captures, posts: posts.length };
     for (let chunk = 0; chunk < 10; chunk++) {
         const paragraph = document.createElement('p'); paragraph.textContent = `stream-${chunk}`;
@@ -77,63 +74,65 @@ test('projection follows only the final assistant, survives rerenders, and owns 
     assert.deepEqual({ reads, captures, posts: posts.length }, beforeStream,
         'streaming text never schedules projection work, reads a map, or pushes a snapshot');
     assistant.querySelector('.mes_text').textContent = 'edited'; notify.messagesChanged(); await flush();
-    assert.equal(document.querySelector('iframe'), frame);
+    assert.equal(document.querySelector('.xb-map-projection'), frame);
     assert.equal(reads, beforeStream.reads, 'an edit completion checks placement without reading the map');
     first.querySelector('.mes_text').textContent = 'old floor swipe'; notify.messagesChanged(); await flush();
-    assert.equal(document.querySelector('iframe'), frame, 'an old-floor swipe leaves projection on the final assistant');
+    assert.equal(document.querySelector('.xb-map-projection'), frame, 'an old-floor swipe leaves projection on the final assistant');
     assert.equal(reads, beforeStream.reads);
     const sent = posts.length; notify.stateChanged(); await flush(); assert.equal(posts.length, sent, 'unchanged snapshots do not reset the map renderer');
     const beforeTheme = reads;
     theme = 'dark'; document.documentElement.classList.add('theme-dark'); await flush();
     assert.equal(reads, beforeTheme, 'theme changes do not reread map data');
-    assert.equal(posts.at(-1).payload.theme, 'dark');
+    assert.equal(posts.at(-1).theme, 'dark');
     const other = document.createElement('aside'); assistant.querySelector('.mes_text').after(other); await flush();
-    assert.equal(document.querySelector('iframe'), frame, 'other message decorations do not fight projection placement');
+    assert.equal(document.querySelector('.xb-map-projection'), frame, 'other message decorations do not fight projection placement');
     assert.deepEqual(source.messages, original);
 
     const replacementBody = document.createElement('div'); replacementBody.className = 'mes_text';
     assistant.replaceChildren(replacementBody);
     const beforeRerender = reads;
     notify.messagesChanged(); await flush();
-    const restoredFrame = document.querySelector('iframe');
+    const restoredFrame = document.querySelector('.xb-map-projection');
+    assert.equal(restoredFrame, frame, 'host rerender reattaches the existing view');
     assert.equal(restoredFrame.closest('.mes'), assistant, 'a completed host rerender restores the surface');
     assert.equal(reads, beforeRerender, 'host rerenders reuse the snapshot');
 
     source.messages.push({ is_user: false }); const latest = floor(3); await flush();
-    assert.equal(document.querySelector('iframe'), restoredFrame, 'a streaming floor alone does not move projection');
+    assert.equal(document.querySelector('.xb-map-projection'), restoredFrame, 'a streaming floor alone does not move projection');
     const beforeRendered = reads;
     const beforeMove = disposed;
     notify.messagesChanged(); await flush();
-    assert.equal(document.querySelector('iframe').closest('.mes'), latest);
-    assert.equal(assistant.querySelector('iframe'), null);
-    assert.equal(document.querySelectorAll('iframe').length, 1);
-    assert.equal(disposed, beforeMove + 1);
+    assert.equal(document.querySelector('.xb-map-projection').closest('.mes'), latest);
+    assert.equal(assistant.querySelector('.xb-map-projection'), null);
+    assert.equal(document.querySelectorAll('.xb-map-projection').length, 1);
+    assert.equal(disposed, beforeMove, 'moving between floors preserves the same renderer');
+    assert.equal(document.querySelector('.xb-map-projection'), frame);
     assert.equal(reads, beforeRendered, 'AI render completion reuses map data for the new floor');
     latest.remove(); source.messages.pop(); notify.messagesChanged(); await flush();
-    assert.equal(document.querySelector('iframe').closest('.mes'), assistant);
+    assert.equal(document.querySelector('.xb-map-projection').closest('.mes'), assistant);
 
     source.identityKey = 'b'; notify.messagesChanged(); await flush();
-    assert.equal(document.querySelector('iframe'), null, 'identity mismatch never projects an old map');
+    assert.equal(document.querySelector('.xb-map-projection'), null, 'identity mismatch never projects an old map');
     state.chatIdentity = 'b'; state.map = null; notify.chatChanged(); await flush();
     assert.equal(document.querySelector('.xb-map-projection'), null, 'switching to an empty chat leaves no projection wrapper');
     state.map = mapBrowseFixture(); notify.stateChanged(); await flush();
-    assert.equal(document.querySelectorAll('iframe').length, 1, 'a later map publication shows the projection without toggling');
-    assert.equal(posts.at(-1).payload.state.chatIdentity, 'b');
+    assert.equal(document.querySelectorAll('.xb-map-projection').length, 1, 'a later map publication shows the projection without toggling');
+    assert.equal(posts.at(-1).state.chatIdentity, 'b');
     for (const empty of [null, createEmptyMapDomain()]) {
         const released = disposed;
         state.map = empty; notify.stateChanged(); await flush();
         assert.equal(document.querySelector('.xb-map-projection'), null, 'clearing existing map data removes the entire region');
-        assert.equal(disposed, released + 1, 'clearing releases the old projection channel');
+        assert.equal(disposed, released + 1, 'clearing releases the old projection view');
         state.map = mapBrowseFixture(); notify.stateChanged(); await flush();
-        assert.equal(document.querySelectorAll('iframe').length, 1);
+        assert.equal(document.querySelectorAll('.xb-map-projection').length, 1);
     }
-    display.chatChanged(); assert.equal(document.querySelector('iframe'), null); await flush();
-    state.projectToChat = false; notify.stateChanged(); await flush(); assert.equal(document.querySelector('iframe'), null);
+    display.chatChanged(); assert.equal(document.querySelector('.xb-map-projection'), null); await flush();
+    state.projectToChat = false; notify.stateChanged(); await flush(); assert.equal(document.querySelector('.xb-map-projection'), null);
     state.projectToChat = true; notify.stateChanged(); await flush(); display.stop();
-    assert.equal(notify, null); assert.equal(document.querySelector('iframe'), null);
+    assert.equal(notify, null); assert.equal(document.querySelector('.xb-map-projection'), null);
     assert.equal(frames.size, 0);
     source.messages = [{ is_user: true }]; display.start(); await flush();
-    assert.equal(document.querySelector('iframe'), null, 'a chat without an assistant has no projection target');
+    assert.equal(document.querySelector('.xb-map-projection'), null, 'a chat without an assistant has no projection target');
 });
 
 test('projection stays absent throughout main generation and resumes passively from the latest state', async t => {
@@ -154,12 +153,12 @@ test('projection stays absent throughout main generation and resumes passively f
     const display = createMapProjectionDisplay({ enabled: () => state.projectToChat, isGenerationActive: generation.isActive,
         isReplyPaused: isDiceContinuationPending,
         readState: () => { reads++; return structuredClone(state); }, captureChat: () => { captures++; return source; },
-        readTheme: () => 'light', frameSrc: '/projection.html', subscribe(handlers) {
+        readTheme: () => 'light', subscribe(handlers) {
             notify = handlers;
             const unsubscribe = generation.subscribe(handlers.activityChanged);
             return () => { unsubscribe(); notify = null; };
         },
-        bridgeFactory: () => ({ post: (_type, payload) => { posts.push(payload); return true; }, dispose: () => { disposed++; } }),
+        loadSurface: async () => () => ({ update: (state, theme) => { posts.push({ state, theme }); }, dispose: () => { disposed++; } }),
     });
     t.after(() => { display.stop(); generation.stopBackground(); cleanup(); });
     const surface = () => document.querySelector('.xb-map-projection');
@@ -172,7 +171,7 @@ test('projection stays absent throughout main generation and resumes passively f
         notify.messagesChanged(); // A pending completed-floor event must not beat generation start.
         hostState(true);
         assert.equal(surface(), null, 'generation immediately removes the entire surface');
-        assert.equal(disposed, before.disposed + 1);
+        assert.equal(disposed, before.disposed, 'generation retains the detached renderer');
         assert.equal(frames.size, 0, 'pending placement work is cancelled');
         source.messages.push({ is_user: false }); latest = mountFloor(source.messages.length - 1);
         for (let chunk = 0; chunk < 10; chunk++) {
@@ -225,7 +224,7 @@ test('projection stays absent throughout main generation and resumes passively f
     const beforePausedSwipe = disposed;
     reply.mes = candidate.body; notify.messagesChanged(); await flush();
     assert.equal(surface(), null, 'switching to a saved paused swipe hides an already visible map');
-    assert.equal(disposed, beforePausedSwipe + 1, 'a content pause disposes the projection channel');
+    assert.equal(disposed, beforePausedSwipe, 'a content pause retains the detached renderer');
     reply.mes += '\nAfterward.'; notify.activityChanged(); await flush(); assert.ok(surface());
     reply.mes += '\n' + request; notify.messagesChanged(); await flush();
     assert.equal(surface(), null, 'editing in another executable request hides the projection');
@@ -284,8 +283,8 @@ test('new swipe preflight hides projection and native rollback restores it witho
     let latest = floor(); chat.append(latest);
     const display = createMapProjectionDisplay({ enabled: () => state.projectToChat, isGenerationActive: () => false,
         readState: () => { reads++; return structuredClone(state); }, captureChat: () => { captures++; return source; },
-        readTheme: () => 'light', frameSrc: '/projection.html', subscribe(handlers) { notify = handlers; return () => {}; },
-        bridgeFactory: () => ({ post: () => true, dispose() {} }),
+        readTheme: () => 'light', subscribe(handlers) { notify = handlers; return () => {}; },
+        loadSurface: async () => () => ({ update() {}, dispose() {} }),
     });
     t.after(() => { display.stop(); cleanup(); });
     const surface = () => document.querySelector('.xb-map-projection');
@@ -325,4 +324,65 @@ test('new swipe preflight hides projection and native rollback restores it witho
     display.stop(); const stopped = captures;
     latest.setAttribute('swipeid', '0'); await flush();
     assert.equal(captures, stopped, 'stop removes native rollback observation');
+});
+
+test('lazy projection load cannot mount during generation or revive a discarded chat', async t => {
+    const { document, flush, cleanup } = displayDom();
+    const floor = document.createElement('div'); floor.className = 'mes'; floor.setAttribute('mesid', '0');
+    const body = document.createElement('div'); body.className = 'mes_text'; floor.append(body);
+    document.getElementById('chat').append(floor);
+    const source = { identityKey: 'a', messages: [{ is_user: false }] };
+    const state = { chatIdentity: 'a', projectToChat: true, map: mapBrowseFixture() };
+    const loads = [], updates = [];
+    let active = false, notify, mounted = 0, disposed = 0;
+    const mount = () => {
+        mounted++;
+        return { update: state => updates.push(state.chatIdentity), dispose() { disposed++; } };
+    };
+    const display = createMapProjectionDisplay({ enabled: () => state.projectToChat, isGenerationActive: () => active,
+        readState: () => structuredClone(state), captureChat: () => source, readTheme: () => 'light',
+        subscribe(handlers) { notify = handlers; return () => {}; },
+        loadSurface: () => new Promise(resolve => loads.push(() => resolve(mount))),
+    });
+    t.after(() => { display.stop(); cleanup(); });
+    display.start(); await flush();
+    active = true; notify.activityChanged(); loads[0](); await flush();
+    assert.equal(mounted, 0, 'download completion does not initialize a hidden renderer');
+    active = false; notify.activityChanged(); await flush();
+    assert.equal(mounted, 1); assert.deepEqual(updates, ['a']);
+
+    active = true; notify.activityChanged();
+    state.projectToChat = false; notify.stateChanged();
+    assert.equal(disposed, 1, 'disabling releases even a detached renderer immediately');
+    state.projectToChat = true; active = false; notify.activityChanged(); await flush();
+    source.identityKey = 'b'; state.chatIdentity = 'b'; notify.chatChanged(); await flush();
+    loads[1](); await flush();
+    assert.equal(mounted, 1, 'old chat load cannot initialize into the new chat');
+    loads[2](); await flush();
+    assert.equal(mounted, 2); assert.deepEqual(updates, ['a', 'b']);
+    notify.chatChanged(); await flush(); display.stop(); loads[3](); await flush();
+    assert.equal(mounted, 2, 'shutdown invalidates pending UI initialization');
+    assert.equal(disposed, 2);
+});
+
+test('failed UI loading is reported once and host activity never retries automatically', async t => {
+    const { document, flush, cleanup } = displayDom();
+    const floor = document.createElement('div'); floor.className = 'mes'; floor.setAttribute('mesid', '0');
+    const body = document.createElement('div'); body.className = 'mes_text'; floor.append(body);
+    document.getElementById('chat').append(floor);
+    const state = { chatIdentity: 'a', projectToChat: true, map: mapBrowseFixture() };
+    const failure = new Error('fixture');
+    const report = t.mock.method(console, 'error', () => {});
+    let notify, loads = 0;
+    const display = createMapProjectionDisplay({ enabled: () => state.projectToChat, isGenerationActive: () => false,
+        readState: () => structuredClone(state), captureChat: () => ({ identityKey: 'a', messages: [{ is_user: false }] }),
+        readTheme: () => 'light', subscribe(handlers) { notify = handlers; return () => {}; },
+        loadSurface: async () => { loads++; throw failure; },
+    });
+    t.after(() => { display.stop(); cleanup(); });
+    display.start(); await flush();
+    assert.equal(document.querySelector('.xb-map-projection').getAttribute('role'), 'alert');
+    assert.equal(report.mock.callCount(), 1); assert.equal(report.mock.calls[0].arguments[1], failure);
+    notify.stateChanged(); notify.messagesChanged(); await flush();
+    assert.equal(loads, 1, 'ordinary host events must not cause a failed-load retry loop');
 });
