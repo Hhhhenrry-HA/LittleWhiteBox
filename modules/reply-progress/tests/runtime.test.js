@@ -42,6 +42,7 @@ function harness(t, beforeEnable = () => {}) {
     let replyAction = null;
     let chat = [];
     let stream = null;
+    let sendPressed = true;
     let groupId = null;
     let connected = true;
     let progress = null;
@@ -52,6 +53,7 @@ function harness(t, beforeEnable = () => {}) {
     const errors = [];
     const runtime = createReplyProgressRuntime({
         events, eventTypes: TYPES, getTextarea: () => textarea, getChat: () => chat, getStream: () => stream,
+        isSendPressed: () => sendPressed,
         getGroupId: () => groupId, isConnected: () => connected,
         observeRequest: (generation, onRequest) => boundary ? observeHostRequest({ events, eventTypes: TYPES, ...generation, onRequest }) : null,
         observeActions: ({ onStop, onReply }) => {
@@ -78,6 +80,7 @@ function harness(t, beforeEnable = () => {}) {
         events, runtime, textarea, errors,
         chat: () => chat, switchChat: value => { chat = value; },
         stream: value => { stream = value; }, group: value => { groupId = value; },
+        sendPressed: value => { sendPressed = value; },
         connected: value => { connected = value; }, boundary: value => { boundary = value; },
         failShow: error => { showFailure = error; }, failRestore: error => { restoreFailure = error; },
         progress: () => progress, restores: () => restores, ticking: () => tick !== null,
@@ -208,6 +211,93 @@ test('a pinned reply stream ends on its own first text even when another stream 
     assert.equal(h.progress(), null);
     assert.equal(h.current(), 'original');
     assert.equal(h.ticking(), false);
+});
+
+test('host failure before streaming begins releases the hint without mutating or aborting the orphaned stream', async t => {
+    const h = harness(t);
+    // No summary or other plugin is needed to reproduce this failure.
+    for (const type of ['normal', 'regenerate', 'swipe', 'continue']) {
+        h.sendPressed(true);
+        await begin(h, type);
+        const stream = newStream(type, -1);
+        h.stream(stream);
+        h.advance(200);
+        assert.equal(h.progress().phase, 'waiting');
+
+        // Native onError: unblock (emitting ENDED), then discard the stream.
+        // The failed request never reaches generate()/onErrorStreaming().
+        h.sendPressed(false);
+        await h.events.emit(TYPES.GENERATION_ENDED);
+        h.stream(null);
+        assert.equal(h.progress(), null);
+        assert.equal(h.ticking(), false);
+        assert.equal(h.current(), 'original');
+        assert.equal(stream.isStopped, false);
+        assert.equal(stream.isFinished, false);
+        assert.equal(stream.abortController.signal.aborted, false);
+        h.advance(UNCONFIRMED_HINT_MS * 2);
+        assert.equal(h.progress(), null);
+    }
+    // A subsequent successful send is independent of the failed one.
+    h.sendPressed(true);
+    await begin(h);
+    const stream = newStream();
+    h.stream(stream);
+    h.advance(200);
+    assert.ok(h.progress());
+    stream.result = 'answer';
+    h.advance(200);
+    assert.equal(h.progress(), null);
+});
+
+test('a fast streaming failure can be identified at ENDED before the first timer tick', async t => {
+    const h = harness(t);
+    await begin(h);
+    h.stream(newStream('normal', -1));
+    h.sendPressed(false);
+    await h.events.emit(TYPES.GENERATION_ENDED);
+    assert.equal(h.progress(), null);
+    assert.equal(h.ticking(), false);
+});
+
+test('host cleanup does not depend on being the first ENDED listener', async t => {
+    const h = harness(t);
+    await begin(h);
+    h.stream(newStream('normal', -1));
+    h.advance(200);
+    const earlier = deferred();
+    h.events.makeFirst(TYPES.GENERATION_ENDED, () => earlier.promise);
+    h.sendPressed(false);
+    // The host emits without awaiting: it clears the pointer while another
+    // extension is still handling the event before our observer.
+    const ending = h.events.emit(TYPES.GENERATION_ENDED);
+    h.stream(null);
+    earlier.resolve();
+    await ending;
+    assert.equal(h.progress(), null);
+    assert.equal(h.ticking(), false);
+});
+
+test('neither unrelated endings nor idle alone close an identified slow stream', async t => {
+    const h = harness(t);
+    await begin(h);
+    const foreground = newStream();
+    h.stream(foreground);
+    h.advance(200);
+    // An untyped event while the host is still sending has no ownership.
+    await begin(h, 'quiet');
+    await h.events.emit(TYPES.GENERATION_ENDED);
+    assert.ok(h.progress());
+    h.sendPressed(false);
+    h.advance(UNCONFIRMED_HINT_MS * 2);
+    assert.ok(h.progress());
+    // Even idle + ENDED is not this reply's end if the pointer is replaced.
+    h.stream(newStream('quiet'));
+    await h.events.emit(TYPES.GENERATION_ENDED);
+    assert.ok(h.progress());
+    foreground.result = 'answer';
+    h.advance(200);
+    assert.equal(h.progress(), null);
 });
 
 for (const finish of ['finished', 'stopped', 'aborted']) {

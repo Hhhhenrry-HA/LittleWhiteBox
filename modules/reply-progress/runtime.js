@@ -15,9 +15,9 @@ function isVisibleGeneration(type, params, dryRun) {
 }
 
 // Own only one foreground reply's display. Global busy/idle, raw prompt events
-// and untyped native completion events are not this reply's lifecycle.
+// and untyped native completion events alone are not this reply's lifecycle.
 export function createReplyProgressRuntime({
-    events, eventTypes, getTextarea, getChat, getStream, observeRequest,
+    events, eventTypes, getTextarea, getChat, getStream, isSendPressed, observeRequest,
     getGroupId = () => null,
     observeActions = () => () => {},
     isConnected = () => true,
@@ -109,6 +109,18 @@ export function createReplyProgressRuntime({
             return;
         }
         run.presenter.show({ phase: run.phase, detail: run.detail, elapsedMs: now() - run.startedAt });
+    }
+
+    function onHostEnded() {
+        paint();
+        // ST 1.14/1.18 unblock a failed streaming request and emit ENDED before
+        // dropping its stream, without marking that object stopped/finished.
+        // A quiet completion cannot unblock a live stream. An earlier awaited
+        // listener may let the host clear its pointer before we see ENDED.
+        // Require an identified stream and released sending state; a replacement
+        // stream or global idle without this event does not end our reply.
+        const currentStream = getStream();
+        if (run?.stream && (!currentStream || currentStream === run.stream) && !isSendPressed()) stop();
     }
 
     function start(type, params, dryRun) {
@@ -220,9 +232,10 @@ export function createReplyProgressRuntime({
                 paint();
             }
         });
-        // An untyped token/end is only a chance to inspect our pinned stream,
+        // An untyped token/stop is only a chance to inspect our pinned stream,
         // never evidence that a background task belongs to this reply.
-        for (const name of ['STREAM_TOKEN_RECEIVED', 'GENERATION_ENDED', 'GENERATION_STOPPED']) on(name, paint);
+        for (const name of ['STREAM_TOKEN_RECEIVED', 'GENERATION_STOPPED']) on(name, paint);
+        on('GENERATION_ENDED', onHostEnded);
         on('MESSAGE_RECEIVED', (index, type) => {
             if (!run || !run.afterCommands || getChat() !== run.chat) return;
             const sameType = generationType(type) === run.type

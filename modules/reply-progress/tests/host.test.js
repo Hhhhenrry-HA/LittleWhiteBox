@@ -22,6 +22,7 @@ async function loadHost() {
                 // Control APIs are deliberately unavailable to this observer.
                 export let online_status = 'connected';
                 export let streamingProcessor = null;
+                export let is_send_press = false;
                 const listeners = new Map();
                 export const event_types = Object.fromEntries([
                     'GENERATION_STARTED', 'GENERATION_AFTER_COMMANDS', 'MESSAGE_SENT', 'USER_MESSAGE_RENDERED',
