@@ -51,7 +51,7 @@ async function harness(handler, { session = false, search = false, webConfig = c
     const profile = createLearningSession(repository, { language: 'en', osId: 'story-a', inputScope: { kind: 'public' }, action: { kind: 'profile' }, createId, now });
     assert.equal(profile.executeTool('LearningProfileEdit', { explanationLanguage: 'zh-CN', selfAssessment: '初学', goal: { description: '阅读和表达' } }).ok, true);
     await profile.commit(() => true);
-    const teaching = createLearningTeaching({ actor: 'workbench', memory: (() => { const port = learningMemory(); return () => port; })(), repository, createId, now, current: () => current,
+    const teaching = createLearningTeaching({ actor: 'workbench', memory: (() => { const port = learningMemory(); return () => port; })(), historyReady: () => true, repository, createId, now, current: () => current,
         capture: async () => { captures++; return structuredClone(context); }, gateway: {
             loadConfig: async () => search ? webConfig : {}, openSession: async () => ({ providerConfig: {}, supportsSessionToolLoop: session,
                 run: (async request => { requests.push(structuredClone({ ...request, signal: undefined, onStreamProgress: undefined })); return handler(request, requests.length); }) }),

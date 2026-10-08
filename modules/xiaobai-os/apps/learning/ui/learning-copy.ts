@@ -64,11 +64,13 @@ export const LEARNING_CONFIRM_COPY: Record<string, { title: string; accept: stri
     'forget-conversation': { title: '清空这段对话？', accept: '清空对话' },
     'delete-language': { title: '删除这门语言的学习数据？', accept: '删除学习数据' },
     clear: { title: '清空所有学习数据？', accept: '清空学习数据' },
+    'reset-learning': { title: '重置学习数据？', accept: '重置学习数据' },
     'delete-item': { title: '删除这条学习记录？', accept: '删除记录' },
     'delete-attempt': { title: '删除这次作答？', accept: '删除作答' },
 };
 
 export const LEARNING_DISCARD_COPY = {
+    resetLearning: '将清空所有语言的目标、课程和学习记录，未领取奖励也将放弃。学习对话和已到账奖励保留。此操作无法撤销。',
     context: '切换后，尚未提交的输入会丢失。已提交的作答和学习记录会保留。',
     companion: '切换语伴会清空尚未发送的聊天内容，当前练习和作答会保留。',
     keepEditing: '继续编辑',

@@ -21,7 +21,7 @@ test('assistant sends selected Exa search results through its ordinary tool cont
         normalizeAttachments: value => value || [], normalizeThoughtBlocks: value => value || [],
         getActiveProviderConfig: () => ({ provider: 'openai-compatible', model: 'fixture', webProvider: 'exa', exaApiKey: 'exa-fixture' }),
         SYSTEM_PROMPT: '', SUMMARY_SYSTEM_PROMPT: '', HISTORY_SUMMARY_PREFIX: '',
-        MAX_CONTEXT_TOKENS: 258000, SUMMARY_TRIGGER_TOKENS: 228000, HISTORY_SUMMARY_MAX_TOKENS: 10000,
+        MAX_CONTEXT_TOKENS: 258000, SUMMARY_TRIGGER_TOKENS: 228000,
         DEFAULT_PRESERVED_TURNS: 1, MIN_PRESERVED_TURNS: 1, MAX_TOOL_ROUNDS: 4, REQUEST_TIMEOUT_MS: 1000,
         TOOL_DEFINITIONS, TOOL_NAMES, countTokens: async () => ({ tokens: 100, source: 'estimated' }),
         createAdapter: () => ({ async chat(request) {

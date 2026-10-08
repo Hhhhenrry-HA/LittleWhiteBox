@@ -96,6 +96,7 @@ export function createLearningRuntime(deps: {
         return createLearningTeaching({ actor, repository, gateway: deps.agent,
             current: actor === 'workbench' ? current : companionCurrent, capture: deps.capture,
             memory: () => histories.port(actor, language, teacher.selected()?.id ?? null),
+            historyReady: () => (actor === 'workbench' ? deps.workbenchFiles : deps.files).getFileState() === 'ready',
             onConversation: publish, confirm: approvals.request, onSettled: payPending,
             delegate: (request, signal) => delegated.start(request, signal),
             taskGet: taskId => delegated.get(taskId),
@@ -175,7 +176,7 @@ export function createLearningRuntime(deps: {
         return { ...view,
             chatIdentity, commitId: snapshot.document?.commitId ?? null, language, teacher: teacher.selected()?.person ?? null, companionSessionId: teacher.selected()?.id ?? null,
             candidates: teacher.candidates().map(person => ({ name: person.name, aliases: person.aliases })),
-            storage: loadFailed ? 'unloaded' : snapshot.status, chatStorage: deps.files.getFileState(), workbenchStorage: deps.workbenchFiles.getFileState(), walletStorage: deps.rewardFiles.getFileState(),
+            storage: loadFailed && snapshot.status === 'ready' ? 'unloaded' : snapshot.status, chatStorage: deps.files.getFileState(), workbenchStorage: deps.workbenchFiles.getFileState(), walletStorage: deps.rewardFiles.getFileState(),
             sourceChoice: !preparationJob && snapshot.status === 'ready' && sourceChoice?.unitId === view.currentUnitId ? sourceChoice.reason : null, ...activity(), approval: approvals.current(),
             companionBusy: !!chats.companion.job && chats.companion.kind === 'companion', chatMessage: chats.companion.progress, workbenchMessage: chats.workbench.progress,
             message: job ? progress : message, reply: teaching.reply(), pending, remark, companionReply: companion.reply(), delegatedTasks: delegated.views(),
@@ -185,12 +186,16 @@ export function createLearningRuntime(deps: {
     function publish() { if (active()) { activation!.post('learning/state', { state: state() }); } }
     /** No learner job is running; a companion remark does not count, it gives way. */
     function idle() { return !learningActionBusy('language', activity()); }
-    function cancel() {
+    /** Retire course work without cancelling the storage command that confirmed its reset. */
+    function clearLearningWork() {
         delegated.clear();
-        epoch++; teaching.cancel(); companion.cancel(); speech.stop(); job = null; progress = ''; pending = null;
         for (const lane of Object.values(chats)) { lane.job = null; lane.kind = ''; lane.progress = ''; }
         preparationJob = null; preparation = null; sourceChoice = null;
-        remark = null;
+        pending = null; remark = null;
+    }
+    function cancel() {
+        clearLearningWork();
+        epoch++; teaching.cancel(); companion.cancel(); speech.stop(); job = null; progress = '';
     }
     function cancelConversation(actor: LearningActor) {
         runner(actor).cancel('conversation'); chats[actor].job = null; chats[actor].kind = ''; chats[actor].progress = '';
@@ -202,7 +207,7 @@ export function createLearningRuntime(deps: {
     }
     function saved(result: { status: string }) {
         if (result.status === 'unconfirmed') { message = LEARNING_STORAGE_COPY.unconfirmed; }
-        else if (result.status === 'conflict') { message = LEARNING_STORAGE_COPY.conflict; }
+        else if (result.status === 'conflict') { message = repository.snapshot().status === 'invalid' ? LEARNING_STORAGE_COPY.invalid : LEARNING_STORAGE_COPY.conflict; }
         else if (result.status === 'failed') { message = LEARNING_STORAGE_COPY.failed; }
         return result.status === 'confirmed' || result.status === 'unchanged';
     }
@@ -280,6 +285,7 @@ export function createLearningRuntime(deps: {
             pendingCleanup = null;
         }
         await teaching.recoverConfirmed();
+        await teaching.hydrate(); await companion.hydrate();
     }
     function unit() {
         const classroom = current();
@@ -352,6 +358,19 @@ export function createLearningRuntime(deps: {
         return selected;
     }
     async function action(name: string, input: Record<string, unknown>, guard: () => boolean, answerBasis?: LearningAttemptBasis) {
+        if (name === 'reset-learning') {
+            saved(await repository.resetInvalid(guard, () => {
+                clearLearningWork(); teaching.reset(); companion.reset();
+            }));
+            if (!guard()) { return; }
+            if (repository.snapshot().status === 'ready') {
+                await teacher.read(); await deps.workbenchStore.read(); await deps.economy.refresh();
+                if (!guard()) { return; }
+                await restoreTeaching();
+            }
+            if (guard()) { loadFailed = false; }
+            return;
+        }
         if (name === 'verify-teacher' || name === 'adopt-teacher') {
             const before = teacher.selected()?.person;
             const result = name === 'verify-teacher' ? await deps.files.retryPending({ readOnly: true }) : await deps.files.adoptServerState();
@@ -567,7 +586,7 @@ export function createLearningRuntime(deps: {
             try {
                 if (!guard()) { return; }
                 // Free space before retrying hearing writes. Repository confirmation/conflict guards still apply.
-                if (cleanup) { await speech.settle(); }
+                if (cleanup || name === 'reset-learning') { await speech.settle(); }
                 else if (!await speech.flush()) { return; }
                 before = repository.snapshot().document;
                 if (guard()) {
@@ -659,7 +678,7 @@ export function createLearningRuntime(deps: {
                 await repository.read(); if (owned !== epoch) { return state(); }
                 if (before.status === 'ready' && !sameLearningDocument(before.document ?? null, repository.snapshot().document ?? null)) { teaching.reset(); }
                 await teacher.read(); await deps.workbenchStore.read(); if (owned !== epoch) { return state(); }
-                await restoreTeaching(); await teaching.hydrate(); await companion.hydrate();
+                await restoreTeaching();
                 await deps.economy.refresh(); if (owned === epoch) { loadFailed = false; }
                 // A completion saved while the app was closed is paid on opening.
                 if (owned === epoch) { await payPending(() => owned === epoch && active()); }

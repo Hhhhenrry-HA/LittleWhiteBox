@@ -21,8 +21,8 @@ export const fixtureLesson = {
         rule: { kind: 'exact', answer: { kind: 'choice', ids: ['a'] }, explanation: '作者先用树荫举例，再解释树木能让城市生活更舒适。关键词是 do more than。' }, hint: '第二段的第一句，把视角从外观转向了作用。' }],
 };
 
-export async function createClassroomFixture({ listening = false, lesson: lessonInput = fixtureLesson, getTtsFacade = () => undefined, agentConfig = {} } = {}) {
-    let chat = 'runtime-a'; let envelope = null; let userFile = null; let walletFile = null; let serial = 0;
+export async function createClassroomFixture({ listening = false, lesson: lessonInput = fixtureLesson, getTtsFacade = () => undefined, agentConfig = {}, initialLearningFile = null } = {}) {
+    let chat = 'runtime-a'; let envelope = null; let userFile = structuredClone(initialLearningFile); let walletFile = null; let serial = 0;
     const flags = { userFailure: false, userRejected: false, heldUser: null, ledgerFailure: false, ledgerUnknown: false, heldLedger: null, teacherReceiptLost: false, teacherWriteApplied: true,
         providerFailure: false, providerGate: null, prepareReply: null, profileReply: null, talkTools: null, teacherResponse: null, notificationResponse: null };
     const requests = [];
@@ -153,6 +153,7 @@ export async function createClassroomFixture({ listening = false, lesson: lesson
     return { runtime, bridge, repository, store, coordinator, wallet, economy, flags, counts, failures, command, profile,
         requests, workbenchStore: wallet.createStore(LEARNING_WORKBENCH_PARTITION, []),
         state: () => structuredClone(state),
+        storedFiles: () => structuredClone({ learning: userFile, wallet: walletFile, companions: envelope }),
         async openLesson() { await command('teacher', { teacher: { name: '林老师', note: '' } }); await command('profile', { message: '想备考四级，当前高中基础。' }); await command('prepare', { message: '开始一课。' }); return state; },
         async reenter() { runtime.deactivate(); active = true; state = await runtime.activate(context()); return state; },
         async changeChat() { chat = 'runtime-b'; envelope = null; coordinator.invalidateCurrent(); runtime.handleChatChanged(); state = await runtime.activate(context()); return state; },

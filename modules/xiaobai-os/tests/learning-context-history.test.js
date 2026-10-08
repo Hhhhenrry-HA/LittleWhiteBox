@@ -16,6 +16,48 @@ const turn = (name, content = name.repeat(300)) => ({ user: name, teacher: conte
     messages: [{ role: 'user', content: name }, { role: 'assistant', content }] });
 const bigHistory = () => [turn('earlier', 'Detailed classroom exchange. '.repeat(LEARNING_SUMMARY_TRIGGER_TOKENS / 5)), turn('recent-a'), turn('recent-b')];
 
+test('coursework proceeds before history confirmation and later saves both stored and locally compacted history', async t => {
+    const h = await createClassroomFixture(); t.after(h.dispose); await h.openLesson();
+    const port = learningMemory();
+    const scope = { kind: 'story', osId: h.profile().unit.originOsId };
+    const original = { summary: 'Stored summary.', archivedCount: 6, summaryReferences: ['old-unit'], summaryScope: scope,
+        exchanges: [{ id: 'stored-turn', user: 'stored-question', reply: 'Stored reply.', replyTo: null, summarized: false, references: ['old-unit'], scope }] };
+    await port.save(original, () => true);
+    let ready = false; let calls = 0; let compacted = false;
+    const teaching = createLearningTeaching({ actor: 'workbench', repository: h.repository, memory: () => port, historyReady: () => ready,
+        current: () => ({ language: 'en', osId: scope.osId, chatIdentity: 'deferred-history', teacher: null }),
+        capture: async () => assert.fail('Native coursework does not capture a companion'),
+        gateway: { loadConfig: async () => ({}), openSession: async () => ({ providerConfig: {}, supportsSessionToolLoop: false,
+            run: async request => {
+                if (!request.tools.length) { compacted = true; return { text: 'New-course summary.' }; }
+                calls++;
+                if (calls === 4) { throw overflow(); }
+                return { text: 'Native coursework reply. '.repeat(100) };
+            },
+        }) },
+    });
+    t.after(teaching.reset);
+    for (let index = 0; index < 4; index++) {
+        const result = await teaching.run({ action: { kind: 'prepare' }, message: `new-${index}` });
+        assert.equal(result.status, 'finished'); assert.equal(result.historySaved, false);
+    }
+    assert.equal(compacted, true);
+    assert.deepEqual(await port.read(), original);
+    const local = teaching.conversation();
+    assert.ok(local.removedTurns > 0);
+    const localIds = local.turns.map(turn => turn.id);
+    ready = true;
+    await teaching.hydrate(); await teaching.hydrate();
+    assert.equal(teaching.conversation().removedTurns, original.archivedCount + local.removedTurns);
+    assert.deepEqual(teaching.conversation().turns.map(turn => turn.id), ['stored-turn', ...localIds]);
+    assert.equal((await teaching.run({ action: { kind: 'talk' }, message: 'continue' })).historySaved, true);
+    const saved = await port.read();
+    assert.equal(saved.summary, [original.summary, 'New-course summary.'].join('\n\n'));
+    assert.deepEqual(saved.summaryScope, scope);
+    assert.ok(saved.summaryReferences.includes('old-unit'));
+    assert.deepEqual(saved.exchanges.slice(0, -1).map(exchange => exchange.id), ['stored-turn', ...localIds]);
+});
+
 test('concurrent work and chat compaction preserve both live turns and adopt the shared prefix only once', async t => {
     const h = await createClassroomFixture(); t.after(h.dispose); await h.openLesson();
     const held = [];
@@ -23,7 +65,7 @@ test('concurrent work and chat compaction preserve both live turns and adopt the
     let mode = 'seed';
     let summariesReady;
     const ready = new Promise(resolve => { summariesReady = resolve; });
-    const teaching = createLearningTeaching({ actor: 'workbench', memory: (() => { const port = learningMemory(); return () => port; })(), repository: h.repository,
+    const teaching = createLearningTeaching({ actor: 'workbench', memory: (() => { const port = learningMemory(); return () => port; })(), historyReady: () => true, repository: h.repository,
         current: () => ({ language: 'en', osId: h.profile().unit.originOsId, chatIdentity: 'concurrent-fixture', teacher: { name: 'Lin', note: '' } }),
         capture: async () => ({ teacherDetails: '', snapshot: { characters: [], player: { displayName: 'Learner', persona: '' },
             storyEvents: '', recentMessages: [], worldInfo: { before: '', after: '', depth: [] } } }),
@@ -384,13 +426,28 @@ test('proactive compaction during a session tool exchange replays results once a
     }
 });
 
+test('learning summaries leave both small and large output budgets to the Agent API', async () => {
+    for (const maxTokens of [5000, 32000]) {
+        let calls = 0;
+        const summary = await summariseLearningHistory({ turns: [turn('earlier')], summary: '', guard: () => true,
+            signal: new AbortController().signal,
+            openSession: async () => ({ providerConfig: { maxTokens }, async run(request) {
+                calls++;
+                assert.equal(request.maxTokens, undefined);
+                return { text: 'remembered facts' };
+            } }) });
+        assert.equal(calls, 1);
+        assert.equal(summary, 'remembered facts');
+    }
+});
+
 test('a smaller provider window splits summary input by complete exchanges and carries the earlier summary forward', async () => {
     const sources = [];
     const history = ['a', 'b', 'c', 'd'].map(name => turn(name, name.repeat(2000)));
     const summary = await summariseLearningHistory({ turns: history, summary: 'Initial agreement.', guard: () => true,
         signal: new AbortController().signal, openSession: async () => ({ providerConfig: { maxTokens: 5000 }, supportsSessionToolLoop: false,
             run: async request => {
-                assert.equal(request.maxTokens, 5000);
+                assert.equal(request.maxTokens, undefined);
                 const source = JSON.parse(request.messages[0].content); sources.push(source);
                 if (source.exchanges.length > 2) { throw overflow(); }
                 return { text: `${source.summary} ${source.exchanges.map(exchange => exchange[0].content).join(',')}` };

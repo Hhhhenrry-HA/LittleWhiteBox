@@ -4,6 +4,7 @@ import { LearningValidationError } from '../../../domains/learning/profile.js';
 export const LEARNING_STORAGE_COPY = {
     unconfirmed: '还没确认保存是否成功，请先查看保存结果，不要重复提交。',
     conflict: '发现另一份学习记录，请先核对再继续。', unloaded: '暂时打不开学习记录。',
+    invalid: '学习数据无法使用，重置后即可重新开始。',
     failed: '这次没能保存，之前保存的内容都还在，请重试。',
 };
 
@@ -47,6 +48,7 @@ export function learningProgressMessage(progress: LearningProgress): string {
 }
 
 export function learningTeachingFailure(reason: string, cause?: unknown): string {
+    if (reason === 'learning_file_invalid') { return LEARNING_STORAGE_COPY.invalid; }
     const detail = learningFailureCause(cause);
     const metadata = [detail.httpStatus ? `HTTP ${detail.httpStatus}` : '', detail.errorCode, detail.responseReason].filter(Boolean);
     if (detail.errorMessage && detail.errorMessage !== reason || metadata.length) {
@@ -67,7 +69,6 @@ export function learningTeachingFailure(reason: string, cause?: unknown): string
         case 'learning_empty_response': return '没有收到有效回复。已保存的修改保留，可以继续。';
         case 'learning_response_truncated': return '这次回复太长，中途停下了。此前已保存的修改保留；可以继续未完成的工作，或在 AI 设置中调高回复长度。';
         case 'learning_round_limit': return '这次工具调用已到轮数上限。已保存的修改保留，可以继续未完成的工作。';
-        case 'learning_file_invalid': return '学习文件暂时无法读取，请检查文件；不会覆盖已有内容。';
         case 'learning_read_failed': return '读取学习记录失败，请检查连接后重试。';
         case 'learning_resolve_pending_first': return LEARNING_STORAGE_COPY.unconfirmed;
         case 'learning_file_full': return '学习文件已达到容量上限，请整理不再需要的记录后重试。';

@@ -7,7 +7,21 @@ import { prepareRetainedLearningWork } from './learning-retained-work.js';
 import { extractTaggedToolCalls } from '../../../agent-core/adapters/openai-compatible.js';
 
 const retainedEvidence = process.argv.includes('--retained-evidence');
-const h = await createClassroomFixture({ lesson: { ...fixtureLesson, kind: process.argv.includes('--lesson') || retainedEvidence ? 'lesson' : 'reading-writing' } });
+const resetConflict = process.argv.includes('--reset-conflict');
+const resetStale = process.argv.includes('--reset-stale');
+const resetPending = process.argv.includes('--reset-pending');
+const resetHistory = process.argv.includes('--reset-history');
+const resetCombined = process.argv.includes('--reset-combined');
+const invalidFile = process.argv.includes('--invalid-file') || resetConflict;
+const h = await createClassroomFixture({ initialLearningFile: invalidFile ? { schemaVersion: 99 } : null,
+    lesson: { ...fixtureLesson, kind: process.argv.includes('--lesson') || retainedEvidence ? 'lesson' : 'reading-writing' } });
+if (resetConflict) {
+    h.flags.userFailure = true;
+    await h.command('reset-learning');
+    h.replaceUser({ schemaVersion: 100 });
+    await h.command('verify');
+    h.flags.userFailure = false;
+}
 const call = (name, args) => ({ id: name, name, arguments: JSON.stringify(args) });
 if (retainedEvidence) {
     await prepareRetainedLearningWork(h);
@@ -20,9 +34,35 @@ if (retainedEvidence) {
     };
     await h.command('prepare', { kind: 'reading-writing', message: '准备一篇短文。' });
     await h.command('choose-original');
-} else {
+} else if (resetStale) {
+    await h.openLesson();
+    h.flags.providerFailure = true;
+    await h.command('choose-original');
+    h.flags.providerFailure = false;
+    h.replaceUser({ schemaVersion: 1, revision: 1, commitId: 'unreadable-v1', data: { profiles: null } });
+    await h.command('read');
+} else if (!invalidFile) {
     await h.openLesson();
     if (h.state().sourceChoice) { await h.command('choose-original'); }
+}
+if (resetPending || resetHistory || resetCombined) {
+    if (resetHistory || resetCombined) {
+        await h.command('talk', { message: 'saved-before' });
+        h.flags.teacherReceiptLost = true;
+        await h.command('talk', { message: 'saved-with-lost-receipt' });
+    }
+    if (resetCombined) {
+        await h.command('talk', { target: 'workbench', message: 'saved-workbench' });
+        h.flags.ledgerUnknown = true;
+        await h.command('talk', { target: 'workbench', message: 'workbench-with-lost-receipt' });
+    }
+    if (resetPending || resetCombined) {
+        h.flags.userFailure = true;
+        await h.command('settings', { value: { level: 'B2' } });
+    }
+    h.replaceUser({ schemaVersion: 1, revision: 1, commitId: 'unreadable-v1', data: { profiles: null } });
+    await h.command(resetPending || resetCombined ? 'verify' : 'read');
+    h.flags.userFailure = false; h.flags.teacherReceiptLost = false;
 }
 if (process.argv.includes('--review')) {
     h.flags.teacherResponse = (_request, round) => round === 1 ? { toolCalls: [call('LearningReadingNotes', {
@@ -38,7 +78,7 @@ if (process.argv.includes('--review')) {
     })] } : { text: '复习已准备好。' };
     await h.command('talk', { target: 'workbench', message: '复习这个词。' });
 }
-if (!retainedEvidence) { h.flags.teacherResponse = (request, round) => {
+if (!retainedEvidence && !resetStale && !resetPending && !resetHistory && !resetCombined) { h.flags.teacherResponse = (request, round) => {
     if (request.tools.some(tool => tool.function.name === 'LearningRequest')) {
         return round === 1 ? { toolCalls: [call('LearningRequest', { task: '按对方的要求处理当前课程，需要换课时先征求确认。' })] } : { text: '交给老师了，我们可以接着聊。' };
     }
@@ -92,6 +132,15 @@ const server = await createServer({ configFile: false, root: process.cwd(), plug
                 res.write(': connected\n\n'); clients.add(res); req.on('close', () => clients.delete(res)); return;
             }
             if (req.url === '/__learning/state') { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(h.state())); return; }
+            if (req.url === '/__learning/history') {
+                res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify((await h.store.read()).value)); return;
+            }
+            if (req.url === '/__learning/stored') {
+                res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(h.storedFiles())); return;
+            }
+            if (resetCombined && req.url === '/__learning/confirm-shared' && req.method === 'POST') {
+                h.confirmLedger(); res.end('{}'); return;
+            }
             if (req.url === '/__learning/action') {
                 let body = ''; for await (const part of req) { body += part; }
                 const { type, payload } = JSON.parse(body);

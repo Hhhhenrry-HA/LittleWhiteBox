@@ -150,7 +150,7 @@ function Ke(t) {
   });
 }
 var Ne = Object.freeze({
-  administrator: () => import("./xiaobai-os-AdministratorApp-BXNF5jRj.js"),
+  administrator: () => import("./xiaobai-os-AdministratorApp-g3OOGp6O.js"),
   dice: () => import("./xiaobai-os-DiceApp-BtdZatuh.js"),
   "agent-api": () => import("./xiaobai-os-AgentApiApp-a2VDyImN.js"),
   "fourth-wall": () => import("./xiaobai-os-FourthWallApp-Dx7mmA7a.js"),
@@ -162,7 +162,7 @@ var Ne = Object.freeze({
   messages: () => import("./xiaobai-os-MessagesApp-D7riDpSG.js"),
   tasks: () => import("./xiaobai-os-TasksApp-eKIPBOws.js"),
   world: () => import("./xiaobai-os-WorldApp-DXuJ2M7k.js"),
-  learning: () => import("./xiaobai-os-LearningApp-DvXFLGzU.js")
+  learning: () => import("./xiaobai-os-LearningApp-CDe3vs91.js")
 }), me = Object.freeze(Ze.map((t) => {
   const i = Ne[t.id];
   if (!i) throw new Error(`missing_shell_app:${t.id}`);

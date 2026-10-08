@@ -13,7 +13,7 @@ export interface LearningClientState extends LearningClassView {
     teacher: { name: string; note: string } | null;
     companionSessionId: string | null;
     candidates: { name: string; aliases: string[] }[];
-    storage: 'unloaded' | 'ready' | 'unconfirmed' | 'conflict';
+    storage: 'unloaded' | 'invalid' | 'ready' | 'unconfirmed' | 'conflict';
     chatStorage: XiaobaiOsFileState;
     workbenchStorage: XiaobaiOsFileState;
     walletStorage: XiaobaiOsFileState;

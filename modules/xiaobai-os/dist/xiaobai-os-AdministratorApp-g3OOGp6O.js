@@ -1,13 +1,12 @@
 /* eslint-disable */
-import { B as _e, C as m, D as Q, G as J, I as se, O as Re, P as ve, Q as ne, S as G, U as r, _ as V, at as y, b as N, dt as Se, et as be, ft as s, g as re, h as ae, k as le, lt as i, o as Me, ot as ce, p as Pe, s as Be, st as he, tt as Oe, ut as H, w as o, x as a } from "./xiaobai-os-frame-bridge-CrPFvkI3.js";
-import { t as ze } from "./xiaobai-os-descriptor-DmDuv1pM.js";
+import { B as _e, C as m, D as Q, G as J, I as se, O as Re, P as ve, Q as ne, S as G, U as r, _ as V, at as y, b as N, dt as Se, et as be, ft as s, g as re, h as ae, k as le, lt as i, o as Me, ot as ce, p as Pe, s as Be, st as he, tt as ze, ut as H, w as o, x as a } from "./xiaobai-os-frame-bridge-CrPFvkI3.js";
+import { t as Oe } from "./xiaobai-os-descriptor-DmDuv1pM.js";
 import { t as we } from "./xiaobai-os-AppDialog-Ce_C5VGF.js";
 import { t as qe } from "./xiaobai-os-context-tokens-bfmDTbG3.js";
 import { t as xe } from "./xiaobai-os-MessageMarkdown-CFMtVfNA.js";
 var L = Object.freeze({
   inputBudget: 158e3,
   summaryTrigger: 128e3,
-  summaryOutput: 4e3,
   imageTokens: 6e3,
   pageSize: 20,
   windowSize: 60,
@@ -31,7 +30,7 @@ function De() {
 var l = Object.freeze({
   webSearch: "搜索网页",
   webFetch: "读取网页",
-  title: ze.name,
+  title: Oe.name,
   context: "上下文用量",
   clear: "清空聊天",
   clearTitle: "清空管理员聊天？",
@@ -309,7 +308,7 @@ var Le = [
     async function $(v, w = !1) {
       if (f.value) return;
       _ = Math.min(Math.max(_, v), e.row.totalChars);
-      const A = ++p, { turnId: P, role: O, revision: I } = e.row, T = e.chatIdentity, z = () => A === p && T === e.chatIdentity && I === e.row.revision && P === e.row.turnId;
+      const A = ++p, { turnId: P, role: z, revision: I } = e.row, T = e.chatIdentity, O = () => A === p && T === e.chatIdentity && I === e.row.revision && P === e.row.turnId;
       f.value = !0, c.value = "";
       try {
         let R = w ? e.row.text : k.value;
@@ -317,18 +316,18 @@ var Le = [
           const F = await e.bridge.request("administrator/text", {
             chatIdentity: T,
             turnId: P,
-            role: O,
+            role: z,
             revision: I,
             offset: R.length
           });
-          if (!z()) return;
+          if (!O()) return;
           R += F.result.text;
         }
         k.value = R;
       } catch (R) {
-        z() && (w && (k.value = e.row.text), c.value = K(R));
+        O() && (w && (k.value = e.row.text), c.value = K(R));
       } finally {
-        z() && (f.value = !1);
+        O() && (f.value = !1);
       }
     }
     return (v, w) => (r(), o("article", {
@@ -449,13 +448,13 @@ var Le = [
       _.value ? (_.value = null, v()) : b("close");
     }
     Be(C, w, () => x.value);
-    async function A(O) {
+    async function A(z) {
       p.value = !0, c.value = "", _.value = null;
       try {
         const I = await e.bridge.request("administrator/operations", {
           chatIdentity: e.chatIdentity,
           turnId: e.turnId,
-          offset: O
+          offset: z
         });
         h.value = I.result.items, f.value = I.result.total, k.value = I.result.offset;
       } catch (I) {
@@ -464,14 +463,14 @@ var Le = [
         p.value = !1;
       }
     }
-    async function P(O, I = 0) {
+    async function P(z, I = 0) {
       p.value = !0, c.value = "";
       try {
         _.value = (await e.bridge.request("administrator/evidence", {
           chatIdentity: e.chatIdentity,
-          reference: O,
+          reference: z,
           offset: I
-        })).result, M.value = O, v();
+        })).result, M.value = z, v();
       } catch (T) {
         c.value = K(T);
       } finally {
@@ -479,11 +478,11 @@ var Le = [
       }
     }
     return _e(() => {
-      const O = C.value.closest(".administrator-app"), I = () => {
-        x.value = getComputedStyle(O).getPropertyValue("--admin-details-docked").trim() !== "1";
+      const z = C.value.closest(".administrator-app"), I = () => {
+        x.value = getComputedStyle(z).getPropertyValue("--admin-details-docked").trim() !== "1";
       };
-      I(), $ = new ResizeObserver(I), $.observe(O), v(), A(0);
-    }), se(() => $?.disconnect()), (O, I) => (r(), o("section", {
+      I(), $ = new ResizeObserver(I), $.observe(z), v(), A(0);
+    }), se(() => $?.disconnect()), (z, I) => (r(), o("section", {
       ref_key: "layer",
       ref: C,
       class: "admin-details",
@@ -522,7 +521,7 @@ var Le = [
         type: "button",
         class: "admin-text-button",
         disabled: p.value,
-        onClick: (z) => P(T.id)
+        onClick: (O) => P(T.id)
       }, s(i(l).evidence), 9, kt)
     ]))), 128))]), a("nav", _t, [a("button", {
       type: "button",
@@ -545,10 +544,10 @@ var Le = [
 }, Mt = ["disabled"], Pt = ["disabled"], Bt = {
   key: 1,
   class: "admin-empty"
-}, Ot = {
+}, zt = {
   key: 2,
   class: "admin-live"
-}, zt = {
+}, Ot = {
   class: "admin-live-status",
   role: "status",
   "aria-live": "polite"
@@ -582,8 +581,8 @@ var Le = [
     initialState: {}
   },
   setup(n) {
-    const g = n, e = ce(structuredClone(he(g.initialState))), b = ce(e.value.page.rows), h = y(e.value.page.start), k = y(e.value.page.total), f = y(""), c = y(null), p = y(""), _ = y(""), M = y(!1), C = y(!1), x = y(null), $ = y(null), v = y(null), w = y(null), A = y(null), P = y(!0), O = y(!1), I = y(0);
-    let T = 0, z = null;
+    const g = n, e = ce(structuredClone(he(g.initialState))), b = ce(e.value.page.rows), h = y(e.value.page.start), k = y(e.value.page.total), f = y(""), c = y(null), p = y(""), _ = y(""), M = y(!1), C = y(!1), x = y(null), $ = y(null), v = y(null), w = y(null), A = y(null), P = y(!0), z = y(!1), I = y(0);
+    let T = 0, O = null;
     ne([f, c], () => {
       T++;
     }, { flush: "sync" });
@@ -615,14 +614,14 @@ var Le = [
     function oe(u) {
       const t = pe(), d = U.value, B = e.value;
       if (e.value = u, k.value = u.page.total, B.chatIdentity !== u.chatIdentity) {
-        W++, b.value = u.page.rows, h.value = u.page.start, f.value = "", c.value = null, $.value = null, z = null;
+        W++, b.value = u.page.rows, h.value = u.page.start, f.value = "", c.value = null, $.value = null, O = null;
         return;
       }
       if (u.page.revision !== B.page.revision) {
         const q = Math.max(L.pageSize, b.value.length), D = d && P.value ? Math.max(0, u.page.total - q) : Math.min(h.value, Math.max(0, u.page.total - q));
         D === u.page.start && q === L.pageSize ? (b.value = u.page.rows, h.value = D, P.value || ue(t)) : $e(D, q, t);
       }
-      z && u.submission?.id === z.id && u.submission.accepted && (z.revision === T && (f.value = "", c.value = null), z = null), P.value && U.value && ee();
+      O && u.submission?.id === O.id && u.submission.accepted && (O.revision === T && (f.value = "", c.value = null), O = null), P.value && U.value && ee();
     }
     async function $e(u, t, d) {
       const B = ++W, q = e.value.chatIdentity, D = e.value.page.revision, S = () => B === W && q === e.value.chatIdentity && D === e.value.page.revision;
@@ -668,11 +667,11 @@ var Le = [
       if (!(X.value || !f.value.trim() && !c.value)) {
         _.value = "send", p.value = "", P.value = !0;
         try {
-          z = {
+          O = {
             id: De(),
             revision: T
           }, oe((await ie("send", {
-            submissionId: z.id,
+            submissionId: O.id,
             text: f.value,
             ...c.value ? { image: he(c.value) } : {}
           })).state), await ye();
@@ -687,7 +686,7 @@ var Le = [
       if (!R.value) {
         _.value = u, p.value = "";
         try {
-          oe(await ie(u, t)), C.value = !1, x.value = null, u === "adopt" && (z = null), u === "clear" && (f.value = "", c.value = null, z = null, $.value = null);
+          oe(await ie(u, t)), C.value = !1, x.value = null, u === "adopt" && (O = null), u === "clear" && (f.value = "", c.value = null, O = null, $.value = null);
         } catch (d) {
           p.value = K(d);
         } finally {
@@ -717,7 +716,7 @@ var Le = [
       }
     }
     function Ae(u) {
-      u.key === "Enter" && !u.shiftKey && !O.value && !u.isComposing && (u.preventDefault(), R.value || fe());
+      u.key === "Enter" && !u.shiftKey && !z.value && !u.isComposing && (u.preventDefault(), R.value || fe());
     }
     function Te() {
       v.value && (P.value = v.value.scrollHeight - v.value.scrollTop - v.value.clientHeight < 48);
@@ -792,7 +791,7 @@ var Le = [
           "disabled",
           "unsaved-process"
         ]))), 128)),
-        F.value && U.value && !Ie.value ? (r(), o("div", Ot, [a("div", zt, [t[24] || (t[24] = a("span", { class: "admin-working-dot" }, null, -1)), Q(s(i(l).phases[F.value]), 1)])])) : m("", !0),
+        F.value && U.value && !Ie.value ? (r(), o("div", zt, [a("div", Ot, [t[24] || (t[24] = a("span", { class: "admin-working-dot" }, null, -1)), Q(s(i(l).phases[F.value]), 1)])])) : m("", !0),
         U.value ? m("", !0) : (r(), o("button", {
           key: 3,
           type: "button",
@@ -878,7 +877,7 @@ var Le = [
           }),
           a("path", { d: "m3 17 5-5 4 4 4-7 5 8" })
         ], -1)])], 8, Ut),
-        Oe(a("textarea", {
+        ze(a("textarea", {
           ref_key: "composer",
           ref: A,
           "onUpdate:modelValue": t[12] || (t[12] = (d) => f.value = d),
@@ -888,8 +887,8 @@ var Le = [
           "aria-label": i(l).placeholder,
           disabled: e.value.corrupted || R.value,
           onKeydown: Ae,
-          onCompositionstart: t[13] || (t[13] = (d) => O.value = !0),
-          onCompositionend: t[14] || (t[14] = (d) => O.value = !1)
+          onCompositionstart: t[13] || (t[13] = (d) => z.value = !0),
+          onCompositionend: t[14] || (t[14] = (d) => z.value = !1)
         }, null, 40, Wt), [[Pe, f.value]]),
         F.value ? (r(), o("button", {
           key: 0,

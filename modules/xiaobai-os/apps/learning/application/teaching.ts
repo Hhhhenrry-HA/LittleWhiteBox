@@ -60,6 +60,7 @@ export function createLearningTeaching(options: {
     repository: LearningRepository; gateway: XiaobaiOsAgentGateway;
     actor: LearningActor;
     memory: () => LearningConversationPort;
+    historyReady: () => boolean;
     current: () => LearningClassroom | null;
     capture: (name: string, chatIdentity: string) => Promise<LearningTeacherContext>;
     createId?: () => string; now?: () => string;
@@ -82,7 +83,9 @@ export function createLearningTeaching(options: {
     let historySummary = '';
     let summaryReferences: string[] = [];
     let summaryScope: LearningScope = { kind: 'public' };
-    let loading: Promise<void> | null = null;
+    // Native coursework can produce a local tail while the stored prefix awaits confirmation.
+    let historyLoaded = false;
+    let loading: Promise<boolean> | null = null;
     // Only this exact commit can publish pending text and enable the corresponding activity.
     let awaitingSave: { commitId: string; turn: LearningTurn; presentation: LearningDialogue['presentation']; result: Extract<LearningTeachingResult, { status: 'finished' }>;
         request: TeachingRequest; publication: ReturnType<typeof createLearningPublication> } | null = null;
@@ -103,7 +106,7 @@ export function createLearningTeaching(options: {
     function reset() {
         for (const run of active.values()) { run.controller.abort(); }
         active.clear(); turns = []; dialogueKey = ''; removedTurns = 0; historySummary = ''; awaitingSave = null;
-        summaryReviews.clear(); notificationTurns.clear(); summaryReferences = []; summaryScope = { kind: 'public' }; loading = null;
+        summaryReviews.clear(); notificationTurns.clear(); summaryReferences = []; summaryScope = { kind: 'public' }; historyLoaded = false; loading = null;
         sources = createLearningSourceRegistry(); cache = createLearningResearchCache(); requests.clear();
     }
     function settle(turn: LearningTurn, status: LearningDialogue['status'], message = '') {
@@ -111,23 +114,34 @@ export function createLearningTeaching(options: {
     }
     async function hydrate() {
         const classroom = options.current();
-        if (!classroom) { reset(); return; }
+        if (!classroom) { reset(); return true; }
         const key = JSON.stringify(classroom);
-        if (key === dialogueKey) { if (loading) { await loading; } return; }
-        reset(); dialogueKey = key;
+        if (key !== dialogueKey) { reset(); dialogueKey = key; }
+        if (historyLoaded) { return true; }
+        if (loading) { return loading; }
+        // An uncertain store exposes its old cache, not the history to resume after confirmation.
+        // Keep live turns, but never mark that cache as a completed restoration after a reset.
+        if (!options.historyReady()) { return false; }
         const restore = options.memory().read().then(memory => {
-            if (dialogueKey !== key || JSON.stringify(options.current()) !== key) { return; }
-            historySummary = memory.summary; summaryReferences = memory.summaryReferences; summaryScope = memory.summaryScope; removedTurns = memory.archivedCount;
-            turns = memory.exchanges.flatMap(exchange => {
+            if (loading !== restore || dialogueKey !== key || JSON.stringify(options.current()) !== key || !options.historyReady()) { return false; }
+            // Nothing in this local tail has been uploaded before the prefix is restored.
+            // Prepend confirmed history once, preserving new replies, targets and retry metadata.
+            historySummary = [memory.summary, historySummary].filter(Boolean).join('\n\n');
+            summaryReferences = [...new Set([...memory.summaryReferences, ...summaryReferences])];
+            summaryScope = combineLearningScope(memory.summaryScope, summaryScope); removedTurns += memory.archivedCount;
+            const restored = memory.exchanges.flatMap(exchange => {
                 const turn: LearningTurn = { id: exchange.id, user: exchange.user, teacher: exchange.reply,
                     references: exchange.references, scope: exchange.scope, purpose: exchange.replyTo ? 'summary-review' : 'talk', status: 'finished', message: '',
                     messages: [{ role: 'assistant', content: exchange.reply }] };
                 if (exchange.replyTo) { summaryReviews.set(exchange.replyTo, turn); }
                 return exchange.summarized ? [] : [turn];
             });
+            turns = [...restored, ...turns];
+            historyLoaded = true;
+            return true;
         });
         loading = restore;
-        try { await restore; } catch (error) { if (dialogueKey === key) { dialogueKey = ''; } throw error; }
+        try { return await restore; }
         finally { if (loading === restore) { loading = null; } }
     }
     function memory(): LearningConversationMemory {
@@ -147,6 +161,13 @@ export function createLearningTeaching(options: {
             const saveGuard = turn.purpose === 'task-result'
                 ? () => key === dialogueKey && key === JSON.stringify(options.current()) && turns.includes(turn) && turn.status === 'finished'
                 : guard;
+            if (!guard()) { return false; }
+            // Learning facts were saved independently. Never replace conversation storage
+            // using only the new tail, or submit it over another owner's uncertain write.
+            if (!await hydrate() || !options.historyReady()) {
+                if (guard()) { turn.message = copy.historySaveFailed; turn.notice = 'history-save'; }
+                return false;
+            }
             if (!guard()) { return false; }
             const saved = await options.memory().save(memory(), saveGuard);
             if (guard() && saved.status !== 'confirmed' && saved.status !== 'unchanged') { turn.message = copy.historySaveFailed; turn.notice = 'history-save'; }
@@ -200,6 +221,7 @@ export function createLearningTeaching(options: {
             // An explicit clear retires the local history too. While its receipt is unknown,
             // later work must not reconstruct a save candidate from the pre-clear exchanges.
             dialogueKey = JSON.stringify(options.current());
+            historyLoaded = true;
         },
         async recoverConfirmed() {
             const saved = options.repository.snapshot();
@@ -218,6 +240,7 @@ export function createLearningTeaching(options: {
             return { result: recovered.result, request: recovered.request };
         },
         async verifyHistory() {
+            if (!await hydrate() || !options.historyReady()) { return; }
             const key = dialogueKey;
             const saved = await options.memory().read();
             if (key !== dialogueKey || key !== JSON.stringify(options.current())) { return; }
@@ -240,7 +263,7 @@ export function createLearningTeaching(options: {
         async run(input: TeachingRequest, retryId?: string): Promise<LearningTeachingResult> {
             const conversation = isLearningConversation(input.action);
             requireLearning(options.actor === 'workbench' || conversation, 'action', 'The companion can request workbench operations, not perform teaching tasks');
-            await hydrate();
+            if (!await hydrate() && conversation) { return { status: 'unconfirmed' }; }
             const preparationTask = isLearningPreparation(input.action);
             const lane = conversation ? 'conversation' : preparationTask ? 'preparation' : 'work';
             if (active.has(lane)) { return { status: 'busy' }; }

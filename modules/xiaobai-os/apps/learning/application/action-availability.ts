@@ -4,7 +4,7 @@ type Activity = Pick<LearningClientState, 'busy' | 'chatBusy' | 'workbenchBusy' 
 export function learningActionLane(name: string, target: unknown): string {
     return name === 'talk' || name === 'retry-chat' ? target === 'workbench' ? 'workbench-talk' : 'talk' : name;
 }
-const contextActions = new Set(['language', 'teacher', 'forget-conversation', 'resume', 'rate', 'seek', 'verify-teacher', 'adopt-teacher', 'share-course']);
+const contextActions = new Set(['language', 'teacher', 'forget-conversation', 'resume', 'rate', 'seek', 'verify-teacher', 'adopt-teacher', 'share-course', 'reset-learning']);
 const preparationConcurrentActions = new Set(['submit', 'bookmark', 'say', 'play', 'save-note', 'delete-note']);
 const immediateActions = new Set(['approve-operation', 'records', 'export', 'pause', 'stop', 'cancel', 'cancel-chat', 'cancel-companion', 'cancel-preparation',
     'tts-settings', 'research-settings', 'dismiss-source']);
@@ -20,6 +20,7 @@ export function learningActionBusy(name: string, state: Activity): boolean {
 }
 
 export function learningActionAvailable(name: string, state: Activity & Pick<LearningClientState, 'storage' | 'chatStorage' | 'workbenchStorage'>): boolean {
+    if (name === 'reset-learning') { return !learningActionBusy(name, state) && state.storage === 'invalid'; }
     if (name === 'talk' || name === 'workbench-talk') {
         return !learningActionBusy(name, state) && (name === 'talk' ? state.chatStorage : state.workbenchStorage) === 'ready';
     }

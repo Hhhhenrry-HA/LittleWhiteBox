@@ -25,7 +25,7 @@ async function setup(mode) {
         createId: () => { if (mode === 'save') { throw fault(); } return 'saved-1'; },
     });
     await repository.read();
-    const teaching = createLearningTeaching({ actor: 'workbench', memory: (() => { const port = learningMemory(); return () => port; })(), repository, current: () => classroom, onProgress: value => progress.push(value),
+    const teaching = createLearningTeaching({ actor: 'workbench', memory: (() => { const port = learningMemory(); return () => port; })(), historyReady: () => true, repository, current: () => classroom, onProgress: value => progress.push(value),
         capture: async () => { if (mode === 'context') { throw fault(); } return context; },
         gateway: {
             loadConfig: async () => { if (mode === 'config') { throw fault(); } return {}; },

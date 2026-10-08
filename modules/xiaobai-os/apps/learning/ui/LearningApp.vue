@@ -37,10 +37,13 @@ const copy = {
 };
 const { state, pending, writable, canChat, canRequest, localMessage, needsRefresh, request: sendRequest } = useLearningState(props);
 const uiSession = provideLearningUiSession(state);
+const restarting = ref(false);
 async function request(name: string, input: Record<string, unknown> = {}, discardConfirmed = false) {
     if (!discardConfirmed && learningContextNeedsConfirmation(uiSession, state.value, name, input)) {
         askConfirm(name, input, name === 'teacher' ? LEARNING_DISCARD_COPY.companion : LEARNING_DISCARD_COPY.context); return;
     }
+    if (name === 'reset-learning') { restarting.value = true; }
+    else if (name === 'cancel') { restarting.value = false; }
     return sendRequest(name, input);
 }
 type Page = 'home' | 'books' | 'materials' | 'harvest' | 'settings' | 'profile';
@@ -260,6 +263,19 @@ async function go(next: Page, returning = false) {
     }
 }
 function openProfile() { uiSession.setup.step = 0; void go('profile'); }
+// A reset may finish through receipt recovery. Navigate only after the confirmed state is usable.
+watch([state, pending], ([next, sending]) => {
+    if (!restarting.value || sending || next.busy || next.storage !== 'ready') { return; }
+    restarting.value = false;
+    if (next.profile) { return; } // The file was repaired before reset; keep its current workspace.
+    uiSession.settings.submitted = null;
+    uiSession.settings.open = true;
+    uiSession.setup.step = next.teacher ? 2 : 0;
+    trail.length = 0;
+    scrolls.profile = 0;
+    void go('profile', true);
+});
+watch([() => state.value.chatIdentity, () => state.value.language], () => { restarting.value = false; });
 async function openReview() {
     await go('home');
     if (scroller.value) { scroller.value.scrollTop = 0; }
@@ -332,12 +348,13 @@ async function exportData() {
             <details ref="menu" class="learning-menu" @toggle="menuOpen = !!menu?.open" @keydown.esc.stop.prevent="menu!.open = false"><summary aria-label="学习资料与设置"><LearningIcon name="more" /></summary><nav aria-label="学习资料与设置"><button v-for="[id, label] in ([['books', '语法本与生词本'], ['materials', '课件与笔记'], ['harvest', '我的收获'], ['settings', '设置']] as const)" :key="id" type="button" @click="go(id)">{{ label }}</button></nav></details>
         </header>
         <div v-if="localMessage || !state.busy && (state.message || state.storage !== 'ready')" class="learning-notice" role="status" aria-live="polite">
-            {{ localMessage || state.message || (state.storage === 'unconfirmed' ? LEARNING_STORAGE_COPY.unconfirmed : state.storage === 'conflict' ? LEARNING_STORAGE_COPY.conflict : LEARNING_STORAGE_COPY.unloaded) }}
+            {{ localMessage || state.message || (state.storage === 'unconfirmed' ? LEARNING_STORAGE_COPY.unconfirmed : state.storage === 'conflict' ? LEARNING_STORAGE_COPY.conflict : state.storage === 'invalid' ? LEARNING_STORAGE_COPY.invalid : LEARNING_STORAGE_COPY.unloaded) }}
             <div class="learning-row">
                 <button v-if="state.storage === 'unconfirmed' || state.storage === 'conflict'" type="button" :disabled="pending" @click="request('verify')">{{ copy.verify }}</button>
                 <button v-if="state.storage === 'unconfirmed'" type="button" :disabled="pending" @click="request('retry-save')">{{ copy.retry }}</button>
                 <button v-if="state.storage === 'conflict'" type="button" :disabled="pending" @click="askConfirm('adopt-server', {}, copy.adoptWarning)">{{ copy.adopt }}</button>
-                <button v-if="state.storage === 'unloaded' || needsRefresh" type="button" :disabled="pending" @click="request('read')">{{ LEARNING_REQUEST_COPY.refresh }}</button>
+                <button v-if="state.storage === 'invalid'" type="button" class="learning-primary" :disabled="!canRequest('reset-learning')" @click="askConfirm('reset-learning', {}, LEARNING_DISCARD_COPY.resetLearning)">{{ LEARNING_CONFIRM_COPY['reset-learning'].accept }}</button>
+                <button v-else-if="state.storage === 'unloaded' || needsRefresh" type="button" :disabled="pending" @click="request('read')">{{ LEARNING_REQUEST_COPY.refresh }}</button>
             </div>
         </div>
         <div v-if="['unconfirmed', 'conflict', 'failed'].includes(state.chatStorage)" class="learning-notice" role="status" aria-live="polite">

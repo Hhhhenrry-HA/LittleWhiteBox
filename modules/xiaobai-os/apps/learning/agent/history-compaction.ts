@@ -4,7 +4,6 @@ import { isLearningContextOverflow, learningTurnMessages, type LearningTurn } fr
 
 // Same proactive trigger as ebook, not a claimed provider capacity or a request rejection limit.
 export const LEARNING_SUMMARY_TRIGGER_TOKENS = 158_000;
-const SUMMARY_MAX_TOKENS = 10_000; // Same summary allowance as Assistant, bounded by the active API setting.
 export const LEARNING_PRESERVED_TURNS = 2;
 
 /** Independent summary generation; the calling teacher loop measures replay savings before adoption. */
@@ -32,10 +31,8 @@ export async function summariseLearningHistory(options: {
         try {
             const agent = await options.openSession();
             assertCurrent();
-            const maxTokens = Number(agent.providerConfig.maxTokens);
             const result = await agent.run({ systemPrompt: options.systemPrompt,
                 messages: [{ role: 'user', content: safePromptJson(source) }], tools: [], temperature: 0.2,
-                maxTokens: Number.isFinite(maxTokens) && maxTokens > 0 ? Math.min(maxTokens, SUMMARY_MAX_TOKENS) : SUMMARY_MAX_TOKENS,
                 reasoning: { mode: 'inherit', output: 'hide' }, signal: options.signal });
             assertCurrent();
             const text = typeof result.text === 'string' ? result.text.trim() : '';

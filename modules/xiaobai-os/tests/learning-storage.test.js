@@ -14,7 +14,7 @@ const data = (...profiles) => ({ profiles });
 
 // HTTP-boundary fault injection: exercise the production UTF-8 upload/no-store read adapter.
 function harness() {
-    const state = { file: null, uploads: [], requests: [], read: null, upload: null };
+    const state = { file: null, rawText: null, uploads: [], requests: [], read: null, upload: null };
     const request = async (url, options) => {
         state.requests.push({ url, options });
         if (options.method === 'POST') {
@@ -24,11 +24,13 @@ function harness() {
             state.uploads.push(document);
             if (state.upload) { return state.upload(document); }
             state.file = structuredClone(document);
+            state.rawText = null;
             return new Response('{}', { status: 200 });
         }
         assert.equal(options.cache, 'no-store');
         assert.match(url, /^\/user\/files\/LittleWhiteBox_Learning.json\?v=/);
         if (state.read) { return state.read(); }
+        if (state.rawText !== null) { return new Response(state.rawText); }
         return new Response(state.file === null ? '' : JSON.stringify(state.file), { status: state.file === null ? 404 : 200 });
     };
     let id = 0;
@@ -80,6 +82,154 @@ test('stored documents validate facts, not prompt budgets, and reject unsupporte
         { ...document, data: data({ ...profile(), language: '../chat' }) },
         { ...document, data: data({ ...profile(), goal: { ...profile().goal, targetDate: '2026-02-30' } }) },
     ]) { assert.throws(() => parseLearningDocument(bad)); }
+});
+
+test('explicit reset replaces an invalid learning file with a writable empty document', async () => {
+    const { state, repository, make } = harness();
+    state.file = { schemaVersion: 99 };
+    await assert.rejects(repository.read(), { code: 'learning_file_invalid' });
+    assert.equal(repository.snapshot().status, 'invalid');
+    assert.equal(state.uploads.length, 0);
+    const result = await repository.resetInvalid(() => true);
+    assert.equal(result.status, 'confirmed');
+    assert.deepEqual((await make().read()).document.data, { profiles: [] });
+    assert.equal(repository.snapshot().status, 'ready');
+    assert.equal((await repository.save(result.document, data(profile()), () => true)).status, 'confirmed');
+});
+
+test('malformed JSON and truncated files expose the same explicit reset as invalid learning documents', async () => {
+    for (const rawText of ['{', '']) {
+        const { state, repository, make } = harness();
+        state.rawText = rawText;
+        await assert.rejects(repository.read(), { code: 'learning_file_invalid' });
+        assert.equal(repository.snapshot().status, 'invalid');
+        assert.equal(state.uploads.length, 0);
+        assert.equal((await repository.resetInvalid(() => true)).status, 'confirmed');
+        assert.deepEqual((await make().read()).document.data, { profiles: [] });
+    }
+});
+
+test('reset does not erase a repaired file, write after cancellation, or mistake a failed read for invalid data', async () => {
+    for (const scenario of ['repaired', 'cancelled', 'read-failed']) {
+        const { state, repository } = harness();
+        state.file = { schemaVersion: 99 };
+        await assert.rejects(repository.read());
+        if (scenario === 'repaired') { state.file = { schemaVersion: 2, revision: 2, commitId: 'repaired', data: data(profile()) }; }
+        if (scenario === 'read-failed') {
+            state.read = () => new Response('', { status: 503 });
+            await assert.rejects(repository.resetInvalid(() => true), { code: 'learning_read_failed' });
+        } else {
+            assert.equal((await repository.resetInvalid(() => scenario !== 'cancelled')).status, 'cancelled');
+        }
+        assert.equal(state.uploads.length, 0);
+        if (scenario === 'repaired') { assert.deepEqual(repository.snapshot().document, state.file); }
+    }
+});
+
+test('an uncertain reset can be verified or retried without overwriting a changed file', async () => {
+    for (const recovery of ['verify', 'retry', 'conflict']) {
+        const { state, repository } = harness();
+        state.file = { schemaVersion: 99 };
+        await assert.rejects(repository.read());
+        state.upload = () => { throw new TypeError('lost receipt'); };
+        const result = await repository.resetInvalid(() => true);
+        assert.equal(result.status, 'unconfirmed');
+        assert.equal(repository.snapshot().status, 'unconfirmed');
+        const candidate = state.uploads[0];
+        if (recovery === 'verify') {
+            state.file = candidate;
+            assert.equal((await repository.verify()).status, 'confirmed');
+            assert.equal(state.uploads.length, 1);
+        } else if (recovery === 'retry') {
+            state.upload = null;
+            assert.equal((await repository.retry(() => true)).status, 'confirmed');
+            assert.deepEqual(state.uploads[1], candidate);
+        } else {
+            state.file = { schemaVersion: 100 };
+            assert.equal((await repository.retry(() => true)).status, 'conflict');
+            assert.equal(state.uploads.length, 1);
+            assert.equal(repository.snapshot().status, 'invalid');
+            state.upload = null;
+            assert.equal((await repository.resetInvalid(() => true)).status, 'confirmed');
+            assert.deepEqual(state.uploads[1], candidate);
+        }
+    }
+});
+
+test('a malformed reset conflict is recoverable, but offline or repaired files are never overwritten', async () => {
+    for (const recovery of ['reset', 'repaired', 'offline', 'late-confirmation']) {
+        const { state, repository } = harness();
+        state.rawText = '{';
+        await assert.rejects(repository.read());
+        state.upload = () => { throw new TypeError('lost receipt'); };
+        assert.equal((await repository.resetInvalid(() => true)).status, 'unconfirmed');
+        state.rawText = '';
+        assert.equal((await repository.verify()).status, 'conflict');
+        assert.equal(repository.snapshot().status, 'invalid');
+        const candidate = state.uploads[0];
+        state.upload = null;
+        if (recovery === 'offline') {
+            state.read = () => new Response('', { status: 503 });
+            await assert.rejects(repository.resetInvalid(() => true), { code: 'learning_read_failed' });
+            assert.equal(state.uploads.length, 1);
+        } else if (recovery === 'repaired' || recovery === 'late-confirmation') {
+            state.rawText = null;
+            state.file = recovery === 'repaired'
+                ? { schemaVersion: 2, revision: 3, commitId: 'repaired', data: data(profile()) } : candidate;
+            assert.equal((await repository.resetInvalid(() => true)).status, recovery === 'repaired' ? 'cancelled' : 'confirmed');
+            assert.deepEqual(repository.snapshot().document, state.file);
+            assert.equal(state.uploads.length, 1);
+        } else {
+            assert.equal((await repository.resetInvalid(() => true)).status, 'confirmed');
+            assert.deepEqual(state.file, candidate);
+            assert.equal(state.uploads.length, 2);
+        }
+    }
+});
+
+test('reset abandons an ordinary uncertain edit only while the server file remains invalid', async () => {
+    for (const recovery of ['reset', 'reset-receipt-lost', 'repaired', 'late-confirmation', 'offline']) {
+        const { state, repository } = harness();
+        const receipts = []; const resets = [];
+        const initial = await repository.save(null, data(profile()), () => true);
+        state.upload = () => { throw new TypeError('lost receipt'); };
+        await repository.save(initial.document, data(profile('ja')), () => true, receipt => receipts.push(receipt));
+        const edit = state.uploads.at(-1);
+        state.rawText = '{';
+        assert.equal((await repository.verify()).status, 'conflict');
+        assert.equal(repository.snapshot().status, 'invalid');
+        const writes = state.uploads.length;
+        assert.equal((await repository.retry(() => true)).status, 'conflict');
+        assert.equal(state.uploads.length, writes);
+        state.upload = null;
+        if (recovery === 'offline') {
+            state.read = () => new Response('', { status: 503 });
+            await assert.rejects(repository.resetInvalid(() => true), { code: 'learning_read_failed' });
+            assert.equal(state.uploads.length, writes);
+        } else if (recovery === 'repaired' || recovery === 'late-confirmation') {
+            state.rawText = null;
+            state.file = recovery === 'repaired' ? initial.document : edit;
+            const result = await repository.resetInvalid(() => true, receipt => resets.push(receipt));
+            assert.equal(result.status, recovery === 'repaired' ? 'cancelled' : 'confirmed');
+            assert.deepEqual(repository.snapshot().document, state.file);
+            assert.equal(state.uploads.length, writes);
+            assert.deepEqual(resets, []);
+        } else {
+            if (recovery === 'reset-receipt-lost') { state.upload = () => { throw new TypeError('reset receipt lost'); }; }
+            await repository.resetInvalid(() => true, receipt => resets.push(receipt));
+            const reset = state.uploads.at(-1);
+            assert.notEqual(reset.commitId, edit.commitId);
+            assert.deepEqual(reset.data, { profiles: [] });
+            if (recovery === 'reset-receipt-lost') {
+                state.rawText = null; state.file = reset;
+                assert.equal((await repository.verify()).status, 'confirmed');
+            }
+            assert.equal(repository.snapshot().status, 'ready');
+            assert.equal(resets.length, 1);
+            assert.deepEqual(repository.snapshot().document.data, { profiles: [] });
+        }
+        assert.equal(receipts.length, recovery === 'late-confirmation' ? 1 : 0);
+    }
 });
 
 test('confirmed uploads and ordinary reads reuse the session; only explicit refresh downloads again', async () => {

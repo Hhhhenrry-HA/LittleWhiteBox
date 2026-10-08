@@ -21625,7 +21625,7 @@ async function YR(e, t = {}) {
     }],
     tools: [],
     temperature: void 0,
-    maxTokens: 16,
+    maxTokens: 1600,
     reasoning: e.reasoning,
     signal: t.signal
   }), r = globalThis.performance?.now?.() ?? Date.now();
