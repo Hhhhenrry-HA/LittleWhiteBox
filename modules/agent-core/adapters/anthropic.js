@@ -484,7 +484,7 @@ export class AnthropicAdapter {
                 .filter((item) => item.text)
             : [];
 
-        const finishReason = requireResponseCompletion('anthropic', response.stop_reason);
+        const finishReason = requireResponseCompletion('anthropic', response.stop_reason, false, text);
         const usage = response.usage;
         console.info(ANTHROPIC_USAGE_LOG, {
             messageId: response.id,

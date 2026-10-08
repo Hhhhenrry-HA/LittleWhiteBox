@@ -1277,6 +1277,50 @@ test('OpenAI Responses streams interleaved function arguments with stable call I
     assert.deepEqual(calls.map(call => call.arguments), ['', ''], 'SDK event objects remain untouched');
 });
 
+for (const output of ['show', 'hide']) {
+    test(`OpenAI Responses reports real reasoning activity independently of ${output} summary visibility`, async () => {
+        const adapter = new OpenAIResponsesAdapter({ apiKey: 'test-key', model: 'gpt-5.6' });
+        const snapshots = [];
+        const reasoning = { type: 'reasoning', id: 'r1', summary: [] };
+        const secondReasoning = { ...reasoning, id: 'r2' };
+        const message = { type: 'message', id: 'm1', role: 'assistant', status: 'in_progress', content: [] };
+        const part = { type: 'output_text', text: '', annotations: [] };
+        const response = { id: 'resp1', object: 'response', status: 'in_progress', model: 'gpt-5.6', output: [] };
+        // Exercise the real SDK's SSE dispatch, including opaque reasoning with no summary.
+        const events = [
+            { type: 'response.created', response },
+            { type: 'response.output_item.added', output_index: 0, item: reasoning },
+            { type: 'response.output_item.done', output_index: 0, item: reasoning },
+            { type: 'response.output_item.added', output_index: 1, item: message },
+            { type: 'response.content_part.added', output_index: 1, content_index: 0, part },
+            { type: 'response.output_text.delta', output_index: 1, content_index: 0, delta: 'Answer.' },
+            { type: 'response.output_item.added', output_index: 2, item: secondReasoning },
+            { type: 'response.reasoning_summary_part.added', output_index: 2, summary_index: 0, part: { type: 'summary_text', text: '' } },
+            { type: 'response.reasoning_summary_text.delta', output_index: 2, summary_index: 0, delta: 'Check the answer.' },
+            { type: 'response.output_text.delta', output_index: 1, content_index: 0, delta: ' Confirmed.' },
+            { type: 'response.output_item.done', output_index: 2, item: secondReasoning },
+            { type: 'response.completed', response: { ...response, status: 'completed', output: [reasoning,
+                { ...message, status: 'completed', content: [{ ...part, text: 'Answer. Confirmed.' }] }, secondReasoning] } },
+        ];
+        adapter.client = new OpenAI({ apiKey: 'fixture', maxRetries: 0, fetch: async (_url, options) => {
+            const body = JSON.parse(options.body);
+            assert.equal(body.reasoning.summary, output === 'show' ? 'auto' : undefined);
+            return new Response(events.map((event, sequence_number) => `event: ${event.type}\ndata: ${JSON.stringify({ ...event, sequence_number })}\n\n`).join(''),
+                { headers: { 'content-type': 'text/event-stream' } });
+        } });
+        const result = await adapter.chat({ messages: [{ role: 'user', content: 'Check' }], reasoning: { mode: 'on', effort: 'low', output },
+            onStreamProgress: snapshot => snapshots.push(snapshot) });
+        assert.deepEqual(snapshots.map(snapshot => snapshot.activity), ['thinking', 'waiting', 'replying', 'thinking', 'thinking', 'replying']);
+        assert.equal(snapshots[0].text, '');
+        assert.deepEqual(snapshots[0].thoughts, []);
+        assert.equal(snapshots[3].text, 'Answer.');
+        assert.equal(snapshots[4].thoughts.length, output === 'show' ? 1 : 0);
+        assert.equal(snapshots.at(-1).text, 'Answer. Confirmed.');
+        assert.equal(result.text, 'Answer. Confirmed.');
+        assert.equal(Object.hasOwn(result.providerPayload, 'activity'), false);
+    });
+}
+
 test('OpenAI Responses strips SDK parsed projections before storing and replaying tool output', async () => {
     const adapter = new OpenAIResponsesAdapter({
         apiKey: 'test-key',

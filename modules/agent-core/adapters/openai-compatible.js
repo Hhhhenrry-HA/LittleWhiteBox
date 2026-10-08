@@ -1147,7 +1147,7 @@ export class OpenAICompatibleAdapter {
             }, effectiveReasoning);
         });
 
-        requireResponseCompletion('openai', lastFinishReason, !!assistantSnapshot.refusal);
+        requireResponseCompletion('openai', lastFinishReason, !!assistantSnapshot.refusal, extractThinkTaggedContent(getStreamedSnapshotText(assistantSnapshot)).cleaned);
         assertSignedToolCallsIntact(assistantSnapshot);
         const providerPayload = buildProviderPayload(assistantSnapshot);
         const standardToolCalls = getStreamedSnapshotToolCalls(assistantSnapshot);
@@ -1238,7 +1238,7 @@ export class OpenAICompatibleAdapter {
                     ...(!standardToolCalls.length && progressToolCalls.length ? { toolCallDraft: true } : {}),
                 }, effectiveReasoning);
             }
-            requireResponseCompletion('openai', lastFinishReason, !!assistantSnapshot.refusal);
+            requireResponseCompletion('openai', lastFinishReason, !!assistantSnapshot.refusal, extractThinkTaggedContent(getStreamedSnapshotText(assistantSnapshot)).cleaned);
             const finalCompletion = typeof stream.finalChatCompletion === 'function'
                 ? await stream.finalChatCompletion()
                 : null;
@@ -1280,7 +1280,7 @@ export class OpenAICompatibleAdapter {
 
         const choice = response.choices?.[0] || {};
         const message = choice.message || {};
-        requireResponseCompletion('openai', choice.finish_reason, !!message.refusal);
+        requireResponseCompletion('openai', choice.finish_reason, !!message.refusal, extractThinkTaggedContent(flattenTextContent(message.content)).cleaned);
         assertSignedToolCallsIntact(message);
         const thoughts = extractThoughtsFromMessage(message, choice);
         const standardToolCalls = buildToolCallResultsFromOpenAI(message.tool_calls || []);
