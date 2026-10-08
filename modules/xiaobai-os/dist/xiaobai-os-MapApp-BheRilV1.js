@@ -1,7 +1,7 @@
 /* eslint-disable */
-import { B as G, C as c, D as U, I as K, O as $, Q as L, S as Y, U as r, _ as W, at as P, b as A, et as M, ft as d, k as F, lt as e, st as X, ut as J, w as b, x as i } from "./xiaobai-os-frame-bridge-CrPFvkI3.js";
-import { _ as q, g as C, t as Z, v as S } from "./xiaobai-os-MapBrowser-BO7wwQ5c.js";
-import { t as x } from "./xiaobai-os-AppDialog-Ce_C5VGF.js";
+import { B as r, E as F, L as Z, N as G, T as $, Y as K, Z as M, _ as A, at as Q, b as c, ct as e, dt as d, lt as J, m as W, nt as P, v as i, w as V, x as b, y as H } from "./xiaobai-os-app-navigation-DbF27MCy.js";
+import { _ as T, g as C, t as X, v as S } from "./xiaobai-os-MapBrowser-CzT6eKeq.js";
+import { t as x } from "./xiaobai-os-AppDialog-CirfCMYM.js";
 var _ = { class: "map-dialog-header" }, ee = { key: 0 }, te = { class: "map-settings-content" }, ae = { class: "map-auto-setting" }, ne = ["aria-checked", "disabled"], se = { class: "map-auto-setting" }, ie = [
   "aria-checked",
   "aria-label",
@@ -35,7 +35,7 @@ var _ = { class: "map-dialog-header" }, ee = { key: 0 }, te = { class: "map-sett
     "refresh"
   ],
   setup(t) {
-    return (a, s) => (r(), Y(x, {
+    return (a, s) => (r(), H(x, {
       class: "map-dialog map-settings",
       "aria-labelledby": "map-settings-title",
       onClose: s[6] || (s[6] = (l) => a.$emit("close"))
@@ -62,12 +62,12 @@ var _ = { class: "map-dialog-header" }, ee = { key: 0 }, te = { class: "map-sett
             disabled: t.autoToggleBusy,
             onClick: s[1] || (s[1] = (l) => a.$emit("setAuto", !t.autoMaintenance))
           }, [...s[8] || (s[8] = [i("span", null, null, -1)])], 8, ne)]),
-          i("section", se, [i("div", null, [i("h3", null, d(e(q).label), 1), i("p", null, d(e(q).description), 1)]), i("button", {
+          i("section", se, [i("div", null, [i("h3", null, d(e(T).label), 1), i("p", null, d(e(T).description), 1)]), i("button", {
             type: "button",
             class: "map-switch",
             role: "switch",
             "aria-checked": t.projectToChat,
-            "aria-label": e(q).label,
+            "aria-label": e(T).label,
             disabled: t.autoToggleBusy,
             onClick: s[2] || (s[2] = (l) => a.$emit("setProjection", !t.projectToChat))
           }, [...s[10] || (s[10] = [i("span", null, null, -1)])], 8, ie)]),
@@ -101,7 +101,7 @@ var _ = { class: "map-dialog-header" }, ee = { key: 0 }, te = { class: "map-sett
             class: "map-sync-button",
             disabled: t.busy || t.refreshDisabled,
             onClick: s[5] || (s[5] = (l) => a.$emit("refresh"))
-          }, [$(S, { name: "refresh" }), s[14] || (s[14] = U("重新加载地图", -1))], 8, ve),
+          }, [$(S, { name: "refresh" }), s[14] || (s[14] = V("重新加载地图", -1))], 8, ve),
           s[15] || (s[15] = i("p", { class: "map-setting-note" }, "只加载已保存的地图，不会重新绘制。绘制或更新时可以离开此页面。", -1))
         ])
       ]),
@@ -116,10 +116,10 @@ function z(t) {
   return t.maintenanceStatus === "maintaining" || t.maintenanceStatus === "rebuilding";
 }
 function fe(t) {
-  const a = P(structuredClone(X(t.initialState))), s = P(null), l = P(""), m = P(!1);
-  let p = !1, f = 0, k = 0, I = () => {
+  const a = P(structuredClone(Q(t.initialState))), s = P(null), l = P(""), m = P(!1);
+  let p = !1, f = 0, k = 0, w = () => {
   };
-  const B = A(() => a.value.status === "unconfirmed" || a.value.writeState === "unconfirmed"), y = A(() => s.value !== null || ["loading", "saving"].includes(a.value.status) || ["maintaining", "rebuilding"].includes(a.value.maintenanceStatus || "")), j = A(() => y.value ? "正在更新地图，请稍候" : B.value ? "请先检查上一次是否保存成功" : a.value.status === "conflict" ? "存档有变化，请先选择要保留的版本" : a.value.status !== "ready" ? a.value.message || "地图暂时不可更新" : a.value.chatIdentity ? "" : "请先打开一个聊天"), T = A(() => a.value.maintenanceStatus === "rebuilding" || s.value === "rebuild" ? "正在绘制世界…" : a.value.maintenanceStatus === "maintaining" || s.value === "maintain" ? "正在更新地图…" : s.value === "confirm" ? "正在检查保存…" : y.value ? "请稍候…" : ""), V = A(() => a.value.message || l.value), D = A(() => a.value.message ? [
+  const B = A(() => a.value.status === "unconfirmed" || a.value.writeState === "unconfirmed"), y = A(() => s.value !== null || ["loading", "saving"].includes(a.value.status) || ["maintaining", "rebuilding"].includes(a.value.maintenanceStatus || "")), j = A(() => y.value ? "正在更新地图，请稍候" : B.value ? "请先检查上一次是否保存成功" : a.value.status === "conflict" ? "存档有变化，请先选择要保留的版本" : a.value.status !== "ready" ? a.value.message || "地图暂时不可更新" : a.value.chatIdentity ? "" : "请先打开一个聊天"), q = A(() => a.value.maintenanceStatus === "rebuilding" || s.value === "rebuild" ? "正在绘制世界…" : a.value.maintenanceStatus === "maintaining" || s.value === "maintain" ? "正在更新地图…" : s.value === "confirm" ? "正在检查保存…" : y.value ? "请稍候…" : ""), U = A(() => a.value.message || l.value), D = A(() => a.value.message ? [
     "blocked",
     "error",
     "conflict",
@@ -129,46 +129,46 @@ function fe(t) {
     const n = z(a.value);
     a.value = structuredClone(o), z(o) ? (l.value = "", m.value = !1) : n && (l.value = o.maintenanceMessage || "", m.value = o.maintenanceStatus === "error");
   }
-  function w(o, n) {
+  function E(o, n) {
     const u = o instanceof Error ? o.message : String(o);
     return u.includes("聊天已切换") ? "聊天已切换，请重新打开地图。" : u === "host_request_timeout" ? "暂时没收到结果，地图可能还在更新。请稍后查看，不要再次更新。" : n === "confirm" ? "仍无法确认保存结果，请稍后再试。" : n === "adopt" ? "已保存版本暂时加载不了，当前修改还在，请稍后重试。" : n === "settings" || n === "projection" ? "设置未能保存，请重试。" : "地图操作未完成，请稍后重试。";
   }
   async function v(o, n, u = {}) {
     if (s.value) return;
-    const E = ++f, Q = k, N = a.value.chatIdentity;
+    const I = ++f, L = k, N = a.value.chatIdentity;
     s.value = n, l.value = "", m.value = !1;
     try {
       const O = await t.bridge.request(o, {
         chatIdentity: N,
         ...u
       }, 35e3);
-      if (!p || E !== f || a.value.chatIdentity !== N) return;
-      const g = R(O) ? O.result : void 0, H = R(g) && R(g.state) ? g.state : g;
-      Q === k && R(H) && H.chatIdentity === N && h(H), (n === "maintain" || n === "rebuild") && R(g) && typeof g.message == "string" && g.message && (l.value = g.message), n === "refresh" && a.value.status === "ready" && (l.value = "已加载保存的地图。"), n === "settings" && (l.value = a.value.autoMaintenance ? "自动更新已开启。" : "自动更新已关闭。"), n === "projection" && (l.value = a.value.projectToChat ? q.enabled : q.disabled), n === "confirm" && a.value.status === "ready" && (l.value = "已确认保存成功。"), n === "adopt" && R(g) && g.adoption === "adopted" && (l.value = "已使用当前聊天里保存的 OS 存档。");
+      if (!p || I !== f || a.value.chatIdentity !== N) return;
+      const g = R(O) ? O.result : void 0, Y = R(g) && R(g.state) ? g.state : g;
+      L === k && R(Y) && Y.chatIdentity === N && h(Y), (n === "maintain" || n === "rebuild") && R(g) && typeof g.message == "string" && g.message && (l.value = g.message), n === "refresh" && a.value.status === "ready" && (l.value = "已加载保存的地图。"), n === "settings" && (l.value = a.value.autoMaintenance ? "自动更新已开启。" : "自动更新已关闭。"), n === "projection" && (l.value = a.value.projectToChat ? T.enabled : T.disabled), n === "confirm" && a.value.status === "ready" && (l.value = "已确认保存成功。"), n === "adopt" && R(g) && g.adoption === "adopted" && (l.value = "已使用当前聊天里保存的 OS 存档。");
     } catch (O) {
-      p && E === f && a.value.chatIdentity === N && (l.value = w(O, n), m.value = !0);
+      p && I === f && a.value.chatIdentity === N && (l.value = E(O, n), m.value = !0);
     } finally {
-      p && E === f && (s.value = null);
+      p && I === f && (s.value = null);
     }
   }
-  return G(() => {
-    p = !0, I = t.bridge.subscribe((o) => {
+  return Z(() => {
+    p = !0, w = t.bridge.subscribe((o) => {
       if (o.type === "map/state") {
         const n = o.payload.state;
         if (n.chatIdentity !== a.value.chatIdentity) return;
         k += 1, h(n);
       } else o.type === "map/error" && (k += 1, m.value = !0, l.value = o.payload.message || "地图暂时无法读取，请重新打开。");
     });
-  }), K(() => {
-    p = !1, f += 1, I();
+  }), G(() => {
+    p = !1, f += 1, w();
   }), {
     state: a,
     activeRequest: s,
     busy: y,
     disabledReason: j,
     requiresConfirmation: B,
-    status: T,
-    notice: V,
+    status: q,
+    notice: U,
     isError: D,
     dismissNotice: () => {
       l.value = "", m.value = !1;
@@ -209,10 +209,10 @@ var ye = {
     initialState: {}
   },
   setup(t) {
-    const { state: a, activeRequest: s, busy: l, disabledReason: m, requiresConfirmation: p, status: f, notice: k, isError: I, dismissNotice: B, refresh: y, confirmSave: j, adopt: T, setAuto: V, setProjection: D, update: h, rebuild: w } = fe(t), v = P(!1);
-    return L(() => a.value.chatIdentity, () => {
+    const { state: a, activeRequest: s, busy: l, disabledReason: m, requiresConfirmation: p, status: f, notice: k, isError: w, dismissNotice: B, refresh: y, confirmSave: j, adopt: q, setAuto: U, setProjection: D, update: h, rebuild: E } = fe(t), v = P(!1);
+    return K(() => a.value.chatIdentity, () => {
       v.value = !1;
-    }), (o, n) => (r(), Y(Z, {
+    }), (o, n) => (r(), H(X, {
       map: e(a).map,
       "chat-identity": e(a).chatIdentity
     }, {
@@ -222,9 +222,9 @@ var ye = {
         "aria-label": "地图设置",
         onClick: n[0] || (n[0] = (u) => v.value = !0)
       }, [$(S, { name: "more" })])]),
-      feedback: M(() => [e(f) ? (r(), b("div", ye, [n[9] || (n[9] = i("span", null, null, -1)), U(d(e(f)), 1)])) : c("", !0), e(k) || e(p) || e(a).status === "conflict" ? (r(), b("aside", {
+      feedback: M(() => [e(f) ? (r(), b("div", ye, [n[9] || (n[9] = i("span", null, null, -1)), V(d(e(f)), 1)])) : c("", !0), e(k) || e(p) || e(a).status === "conflict" ? (r(), b("aside", {
         key: 1,
-        class: J(["map-notice", { "is-error": e(I) }]),
+        class: J(["map-notice", { "is-error": e(w) }]),
         role: "status"
       }, [i("p", null, d(e(k) || (e(p) ? "还不确定是否保存成功，请先检查保存。" : "服务器上的存档与当前内容不同。")), 1), e(p) ? (r(), b("button", {
         key: 0,
@@ -234,7 +234,7 @@ var ye = {
       }, "检查保存", 8, ge)) : e(a).status === "conflict" ? (r(), b(W, { key: 1 }, [n[10] || (n[10] = i("small", null, "恢复会放弃尚未保存的更改，并使用当前聊天已保存的 OS 数据（不只是地图）。", -1)), i("button", {
         type: "button",
         disabled: e(l),
-        onClick: n[2] || (n[2] = (...u) => e(T) && e(T)(...u))
+        onClick: n[2] || (n[2] = (...u) => e(q) && e(q)(...u))
       }, "放弃未保存更改并恢复", 8, ke)], 64)) : e(a).status === "error" || e(a).status === "blocked" ? (r(), b("button", {
         key: 2,
         type: "button",
@@ -253,7 +253,7 @@ var ye = {
           type: "button",
           class: "map-secondary-button",
           disabled: !!e(m),
-          onClick: n[5] || (n[5] = (...E) => e(h) && e(h)(...E))
+          onClick: n[5] || (n[5] = (...I) => e(h) && e(h)(...I))
         }, d(e(l) ? e(C).updating : e(C).update), 9, Ce),
         e(m) && !e(l) ? (r(), b("p", Me, d(e(m)), 1)) : c("", !0)
       ]),
@@ -268,20 +268,20 @@ var ye = {
         n[11] || (n[11] = i("small", null, "故事之外，还有一整个世界", -1)),
         i("h1", null, d(e(a).status === "loading" ? e(C).loading : "下一站，去哪里？"), 1),
         n[12] || (n[12] = i("p", null, [
-          U("把世界设定画成地图，"),
+          V("把世界设定画成地图，"),
           i("br"),
-          U("也为留白的地方添上值得探索的去处。")
+          V("也为留白的地方添上值得探索的去处。")
         ], -1)),
         e(a).status !== "loading" ? (r(), b("button", {
           key: 0,
           type: "button",
           class: "map-primary-button",
           disabled: !!e(m),
-          onClick: n[7] || (n[7] = (...u) => e(w) && e(w)(...u))
+          onClick: n[7] || (n[7] = (...u) => e(E) && e(E)(...u))
         }, d(e(l) ? e(f) || "正在准备…" : "绘制世界地图"), 9, je)) : c("", !0),
         e(m) && !e(l) ? (r(), b("p", Ae, d(e(m)), 1)) : c("", !0)
       ])]),
-      overlay: M(() => [v.value ? (r(), Y(pe, {
+      overlay: M(() => [v.value ? (r(), H(pe, {
         key: 0,
         "auto-maintenance": e(a).autoMaintenance,
         "project-to-chat": e(a).projectToChat,
@@ -294,12 +294,12 @@ var ye = {
         "maintenance-message": e(a).maintenanceMessage || "",
         "maintenance-error": e(a).maintenanceStatus === "error",
         notice: e(k),
-        "notice-error": e(I),
+        "notice-error": e(w),
         onClose: n[8] || (n[8] = (u) => v.value = !1),
-        onSetAuto: e(V),
+        onSetAuto: e(U),
         onSetProjection: e(D),
         onUpdate: e(h),
-        onRebuild: e(w),
+        onRebuild: e(E),
         onRefresh: e(y)
       }, null, 8, [
         "auto-maintenance",

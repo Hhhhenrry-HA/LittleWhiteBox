@@ -1,10 +1,11 @@
 /* eslint-disable */
-import { B as L, C as $, D as U, E as F, G as R, I as J, O as V, P as W, U as r, Y as G, _ as O, at as _, b as h, dt as H, ft as k, g as Y, h as Q, k as E, lt as t, m as X, n as Z, o as ee, ot as j, st as A, tt as te, ut as M, w as s, x as a } from "./xiaobai-os-frame-bridge-CrPFvkI3.js";
+import { B as r, C as D, E as O, H as K, K as F, L as H, N as J, Q as U, T as j, _, at as T, b as $, ct as t, d as Q, dt as k, f as G, it as L, j as W, lt as A, m as E, nt as h, p as X, r as Y, ut as Z, v as a, w as ee, x as s } from "./xiaobai-os-app-navigation-DbF27MCy.js";
+import { n as te } from "./xiaobai-os-frame-bridge-BfVuKvnh.js";
 var ae = { class: "world-article" }, le = { tabindex: "-1" }, re = {
   key: 0,
   class: "world-article-update",
   role: "status"
-}, se = { key: 1 }, ne = { class: "world-article-body" }, ie = /* @__PURE__ */ E({
+}, se = { key: 1 }, ne = { class: "world-article-body" }, ie = /* @__PURE__ */ O({
   __name: "NewsArticle",
   props: {
     article: {},
@@ -12,14 +13,14 @@ var ae = { class: "world-article" }, le = { tabindex: "-1" }, re = {
   },
   emits: ["latest"],
   setup(c) {
-    const e = c, i = h(() => e.article.body.split(/\n\s*\n|\n/).map((d) => d.trim()).filter(Boolean));
+    const e = c, i = _(() => e.article.body.split(/\n\s*\n|\n/).map((d) => d.trim()).filter(Boolean));
     return (d, n) => (r(), s("article", ae, [
       a("h1", le, k(c.article.title), 1),
-      c.update !== "same" ? (r(), s("div", re, [c.update === "updated" ? (r(), s(O, { key: 0 }, [n[1] || (n[1] = a("span", null, "这篇见闻有了新内容", -1)), a("button", {
+      c.update !== "same" ? (r(), s("div", re, [c.update === "updated" ? (r(), s(E, { key: 0 }, [n[1] || (n[1] = a("span", null, "这篇见闻有了新内容", -1)), a("button", {
         type: "button",
         onClick: n[0] || (n[0] = (u) => d.$emit("latest"))
       }, "阅读新版")], 64)) : (r(), s("span", se, "这篇已不在当前列表，仍可读完。"))])) : $("", !0),
-      a("div", ne, [(r(!0), s(O, null, R(i.value, (u, g) => (r(), s("p", { key: g }, k(u), 1))), 128))])
+      a("div", ne, [(r(!0), s(E, null, K(i.value, (u, g) => (r(), s("p", { key: g }, k(u), 1))), 128))])
     ]));
   }
 }), oe = ie, ue = { class: "world-opening" }, de = {
@@ -29,18 +30,18 @@ var ae = { class: "world-article" }, le = { tabindex: "-1" }, re = {
   "aria-expanded",
   "aria-controls",
   "aria-label"
-], pe = /* @__PURE__ */ E({
+], pe = /* @__PURE__ */ O({
   __name: "WorldOpening",
   props: { overview: {} },
   setup(c) {
-    const e = _(!1), i = G(), d = `url("https://picsum.photos/800/300?random=${Math.random()}")`;
+    const e = h(!1), i = F(), d = `url("https://picsum.photos/800/300?random=${Math.random()}")`;
     return (n, u) => (r(), s("div", ue, [a("div", {
       class: "world-horizon",
       "aria-hidden": "true",
-      style: H({ "--world-cover-image": d })
+      style: Z({ "--world-cover-image": d })
     }, null, 4), c.overview ? (r(), s("div", de, [a("p", {
       id: t(i),
-      class: M(["world-overview-text", { "is-expanded": e.value }])
+      class: A(["world-overview-text", { "is-expanded": e.value }])
     }, k(c.overview), 11, ve), a("button", {
       type: "button",
       class: "world-overview-toggle",
@@ -51,18 +52,18 @@ var ae = { class: "world-article" }, le = { tabindex: "-1" }, re = {
     }, [(r(), s("svg", {
       viewBox: "0 0 24 24",
       "aria-hidden": "true",
-      class: M({ "is-expanded": e.value })
+      class: A({ "is-expanded": e.value })
     }, [...u[1] || (u[1] = [a("path", { d: "m7 10 5 5 5-5" }, null, -1)])], 2))], 8, ce)])) : $("", !0)]));
   }
 }), fe = pe;
 function we(c) {
-  const e = j(structuredClone(A(c.initialState))), i = _(!1), d = _(""), n = _(!1);
+  const e = L(structuredClone(T(c.initialState))), i = h(!1), d = h(""), n = h(!1);
   let u = !1, g = 0, b = () => {
   };
   function p(y) {
-    e.value = structuredClone(A(y)), d.value = "", n.value = !1;
+    e.value = structuredClone(T(y)), d.value = "", n.value = !1;
   }
-  const S = h(() => !i.value && e.value.writeState === "ready"), x = h(() => e.value.maintenance === "running"), f = h(() => n.value ? d.value : e.value.writeState !== "ready" ? e.value.message : d.value || e.value.message), I = h(() => n.value || e.value.maintenance === "error" || [
+  const S = _(() => !i.value && e.value.writeState === "ready"), x = _(() => e.value.maintenance === "running"), f = _(() => n.value ? d.value : e.value.writeState !== "ready" ? e.value.message : d.value || e.value.message), N = _(() => n.value || e.value.maintenance === "error" || [
     "failed",
     "unconfirmed",
     "conflict"
@@ -70,23 +71,23 @@ function we(c) {
   async function B(y, m = {}) {
     if (i.value) return;
     i.value = !0, d.value = "", n.value = !1;
-    const C = e.value.chatIdentity, N = g;
+    const C = e.value.chatIdentity, I = g;
     try {
       const w = await c.bridge.request(`world/${y}`, {
         chatIdentity: C,
         ...m
       }, 35e3);
       if (!u || e.value.chatIdentity !== C) return;
-      N === g && w.result.state.chatIdentity === C && p(w.result.state), w.result.message && (d.value = w.result.message);
+      I === g && w.result.state.chatIdentity === C && p(w.result.state), w.result.message && (d.value = w.result.message);
     } catch (w) {
       if (!u || e.value.chatIdentity !== C) return;
       const q = w instanceof Error ? w.message : "";
-      d.value = q === "host_request_timeout" ? "暂时没收到结果，更新可能还在继续。请稍后重新加载，不要再次生成。" : w instanceof Z && w.code === "app_request_failed" ? q : "操作未完成，请检查保存状态或稍后重试。", n.value = !0;
+      d.value = q === "host_request_timeout" ? "暂时没收到结果，更新可能还在继续。请稍后重新加载，不要再次生成。" : w instanceof te && w.code === "app_request_failed" ? q : "操作未完成，请检查保存状态或稍后重试。", n.value = !0;
     } finally {
       u && (i.value = !1);
     }
   }
-  return L(() => {
+  return H(() => {
     u = !0, b = c.bridge.subscribe((y) => {
       if (y.type === "world/state") {
         const m = y.payload.state;
@@ -101,7 +102,7 @@ function we(c) {
     writable: S,
     refreshing: x,
     notice: f,
-    error: I,
+    error: N,
     request: B
   };
 }
@@ -109,64 +110,64 @@ var be = { class: "world-toolbar" }, ye = { class: "world-tools" }, ge = ["disab
   key: 0,
   class: "world-news-list",
   "aria-label": "各处见闻"
-}, Ie = ["data-article-id", "onClick"], Be = { class: "world-item-text" }, Ne = { class: "world-item-preview" }, qe = {
+}, Ne = ["data-article-id", "onClick"], Be = { class: "world-item-text" }, Ie = { class: "world-item-preview" }, qe = {
   key: 1,
   class: "world-empty"
-}, Ae = ["disabled"], Me = /* @__PURE__ */ E({
+}, Te = ["disabled"], Ae = /* @__PURE__ */ O({
   __name: "WorldApp",
   props: {
     bridge: {},
     initialState: {}
   },
   setup(c) {
-    const { state: e, pending: i, writable: d, refreshing: n, notice: u, error: g, request: b } = we(c), p = j(null), S = _(null), x = _(null), f = _(null), I = _(null);
+    const { state: e, pending: i, writable: d, refreshing: n, notice: u, error: g, request: b } = we(c), p = L(null), S = h(null), x = h(null), f = h(null), N = h(null);
     let B = 0, y = "";
-    const m = h(() => e.value.world.news.find((v) => v.id === p.value?.id)), C = h(() => m.value ? JSON.stringify(m.value) === JSON.stringify(p.value) ? "same" : "updated" : "removed"), N = h(() => d.value && !n.value);
+    const m = _(() => e.value.world.news.find((v) => v.id === p.value?.id)), C = _(() => m.value ? JSON.stringify(m.value) === JSON.stringify(p.value) ? "same" : "updated" : "removed"), I = _(() => d.value && !n.value);
     async function w(v, l) {
       const o = v.target;
       await b(l === "subscribed" ? "subscribe" : "background", { enabled: o.checked }), o.checked = e.value.settings[l];
     }
     async function q(v) {
-      B = S.value?.scrollTop ?? 0, y = v.id, p.value = structuredClone(A(v)), await W(), x.value?.querySelector("h1")?.focus({ preventScroll: !0 });
+      B = S.value?.scrollTop ?? 0, y = v.id, p.value = structuredClone(T(v)), await W(), x.value?.querySelector("h1")?.focus({ preventScroll: !0 });
     }
-    async function T() {
-      p.value = null, await W(), S.value && (S.value.scrollTop = B, ([...S.value.querySelectorAll("[data-article-id]")].find((v) => v.dataset.articleId === y) ?? I.value)?.focus({ preventScroll: !0 }));
+    async function M() {
+      p.value = null, await W(), S.value && (S.value.scrollTop = B, ([...S.value.querySelectorAll("[data-article-id]")].find((v) => v.dataset.articleId === y) ?? N.value)?.focus({ preventScroll: !0 }));
     }
-    async function z() {
-      m.value && (p.value = structuredClone(A(m.value)), await W(), x.value && (x.value.scrollTop = 0), x.value?.querySelector("h1")?.focus({ preventScroll: !0 }));
+    async function P() {
+      m.value && (p.value = structuredClone(T(m.value)), await W(), x.value && (x.value.scrollTop = 0), x.value?.querySelector("h1")?.focus({ preventScroll: !0 }));
     }
-    function P() {
+    function V() {
       f.value && (f.value.open = !1, f.value.querySelector("summary")?.focus());
     }
-    function D(v) {
+    function R(v) {
       f.value && v.target instanceof Node && !f.value.contains(v.target) && (f.value.open = !1);
     }
-    function K(v) {
+    function z(v) {
       f.value && (!(v.relatedTarget instanceof Node) || !f.value.contains(v.relatedTarget)) && (f.value.open = !1);
     }
-    return ee(() => f.value?.open ? (P(), !0) : p.value ? (T(), !0) : !1), (v, l) => (r(), s("section", {
+    return Y(() => f.value?.open ? (V(), !0) : p.value ? (M(), !0) : !1), (v, l) => (r(), s("section", {
       class: "world-app",
       "aria-label": "世界新闻",
-      onPointerdown: D
+      onPointerdown: R
     }, [
       a("header", be, [p.value ? (r(), s("button", {
         key: 0,
         type: "button",
         class: "world-back",
-        onClick: T
+        onClick: M
       }, [...l[7] || (l[7] = [a("svg", {
         viewBox: "0 0 24 24",
         "aria-hidden": "true"
       }, [a("path", { d: "m14 6-6 6 6 6" })], -1), a("span", null, "见闻", -1)])])) : (r(), s("h1", {
         key: 1,
         ref_key: "title",
-        ref: I,
+        ref: N,
         class: "world-toolbar-title",
         tabindex: "-1"
       }, "世界", 512)), a("div", ye, [a("button", {
         type: "button",
         class: "world-icon-button",
-        disabled: !N.value,
+        disabled: !I.value,
         "aria-label": "刷新新闻",
         title: t(n) ? "正在更新新闻" : "刷新新闻，会使用模型",
         onClick: l[0] || (l[0] = (o) => t(b)("refresh"))
@@ -176,7 +177,7 @@ var be = { class: "world-toolbar" }, ye = { class: "world-tools" }, ge = ["disab
         stroke: "currentColor",
         "stroke-width": "1.6",
         "aria-hidden": "true",
-        class: M({ "world-spinning": t(n) })
+        class: A({ "world-spinning": t(n) })
       }, [...l[8] || (l[8] = [a("path", {
         d: "M20 10a8 8 0 1 0-1 6M20 4v6h-6",
         "stroke-linecap": "round",
@@ -185,9 +186,9 @@ var be = { class: "world-toolbar" }, ye = { class: "world-tools" }, ge = ["disab
         ref_key: "menu",
         ref: f,
         class: "world-menu",
-        onKeydown: Q(Y(P, ["stop", "prevent"]), ["esc"]),
-        onFocusout: K
-      }, [l[13] || (l[13] = F('<summary aria-label="新闻设置" title="新闻设置"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="19" cy="12" r="1.7"></circle></svg></summary>', 1)), a("div", ke, [
+        onKeydown: G(X(V, ["stop", "prevent"]), ["esc"]),
+        onFocusout: z
+      }, [l[13] || (l[13] = D('<summary aria-label="新闻设置" title="新闻设置"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="19" cy="12" r="1.7"></circle></svg></summary>', 1)), a("div", ke, [
         a("label", null, [l[9] || (l[9] = a("span", null, "自动新闻", -1)), a("input", {
           type: "checkbox",
           checked: t(e).settings.subscribed,
@@ -205,7 +206,7 @@ var be = { class: "world-toolbar" }, ye = { class: "world-tools" }, ge = ["disab
       ])], 40, me)])]),
       t(u) ? (r(), s("div", {
         key: 0,
-        class: M(["world-notice", { "is-error": t(g) }]),
+        class: A(["world-notice", { "is-error": t(g) }]),
         role: "status",
         "aria-live": "polite"
       }, [a("span", null, k(t(u)), 1), t(e).writeState === "unconfirmed" || t(e).pendingSave && t(e).writeState === "failed" ? (r(), s("button", {
@@ -224,47 +225,47 @@ var be = { class: "world-toolbar" }, ye = { class: "world-tools" }, ge = ["disab
         type: "button",
         onClick: l[5] || (l[5] = (o) => t(b)(t(e).maintenance === "error" && t(e).writeState === "ready" ? "refresh" : "read"))
       }, k(t(e).maintenance === "error" && t(e).writeState === "ready" ? "重试更新" : "重新加载"), 9, Ce)) : $("", !0)], 2)) : $("", !0),
-      te(a("div", {
+      U(a("div", {
         ref_key: "listing",
         ref: S,
         class: "world-scroll world-listing"
-      }, [V(fe, { overview: t(e).world.overview }, null, 8, ["overview"]), t(e).world.news.length ? (r(), s("section", $e, [(r(!0), s(O, null, R(t(e).world.news, (o) => (r(), s("article", {
+      }, [j(fe, { overview: t(e).world.overview }, null, 8, ["overview"]), t(e).world.news.length ? (r(), s("section", $e, [(r(!0), s(E, null, K(t(e).world.news, (o) => (r(), s("article", {
         key: o.id,
         class: "world-news-item"
       }, [a("button", {
         type: "button",
         "data-article-id": o.id,
-        onClick: (Te) => q(o)
-      }, [a("span", Be, [a("h2", null, k(o.title), 1), a("span", Ne, k(o.body), 1)])], 8, Ie)]))), 128))])) : (r(), s("section", qe, [
+        onClick: (Me) => q(o)
+      }, [a("span", Be, [a("h2", null, k(o.title), 1), a("span", Ie, k(o.body), 1)])], 8, Ne)]))), 128))])) : (r(), s("section", qe, [
         a("h2", null, k(t(n) ? "正在更新新闻" : t(e).settings.subscribed ? "已开启自动新闻" : "暂无新闻"), 1),
         a("button", {
           type: "button",
           class: "world-primary",
-          disabled: !N.value,
+          disabled: !I.value,
           onClick: l[6] || (l[6] = (o) => t(e).settings.subscribed ? t(b)("refresh") : t(b)("subscribe", { enabled: !0 }))
-        }, k(t(n) ? "正在更新…" : t(i) ? "正在处理…" : t(e).settings.subscribed ? "获取新闻" : "开启自动新闻"), 9, Ae),
+        }, k(t(n) ? "正在更新…" : t(i) ? "正在处理…" : t(e).settings.subscribed ? "获取新闻" : "开启自动新闻"), 9, Te),
         l[14] || (l[14] = a("small", null, "获取及更新将调用模型", -1))
-      ]))], 512), [[X, !p.value]]),
+      ]))], 512), [[Q, !p.value]]),
       p.value ? (r(), s("div", {
         key: 1,
         ref_key: "articlePage",
         ref: x,
         class: "world-scroll world-reading"
-      }, [V(oe, {
+      }, [j(oe, {
         article: p.value,
         update: C.value,
-        onLatest: z
+        onLatest: P
       }, null, 8, ["article", "update"]), a("button", {
         type: "button",
         class: "world-bottom-back",
-        onClick: T
+        onClick: M
       }, [...l[15] || (l[15] = [a("svg", {
         viewBox: "0 0 24 24",
         "aria-hidden": "true"
-      }, [a("path", { d: "m14 6-6 6 6 6" })], -1), U(" 返回见闻 ", -1)])])], 512)) : $("", !0)
+      }, [a("path", { d: "m14 6-6 6 6 6" })], -1), ee(" 返回见闻 ", -1)])])], 512)) : $("", !0)
     ], 32));
   }
-}), Oe = Me;
+}), Oe = Ae;
 export {
   Oe as default
 };

@@ -1,11 +1,11 @@
 /* eslint-disable */
 import { n as d, t as m } from "./xiaobai-os-message-markdown-p_WvGylV.js";
-import { Q as f, U as p, at as h, k as b, w as k } from "./xiaobai-os-frame-bridge-CrPFvkI3.js";
-var _ = /* @__PURE__ */ b({
+import { B as f, E as p, Y as h, nt as b, x as k } from "./xiaobai-os-app-navigation-DbF27MCy.js";
+var _ = /* @__PURE__ */ p({
   __name: "MessageMarkdown",
   props: { text: {} },
   setup(c) {
-    const a = c, r = h(null), l = /* @__PURE__ */ new Set([
+    const a = c, r = b(null), l = /* @__PURE__ */ new Set([
       "p",
       "br",
       "em",
@@ -45,7 +45,7 @@ var _ = /* @__PURE__ */ b({
       "svg",
       "math"
     ]);
-    return f([r, () => a.text], () => {
+    return h([r, () => a.text], () => {
       if (!r.value) return;
       const t = document.createElement("template");
       t.innerHTML = d(a.text, { htmlFenceMode: "code" });
@@ -71,7 +71,7 @@ var _ = /* @__PURE__ */ b({
         codeBlockClassName: "os-markdown-codeblock",
         codeCopyClassName: "os-markdown-code-copy"
       }), r.value.replaceChildren(t.content);
-    }, { flush: "post" }), (t, e) => (p(), k("div", {
+    }, { flush: "post" }), (t, e) => (f(), k("div", {
       ref_key: "surface",
       ref: r,
       class: "os-message-markdown"

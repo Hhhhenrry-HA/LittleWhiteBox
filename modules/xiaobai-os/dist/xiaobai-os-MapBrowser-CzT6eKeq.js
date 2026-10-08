@@ -1,10 +1,45 @@
 /* eslint-disable */
-import { B as $e, C as w, D as W, E as Xe, G as R, I as Oe, K as oe, M as we, O as C, P as Ce, Q as ee, S as D, U as r, X as pe, Y as he, _, at as H, b as S, dt as be, et as Ae, ft as m, g as ge, h as Ie, k as G, lt as y, m as Ne, o as Je, p as et, tt as Ee, ut as X, w as c, x as a } from "./xiaobai-os-frame-bridge-CrPFvkI3.js";
-import { t as tt } from "./xiaobai-os-AppDialog-Ce_C5VGF.js";
-var at = { class: "map-viewport" }, nt = ["viewBox", "aria-label"], ot = {
+import { B as r, C as Xe, E as G, H as N, K as fe, L as _e, N as Oe, Q as Ae, T as L, U as le, Y as ee, Z as Pe, _ as j, b as k, ct as y, d as ze, dt as m, f as Ie, j as Se, k as Me, lt as Y, m as C, nt as H, p as ge, q as he, r as Je, u as et, ut as ke, v as a, w as D, x as c, y as Z } from "./xiaobai-os-app-navigation-DbF27MCy.js";
+import { t as tt } from "./xiaobai-os-AppDialog-CirfCMYM.js";
+function at(e, n) {
+  const s = /* @__PURE__ */ new Set(), t = e.ownerDocument, u = [
+    "pointerup",
+    "pointercancel",
+    "lostpointercapture"
+  ];
+  function d() {
+    for (const l of u) t.removeEventListener(l, p, !0);
+    t.removeEventListener("visibilitychange", v);
+  }
+  function p(l) {
+    s.delete(l.pointerId) && (s.size || d(), (l.type === "lostpointercapture" || !l.composedPath().includes(e)) && n(l.pointerId));
+  }
+  function i() {
+    const l = [...s];
+    s.clear(), d();
+    for (const f of l) n(f);
+  }
+  function v() {
+    t.hidden && i();
+  }
+  function h(l) {
+    if (!s.size) {
+      for (const f of u) t.addEventListener(f, p, !0);
+      t.addEventListener("visibilitychange", v);
+    }
+    s.add(l.pointerId);
+  }
+  return e.addEventListener("pointerdown", h, !0), {
+    cancel: i,
+    dispose() {
+      e.removeEventListener("pointerdown", h, !0), i();
+    }
+  };
+}
+var nt = { class: "map-viewport" }, ot = ["viewBox", "aria-label"], lt = {
   class: "map-viewport-controls",
   "aria-label": "地图缩放"
-}, lt = /* @__PURE__ */ G({
+}, st = /* @__PURE__ */ G({
   __name: "MapViewport",
   props: {
     viewBox: {},
@@ -14,117 +49,123 @@ var at = { class: "map-viewport" }, nt = ["viewBox", "aria-label"], ot = {
     focusSequence: { default: 0 }
   },
   setup(e) {
-    const n = e, s = H(null), t = H([...n.viewBox]), u = H([0, 0]), d = S(() => u.value[0] && u.value[1] ? Math.max(t.value[2] / u.value[0], t.value[3] / u.value[1]) : 1);
-    let p;
-    $e(() => {
-      p = new ResizeObserver((k) => {
-        const j = k[0].contentRect;
-        u.value = [j.width, j.height];
+    const n = e, s = H(null), t = H([...n.viewBox]), u = H([0, 0]), d = j(() => u.value[0] && u.value[1] ? Math.max(t.value[2] / u.value[0], t.value[3] / u.value[1]) : 1);
+    let p, i;
+    _e(() => {
+      i = at(s.value, F), p = new ResizeObserver((w) => {
+        const S = w[0].contentRect;
+        u.value = [S.width, S.height], (!S.width || !S.height) && i?.cancel();
       }), s.value && p.observe(s.value);
     });
-    const i = /* @__PURE__ */ new Map();
-    let v = null, h = [0, 0], l = 0, f = null, o = !1, b = !1, O = null;
-    const V = S(() => t.value.join(" "));
-    function E() {
+    const v = /* @__PURE__ */ new Map();
+    let h = null, l = [0, 0], f = 0, o = null, b = !1, $ = !1, P = null;
+    const E = j(() => t.value.join(" "));
+    function B() {
       t.value = [...n.viewBox];
     }
-    function A() {
+    function x() {
       return d.value;
     }
-    function x(k, j) {
-      const T = s.value?.getBoundingClientRect();
-      if (!T) return [t.value[0], t.value[1]];
-      const K = A();
-      return [t.value[0] + t.value[2] / 2 + (k - T.left - T.width / 2) * K, t.value[1] + t.value[3] / 2 + (j - T.top - T.height / 2) * K];
+    function W(w, S) {
+      const O = s.value?.getBoundingClientRect();
+      if (!O) return [t.value[0], t.value[1]];
+      const z = x();
+      return [t.value[0] + t.value[2] / 2 + (w - O.left - O.width / 2) * z, t.value[1] + t.value[3] / 2 + (S - O.top - O.height / 2) * z];
     }
-    function N(k, j) {
-      const T = Math.max(1, n.viewBox[2]), K = Math.min(T * 3, Math.max(Math.min(T * 0.24, 240), t.value[2] * k)), Z = K / t.value[2], Q = j || [t.value[0] + t.value[2] / 2, t.value[1] + t.value[3] / 2];
+    function K(w, S) {
+      const O = Math.max(1, n.viewBox[2]), z = Math.min(O * 3, Math.max(Math.min(O * 0.24, 240), t.value[2] * w)), U = z / t.value[2], ne = S || [t.value[0] + t.value[2] / 2, t.value[1] + t.value[3] / 2];
       t.value = [
-        Q[0] - (Q[0] - t.value[0]) * Z,
-        Q[1] - (Q[1] - t.value[1]) * Z,
-        K,
-        t.value[3] * Z
+        ne[0] - (ne[0] - t.value[0]) * U,
+        ne[1] - (ne[1] - t.value[1]) * U,
+        z,
+        t.value[3] * U
       ];
     }
-    function U() {
+    function V() {
       if (!n.focusPoint) return;
-      const k = Math.min(t.value[2], 620), j = t.value[3] * k / t.value[2];
+      const w = Math.min(t.value[2], 620), S = t.value[3] * w / t.value[2];
       t.value = [
-        n.focusPoint[0] - k / 2,
-        n.focusPoint[1] - j / 2,
-        k,
-        j
+        n.focusPoint[0] - w / 2,
+        n.focusPoint[1] - S / 2,
+        w,
+        S
       ];
     }
-    function z() {
-      const k = [...i.values()];
-      k.length === 1 && (v = k[0], h = [t.value[0], t.value[1]]), k.length === 2 && (l = Math.hypot(k[1][0] - k[0][0], k[1][1] - k[0][1]), f = [(k[0][0] + k[1][0]) / 2, (k[0][1] + k[1][1]) / 2], o = !0);
+    function q() {
+      const w = [...v.values()].map((S) => S.position);
+      w.length === 1 && (h = w[0], l = [t.value[0], t.value[1]]), w.length === 2 && (f = Math.hypot(w[1][0] - w[0][0], w[1][1] - w[0][1]), o = [(w[0][0] + w[1][0]) / 2, (w[0][1] + w[1][1]) / 2], b = !0);
     }
-    function q(k) {
-      k.button !== 0 || i.size >= 2 || (i.size || (o = !1), i.set(k.pointerId, [k.clientX, k.clientY]), k.target.setPointerCapture(k.pointerId), z());
+    function R(w) {
+      if (w.button !== 0 || v.size >= 2) return;
+      v.size || (b = !1);
+      const S = w.target;
+      v.set(w.pointerId, {
+        position: [w.clientX, w.clientY],
+        target: S
+      }), S.setPointerCapture(w.pointerId), q();
     }
-    function I(k) {
-      if (!i.has(k.pointerId)) return;
-      i.set(k.pointerId, [k.clientX, k.clientY]);
-      const j = [...i.values()];
-      if (j.length === 2 && f) {
-        const T = Math.hypot(j[1][0] - j[0][0], j[1][1] - j[0][1]), K = [(j[0][0] + j[1][0]) / 2, (j[0][1] + j[1][1]) / 2];
-        T > 0 && l > 0 && N(l / T, x(...f)), t.value[0] -= (K[0] - f[0]) * A(), t.value[1] -= (K[1] - f[1]) * A(), l = T, f = K;
-      } else if (v) {
-        const T = k.clientX - v[0], K = k.clientY - v[1];
-        Math.abs(T) + Math.abs(K) > 4 && (o = !0), t.value = [
-          h[0] - T * A(),
-          h[1] - K * A(),
+    function I(w) {
+      const S = v.get(w.pointerId);
+      if (!S) return;
+      S.position = [w.clientX, w.clientY];
+      const O = [...v.values()].map((z) => z.position);
+      if (O.length === 2 && o) {
+        const z = Math.hypot(O[1][0] - O[0][0], O[1][1] - O[0][1]), U = [(O[0][0] + O[1][0]) / 2, (O[0][1] + O[1][1]) / 2];
+        z > 0 && f > 0 && K(f / z, W(...o)), t.value[0] -= (U[0] - o[0]) * x(), t.value[1] -= (U[1] - o[1]) * x(), f = z, o = U;
+      } else if (h) {
+        const z = w.clientX - h[0], U = w.clientY - h[1];
+        Math.abs(z) + Math.abs(U) > 4 && (b = !0), t.value = [
+          l[0] - z * x(),
+          l[1] - U * x(),
           t.value[2],
           t.value[3]
         ];
       }
     }
-    function P(k) {
-      if (!i.delete(k.pointerId)) return;
-      const j = k.target;
-      j.hasPointerCapture(k.pointerId) && j.releasePointerCapture(k.pointerId), z(), i.size || (v = null, f = null), o && (b = !0, O && clearTimeout(O), O = setTimeout(() => {
-        b = !1;
-      }, 0));
+    function F(w) {
+      const S = v.get(w);
+      S && (v.delete(w), S.target.hasPointerCapture(w) && S.target.releasePointerCapture(w), q(), v.size || (h = null, o = null), b && ($ = !0, P && clearTimeout(P), P = setTimeout(() => {
+        $ = !1;
+      }, 0)));
     }
-    function F(k) {
-      b && (k.preventDefault(), k.stopPropagation());
+    function X(w) {
+      $ && (w.preventDefault(), w.stopPropagation());
     }
-    return ee(() => n.resetKey, E, { immediate: !0 }), ee(() => n.focusSequence, U, { flush: "post" }), Oe(() => {
-      p?.disconnect(), O && clearTimeout(O);
-    }), (k, j) => (r(), c("div", at, [(r(), c("svg", {
+    return ee(() => n.resetKey, B, { immediate: !0 }), ee(() => n.focusSequence, V, { flush: "post" }), Oe(() => {
+      i?.dispose(), p?.disconnect(), P && clearTimeout(P);
+    }), (w, S) => (r(), c("div", nt, [(r(), c("svg", {
       ref_key: "svg",
       ref: s,
       class: "map-viewport-svg",
-      viewBox: V.value,
+      viewBox: E.value,
       preserveAspectRatio: "xMidYMid meet",
       role: "group",
       "aria-label": e.label,
-      onWheel: j[0] || (j[0] = ge((T) => N(T.deltaY < 0 ? 0.84 : 1.19, x(T.clientX, T.clientY)), ["prevent"])),
-      onPointerdown: q,
+      onWheel: S[0] || (S[0] = ge((O) => K(O.deltaY < 0 ? 0.84 : 1.19, W(O.clientX, O.clientY)), ["prevent"])),
+      onPointerdown: R,
       onPointermove: I,
-      onPointerup: P,
-      onPointercancel: P,
-      onClickCapture: F
-    }, [oe(k.$slots, "default", { unitScale: d.value })], 40, nt)), a("div", ot, [
+      onPointerup: S[1] || (S[1] = (O) => F(O.pointerId)),
+      onPointercancel: S[2] || (S[2] = (O) => F(O.pointerId)),
+      onClickCapture: X
+    }, [le(w.$slots, "default", { unitScale: d.value })], 40, ot)), a("div", lt, [
       a("button", {
         type: "button",
         "aria-label": "放大地图",
-        onClick: j[1] || (j[1] = (T) => N(0.8))
+        onClick: S[3] || (S[3] = (O) => K(0.8))
       }, "+"),
       a("button", {
         type: "button",
         "aria-label": "缩小地图",
-        onClick: j[2] || (j[2] = (T) => N(1.25))
+        onClick: S[4] || (S[4] = (O) => K(1.25))
       }, "−"),
       a("button", {
         type: "button",
         class: "map-fit",
-        onClick: E
+        onClick: B
       }, "全图")
     ])]));
   }
-}), ze = lt, st = {
+}), Ne = st, rt = {
   class: "map-icon",
   viewBox: "0 0 24 24",
   fill: "none",
@@ -133,7 +174,7 @@ var at = { class: "map-viewport" }, nt = ["viewBox", "aria-label"], ot = {
   "stroke-linecap": "round",
   "stroke-linejoin": "round",
   "aria-hidden": "true"
-}, rt = ["d"], it = /* @__PURE__ */ G({
+}, it = ["d"], ct = /* @__PURE__ */ G({
   __name: "MapIcon",
   props: { name: { default: "pin" } },
   setup(e) {
@@ -156,37 +197,37 @@ var at = { class: "map-viewport" }, nt = ["viewBox", "aria-label"], ot = {
       water: "M2 7c4-5 6 5 10 0s6 5 10 0M2 13c4-5 6 5 10 0s6 5 10 0M2 19c4-5 6 5 10 0s6 5 10 0",
       compass: "M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0m-6-3-2 5-5 2 2-5 5-2Z"
     };
-    return (s, t) => (r(), c("svg", st, [a("path", { d: n[e.name] || n.pin }, null, 8, rt)]));
+    return (s, t) => (r(), c("svg", rt, [a("path", { d: n[e.name] || n.pin }, null, 8, it)]));
   }
-}), L = it;
+}), A = ct;
 function te(e) {
   return e.scale === "region";
 }
-function ct(e) {
+function ut(e) {
   return e.scale !== "world" && !te(e);
 }
-function fe(e, n) {
+function ye(e, n) {
   const s = new Map(e.locations.map((d) => [d.key, d])), t = [];
   let u = s.get(n);
   for (; u; )
     t.unshift(u), u = u.parent ? s.get(u.parent) : void 0;
   return t;
 }
-function ke(e, n) {
-  return fe(e, n).reverse().find(te);
+function we(e, n) {
+  return ye(e, n).reverse().find(te);
 }
-function ut(e) {
+function dt(e) {
   const n = /* @__PURE__ */ new Set(), s = e.actors.find((t) => t.actorKey === "player")?.locationKey;
   for (const t of e.locations)
     if (!(t.status !== "visited" && t.key !== s))
-      for (const u of fe(e, t.key)) n.add(u.key);
+      for (const u of ye(e, t.key)) n.add(u.key);
   return n;
 }
-function Me(e, n, s) {
+function $e(e, n, s) {
   const t = new Set(s.map((u) => u.key));
-  return fe(e, n).reverse().find((u) => t.has(u.key))?.key || "";
+  return ye(e, n).reverse().find((u) => t.has(u.key))?.key || "";
 }
-function dt(e, n) {
+function vt(e, n) {
   return e.links.flatMap((s) => {
     if (s.from !== n && s.to !== n) return [];
     const t = e.locations.find((u) => u.key === (s.from === n ? s.to : s.from));
@@ -197,7 +238,7 @@ function dt(e, n) {
     }] : [];
   });
 }
-function vt(e, n) {
+function pt(e, n) {
   const s = [...n.locations].sort((l, f) => l.key.localeCompare(f.key, "en")), t = (l) => l.position && (l.parent || "") === n.positionParent, u = s.filter(t).map((l) => ({
     location: l,
     x: l.position[0],
@@ -208,8 +249,8 @@ function vt(e, n) {
   for (const l of s.filter((f) => !t(f))) {
     let f, o;
     do {
-      const b = d * 2.3999632297, O = 155 * Math.sqrt(d++);
-      f = Math.round(500 + Math.cos(b) * O), o = Math.round(420 + Math.sin(b) * O);
+      const b = d * 2.3999632297, $ = 155 * Math.sqrt(d++);
+      f = Math.round(500 + Math.cos(b) * $), o = Math.round(420 + Math.sin(b) * $);
     } while (u.some((b) => Math.hypot(b.x - f, b.y - o) < 160));
     u.push({
       location: l,
@@ -220,16 +261,16 @@ function vt(e, n) {
   }
   u.sort((l, f) => l.location.key.localeCompare(f.location.key, "en"));
   const p = new Map(u.map((l) => [l.location.key, l])), i = e.links.flatMap((l) => {
-    const f = p.get(Me(e, l.from, s)), o = p.get(Me(e, l.to, s));
+    const f = p.get($e(e, l.from, s)), o = p.get($e(e, l.to, s));
     if (!f || !o || f === o) return [];
-    const b = (f.x + o.x) / 2, O = (f.y + o.y) / 2;
+    const b = (f.x + o.x) / 2, $ = (f.y + o.y) / 2;
     return [{
       link: l,
       from: f,
       to: o,
       x: b,
-      y: O,
-      path: `M ${f.x} ${f.y} Q ${b + (o.y - f.y) * 0.12} ${O - (o.x - f.x) * 0.12} ${o.x} ${o.y}`
+      y: $,
+      path: `M ${f.x} ${f.y} Q ${b + (o.y - f.y) * 0.12} ${$ - (o.x - f.x) * 0.12} ${o.x} ${o.y}`
     }];
   }), v = u.length ? Math.min(...u.map((l) => l.x)) - 140 : 0, h = u.length ? Math.min(...u.map((l) => l.y)) - 150 : 0;
   return {
@@ -243,7 +284,7 @@ function vt(e, n) {
     ]
   };
 }
-var de = {
+var ve = {
   label: "投影地图",
   empty: "还没有地图",
   description: "将地图投影到最后一个AI楼层末尾显示。",
@@ -255,8 +296,9 @@ var de = {
     scene: "场景"
   },
   options: "地图显示选项",
-  location: "回到当前位置"
-}, Y = {
+  location: "回到当前位置",
+  loadFailed: "地图投影加载失败，请刷新页面重试。"
+}, Q = {
   mode: "场景显示方式",
   two: "二维",
   three: "三维",
@@ -266,10 +308,10 @@ var de = {
   world: "世界地图",
   region: "当前地区",
   scene: "当前场景"
-}, se = {
+}, re = {
   visited: "已到访",
   unvisited: "未到访"
-}, ye = {
+}, me = {
   world: {
     unit: "地区",
     search: "搜索地区",
@@ -286,7 +328,7 @@ var de = {
     emptyHint: "可以查看其他地区，或更新地图补充。",
     notFound: "没有找到符合条件的场景"
   }
-}, B = {
+}, T = {
   loading: "正在打开地图…",
   viewLabel: "地图视图",
   trailLabel: "当前查看位置",
@@ -313,37 +355,37 @@ var de = {
   legendRoutes: "路线连接已记录的地点；箭头表示单向通行。"
 };
 function Ke(e, n) {
-  return `${n} 个${ye[e].unit}`;
+  return `${n} 个${me[e].unit}`;
 }
-function pt(e, n, s) {
-  return `${Ke(e, n)} · ${s} 个${se.unvisited}`;
+function ht(e, n, s) {
+  return `${Ke(e, n)} · ${s} 个${re.unvisited}`;
 }
-function ht(e, n) {
-  return `查看${n === "all" ? "" : se[n]}${ye[e].unit}`;
+function ft(e, n) {
+  return `查看${n === "all" ? "" : re[n]}${me[e].unit}`;
 }
-var ft = {
+var yt = {
   class: "map-landscapes",
   "aria-hidden": "true"
-}, yt = ["transform"], mt = {
+}, mt = ["transform"], bt = {
   class: "map-world-roads",
   "aria-hidden": "true"
-}, bt = ["d"], gt = ["d", "marker-end"], kt = ["x", "y"], wt = [
+}, gt = ["d"], kt = ["d", "marker-end"], wt = ["x", "y"], Mt = [
   "transform",
   "aria-label",
   "onClick",
   "onKeydown"
-], Mt = { transform: "translate(-14 -20)" }, $t = {
+], $t = { transform: "translate(-14 -20)" }, _t = {
   y: "64",
   class: "map-place-name"
-}, _t = {
+}, xt = {
   key: 0,
   y: "89",
   class: "map-place-status"
-}, xt = {
+}, Ct = {
   key: 1,
   y: "89",
   class: "map-place-status"
-}, Ct = /* @__PURE__ */ G({
+}, St = /* @__PURE__ */ G({
   __name: "MapAtlas",
   props: {
     atlas: {},
@@ -356,18 +398,18 @@ var ft = {
   },
   emits: ["select"],
   setup(e) {
-    const n = e, s = S(() => vt(n.atlas, n.scope)), t = S(() => Me(n.atlas, n.currentLocationKey, n.scope.locations)), u = S(() => s.value.nodes.find((i) => i.location.key === n.focusKey)), d = "map-arrow-" + he();
+    const n = e, s = j(() => pt(n.atlas, n.scope)), t = j(() => $e(n.atlas, n.currentLocationKey, n.scope.locations)), u = j(() => s.value.nodes.find((i) => i.location.key === n.focusKey)), d = "map-arrow-" + fe();
     function p(i, v) {
       return i === "water" ? "water" : i === "forest" ? "tree" : i === "mountain" ? "mountain" : ["world", "region"].includes(v) ? "globe" : v === "outdoor" ? "compass" : "building";
     }
-    return (i, v) => (r(), D(ze, {
+    return (i, v) => (r(), Z(Ne, {
       "view-box": s.value.viewBox,
       "reset-key": `${e.scope.kind}:${e.scope.region?.key || ""}`,
       label: e.label,
       "focus-point": u.value ? [u.value.x, u.value.y] : void 0,
       "focus-sequence": e.focusSequence
     }, {
-      default: Ae(({ unitScale: h }) => [
+      default: Pe(({ unitScale: h }) => [
         a("defs", null, [a("marker", {
           id: d,
           viewBox: "0 0 10 10",
@@ -380,17 +422,17 @@ var ft = {
           d: "M1 1l8 4-8 4z",
           fill: "var(--map-road-ink)"
         }, null, -1)])])]),
-        a("g", ft, [(r(!0), c(_, null, R(s.value.nodes, (l) => (r(), c("g", {
+        a("g", yt, [(r(!0), c(C, null, N(s.value.nodes, (l) => (r(), c("g", {
           key: l.location.key,
           transform: `translate(${l.x} ${l.y})`,
-          class: X(`is-${l.location.terrain || "urban"}`)
+          class: Y(`is-${l.location.terrain || "urban"}`)
         }, [...v[1] || (v[1] = [a("path", { d: "M-108-20Q-100-100-32-94T87-56Q127-13 99 48T21 99Q-57 113-90 65T-108-20Z" }, null, -1), a("path", {
           class: "map-contour",
           d: "M-133-22Q-124-126-39-116T110-70Q156-17 124 60T26 123Q-71 139-112 81T-133-22Z"
-        }, null, -1)])], 10, yt))), 128))]),
-        a("g", mt, [(r(!0), c(_, null, R(s.value.routes, (l) => (r(), c("g", {
+        }, null, -1)])], 10, mt))), 128))]),
+        a("g", bt, [(r(!0), c(C, null, N(s.value.routes, (l) => (r(), c("g", {
           key: l.link.id,
-          class: X({
+          class: Y({
             "is-path": l.link.kind === "path",
             "is-portal": l.link.kind === "portal"
           })
@@ -398,21 +440,21 @@ var ft = {
           a("path", {
             class: "map-road-casing",
             d: l.path
-          }, null, 8, bt),
+          }, null, 8, gt),
           a("path", {
             class: "map-road-line",
             d: l.path,
             "marker-end": l.link.bidirectional ? void 0 : `url(#${d})`
-          }, null, 8, gt),
+          }, null, 8, kt),
           l.link.label ? (r(), c("text", {
             key: 0,
             x: l.x,
             y: l.y - 14
-          }, m(l.link.label), 9, kt)) : w("", !0)
+          }, m(l.link.label), 9, wt)) : k("", !0)
         ], 2))), 128))]),
-        (r(!0), c(_, null, R(s.value.nodes, (l) => (r(), c("g", {
+        (r(!0), c(C, null, N(s.value.nodes, (l) => (r(), c("g", {
           key: l.location.key,
-          class: X(["map-place", {
+          class: Y(["map-place", {
             "is-selected": l.location.key === e.selectedLocationKey,
             "is-current": l.location.key === t.value,
             "is-unvisited": l.location.status !== "visited"
@@ -432,15 +474,15 @@ var ft = {
             class: "map-pin-body",
             d: "M0 33C-6 25-26 8-26-6a26 26 0 0 1 52 0C26 8 6 25 0 33Z"
           }, null, -1)),
-          a("g", Mt, [C(L, {
+          a("g", $t, [L(A, {
             name: p(l.location.terrain, l.location.scale),
             width: "28",
             height: "28"
           }, null, 8, ["name"])]),
-          a("text", $t, m(l.location.name.length > 14 ? l.location.name.slice(0, 13) + "…" : l.location.name), 1),
-          l.location.key === t.value ? (r(), c("text", _t, "你在这里")) : l.location.status !== "visited" ? (r(), c("text", xt, m(y(se).unvisited), 1)) : w("", !0),
+          a("text", _t, m(l.location.name.length > 14 ? l.location.name.slice(0, 13) + "…" : l.location.name), 1),
+          l.location.key === t.value ? (r(), c("text", xt, "你在这里")) : l.location.status !== "visited" ? (r(), c("text", Ct, m(y(re).unvisited), 1)) : k("", !0),
           a("title", null, m(l.location.name) + m(l.location.brief ? " · " + l.location.brief : ""), 1)
-        ], 42, wt))), 128))
+        ], 42, Mt))), 128))
       ]),
       _: 1
     }, 8, [
@@ -451,9 +493,9 @@ var ft = {
       "focus-sequence"
     ]));
   }
-}), St = Ct, ue;
+}), Lt = St, de;
 async function Ve() {
-  if (!ue) {
+  if (!de) {
     const e = [
       "..",
       "..",
@@ -462,16 +504,16 @@ async function Ve() {
       "material-symbols",
       "material-symbols-rounded.woff2"
     ].join("/"), n = new URL(e, import.meta.url);
-    ue = new FontFace("Xiaobai Map Symbols", `url("${n.href}")`, {
+    de = new FontFace("Xiaobai Map Symbols", `url("${n.href}")`, {
       display: "block",
       weight: "400"
-    }).load(), ue.catch(() => {
-      ue = void 0;
+    }).load(), de.catch(() => {
+      de = void 0;
     });
   }
-  document.fonts.add(await ue);
+  document.fonts.add(await de);
 }
-var nl = Object.freeze([
+var ol = Object.freeze([
   "wall",
   "road",
   "water",
@@ -487,14 +529,14 @@ var nl = Object.freeze([
   "magic",
   "secret",
   "light"
-]), ol = Object.freeze([
+]), ll = Object.freeze([
   "rect",
   "circle",
   "path",
   "curve",
   "icon",
   "label"
-]), ll = Object.freeze([
+]), sl = Object.freeze([
   "door",
   "stairs",
   "elevator",
@@ -536,15 +578,15 @@ var nl = Object.freeze([
   "warm-light",
   "cold-light",
   "shadow"
-]), sl = Object.freeze([
+]), rl = Object.freeze([
   "confirmed",
   "inferred",
   "unknown"
-]), rl = Object.freeze(["indoor", "outdoor"]), il = Object.freeze([
+]), il = Object.freeze(["indoor", "outdoor"]), cl = Object.freeze([
   "sunlight",
   "daylight",
   "night"
-]), cl = Object.freeze(["on", "off"]), Lt = Object.freeze([
+]), ul = Object.freeze(["on", "off"]), Et = Object.freeze([
   {
     name: "Seating and sleeping",
     icons: [
@@ -624,7 +666,7 @@ var nl = Object.freeze([
     ],
     hint: "light is a freestanding fixture; light regions use category light without an object icon."
   }
-]), qe = Object.freeze(Lt.flatMap((e) => [...e.icons])), ul = Object.freeze([
+]), qe = Object.freeze(Et.flatMap((e) => [...e.icons])), dl = Object.freeze([
   ...qe,
   "stairs",
   "elevator",
@@ -644,7 +686,7 @@ var nl = Object.freeze([
   "actor",
   "building",
   "water"
-]), dl = Object.freeze(/* @__PURE__ */ new Set([
+]), vl = Object.freeze(/* @__PURE__ */ new Set([
   "floor",
   "ground",
   "surface",
@@ -685,10 +727,10 @@ function Ue(e, n) {
 function At(e, n) {
   return `url(#${n}-face-${e || "unknown"})`;
 }
-function ve(e) {
+function pe(e) {
   return `color-mix(in srgb, ${Ot[e]}, var(--map-surface) var(--scene-material-mix))`;
 }
-var Et = ["id"], Pt = ["stop-color", "stop-opacity"], Bt = ["stop-color", "stop-opacity"], It = ["stop-color", "stop-opacity"], Tt = ["id"], Ht = ["fill", "fill-opacity"], Rt = {
+var Pt = ["id"], Bt = ["stop-color", "stop-opacity"], It = ["stop-color", "stop-opacity"], Tt = ["stop-color", "stop-opacity"], Rt = ["id"], Ht = ["fill", "fill-opacity"], zt = {
   fill: "none",
   stroke: "var(--scene-shadow)",
   "stroke-width": ".65",
@@ -696,61 +738,61 @@ var Et = ["id"], Pt = ["stop-color", "stop-opacity"], Bt = ["stop-color", "stop-
 }, Nt = {
   key: 1,
   d: "M0 0H48V32H0ZM19 0V17M0 17H48M36 17V32M3 3h12m8 0h21"
-}, zt = {
+}, Kt = {
   key: 2,
   d: "M0 0H48V32H0ZM24 0V32M0 16H48M12 4l5 4-5 4-5-4ZM36 20l5 4-5 4-5-4Z"
-}, Kt = {
+}, Vt = {
   key: 3,
   d: "M-3 3 8 11l17 2 9 10 18 3M27-3l-8 12 3 8-7 17",
   opacity: ".65"
-}, Vt = {
+}, qt = {
   key: 4,
   d: "M3 8q6 3 13 0M25 25q7 2 17-1",
   stroke: "var(--scene-highlight)",
   "stroke-width": "1.3",
   opacity: "1"
-}, qt = {
+}, Ut = {
   key: 5,
   d: "M5 32 37 0M12 32 44 0",
   stroke: "var(--scene-highlight)",
   "stroke-width": "2.2"
-}, Ut = {
+}, Wt = {
   key: 6,
   d: "M8 15l-2-4m2 4 3-3M36 26l-1-4m1 4 3-3"
-}, Wt = {
+}, Dt = {
   key: 7,
   d: "M5 8h1m20-2h2m-12 17h2m23-6h1m-5 12h2",
   "stroke-linecap": "round"
 }, Gt = {
   key: 8,
   d: "M0 0H48V32H0M0 5H48M0 27H48M5 5v1m38-1v1m-38 20v1m38-1v1"
-}, Dt = {
+}, Ft = {
   key: 9,
   d: "M0 5H48M0 13H48M0 21H48M0 29H48M4 0v32m8-32v32m8-32v32m8-32v32m8-32v32m8-32v32",
   opacity: ".55"
-}, Ft = {
+}, Zt = {
   key: 10,
   d: "m24 5 8 11-8 11-8-11ZM24 10v12M20 16h8"
-}, Zt = {
+}, Qt = {
   key: 11,
   d: "M7 8q12-5 16 6t20 7M4 27l6-3"
-}, Qt = {
+}, Yt = {
   key: 12,
   d: "M5 19q5-3 11-1M29 8q6-2 12 1",
   stroke: "var(--scene-highlight)",
   "stroke-width": "1.4"
-}, Yt = {
+}, Xt = {
   key: 0,
   d: "M0 1H48",
   stroke: "var(--scene-highlight)",
   "stroke-width": ".7",
   opacity: ".35"
-}, Xt = ["id"], Jt = ["id"], ea = ["transform", "fill"], ta = /* @__PURE__ */ G({
+}, Jt = ["id"], ea = ["id"], ta = ["transform", "fill"], aa = /* @__PURE__ */ G({
   __name: "SceneMaterials",
   props: { prefix: {} },
   setup(e) {
     return (n, s) => (r(), c("defs", null, [
-      (r(!0), c(_, null, R(y(jt), (t) => (r(), c(_, { key: t }, [a("linearGradient", {
+      (r(!0), c(C, null, N(y(jt), (t) => (r(), c(C, { key: t }, [a("linearGradient", {
         id: `${e.prefix}-face-${t}`,
         x1: "0",
         y1: "0",
@@ -759,20 +801,20 @@ var Et = ["id"], Pt = ["stop-color", "stop-opacity"], Bt = ["stop-color", "stop-
       }, [
         a("stop", {
           offset: "0",
-          "stop-color": `color-mix(in srgb, ${y(ve)(t)}, var(--scene-highlight) 24%)`,
+          "stop-color": `color-mix(in srgb, ${y(pe)(t)}, var(--scene-highlight) 24%)`,
           "stop-opacity": t === "glass" ? 0.35 : 1
-        }, null, 8, Pt),
-        a("stop", {
-          offset: ".52",
-          "stop-color": y(ve)(t),
-          "stop-opacity": t === "glass" ? 0.16 : 1
         }, null, 8, Bt),
         a("stop", {
+          offset: ".52",
+          "stop-color": y(pe)(t),
+          "stop-opacity": t === "glass" ? 0.16 : 1
+        }, null, 8, It),
+        a("stop", {
           offset: "1",
-          "stop-color": `color-mix(in srgb, ${y(ve)(t)}, var(--scene-shadow) 16%)`,
+          "stop-color": `color-mix(in srgb, ${y(pe)(t)}, var(--scene-shadow) 16%)`,
           "stop-opacity": t === "glass" ? 0.28 : 1
-        }, null, 8, It)
-      ], 8, Et), a("pattern", {
+        }, null, 8, Tt)
+      ], 8, Pt), a("pattern", {
         id: `${e.prefix}-material-${t}`,
         width: "48",
         height: "32",
@@ -782,20 +824,20 @@ var Et = ["id"], Pt = ["stop-color", "stop-opacity"], Bt = ["stop-color", "stop-
         a("rect", {
           width: "48",
           height: "32",
-          fill: y(ve)(t),
+          fill: y(pe)(t),
           "fill-opacity": t === "glass" ? 0.4 : 1
         }, null, 8, Ht),
-        a("g", Rt, [t === "wood" ? (r(), c(_, { key: 0 }, [s[0] || (s[0] = a("path", { d: "M0 0H48M0 16H48M19 0V16M37 16V32" }, null, -1)), s[1] || (s[1] = a("path", {
+        a("g", zt, [t === "wood" ? (r(), c(C, { key: 0 }, [s[0] || (s[0] = a("path", { d: "M0 0H48M0 16H48M19 0V16M37 16V32" }, null, -1)), s[1] || (s[1] = a("path", {
           d: "M3 7Q12 4 26 8T47 7M2 26q10-4 25 0t23-1",
           opacity: ".5"
-        }, null, -1))], 64)) : t === "stone" ? (r(), c("path", Nt)) : t === "tile" ? (r(), c("path", zt)) : t === "marble" ? (r(), c("path", Kt)) : t === "water" ? (r(), c("path", Vt)) : t === "glass" ? (r(), c("path", qt)) : t === "grass" || t === "forest" ? (r(), c("path", Ut)) : t === "dirt" || t === "sand" ? (r(), c("path", Wt)) : t === "metal" ? (r(), c("path", Gt)) : [
+        }, null, -1))], 64)) : t === "stone" ? (r(), c("path", Nt)) : t === "tile" ? (r(), c("path", Kt)) : t === "marble" ? (r(), c("path", Vt)) : t === "water" ? (r(), c("path", qt)) : t === "glass" ? (r(), c("path", Ut)) : t === "grass" || t === "forest" ? (r(), c("path", Wt)) : t === "dirt" || t === "sand" ? (r(), c("path", Dt)) : t === "metal" ? (r(), c("path", Gt)) : [
           "carpet",
           "fabric",
           "bed-sheet",
           "tatami"
-        ].includes(t) ? (r(), c("path", Dt)) : t === "rune" ? (r(), c("path", Ft)) : t === "blood" ? (r(), c("path", Zt)) : t === "snow" ? (r(), c("path", Qt)) : w("", !0)]),
-        t === "wood" || t === "stone" || t === "metal" ? (r(), c("path", Yt)) : w("", !0)
-      ], 8, Tt)], 64))), 128)),
+        ].includes(t) ? (r(), c("path", Ft)) : t === "rune" ? (r(), c("path", Zt)) : t === "blood" ? (r(), c("path", Qt)) : t === "snow" ? (r(), c("path", Yt)) : k("", !0)]),
+        t === "wood" || t === "stone" || t === "metal" ? (r(), c("path", Xt)) : k("", !0)
+      ], 8, Rt)], 64))), 128)),
       a("radialGradient", {
         id: `${e.prefix}-crown-face`,
         cx: ".32",
@@ -814,8 +856,8 @@ var Et = ["id"], Pt = ["stop-color", "stop-opacity"], Bt = ["stop-color", "stop-
           offset: "1",
           "stop-color": "var(--scene-leaf-dark)"
         }, null, -1)
-      ])], 8, Xt),
-      (r(), c(_, null, R(3, (t) => a("symbol", {
+      ])], 8, Jt),
+      (r(), c(C, null, N(3, (t) => a("symbol", {
         id: `${e.prefix}-crown-${t - 1}`,
         key: t,
         viewBox: "0 0 100 100"
@@ -858,10 +900,10 @@ var Et = ["id"], Pt = ["stop-color", "stop-opacity"], Bt = ["stop-color", "stop-
           "stroke-width": "1.4",
           opacity: ".75"
         }, null, -1)
-      ])], 8, ea)], 8, Jt)), 64))
+      ])], 8, ta)], 8, ea)), 64))
     ]));
   }
-}), aa = ta, na = /* @__PURE__ */ new Set([
+}), na = aa, oa = /* @__PURE__ */ new Set([
   "water",
   "terrain",
   "furniture",
@@ -870,7 +912,7 @@ var Et = ["id"], Pt = ["stop-color", "stop-opacity"], Bt = ["stop-color", "stop-
   "magic",
   "secret",
   "light"
-]), oa = new Set(qe), la = /* @__PURE__ */ new Set([
+]), la = new Set(qe), sa = /* @__PURE__ */ new Set([
   "chair",
   "table",
   "bed",
@@ -881,35 +923,35 @@ var Et = ["id"], Pt = ["stop-color", "stop-opacity"], Bt = ["stop-color", "stop-
   "tree",
   "rock"
 ]);
-function sa(e) {
-  return !!e.icon && la.has(e.icon);
+function ra(e) {
+  return !!e.icon && sa.has(e.icon);
 }
-var le = (e) => Number(e.toFixed(3)).toString(), me = (e) => e.geometry.points || [];
+var se = (e) => Number(e.toFixed(3)).toString(), be = (e) => e.geometry.points || [];
 function je(e) {
   return e.shape === "icon" || e.shape === "label" || e.category === "actor" || e.category === "door" || e.kind === "stairs" || e.icon === "stairs" || e.icon === "door-open";
 }
-function _e(e) {
-  return me(e).length >= 3 && (e.closed ?? na.has(e.category));
+function xe(e) {
+  return be(e).length >= 3 && (e.closed ?? oa.has(e.category));
 }
-function ce(e) {
-  return e.category === "wall" || e.category === "grid" || e.icon === "fence" && ["path", "curve"].includes(e.shape) ? !1 : e.shape === "rect" || e.shape === "circle" ? !0 : (e.shape === "path" || e.shape === "curve") && _e(e);
+function ue(e) {
+  return e.category === "wall" || e.category === "grid" || e.icon === "fence" && ["path", "curve"].includes(e.shape) ? !1 : e.shape === "rect" || e.shape === "circle" ? !0 : (e.shape === "path" || e.shape === "curve") && xe(e);
 }
 function We(e) {
   return ![
     "wall",
     "grid",
     "actor"
-  ].includes(e.category) && (e.shape === "rect" || e.shape === "circle") && (e.icon !== void 0 && oa.has(e.icon) || [
+  ].includes(e.category) && (e.shape === "rect" || e.shape === "circle") && (e.icon !== void 0 && la.has(e.icon) || [
     "furniture",
     "decoration",
     "door"
   ].includes(e.category));
 }
-function Pe(e, n, s) {
+function Be(e, n, s) {
   const t = e[s], u = e[(s + 1) % e.length], d = e[s - 1] || (n ? e[e.length - 1] : t), p = e[s + 2] || (n ? e[(s + 2) % e.length] : u), i = (v, h, l) => Math.max(Math.min(h, l), Math.min(Math.max(h, l), v));
   return [[i(t[0] + (u[0] - d[0]) / 6, t[0], u[0]), i(t[1] + (u[1] - d[1]) / 6, t[1], u[1])], [i(u[0] - (p[0] - t[0]) / 6, t[0], u[0]), i(u[1] - (p[1] - t[1]) / 6, t[1], u[1])]];
 }
-function vl(e) {
+function pl(e) {
   if (e.shape === "rect") {
     const { x: d, y: p, width: i, height: v } = e.geometry;
     return {
@@ -933,14 +975,14 @@ function vl(e) {
     points: [],
     closed: !1
   };
-  const n = me(e), s = _e(e), t = (d) => d.map((p) => Number(le(p)));
+  const n = be(e), s = xe(e), t = (d) => d.map((p) => Number(se(p)));
   if (e.shape === "path" || n.length < 2) return {
     points: n.map(t),
     closed: s
   };
   const u = [t(n[0])];
   for (let d = 0; d < n.length - (s ? 0 : 1); d += 1) {
-    const p = t(n[d]), i = t(n[(d + 1) % n.length]), [v, h] = Pe(n, s, d).map(t);
+    const p = t(n[d]), i = t(n[(d + 1) % n.length]), [v, h] = Be(n, s, d).map(t);
     for (let l = 1; l <= 12; l += 1) {
       const f = l / 12, o = 1 - f;
       u.push([0, 1].map((b) => o ** 3 * p[b] + 3 * o ** 2 * f * v[b] + 3 * o * f ** 2 * h[b] + f ** 3 * i[b]));
@@ -951,7 +993,7 @@ function vl(e) {
     closed: s
   };
 }
-function ra(e) {
+function ia(e) {
   if (e.shape === "rect") {
     const { x: d, y: p, width: i, height: v } = e.geometry;
     return `M ${d} ${p} h ${i} v ${v} h ${-i} Z`;
@@ -960,14 +1002,14 @@ function ra(e) {
     const { x: d, y: p, radius: i } = e.geometry;
     return `M ${d - i} ${p} a ${i} ${i} 0 1 0 ${i * 2} 0 a ${i} ${i} 0 1 0 ${-i * 2} 0 Z`;
   }
-  const n = me(e);
+  const n = be(e);
   if (n.length < 2) return "";
-  const s = _e(e);
-  if (e.shape === "path") return `M ${n.map(([d, p]) => `${le(d)} ${le(p)}`).join(" L ")}${s ? " Z" : ""}`;
-  const t = [`M ${n[0].map(le).join(" ")}`], u = n.length;
+  const s = xe(e);
+  if (e.shape === "path") return `M ${n.map(([d, p]) => `${se(d)} ${se(p)}`).join(" L ")}${s ? " Z" : ""}`;
+  const t = [`M ${n[0].map(se).join(" ")}`], u = n.length;
   for (let d = 0; d < u - (s ? 0 : 1); d += 1) {
-    const [p, i] = Pe(n, s, d), v = n[(d + 1) % u];
-    t.push(`C ${p.map(le).join(" ")}, ${i.map(le).join(" ")}, ${v.map(le).join(" ")}`);
+    const [p, i] = Be(n, s, d), v = n[(d + 1) % u];
+    t.push(`C ${p.map(se).join(" ")}, ${i.map(se).join(" ")}, ${v.map(se).join(" ")}`);
   }
   return t.join(" ") + (s ? " Z" : "");
 }
@@ -982,7 +1024,7 @@ function ae(e) {
       height: p * 2
     };
   }
-  const n = me(e);
+  const n = be(e);
   if (!n.length) {
     const { x: u, y: d } = e.geometry;
     return {
@@ -1000,7 +1042,7 @@ function ae(e) {
     height: Math.max(...t) - Math.min(...t)
   };
 }
-function ia(e) {
+function ca(e) {
   if (!e.rotation) return;
   const n = ae(e);
   return `rotate(${e.rotation} ${n.x + n.width / 2} ${n.y + n.height / 2})`;
@@ -1009,36 +1051,36 @@ function Te(e, n = 1) {
   const s = ae(e), t = [s.x + s.width / 2, s.y + s.height / 2];
   if (e.shape === "label") return t;
   if (je(e)) return [t[0], t[1] + 23 * n];
-  if ((e.category === "terrain" || e.category === "water") && ce(e)) return t;
+  if ((e.category === "terrain" || e.category === "water") && ue(e)) return t;
   if (e.shape === "path" || e.shape === "curve") {
-    const p = me(e), i = _e(e), v = p.length - (i ? 0 : 1), h = Array.from({ length: v }, (q, I) => Math.hypot(p[(I + 1) % p.length][0] - p[I][0], p[(I + 1) % p.length][1] - p[I][1]));
-    let l = h.reduce((q, I) => q + I, 0) / 2, f = 0;
+    const p = be(e), i = xe(e), v = p.length - (i ? 0 : 1), h = Array.from({ length: v }, (q, R) => Math.hypot(p[(R + 1) % p.length][0] - p[R][0], p[(R + 1) % p.length][1] - p[R][1]));
+    let l = h.reduce((q, R) => q + R, 0) / 2, f = 0;
     for (; f < h.length - 1 && l > h[f]; )
       l -= h[f], f += 1;
-    const o = p[f], b = p[(f + 1) % p.length], O = h[f] ? l / h[f] : 0.5;
-    let V = o[0] + (b[0] - o[0]) * O, E = o[1] + (b[1] - o[1]) * O, A = b[0] - o[0], x = b[1] - o[1];
+    const o = p[f], b = p[(f + 1) % p.length], $ = h[f] ? l / h[f] : 0.5;
+    let P = o[0] + (b[0] - o[0]) * $, E = o[1] + (b[1] - o[1]) * $, B = b[0] - o[0], x = b[1] - o[1];
     if (e.shape === "curve") {
-      const [q, I] = Pe(p, i, f), P = 1 - O;
-      V = P ** 3 * o[0] + 3 * P ** 2 * O * q[0] + 3 * P * O ** 2 * I[0] + O ** 3 * b[0], E = P ** 3 * o[1] + 3 * P ** 2 * O * q[1] + 3 * P * O ** 2 * I[1] + O ** 3 * b[1], A = 3 * P ** 2 * (q[0] - o[0]) + 6 * P * O * (I[0] - q[0]) + 3 * O ** 2 * (b[0] - I[0]), x = 3 * P ** 2 * (q[1] - o[1]) + 6 * P * O * (I[1] - q[1]) + 3 * O ** 2 * (b[1] - I[1]);
+      const [q, R] = Be(p, i, f), I = 1 - $;
+      P = I ** 3 * o[0] + 3 * I ** 2 * $ * q[0] + 3 * I * $ ** 2 * R[0] + $ ** 3 * b[0], E = I ** 3 * o[1] + 3 * I ** 2 * $ * q[1] + 3 * I * $ ** 2 * R[1] + $ ** 3 * b[1], B = 3 * I ** 2 * (q[0] - o[0]) + 6 * I * $ * (R[0] - q[0]) + 3 * $ ** 2 * (b[0] - R[0]), x = 3 * I ** 2 * (q[1] - o[1]) + 6 * I * $ * (R[1] - q[1]) + 3 * $ ** 2 * (b[1] - R[1]);
     }
-    const N = Math.hypot(A, x);
-    if (!N) return [V, E - 13 * n];
-    let U = -x / N, z = A / N;
-    return (z > 0 || z === 0 && U < 0) && (U = -U, z = -z), [V + U * 13 * n, E + z * 13 * n];
+    const W = Math.hypot(B, x);
+    if (!W) return [P, E - 13 * n];
+    let K = -x / W, V = B / W;
+    return (V > 0 || V === 0 && K < 0) && (K = -K, V = -V), [P + K * 13 * n, E + V * 13 * n];
   }
   const u = (e.rotation || 0) * Math.PI / 180, d = e.shape === "circle" ? s.height / 2 : (Math.abs(Math.sin(u)) * s.width + Math.abs(Math.cos(u)) * s.height) / 2;
   return [t[0], t[1] + d + 13 * n];
 }
-function ca(e) {
+function ua(e) {
   let n = 2166136261;
   for (const s of e) n = Math.imul(n ^ s.charCodeAt(0), 16777619);
   return n >>> 0;
 }
-function ua(e) {
-  const n = e.filter((t) => t.category === "terrain" && t.material === "forest" && ce(t) && !We(t)).sort((t, u) => t.id < u.id ? -1 : t.id > u.id ? 1 : 0), s = /* @__PURE__ */ new Map();
+function da(e) {
+  const n = e.filter((t) => t.category === "terrain" && t.material === "forest" && ue(t) && !We(t)).sort((t, u) => t.id < u.id ? -1 : t.id > u.id ? 1 : 0), s = /* @__PURE__ */ new Map();
   for (let t = 0; t < n.length; t += 1) {
     const u = n[t], d = ae(u), p = Math.floor(256 / n.length) + (t < 256 % n.length ? 1 : 0), i = d.width && d.height ? Math.min(p, Math.max(1, Math.ceil(d.width * d.height / 2704))) : 0, v = Math.min(i, Math.max(1, Math.ceil(Math.sqrt(i * d.width / Math.max(1, d.height))))), h = Math.ceil(i / Math.max(1, v));
-    let l = ca(u.id);
+    let l = ua(u.id);
     const f = () => (l = Math.imul(l, 1664525) + 1013904223 >>> 0, l / 4294967296), o = [];
     for (let b = 0; b < i; b += 1) o.push({
       x: d.x + (b % v + 0.5 + (f() - 0.5) * 0.35) * d.width / v,
@@ -1050,27 +1092,27 @@ function ua(e) {
   }
   return s;
 }
-var da = [
+var va = [
   "x",
   "y",
   "width",
   "height"
-], va = {
+], pa = {
   key: 0,
   cx: "50",
   cy: "50",
   r: "50"
-}, pa = {
+}, ha = {
   key: 1,
   width: "100",
   height: "100"
-}, ha = ["clip-path", "fill"], fa = {
+}, fa = ["clip-path", "fill"], ya = {
   key: 0,
   cx: "50",
   cy: "50",
   r: "49",
   class: "scene-object-edge"
-}, ya = {
+}, ma = {
   key: 1,
   x: "1",
   y: "1",
@@ -1078,11 +1120,11 @@ var da = [
   height: "98",
   rx: "2",
   class: "scene-object-edge"
-}, ma = ["fill"], ba = ["fill"], ga = ["d"], ka = {
+}, ba = ["fill"], ga = ["fill"], ka = ["d"], wa = {
   key: 0,
   d: "M9 78H91",
   class: "scene-object-seam"
-}, wa = ["x"], Ma = /* @__PURE__ */ G({
+}, Ma = ["x"], $a = /* @__PURE__ */ G({
   __name: "SceneObject",
   props: {
     element: {},
@@ -1090,7 +1132,7 @@ var da = [
     unitScale: {}
   },
   setup(e) {
-    const n = e, s = S(() => ae(n.element)), t = S(() => Math.min(s.value.width, s.value.height) / n.unitScale >= 12), u = S(() => n.element.shape === "circle"), d = S(() => n.element.material), p = S(() => At(d.value, n.prefix)), i = S(() => Ue(d.value, n.prefix)), v = `scene-object-${he()}`;
+    const n = e, s = j(() => ae(n.element)), t = j(() => Math.min(s.value.width, s.value.height) / n.unitScale >= 12), u = j(() => n.element.shape === "circle"), d = j(() => n.element.material), p = j(() => At(d.value, n.prefix)), i = j(() => Ue(d.value, n.prefix)), v = `scene-object-${fe()}`;
     return (h, l) => (r(), c("svg", {
       x: s.value.x,
       y: s.value.y,
@@ -1099,17 +1141,17 @@ var da = [
       viewBox: "0 0 100 100",
       preserveAspectRatio: "none",
       class: "scene-object"
-    }, [a("defs", null, [a("clipPath", { id: v }, [u.value ? (r(), c("circle", va)) : (r(), c("rect", pa))])]), a("g", {
+    }, [a("defs", null, [a("clipPath", { id: v }, [u.value ? (r(), c("circle", pa)) : (r(), c("rect", ha))])]), a("g", {
       "clip-path": `url(#${v})`,
       fill: p.value
-    }, [u.value ? (r(), c("circle", fa)) : (r(), c("rect", ya)), t.value ? (r(), c(_, { key: 2 }, [u.value ? (r(), c("circle", {
+    }, [u.value ? (r(), c("circle", ya)) : (r(), c("rect", ma)), t.value ? (r(), c(C, { key: 2 }, [u.value ? (r(), c("circle", {
       key: 0,
       cx: "50",
       cy: "50",
       r: "44",
       fill: i.value,
       class: "scene-object-inset"
-    }, null, 8, ma)) : (r(), c("rect", {
+    }, null, 8, ba)) : (r(), c("rect", {
       key: 1,
       x: "5",
       y: "5",
@@ -1118,10 +1160,10 @@ var da = [
       rx: "2",
       fill: i.value,
       class: "scene-object-inset"
-    }, null, 8, ba)), e.element.icon === "table" || e.element.icon === "counter" ? (r(), c(_, { key: 2 }, [a("path", {
+    }, null, 8, ga)), e.element.icon === "table" || e.element.icon === "counter" ? (r(), c(C, { key: 2 }, [a("path", {
       d: u.value ? "M18 36A35 35 0 0 1 72 22" : "M8 13V8H92",
       class: "scene-object-shine"
-    }, null, 8, ga), e.element.icon === "counter" ? (r(), c("path", ka)) : w("", !0)], 64)) : e.element.icon === "chair" ? (r(), c(_, { key: 3 }, [
+    }, null, 8, ka), e.element.icon === "counter" ? (r(), c("path", wa)) : k("", !0)], 64)) : e.element.icon === "chair" ? (r(), c(C, { key: 3 }, [
       l[0] || (l[0] = a("rect", {
         x: "12",
         y: "29",
@@ -1142,7 +1184,7 @@ var da = [
         d: "M16 12H84",
         class: "scene-object-shine"
       }, null, -1))
-    ], 64)) : e.element.icon === "bed" ? (r(), c(_, { key: 4 }, [
+    ], 64)) : e.element.icon === "bed" ? (r(), c(C, { key: 4 }, [
       l[3] || (l[3] = a("rect", {
         x: "10",
         y: "12",
@@ -1167,13 +1209,13 @@ var da = [
         d: "M18 49H82",
         class: "scene-object-shine"
       }, null, -1))
-    ], 64)) : e.element.icon === "shelf" ? (r(), c(_, { key: 5 }, [l[7] || (l[7] = a("path", {
+    ], 64)) : e.element.icon === "shelf" ? (r(), c(C, { key: 5 }, [l[7] || (l[7] = a("path", {
       d: "M8 32H92M8 66H92M40 8V32M65 32V66M35 66V92",
       class: "scene-object-seam"
     }, null, -1)), l[8] || (l[8] = a("path", {
       d: "M8 34H92M8 68H92",
       class: "scene-object-shine"
-    }, null, -1))], 64)) : e.element.icon === "sofa" ? (r(), c(_, { key: 6 }, [
+    }, null, -1))], 64)) : e.element.icon === "sofa" ? (r(), c(C, { key: 6 }, [
       l[9] || (l[9] = a("rect", {
         x: "8",
         y: "5",
@@ -1182,7 +1224,7 @@ var da = [
         rx: "7",
         class: "scene-object-inset"
       }, null, -1)),
-      (r(), c(_, null, R(3, (f) => a("rect", {
+      (r(), c(C, null, N(3, (f) => a("rect", {
         key: f,
         x: 15 + (f - 1) * 24,
         y: "32",
@@ -1190,7 +1232,7 @@ var da = [
         height: "57",
         rx: "5",
         class: "scene-object-inset"
-      }, null, 8, wa)), 64)),
+      }, null, 8, Ma)), 64)),
       l[10] || (l[10] = a("rect", {
         x: "3",
         y: "23",
@@ -1207,21 +1249,21 @@ var da = [
         rx: "4",
         class: "scene-object-inset"
       }, null, -1))
-    ], 64)) : e.element.icon === "bridge" ? (r(), c(_, { key: 7 }, [l[12] || (l[12] = a("path", {
+    ], 64)) : e.element.icon === "bridge" ? (r(), c(C, { key: 7 }, [l[12] || (l[12] = a("path", {
       d: "M7 7V93M93 7V93M9 20H91M9 35H91M9 50H91M9 65H91M9 80H91",
       class: "scene-object-seam"
     }, null, -1)), l[13] || (l[13] = a("path", {
       d: "M11 7V93M89 7V93",
       class: "scene-object-shine"
-    }, null, -1))], 64)) : e.element.icon === "tree" ? (r(), c(_, { key: 8 }, [l[14] || (l[14] = Xe('<circle cx="34" cy="32" r="24" class="scene-object-inset"></circle><circle cx="69" cy="36" r="24" class="scene-object-inset"></circle><circle cx="30" cy="62" r="23" class="scene-object-inset"></circle><circle cx="64" cy="67" r="25" class="scene-object-inset"></circle><circle cx="49" cy="48" r="26" class="scene-object-inset"></circle><path d="M21 24q10-10 22-4M36 41q8-9 22-6M64 56q8-1 13 5" class="scene-object-shine"></path>', 6))], 64)) : e.element.icon === "rock" ? (r(), c(_, { key: 9 }, [l[15] || (l[15] = a("path", {
+    }, null, -1))], 64)) : e.element.icon === "tree" ? (r(), c(C, { key: 8 }, [l[14] || (l[14] = Xe('<circle cx="34" cy="32" r="24" class="scene-object-inset"></circle><circle cx="69" cy="36" r="24" class="scene-object-inset"></circle><circle cx="30" cy="62" r="23" class="scene-object-inset"></circle><circle cx="64" cy="67" r="25" class="scene-object-inset"></circle><circle cx="49" cy="48" r="26" class="scene-object-inset"></circle><path d="M21 24q10-10 22-4M36 41q8-9 22-6M64 56q8-1 13 5" class="scene-object-shine"></path>', 6))], 64)) : e.element.icon === "rock" ? (r(), c(C, { key: 9 }, [l[15] || (l[15] = a("path", {
       d: "M8 38 33 12 76 18 93 57 71 88 25 86ZM33 12 41 44 8 38M41 44 76 18M41 44 71 88M41 44 93 57",
       class: "scene-object-seam"
     }, null, -1)), l[16] || (l[16] = a("path", {
       d: "M12 38 33 17 72 22",
       class: "scene-object-shine"
-    }, null, -1))], 64)) : w("", !0)], 64)) : w("", !0)], 8, ha)], 8, da));
+    }, null, -1))], 64)) : k("", !0)], 64)) : k("", !0)], 8, fa)], 8, va));
   }
-}), $a = Ma, He = {
+}), _a = $a, Re = {
   chair: "椅",
   stool: "凳",
   bench: "长凳",
@@ -1259,7 +1301,7 @@ var da = [
   fire: "火",
   flag: "旗",
   sign: "牌"
-}, _a = Object.freeze({
+}, xa = Object.freeze({
   wall: {
     stroke: "var(--scene-edge)",
     fill: "none",
@@ -1338,7 +1380,7 @@ var da = [
     fill: "rgba(255, 210, 91, .22)",
     width: 1.5
   }
-}), xa = Object.freeze({
+}), Ca = Object.freeze({
   wall: "墙体",
   road: "道路",
   water: "水域",
@@ -1354,7 +1396,7 @@ var da = [
   magic: "魔法",
   secret: "未知",
   light: "光源"
-}), Ca = Object.freeze({
+}), Sa = Object.freeze({
   door: "door_open",
   stairs: "stairs",
   elevator: "elevator",
@@ -1373,7 +1415,7 @@ var da = [
   marker: "location_on",
   player: "person_pin_circle",
   actor: "person"
-}), Sa = Object.freeze({
+}), La = Object.freeze({
   door: "D",
   stairs: "S",
   elevator: "E",
@@ -1448,7 +1490,7 @@ var da = [
   "potted-plant": "potted_plant",
   flag: "flag",
   sign: "signpost"
-}), La = Object.freeze({
+}), Ea = Object.freeze({
   wall: "architecture",
   road: "route",
   water: "water_drop",
@@ -1464,7 +1506,7 @@ var da = [
   magic: "auto_awesome",
   secret: "visibility_off",
   light: "lightbulb"
-}), Le = Object.freeze({
+}), Ee = Object.freeze({
   terrain: 10,
   water: 20,
   grid: 25,
@@ -1516,9 +1558,9 @@ var da = [
     glow: "rgba(61, 189, 158, .13)",
     accent: "#69d8b8"
   }
-}), Ge = Object.freeze({
+}), De = Object.freeze({
   world: "世界",
-  region: ye.world.unit,
+  region: me.world.unit,
   city: "城市",
   district: "街区",
   building: "建筑",
@@ -1534,30 +1576,30 @@ var da = [
   portal: "传送门",
   passage: "通道"
 });
-function Ea(e, n) {
+function Pa(e, n) {
   return e < n ? -1 : e > n ? 1 : 0;
 }
-function Pa(e, n) {
-  const s = _a[e.category], t = ce(e), u = t && (e.material || e.category === "water") ? Ue(e.material || "water", n) : "", d = e.certainty === "inferred" ? "8 6" : e.certainty === "unknown" ? "3 7" : s.dash;
+function Ba(e, n) {
+  const s = xa[e.category], t = ue(e), u = t && (e.material || e.category === "water") ? Ue(e.material || "water", n) : "", d = e.certainty === "inferred" ? "8 6" : e.certainty === "unknown" ? "3 7" : s.dash;
   return {
     ...s,
     fill: t ? u || s.fill : "none",
     opacity: e.certainty === "unknown" ? 0.48 : e.certainty === "inferred" ? 0.72 : 1,
     dash: d,
-    icon: e.icon ? ja[e.icon] : e.kind ? Ca[e.kind] : La[e.category],
-    fallback: e.kind ? Sa[e.kind] : e.icon && Object.hasOwn(He, e.icon) ? He[e.icon] : xa[e.category].slice(0, 1),
-    z: Le[e.category]
+    icon: e.icon ? ja[e.icon] : e.kind ? Sa[e.kind] : Ea[e.category],
+    fallback: e.kind ? La[e.kind] : e.icon && Object.hasOwn(Re, e.icon) ? Re[e.icon] : Ca[e.category].slice(0, 1),
+    z: Ee[e.category]
   };
 }
-function Ba(e) {
+function Ia(e) {
   const n = (s) => {
-    if (!ce(s)) return 0;
+    if (!ue(s)) return 0;
     const t = ae(s);
     return t.width * t.height;
   };
-  return [...e].sort((s, t) => Le[s.category] - Le[t.category] || n(t) - n(s) || Ea(s.id, t.id));
+  return [...e].sort((s, t) => Ee[s.category] - Ee[t.category] || n(t) - n(s) || Pa(s.id, t.id));
 }
-var Ia = {
+var Ta = {
   sky: {
     color: "#f5f8ff",
     intensity: 1.65
@@ -1573,7 +1615,7 @@ var Ia = {
   },
   shadows: !0,
   lampEmission: 0.18
-}, Ta = {
+}, Ra = {
   indoor: {
     sunlight: {
       sky: {
@@ -1706,8 +1748,8 @@ var Ia = {
   }
 };
 function Ha(e) {
-  if (!e) return Ia;
-  const n = Ta[e.space][e.natural];
+  if (!e) return Ta;
+  const n = Ra[e.space][e.natural];
   return e.artificial === "off" ? {
     ...n,
     lampEmission: 0
@@ -1716,7 +1758,7 @@ function Ha(e) {
     lampEmission: 1.2
   };
 }
-function De(e) {
+function Ge(e) {
   return { "--scene-glow": Oa[e.mood || "neutral"].glow };
 }
 function Fe(e) {
@@ -1724,14 +1766,14 @@ function Fe(e) {
   const [n, s, t] = e;
   return `${n} 0 0 0 0  0 ${s} 0 0 0  0 0 ${t} 0 0  0 0 0 1 0`;
 }
-function Ra(e) {
+function za(e) {
   return Fe(Ha(e).surface);
 }
-var Re = [
+var He = [
   -1,
   0.95,
   -0.6
-], Se = {
+], Le = {
   warm: {
     color: "#ffd59a",
     surface: [
@@ -1751,7 +1793,7 @@ var Re = [
 };
 function Na(e) {
   if (e.lighting?.artificial !== "on") return [];
-  const n = e.elements.filter((v) => v.category === "terrain" && ce(v)).map(ae).sort((v, h) => h.width * h.height - v.width * v.height)[0], [s, t, u, d] = n ? [
+  const n = e.elements.filter((v) => v.category === "terrain" && ue(v)).map(ae).sort((v, h) => h.width * h.height - v.width * v.height)[0], [s, t, u, d] = n ? [
     n.x,
     n.y,
     n.width,
@@ -1765,7 +1807,7 @@ function Na(e) {
       y: h.y + h.height / 2,
       radius: l > 0 ? l * (f ? 1.3 : 6) : p * 3.8,
       overhead: f,
-      ...v.material === "cold-light" ? Se.cold : Se.warm
+      ...v.material === "cold-light" ? Le.cold : Le.warm
     };
   }) : [{
     id: "overhead",
@@ -1773,10 +1815,10 @@ function Na(e) {
     y: t + d / 2,
     radius: Math.max(u, d) * 0.58,
     overhead: !0,
-    ...Se.warm
+    ...Le.warm
   }];
 }
-var za = { key: 0 }, Ka = ["id"], Va = ["values"], qa = ["id"], Ua = ["d", "transform"], Wa = [
+var Ka = { key: 0 }, Va = ["id"], qa = ["values"], Ua = ["id"], Wa = ["d", "transform"], Da = [
   "id",
   "cx",
   "cy",
@@ -1787,78 +1829,78 @@ var za = { key: 0 }, Ka = ["id"], Va = ["values"], qa = ["id"], Ua = ["d", "tran
   "y",
   "width",
   "height"
-], Da = [
+], Fa = [
   "cx",
   "cy",
   "r",
   "fill"
-], Fa = ["id"], Za = ["values"], Qa = ["filter"], Ya = ["id"], Xa = ["data-element", "opacity"], Ja = ["clip-path"], en = ["d", "transform"], tn = ["transform"], an = ["d"], nn = ["d", "stroke-width"], on = [
+], Za = ["id"], Qa = ["values"], Ya = ["filter"], Xa = ["id"], Ja = ["data-element", "opacity"], en = ["clip-path"], tn = ["d", "transform"], an = ["transform"], nn = ["d"], on = ["d", "stroke-width"], ln = [
   "d",
   "fill",
   "stroke",
   "stroke-width",
   "stroke-dasharray",
   "stroke-linecap"
-], ln = [
+], sn = [
   "d",
   "stroke",
   "stroke-opacity",
   "stroke-dasharray"
-], sn = ["transform"], rn = ["id"], cn = ["d"], un = ["clip-path"], dn = [
+], rn = ["transform"], cn = ["id"], un = ["d"], dn = ["clip-path"], vn = [
   "href",
   "x",
   "y",
   "width",
   "height"
-], vn = ["mask"], pn = ["href", "filter"], hn = ["opacity", "transform"], fn = {
+], pn = ["mask"], hn = ["href", "filter"], fn = ["opacity", "transform"], yn = {
   key: 0,
   r: "19",
   class: "scene-player-halo"
-}, yn = ["stroke"], mn = {
+}, mn = ["stroke"], bn = {
   key: 1,
   class: "map-material-symbol",
   "aria-hidden": "true"
-}, bn = {
+}, gn = {
   key: 2,
   class: "map-symbol-fallback",
   "aria-hidden": "true"
-}, gn = ["x", "y"], kn = /* @__PURE__ */ G({
+}, kn = ["x", "y"], wn = /* @__PURE__ */ G({
   __name: "MapScene",
   props: { scene: {} },
   setup(e) {
     const n = e, s = H(!1);
-    $e(() => {
+    _e(() => {
       Ve().then(() => {
         s.value = !0;
       }).catch(() => {
         s.value = !1;
       });
     });
-    const t = `xiaobai-map-scene-${he()}`, u = S(() => Ra(n.scene.lighting)), d = S(() => Na(n.scene)), p = S(() => {
+    const t = `xiaobai-map-scene-${fe()}`, u = j(() => za(n.scene.lighting)), d = j(() => Na(n.scene)), p = j(() => {
       if (n.scene.lighting?.natural !== "sunlight") return;
       const h = Math.max(n.scene.viewBox[2], n.scene.viewBox[3]) / 14;
-      return `translate(${-Re[0] * h * 0.45} ${-Re[2] * h * 0.45})`;
-    }), i = S(() => ua(n.scene.elements)), v = S(() => Ba(n.scene.elements).map((h, l) => ({
+      return `translate(${-He[0] * h * 0.45} ${-He[2] * h * 0.45})`;
+    }), i = j(() => da(n.scene.elements)), v = j(() => Ia(n.scene.elements).map((h, l) => ({
       element: h,
       bounds: ae(h),
-      path: ra(h),
-      transform: ia(h),
-      area: ce(h),
-      presentation: Pa(h, t),
+      path: ia(h),
+      transform: ca(h),
+      area: ue(h),
+      presentation: Ba(h, t),
       clipId: `${t}-area-${l}`,
       object: We(h) && !je(h),
       marker: je(h) && h.shape !== "label"
     })));
-    return (h, l) => (r(), D(ze, {
+    return (h, l) => (r(), Z(Ne, {
       class: "map-scene-viewport",
-      style: be(y(De)(e.scene)),
+      style: ke(y(Ge)(e.scene)),
       "view-box": e.scene.viewBox,
       "reset-key": e.scene.key,
       label: `${e.scene.name} 场景地图`
     }, {
-      default: Ae(({ unitScale: f }) => [
-        C(aa, { prefix: t }),
-        u.value ? (r(), c("defs", za, [a("filter", {
+      default: Pe(({ unitScale: f }) => [
+        L(na, { prefix: t }),
+        u.value ? (r(), c("defs", Ka, [a("filter", {
           id: `${t}-lighting`,
           x: "-10%",
           y: "-10%",
@@ -1868,12 +1910,12 @@ var za = { key: 0 }, Ka = ["id"], Va = ["values"], qa = ["id"], Ua = ["d", "tran
         }, [a("feColorMatrix", {
           type: "matrix",
           values: u.value
-        }, null, 8, Va)], 8, Ka)])) : w("", !0),
-        a("defs", null, [a("clipPath", { id: `${t}-surfaces` }, [(r(!0), c(_, null, R(v.value, (o) => (r(), c(_, { key: o.element.id }, [o.element.category === "terrain" && o.area ? (r(), c("path", {
+        }, null, 8, qa)], 8, Va)])) : k("", !0),
+        a("defs", null, [a("clipPath", { id: `${t}-surfaces` }, [(r(!0), c(C, null, N(v.value, (o) => (r(), c(C, { key: o.element.id }, [o.element.category === "terrain" && o.area ? (r(), c("path", {
           key: 0,
           d: o.path,
           transform: o.transform
-        }, null, 8, Ua)) : w("", !0)], 64))), 128))], 8, qa), (r(!0), c(_, null, R(d.value, (o, b) => (r(), c(_, { key: o.id }, [
+        }, null, 8, Wa)) : k("", !0)], 64))), 128))], 8, Ua), (r(!0), c(C, null, N(d.value, (o, b) => (r(), c(C, { key: o.id }, [
           a("radialGradient", {
             id: `${t}-pool-${b}`,
             gradientUnits: "userSpaceOnUse",
@@ -1900,7 +1942,7 @@ var za = { key: 0 }, Ka = ["id"], Va = ["values"], qa = ["id"], Ua = ["d", "tran
               "stop-color": "white",
               "stop-opacity": "0"
             }, null, -1)
-          ])], 8, Wa),
+          ])], 8, Da),
           a("mask", {
             id: `${t}-mask-${b}`,
             maskUnits: "userSpaceOnUse",
@@ -1913,18 +1955,18 @@ var za = { key: 0 }, Ka = ["id"], Va = ["values"], qa = ["id"], Ua = ["d", "tran
             cy: o.y,
             r: o.radius,
             fill: `url(#${t}-pool-${b})`
-          }, null, 8, Da)], 8, Ga),
+          }, null, 8, Fa)], 8, Ga),
           a("filter", {
             id: `${t}-lamp-${b}`,
             "color-interpolation-filters": "sRGB"
           }, [a("feColorMatrix", {
             type: "matrix",
             values: y(Fe)(o.surface)
-          }, null, 8, Za)], 8, Fa)
+          }, null, 8, Qa)], 8, Za)
         ], 64))), 128))]),
-        a("g", { filter: u.value ? `url(#${t}-lighting)` : void 0 }, [a("g", { id: `${t}-artwork` }, [(r(!0), c(_, null, R(v.value, (o) => (r(), c("g", {
+        a("g", { filter: u.value ? `url(#${t}-lighting)` : void 0 }, [a("g", { id: `${t}-artwork` }, [(r(!0), c(C, null, N(v.value, (o) => (r(), c("g", {
           key: o.element.id,
-          class: X(["map-scene-element", [`is-${o.element.category}`, `is-${o.element.certainty || "confirmed"}`]]),
+          class: Y(["map-scene-element", [`is-${o.element.category}`, `is-${o.element.certainty || "confirmed"}`]]),
           "data-element": o.element.id,
           opacity: o.presentation.opacity
         }, [p.value && o.object && o.path ? (r(), c("g", {
@@ -1936,13 +1978,13 @@ var za = { key: 0 }, Ka = ["id"], Va = ["values"], qa = ["id"], Ua = ["d", "tran
           transform: `${p.value} ${o.transform || ""}`,
           fill: "#263748",
           opacity: ".3"
-        }, null, 8, en)], 8, Ja)) : w("", !0), a("g", { transform: o.transform }, [
-          o.object ? (r(), D($a, {
+        }, null, 8, tn)], 8, en)) : k("", !0), a("g", { transform: o.transform }, [
+          o.object ? (r(), Z(_a, {
             key: 0,
             element: o.element,
             prefix: t,
             "unit-scale": f
-          }, null, 8, ["element", "unit-scale"])) : o.path ? (r(), c(_, { key: 1 }, [
+          }, null, 8, ["element", "unit-scale"])) : o.path ? (r(), c(C, { key: 1 }, [
             o.element.category === "wall" ? (r(), c("path", {
               key: 0,
               d: o.path,
@@ -1952,7 +1994,7 @@ var za = { key: 0 }, Ka = ["id"], Va = ["values"], qa = ["id"], Ua = ["d", "tran
               opacity: ".18",
               "stroke-linejoin": "round",
               "vector-effect": "non-scaling-stroke"
-            }, null, 8, an)) : w("", !0),
+            }, null, 8, nn)) : k("", !0),
             o.element.category === "road" && !o.area ? (r(), c("path", {
               key: 1,
               d: o.path,
@@ -1962,7 +2004,7 @@ var za = { key: 0 }, Ka = ["id"], Va = ["values"], qa = ["id"], Ua = ["d", "tran
               "stroke-linecap": "round",
               "stroke-linejoin": "round",
               "vector-effect": "non-scaling-stroke"
-            }, null, 8, nn)) : w("", !0),
+            }, null, 8, on)) : k("", !0),
             a("path", {
               d: o.path,
               fill: o.presentation.fill,
@@ -1973,78 +2015,78 @@ var za = { key: 0 }, Ka = ["id"], Va = ["values"], qa = ["id"], Ua = ["d", "tran
               "stroke-linecap": o.element.category === "wall" ? "butt" : "round",
               "fill-rule": "evenodd",
               "vector-effect": "non-scaling-stroke"
-            }, null, 8, on),
+            }, null, 8, ln),
             o.element.category === "wall" ? (r(), c("path", {
               key: 2,
               d: o.path,
               fill: "none",
-              stroke: o.element.material ? y(ve)(o.element.material) : "var(--scene-wall)",
+              stroke: o.element.material ? y(pe)(o.element.material) : "var(--scene-wall)",
               "stroke-width": "3.5",
               "stroke-opacity": o.element.material === "glass" ? 0.4 : 1,
               "stroke-dasharray": o.presentation.dash,
               "stroke-linejoin": "round",
               "vector-effect": "non-scaling-stroke"
-            }, null, 8, ln)) : w("", !0)
-          ], 64)) : w("", !0),
-          o.object && !y(sa)(o.element) && Math.min(o.bounds.width, o.bounds.height) / f >= 12 ? (r(), c("g", {
+            }, null, 8, sn)) : k("", !0)
+          ], 64)) : k("", !0),
+          o.object && !y(ra)(o.element) && Math.min(o.bounds.width, o.bounds.height) / f >= 12 ? (r(), c("g", {
             key: 2,
             transform: `translate(${o.bounds.x + o.bounds.width / 2} ${o.bounds.y + o.bounds.height / 2})`,
             "aria-hidden": "true"
           }, [a("text", {
-            class: X(s.value ? "map-material-symbol" : "map-symbol-fallback"),
-            style: be({
+            class: Y(s.value ? "map-material-symbol" : "map-symbol-fallback"),
+            style: ke({
               fontSize: `${Math.min(22 * f, Math.min(o.bounds.width, o.bounds.height) * 0.65)}px`,
               fill: "var(--scene-edge)",
               textAnchor: "middle",
               dominantBaseline: "central"
             })
-          }, m(s.value ? o.presentation.icon : o.presentation.fallback), 7)], 8, sn)) : w("", !0),
-          i.value.has(o.element.id) ? (r(), c(_, { key: 3 }, [a("defs", null, [a("clipPath", { id: o.clipId }, [a("path", {
+          }, m(s.value ? o.presentation.icon : o.presentation.fallback), 7)], 8, rn)) : k("", !0),
+          i.value.has(o.element.id) ? (r(), c(C, { key: 3 }, [a("defs", null, [a("clipPath", { id: o.clipId }, [a("path", {
             d: o.path,
             "clip-rule": "evenodd"
-          }, null, 8, cn)], 8, rn)]), a("g", {
+          }, null, 8, un)], 8, cn)]), a("g", {
             "clip-path": `url(#${o.clipId})`,
             class: "scene-forest-decoration",
             "aria-hidden": "true"
-          }, [(r(!0), c(_, null, R(i.value.get(o.element.id), (b, O) => (r(), c("use", {
-            key: O,
+          }, [(r(!0), c(C, null, N(i.value.get(o.element.id), (b, $) => (r(), c("use", {
+            key: $,
             href: `#${t}-crown-${b.variant}`,
             x: b.x - b.size / 2,
             y: b.y - b.size / 2,
             width: b.size,
             height: b.size
-          }, null, 8, dn))), 128))], 8, un)], 64)) : w("", !0)
-        ], 8, tn)], 10, Xa))), 128))], 8, Ya)], 8, Qa),
-        (r(!0), c(_, null, R(d.value, (o, b) => (r(), c("g", {
+          }, null, 8, vn))), 128))], 8, dn)], 64)) : k("", !0)
+        ], 8, an)], 10, Ja))), 128))], 8, Xa)], 8, Ya),
+        (r(!0), c(C, null, N(d.value, (o, b) => (r(), c("g", {
           key: o.id,
           mask: `url(#${t}-mask-${b})`,
           "aria-hidden": "true"
         }, [a("use", {
           href: `#${t}-artwork`,
           filter: `url(#${t}-lamp-${b})`
-        }, null, 8, pn)], 8, vn))), 128)),
-        (r(!0), c(_, null, R(v.value, (o) => (r(), c(_, { key: o.element.id }, [o.marker ? (r(), c("g", {
+        }, null, 8, hn)], 8, pn))), 128)),
+        (r(!0), c(C, null, N(v.value, (o) => (r(), c(C, { key: o.element.id }, [o.marker ? (r(), c("g", {
           key: 0,
-          class: X(["map-scene-icon", `is-${o.element.category}`]),
+          class: Y(["map-scene-icon", `is-${o.element.category}`]),
           opacity: o.presentation.opacity,
           transform: `translate(${o.bounds.x + o.bounds.width / 2} ${o.bounds.y + o.bounds.height / 2}) scale(${f})`
         }, [
-          o.element.actorKey === "player" || o.element.kind === "player" ? (r(), c("circle", fn)) : w("", !0),
+          o.element.actorKey === "player" || o.element.kind === "player" ? (r(), c("circle", yn)) : k("", !0),
           a("circle", {
             r: "11",
             stroke: o.presentation.stroke
-          }, null, 8, yn),
-          s.value ? (r(), c("text", mn, m(o.presentation.icon), 1)) : (r(), c("text", bn, m(o.presentation.fallback), 1))
-        ], 10, hn)) : w("", !0)], 64))), 128)),
+          }, null, 8, mn),
+          s.value ? (r(), c("text", bn, m(o.presentation.icon), 1)) : (r(), c("text", gn, m(o.presentation.fallback), 1))
+        ], 10, fn)) : k("", !0)], 64))), 128)),
         a("g", {
           class: "scene-labels",
-          style: be({ "--scene-unit-scale": f })
-        }, [(r(!0), c(_, null, R(v.value, (o) => (r(), c(_, { key: o.element.id }, [o.element.label ? (r(), c("text", {
+          style: ke({ "--scene-unit-scale": f })
+        }, [(r(!0), c(C, null, N(v.value, (o) => (r(), c(C, { key: o.element.id }, [o.element.label ? (r(), c("text", {
           key: 0,
-          class: X(["map-scene-label", { "is-primary": o.element.shape === "label" }]),
+          class: Y(["map-scene-label", { "is-primary": o.element.shape === "label" }]),
           x: y(Te)(o.element, f)[0],
           y: y(Te)(o.element, f)[1]
-        }, m(o.element.label), 11, gn)) : w("", !0)], 64))), 128))], 4)
+        }, m(o.element.label), 11, kn)) : k("", !0)], 64))), 128))], 4)
       ]),
       _: 1
     }, 8, [
@@ -2054,14 +2096,14 @@ var za = { key: 0 }, Ka = ["id"], Va = ["values"], qa = ["id"], Ua = ["d", "tran
       "label"
     ]));
   }
-}), wn = kn, Mn = {
+}), Mn = wn, $n = {
   key: 0,
   class: "map-3d-loading",
   role: "status"
-}, $n = {
+}, _n = {
   class: "map-viewport-controls",
   "aria-label": "三维视角"
-}, _n = /* @__PURE__ */ G({
+}, xn = /* @__PURE__ */ G({
   __name: "MapScene3D",
   props: {
     scene: {},
@@ -2071,59 +2113,77 @@ var za = { key: 0 }, Ka = ["id"], Va = ["values"], qa = ["id"], Ua = ["d", "tran
   emits: ["fallback"],
   setup(e, { emit: n }) {
     const s = e, t = n, u = H(null), d = H(null), p = H(!0);
-    let i, v = !1;
-    return $e(async () => {
-      v = !0;
-      try {
-        const { createThreeRuntime: h } = await import("./xiaobai-os-three-runtime-DSJrelfs.js");
-        if (!v) return;
-        i = h(u.value, d.value, { fallback: (l) => t("fallback", l) }), i.setScene(s.scene), i.walls(s.lowWalls), i.labels(s.showLabels), p.value = !1, Ve().then(() => {
-          v && i?.symbols(!0);
-        }).catch(() => {
-        });
-      } catch {
-        v && t("fallback", "当前设备无法打开三维，已切换二维。");
+    let i, v, h, l = !1;
+    function f() {
+      h?.disconnect(), h = void 0, document.removeEventListener("visibilitychange", b);
+    }
+    function o() {
+      f(), l && t("fallback", "当前设备无法打开三维，已切换二维。");
+    }
+    function b() {
+      const $ = u.value;
+      if (!l || !v || i || document.hidden || !$?.isConnected) return;
+      const P = $.getBoundingClientRect();
+      if (!(!P.width || !P.height)) {
+        f();
+        try {
+          i = v($, d.value, { fallback: (E) => t("fallback", E) }), i.setScene(s.scene), i.walls(s.lowWalls), i.labels(s.showLabels), p.value = !1, Ve().then(() => {
+            l && i?.symbols(!0);
+          }).catch(() => {
+          });
+        } catch {
+          o();
+        }
       }
-    }), ee(() => s.scene, (h) => i?.setScene(h)), ee(() => s.lowWalls, (h) => i?.walls(h)), ee(() => s.showLabels, (h) => i?.labels(h)), Oe(() => {
-      v = !1, i?.dispose(), i = void 0;
-    }), (h, l) => (r(), c("div", {
+    }
+    return _e(async () => {
+      l = !0;
+      try {
+        if (v = (await import("./xiaobai-os-three-runtime-gRcOKkju.js")).createThreeRuntime, !l) return;
+        h = new ResizeObserver(b), h.observe(u.value), document.addEventListener("visibilitychange", b), b();
+      } catch {
+        o();
+      }
+    }), ee(() => s.scene, ($) => i?.setScene($)), ee(() => s.lowWalls, ($) => i?.walls($)), ee(() => s.showLabels, ($) => i?.labels($)), Oe(() => {
+      l = !1, f(), i?.dispose(), i = void 0;
+    }), ($, P) => (r(), c("div", {
       ref_key: "host",
       ref: u,
       class: "map-scene-three",
-      style: be(y(De)(e.scene))
+      style: ke(y(Ge)(e.scene))
     }, [
       a("div", {
         ref_key: "labelHost",
         ref: d,
         class: "map-3d-labels"
       }, null, 512),
-      p.value ? (r(), c("div", Mn, "正在打开三维…")) : w("", !0),
-      a("div", $n, [
+      p.value ? (r(), c("div", $n, "正在打开三维…")) : k("", !0),
+      a("div", _n, [
         a("button", {
           type: "button",
           "aria-label": "放大三维",
-          onClick: l[0] || (l[0] = (f) => y(i)?.zoom(1.2))
+          onClick: P[0] || (P[0] = (E) => y(i)?.zoom(1.2))
         }, "+"),
         a("button", {
           type: "button",
           "aria-label": "缩小三维",
-          onClick: l[1] || (l[1] = (f) => y(i)?.zoom(1 / 1.2))
+          onClick: P[1] || (P[1] = (E) => y(i)?.zoom(1 / 1.2))
         }, "−"),
         a("button", {
           type: "button",
           class: "map-fit",
           "aria-label": "重置三维视角",
-          onClick: l[2] || (l[2] = (f) => y(i)?.fit())
+          onClick: P[2] || (P[2] = (E) => y(i)?.fit())
         }, "全图")
       ])
     ], 4));
   }
-}), xn = _n, Cn = ["aria-label"], Sn = {
+}), Cn = xn, Sn = ["aria-label"], Ln = {
   key: 0,
   class: "map-scene-toolbar"
-}, jn = ["aria-label"], Ln = ["aria-pressed"], On = ["aria-pressed", "disabled"], An = ["aria-pressed"], En = ["aria-pressed"], Pn = { class: "map-scene-stage" }, Bn = /* @__PURE__ */ G({
+}, jn = ["aria-label"], En = ["aria-pressed"], On = ["aria-pressed", "disabled"], An = ["aria-pressed"], Pn = ["aria-pressed"], Bn = { class: "map-scene-stage" }, In = /* @__PURE__ */ G({
   __name: "MapSceneView",
-  props: /* @__PURE__ */ we({
+  props: /* @__PURE__ */ Me({
     scene: {},
     mode: {},
     threeUnavailable: { type: Boolean },
@@ -2140,40 +2200,40 @@ var za = { key: 0 }, Ka = ["id"], Va = ["values"], qa = ["id"], Ua = ["d", "tran
     },
     showLabelsModifiers: {}
   }),
-  emits: /* @__PURE__ */ we(["update:mode", "fallback"], ["update:lowWalls", "update:showLabels"]),
+  emits: /* @__PURE__ */ Me(["update:mode", "fallback"], ["update:lowWalls", "update:showLabels"]),
   setup(e, { emit: n }) {
-    const s = n, t = pe(e, "lowWalls"), u = pe(e, "showLabels");
+    const s = n, t = he(e, "lowWalls"), u = he(e, "showLabels");
     return (d, p) => (r(), c("section", {
       class: "map-scene-view",
       "aria-label": e.scene.name
-    }, [e.compact ? w("", !0) : (r(), c("div", Sn, [
+    }, [e.compact ? k("", !0) : (r(), c("div", Ln, [
       a("div", {
         class: "map-render-switch",
         role: "group",
-        "aria-label": y(Y).mode
+        "aria-label": y(Q).mode
       }, [a("button", {
         type: "button",
         "aria-pressed": e.mode === "2d",
         onClick: p[0] || (p[0] = (i) => s("update:mode", "2d"))
-      }, m(y(Y).two), 9, Ln), a("button", {
+      }, m(y(Q).two), 9, En), a("button", {
         type: "button",
         "aria-pressed": e.mode === "3d",
         disabled: e.threeUnavailable,
         onClick: p[1] || (p[1] = (i) => s("update:mode", "3d"))
-      }, m(y(Y).three), 9, On)], 8, jn),
+      }, m(y(Q).three), 9, On)], 8, jn),
       e.mode === "3d" ? (r(), c("button", {
         key: 0,
         type: "button",
         "aria-pressed": t.value,
         onClick: p[2] || (p[2] = (i) => t.value = !t.value)
-      }, m(y(Y).lowWalls), 9, An)) : w("", !0),
+      }, m(y(Q).lowWalls), 9, An)) : k("", !0),
       e.mode === "3d" ? (r(), c("button", {
         key: 1,
         type: "button",
         "aria-pressed": u.value,
         onClick: p[3] || (p[3] = (i) => u.value = !u.value)
-      }, m(y(Y).labels), 9, En)) : w("", !0)
-    ])), a("div", Pn, [Ee(C(wn, { scene: e.scene }, null, 8, ["scene"]), [[Ne, e.mode === "2d"]]), e.mode === "3d" ? (r(), D(xn, {
+      }, m(y(Q).labels), 9, Pn)) : k("", !0)
+    ])), a("div", Bn, [Ae(L(Mn, { scene: e.scene }, null, 8, ["scene"]), [[ze, e.mode === "2d"]]), e.mode === "3d" ? (r(), Z(Cn, {
       key: 0,
       scene: e.scene,
       "low-walls": t.value,
@@ -2183,36 +2243,36 @@ var za = { key: 0 }, Ka = ["id"], Va = ["values"], qa = ["id"], Ua = ["d", "tran
       "scene",
       "low-walls",
       "show-labels"
-    ])) : w("", !0)])], 8, Cn));
+    ])) : k("", !0)])], 8, Sn));
   }
-}), In = Bn, Tn = { class: "map-legend-content" }, Hn = /* @__PURE__ */ G({
+}), Tn = In, Rn = { class: "map-legend-content" }, Hn = /* @__PURE__ */ G({
   __name: "MapLegend",
   setup(e) {
-    return (n, s) => (r(), c("div", Tn, [
-      a("strong", null, m(y(B).legendTitle), 1),
+    return (n, s) => (r(), c("div", Rn, [
+      a("strong", null, m(y(T).legendTitle), 1),
       a("p", null, [
         s[0] || (s[0] = a("i", { class: "map-key-current" }, null, -1)),
-        W(m(y(B).legendCurrent) + " ", 1),
+        D(m(y(T).legendCurrent) + " ", 1),
         s[1] || (s[1] = a("i", { class: "map-key-place" }, null, -1)),
-        W(m(y(B).legendPlace), 1)
+        D(m(y(T).legendPlace), 1)
       ]),
-      a("p", null, m(y(B).legendRoutes), 1),
-      a("small", null, m(y(B).legend), 1)
+      a("p", null, m(y(T).legendRoutes), 1),
+      a("small", null, m(y(T).legend), 1)
     ]));
   }
-}), Ze = Hn, Rn = ["aria-label"], Nn = [
+}), Ze = Hn, zn = ["aria-label"], Nn = [
   "aria-label",
   "aria-pressed",
   "onClick"
-], zn = ["aria-label", "aria-expanded"], Kn = ["aria-label"], Vn = {
+], Kn = ["aria-label", "aria-expanded"], Vn = ["aria-label"], qn = {
   key: 0,
   class: "map-projection-scene-options"
-}, qn = ["aria-label"], Un = ["aria-pressed"], Wn = ["aria-pressed", "disabled"], Gn = {
+}, Un = ["aria-label"], Wn = ["aria-pressed"], Dn = ["aria-pressed", "disabled"], Gn = {
   key: 0,
   class: "map-projection-toggles"
-}, Dn = ["aria-pressed"], Fn = ["aria-pressed"], Zn = ["disabled"], Qn = ["aria-expanded"], Yn = /* @__PURE__ */ G({
+}, Fn = ["aria-pressed"], Zn = ["aria-pressed"], Qn = ["disabled"], Yn = ["aria-expanded"], Xn = /* @__PURE__ */ G({
   __name: "MapProjectionControls",
-  props: /* @__PURE__ */ we({
+  props: /* @__PURE__ */ Me({
     view: {},
     sceneAvailable: { type: Boolean },
     threeUnavailable: { type: Boolean },
@@ -2231,104 +2291,104 @@ var za = { key: 0 }, Ka = ["id"], Va = ["values"], qa = ["id"], Ua = ["d", "tran
     },
     showLabelsModifiers: {}
   }),
-  emits: /* @__PURE__ */ we(["navigate", "locate"], [
+  emits: /* @__PURE__ */ Me(["navigate", "locate"], [
     "update:mode",
     "update:lowWalls",
     "update:showLabels"
   ]),
   setup(e, { emit: n }) {
-    const s = e, t = n, u = pe(e, "mode"), d = pe(e, "lowWalls"), p = pe(e, "showLabels"), i = H(!1), v = H(!1), h = H(null), l = H(null), f = `map-projection-options-${he()}`;
+    const s = e, t = n, u = he(e, "mode"), d = he(e, "lowWalls"), p = he(e, "showLabels"), i = H(!1), v = H(!1), h = H(null), l = H(null), f = `map-projection-options-${fe()}`;
     function o() {
       i.value = !1, v.value = !1;
     }
-    function b(V) {
-      h.value?.contains(V.target) || o();
+    function b(P) {
+      (!h.value || !P.composedPath().includes(h.value)) && o();
     }
-    function O(V) {
-      V.key !== "Escape" || !i.value || (V.preventDefault(), V.stopPropagation(), o(), l.value?.focus({ preventScroll: !0 }));
+    function $(P) {
+      P.key !== "Escape" || !i.value || (P.preventDefault(), P.stopPropagation(), o(), l.value?.focus({ preventScroll: !0 }));
     }
-    return ee(() => s.view, o), $e(() => document.addEventListener("pointerdown", b)), Oe(() => document.removeEventListener("pointerdown", b)), (V, E) => (r(), c("div", {
+    return ee(() => s.view, o), _e(() => document.addEventListener("pointerdown", b, !0)), Oe(() => document.removeEventListener("pointerdown", b, !0)), (P, E) => (r(), c("div", {
       ref_key: "root",
       ref: h,
       class: "map-projection-controls",
-      onKeydown: O
+      onKeydown: $
     }, [
       a("nav", {
         class: "map-projection-tabs",
-        "aria-label": y(B).viewLabel
-      }, [(r(!0), c(_, null, R(y(de).views, (A, x) => (r(), c("button", {
+        "aria-label": y(T).viewLabel
+      }, [(r(!0), c(C, null, N(y(ve).views, (B, x) => (r(), c("button", {
         key: x,
         type: "button",
         "aria-label": y(J)[x],
         "aria-pressed": e.view === x,
-        onClick: (N) => {
+        onClick: (W) => {
           o(), t("navigate", x);
         }
-      }, m(A), 9, Nn))), 128))], 8, Rn),
+      }, m(B), 9, Nn))), 128))], 8, zn),
       a("button", {
         ref_key: "trigger",
         ref: l,
         type: "button",
         class: "map-projection-options-button",
-        "aria-label": y(de).options,
+        "aria-label": y(ve).options,
         "aria-expanded": i.value,
         "aria-controls": f,
-        onClick: E[0] || (E[0] = (A) => i.value ? o() : i.value = !0)
-      }, [C(L, { name: "more" })], 8, zn),
+        onClick: E[0] || (E[0] = (B) => i.value ? o() : i.value = !0)
+      }, [L(A, { name: "more" })], 8, Kn),
       i.value ? (r(), c("section", {
         key: 0,
         id: f,
         class: "map-projection-options",
-        "aria-label": y(de).options
+        "aria-label": y(ve).options
       }, [
-        e.view === "scene" && e.sceneAvailable ? (r(), c("div", Vn, [a("div", {
+        e.view === "scene" && e.sceneAvailable ? (r(), c("div", qn, [a("div", {
           class: "map-render-switch",
           role: "group",
-          "aria-label": y(Y).mode
+          "aria-label": y(Q).mode
         }, [a("button", {
           type: "button",
           "aria-pressed": u.value === "2d",
-          onClick: E[1] || (E[1] = (A) => u.value = "2d")
-        }, m(y(Y).two), 9, Un), a("button", {
+          onClick: E[1] || (E[1] = (B) => u.value = "2d")
+        }, m(y(Q).two), 9, Wn), a("button", {
           type: "button",
           "aria-pressed": u.value === "3d",
           disabled: e.threeUnavailable,
-          onClick: E[2] || (E[2] = (A) => u.value = "3d")
-        }, m(y(Y).three), 9, Wn)], 8, qn), u.value === "3d" ? (r(), c("div", Gn, [a("button", {
+          onClick: E[2] || (E[2] = (B) => u.value = "3d")
+        }, m(y(Q).three), 9, Dn)], 8, Un), u.value === "3d" ? (r(), c("div", Gn, [a("button", {
           type: "button",
           "aria-pressed": d.value,
-          onClick: E[3] || (E[3] = (A) => d.value = !d.value)
-        }, m(y(Y).lowWalls), 9, Dn), a("button", {
+          onClick: E[3] || (E[3] = (B) => d.value = !d.value)
+        }, m(y(Q).lowWalls), 9, Fn), a("button", {
           type: "button",
           "aria-pressed": p.value,
-          onClick: E[4] || (E[4] = (A) => p.value = !p.value)
-        }, m(y(Y).labels), 9, Fn)])) : w("", !0)])) : w("", !0),
+          onClick: E[4] || (E[4] = (B) => p.value = !p.value)
+        }, m(y(Q).labels), 9, Zn)])) : k("", !0)])) : k("", !0),
         a("button", {
           type: "button",
           disabled: !e.located,
-          onClick: E[5] || (E[5] = (A) => {
+          onClick: E[5] || (E[5] = (B) => {
             t("locate"), o();
           })
-        }, [C(L, { name: "locate" }), W(m(y(de).location), 1)], 8, Zn),
+        }, [L(A, { name: "locate" }), D(m(y(ve).location), 1)], 8, Qn),
         a("button", {
           type: "button",
           "aria-expanded": v.value,
-          onClick: E[6] || (E[6] = (A) => v.value = !v.value)
-        }, [C(L, { name: "layers" }), W(m(y(B).legendLabel), 1)], 8, Qn),
-        v.value ? (r(), D(Ze, { key: 1 })) : w("", !0)
-      ], 8, Kn)) : w("", !0)
+          onClick: E[6] || (E[6] = (B) => v.value = !v.value)
+        }, [L(A, { name: "layers" }), D(m(y(T).legendLabel), 1)], 8, Yn),
+        v.value ? (r(), Z(Ze, { key: 1 })) : k("", !0)
+      ], 8, Vn)) : k("", !0)
     ], 544));
   }
-}), Xn = Yn;
-function Jn(e) {
+}), Jn = Xn;
+function eo(e) {
   const n = e?.atlas.actors.find((t) => t.actorKey === "player"), s = e?.atlas.locations.find((t) => t.key === n?.locationKey);
   return s?.sceneKey && e?.scenes[s.sceneKey]?.status === "active" ? "scene" : "world";
 }
-function eo(e, n) {
-  const s = n === null ? void 0 : e.locations.find((i) => i.key === n && te(i)), t = ut(e), u = (n === null ? e.locations.filter(te) : s ? e.locations.filter((i) => ct(i) && ke(e, i.key)?.key === s.key) : []).map((i) => t.has(i.key) ? {
+function to(e, n) {
+  const s = n === null ? void 0 : e.locations.find((i) => i.key === n && te(i)), t = dt(e), u = (n === null ? e.locations.filter(te) : s ? e.locations.filter((i) => ut(i) && we(e, i.key)?.key === s.key) : []).map((i) => t.has(i.key) ? {
     ...i,
     status: "visited"
-  } : i), d = n === null ? u.filter((i) => !fe(e, i.key).slice(0, -1).some(te)) : [], p = new Set(d.map((i) => i.parent || ""));
+  } : i), d = n === null ? u.filter((i) => !ye(e, i.key).slice(0, -1).some(te)) : [], p = new Set(d.map((i) => i.parent || ""));
   return {
     kind: n === null ? "world" : "region",
     region: s,
@@ -2337,14 +2397,14 @@ function eo(e, n) {
     positionParent: s ? s.key : p.size === 1 ? [...p][0] : null
   };
 }
-function to(e, n, s) {
+function ao(e, n, s) {
   const t = n.trim().toLocaleLowerCase();
   return e.locations.filter((u) => [u.name, u.brief].some((d) => d?.toLocaleLowerCase().includes(t)) && (s === "all" || (s === "visited" ? u.status === "visited" : u.status !== "visited")));
 }
-var ao = { class: "map-search-input" }, no = ["aria-label", "placeholder"], oo = { class: "map-search-scope" }, lo = ["aria-label"], so = ["aria-pressed", "onClick"], ro = { class: "map-search-results" }, io = ["onClick"], co = { class: "map-result-icon" }, uo = { key: 0 }, vo = {
+var no = { class: "map-search-input" }, oo = ["aria-label", "placeholder"], lo = { class: "map-search-scope" }, so = ["aria-label"], ro = ["aria-pressed", "onClick"], io = { class: "map-search-results" }, co = ["onClick"], uo = { class: "map-result-icon" }, vo = { key: 0 }, po = {
   key: 0,
   class: "map-search-empty"
-}, po = /* @__PURE__ */ G({
+}, ho = /* @__PURE__ */ G({
   __name: "MapSearch",
   props: {
     scope: {},
@@ -2353,92 +2413,92 @@ var ao = { class: "map-search-input" }, no = ["aria-label", "placeholder"], oo =
   },
   emits: ["close", "select"],
   setup(e) {
-    const n = e, s = H(""), t = H(n.initialFilter), u = S(() => ye[n.scope.kind]), d = S(() => [
+    const n = e, s = H(""), t = H(n.initialFilter), u = j(() => me[n.scope.kind]), d = j(() => [
       {
         id: "all",
         name: u.value.all
       },
       {
         id: "unvisited",
-        name: se.unvisited
+        name: re.unvisited
       },
       {
         id: "visited",
-        name: se.visited
+        name: re.visited
       }
-    ]), p = S(() => to(n.scope, s.value, t.value));
-    return (i, v) => (r(), D(tt, {
+    ]), p = j(() => ao(n.scope, s.value, t.value));
+    return (i, v) => (r(), Z(tt, {
       class: "map-dialog map-search-dialog",
       "aria-label": u.value.search,
       onClose: v[2] || (v[2] = (h) => i.$emit("close"))
     }, {
-      default: Ae(() => [
-        a("header", ao, [
-          C(L, { name: "search" }),
-          Ee(a("input", {
+      default: Pe(() => [
+        a("header", no, [
+          L(A, { name: "search" }),
+          Ae(a("input", {
             "onUpdate:modelValue": v[0] || (v[0] = (h) => s.value = h),
             type: "search",
             "aria-label": u.value.search,
             placeholder: u.value.search,
             autofocus: ""
-          }, null, 8, no), [[et, s.value]]),
+          }, null, 8, oo), [[et, s.value]]),
           a("button", {
             type: "button",
             onClick: v[1] || (v[1] = (h) => i.$emit("close"))
-          }, m(y(B).cancel), 1)
+          }, m(y(T).cancel), 1)
         ]),
-        a("h2", oo, m(e.title), 1),
+        a("h2", lo, m(e.title), 1),
         a("nav", {
           class: "map-search-filters",
-          "aria-label": y(B).filters
-        }, [(r(!0), c(_, null, R(d.value, (h) => (r(), c("button", {
+          "aria-label": y(T).filters
+        }, [(r(!0), c(C, null, N(d.value, (h) => (r(), c("button", {
           key: h.id,
           type: "button",
           "aria-pressed": t.value === h.id,
           onClick: (l) => t.value = h.id
-        }, m(h.name), 9, so))), 128))], 8, lo),
-        a("div", ro, [
+        }, m(h.name), 9, ro))), 128))], 8, so),
+        a("div", io, [
           a("small", null, m(y(Ke)(e.scope.kind, p.value.length)), 1),
-          (r(!0), c(_, null, R(p.value, (h) => (r(), c("button", {
+          (r(!0), c(C, null, N(p.value, (h) => (r(), c("button", {
             key: h.key,
             type: "button",
             class: "map-search-result",
             onClick: (l) => i.$emit("select", h.key)
           }, [
-            a("span", co, [C(L, { name: e.scope.kind === "world" ? "globe" : "pin" }, null, 8, ["name"])]),
+            a("span", uo, [L(A, { name: e.scope.kind === "world" ? "globe" : "pin" }, null, 8, ["name"])]),
             a("span", null, [
               a("strong", null, m(h.name), 1),
-              a("small", null, m(y(Ge)[h.scale]) + " · " + m(y(se)[h.status === "visited" ? "visited" : "unvisited"]), 1),
-              h.brief ? (r(), c("p", uo, m(h.brief), 1)) : w("", !0)
+              a("small", null, m(y(De)[h.scale]) + " · " + m(y(re)[h.status === "visited" ? "visited" : "unvisited"]), 1),
+              h.brief ? (r(), c("p", vo, m(h.brief), 1)) : k("", !0)
             ]),
-            C(L, { name: "next" })
-          ], 8, io))), 128)),
-          p.value.length ? w("", !0) : (r(), c("div", vo, [
-            C(L, { name: "search" }),
+            L(A, { name: "next" })
+          ], 8, co))), 128)),
+          p.value.length ? k("", !0) : (r(), c("div", po, [
+            L(A, { name: "search" }),
             a("h3", null, m(u.value.notFound), 1),
-            a("p", null, m(y(B).searchHint), 1)
+            a("p", null, m(y(T).searchHint), 1)
           ]))
         ])
       ]),
       _: 1
     }, 8, ["aria-label"]));
   }
-}), ho = po, fo = {
+}), fo = ho, yo = {
   class: "map-place-detail",
   "aria-labelledby": "map-place-title"
-}, yo = { id: "map-place-title" }, mo = { class: "map-place-content" }, bo = {
+}, mo = { id: "map-place-title" }, bo = { class: "map-place-content" }, go = {
   key: 0,
   class: "map-place-full-name"
-}, go = {
+}, ko = {
   key: 1,
   class: "map-address"
-}, ko = { class: "map-place-intro" }, wo = { class: "map-place-actions" }, Mo = {
+}, wo = { class: "map-place-intro" }, Mo = { class: "map-place-actions" }, $o = {
   key: 2,
   class: "map-detail-section"
-}, $o = { class: "map-people" }, _o = {
+}, _o = { class: "map-people" }, xo = {
   key: 3,
   class: "map-detail-section"
-}, xo = ["onClick"], Co = /* @__PURE__ */ G({
+}, Co = ["onClick"], So = /* @__PURE__ */ G({
   __name: "MapPlaceDetail",
   props: {
     location: {},
@@ -2452,77 +2512,77 @@ var ao = { class: "map-search-input" }, no = ["aria-label", "placeholder"], oo =
     "select"
   ],
   setup(e) {
-    const n = e, s = S(() => fe(n.map.atlas, n.location.key).slice(0, -1)), t = S(() => te(n.location)), u = S(() => n.map.atlas.actors.filter((p) => p.locationKey === n.location.key)), d = S(() => dt(n.map.atlas, n.location.key));
-    return (p, i) => (r(), c("section", fo, [
+    const n = e, s = j(() => ye(n.map.atlas, n.location.key).slice(0, -1)), t = j(() => te(n.location)), u = j(() => n.map.atlas.actors.filter((p) => p.locationKey === n.location.key)), d = j(() => vt(n.map.atlas, n.location.key));
+    return (p, i) => (r(), c("section", yo, [
       i[6] || (i[6] = a("div", {
         class: "map-sheet-grip",
         "aria-hidden": "true"
       }, null, -1)),
-      a("header", null, [a("div", null, [a("small", null, m(y(Ge)[e.location.scale]) + " · " + m(e.currentKey === e.location.key ? "当前位置" : y(se)[e.location.status === "visited" ? "visited" : "unvisited"]), 1), a("h2", yo, m(e.location.name), 1)]), a("button", {
+      a("header", null, [a("div", null, [a("small", null, m(y(De)[e.location.scale]) + " · " + m(e.currentKey === e.location.key ? "当前位置" : y(re)[e.location.status === "visited" ? "visited" : "unvisited"]), 1), a("h2", mo, m(e.location.name), 1)]), a("button", {
         type: "button",
         class: "map-round-button",
         "aria-label": "关闭地点详情",
         onClick: i[0] || (i[0] = (v) => p.$emit("close"))
-      }, [C(L, { name: "close" })])]),
-      a("div", mo, [
-        e.location.name.length > 24 ? (r(), c("p", bo, m(e.location.name), 1)) : w("", !0),
-        s.value.length ? (r(), c("p", go, [C(L, { name: "pin" }), W(m(s.value.map((v) => v.name).join(" · ")), 1)])) : w("", !0),
-        a("p", ko, m(e.location.brief || "这个地点已记录在世界地图上，更多介绍等待故事展开。"), 1),
-        a("div", wo, [t.value ? (r(), c("button", {
+      }, [L(A, { name: "close" })])]),
+      a("div", bo, [
+        e.location.name.length > 24 ? (r(), c("p", go, m(e.location.name), 1)) : k("", !0),
+        s.value.length ? (r(), c("p", ko, [L(A, { name: "pin" }), D(m(s.value.map((v) => v.name).join(" · ")), 1)])) : k("", !0),
+        a("p", wo, m(e.location.brief || "这个地点已记录在世界地图上，更多介绍等待故事展开。"), 1),
+        a("div", Mo, [t.value ? (r(), c("button", {
           key: 0,
           type: "button",
           class: "map-primary-button",
           onClick: i[1] || (i[1] = (v) => p.$emit("explore"))
-        }, [C(L, { name: "compass" }), W(m(y(B).regionMap), 1)])) : (r(), c("button", {
+        }, [L(A, { name: "compass" }), D(m(y(T).regionMap), 1)])) : (r(), c("button", {
           key: 1,
           type: "button",
           class: "map-secondary-button",
           onClick: i[2] || (i[2] = (v) => p.$emit("scene"))
-        }, [C(L, { name: "layers" }), W(m(y(B).sceneMap), 1)]))]),
-        u.value.length ? (r(), c("section", Mo, [i[3] || (i[3] = a("h3", null, "记录在这里的人物", -1)), a("p", $o, [(r(!0), c(_, null, R(u.value, (v) => (r(), c("span", { key: v.actorKey }, [C(L, { name: "person" }), W(m(v.displayName), 1)]))), 128))])])) : w("", !0),
-        d.value.length ? (r(), c("section", _o, [i[4] || (i[4] = a("h3", null, "相连的地方", -1)), (r(!0), c(_, null, R(d.value, (v) => (r(), c("button", {
+        }, [L(A, { name: "layers" }), D(m(y(T).sceneMap), 1)]))]),
+        u.value.length ? (r(), c("section", $o, [i[3] || (i[3] = a("h3", null, "记录在这里的人物", -1)), a("p", _o, [(r(!0), c(C, null, N(u.value, (v) => (r(), c("span", { key: v.actorKey }, [L(A, { name: "person" }), D(m(v.displayName), 1)]))), 128))])])) : k("", !0),
+        d.value.length ? (r(), c("section", xo, [i[4] || (i[4] = a("h3", null, "相连的地方", -1)), (r(!0), c(C, null, N(d.value, (v) => (r(), c("button", {
           key: v.link.id,
           type: "button",
           class: "map-connection",
           onClick: (h) => p.$emit("select", v.location.key)
         }, [
-          C(L, { name: "route" }),
+          L(A, { name: "route" }),
           a("span", null, [a("strong", null, m(v.location.name), 1), a("small", null, m(v.link.label || y(Aa)[v.link.kind]) + m(v.link.bidirectional ? "" : v.outgoing ? " · 单向前往" : " · 仅可从对面到达"), 1)]),
-          C(L, { name: "next" })
-        ], 8, xo))), 128))])) : w("", !0),
+          L(A, { name: "next" })
+        ], 8, Co))), 128))])) : k("", !0),
         i[5] || (i[5] = a("p", { class: "map-detail-footnote" }, "查看地图不会改变你在故事中的位置", -1))
       ])
     ]));
   }
-}), So = Co, jo = { class: "map-top" }, Lo = { class: "map-search-bar" }, Oo = ["disabled"], Ao = {
+}), Lo = So, jo = { class: "map-top" }, Eo = { class: "map-search-bar" }, Oo = ["disabled"], Ao = {
   key: 1,
   class: "map-search-entry"
-}, Eo = {
+}, Po = {
   key: 0,
   class: "map-view-row"
-}, Po = ["aria-label"], Bo = ["aria-pressed"], Io = ["aria-pressed"], To = ["aria-pressed"], Ho = {
+}, Bo = ["aria-label"], Io = ["aria-pressed"], To = ["aria-pressed"], Ro = ["aria-pressed"], Ho = {
   key: 0,
   class: "map-scene-tools"
-}, Ro = ["aria-expanded", "aria-label"], No = ["aria-label"], zo = ["aria-current"], Ko = { "aria-current": "page" }, Vo = {
+}, zo = ["aria-expanded", "aria-label"], No = ["aria-label"], Ko = ["aria-current"], Vo = { "aria-current": "page" }, qo = {
   key: 1,
   class: "map-notice",
   role: "status"
-}, qo = {
+}, Uo = {
   key: 1,
   class: "map-empty"
-}, Uo = {
+}, Wo = {
   key: 2,
   class: "map-empty"
-}, Wo = { class: "map-empty" }, Go = ["disabled"], Do = ["aria-expanded", "aria-label"], Fo = {
+}, Do = { class: "map-empty" }, Go = ["disabled"], Fo = ["aria-expanded", "aria-label"], Zo = {
   key: 2,
   class: "map-key"
-}, Zo = ["aria-label"], Qo = { class: "map-region-icon" }, Yo = {
+}, Qo = ["aria-label"], Yo = { class: "map-region-icon" }, Xo = {
   class: "map-round-button",
   "aria-hidden": "true"
-}, Xo = {
+}, Jo = {
   key: 5,
   class: "map-scene-caption"
-}, Jo = ["title"], el = /* @__PURE__ */ G({
+}, el = ["title"], tl = /* @__PURE__ */ G({
   __name: "MapBrowser",
   props: {
     map: {},
@@ -2530,88 +2590,88 @@ var ao = { class: "map-search-input" }, no = ["aria-label", "placeholder"], oo =
     compact: { type: Boolean }
   },
   setup(e) {
-    const n = e, s = `map-browse-summary-${he()}`, t = H(""), u = () => Jn(n.map) === "scene" ? {
+    const n = e, s = `map-browse-summary-${fe()}`, t = H(""), u = () => eo(n.map) === "scene" ? {
       kind: "scene",
       key: ""
     } : { kind: "world" }, d = H(u()), p = H("3d"), i = H(!1), v = H(!0), h = H(!1), l = H("");
     let f = !1;
-    const o = S(() => d.value.kind === "scene"), b = S(() => d.value.kind === "scene" ? d.value.key : ""), O = H(""), V = H(0), E = H(null), A = H(!1), x = S(() => n.map?.atlas), N = S(() => x.value?.actors.find(($) => $.actorKey === "player")?.locationKey || ""), U = S(() => x.value?.locations.find(($) => $.key === N.value)), z = S(() => x.value?.locations.find(($) => $.key === (b.value || N.value))), q = S(() => o.value && z.value?.sceneKey ? n.map?.scenes[z.value.sceneKey] : void 0), I = S(() => {
+    const o = j(() => d.value.kind === "scene"), b = j(() => d.value.kind === "scene" ? d.value.key : ""), $ = H(""), P = H(0), E = H(null), B = H(!1), x = j(() => n.map?.atlas), W = j(() => x.value?.actors.find((_) => _.actorKey === "player")?.locationKey || ""), K = j(() => x.value?.locations.find((_) => _.key === W.value)), V = j(() => x.value?.locations.find((_) => _.key === (b.value || W.value))), q = j(() => o.value && V.value?.sceneKey ? n.map?.scenes[V.value.sceneKey] : void 0), R = j(() => {
       if (!x.value || d.value.kind === "world") return;
-      const $ = d.value.key || N.value;
-      return ke(x.value, $);
-    }), P = S(() => eo(x.value || {
+      const _ = d.value.key || W.value;
+      return we(x.value, _);
+    }), I = j(() => to(x.value || {
       locations: [],
       links: [],
       actors: []
-    }, d.value.kind === "world" ? null : I.value?.key || "")), F = S(() => P.value.locations.find(($) => $.key === t.value)), k = S(() => P.value.kind === "world" ? J.world : I.value?.name || B.unknownRegion), j = S(() => ye[P.value.kind]), T = S(() => P.value.unvisited ? "unvisited" : "all");
+    }, d.value.kind === "world" ? null : R.value?.key || "")), F = j(() => I.value.locations.find((_) => _.key === t.value)), X = j(() => I.value.kind === "world" ? J.world : R.value?.name || T.unknownRegion), w = j(() => me[I.value.kind]), S = j(() => I.value.unvisited ? "unvisited" : "all");
     ee(() => ({
       map: n.map,
       chatIdentity: n.chatIdentity
-    }), ($, g) => {
-      const M = $.chatIdentity !== g.chatIdentity;
-      (M || !$.map?.atlas.locations.some((xe) => xe.key === t.value)) && (t.value = ""), M && (f = !1);
-      const ne = d.value.kind === "world" ? "" : d.value.key, Ye = ne && !$.map?.atlas.locations.some((xe) => xe.key === ne);
-      (M || !g.map?.atlas.locations.length && $.map?.atlas.locations.length && !f || Ye) && (d.value = u()), M && (E.value = null, A.value = !1);
-    }), ee(P, ($, g) => {
-      $.locations.some((M) => M.key === t.value) || (t.value = ""), ($.kind !== g.kind || $.region?.key !== g.region?.key || !x.value) && (t.value = "", E.value = null, A.value = !1);
+    }), (_, g) => {
+      const M = _.chatIdentity !== g.chatIdentity;
+      (M || !_.map?.atlas.locations.some((Ce) => Ce.key === t.value)) && (t.value = ""), M && (f = !1);
+      const oe = d.value.kind === "world" ? "" : d.value.key, Ye = oe && !_.map?.atlas.locations.some((Ce) => Ce.key === oe);
+      (M || !g.map?.atlas.locations.length && _.map?.atlas.locations.length && !f || Ye) && (d.value = u()), M && (E.value = null, B.value = !1);
+    }), ee(I, (_, g) => {
+      _.locations.some((M) => M.key === t.value) || (t.value = ""), (_.kind !== g.kind || _.region?.key !== g.region?.key || !x.value) && (t.value = "", E.value = null, B.value = !1);
     });
-    function K($) {
-      f = !0, d.value = $, t.value = "", E.value = null, A.value = !1;
+    function O(_) {
+      f = !0, d.value = _, t.value = "", E.value = null, B.value = !1;
     }
-    function Z($ = "") {
-      K({
+    function z(_ = "") {
+      O({
         kind: "region",
-        key: $
+        key: _
       });
     }
-    async function Q($, g = !1) {
-      const M = x.value?.locations.find((ne) => ne.key === $);
+    async function U(_, g = !1) {
+      const M = x.value?.locations.find((oe) => oe.key === _);
       if (M) {
         if (f = !0, g && x.value) {
-          if (te(M)) ie();
+          if (te(M)) ce();
           else {
-            const ne = ke(x.value, $);
-            if (!ne) {
-              re($);
+            const oe = we(x.value, _);
+            if (!oe) {
+              ie(_);
               return;
             }
-            Z(ne.key);
+            z(oe.key);
           }
-          await Ce();
+          await Se();
         }
-        t.value = $, E.value = null, A.value = !1, await Ce(), O.value = x.value ? Me(x.value, $, P.value.locations) : $, V.value += 1;
+        t.value = _, E.value = null, B.value = !1, await Se(), $.value = x.value ? $e(x.value, _, I.value.locations) : _, P.value += 1;
       }
     }
-    async function Be() {
-      if (!(!U.value || !x.value)) {
-        if (te(U.value)) {
-          await Q(U.value.key, !0);
+    async function ne() {
+      if (!(!K.value || !x.value)) {
+        if (te(K.value)) {
+          await U(K.value.key, !0);
           return;
         }
-        if (!ke(x.value, U.value.key)) {
-          re();
+        if (!we(x.value, K.value.key)) {
+          ie();
           return;
         }
-        Z(), await Ce(), await Q(U.value.key);
+        z(), await Se(), await U(K.value.key);
       }
     }
-    function re($ = "") {
-      K({
+    function ie(_ = "") {
+      O({
         kind: "scene",
-        key: $ === N.value ? "" : $
+        key: _ === W.value ? "" : _
       });
     }
-    function ie() {
-      K({ kind: "world" });
+    function ce() {
+      O({ kind: "world" });
     }
-    function Qe($) {
-      h.value || (h.value = !0, p.value = "2d", l.value = $);
+    function Qe(_) {
+      h.value || (h.value = !0, p.value = "2d", l.value = _);
     }
-    return Je(() => A.value ? (A.value = !1, !0) : o.value ? (Z(b.value && I.value?.key || ""), !0) : t.value ? (t.value = "", !0) : d.value.kind === "region" ? (ie(), !0) : !1), ($, g) => (r(), c("main", { class: X(["map-app", {
+    return Je(() => B.value ? (B.value = !1, !0) : o.value ? (z(b.value && R.value?.key || ""), !0) : t.value ? (t.value = "", !0) : d.value.kind === "region" ? (ce(), !0) : !1), (_, g) => (r(), c("main", { class: Y(["map-app", {
       "has-view-switch": x.value?.locations.length,
       "is-scene-view": o.value
     }]) }, [
-      e.compact && x.value?.locations.length ? (r(), D(Xn, {
+      e.compact && x.value?.locations.length ? (r(), Z(Jn, {
         key: 0,
         mode: p.value,
         "onUpdate:mode": g[0] || (g[0] = (M) => p.value = M),
@@ -2622,12 +2682,12 @@ var ao = { class: "map-search-input" }, no = ["aria-label", "placeholder"], oo =
         view: d.value.kind,
         "scene-available": q.value?.status === "active",
         "three-unavailable": h.value,
-        located: !!U.value,
-        onNavigate: g[3] || (g[3] = (M) => K(M === "world" ? { kind: M } : {
+        located: !!K.value,
+        onNavigate: g[3] || (g[3] = (M) => O(M === "world" ? { kind: M } : {
           kind: M,
           key: ""
         })),
-        onLocate: g[4] || (g[4] = (M) => o.value ? re() : Be())
+        onLocate: g[4] || (g[4] = (M) => o.value ? ie() : ne())
       }, null, 8, [
         "mode",
         "low-walls",
@@ -2636,81 +2696,81 @@ var ao = { class: "map-search-input" }, no = ["aria-label", "placeholder"], oo =
         "scene-available",
         "three-unavailable",
         "located"
-      ])) : w("", !0),
+      ])) : k("", !0),
       a("div", jo, [
-        e.compact ? w("", !0) : (r(), c(_, { key: 0 }, [
-          a("header", Lo, [
-            C(L, { name: o.value ? "layers" : "search" }, null, 8, ["name"]),
-            o.value ? (r(), c("div", Ao, [W(m(z.value?.name || y(J).scene), 1), a("small", null, m(b.value ? y(B).sceneBrowsing : y(B).sceneCurrent), 1)])) : (r(), c("button", {
+        e.compact ? k("", !0) : (r(), c(C, { key: 0 }, [
+          a("header", Eo, [
+            L(A, { name: o.value ? "layers" : "search" }, null, 8, ["name"]),
+            o.value ? (r(), c("div", Ao, [D(m(V.value?.name || y(J).scene), 1), a("small", null, m(b.value ? y(T).sceneBrowsing : y(T).sceneCurrent), 1)])) : (r(), c("button", {
               key: 0,
               type: "button",
               class: "map-search-entry",
               disabled: !x.value?.locations.length,
               onClick: g[5] || (g[5] = (M) => E.value = "all")
-            }, [W(m(j.value.search), 1), a("small", null, m(k.value), 1)], 8, Oo)),
-            oe($.$slots, "toolbar")
+            }, [D(m(w.value.search), 1), a("small", null, m(X.value), 1)], 8, Oo)),
+            le(_.$slots, "toolbar")
           ]),
-          x.value?.locations.length ? (r(), c("div", Eo, [a("nav", {
+          x.value?.locations.length ? (r(), c("div", Po, [a("nav", {
             class: "map-view-switch",
-            "aria-label": y(B).viewLabel
+            "aria-label": y(T).viewLabel
           }, [
             a("button", {
               type: "button",
               "aria-pressed": d.value.kind === "world",
-              onClick: ie
-            }, [C(L, { name: "globe" }), W(m(y(J).world), 1)], 8, Bo),
+              onClick: ce
+            }, [L(A, { name: "globe" }), D(m(y(J).world), 1)], 8, Io),
             a("button", {
               type: "button",
               "aria-pressed": d.value.kind === "region",
-              onClick: g[6] || (g[6] = (M) => Z())
-            }, [C(L, { name: "compass" }), W(m(y(J).region), 1)], 8, Io),
+              onClick: g[6] || (g[6] = (M) => z())
+            }, [L(A, { name: "compass" }), D(m(y(J).region), 1)], 8, To),
             a("button", {
               type: "button",
               "aria-pressed": o.value,
-              onClick: g[7] || (g[7] = (M) => re())
-            }, [C(L, { name: "layers" }), W(m(y(J).scene), 1)], 8, To)
-          ], 8, Po), o.value ? (r(), c("div", Ho, [b.value ? (r(), c("button", {
+              onClick: g[7] || (g[7] = (M) => ie())
+            }, [L(A, { name: "layers" }), D(m(y(J).scene), 1)], 8, Ro)
+          ], 8, Bo), o.value ? (r(), c("div", Ho, [b.value ? (r(), c("button", {
             key: 0,
             type: "button",
             class: "map-round-button",
             "aria-label": "回到当前场景",
-            onClick: g[8] || (g[8] = (M) => re())
-          }, [C(L, { name: "locate" })])) : w("", !0), a("button", {
+            onClick: g[8] || (g[8] = (M) => ie())
+          }, [L(A, { name: "locate" })])) : k("", !0), a("button", {
             type: "button",
             class: "map-round-button",
-            "aria-expanded": A.value,
-            "aria-label": y(B).legendLabel,
-            onClick: g[9] || (g[9] = (M) => A.value = !A.value)
-          }, [C(L, { name: "layers" })], 8, Ro)])) : w("", !0)])) : w("", !0),
+            "aria-expanded": B.value,
+            "aria-label": y(T).legendLabel,
+            onClick: g[9] || (g[9] = (M) => B.value = !B.value)
+          }, [L(A, { name: "layers" })], 8, zo)])) : k("", !0)])) : k("", !0),
           x.value?.locations.length && !o.value ? (r(), c("nav", {
             key: 1,
             class: "map-region-trail",
-            "aria-label": y(B).trailLabel
+            "aria-label": y(T).trailLabel
           }, [a("button", {
             type: "button",
             "aria-current": d.value.kind === "world" ? "page" : void 0,
-            onClick: ie
-          }, [C(L, { name: "globe" }), W(m(y(J).world), 1)], 8, zo), d.value.kind === "region" ? (r(), c(_, { key: 0 }, [C(L, { name: "next" }), a("span", Ko, m(k.value), 1)], 64)) : w("", !0)], 8, No)) : w("", !0)
+            onClick: ce
+          }, [L(A, { name: "globe" }), D(m(y(J).world), 1)], 8, Ko), d.value.kind === "region" ? (r(), c(C, { key: 0 }, [L(A, { name: "next" }), a("span", Vo, m(X.value), 1)], 64)) : k("", !0)], 8, No)) : k("", !0)
         ], 64)),
-        l.value ? (r(), c("aside", Vo, [a("p", null, m(l.value), 1), a("button", {
+        l.value ? (r(), c("aside", qo, [a("p", null, m(l.value), 1), a("button", {
           type: "button",
           class: "map-notice-close",
           "aria-label": "关闭三维提示",
           onClick: g[10] || (g[10] = (M) => l.value = "")
-        }, [C(L, { name: "close" })])])) : w("", !0),
-        oe($.$slots, "feedback")
+        }, [L(A, { name: "close" })])])) : k("", !0),
+        le(_.$slots, "feedback")
       ]),
-      a("div", { class: X(["map-canvas", { "has-detail": F.value && !o.value }]) }, [e.map && x.value?.locations.length ? (r(), c(_, { key: 0 }, [
-        P.value.locations.length ? Ee((r(), D(St, {
+      a("div", { class: Y(["map-canvas", { "has-detail": F.value && !o.value }]) }, [e.map && x.value?.locations.length ? (r(), c(C, { key: 0 }, [
+        I.value.locations.length ? Ae((r(), Z(Lt, {
           key: 0,
           atlas: e.map.atlas,
-          scope: P.value,
-          label: k.value,
-          "current-location-key": N.value,
+          scope: I.value,
+          label: X.value,
+          "current-location-key": W.value,
           "selected-location-key": t.value,
-          "focus-key": O.value,
-          "focus-sequence": V.value,
-          onSelect: g[11] || (g[11] = (M) => Q(M))
+          "focus-key": $.value,
+          "focus-sequence": P.value,
+          onSelect: g[11] || (g[11] = (M) => U(M))
         }, null, 8, [
           "atlas",
           "scope",
@@ -2719,8 +2779,8 @@ var ao = { class: "map-search-input" }, no = ["aria-label", "placeholder"], oo =
           "selected-location-key",
           "focus-key",
           "focus-sequence"
-        ])), [[Ne, !o.value]]) : w("", !0),
-        o.value ? (r(), c(_, { key: 1 }, [q.value?.status === "active" ? (r(), D(In, {
+        ])), [[ze, !o.value]]) : k("", !0),
+        o.value ? (r(), c(C, { key: 1 }, [q.value?.status === "active" ? (r(), Z(Tn, {
           key: 0,
           mode: p.value,
           "onUpdate:mode": g[12] || (g[12] = (M) => p.value = M),
@@ -2739,57 +2799,57 @@ var ao = { class: "map-search-input" }, no = ["aria-label", "placeholder"], oo =
           "scene",
           "compact",
           "three-unavailable"
-        ])) : (r(), c("div", qo, [
-          C(L, { name: "layers" }),
-          a("h2", null, m(z.value ? y(B).sceneEmpty : y(B).unknownLocation), 1),
-          b.value && b.value !== N.value ? (r(), c("button", {
+        ])) : (r(), c("div", Uo, [
+          L(A, { name: "layers" }),
+          a("h2", null, m(V.value ? y(T).sceneEmpty : y(T).unknownLocation), 1),
+          b.value && b.value !== W.value ? (r(), c("button", {
             key: 0,
             type: "button",
             class: "map-secondary-button",
-            onClick: g[15] || (g[15] = (M) => I.value ? Z(I.value.key) : ie())
-          }, m(I.value ? y(B).regionMap : y(J).world), 1)) : oe($.$slots, "scene-empty-action", {
+            onClick: g[15] || (g[15] = (M) => R.value ? z(R.value.key) : ce())
+          }, m(R.value ? y(T).regionMap : y(J).world), 1)) : le(_.$slots, "scene-empty-action", {
             key: 1,
-            located: !!z.value
+            located: !!V.value
           })
-        ]))], 64)) : w("", !0),
-        !o.value && !P.value.locations.length ? (r(), c("div", Uo, [
-          C(L, { name: "pin" }),
-          a("h2", null, m(d.value.kind === "region" && !I.value ? y(B).unknownRegion : j.value.empty), 1),
-          a("p", null, m(d.value.kind === "region" && !I.value ? y(B).unknownRegionHint : j.value.emptyHint), 1),
+        ]))], 64)) : k("", !0),
+        !o.value && !I.value.locations.length ? (r(), c("div", Wo, [
+          L(A, { name: "pin" }),
+          a("h2", null, m(d.value.kind === "region" && !R.value ? y(T).unknownRegion : w.value.empty), 1),
+          a("p", null, m(d.value.kind === "region" && !R.value ? y(T).unknownRegionHint : w.value.emptyHint), 1),
           d.value.kind === "region" ? (r(), c("button", {
             key: 0,
             type: "button",
             class: "map-secondary-button",
-            onClick: ie
-          }, m(y(J).world), 1)) : oe($.$slots, "scope-empty-action", { key: 1 })
-        ])) : w("", !0)
-      ], 64)) : oe($.$slots, "empty-map", { key: 1 }, () => [a("div", Wo, [C(L, { name: "globe" }), a("h2", null, m(y(de).empty), 1)])])], 2),
+            onClick: ce
+          }, m(y(J).world), 1)) : le(_.$slots, "scope-empty-action", { key: 1 })
+        ])) : k("", !0)
+      ], 64)) : le(_.$slots, "empty-map", { key: 1 }, () => [a("div", Do, [L(A, { name: "globe" }), a("h2", null, m(y(ve).empty), 1)])])], 2),
       !e.compact && x.value?.locations.length && !o.value ? (r(), c("div", {
         key: 1,
-        class: X(["map-floating-tools", { "has-detail": F.value }])
+        class: Y(["map-floating-tools", { "has-detail": F.value }])
       }, [a("button", {
         type: "button",
         class: "map-round-button",
-        disabled: !U.value,
+        disabled: !K.value,
         "aria-label": "回到我的位置",
-        onClick: Be
-      }, [C(L, { name: "locate" })], 8, Go), a("button", {
+        onClick: ne
+      }, [L(A, { name: "locate" })], 8, Go), a("button", {
         type: "button",
         class: "map-round-button",
-        "aria-expanded": A.value,
-        "aria-label": y(B).legendLabel,
-        onClick: g[16] || (g[16] = (M) => A.value = !A.value)
-      }, [C(L, { name: "layers" })], 8, Do)], 2)) : w("", !0),
-      A.value ? (r(), c("aside", Fo, [C(Ze)])) : w("", !0),
-      F.value && e.map && !o.value ? (r(), D(So, {
+        "aria-expanded": B.value,
+        "aria-label": y(T).legendLabel,
+        onClick: g[16] || (g[16] = (M) => B.value = !B.value)
+      }, [L(A, { name: "layers" })], 8, Fo)], 2)) : k("", !0),
+      B.value ? (r(), c("aside", Zo, [L(Ze)])) : k("", !0),
+      F.value && e.map && !o.value ? (r(), Z(Lo, {
         key: F.value.key,
         location: F.value,
         map: e.map,
-        "current-key": N.value,
+        "current-key": W.value,
         onClose: g[17] || (g[17] = (M) => t.value = ""),
-        onScene: g[18] || (g[18] = (M) => re(F.value.key)),
-        onExplore: g[19] || (g[19] = (M) => Z(F.value.key)),
-        onSelect: g[20] || (g[20] = (M) => Q(M, !0))
+        onScene: g[18] || (g[18] = (M) => ie(F.value.key)),
+        onExplore: g[19] || (g[19] = (M) => z(F.value.key)),
+        onSelect: g[20] || (g[20] = (M) => U(M, !0))
       }, null, 8, [
         "location",
         "map",
@@ -2798,55 +2858,56 @@ var ao = { class: "map-search-input" }, no = ["aria-label", "placeholder"], oo =
         key: 4,
         type: "button",
         class: "map-region-card",
-        "aria-label": y(ht)(P.value.kind, T.value),
+        "aria-label": y(ft)(I.value.kind, S.value),
         "aria-describedby": s,
-        onClick: g[21] || (g[21] = (M) => E.value = T.value)
+        onClick: g[21] || (g[21] = (M) => E.value = S.value)
       }, [
-        a("span", Qo, [C(L, { name: P.value.kind === "world" ? "globe" : "compass" }, null, 8, ["name"])]),
+        a("span", Yo, [L(A, { name: I.value.kind === "world" ? "globe" : "compass" }, null, 8, ["name"])]),
         a("span", {
           id: s,
           class: "map-region-summary"
-        }, [a("strong", null, m(k.value), 1), a("small", null, m(y(pt)(P.value.kind, P.value.locations.length, P.value.unvisited)), 1)]),
-        a("span", Yo, [C(L, { name: "next" })])
-      ], 8, Zo)) : !e.compact && o.value && x.value?.locations.length ? (r(), c("footer", Xo, [C(L, { name: "layers" }), a("span", null, [a("strong", null, m(z.value?.name || "当前位置待确认"), 1), a("small", null, m(b.value ? "正在查看场景图 · 不会移动人物" : "当前位置的场景图"), 1)])])) : w("", !0),
+        }, [a("strong", null, m(X.value), 1), a("small", null, m(y(ht)(I.value.kind, I.value.locations.length, I.value.unvisited)), 1)]),
+        a("span", Xo, [L(A, { name: "next" })])
+      ], 8, Qo)) : !e.compact && o.value && x.value?.locations.length ? (r(), c("footer", Jo, [L(A, { name: "layers" }), a("span", null, [a("strong", null, m(V.value?.name || "当前位置待确认"), 1), a("small", null, m(b.value ? "正在查看场景图 · 不会移动人物" : "当前位置的场景图"), 1)])])) : k("", !0),
       e.compact && x.value?.locations.length && !F.value ? (r(), c("div", {
         key: 6,
         class: "map-projection-caption",
-        title: o.value ? z.value?.name : k.value
-      }, [C(L, { name: o.value ? "pin" : "compass" }, null, 8, ["name"]), a("span", null, m(o.value ? z.value?.name || y(B).unknownLocation : k.value), 1)], 8, Jo)) : w("", !0),
-      E.value && x.value ? (r(), D(ho, {
+        title: o.value ? V.value?.name : X.value
+      }, [L(A, { name: o.value ? "pin" : "compass" }, null, 8, ["name"]), a("span", null, m(o.value ? V.value?.name || y(T).unknownLocation : X.value), 1)], 8, el)) : k("", !0),
+      E.value && x.value ? (r(), Z(fo, {
         key: 7,
-        scope: P.value,
-        title: k.value,
+        scope: I.value,
+        title: X.value,
         "initial-filter": E.value,
         onClose: g[22] || (g[22] = (M) => E.value = null),
-        onSelect: g[23] || (g[23] = (M) => Q(M))
+        onSelect: g[23] || (g[23] = (M) => U(M))
       }, null, 8, [
         "scope",
         "title",
         "initial-filter"
-      ])) : w("", !0),
-      oe($.$slots, "overlay")
+      ])) : k("", !0),
+      le(_.$slots, "overlay")
     ], 2));
   }
-}), pl = el;
+}), hl = tl;
 export {
-  de as _,
-  xa as a,
-  ua as c,
+  ve as _,
+  Ca as a,
+  da as c,
   We as d,
   ae as f,
-  B as g,
+  T as g,
   Ot as h,
   Ha as i,
-  ce as l,
-  vl as m,
-  Re as n,
-  Pa as o,
+  ue as l,
+  pl as m,
+  He as n,
+  Ba as o,
   Te as p,
   Na as r,
-  Ba as s,
-  pl as t,
+  Ia as s,
+  hl as t,
   je as u,
-  L as v
+  A as v,
+  at as y
 };

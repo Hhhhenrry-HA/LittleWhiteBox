@@ -1,10 +1,10 @@
 /* eslint-disable */
-import { B as T, C as z, G as x, Q as P, S as B, U as i, V, _, at as G, dt as Y, ft as u, k as b, lt as w, ut as L, w as o, x as s } from "./xiaobai-os-frame-bridge-CrPFvkI3.js";
+import { B as i, E as M, H as x, L as U, R as P, Y as V, b as z, ct as w, dt as u, lt as L, m as _, nt as B, ut as Y, v as s, x as o, y as G } from "./xiaobai-os-app-navigation-DbF27MCy.js";
 import { r as v, t as N } from "./xiaobai-os-outfit-Bu9V9bRI.js";
-import { n as F, t as H } from "./xiaobai-os-design-Bb2ApHR1.js";
-import { t as M } from "./xiaobai-os-copy-tZe7hhYt.js";
-import { i as y, t as Q } from "./xiaobai-os-outfit-BedKY6Cl.js";
-var j = {
+import { n as H, t as F } from "./xiaobai-os-design-Bb2ApHR1.js";
+import { t as b } from "./xiaobai-os-copy-B9-7_xqW.js";
+import { i as y, t as j } from "./xiaobai-os-outfit-BedKY6Cl.js";
+var Q = {
   1: [[2, 2]],
   2: [[1, 1], [3, 3]],
   3: [
@@ -35,7 +35,7 @@ var j = {
   ]
 };
 var X = 80, q = 180, J = 200;
-function b2(e) {
+function M2(e) {
   const t = Math.max(0, e - 1) * 45 + 720 + X, r = t + q;
   return {
     countAt: t,
@@ -43,7 +43,7 @@ function b2(e) {
     settledAt: r + J
   };
 }
-var K = ["aria-label"], W = { class: "game-die-stage" }, e2 = { class: "game-die-pips" }, t2 = /* @__PURE__ */ b({
+var K = ["aria-label"], W = { class: "game-die-stage" }, e2 = { class: "game-die-pips" }, t2 = /* @__PURE__ */ M({
   __name: "Die",
   props: {
     value: {},
@@ -97,7 +97,7 @@ var K = ["aria-label"], W = { class: "game-die-stage" }, e2 = { class: "game-die
     function a() {
       return typeof window < "u" && typeof window.matchMedia == "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     }
-    const d = G(null), g = G(null);
+    const d = B(null), g = B(null);
     let p = null, n = null;
     function k() {
       const [f, h] = c[t.value];
@@ -157,9 +157,9 @@ var K = ["aria-label"], W = { class: "game-die-stage" }, e2 = { class: "game-die
         fill: "both"
       }) ?? null;
     }
-    return T(A), V(() => {
+    return U(A), P(() => {
       p?.cancel(), n?.cancel();
-    }), P(() => t.value, A), (f, h) => (i(), o("div", {
+    }), V(() => t.value, A), (f, h) => (i(), o("div", {
       ref_key: "shell",
       ref: g,
       class: L(["game-die", { "is-hit": e.highlight }]),
@@ -172,13 +172,13 @@ var K = ["aria-label"], W = { class: "game-die-stage" }, e2 = { class: "game-die
     }, [(i(), o(_, null, x(r, (m) => s("div", {
       key: m.side,
       class: L(["game-die-face", [m.side, { "is-result": m.face === e.value }]])
-    }, [s("div", e2, [(i(!0), o(_, null, x(w(j)[m.face], ([$, R], U) => (i(), o("i", {
-      key: U,
+    }, [s("div", e2, [(i(!0), o(_, null, x(w(Q)[m.face], ([$, R], T) => (i(), o("i", {
+      key: T,
       class: "game-die-pip",
       style: Y({ gridArea: `${$} / ${R}` })
     }, null, 4))), 128))])], 2)), 64))], 512)])], 10, K));
   }
-}), S = t2, O = [
+}), O = t2, S = [
   "零",
   "一",
   "二",
@@ -192,7 +192,7 @@ var K = ["aria-label"], W = { class: "game-die-stage" }, e2 = { class: "game-die
   "十"
 ];
 function Z(e) {
-  return `${O[e.count] || e.count}个${O[e.face]}`;
+  return `${S[e.count] || e.count}个${S[e.face]}`;
 }
 function $2(e, t) {
   return e.filter((r) => r.count === t).map((r) => r.face);
@@ -203,7 +203,7 @@ function D(e, t) {
 var a2 = {
   key: 0,
   class: "dice-record"
-}, r2 = { class: "game-dice-row" }, l2 = { class: "game-dice-row" }, i2 = /* @__PURE__ */ b({
+}, r2 = { class: "game-dice-row" }, l2 = { class: "game-dice-row" }, i2 = /* @__PURE__ */ M({
   __name: "DiceRecord",
   props: { detail: {} },
   setup(e) {
@@ -214,14 +214,14 @@ var a2 = {
         face: e.detail.finalBid.face
       })) + "（一点百搭） ", 1),
       r[0] || (r[0] = s("span", null, "对方的骰子", -1)),
-      s("div", r2, [(i(!0), o(_, null, x(e.detail.dealerDice, (c, l) => (i(), B(S, {
+      s("div", r2, [(i(!0), o(_, null, x(e.detail.dealerDice, (c, l) => (i(), G(O, {
         key: l,
         value: c,
         animate: !1,
         highlight: w(D)(c, e.detail.finalBid.face)
       }, null, 8, ["value", "highlight"]))), 128))]),
       r[1] || (r[1] = s("span", null, "你的骰子", -1)),
-      s("div", l2, [(i(!0), o(_, null, x(e.detail.playerDice, (c, l) => (i(), B(S, {
+      s("div", l2, [(i(!0), o(_, null, x(e.detail.playerDice, (c, l) => (i(), G(O, {
         key: l,
         value: c,
         animate: !1,
@@ -229,7 +229,7 @@ var a2 = {
       }, null, 8, ["value", "highlight"]))), 128))])
     ])) : z("", !0);
   }
-}), c2 = i2, o2 = { key: 0 }, s2 = /* @__PURE__ */ b({
+}), c2 = i2, o2 = { key: 0 }, s2 = /* @__PURE__ */ M({
   __name: "PushRecord",
   props: { detail: {} },
   setup(e) {
@@ -238,7 +238,7 @@ var a2 = {
 }), d2 = s2, n2 = {
   key: 0,
   class: "game-record-steps"
-}, f2 = /* @__PURE__ */ b({
+}, f2 = /* @__PURE__ */ M({
   __name: "LadderRecord",
   props: { detail: {} },
   setup(e) {
@@ -285,7 +285,7 @@ function E(e) {
   return m2.find((t) => t.id === e);
 }
 function u2(e, t = []) {
-  const r = e === "mark" ? "132 56 248 305" : t.length ? "90 48 332 420" : "110 48 292 420", c = F.map((a) => `  <ellipse cx="${256 + a.center[0] * 360}" cy="${300 - a.center[1] * 360}" rx="${a.radius[0] * 360}" ry="${a.radius[1] * 360}" fill="${H[a.color]}"/>`), l = t.map((a) => {
+  const r = e === "mark" ? "132 56 248 305" : t.length ? "90 48 332 420" : "110 48 292 420", c = H.map((a) => `  <ellipse cx="${256 + a.center[0] * 360}" cy="${300 - a.center[1] * 360}" rx="${a.radius[0] * 360}" ry="${a.radius[1] * 360}" fill="${F[a.color]}"/>`), l = t.map((a) => {
     const d = 256 + a.at[0] * 360, g = 300 - a.at[1] * 360, p = a.tilt ? ` transform="rotate(${-a.tilt * 180 / Math.PI} ${d} ${g})"` : "";
     if (a.shape === "ball") return `  <ellipse cx="${d}" cy="${g}" rx="${a.size[0] * 360}" ry="${a.size[1] * 360}" fill="${a.color}"${p}/>`;
     const n = a.size[0] * 360, k = a.size[1] * 360;
@@ -298,7 +298,7 @@ ${[...c, ...l].join(`
 </svg>
 `;
 }
-function C(e) {
+function I(e) {
   return `data:image/svg+xml,${encodeURIComponent(u2("portrait", e))}`;
 }
 var p2 = {
@@ -310,7 +310,7 @@ var p2 = {
   entry: y.entry,
   mark: y.mark,
   tone: "moving",
-  mascotPortrait: C(Q)
+  mascotPortrait: I(j)
 }, g2 = {
   id: "building",
   name: v.name,
@@ -320,57 +320,57 @@ var p2 = {
   entry: v.entry,
   mark: v.mark,
   tone: "building",
-  mascotPortrait: C(N)
+  mascotPortrait: I(N)
 }, v2 = {
   id: "expedition",
-  name: M.name,
-  category: M.category,
-  tagline: M.tagline,
-  entry: M.entry,
+  name: b.name,
+  category: b.category,
+  tagline: b.tagline,
+  entry: b.entry,
   tone: "expedition"
-}, I = [
+}, C = [
   {
     ...E("dice"),
     record: c2,
     artwork: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20360%20230'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='cup'%20x1='115'%20y1='50'%20x2='245'%20y2='140'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23b4cce2'/%3e%3cstop%20offset='.5'%20stop-color='%23edf6ff'/%3e%3cstop%20offset='1'%20stop-color='%237295b4'/%3e%3c/linearGradient%3e%3clinearGradient%20id='die'%20x2='1'%20y2='1'%3e%3cstop%20stop-color='%23fff'/%3e%3cstop%20offset='1'%20stop-color='%23dce7f2'/%3e%3c/linearGradient%3e%3c/defs%3e%3cellipse%20cx='180'%20cy='190'%20rx='111'%20ry='23'%20fill='%230c6c83'%20opacity='.25'/%3e%3cg%20transform='rotate(-12%20184%20123)'%3e%3cpath%20d='M129%2057Q181%2027%20230%2057L245%20159Q183%20202%20113%20164Z'%20fill='url(%23cup)'%20stroke='%23fff'%20stroke-width='2'/%3e%3cellipse%20cx='180'%20cy='59'%20rx='51'%20ry='19'%20fill='%23bdd5e7'%20stroke='%23fff'%20stroke-width='3'/%3e%3cellipse%20cx='180'%20cy='59'%20rx='39'%20ry='12'%20fill='%23375675'/%3e%3cpath%20d='M116%20151Q183%20185%20243%20146'%20stroke='%23fff'%20stroke-width='4'/%3e%3cpath%20d='M137%2088L132%20140M146%2094L143%20145'%20stroke='%23fff'%20opacity='.3'%20stroke-width='2'/%3e%3c/g%3e%3cg%20transform='translate(232%20137)%20rotate(16)'%3e%3crect%20width='56'%20height='56'%20rx='12'%20fill='url(%23die)'%20stroke='%23fff'/%3e%3cg%20fill='%2322364d'%3e%3ccircle%20cx='16'%20cy='15'%20r='4'/%3e%3ccircle%20cx='40'%20cy='15'%20r='4'/%3e%3ccircle%20cx='16'%20cy='28'%20r='4'/%3e%3ccircle%20cx='40'%20cy='28'%20r='4'/%3e%3ccircle%20cx='16'%20cy='41'%20r='4'/%3e%3ccircle%20cx='40'%20cy='41'%20r='4'/%3e%3c/g%3e%3c/g%3e%3cg%20transform='translate(88%20164)%20rotate(-16)'%3e%3crect%20width='49'%20height='49'%20rx='11'%20fill='url(%23die)'%20stroke='%23fff'/%3e%3ccircle%20cx='24.5'%20cy='24.5'%20r='7'%20fill='%23f14260'/%3e%3c/g%3e%3cpath%20d='m282%2068%205-11m-2%2026%2014-4M90%2091l-10-7'%20stroke='%231db49c'%20stroke-width='3'%20stroke-linecap='round'/%3e%3c/svg%3e", "" + import.meta.url).href,
-    load: () => import("./xiaobai-os-DiceRoom-BV7iKjYX.js")
+    load: () => import("./xiaobai-os-DiceRoom-CcxKDLBE.js")
   },
   {
     ...E("push"),
     record: d2,
     artwork: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20360%20230'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='gold'%20x2='1'%20y2='1'%3e%3cstop%20stop-color='%23ffdf62'/%3e%3cstop%20offset='1'%20stop-color='%23ffae1a'/%3e%3c/linearGradient%3e%3c/defs%3e%3cellipse%20cx='180'%20cy='198'%20rx='106'%20ry='19'%20fill='%23302470'%20opacity='.18'/%3e%3cg%20transform='translate(85%2060)%20rotate(-17%2055%2072)'%3e%3crect%20width='110'%20height='145'%20rx='12'%20fill='%235961cc'%20stroke='%23bac8ff'%20stroke-width='3'/%3e%3crect%20x='9'%20y='9'%20width='92'%20height='127'%20rx='7'%20stroke='%23bac8ff'/%3e%3cpath%20d='m55%2033%2028%2039-28%2039-28-39Z'%20fill='%238598f0'/%3e%3cpath%20d='m55%2048%2016%2024-16%2024-16-24Z'%20stroke='%23fff'/%3e%3c/g%3e%3cg%20transform='translate(169%2039)%20rotate(13%2054%2074)'%3e%3crect%20width='110'%20height='150'%20rx='12'%20fill='%23fff'%20stroke='%23dee5ff'%20stroke-width='2'/%3e%3ccircle%20cx='55'%20cy='75'%20r='30'%20fill='url(%23gold)'%20stroke='%23eea522'%20stroke-width='3'/%3e%3ccircle%20cx='55'%20cy='75'%20r='23'%20stroke='%23fff4be'%20stroke-width='2'/%3e%3cpath%20d='m55%2055%206%2013%2014%202-10%2010%203%2015-13-7-13%207%203-15-10-10%2014-2Z'%20fill='%23cb7a00'/%3e%3cpath%20d='M13%2017h10m-5-5v10M87%20130h10m-5-5v10'%20stroke='%23ffc14d'%20stroke-width='2'/%3e%3c/g%3e%3cg%20stroke='%23eea522'%20stroke-width='2'%3e%3cellipse%20cx='262'%20cy='192'%20rx='26'%20ry='11'%20fill='%23c98712'/%3e%3cellipse%20cx='262'%20cy='186'%20rx='26'%20ry='11'%20fill='url(%23gold)'/%3e%3cellipse%20cx='247'%20cy='172'%20rx='26'%20ry='11'%20fill='url(%23gold)'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href,
-    load: () => import("./xiaobai-os-PushRoom-Byj6rWxA.js")
+    load: () => import("./xiaobai-os-PushRoom-C17ePYzf.js")
   },
   {
     ...E("ladder"),
     record: h2,
     artwork: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20360%20230'%20fill='none'%3e%3cellipse%20cx='178'%20cy='201'%20rx='118'%20ry='18'%20fill='%232054a0'%20opacity='.16'/%3e%3cpath%20d='M70%20164h43v-29h43v-29h43V77h43V48h45v146H70Z'%20fill='%23549cec'/%3e%3cpath%20d='m70%20164%2019-11h43l-19%2011Zm43-29%2019-11h43l-19%2011Zm43-29%2019-11h43l-19%2011Zm43-29%2019-11h43l-19%2011Zm43-29%2019-11h45l-19%2011Z'%20fill='%23d9f0ff'/%3e%3cpath%20d='m287%2048%2019-11v146l-19%2011Z'%20fill='%23246bc8'/%3e%3cpath%20d='M70%20194h217'%20stroke='%231f5db3'%20stroke-width='3'/%3e%3ccircle%20cx='134'%20cy='107'%20r='12'%20fill='%23fff'/%3e%3cpath%20d='m129%20122-8%2014%2025%201-1-16Z'%20fill='%23fa6957'/%3e%3cpath%20d='m128%20137-9%2014m20-14%208%204m-4-17%2017-11'%20stroke='%23cc3b47'%20stroke-width='6'%20stroke-linecap='round'/%3e%3cpath%20d='m266%2014%204%207%209%202-6%207%201%208-8-4-8%204%201-8-6-7%209-2Z'%20fill='%23ffdf60'%20stroke='%23e9a31a'/%3e%3cpath%20d='m83%2057%205-10m-4%2024%2012-3m115-44%204-8'%20stroke='%235da8ed'%20stroke-width='3'%20stroke-linecap='round'/%3e%3c/svg%3e", "" + import.meta.url).href,
-    load: () => import("./xiaobai-os-LadderRoom-EX0H8657.js")
+    load: () => import("./xiaobai-os-LadderRoom-Cda89LWY.js")
   }
 ];
 function R2(e) {
-  return I.find((t) => t.id === e);
+  return C.find((t) => t.id === e);
 }
 var y2 = [
   {
     ...v2,
     mode: "standalone",
     artwork: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20360%20300'%3e%3crect%20width='360'%20height='300'%20rx='26'%20fill='%23dceef5'/%3e%3ccircle%20cx='252'%20cy='66'%20r='35'%20fill='%23fff8df'/%3e%3cpath%20d='M0%20178%2068%2086l47%2051%2056-66%2071%2080%2063-47%2055%2062v134H0Z'%20fill='%23b0cbd7'/%3e%3cpath%20d='m0%20213%20106-54%20121%2037%20133-53v157H0Z'%20fill='%238fadb9'/%3e%3cpath%20d='m39%20267%20143-107%20139%20107-143%2029Z'%20fill='%23d5e5df'/%3e%3cpath%20d='M82%20198V92h38v92m120%200V92h38v106'%20fill='%23f6f3e4'/%3e%3cpath%20d='M76%2092h50L101%2053Zm158%200h50l-25-39Z'%20fill='%23426a7d'/%3e%3cpath%20d='M114%20114h132v18H114'%20fill='%23f6f3e4'/%3e%3cpath%20d='M92%2099h17v57H92m158-57h17v57h-17'%20fill='%2365a89e'/%3e%3cpath%20d='m170%20215%2011-58%2011%2058-11-8Z'%20fill='%23e9fafc'%20stroke='%23598394'%20stroke-width='3'/%3e%3cpath%20d='m157%20212%2049%200m-24%200v24'%20stroke='%23d9ad58'%20stroke-width='6'/%3e%3ccircle%20cx='181'%20cy='259'%20r='24'%20fill='none'%20stroke='%23f9f6df'%20stroke-width='3'/%3e%3c/svg%3e", "" + import.meta.url).href,
-    load: () => import("./xiaobai-os-ExpeditionRoom-C9YsDauR.js")
+    load: () => import("./xiaobai-os-ExpeditionRoom-DEeKMSeA.js")
   },
   {
     ...g2,
     mode: "standalone",
     artwork: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20360%20240'%3e%3crect%20width='360'%20height='240'%20rx='24'%20fill='%23d9eef2'/%3e%3cellipse%20cx='182'%20cy='197'%20rx='134'%20ry='20'%20fill='%23c5e0dc'/%3e%3cpath%20d='m49%20184%2024-25h224l19%2025-20%2014H70Z'%20fill='%23fff9e9'/%3e%3cpath%20d='M105%20166V92h146v74'%20fill='%23fffdf6'%20stroke='%23dacdb9'%20stroke-width='3'/%3e%3cpath%20d='M177%2092V50h74v116'%20fill='%23fffdf6'%20stroke='%23dacdb9'%20stroke-width='3'/%3e%3cpath%20d='m96%2094%2046-37%2043%2037m-18-44%2047-37%2047%2037'%20fill='%23b8d6c8'%20stroke='%2389b3a1'%20stroke-width='4'%20stroke-linejoin='round'/%3e%3cpath%20d='M174%2094h78m-78-43h84'%20stroke='%23fffaf1'%20stroke-width='6'/%3e%3cpath%20d='M122%20114h25v28h-25zm73-47h27v24h-27z'%20fill='%23b4dbe7'/%3e%3cpath%20d='M177%20166v-45h28v45'%20fill='%23b8d6c8'/%3e%3cpath%20d='M137%20144v-30m-15%2014h25m61-61v24m-13-12h27'%20stroke='%23fffdf6'%20stroke-width='3'/%3e%3cpath%20d='M227%20166v-37h25'%20fill='none'%20stroke='%23d7b38f'%20stroke-width='5'/%3e%3cpath%20d='M74%20166v-38'%20stroke='%23c7a479'%20stroke-width='6'/%3e%3cpath%20d='M59%20120c-23-33%2022-52%2035-29%2032%205%2015%2049-15%2038-9%209-22%201-20-9Z'%20fill='%23b9d7c4'/%3e%3cpath%20d='M272%20167v-24m-7%209h14'%20stroke='%23d9a294'%20stroke-width='4'/%3e%3c/svg%3e", "" + import.meta.url).href,
-    load: () => import("./xiaobai-os-BuildingRoom-DgEFzmgF.js")
+    load: () => import("./xiaobai-os-BuildingRoom-DzNPDhpE.js")
   },
   {
     ...p2,
     mode: "standalone",
     artwork: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20320%20270'%3e%3crect%20width='320'%20height='270'%20rx='24'%20fill='%23e1eee8'/%3e%3cellipse%20cx='162'%20cy='231'%20rx='122'%20ry='20'%20fill='%23bbd1c6'/%3e%3cpath%20d='m35%20172%20123-68%20125%2070-123%2073z'%20fill='%2382b4a6'/%3e%3cpath%20d='m35%20159%20123-68%20125%2070-123%2073z'%20fill='%23fff0d7'/%3e%3cpath%20d='M35%20159V61l123-35v99z'%20fill='%23cae3d7'/%3e%3cpath%20d='M158%2026%20283%2093v68l-125-36z'%20fill='%23deece3'/%3e%3cpath%20d='m182%2060%2053%2027v39l-53-19z'%20fill='%23fff8ea'/%3e%3cpath%20d='m189%2071%2039%2020v26l-39-14z'%20fill='%23a8d2df'/%3e%3cpath%20d='m209%2082v29m-20-19%2039%2016'%20stroke='%23fff8ea'%20stroke-width='4'/%3e%3cpath%20d='m63%20152%2072-31%2040%2020-72%2037z'%20fill='%23f4aeb8'/%3e%3cpath%20d='m63%20152v-30l72-30v29z'%20fill='%23e49ca9'/%3e%3cpath%20d='m64%20154%2040%2023v19l-40-23zm40%2023%2071-36v19l-71%2036z'%20fill='%23edbdc6'/%3e%3cpath%20d='m187%20153%2042-17%2034%2019-42%2019z'%20fill='%23f6d4a2'/%3e%3cpath%20d='m187%20153v39l34%2019v-37zm34%2021%2042-19v37l-42%2019z'%20fill='%23e3b77f'/%3e%3cpath%20d='m237%20174%2013-6'%20stroke='%23fff1d4'%20stroke-width='4'%20stroke-linecap='round'/%3e%3cg%20transform='translate(175%20200)'%3e%3cellipse%20rx='17'%20ry='6'%20fill='%2377bba8'/%3e%3cpath%20d='M-9-3a9%209%200%200%201%2018%200'%20fill='%23b5e5e6'/%3e%3cpath%20d='M-14%200q14%208%2028%200'%20fill='none'%20stroke='%23f8e3a2'%20stroke-width='2'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href,
-    load: () => import("./xiaobai-os-MovingRoom-DDBhvpzB.js")
+    load: () => import("./xiaobai-os-MovingRoom-Cx0yjxMo.js")
   },
-  ...I.map((e) => ({
+  ...C.map((e) => ({
     ...e,
     mode: "wager"
   }))
@@ -380,9 +380,9 @@ function E2(e) {
 }
 export {
   $2 as a,
-  S as c,
+  O as c,
   E as i,
-  b2 as l,
+  M2 as l,
   E2 as n,
   Z as o,
   R2 as r,
