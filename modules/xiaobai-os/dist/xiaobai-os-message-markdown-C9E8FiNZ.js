@@ -3222,6 +3222,7 @@ function or(f, u = {}) {
   });
 }
 export {
-  ir as n,
-  or as t
+  or as n,
+  ir as r,
+  sr as t
 };

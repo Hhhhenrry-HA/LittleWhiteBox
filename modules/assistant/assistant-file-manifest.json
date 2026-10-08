@@ -783,7 +783,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/agent-core/ui/message-markdown.js",
       "relativePath": "modules/agent-core/ui/message-markdown.js",
       "extension": ".js",
-      "sizeBytes": 27257
+      "sizeBytes": 27264
     },
     {
       "source": "littlewhitebox",
@@ -8259,7 +8259,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/administrator/application/conversation.ts",
       "relativePath": "modules/xiaobai-os/apps/administrator/application/conversation.ts",
       "extension": ".ts",
-      "sizeBytes": 8979
+      "sizeBytes": 9702
     },
     {
       "source": "littlewhitebox",
@@ -8287,7 +8287,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/administrator/application/runtime.ts",
       "relativePath": "modules/xiaobai-os/apps/administrator/application/runtime.ts",
       "extension": ".ts",
-      "sizeBytes": 19250
+      "sizeBytes": 19265
     },
     {
       "source": "littlewhitebox",
@@ -8322,7 +8322,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/administrator/domain/policy.ts",
       "relativePath": "modules/xiaobai-os/apps/administrator/domain/policy.ts",
       "extension": ".ts",
-      "sizeBytes": 461
+      "sizeBytes": 484
     },
     {
       "source": "littlewhitebox",
@@ -8343,7 +8343,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/administrator/host/controller.ts",
       "relativePath": "modules/xiaobai-os/apps/administrator/host/controller.ts",
       "extension": ".ts",
-      "sizeBytes": 8197
+      "sizeBytes": 8712
     },
     {
       "source": "littlewhitebox",
@@ -8385,14 +8385,14 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/administrator/ui/administrator.css",
       "relativePath": "modules/xiaobai-os/apps/administrator/ui/administrator.css",
       "extension": ".css",
-      "sizeBytes": 9258
+      "sizeBytes": 9683
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/administrator/ui/AdministratorApp.vue",
       "relativePath": "modules/xiaobai-os/apps/administrator/ui/AdministratorApp.vue",
       "extension": ".vue",
-      "sizeBytes": 15944
+      "sizeBytes": 16334
     },
     {
       "source": "littlewhitebox",
@@ -8413,7 +8413,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/administrator/ui/AdministratorMessage.vue",
       "relativePath": "modules/xiaobai-os/apps/administrator/ui/AdministratorMessage.vue",
       "extension": ".vue",
-      "sizeBytes": 5396
+      "sizeBytes": 9670
     },
     {
       "source": "littlewhitebox",
@@ -8434,7 +8434,14 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/administrator/ui/copy.ts",
       "relativePath": "modules/xiaobai-os/apps/administrator/ui/copy.ts",
       "extension": ".ts",
-      "sizeBytes": 5533
+      "sizeBytes": 5897
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/apps/administrator/ui/message-text.ts",
+      "relativePath": "modules/xiaobai-os/apps/administrator/ui/message-text.ts",
+      "extension": ".ts",
+      "sizeBytes": 851
     },
     {
       "source": "littlewhitebox",
@@ -15186,6 +15193,13 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/administrator-edit.test.js",
+      "relativePath": "modules/xiaobai-os/tests/administrator-edit.test.js",
+      "extension": ".js",
+      "sizeBytes": 4116
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/administrator-environment.test.js",
       "relativePath": "modules/xiaobai-os/tests/administrator-environment.test.js",
       "extension": ".js",
@@ -15224,7 +15238,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/tests/administrator-message.test.js",
       "relativePath": "modules/xiaobai-os/tests/administrator-message.test.js",
       "extension": ".js",
-      "sizeBytes": 16695
+      "sizeBytes": 19991
     },
     {
       "source": "littlewhitebox",

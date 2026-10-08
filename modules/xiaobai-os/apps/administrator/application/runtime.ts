@@ -253,7 +253,7 @@ export function createAdministratorRuntime(deps: {
         async send(submissionId: unknown, text: string, upload?: unknown) {
             if (run?.promise || conversation.unsaved()) { throw new Error('administrator_busy'); }
             if (typeof submissionId !== 'string' || !submissionId || submissionId.length > 128) { throw new Error('administrator_input_invalid'); }
-            if (typeof text !== 'string' || text.length > 16000 || !text.trim() && !upload) { throw new Error('administrator_input_invalid'); }
+            if (typeof text !== 'string' || text.length > POLICY.maxInputChars || !text.trim() && !upload) { throw new Error('administrator_input_invalid'); }
             const input: AdministratorUpload | null = upload ? parseAdministratorUpload(upload) : null;
             return start({ id: createAdministratorId(), createdAt: Date.now(), user: { text: text.trim() } }, input, submissionId);
         },

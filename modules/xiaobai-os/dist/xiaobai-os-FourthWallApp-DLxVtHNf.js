@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { n as xe } from "./xiaobai-os-message-markdown-p_WvGylV.js";
+import { r as xe } from "./xiaobai-os-message-markdown-C9E8FiNZ.js";
 import { A as Ae, B as b, D as ee, E as H, G as Te, H as de, L as ae, N as se, Q as P, T as J, Y as Q, Z as le, _ as R, at as O, b as q, c as X, ct as L, dt as C, i as ve, j as ue, lt as ne, m as Y, nt as T, p as Me, r as me, tt as _, u as z, ut as Ee, v as e, w as N, x as p, y as j } from "./xiaobai-os-app-navigation-DbF27MCy.js";
 import { t as fe } from "./xiaobai-os-AppDialog-CirfCMYM.js";
 import { n as te } from "./xiaobai-os-context-tokens-D2DVKxEb.js";

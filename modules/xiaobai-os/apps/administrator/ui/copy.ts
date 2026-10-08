@@ -1,4 +1,5 @@
 import { ADMINISTRATOR_APP_DESCRIPTOR } from '../descriptor.js';
+import { ADMINISTRATOR_POLICY as POLICY } from '../domain/policy.js';
 export const ADMINISTRATOR_COPY = Object.freeze({
     webSearch: '搜索网页', webFetch: '读取网页',
     title: ADMINISTRATOR_APP_DESCRIPTOR.name, context: '上下文用量', clear: '清空聊天', clearTitle: '清空管理员聊天？',
@@ -10,6 +11,7 @@ export const ADMINISTRATOR_COPY = Object.freeze({
     evidence: '查看资料', inspect: '检查 OS 状态', loadTools: '加载工具', toolsLoaded: '工具已就绪',
     itemReport: (applied: number, skipped: number) => `成功 ${applied} 项，未完成 ${skipped} 项`,
     messageActions: '消息操作', messagePages: '展开消息', noReply: '尚未回复', longReply: '回复结束后可展开完整内容。',
+    copy: '复制', copied: '已复制', edit: '编辑', save: '保存', saving: '保存中…', editMessage: '编辑消息', loadingText: '读取完整消息…', retry: '重试',
     adopt: '放弃未保存内容',
     budget: '应用输入预算', estimated: '估算用量', budgetNote: '应用工作预算，不代表模型实际窗口。',
     contextParts: { history: '聊天与摘要', rules: '规则与资料', tools: '工具说明', images: '图片预留', runtime: '本轮工具结果' },
@@ -33,7 +35,8 @@ const ERRORS: Readonly<Record<string, string>> = Object.freeze({
     administrator_chat_unavailable: '请先进入一个酒馆聊天。',
     administrator_message_missing: '这条消息已不存在，请刷新记录。',
     administrator_history_conflict: '管理员记录已被其他操作更新，请重新打开核对，不会覆盖现有记录。',
-    administrator_input_invalid: '请输入内容或选择图片，文字最多 16000 字符。',
+    administrator_input_invalid: `请输入内容或选择图片，文字最多 ${POLICY.maxInputChars} 字符。`,
+    administrator_copy_failed: '复制失败，请检查浏览器剪贴板权限后重试。',
     administrator_invalid_image: ADMINISTRATOR_COPY.invalidImage,
     administrator_image_missing: '附件读取失败，原消息与附件引用仍然保留，请重试。',
     administrator_image_delete_failed: '记录已保存，但附件删除失败，请再次确认清理。',

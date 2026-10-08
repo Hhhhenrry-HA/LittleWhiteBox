@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { n as d, t as m } from "./xiaobai-os-message-markdown-p_WvGylV.js";
+import { n as d, r as m } from "./xiaobai-os-message-markdown-C9E8FiNZ.js";
 import { B as f, E as p, Y as h, nt as b, x as k } from "./xiaobai-os-app-navigation-DbF27MCy.js";
 var _ = /* @__PURE__ */ p({
   __name: "MessageMarkdown",
@@ -48,7 +48,7 @@ var _ = /* @__PURE__ */ p({
     return h([r, () => a.text], () => {
       if (!r.value) return;
       const t = document.createElement("template");
-      t.innerHTML = d(a.text, { htmlFenceMode: "code" });
+      t.innerHTML = m(a.text, { htmlFenceMode: "code" });
       for (const e of t.content.querySelectorAll("*")) {
         const o = e.localName;
         if (i.has(o)) {
@@ -67,7 +67,7 @@ var _ = /* @__PURE__ */ p({
         for (const u of [...e.attributes]) e.removeAttribute(u.name);
         o === "a" && /^(?:https?:\/\/|mailto:)/i.test(s) && (e.setAttribute("href", s), e.setAttribute("target", "_blank"), e.setAttribute("rel", "noopener noreferrer")), o === "ol" && /^\d+$/.test(n) && e.setAttribute("start", n);
       }
-      m(t.content, {
+      d(t.content, {
         codeBlockClassName: "os-markdown-codeblock",
         codeCopyClassName: "os-markdown-code-copy"
       }), r.value.replaceChildren(t.content);

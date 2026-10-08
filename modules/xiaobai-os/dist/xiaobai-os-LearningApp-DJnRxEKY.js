@@ -1,7 +1,7 @@
 /* eslint-disable */
 import { B as a, E as ee, H as D, J as pa, L as Ne, N as Te, O as ba, Q as le, S as ma, T as W, U as fa, V as ka, W as ya, Y as z, Z as Wt, _ as S, at as ha, b as g, c as $a, ct as l, d as wa, dt as r, f as Ee, i as pt, it as xa, j as de, k as Et, l as Xe, lt as oe, m as R, nt as G, ot as ye, p as ve, q as Ca, r as et, tt as Ie, u as pe, ut as Gt, v as n, w as H, x as i, y as Z } from "./xiaobai-os-app-navigation-DbF27MCy.js";
 import { n as Ia, t as La } from "./xiaobai-os-frame-bridge-BfVuKvnh.js";
-import { t as bt } from "./xiaobai-os-MessageMarkdown-C0FeK3Ci.js";
+import { t as bt } from "./xiaobai-os-MessageMarkdown-VJwp1nY6.js";
 var ut = /* @__PURE__ */ new WeakMap(), Mt = [
   "select",
   "input",

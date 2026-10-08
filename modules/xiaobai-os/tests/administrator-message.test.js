@@ -67,7 +67,9 @@ test('administrator message retains expanded text and only folds the work proces
         if (fail) { throw new Error('transport unavailable'); }
         return { result };
     } };
-    const app = createApp({ setup: () => () => h(Message, { key: mountKey.value, row: row.value, live: live.value, unsavedProcess: unsavedProcess.value, bridge, chatIdentity: chat.value, disabled: false }) });
+    const edits = []; let editFailure = false;
+    const saveEdit = async (row, text) => { if (editFailure) { throw new Error('fixture_save_failed'); } edits.push({ row, text }); };
+    const app = createApp({ setup: () => () => h(Message, { key: mountKey.value, row: row.value, live: live.value, unsavedProcess: unsavedProcess.value, bridge, chatIdentity: chat.value, disabled: false, saveEdit }) });
     app.mount(dom.document.getElementById('app'));
     t.after(() => app.unmount());
     const flush = async () => { await setImmediate(); await nextTick(); };
@@ -248,4 +250,45 @@ test('administrator message retains expanded text and only folds the work proces
     unsavedProcess.value = pendingRounds; processTurn.toolMessages = []; update(false); await flush();
     unsavedProcess.value = null; await flush();
     assert.equal(fold(), null); assert.deepEqual(narration(), []);
+
+    // Message actions read the complete revision without expanding its visible prefix.
+    const keyboardDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'KeyboardEvent');
+    Object.defineProperty(globalThis, 'KeyboardEvent', { configurable: true, value: class KeyboardEvent {} });
+    t.after(() => { if (keyboardDescriptor) { Object.defineProperty(globalThis, 'KeyboardEvent', keyboardDescriptor); } else { delete globalThis.KeyboardEvent; } });
+    const action = name => dom.document.querySelector(`[data-action="${name}"]`);
+    const bubble = () => dom.document.querySelector('.admin-bubble');
+    const editor = () => dom.document.querySelector('.admin-message-editor textarea');
+    const originalUser = 'long input\n'.repeat(950);
+    row.value = { ...rowFor(30, originalUser, 'editable'), role: 'user', id: 'editable:user' }; live.value = null; unsavedProcess.value = null;
+    await flush();
+    const preview = content(); bubble().click(); await flush();
+    assert.equal(content(), preview, 'Preparing actions does not expand the message');
+    assert.equal(action('copy').disabled, false); assert.equal(action('edit').disabled, false);
+    action('edit').click(); await flush();
+    assert.equal(editor().value, originalUser);
+    editor().value = 'changed\ninput'; editor().dispatchEvent(new dom.window.Event('input', { bubbles: true })); await flush();
+    editFailure = true;
+    dom.document.querySelector('.admin-message-editor').dispatchEvent(new dom.window.Event('submit', { cancelable: true, bubbles: true })); await flush();
+    assert.equal(editor().value, 'changed\ninput'); assert.equal(edits.length, 0);
+    assert.ok(dom.document.querySelector('.admin-error[role="status"]'));
+    // An unrelated history revision must not silently authorize overwriting a newer message.
+    row.value = { ...row.value, revision: 31 }; bodies.set('editable:31', originalUser); await flush();
+    editFailure = false;
+    dom.document.querySelector('.admin-message-editor').dispatchEvent(new dom.window.Event('submit', { cancelable: true, bubbles: true })); await flush();
+    assert.equal(edits.length, 1); assert.equal(edits[0].row.revision, 30); assert.equal(edits[0].text, 'changed\ninput');
+    assert.equal(editor(), null);
+    action('edit').click(); await flush(); action('cancel-edit').click(); await flush();
+    assert.equal(editor(), null); assert.equal(edits.length, 1);
+
+    // A failed full-text fetch offers retry, never enables copying a truncated prefix.
+    fail = true; row.value = rowFor(40, originalUser, 'copy-target'); await flush();
+    bubble().click(); await flush();
+    assert.equal(action('copy').disabled, true);
+    fail = false; dom.document.querySelector('.admin-error button').click(); await flush();
+    assert.equal(action('copy').disabled, false);
+    pause = true; row.value = rowFor(41, originalUser, 'copy-target'); await flush();
+    assert.equal(action('copy').disabled, true);
+    row.value = rowFor(42, 'current text', 'copy-target'); await flush();
+    delayed.shift()(); await flush();
+    assert.equal(action('copy').disabled, false);
 });
