@@ -1,8 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { appendInput, createBattle as initializeBattle, replayInputs, tickBattle } from '../apps/game/expedition/combat.ts';
-import { advanceExpedition, emptyExpedition } from '../apps/game/expedition/domain.ts';
-import { parseCommand, validateExpedition } from '../apps/game/expedition/partition.ts';
+import { parseCommand } from '../apps/game/expedition/partition.ts';
 import { RULES, REGIONS, WEAPONS } from '../apps/game/expedition/content.ts';
 import { hazard, shot } from '../apps/game/expedition/combat/events.ts';
 import { RELIC_RULES } from '../apps/game/expedition/content.ts';
@@ -65,26 +64,4 @@ test('input protocol rejects forged results, unbounded work and illegal controls
         { type: 'input', spans: [{ ...idle, ticks: RULES.maxInputTicks + 1 }] }, { type: 'input', spans: [{ ...idle, dash: 'yes', ticks: 1 }] }]) {
         assert.throws(() => parseCommand(command), { code: 'expedition_invalid' });
     }
-});
-
-test('routes, discovered offers and selected loadouts survive serialization without rerolling', () => {
-    const start = { type: 'start', weapon: 'blade', outfit: 'traveler', oaths: [] };
-    const data = advanceExpedition(emptyExpedition(), start, 'one', 18); validateExpedition(data);
-    assert.deepEqual(advanceExpedition(data, start, 'one', 999), data);
-    const entered = advanceExpedition(JSON.parse(JSON.stringify(data)), { type: 'route', id: 0 }, 'two', 0); validateExpedition(entered);
-    assert.equal(entered.active.phase, 'battle'); assert.equal(entered.active.hp, 100);
-    assert.throws(() => advanceExpedition(data, { ...start, weapon: 'bow' }, 'one', 0), { code: 'expedition_identity' });
-    assert.throws(() => advanceExpedition(emptyExpedition(), { ...start, weapon: 'daggers' }, 'locked', 0), { code: 'expedition_locked' });
-    const abandoned = advanceExpedition(entered, { type: 'abandon' }, 'three', 0); validateExpedition(abandoned);
-    const restarted = advanceExpedition(abandoned, start, 'four', 33); assert.deepEqual(restarted.active.relics, []); assert.equal(restarted.active.shards, 0);
-});
-
-test('finite slots require an explicit sacrifice; discarding an offer preserves the build', () => {
-    const data = advanceExpedition(emptyExpedition(), { type: 'start', weapon: 'blade', outfit: 'traveler', oaths: [] }, 'one', 2);
-    data.active.phase = 'reward'; data.active.routes = []; data.active.offers = [{ id: 'cinder', rank: 1 }];
-    data.active.relics = loadout(['frost', 'shatter', 'echo', 'duelist', 'aegis', 'siphon']).relics;
-    assert.throws(() => advanceExpedition(data, { type: 'relic', id: 'cinder', replace: null }, 'two', 0), { code: 'expedition_invalid' });
-    const swapped = advanceExpedition(data, { type: 'relic', id: 'cinder', replace: 'duelist' }, 'two', 0);
-    assert.equal(swapped.active.relics.length, RULES.relicSlots); assert.ok(!swapped.active.relics.some(r => r.id === 'duelist')); assert.ok(swapped.discoveries.includes('cinder'));
-    const skipped = advanceExpedition(data, { type: 'leave' }, 'two', 0); assert.deepEqual(skipped.active.relics, data.active.relics); assert.equal(skipped.active.step, 1);
 });

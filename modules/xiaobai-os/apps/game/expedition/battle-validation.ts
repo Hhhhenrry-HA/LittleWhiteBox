@@ -31,6 +31,7 @@ export function validateBattle(raw: unknown): asserts raw is Battle {
         const h = point(raw); id(h.id); finite(h.radius, 0, 20); integer(h.wait, 0, 300); integer(h.life, 0, 300); finite(h.damage, 0, 1e5);
         member(h.kind, ['storm', 'fire', 'slam', 'frost', 'poison', 'beam', 'ring', 'mine']); boolean(h.friendly);
         member(h.source, ['attack', 'skill', 'passive', 'lightning', 'companion']);
+        unique(list(h.hits, 65, n => integer(n, 1, serial)));
         finite(h.angle, -1e8, 1e8); finite(h.length, 0, 40); finite(h.width, 0, 10); finite(h.inner, 0, Number(h.radius)); return h;
     });
     list(b.effects, 2000, raw => { const e = point(raw); id(e.id); member(e.kind, EFFECT_IDS); integer(e.life, 0, 20); finite(e.angle, -100, 100); finite(e.size, 0, 20); return e; });

@@ -1,5 +1,7 @@
 import { BOSSES, BOSS_SPECS, RELIC_RULES as R, RULES, WEAPON_LIST } from './content.js';
 import type { EncounterKind, EnemyKind, Oath, Outfit, Relic, RouteKind, Weapon } from './types.js';
+import { CAMPAIGN_COPY } from './content/campaign-copy.js';
+import { DIALOGUE_COPY } from './content/dialogue-copy.js';
 
 const TITLE = ['余烬', '远征'];
 export const COPY = {
@@ -10,7 +12,7 @@ export const COPY = {
     chapter: (n: number) => `第 ${n + 1} 章`, bossDefeated: (name: string) => `${name}已被击败`,
     equipped: '已装备', noRelics: '击败敌人后，选择你的第一件遗物。',
     nextGoal: (name: string) => `下一位首领 · ${name}`,
-    name: TITLE.join(''), category: '战斗', tagline: '小白的失落王城远征', entry: '动作战斗 · 遗物搭配',
+    name: CAMPAIGN_COPY.title, category: '冒险', tagline: CAMPAIGN_COPY.chapter, entry: '探索 · 战斗 · 人物交谈',
     start: '启程', resume: '继续远征', pause: '暂停', paused: '远征已暂停', continue: '继续战斗',
     preparing: '正在打开远征…', saving: '正在保存', saved: '已保存', retry: '核实并恢复', refresh: '重新读取',
     saveError: '进度尚未确认，远征已暂停。核实保存后继续，不会重新抽取奖励。',
@@ -42,11 +44,11 @@ export const COPY = {
     upgradeHint: '强化保留格子；下一章开放更高阶。', noOffers: '本次没有可选的遗物，可以继续前行。',
     supply: '购买补给', supplyDetail: (heal: number) => `恢复 ${heal} 生命`, normal: '普通远征',
     weaponUnlock: (n: number) => `击败 ${n} 位不同首领后解锁`, reached: (n: number) => `抵达第 ${n + 1} 章`,
-    resource: '蓄势', ward: '护盾', achievement: '首胜奖励',
+    resource: '蓄势', ward: '护盾', achievement: '首胜奖励', ready: '就绪',
     contractPower: '契约之力', resonanceActive: '使魔强化', secondsLeft: (ticks: number) => `${(ticks / RULES.hz).toFixed(1)}秒`,
     wardValue: (n: number) => `护盾 ${Math.ceil(n)}`, guardActive: '格挡中',
     defenseFeedback: { block: '格挡', parry: '完美格挡', 'ward-hit': '护盾吸收', 'ward-break': '护盾破碎' },
-    beaconName: '烽火', beaconDanger: '烽火危急', beaconHit: '烽火受袭', beaconRule: '烽火被摧毁即失败',
+    beaconName: '烽火', beaconDanger: '烽火危急', beaconRule: '烽火被摧毁即失败',
     objectiveProgress: (n: number, total: number) => `${Math.floor(n / total * 100)}%`,
     survive: (ticks: number) => `坚守 ${Math.ceil(ticks / RULES.hz)} 秒`,
     reinforcement: (ticks: number) => `增援 ${Math.ceil(ticks / RULES.hz)} 秒`,
@@ -169,6 +171,15 @@ export const RELIC_COPY: Record<Relic, { name: string; detail: string; family: s
 };
 export function errorText(cause: unknown) {
     const code = cause && typeof cause === 'object' && 'code' in cause ? String(cause.code) : cause instanceof Error ? cause.message : '';
+    if (code === 'expedition_agent_not_configured') { return CAMPAIGN_COPY.noAi; }
+    if (code === 'expedition_agent_auth') { return CAMPAIGN_COPY.aiAuth; }
+    if (code === 'expedition_agent_failed') { return CAMPAIGN_COPY.aiFailed; }
+    if (code === 'expedition_context_capacity') { return CAMPAIGN_COPY.contextFull; }
+    if (code === 'expedition_data_invalid') { return CAMPAIGN_COPY.dataInvalid; }
+    if (code === 'expedition_narrative_unavailable') { return CAMPAIGN_COPY.narrativeFailed; }
+    if (code.startsWith('expedition_memory_')) { return CAMPAIGN_COPY.memoryFailed; }
+    if (code === 'expedition_action_rejected') { return DIALOGUE_COPY.issues.action_rejected; }
+    if (code.startsWith('expedition_reply_')) { return CAMPAIGN_COPY.emptyReply; }
     if (code === 'expedition_stale') { return COPY.stale; }
     if (code === 'expedition_locked') { return COPY.locked; }
     if (code === 'expedition_funds') { return COPY.noCoins; }

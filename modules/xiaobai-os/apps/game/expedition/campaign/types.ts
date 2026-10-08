@@ -1,0 +1,39 @@
+import type { CourtyardFact, CourtyardPerson, CourtyardScene } from '../content/world-types.js';
+import type { Battle, Outfit, Relic, RelicStack, Weapon } from '../types.js';
+import type { WorldLocation } from '../world/exploration.js';
+import type { NarrativeAction } from '../narrative/actions.js';
+import type { Relationship } from './relationships.js';
+import type { PeopleLocations } from '../world/people.js';
+import type { Participant } from '../content/participants.js';
+import type { PendingParley } from './parley.js';
+
+export interface ConversationTurn {
+    id: string; kind: 'dialogue' | 'interaction' | 'receipt'; player: string; reply: string;
+    action: NarrativeAction | null; facts: CourtyardFact[]; scene: CourtyardScene;
+    affectionDelta?: number;
+    issue?: 'action_rejected' | 'reply_invalid' | 'reply_incomplete';
+}
+export interface ConversationMemory { throughId: string; text: string }
+export interface Campaign {
+    id: string;
+    seed: number;
+    weapon: Weapon;
+    outfit: Outfit;
+    location: WorldLocation;
+    facts: CourtyardFact[];
+    hp: number;
+    collection: RelicStack[];
+    equipped: Relic[];
+    offers: RelicStack[];
+    phase: 'exploration' | 'battle' | 'reward' | 'lost';
+    battle: Battle | null;
+    checkpoint: Battle | null;
+    alarmTicks: number;
+    relationships: Record<CourtyardPerson, Relationship>;
+    people: PeopleLocations;
+    pendingParley: PendingParley | null;
+    evidence: { dispatchNoteSeen: boolean };
+    conversations: Record<Participant, ConversationTurn[]>;
+    memories: Record<Participant, ConversationMemory | null>;
+    knowledge: Record<Participant, CourtyardFact[]>;
+}

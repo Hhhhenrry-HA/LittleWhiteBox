@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { parseHTML } from 'linkedom';
-import { OrthographicCamera } from 'three';
+import { OrthographicCamera, Vector3 } from 'three';
 import { createBattle, tickBattle } from '../apps/game/expedition/combat.ts';
+import { RULES } from '../apps/game/expedition/content.ts';
 import { hurtPlayer } from '../apps/game/expedition/combat/damage.ts';
 import { defeatReason } from '../apps/game/expedition/combat/outcome.ts';
 import { validateBattle } from '../apps/game/expedition/battle-validation.ts';
@@ -47,7 +48,7 @@ test('beacon defeat remains distinct from player death and never applies to a bo
 });
 
 // Real DOM readout boundary; no text snapshots or source-code assertions.
-test('world objective health follows the beacon, while defense notices clear when leaving the battle', () => {
+test('ward energy follows the feet without a permanent overhead notice or a duplicate beacon readout', () => {
     const { document } = parseHTML('<div></div>'), previous = globalThis.document;
     globalThis.document = document;
     const host = document.querySelector('div'), camera = new OrthographicCamera(-10, 10, 10, -10, .1, 180);
@@ -55,17 +56,39 @@ test('world objective health follows the beacon, while defense notices clear whe
     const status = createWorldStatus(host), b = makeBattle('siege');
     try {
         status.update(b, camera, 800, 600);
-        const bar = host.querySelector('[role=progressbar]');
-        assert.equal(bar.getAttribute('aria-valuenow'), '100'); assert.equal(bar.parentElement.hidden, false);
+        const bar = host.querySelector('[role=meter]');
+        assert.equal(bar.hidden, true);
+        assert.equal(host.querySelector('[role=progressbar]'), null);
         b.tick++; b.objective.hp = 24; status.update(b, camera, 800, 600);
-        assert.equal(bar.getAttribute('aria-valuenow'), '24'); assert.equal(b.player.hp, 50);
-        b.player.ward = 20; b.player.invulnerable = 0; hurtPlayer(b, 10, gear);
+        assert.equal(bar.hidden, true); assert.equal(b.player.hp, 50);
+        b.player.ward = 20; status.update(b, camera, 800, 600);
+        assert.equal(bar.hidden, false); assert.equal(bar.getAttribute('aria-valuenow'), '20');
+        assert.equal(Number(bar.getAttribute('aria-valuemax')), RULES.maxHp);
+        assert.equal(parseFloat(bar.firstElementChild.style.width), b.player.ward / RULES.maxHp * 100);
+        assert.equal(host.querySelector('[data-state]').hidden, true);
+        b.player.x += 2; b.player.y -= 1;
         status.update(b, camera, 800, 600);
+        const feet = new Vector3(b.player.x, 0, b.player.y).project(camera);
+        assert.equal(parseFloat(bar.style.left), (feet.x * .5 + .5) * 800);
+        assert.equal(parseFloat(bar.style.top), (-feet.y * .5 + .5) * 600);
+        b.player.invulnerable = 0; hurtPlayer(b, 10, gear);
+        status.update(b, camera, 800, 600);
+        assert.equal(bar.getAttribute('aria-valuenow'), '12');
+        assert.equal(parseFloat(bar.firstElementChild.style.width), b.player.ward / RULES.maxHp * 100);
         assert.equal(host.querySelector('[data-state="ward-hit"]').hidden, false);
         b.tick += 28; b.effects = []; status.update(b, camera, 800, 600);
-        assert.equal(host.querySelector('[data-state="ward"]').hidden, false);
+        assert.equal(bar.hidden, false); assert.equal(host.querySelector('[data-state]').hidden, true);
+        b.player.shield = 5; status.update(b, camera, 800, 600);
+        assert.equal(host.querySelector('[data-state="blocking"]').hidden, false); assert.equal(bar.hidden, false);
+        b.player.shield = 0; b.player.invulnerable = 0; hurtPlayer(b, 20, gear);
+        status.update(b, camera, 800, 600);
+        assert.equal(bar.hidden, true); assert.equal(host.querySelector('[data-state="ward-break"]').hidden, false);
+        status.update(makeBattle(), camera, 800, 600);
+        assert.equal(bar.hidden, true); assert.equal(host.querySelector('[data-state]').hidden, true);
+        b.player.ward = 8; status.update(b, camera, 800, 600);
+        assert.equal(bar.hidden, false); assert.equal(bar.getAttribute('aria-valuenow'), '8');
         status.update(null, camera, 800, 600);
-        assert.equal(bar.parentElement.hidden, true); assert.equal(host.querySelector('[data-state]').hidden, true);
+        assert.equal(bar.hidden, true); assert.equal(host.querySelector('[data-state]').hidden, true);
         status.dispose(); assert.equal(host.childElementCount, 0);
     } finally { status.dispose(); globalThis.document = previous; }
 });

@@ -1,6 +1,6 @@
 import { BoxGeometry, type BufferGeometry, CircleGeometry, ConeGeometry, CylinderGeometry, DoubleSide, ExtrudeGeometry, Group, IcosahedronGeometry,
     Mesh, MeshBasicMaterial, MeshStandardMaterial, RingGeometry, Shape, ShapeGeometry, SphereGeometry, TorusGeometry,
-    type Material, type Object3D } from 'three';
+    Matrix4, type Material, type Object3D } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export type Vec3 = [number, number, number];
@@ -9,7 +9,7 @@ export function createSceneKit() {
     const archProfile = new Shape(); archProfile.absarc(0, 0, 1.1, 0, Math.PI, false);
     archProfile.lineTo(-.86, 0); archProfile.absarc(0, 0, .86, Math.PI, 0, true); archProfile.closePath();
     const geometries = {
-        box: new BoxGeometry(1, 1, 1), sphere: new SphereGeometry(1, 20, 14), rock: new IcosahedronGeometry(1, 0),
+        box: new BoxGeometry(1, 1, 1), sphere: new SphereGeometry(1, 20, 14), rock: new IcosahedronGeometry(1, 0), crown: new IcosahedronGeometry(1, 1),
         cylinder: new CylinderGeometry(1, 1, 1, 24), cone: new ConeGeometry(1, 1, 12),
         disc: new CircleGeometry(1, 48), ring: new RingGeometry(.965, 1, 64),
         arc: new RingGeometry(.87, 1, 40, 1, -.2, Math.PI * 1.3), torus: new TorusGeometry(1, .08, 8, 40),
@@ -43,23 +43,27 @@ export function createSceneKit() {
             geo = depth ? new ExtrudeGeometry(s, { depth, steps: 1, bevelEnabled: true, bevelThickness: depth * .3, bevelSize: depth * .3, bevelSegments: 2 }) : new ShapeGeometry(s);
             shapes.set(key, geo);
         }
-        const m = new Mesh(geo, material(color)); m.position.set(...pos); m.castShadow = true; parent.add(m); return m;
+        const m = new Mesh(geo, material(color)); m.position.set(...pos); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m;
     }
     function bake(root: Group) {
         root.updateMatrixWorld(true);
-        const batches = new Map<Material, BufferGeometry[]>();
+        const inverse = root.matrixWorld.clone().invert(), local = new Matrix4();
+        const batches = new Map<string, { material: Material; castShadow: boolean; receiveShadow: boolean; geometries: BufferGeometry[] }>();
         root.traverse(o => {
             if (!(o instanceof Mesh) || Array.isArray(o.material)) { return; }
-            const geo = (o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone()).applyMatrix4(o.matrixWorld);
+            const geo = (o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone()).applyMatrix4(local.multiplyMatrices(inverse, o.matrixWorld));
             // All environment primitives have position/normal/uv; batching preserves their lighting.
-            const list = batches.get(o.material) ?? []; list.push(geo); batches.set(o.material, list);
+            const key = `${o.material.uuid}/${o.castShadow}/${o.receiveShadow}`;
+            let batch = batches.get(key);
+            if (!batch) { batch = { material: o.material, castShadow: o.castShadow, receiveShadow: o.receiveShadow, geometries: [] }; batches.set(key, batch); }
+            batch.geometries.push(geo);
         });
         root.clear();
         const baked: BufferGeometry[] = [];
-        for (const [mat, list] of batches) {
+        for (const { material: mat, castShadow, receiveShadow, geometries: list } of batches.values()) {
             const merged = mergeGeometries(list); list.forEach(g => g.dispose());
             if (!merged) { throw new Error('expedition_geometry_merge'); }
-            const mesh = new Mesh(merged, mat); mesh.castShadow = !(mat instanceof MeshBasicMaterial); mesh.receiveShadow = true;
+            const mesh = new Mesh(merged, mat); mesh.castShadow = castShadow; mesh.receiveShadow = receiveShadow;
             root.add(mesh); baked.push(merged);
         }
         return () => { root.clear(); baked.forEach(g => g.dispose()); };

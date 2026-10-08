@@ -1,12 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readFile } from 'node:fs/promises';
 import { createBattle, tickBattle } from '../apps/game/expedition/combat.ts';
 import { companion, spawn } from '../apps/game/expedition/combat/events.ts';
 import { companionsTick } from '../apps/game/expedition/combat/actions.ts';
 import { CONTRACT, WEAPONS } from '../apps/game/expedition/content.ts';
-import { advanceExpedition, emptyExpedition } from '../apps/game/expedition/domain.ts';
-import { EXPEDITION_PARTITION } from '../apps/game/expedition/partition.ts';
 
 const idle = { move: 0, dash: false, skill: false }, cast = { ...idle, skill: true };
 const gear = { weapon: 'grimoire', relics: [], oaths: [] };
@@ -71,41 +68,4 @@ test('resonance heals living familiars without reviving dead or expired ones or 
     tickBattle(b, cast, loadout);
     assert.equal(dead.hp, 0); assert.equal(alive.hp, CONTRACT.familiarHp); assert.equal(b.player.hp, 51);
     assert.equal(b.companions.some(c => c.id === dead.id || c.id === expired.id), false);
-});
-
-const oldCheckpoint = async () => JSON.parse(await readFile(new URL('./fixtures/expedition-v2-resonance.json', import.meta.url), 'utf8'));
-test('real v2 checkpoint converts once, preserving progress, reward identities and the remaining buff', async () => {
-    // Captured from the v2 simulation: seed-7 sword victory, new grimoire run, 46 idle ticks then a cast.
-    const old = await oldCheckpoint(), original = structuredClone(old), result = EXPEDITION_PARTITION.parse(old);
-    assert.equal(result.ok, true);
-    const expected = structuredClone(old); expected.formatVersion = emptyExpedition().formatVersion;
-    expected.active.battle.player.resonance = Math.max(...old.active.battle.companions.map(c => c.empowered));
-    expected.active.battle.companions.forEach(c => c.empowered = 0);
-    assert.deepEqual(result.value, expected); assert.deepEqual(old, original);
-    assert.deepEqual(EXPEDITION_PARTITION.parse(EXPEDITION_PARTITION.serialize(result.value)).value, expected);
-    const variant = structuredClone(old), allies = variant.active.battle.companions;
-    allies[0].hp = 0; allies[0].empowered = 150;
-    allies[1].empowered = 35;
-    allies.push({ ...allies[1], id: ++variant.active.battle.serial, kind: 'turret', empowered: 2 });
-    allies.push({ ...allies[1], id: ++variant.active.battle.serial, kind: 'shade', empowered: 3 });
-    const upgraded = EXPEDITION_PARTITION.parse(variant); assert.equal(upgraded.ok, true);
-    assert.equal(upgraded.value.active.battle.player.resonance, 35);
-    assert.deepEqual(upgraded.value.active.battle.companions.slice(2).map(c => c.empowered), [2, 3]);
-    allies[1].life = 0;
-    assert.equal(EXPEDITION_PARTITION.parse(variant).value.active.battle.player.resonance, 0);
-    allies[0].empowered = -1;
-    assert.equal(EXPEDITION_PARTITION.parse(variant).ok, false);
-    const malformed = structuredClone(expected); delete malformed.active.battle.player.resonance;
-    assert.equal(EXPEDITION_PARTITION.parse(malformed).ok, false);
-});
-
-test('a resonance checkpoint resumes identically to uninterrupted input replay and never enters a new room', async () => {
-    const initial = EXPEDITION_PARTITION.parse(await oldCheckpoint()).value;
-    const send = (data, ticks, id) => advanceExpedition(data, { type: 'input', spans: [{ ...idle, ticks }] }, id, 0);
-    const uninterrupted = send(initial, 70, 'continuous');
-    const first = send(initial, 20, 'before-reload');
-    const restored = EXPEDITION_PARTITION.parse(EXPEDITION_PARTITION.serialize(first)); assert.equal(restored.ok, true);
-    const resumed = send(restored.value, 50, 'after-reload');
-    assert.deepEqual(resumed.active, uninterrupted.active); assert.deepEqual(resumed.awards, uninterrupted.awards);
-    assert.equal(setup().player.resonance, 0);
 });

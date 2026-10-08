@@ -2,12 +2,18 @@ import { CONTRACT, ENEMIES, isBoss, RULES } from '../content.js';
 import { random } from '../random.js';
 import type { Battle, Companion, DamageSource, Effect, EnemyKind, Hazard, Point, Shot } from '../types.js';
 import { TAU } from './geometry.js';
+import { type CombatField, fieldSummonPosition } from './field.js';
 
 export function effect(b: Battle, p: Point, kind: Effect['kind'], size = 1, angle = 0) {
     b.effects.push({ id: ++b.serial, x: p.x, y: p.y, kind, size, angle, life: kind === 'slash' ? 9 : 15 });
 }
-export function spawn(b: Battle, kind: EnemyKind, p: Point) {
+export function spawn(b: Battle, kind: EnemyKind, p: Point, field?: CombatField) {
     if (!isBoss(kind) && b.enemies.filter(e => e.hp > 0).length >= RULES.maxEnemies) { return null; }
+    if (field) {
+        const point = fieldSummonPosition(field, p, ENEMIES[kind].radius);
+        if (!point) { return null; }
+        p = point;
+    }
     const spec = ENEMIES[kind], hp = spec.hp * (isBoss(kind) ? 1 : 1 + b.chapter * .2 + (b.elite ? .25 : 0));
     const enemy = { id: ++b.serial, kind, x: p.x, y: p.y, hp, maxHp: hp, angle: Math.PI / 2,
         cooldown: 35 + Math.floor(random(b) * 20), windup: 0, target: { ...p }, pattern: 0, phase: 1, chill: 0, burn: 0, marked: 0,
@@ -19,7 +25,7 @@ export function shot(b: Battle, from: Point, angle: number, damage: number, frie
     b.shots.push(s); return s;
 }
 export function hazard(b: Battle, p: Point, kind: Hazard['kind'], radius: number, wait: number, life: number, damage: number, friendly = false, options: Partial<Pick<Hazard, 'angle' | 'length' | 'width' | 'inner' | 'source'>> = {}) {
-    const h: Hazard = { id: ++b.serial, x: p.x, y: p.y, kind, radius, wait, life, damage, friendly, angle: 0, length: 0, width: .65, inner: 0, source: friendly ? 'passive' : 'attack', ...options };
+    const h: Hazard = { id: ++b.serial, x: p.x, y: p.y, kind, radius, wait, life, damage, friendly, angle: 0, length: 0, width: .65, inner: 0, source: friendly ? 'passive' : 'attack', hits: [], ...options };
     b.hazards.push(h); return h;
 }
 export function slam(b: Battle, p: Point, radius: number, delay: number, damage: number) { return hazard(b, p, 'slam', radius, delay, 8, damage); }

@@ -13,9 +13,9 @@ function fixture(handler) {
 }
 test('reactive loadout selections cross the real structured-clone boundary as plain protocol data', async () => {
     const h = fixture(async type => ({ result: state(type.endsWith('/act') ? 1 : 0) }));
-    await h.client.read(); const oaths = ref([]);
-    assert.equal(await h.client.act({ type: 'start', weapon: 'blade', outfit: 'traveler', oaths: oaths.value }), true);
-    assert.deepEqual(h.requests[1].payload.command.oaths, []); assert.equal(h.client.view.value.data.revision, 1); h.client.dispose();
+    await h.client.read(); const equipped = ref(['cinder']);
+    assert.equal(await h.client.act({ type: 'loadout', equipped: equipped.value }), true);
+    assert.deepEqual(h.requests[1].payload.command.equipped, ['cinder']); assert.equal(h.client.view.value.data.revision, 1); h.client.dispose();
 });
 test('lost response recovery retries only the same action when storage has not advanced', async () => {
     let attempts = 0;
@@ -44,4 +44,17 @@ test('a business rejection never becomes a saved operation that is blindly retri
     const h = fixture(async type => { if (type.endsWith('/act')) throw Object.assign(new Error('locked'), { code: 'expedition_locked' }); return { result: state(0) }; });
     await h.client.read(); await h.client.act({ type: 'start', weapon: 'bow', outfit: 'traveler', oaths: [] });
     assert.equal(h.client.failed.value, null); await h.client.recover(); assert.equal(h.requests.filter(r => r.type.endsWith('/act')).length, 1); h.client.dispose();
+});
+
+test('conversation errors can be dismissed without a file operation, but unknown saves cannot', async () => {
+    const h = fixture(async type => {
+        if (type.endsWith('/talk')) { throw Object.assign(new Error('not configured'), { code: 'expedition_agent_not_configured' }); }
+        if (type.endsWith('/act')) { throw Object.assign(new Error('timeout'), { code: 'host_request_timeout' }); }
+        return { result: state(0) };
+    });
+    await h.client.read(); await h.client.talk('sanniang', 'Hello');
+    assert.equal(h.client.recoveryRequired.value, false); h.client.dismissError(); assert.equal(h.client.notice.value, '');
+    await h.client.act({ type: 'start', weapon: 'blade', outfit: 'traveler' });
+    assert.equal(h.client.recoveryRequired.value, true); h.client.dismissError(); assert.notEqual(h.client.notice.value, '');
+    assert.equal(h.requests.length, 3); h.client.dispose();
 });

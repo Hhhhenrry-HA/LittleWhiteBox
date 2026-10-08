@@ -20,6 +20,7 @@ import { BUILDING_PARTITION } from './building/partition.js';
 import { createBuildingService, type BuildingService } from './building/service.js';
 import { EXPEDITION_PARTITION } from './expedition/partition.js';
 import { createExpeditionService, type ExpeditionService } from './expedition/service.js';
+import { AGENT_CAPABILITY } from '../../capabilities/agent/index.js';
 
 export { GAME_PARTITION } from './partition.js';
 
@@ -46,7 +47,7 @@ export function createGameModule(dependencies: GameModuleDependencies): XiaobaiO
         descriptor: GAME_APP_DESCRIPTOR,
         partition: GAME_PARTITION,
         additionalPartitions: [MOVING_PARTITION, BUILDING_PARTITION, EXPEDITION_PARTITION],
-        capabilities: [ECONOMY_READ_CAPABILITY, ECONOMY_TRANSACTION_CAPABILITY],
+        capabilities: [ECONOMY_READ_CAPABILITY, ECONOMY_TRANSACTION_CAPABILITY, AGENT_CAPABILITY],
         install(context) {
             if (!context.partition) {throw new Error('Game partition store is unavailable');}
             const economy = context.useCapability(ECONOMY_READ_CAPABILITY);
@@ -66,7 +67,7 @@ export function createGameModule(dependencies: GameModuleDependencies): XiaobaiO
                 building: createBuildingService(context.storeFor(BUILDING_PARTITION), context.filesFor(BUILDING_PARTITION), economy,
                     { idle: () => !dependencies.service?.isMainGenerationActive?.(), soundEnabled: dependencies.buildingSoundEnabled }),
                 expedition: createExpeditionService(context.storeFor(EXPEDITION_PARTITION), context.filesFor(EXPEDITION_PARTITION), economy,
-                    { idle: () => !dependencies.service?.isMainGenerationActive?.() }),
+                    { idle: () => !dependencies.service?.isMainGenerationActive?.(), agent: context.useCapability(AGENT_CAPABILITY) }),
                 economy,
                 execution: context.execution,
             });

@@ -2,6 +2,23 @@ import type { EconomyActionLeg, EconomyTransactionCapability } from '../../../ca
 import { COPY } from './copy.js';
 import { fault } from './random.js';
 import type { ExpeditionData } from './types.js';
+import { emptyExpedition } from './domain.js';
+import { OUTFIT_IDS } from './ids.js';
+import { member } from './validation.js';
+
+/** Rebuilding a discarded test journey reads monetary rights from the current shared ledger, not any old game schema. */
+export function expeditionRights(economy: EconomyTransactionCapability): ExpeditionData {
+    const data = emptyExpedition();
+    for (const entry of economy.listOwnedTransactions()) {
+        if (!entry.idempotencyKey.startsWith('expedition:')) { continue; }
+        if (entry.kind === 'expedition_outfit') {
+            data.purchases.push({ id: member(entry.sourceId, OUTFIT_IDS), actionId: entry.actionId, amount: entry.amount });
+        } else if (entry.kind === 'expedition_award') {
+            data.awards.push({ key: entry.idempotencyKey.slice('expedition:'.length), actionId: entry.actionId, runId: entry.sourceId, amount: entry.amount });
+        } else { fault('invalid'); }
+    }
+    validateEconomy(data, economy); return data;
+}
 
 function legs(data: ExpeditionData): EconomyActionLeg[] {
     return [...data.awards.map(a => ({ idempotencyKey: `expedition:${a.key}`, actionId: a.actionId, sourceId: a.runId,

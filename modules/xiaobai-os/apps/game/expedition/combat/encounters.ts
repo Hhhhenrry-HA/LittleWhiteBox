@@ -3,11 +3,16 @@ import { random } from '../random.js';
 import type { Battle, Loadout, MobKind } from '../types.js';
 import { beam, hazard, spawn } from './events.js';
 import { distance, TAU } from './geometry.js';
+import type { CombatField } from './field.js';
 
 export const ENCOUNTER_RULES = Object.freeze({ ritualTicks: 330, survivalTicks: 1500, pursuitInterval: 390, reinforcementInterval: 270, warningAfter: 1800 });
 const capturePoints = [{ x: -4, y: 0 }, { x: 4, y: -3 }, { x: 0, y: 4 }] as const;
-export function spawnWave(b: Battle, loadout: Loadout) {
+export function spawnWave(b: Battle, loadout: Loadout, field?: CombatField) {
     b.wave++;
+    if (field) {
+        for (const enemy of field.waves[b.wave - 1]) { spawn(b, enemy.kind, enemy.position); }
+        return;
+    }
     if (b.boss) { spawn(b, b.bossKind, { x: 0, y: -5 }); return; }
     const pool = REGIONS[b.zone].mobs;
     const count = 4 + b.chapter + (b.elite ? 2 : 0) + (loadout.oaths.includes('legion') ? 2 : 0);
@@ -20,7 +25,7 @@ export function spawnWave(b: Battle, loadout: Loadout) {
         spawn(b, kind, { x: Math.cos(angle) * 8.7, y: Math.sin(angle) * 8.7 });
     }
 }
-export function encounterTick(b: Battle, loadout: Loadout) {
+export function encounterTick(b: Battle, loadout: Loadout, field?: CombatField) {
     if (b.boss) { return; }
     const o = b.objective, live = b.enemies.some(e => e.hp > 0);
     if (b.encounter === 'ritual') {
@@ -42,7 +47,7 @@ export function encounterTick(b: Battle, loadout: Loadout) {
         }
     }
     if (b.tick > ENCOUNTER_RULES.warningAfter && b.tick % 180 === 0) { hazard(b, b.player, 'fire', 2.2, 36, 90, 13); }
-    if (!live && b.wave < b.waves && b.encounter !== 'survival') { if (++b.nextWave >= 40) { b.nextWave = 0; spawnWave(b, loadout); } }
+    if (!live && b.wave < b.waves && b.encounter !== 'survival') { if (++b.nextWave >= 40) { b.nextWave = 0; spawnWave(b, loadout, field); } }
     else if (live) { b.nextWave = 0; }
 }
 export function encounterWon(b: Battle) {

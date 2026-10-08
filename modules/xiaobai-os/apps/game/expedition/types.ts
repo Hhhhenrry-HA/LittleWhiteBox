@@ -1,4 +1,7 @@
 import type { BOSS_IDS, EFFECT_IDS, ENCOUNTER_IDS, EXPEDITION_FORMAT_VERSION, MOB_IDS, OATH_IDS, OUTFIT_IDS, RELIC_IDS, WEAPON_IDS } from './ids.js';
+import type { Campaign } from './campaign/types.js';
+import type { CampaignChoice } from './content/campaign-actions.js';
+import type { CourtyardPerson } from './content/world-types.js';
 export type Weapon = typeof WEAPON_IDS[number];
 export type Oath = typeof OATH_IDS[number];
 export type Relic = typeof RELIC_IDS[number];
@@ -32,6 +35,7 @@ export interface Hazard extends Point {
     id: number; radius: number; wait: number; life: number; damage: number; friendly: boolean;
     kind: 'storm' | 'fire' | 'slam' | 'frost' | 'poison' | 'beam' | 'ring' | 'mine';
     angle: number; length: number; width: number; inner: number; source: DamageSource;
+    hits: number[];
 }
 export interface Effect extends Point { id: number; kind: typeof EFFECT_IDS[number]; life: number; angle: number; size: number }
 export interface Obstacle extends Point { radius: number }
@@ -47,26 +51,22 @@ export interface Battle {
 export type BattleHud = Pick<Battle, 'player' | 'enemies' | 'wave' | 'waves' | 'tick' | 'objective' | 'encounter'>;
 export type PresentationError = 'rendering' | 'sound';
 export interface Route { id: number; kind: RouteKind; encounter: EncounterKind }
-export interface Run {
-    id: string; seed: number; weapon: Weapon; outfit: Outfit; oaths: Oath[]; step: number; regions: number[]; bosses: BossKind[];
-    hp: number; shards: number; relics: RelicStack[]; relicPool: Relic[]; routes: Route[]; offers: RelicStack[];
-    phase: 'route' | 'battle' | 'reward' | 'camp' | 'shrine' | 'merchant' | 'won' | 'lost' | 'abandoned';
-    battle: Battle | null; kills: number; ticks: number;
-}
-export interface RecordEntry { id: string; weapon: Weapon; oaths: Oath[]; outcome: 'won' | 'lost' | 'abandoned'; step: number; kills: number; ticks: number; relics: RelicStack[] }
 export interface Award { key: string; actionId: string; runId: string; amount: number }
 export interface Purchase { id: Outfit; actionId: string; amount: number }
 export type Command =
-    | { type: 'start'; weapon: Weapon; outfit: Outfit; oaths: Oath[] }
-    | { type: 'route'; id: number }
+    | { type: 'start'; weapon: Weapon; outfit: Outfit }
+    | { type: 'restart'; weapon: Weapon; outfit: Outfit }
+    | { type: 'interact'; id: string }
     | { type: 'input'; spans: InputSpan[] }
-    | { type: 'relic'; id: Relic; replace: Relic | null }
-    | { type: 'purchase' | 'equip'; id: Outfit }
-    | { type: 'supply' }
-    | { type: 'leave' } | { type: 'rest' } | { type: 'sacrifice' } | { type: 'abandon' };
+    | { type: 'relic'; id: Relic }
+    | { type: 'loadout'; equipped: Relic[] }
+    | { type: 'purchase'; id: Outfit } | { type: 'equip'; id: Outfit }
+    | { type: 'choice'; id: CampaignChoice; person: CourtyardPerson }
+    | { type: 'resolve_parley' }
+    | { type: 'retry' } | { type: 'retreat' } | { type: 'leave' };
 export interface ExpeditionData {
-    formatVersion: typeof EXPEDITION_FORMAT_VERSION; revision: number; last: { id: string; command: Command } | null; active: Run | null;
-    victories: number; discoveries: Relic[]; records: RecordEntry[]; awards: Award[];
+    formatVersion: typeof EXPEDITION_FORMAT_VERSION; revision: number; last: { id: string; command: Command | { type: 'conversation'; person: string; text: string } | { type: 'rebuild' } } | null; active: Campaign | null;
+    awards: Award[];
     purchases: Purchase[]; equippedOutfit: Outfit;
 }
 export interface Loadout { weapon: Weapon; relics: readonly RelicStack[]; oaths: readonly Oath[] }

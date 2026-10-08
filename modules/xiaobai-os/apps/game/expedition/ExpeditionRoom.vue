@@ -3,237 +3,263 @@ import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMoun
 import type { XiaobaiOsFrameBridge } from '../../../shell/app-src/frame-bridge.js';
 import { useAppBack, useAppLayer } from '../../../shell/app-src/navigation/app-navigation.js';
 import { createExpeditionClient } from './client.js';
-import { awardTitle, COPY as c, ENCOUNTER_COPY, ENEMY_NAMES, OUTFIT_COPY, OATH_COPY, RELIC_COPY, ROUTE_COPY, skillDetail, WEAPON_COPY, ZONE_NAMES } from './copy.js';
-import { CONTRACT, isBoss, OATHS, RELICS, RULES, WEAPONS } from './content.js';
-import { chapterOf, isFinished, restAmount, weaponUnlocked, zoneOf } from './domain.js';
-import ExpeditionField from './ExpeditionField.vue';
-import type { BattleHud, Oath, PresentationError, Relic, Weapon } from './types.js';
-import './expedition.css';
+import { createCampaignPlayback } from './presentation/playback.js';
+import { createCampaign, CAMPAIGN_RULES, loadoutIssue } from './campaign/rules.js';
+import { CAMPAIGN_COPY as c, FACT_COPY, campaignObjective } from './content/campaign-copy.js';
+import { WORLD_COPY as w } from './content/world-copy.js';
+import { COURTYARD } from './content/courtyard.js';
+import type { CourtyardFact } from './content/world-types.js';
+import { isPerson, participantName, type Participant } from './content/participants.js';
+import { parleyInteractions } from './campaign/parley.js';
+import { DIALOGUE_COPY as dialogueCopy } from './content/dialogue-copy.js';
+import { availableChoices, CAMPAIGN_ACTIONS } from './content/campaign-actions.js';
+import { COPY, ENEMY_NAMES, RELIC_COPY, WEAPON_COPY, skillDetail, errorText } from './copy.js';
+import { RULES, WEAPON_LIST, isBoss } from './content.js';
+import type { Command, Weapon } from './types.js';
+import { createExpeditionSound } from './sound.js';
+import ExplorationField from './presentation/ExplorationField.vue';
+import CampaignMap from './presentation/CampaignMap.vue';
 import ExpeditionIcon from './ExpeditionIcon.vue';
-import { BEACON_CRITICAL_HP, RELIC_TINT } from './visuals.js';
-import { defeatReason } from './combat/outcome.js';
-
-import { breaksRelicTrigger, relicPrice } from './relics.js';
-import { OUTFITS } from './outfits.js';
-import { OUTFIT_IDS } from './ids.js';
 import ExpeditionWardrobe from './ExpeditionWardrobe.vue';
+import ConversationMeters from './presentation/ConversationMeters.vue';
+import { campaignInteractions } from './world/people.js';
+import './presentation/campaign.css';
 
 const props = defineProps<{ bridge: XiaobaiOsFrameBridge; chatIdentity: string; generationActive: boolean }>();
-const client = createExpeditionClient(props.bridge, props.chatIdentity);
-const { view, busy, notice, blocked, failed } = client;
-const run = computed(() => view.value?.data.active ?? null);
-const weapon = ref<Weapon>('blade'), oaths = ref<Oath[]>([]), paused = ref(true), sound = ref(false);
-const hud = ref<BattleHud | null>(null), modal = ref<'abandon' | 'bag' | 'journal' | 'help' | 'wardrobe' | 'oaths' | null>(null), selecting = ref<Relic | null>(null);
-const field = ref<InstanceType<typeof ExpeditionField> | null>(null), dialog = ref<HTMLElement | null>(null), sceneError = ref<PresentationError | null>(null), recoveryEpoch = ref(0);
-const noticeHost = ref<HTMLElement | null>(null), dialogNoticeHost = ref<HTMLElement | null>(null), noticePanel = ref<HTMLElement | null>(null);
-const camp = ref(true); let mounted = false;
-const journalTab = ref<'records' | 'relics' | 'awards'>('records');
-const weapons = Object.keys(WEAPONS) as Weapon[];
-const live = computed(() => run.value && !isFinished(run.value));
-const inBattle = computed(() => !camp.value && run.value?.phase === 'battle');
-const stopped = computed(() => paused.value || camp.value || props.generationActive || !!notice.value || !!modal.value || !!sceneError.value);
-const boss = computed(() => hud.value?.enemies.find(e => isBoss(e.kind)));
-const defeat = computed(() => run.value?.phase === 'lost' && run.value.battle ? defeatReason(run.value.battle) : null);
-const defendingBeacon = computed(() => inBattle.value && !run.value?.battle?.boss && hud.value?.encounter === 'siege');
-const hp = computed(() => inBattle.value && hud.value ? hud.value.player.hp : run.value?.hp ?? RULES.maxHp);
-const full = computed(() => run.value?.relics.length === RULES.relicSlots);
-const zone = computed(() => run.value ? zoneOf(run.value) : 0);
-const chapter = computed(() => run.value ? chapterOf(run.value) : 0);
-const nextBoss = computed(() => run.value ? ENEMY_NAMES[run.value.bosses[chapter.value]] : '');
-const outfit = computed(() => view.value?.data.equippedOutfit ?? 'traveler');
-const objectiveText = computed(() => {
-    const h = hud.value; if (!h) { return ''; }
-    if (h.encounter === 'ritual') { return c.objectiveProgress(h.objective.progress, h.objective.target); }
-    if (h.encounter === 'survival') { return c.survive(h.objective.target - h.objective.progress); }
-    if (h.encounter === 'pursuit' && h.wave < h.waves) { return c.reinforcement(h.objective.target - h.objective.progress); }
-    return c.wave(h.wave, h.waves);
+const client = createExpeditionClient(props.bridge, props.chatIdentity), playback = createCampaignPlayback(client);
+const { view, notice, busy, blocked, talking, conversationFailure } = client, { current: run, dirty } = playback;
+const weapon = ref<Weapon>('blade'), paused = ref(true), sound = ref(false), renderingError = ref(false), epoch = ref(0);
+const panel = ref<'map' | 'journal' | 'build' | 'wardrobe' | 'person' | 'passage' | 'ending' | 'arrival' | 'restart' | null>(null);
+const person = ref<Participant>('sanniang'), passage = ref<keyof typeof w.passages>('warning'), draft = ref(''), dialog = ref<HTMLElement | null>(null);
+const transcript = ref<HTMLElement | null>(null);
+const noticePanel = ref<HTMLElement | null>(null);
+const field = ref<InstanceType<typeof ExplorationField> | null>(null);
+const preview = createCampaign('preview', 1, 'blade', 'traveler');
+const facts = computed<ReadonlySet<CourtyardFact>>(previous => {
+    const ids = run.value?.facts ?? [];
+    return previous && previous.size === ids.length && ids.every(id => previous.has(id)) ? previous : new Set(ids);
 });
-const nextWeapon = computed(() => view.value && weapons.find(id => !weaponUnlocked(view.value!.data, id)));
-const freshAwards = computed(() => view.value?.data.awards.filter(a => a.actionId === view.value?.data.last?.id) ?? []);
-const runAward = computed(() => view.value?.data.awards.filter(a => a.runId === run.value?.id).reduce((sum, a) => sum + a.amount, 0) ?? 0);
-const bossUnlocks = computed(() => {
-    if (!freshAwards.value.length || run.value?.phase !== 'reward' || !run.value.battle?.boss) { return []; }
-    const count = view.value!.data.bossClears.length;
-    return [...weapons.filter(id => WEAPONS[id].unlock === count).map(id => WEAPON_COPY[id].name),
-        ...OUTFIT_IDS.filter(id => freshAwards.value.some(a => a.key === OUTFITS[id].achievement)).map(id => OUTFIT_COPY[id].name)];
-});
-useAppLayer(dialog, () => { modal.value = null; selecting.value = null; });
+const world = computed(() => ({ definition: COURTYARD[run.value?.location.scene ?? 'camp'], location: run.value?.location ?? preview.location, facts: facts.value, people: run.value?.people ?? preview.people }));
+const outfit = computed(() => run.value?.outfit ?? view.value?.data.equippedOutfit ?? 'traveler');
+const halted = computed(() => !run.value || !!run.value.pendingParley || paused.value || !!panel.value || !!notice.value || talking.value || renderingError.value || props.generationActive
+    || !['exploration', 'battle'].includes(run.value.phase) || !view.value?.ready || view.value.pending || view.value.writeState !== 'ready');
+const boss = computed(() => run.value?.battle?.enemies.find(e => isBoss(e.kind)));
+const history = computed(() => run.value?.conversations[person.value] ?? []);
+const choices = computed(() => run.value && isPerson(person.value) ? availableChoices(run.value.facts, person.value, run.value.people[person.value]) : []);
+const loadoutOptions = computed(() => run.value?.collection.map(relic => {
+    const equipped = run.value!.equipped.includes(relic.id) ? run.value!.equipped.filter(id => id !== relic.id) : [...run.value!.equipped, relic.id];
+    return { ...relic, equipped, issue: loadoutIssue(run.value!, equipped) };
+}) ?? []);
+const audio = createExpeditionSound(() => { client.error.value = COPY.presentationError.sound; sound.value = false; });
+let mounted = false;
+function close() {
+    if (run.value?.pendingParley) { if (run.value.pendingParley.decision === 'pass') { void resolveParley(); } return; }
+    panel.value = null; paused.value = true;
+}
+async function resolveParley() {
+    if (await act({ type: 'resolve_parley' })) { panel.value = null; await nextTick(); field.value?.focus(); }
+}
+useAppLayer(dialog, close);
 useAppBack(() => {
-    if (modal.value || selecting.value) { modal.value = null; selecting.value = null; return true; }
-    if (!camp.value) { paused.value = true; camp.value = true; return true; } return false;
+    if (panel.value) { close(); return true; }
+    if (!paused.value) { pause(); return true; }
+    return false;
 });
-watch(() => props.generationActive, value => { if (value) { paused.value = true; } });
-watch(() => run.value?.phase, phase => { if (phase !== 'battle') { hud.value = null; } });
-watch(notice, async value => {
-    if (value && (modal.value || selecting.value)) { await nextTick(); noticePanel.value?.focus({ preventScroll: true }); }
+useAppLayer(noticePanel, () => {
+    if (!busy.value && !renderingError.value && !props.generationActive) { client.dismissError(); }
 });
-function toggleOath(id: Oath) { oaths.value = oaths.value.includes(id) ? oaths.value.filter(v => v !== id) : [...oaths.value, id]; }
-async function start() {
-    if (await client.act({ type: 'start', weapon: weapon.value, outfit: outfit.value, oaths: oaths.value })) { camp.value = false; paused.value = false; }
+function pause() { paused.value = true; void playback.flush(); }
+async function open(next: NonNullable<typeof panel.value>) {
+    paused.value = true;
+    if (await playback.flush()) { panel.value = next; }
 }
-async function route(id: number) { if (await client.act({ type: 'route', id })) { paused.value = false; } }
-async function choose(id: Relic, replace: Relic | null = null) {
-    if (full.value && replace === null && !run.value?.relics.some(r => r.id === id)) { selecting.value = id; return; }
-    if (await client.act({ type: 'relic', id, replace })) { selecting.value = null; }
+async function resume() {
+    if (run.value?.pendingParley) { if (run.value.pendingParley.decision === 'pass') { await resolveParley(); } return; }
+    if (!notice.value && !props.generationActive) {
+        panel.value = null; paused.value = false;
+        await nextTick(); field.value?.focus();
+    }
 }
-async function recover() { if (await client.recover()) { recoveryEpoch.value++; paused.value = true; } }
-async function abandon() { modal.value = null; await field.value?.flush(); if (await client.act({ type: 'abandon' })) { camp.value = true; } }
-async function read() { if (await client.read()) { recoveryEpoch.value++; } }
-function resume() { camp.value = false; paused.value = false; }
-function openModal(value: typeof modal.value) { paused.value = true; modal.value = value; }
+async function act(command: Command) {
+    paused.value = true;
+    if (!await playback.flush()) { return false; }
+    const ok = await client.act(command);
+    if (ok) {
+        playback.sync();
+        paused.value = false;
+        if (!panel.value) { await nextTick(); field.value?.focus(); }
+    }
+    return ok;
+}
+async function start() { await act({ type: 'start', weapon: weapon.value, outfit: outfit.value }); }
+async function restart() { if (await act({ type: 'restart', weapon: weapon.value, outfit: outfit.value })) { draft.value = ''; panel.value = null; } }
+async function interact(id: string) {
+    paused.value = true;
+    if (!await playback.flush() || !run.value) { return; }
+    const target = [...campaignInteractions(run.value), ...parleyInteractions(run.value.location.scene, run.value.location.position, new Set(run.value.facts))].find(item => item.target.id === id);
+    const object = target?.kind === 'object' ? target.target : null;
+    if (object?.kind === 'person') { person.value = object.person; draft.value = ''; panel.value = 'person'; return; }
+    if (object?.kind === 'enemy') { person.value = object.enemy; draft.value = ''; panel.value = 'person'; return; }
+    if (await act({ type: 'interact', id }) && object?.kind === 'inspect') { passage.value = object.passage; panel.value = 'passage'; }
+}
+async function send() {
+    if (!draft.value.trim() || !await playback.flush()) { return; }
+    const text = draft.value.trim();
+    if (await client.talk(person.value, text)) {
+        draft.value = ''; playback.sync();
+    }
+}
+async function recover() { if (await playback.recover()) { paused.value = true; epoch.value++; } }
+watch(() => props.generationActive, value => { if (value) { pause(); } });
+watch(() => run.value?.pendingParley, pending => {
+    if (pending) { person.value = pending.enemy; panel.value = 'person'; paused.value = true; }
+}, { immediate: true });
+watch(sound, value => { void audio.enable(value); });
+watch(run, value => { if (sound.value && value?.battle) { audio.tick(value.battle); } });
+// Every confirmed source (button, model, recovery or reattached window) presents the same transition.
+watch(() => view.value?.data, (next, previous) => {
+    if (!next?.active || !previous?.active || next.active.id !== previous.active.id) { return; }
+    const before = new Set(previous.active.facts), after = new Set(next.active.facts);
+    if (!before.has('chapter_completed') && after.has('chapter_completed')) { panel.value = 'ending'; }
+    else if (!before.has('captives_arrived') && after.has('captives_arrived')) { panel.value = 'arrival'; }
+});
+watch(() => [panel.value, person.value, history.value.length, talking.value], async () => {
+    await nextTick();
+    if (transcript.value) { transcript.value.scrollTop = transcript.value.scrollHeight; }
+});
 onMounted(async () => { await client.read(); mounted = true; });
-onActivated(() => { if (mounted) { void read(); } });
-onDeactivated(() => { paused.value = true; });
-onBeforeUnmount(client.dispose);
+onActivated(() => { if (mounted && !dirty.value) { void client.read(); } });
+onDeactivated(() => { pause(); });
+onBeforeUnmount(() => { playback.dispose(); client.dispose(); audio.dispose(); });
 </script>
+
 <template>
-    <section class="exp-app" :class="{ 'exp-is-battle': inBattle, 'exp-is-camp': camp, 'exp-is-between': !camp && !inBattle }" :data-zone="zone">
-        <ExpeditionField :key="recoveryEpoch" ref="field" :run="run" :client="client" :paused="stopped" :camp="camp" :generation-active="generationActive" :weapon="live ? run!.weapon : weapon" :outfit="live ? run!.outfit : outfit" :sound="sound" @pause="paused = true" @error="sceneError = $event" @hud="hud = $event" />
-        <header class="exp-hud">
-            <div v-if="!camp && run" class="exp-health">
-                <span>{{ c.progress(ZONE_NAMES[zone], run.step % RULES.zoneSteps) }}</span>
-                <div class="exp-health-track" role="progressbar" :aria-label="c.hp" :aria-valuenow="Math.ceil(hp)" :aria-valuemin="0" :aria-valuemax="RULES.maxHp"><i :style="{ width: hp / RULES.maxHp * 100 + '%' }" /><b>{{ Math.ceil(hp) }}<small> / {{ RULES.maxHp }}</small></b></div>
-                <span v-if="hud && hud.player.ward > 0" class="exp-sr-only">{{ c.wardValue(hud.player.ward) }}</span>
-                <label v-if="hud && run.weapon === 'grimoire'" class="exp-contract-power"><span>{{ c.contractPower }}<b>{{ Math.floor(hud.player.resource) }}</b></span><meter class="exp-resource" min="0" :max="CONTRACT.maxPower" :value="hud.player.resource" :aria-label="c.contractPower" /></label>
-                <meter v-else-if="hud && ['blade', 'staff'].includes(run.weapon)" class="exp-resource" min="0" max="100" :value="hud.player.resource" :aria-label="c.resource" />
-                <small :aria-label="c.shards + ' ' + run.shards"><ExpeditionIcon name="shrine" />{{ run.shards }} <span v-if="busy"> · {{ c.saving }}</span></small>
+    <section class="ember-campaign">
+        <ExplorationField
+            :key="epoch" ref="field" :world="world" :paused="halted" :weapon="run?.weapon ?? weapon" :outfit="outfit" :battle="run?.battle"
+            @input="playback.input" @interact="interact" @pause="pause" @resume="resume" @error="renderingError = true"
+        >
+            <template #status>
+                <template v-if="run">
+                    <div class="ember-health"><meter :min="0" :max="RULES.maxHp" :value="run.hp" :aria-label="COPY.hp" /><span>{{ Math.ceil(run.hp) }} / {{ RULES.maxHp }}</span></div>
+                    <p class="ember-objective">{{ campaignObjective(run) }}</p>
+                    <small class="ember-save">{{ talking ? c.thinking : busy ? c.saving : dirty ? '' : c.saved }}</small>
+                </template>
+            </template>
+            <template #overlay><span /></template>
+        </ExplorationField>
+        <nav v-if="run && !run.pendingParley" class="ember-tools" :aria-label="c.prepare">
+            <button type="button" :aria-label="c.map" @click="open('map')"><ExpeditionIcon name="map" /><span>{{ c.map }}</span></button>
+            <button type="button" :aria-label="c.build" @click="open('build')"><ExpeditionIcon name="bag" /><span>{{ c.build }}</span></button>
+            <button type="button" :aria-label="c.journal" @click="open('journal')"><ExpeditionIcon name="journal" /><span>{{ c.journal }}</span></button>
+            <button type="button" :aria-label="c.pause" @click="pause"><ExpeditionIcon name="pause" /></button>
+        </nav>
+        <div v-if="boss && !panel" class="ember-boss">
+            <strong>{{ ENEMY_NAMES[boss.kind] }}</strong><meter min="0" :max="boss.maxHp" :value="boss.hp" :aria-label="ENEMY_NAMES[boss.kind]" />
+        </div>
+        <div v-if="run?.phase === 'battle' && ['gate', 'beacon'].includes(run.location.scene) && !facts.has('alarm_silenced')" class="ember-alarm">
+            {{ facts.has('alarm_raised') ? c.alarmRaised : c.alarmSeconds(Math.ceil((CAMPAIGN_RULES.alarmTicks - run.alarmTicks) / RULES.hz)) }}
+        </div>
+
+        <section v-if="notice || renderingError || generationActive" ref="noticePanel" class="ember-notice" role="alertdialog" aria-modal="true" :aria-label="c.noticeTitle" tabindex="-1">
+            <p>{{ renderingError ? c.renderError : generationActive ? c.generation : notice }}</p>
+            <button v-if="renderingError" type="button" @click="renderingError = false; epoch++">{{ c.reload }}</button>
+            <template v-else-if="client.dataInvalid.value && !generationActive">
+                <p>{{ c.rebuildWarning }}</p><button type="button" :disabled="busy" @click="client.rebuild">{{ c.rebuild }}</button>
+            </template>
+            <button v-else-if="!generationActive" type="button" :disabled="busy" @click="client.recoveryRequired.value ? recover() : client.dismissError()">{{ client.recoveryRequired.value ? c.recover : c.acknowledge }}</button>
+        </section>
+
+        <aside v-if="conversationFailure && !notice && (panel !== 'person' || person !== conversationFailure.person)" class="ember-conversation-notice" role="status">
+            <strong>{{ participantName(conversationFailure.person) }}</strong><p>{{ errorText(conversationFailure) }}</p>
+            <details v-if="conversationFailure.text"><summary>{{ c.receivedReply }}</summary><p class="ember-prose">{{ conversationFailure.text }}</p></details>
+            <button type="button" @click="client.dismissConversationFailure">{{ c.acknowledge }}</button>
+        </aside>
+
+        <section v-if="!run" class="ember-intro">
+            <p class="ember-chapter">{{ c.chapter }}</p><h1>{{ c.title }}</h1><p class="ember-opening">{{ c.opening }}</p>
+            <div class="ember-weapons" :aria-label="COPY.weapons">
+                <button v-for="id in WEAPON_LIST" :key="id" type="button" :aria-pressed="weapon === id" @click="weapon = id"><ExpeditionIcon :name="id" /><span>{{ WEAPON_COPY[id].name }}</span></button>
             </div>
-            <span v-else class="exp-wallet" :aria-label="view ? c.wallet(view.balance) : c.preparing"><ExpeditionIcon name="coin" />{{ view ? view.balance : c.preparing }}</span>
-            <nav class="exp-tools">
-                <button type="button" :aria-label="c.sound" :aria-pressed="sound" @click="sound = !sound"><ExpeditionIcon :name="sound ? 'sound' : 'mute'" /></button>
-                <button v-if="camp && live" type="button" :aria-label="c.wardrobe" @click="openModal('wardrobe')"><ExpeditionIcon name="wardrobe" /></button>
-                <button v-if="camp" type="button" :aria-label="c.help" @click="openModal('help')"><ExpeditionIcon name="help" /></button>
-                <button v-if="!camp" type="button" :aria-label="c.equipment" @click="openModal('bag')"><ExpeditionIcon name="bag" /></button>
-                <button v-if="inBattle" type="button" :aria-label="c.pause" @click="paused = true"><ExpeditionIcon name="pause" /></button>
-                <button v-else type="button" :aria-label="c.archive" @click="openModal('journal')"><ExpeditionIcon name="journal" /></button>
-            </nav>
-        </header>
-        <div ref="noticeHost" />
-        <div v-if="boss && !camp" class="exp-boss" role="progressbar" :aria-label="ENEMY_NAMES[boss.kind]" :aria-valuenow="Math.ceil(boss.hp)" :aria-valuemin="0" :aria-valuemax="Math.ceil(boss.maxHp)">
-            <span><ExpeditionIcon name="boss" />{{ ENEMY_NAMES[boss.kind] }}<small>{{ c.bossPhase(boss.phase) }}</small></span>
-            <div><i :style="{ width: boss.hp / boss.maxHp * 100 + '%' }" /></div>
-        </div>
-        <div v-else-if="defendingBeacon && hud" class="exp-beacon-hud" :class="{ 'is-critical': hud.objective.hp <= BEACON_CRITICAL_HP }">
-            <strong>{{ hud.objective.hp <= BEACON_CRITICAL_HP ? c.beaconDanger : ENCOUNTER_COPY.siege.name }}</strong>
-            <div class="exp-objective-track" role="progressbar" :aria-label="c.beaconName" :aria-valuenow="Math.ceil(hud.objective.hp)" :aria-valuemin="0" :aria-valuemax="100"><i :style="{ width: hud.objective.hp + '%' }" /><b>{{ Math.ceil(hud.objective.hp) }} / 100</b></div>
-            <small>{{ c.beaconRule }}</small>
-        </div>
-        <span v-else-if="hud && inBattle" class="exp-wave"><strong>{{ ENCOUNTER_COPY[hud.encounter].name }}</strong> · {{ objectiveText }}</span>
-        <div v-if="inBattle && hud && hud.tick < 54 && !stopped" class="exp-encounter" aria-hidden="true">
-            <small>{{ c.chapter(chapter) }}</small><strong>{{ boss ? ENEMY_NAMES[boss.kind] : ENCOUNTER_COPY[hud.encounter].name }}</strong><p v-if="!boss">{{ ENCOUNTER_COPY[hud.encounter].detail }}</p>
-        </div>
-
-        <section v-if="camp && view" class="exp-camp">
-            <div class="exp-title"><span>{{ c.titleFirst }}</span><span>{{ c.titleSecond }}</span></div>
-            <template v-if="live">
-                <p class="exp-camp-location">{{ ZONE_NAMES[zone] }}<span>{{ WEAPON_COPY[run!.weapon].name }}</span></p>
-                <div class="exp-camp-relics"><ExpeditionIcon v-for="relic in run!.relics" :key="relic.id" :name="relic.id" :title="RELIC_COPY[relic.id].name + ' · ' + c.rank(relic.rank)" /></div>
-                <button type="button" class="exp-primary" :disabled="blocked || generationActive" @click="resume">{{ c.resume }}<ExpeditionIcon name="arrow" /></button>
-                <button type="button" class="exp-quiet" @click="openModal('abandon')">{{ c.abandon }}</button>
-            </template>
-            <template v-else>
-                <div class="exp-camp-loadout">
-                    <div class="exp-weapon-select" :aria-label="c.weapons">
-                        <button v-for="id in weapons" :key="id" type="button" :disabled="!weaponUnlocked(view.data, id)" :aria-pressed="weapon === id" :title="weaponUnlocked(view.data, id) ? WEAPON_COPY[id].detail : c.weaponUnlock(WEAPONS[id].unlock)" @click="weapon = id">
-                            <ExpeditionIcon :name="id" /><span>{{ WEAPON_COPY[id].name }}<small v-if="!weaponUnlocked(view.data, id)">{{ c.lockedTag }}</small></span>
-                            <ExpeditionIcon v-if="!weaponUnlocked(view.data, id)" class="exp-lock" name="lock" />
-                        </button>
-                    </div>
-                    <p class="exp-weapon-detail">{{ WEAPON_COPY[weapon].detail }}<span>{{ skillDetail(weapon) }}</span></p>
-                    <p v-if="nextWeapon" class="exp-next-unlock">{{ c.weaponUnlock(WEAPONS[nextWeapon].unlock) + ' · ' + WEAPON_COPY[nextWeapon].name }}</p>
-                </div>
-                <div class="exp-camp-options">
-                    <button type="button" class="exp-wardrobe-entry" @click="openModal('wardrobe')"><ExpeditionIcon name="wardrobe" /><span>{{ c.wardrobe }}<small>{{ OUTFIT_COPY[outfit].name }}</small></span></button>
-                    <button type="button" class="exp-difficulty-entry" @click="openModal('oaths')">{{ c.oaths }}<small>{{ oaths.length ? c.oathCount(oaths.length) : c.normal }}</small></button>
-                </div>
-                <button type="button" class="exp-primary" :disabled="blocked || generationActive" @click="start">{{ c.start }}<ExpeditionIcon name="arrow" /></button>
-            </template>
+            <p class="ember-weapon-detail">{{ WEAPON_COPY[weapon].detail }}<small>{{ skillDetail(weapon) }}</small></p>
+            <button class="ember-primary" type="button" :disabled="blocked || generationActive" @click="start">{{ view ? c.start : COPY.preparing }}</button>
         </section>
 
-        <section v-else-if="run && !inBattle" class="exp-between" :class="{ 'exp-loot-screen': run.phase === 'reward' || run.phase === 'merchant', 'exp-decision-screen': run.phase === 'reward' || run.phase === 'merchant' || isFinished(run) }">
-            <template v-if="run.phase === 'route'">
-                <header class="exp-screen-heading"><small>{{ c.chapter(chapter) }}</small><h2>{{ ZONE_NAMES[zone] }}</h2><p>{{ c.nextGoal(nextBoss) }}</p></header>
-                <ol class="exp-map" :aria-label="c.journey"><li v-for="i in RULES.zoneSteps" :key="i" :class="{ 'is-past': i - 1 < run.step % RULES.zoneSteps, 'is-current': i - 1 === run.step % RULES.zoneSteps }"><ExpeditionIcon v-if="i === RULES.zoneSteps" name="boss" /><span v-else>{{ i }}</span></li></ol>
-                <h3 class="exp-section-label">{{ c.route }}</h3>
-                <div class="exp-route-options">
-                    <button v-for="option in run.routes" :key="option.id" type="button" :disabled="blocked || generationActive" :data-route="option.kind" @click="route(option.id)"><ExpeditionIcon :name="option.kind" /><span><strong>{{ option.kind === 'boss' ? nextBoss : ROUTE_COPY[option.kind].name }}</strong><small>{{ ['battle', 'elite'].includes(option.kind) ? ENCOUNTER_COPY[option.encounter].name + ' · ' + ROUTE_COPY[option.kind].detail : ROUTE_COPY[option.kind].detail }}</small></span><ExpeditionIcon class="exp-option-arrow" name="arrow" /></button>
-                </div>
-            </template>
-            <template v-else-if="run.phase === 'reward' || run.phase === 'merchant'">
-                <div class="exp-decision-content">
-                    <header class="exp-screen-heading"><small>{{ run.phase === 'merchant' ? ZONE_NAMES[zone] : run.battle?.boss ? c.bossDefeated(nextBoss) : c.victory }}</small><h2>{{ run.phase === 'reward' ? c.reward : c.merchant }}</h2></header>
-                    <div v-if="freshAwards.length" class="exp-prize" role="status"><ExpeditionIcon name="coin" /><div><strong>{{ c.earned(freshAwards.reduce((sum, a) => sum + a.amount, 0)) }}</strong><small v-if="bossUnlocks.length">{{ c.newUnlocks(bossUnlocks) }}</small></div></div>
-                    <div class="exp-relic-options">
-                        <button v-for="offer in run.offers" :key="offer.id" type="button" :disabled="blocked || generationActive || run.phase === 'merchant' && run.shards < relicPrice(offer)" :data-relic="offer.id" :style="{ '--relic': RELIC_TINT[offer.id] }" @click="choose(offer.id)">
-                            <div class="exp-relic-art"><ExpeditionIcon :name="offer.id" /><b>{{ c.rank(offer.rank) }}</b></div>
-                            <span><small class="exp-relic-family">{{ run.relics.some(r => r.id === offer.id) ? c.upgrade(offer.rank) : RELIC_COPY[offer.id].family + ' · ' + c.newRelic }}</small><strong>{{ RELIC_COPY[offer.id].name }}</strong><small>{{ RELIC_COPY[offer.id].detail }}</small><b v-if="run.phase === 'merchant'" class="exp-relic-price">{{ c.buy(relicPrice(offer)) }}</b></span>
-                        </button>
-                    </div>
-                    <p v-if="!run.offers.length" class="exp-muted">{{ c.noOffers }}</p>
-                    <p class="exp-muted exp-upgrade-hint">{{ c.upgradeHint }}</p>
-                    <button v-if="run.phase === 'merchant'" type="button" class="exp-supply" :disabled="blocked || generationActive || run.shards < RULES.supplyCost || run.hp >= RULES.maxHp" @click="client.act({ type: 'supply' })"><ExpeditionIcon name="heart" /><span>{{ c.supply }} · {{ c.buy(RULES.supplyCost) }}<small>{{ c.supplyDetail(RULES.supplyHeal * (run.oaths.includes('scarcity') ? .5 : 1)) }}</small></span></button>
-                </div>
-                <button type="button" class="exp-quiet" :disabled="blocked || generationActive" @click="client.act({ type: 'leave' })">{{ run.phase === 'reward' ? c.discard : c.leave }}</button>
-            </template>
-            <template v-else-if="run.phase === 'camp' || run.phase === 'shrine'">
-                <ExpeditionIcon class="exp-landmark" :name="run.phase" /><header class="exp-screen-heading"><h2>{{ ROUTE_COPY[run.phase].name }}</h2><p>{{ run.phase === 'camp' ? c.restDetail(restAmount(run)) : c.sacrifice }}</p></header>
-                <button v-if="run.phase === 'camp'" type="button" class="exp-primary" :disabled="blocked || generationActive" @click="client.act({ type: 'rest' })">{{ c.rest }}<ExpeditionIcon name="heart" /></button>
-                <template v-else><button type="button" class="exp-primary" :disabled="blocked || generationActive || hp <= RULES.sacrificeHp" @click="client.act({ type: 'sacrifice' })">{{ hp <= RULES.sacrificeHp ? c.healthCost : c.shrine }}<ExpeditionIcon name="shrine" /></button><button type="button" class="exp-quiet" :disabled="blocked || generationActive" @click="client.act({ type: 'leave' })">{{ c.leave }}</button></template>
-            </template>
-            <template v-else-if="isFinished(run)">
-                <div class="exp-decision-content">
-                    <ExpeditionIcon class="exp-landmark" :name="run.phase === 'won' ? 'crown' : 'renewal'" />
-                    <header class="exp-screen-heading"><small>{{ WEAPON_COPY[run.weapon].name }}</small><h2>{{ run.phase === 'won' ? c.won : defeat ? c.defeat[defeat] : run.phase === 'lost' ? c.lost : c.abandoned }}</h2><p v-if="defeat">{{ c.defeatDetail[defeat] }}</p></header>
-                    <p class="exp-result-stats">{{ c.stats(run.kills, run.ticks) }}</p><div class="exp-prize"><ExpeditionIcon name="coin" /><strong>{{ c.gold(runAward) }}</strong></div>
-                    <div class="exp-result-build"><ExpeditionIcon v-for="relic in run.relics" :key="relic.id" :name="relic.id" :title="RELIC_COPY[relic.id].name + ' · ' + c.rank(relic.rank)" /></div>
-                    <p class="exp-muted">{{ c.resultDetail }}</p>
-                </div>
-                <button type="button" class="exp-primary" @click="camp = true">{{ c.return }}<ExpeditionIcon name="arrow" /></button>
-            </template>
-        </section>
-
-        <div v-if="inBattle && stopped && !modal && !notice && !sceneError" class="exp-pause-overlay"><section class="exp-panel"><ExpeditionIcon class="exp-pause-emblem" name="pause" /><h2>{{ c.paused }}</h2><p class="exp-muted">{{ c.controls }}</p><p>{{ skillDetail(run!.weapon) }}</p><button type="button" class="exp-primary" :disabled="blocked || generationActive" @click="paused = false">{{ c.continue }}<ExpeditionIcon name="arrow" /></button><button type="button" class="exp-quiet" @click="camp = true">{{ c.return }}</button></section></div>
-        <div v-if="inBattle && !stopped" class="exp-keyboard-hint">{{ c.moveKeys }}<span>{{ c.autoAttack }}</span></div>
-        <div v-if="inBattle && run!.relics.length" class="exp-equipped-strip" :aria-label="c.equipped"><ExpeditionIcon v-for="relic in run!.relics" :key="relic.id" :name="relic.id" :title="RELIC_COPY[relic.id].name + ' · ' + c.rank(relic.rank)" /></div>
-
-        <div v-if="modal || selecting" class="exp-modal-wrap" @click.self="modal = null; selecting = null">
-            <section ref="dialog" class="exp-modal exp-panel" :class="{ 'exp-wardrobe-modal': modal === 'wardrobe' }" role="dialog" aria-modal="true" tabindex="-1" :aria-label="selecting ? c.replace : modal === 'wardrobe' ? c.wardrobe : modal === 'oaths' ? c.oaths : modal === 'journal' ? c.archive : modal === 'bag' ? c.equipment : modal === 'help' ? c.help : c.abandon">
-                <header><h2>{{ selecting ? c.replace : modal === 'wardrobe' ? c.wardrobe : modal === 'oaths' ? c.oaths : modal === 'journal' ? c.archive : modal === 'bag' ? c.equipment : modal === 'help' ? c.help : c.abandon }}</h2><button type="button" :aria-label="c.close" @click="modal = null; selecting = null"><ExpeditionIcon name="close" /></button></header>
-                <div ref="dialogNoticeHost" class="exp-dialog-notice-host" />
-                <ExpeditionWardrobe v-if="modal === 'wardrobe' && view" :data="view.data" :balance="view.balance" :blocked="blocked || generationActive" :weapon="live ? run!.weapon : weapon" @command="client.act($event)" />
-                <template v-else-if="modal === 'oaths' && view">
-                    <div class="exp-oaths">
-                        <p v-if="!view.data.victories">{{ c.oathsLocked }}</p>
-                        <label v-for="id in OATHS" :key="id"><input type="checkbox" :checked="oaths.includes(id)" :disabled="!view.data.victories" @change="toggleOath(id)"><span>{{ OATH_COPY[id].name }}<small>{{ OATH_COPY[id].detail }}</small></span><b v-if="view.data.oathWins.includes(id)">✓</b></label>
+        <div v-else-if="!notice && !renderingError && !generationActive && (panel || paused || run.phase === 'reward' || run.phase === 'lost')" class="ember-curtain">
+            <section ref="dialog" class="ember-panel" :class="{ 'ember-wide': panel === 'map' || panel === 'wardrobe', 'ember-map-panel': panel === 'map', 'ember-wardrobe-panel': panel === 'wardrobe', 'ember-dialogue': panel === 'person' }" role="dialog" aria-modal="true" :aria-label="panel === 'person' ? participantName(person) : c.chapter" tabindex="-1">
+                <header v-if="panel !== 'map'" class="ember-panel-heading">
+                    <h2 v-if="panel === 'wardrobe'">{{ c.wardrobe }}</h2><span v-else>{{ c.chapter }}</span>
+                    <button v-if="run.pendingParley?.decision !== 'attack' && (panel || run.phase !== 'lost' && run.phase !== 'reward')" type="button" :disabled="!!run.pendingParley && blocked" @click="resume">{{ c.close }}</button>
+                </header>
+                <template v-if="panel === 'map'"><CampaignMap :campaign="run" @close="resume" /></template>
+                <template v-else-if="panel === 'restart'">
+                    <h2>{{ c.restart }}</h2><p>{{ c.restartWarning }}</p>
+                    <div class="ember-weapons" :aria-label="COPY.weapons"><button v-for="id in WEAPON_LIST" :key="id" type="button" :aria-pressed="weapon === id" @click="weapon = id"><ExpeditionIcon :name="id" /><span>{{ WEAPON_COPY[id].name }}</span></button></div>
+                    <p class="ember-weapon-detail">{{ WEAPON_COPY[weapon].detail }}<small>{{ skillDetail(weapon) }}</small></p>
+                    <button class="ember-primary" type="button" :disabled="blocked" @click="restart">{{ c.restart }}</button>
+                </template>
+                <template v-else-if="panel === 'journal'">
+                    <h2>{{ c.journal }}</h2><p class="ember-objective-panel">{{ campaignObjective(run) }}</p>
+                    <ol class="ember-journal"><li v-for="fact in run.facts" :key="fact">{{ FACT_COPY[fact] }}</li></ol>
+                </template>
+                <template v-else-if="panel === 'build'">
+                    <h2>{{ c.build }} <small>{{ c.slots(run.equipped.length, RULES.relicSlots) }}</small></h2>
+                    <p>{{ WEAPON_COPY[run.weapon].name }} · {{ skillDetail(run.weapon) }}</p>
+                    <p v-if="run.location.scene !== 'camp'">{{ c.safeBuild }}</p>
+                    <p v-if="!run.collection.length">{{ c.emptyBuild }}</p>
+                    <div class="ember-relics">
+                        <article v-for="relic in loadoutOptions" :key="relic.id">
+                            <ExpeditionIcon :name="relic.id" /><h3>{{ RELIC_COPY[relic.id].name }} <small>{{ COPY.rank(relic.rank) }}</small></h3><p>{{ RELIC_COPY[relic.id].detail }}</p>
+                            <small v-if="relic.issue === 'dependency' || relic.issue === 'capacity'">{{ c.loadoutIssue[relic.issue] }}</small>
+                            <button type="button" :disabled="blocked || !!relic.issue" @click="act({ type: 'loadout', equipped: relic.equipped })">{{ run.equipped.includes(relic.id) ? c.takeOff : c.putOn }}</button>
+                        </article>
                     </div>
                 </template>
-                <template v-else-if="selecting"><p>{{ RELIC_COPY[selecting].name }}</p><div class="exp-inventory"><button v-for="relic in run!.relics" :key="relic.id" type="button" :disabled="blocked || breaksRelicTrigger(run!, selecting!, relic.id)" :title="breaksRelicTrigger(run!, selecting!, relic.id) ? c.requiredRelic : undefined" :style="{ '--relic': RELIC_TINT[relic.id] }" @click="choose(selecting!, relic.id)"><ExpeditionIcon :name="relic.id" /><span><strong>{{ RELIC_COPY[relic.id].name }} · {{ c.rank(relic.rank) }}</strong><small>{{ breaksRelicTrigger(run!, selecting!, relic.id) ? c.requiredRelic : RELIC_COPY[relic.id].detail }}</small></span></button></div></template>
-                <template v-else-if="modal === 'bag'"><p class="exp-muted">{{ c.slots(run?.relics.length ?? 0) }}</p><p v-if="!run?.relics.length">{{ c.noRelics }}</p><ul class="exp-inventory"><li v-for="relic in run?.relics" :key="relic.id" :style="{ '--relic': RELIC_TINT[relic.id] }"><ExpeditionIcon :name="relic.id" /><span><strong>{{ RELIC_COPY[relic.id].name }} · {{ c.rank(relic.rank) }}</strong><small>{{ RELIC_COPY[relic.id].detail }}</small></span></li></ul></template>
-                <template v-else-if="modal === 'help'"><p>{{ c.controls }}</p><p>{{ c.autoAttack }}</p><p>{{ c.lootPool }}</p><p>{{ c.checkpoint }}</p><p>{{ c.rewardRule }}</p></template>
-                <template v-else-if="modal === 'abandon'"><p>{{ c.abandonBody }}</p><button type="button" class="exp-primary" :disabled="blocked || generationActive" @click="abandon">{{ c.confirm }}</button></template>
-                <template v-else-if="modal === 'journal' && view">
-                    <nav class="exp-journal-tabs">
-                        <button type="button" :aria-pressed="journalTab === 'records'" @click="journalTab = 'records'">{{ c.history }}</button>
-                        <button type="button" :aria-pressed="journalTab === 'relics'" @click="journalTab = 'relics'">{{ c.discoveries }}</button>
-                        <button type="button" :aria-pressed="journalTab === 'awards'" @click="journalTab = 'awards'">{{ c.awardHistory }}</button>
-                    </nav>
-                    <template v-if="journalTab === 'relics'"><h3>{{ c.discoveries }} {{ view.data.discoveries.length }} / {{ RELICS.length }}</h3><ul class="exp-collection"><li v-for="id in RELICS" :key="id" :class="{ 'is-unknown': !view.data.discoveries.includes(id) }"><ExpeditionIcon :name="view.data.discoveries.includes(id) ? id : 'lock'" /><strong>{{ view.data.discoveries.includes(id) ? RELIC_COPY[id].name : c.unknown }}</strong><small v-if="view.data.discoveries.includes(id)">{{ RELIC_COPY[id].detail }}</small></li></ul></template>
-                    <template v-else-if="journalTab === 'awards'">
-                        <p>{{ c.totalEarned(view.data.awards.reduce((sum, a) => sum + a.amount, 0)) }}</p>
-                        <p class="exp-muted">{{ c.rewardRule }}</p><p v-if="!view.data.awards.length">{{ c.noAwards }}</p>
-                        <ul class="exp-list exp-receipts"><li v-for="award in [...view.data.awards].reverse()" :key="award.key"><strong>{{ awardTitle(award.key) }}</strong><b>+{{ award.amount }}</b><details><summary>{{ c.receipt }}</summary><code>{{ award.actionId }}</code></details></li></ul>
-                    </template>
-                    <template v-else><p v-if="!view.data.records.length">{{ c.journalEmpty }}</p><ul class="exp-list"><li v-for="record in view.data.records" :key="record.id"><strong>{{ WEAPON_COPY[record.weapon].name }} · {{ record.outcome === 'won' ? c.mastered : c.reached(Math.floor(record.step / RULES.zoneSteps)) }}</strong><small>{{ c.stats(record.kills, record.ticks) }}</small></li></ul></template>
+                <template v-else-if="panel === 'wardrobe' && view">
+                    <ExpeditionWardrobe :data="view.data" :balance="view.balance" :blocked="blocked" :weapon="run.weapon" @command="act" />
+                </template>
+                <template v-else-if="panel === 'person'">
+                    <div class="ember-dialogue-heading"><h2>{{ participantName(person) }}</h2><ConversationMeters :key="person" :campaign="run" :person="person" :draft="draft" /></div>
+                    <div ref="transcript" class="ember-dialogue-scroll" role="log" aria-live="polite">
+                        <p v-if="!history.length" class="ember-greeting">{{ w.scenes[run.location.scene] }} · {{ participantName(person) }}</p>
+                        <template v-for="turn in history" :key="turn.id">
+                            <p v-if="turn.kind !== 'interaction'" class="ember-player-line"><small>{{ c.player }}</small>{{ turn.player }}</p>
+                            <p v-if="turn.issue" class="ember-dialogue-issue">{{ dialogueCopy.issues[turn.issue] }}</p>
+                            <details v-if="turn.kind === 'receipt'"><summary>{{ dialogueCopy.rawReply }}</summary><p class="ember-prose">{{ turn.reply }}</p></details>
+                            <p v-else :class="turn.kind === 'interaction' ? 'ember-greeting' : 'ember-npc-line'">{{ turn.reply }}</p>
+                        </template>
+                        <div v-if="conversationFailure?.person === person && !history.some(turn => turn.id === conversationFailure?.actionId)" class="ember-dialogue-issue" role="status">
+                            <p>{{ errorText(conversationFailure) }}</p>
+                            <details v-if="conversationFailure.text"><summary>{{ c.receivedReply }}</summary><p class="ember-prose">{{ conversationFailure.text }}</p></details>
+                            <button type="button" @click="client.dismissConversationFailure">{{ c.acknowledge }}</button>
+                        </div>
+                        <p v-if="talking">{{ c.thinking }}</p>
+                    </div>
+                    <div v-if="choices.length && !run.pendingParley" class="ember-choices">
+                        <button v-for="id in choices" :key="id" :data-choice="id" type="button" :disabled="blocked" @click="isPerson(person) && act({ type: 'choice', id, person })">{{ CAMPAIGN_ACTIONS[id].label }}</button>
+                    </div>
+                    <button v-if="run.pendingParley?.decision === 'attack'" class="ember-primary" type="button" :disabled="blocked" @click="resolveParley">{{ dialogueCopy.fight }}</button>
+                    <form v-if="!run.pendingParley" class="ember-chat-form" @submit.prevent="send">
+                        <textarea v-model="draft" :maxlength="CAMPAIGN_RULES.playerTextLimit" :aria-label="c.input" :placeholder="c.input" :disabled="talking" rows="2" />
+                        <button v-if="talking" type="button" @click="client.cancelTalk">{{ c.cancel }}</button><button v-else class="ember-primary" type="submit" :disabled="blocked || !draft.trim()">{{ c.send }}</button>
+                    </form><small v-if="!run.pendingParley" class="ember-ai-note">{{ c.aiNotice }}</small>
+                </template>
+                <template v-else-if="panel === 'passage'"><h2>{{ w.passages[passage].title }}</h2><p class="ember-prose">{{ w.passages[passage].body }}</p></template>
+                <template v-else-if="panel === 'arrival'"><h2>{{ w.scenes.camp }}</h2><p class="ember-prose">{{ c.received }}</p><button class="ember-primary" type="button" @click="resume">{{ c.resume }}</button></template>
+                <template v-else-if="panel === 'ending'"><h2>{{ c.endingTitle }}</h2><p class="ember-prose">{{ c.ending }}</p><strong class="ember-continued">{{ c.continued }}</strong><p>{{ c.optional }}</p><button class="ember-primary" type="button" @click="resume">{{ c.remain }}</button></template>
+                <template v-else-if="run.phase === 'reward'">
+                    <h2>{{ c.reward }}</h2><p>{{ c.rewardDetail }}</p>
+                    <div class="ember-relics"><button v-for="offer in run.offers" :key="offer.id" type="button" :disabled="blocked" @click="act({ type: 'relic', id: offer.id })"><ExpeditionIcon :name="offer.id" /><h3>{{ RELIC_COPY[offer.id].name }} <small>{{ COPY.rank(offer.rank) }}</small></h3><p>{{ RELIC_COPY[offer.id].detail }}</p></button></div>
+                    <button type="button" :disabled="blocked" @click="act({ type: 'leave' })">{{ c.skip }}</button>
+                </template>
+                <template v-else-if="run.phase === 'lost'"><h2>{{ c.fallen }}</h2><p class="ember-prose">{{ c.fallenDetail }}</p><button class="ember-primary" type="button" :disabled="blocked" @click="act({ type: 'retry' })">{{ c.retry }}</button><button type="button" :disabled="blocked" @click="act({ type: 'retreat' })">{{ c.retreat }}</button></template>
+                <template v-else>
+                    <h2>{{ c.title }}</h2><p>{{ campaignObjective(run) }}</p><button class="ember-primary" type="button" :disabled="!!notice || generationActive" @click="resume">{{ c.resume }}</button>
+                    <div class="ember-pause-actions"><button type="button" @click="open('map')">{{ c.map }}</button><button type="button" @click="open('build')">{{ c.build }}</button><button v-if="run.location.scene === 'camp'" type="button" @click="open('wardrobe')">{{ c.wardrobe }}</button><button type="button" :aria-pressed="sound" @click="sound = !sound">{{ c.sound }}</button></div>
+                    <p class="ember-help ember-keyboard-help">{{ c.controls }}</p><p class="ember-help ember-touch-help">{{ c.touchControls }}</p>
+                    <button v-if="run.location.scene === 'camp' && run.phase === 'exploration'" type="button" @click="weapon = run.weapon; open('restart')">{{ c.restart }}</button>
                 </template>
             </section>
         </div>
-        <Teleport v-if="noticeHost" :to="dialogNoticeHost ?? noticeHost">
-            <aside v-if="notice || sceneError || generationActive" ref="noticePanel" class="exp-notice" role="alert" tabindex="-1">
-                <p>{{ sceneError ? c.presentationError[sceneError] : notice || c.story }}</p>
-                <button v-if="notice || failed" type="button" :disabled="busy || generationActive" @click="recover">{{ c.retry }}</button>
-                <button v-if="view?.writeState === 'conflict' || !view" type="button" :disabled="busy" @click="read">{{ c.refresh }}</button>
-                <button v-if="sceneError === 'sound'" type="button" @click="sound = false; sceneError = null">{{ c.close }}</button>
-            </aside>
-        </Teleport>
     </section>
 </template>

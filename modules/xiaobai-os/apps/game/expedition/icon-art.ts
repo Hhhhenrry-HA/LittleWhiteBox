@@ -1,9 +1,10 @@
 import type { Relic, RouteKind, Weapon } from './types.js';
 
-export type ExpeditionIconName = Relic | Weapon | RouteKind | 'coin' | 'heart' | 'bag' | 'journal' | 'sound' | 'mute' | 'pause' | 'close' | 'arrow' | 'lock' | 'dash' | 'crown' | 'help' | 'wardrobe';
+export type ExpeditionIconName = Relic | Weapon | RouteKind | 'coin' | 'heart' | 'bag' | 'journal' | 'map' | 'sound' | 'mute' | 'pause' | 'close' | 'arrow' | 'lock' | 'dash' | 'crown' | 'help' | 'wardrobe';
 type Art = { body: string; detail: string };
 /** Original vector silhouettes, shared between rewards, equipment, collection and controls. */
 export const ICON_ART: Record<ExpeditionIconName, Art> = {
+    map: { body: 'M8 15 24 9 40 15 56 9 56 49 40 55 24 49 8 55Z', detail: 'M24 9V49 M40 15V55 M14 38 20 31 30 36 47 23 M44 19 50 25 M50 19 44 25' },
     blade: { body: 'M31 5 38 15 26 39 20 35Z M18 32 30 39 27 44 15 37Z M19 41 24 44 17 57 12 54Z', detail: 'M31 12 23 35 M15 54 20 45' },
     bow: { body: 'M19 7Q51 28 21 57L25 48Q40 31 24 16Z M30 31 50 27 45 34Z', detail: 'M19 7 28 32 21 57 M13 37 48 29 M13 37 15 30 M13 37 20 39' },
     staff: { body: 'M29 28 35 29 31 58 26 57Z M32 6 42 17 32 30 22 17Z', detail: 'M32 6 32 30 M22 17 42 17 M19 9 15 13 M45 22 48 18 M23 46 35 47' },
