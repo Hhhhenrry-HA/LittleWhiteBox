@@ -9,6 +9,83 @@ import { administratorTurnMessages, historyBefore } from '../apps/administrator/
 const call = (name, args, id = 'test-call') => ({ text: '', toolCalls: [{ id, name, arguments: JSON.stringify(args) }] });
 const userTurn = (id, assistant = '原回复') => ({ id, createdAt: 1, user: { text: '请检查任务' }, assistant, toolMessages: [], operations: [], status: 'finished', error: '' });
 
+test('live activity follows observed stream changes, retains prose between thinking blocks and resets for tool continuation', async t => {
+    const h = await administratorHarness();
+    const requests = [], completions = [];
+    h.state.generate = request => new Promise((resolve, reject) => {
+        requests.push(request); completions.push(resolve);
+        request.signal.addEventListener('abort', () => reject(request.signal.reason), { once: true });
+    });
+    t.after(() => h.runtime.reset());
+    await h.request('send', { text: 'Check' });
+    while (!requests.length) { await tick(); }
+    const update = snapshot => requests[0].onStreamProgress(snapshot);
+    assert.equal(h.runtime.live().phase, 'waiting');
+    update({ text: '', thoughts: [] });
+    assert.equal(h.runtime.live().phase, 'waiting');
+    update({ thoughts: [{ text: 'thinking' }] });
+    assert.equal(h.runtime.live().phase, 'thinking');
+    update({ text: 'Checking.', thoughts: [{ text: 'thinking' }] });
+    assert.equal(h.runtime.live().phase, 'replying');
+    update({ thoughts: [{ text: 'thinking more' }] });
+    assert.equal(h.runtime.live().phase, 'thinking');
+    assert.equal(h.runtime.live().text, 'Checking.');
+    update({ text: 'Checking.', thoughts: [{ text: 'thinking more' }] });
+    assert.equal(h.runtime.live().phase, 'thinking', 'Repeated cumulative text is not new reply activity');
+    update({ toolCalls: [{ id: 'read', name: 'ChatRead', arguments: '{"from":55}' }] });
+    assert.equal(h.runtime.live().phase, 'tools');
+    completions[0](call('ChatRead', { from: 55 }, 'read'));
+    while (requests.length < 2) { await tick(); }
+    assert.equal(h.runtime.live().phase, 'waiting');
+    assert.equal(h.runtime.live().text, '');
+    update({ activity: 'thinking', text: 'late first request' });
+    assert.equal(h.runtime.live().phase, 'waiting');
+    assert.equal(h.runtime.live().text, '');
+    completions[1]({ text: 'Done.' }); await settled(h.runtime);
+    assert.equal(h.runtime.live(), null);
+    assert.equal(h.repository.read().turns[0].assistant, 'Done.');
+});
+
+test('native reasoning without visible text is observable; stop and regeneration keep activity and timing run-local', async t => {
+    t.mock.timers.enable({ apis: ['Date'], now: 50000 });
+    const h = await administratorHarness();
+    let request, finish;
+    h.state.generate = next => new Promise((resolve, reject) => {
+        request = next; finish = resolve;
+        next.signal.addEventListener('abort', () => reject(next.signal.reason), { once: true });
+    });
+    t.after(() => h.runtime.reset());
+    const sent = await h.request('send', { text: 'Check' });
+    while (!request) { await tick(); }
+    assert.equal(h.runtime.live().startedAt, 50000);
+    request.onStreamProgress({ activity: 'thinking', text: '', thoughts: [] });
+    assert.equal(h.runtime.live().phase, 'thinking');
+    request.onStreamProgress({ activity: 'waiting', text: '', thoughts: [] });
+    assert.equal(h.runtime.live().phase, 'waiting');
+    request.onStreamProgress({ activity: 'replying', text: 'First.' });
+    request.onStreamProgress({ activity: 'thinking', text: 'First.', thoughts: [] });
+    assert.equal(h.runtime.live().phase, 'thinking');
+    assert.equal(h.runtime.live().text, 'First.');
+    finish({ text: 'First.' }); await settled(h.runtime);
+    assert.equal(Object.hasOwn(h.repository.read().turns[0], 'startedAt'), false);
+    assert.equal(Object.hasOwn(h.repository.read().turns[0], 'phase'), false);
+    const previous = request; request = null; t.mock.timers.tick(8000);
+    await h.request('regenerate', { turnId: sent.turnId });
+    while (!request) { await tick(); }
+    assert.equal(h.runtime.live().startedAt, 58000);
+    assert.equal(h.runtime.live().phase, 'waiting');
+    previous.onStreamProgress({ activity: 'thinking', text: 'stale reply' });
+    assert.equal(h.runtime.live().phase, 'waiting');
+    request.onStreamProgress({ activity: 'thinking', text: '', thoughts: [] });
+    h.runtime.stop();
+    request.onStreamProgress({ activity: 'replying', text: 'late reply' });
+    assert.equal(h.runtime.live().phase, 'stopping');
+    assert.equal(h.runtime.live().text, '');
+    await settled(h.runtime);
+    assert.equal(h.runtime.live(), null);
+    assert.equal(h.repository.read().turns[0].status, 'interrupted');
+});
+
 test('regeneration after repeated provider failures reloads API configuration and sends only the original request', async () => {
     const h = await administratorHarness();
     let config = { api: 'first' };

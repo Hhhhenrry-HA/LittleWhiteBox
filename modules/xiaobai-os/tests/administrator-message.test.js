@@ -105,7 +105,7 @@ test('administrator message retains expanded text and only folds the work proces
     let revision = 0;
     function update(running, text = '') {
         row.value = administratorPage({ ...createAdministratorData(), revision: ++revision, turns: [processTurn] }).rows.find(row => row.role === 'assistant');
-        live.value = running ? { turnId: processTurn.id, text, totalChars: text.length, preview: [], phase: 'replying', process: administratorProcess(processTurn, true) } : null;
+        live.value = running ? { turnId: processTurn.id, startedAt: Date.now(), text, totalChars: text.length, preview: [], phase: 'replying', process: administratorProcess(processTurn, true) } : null;
     }
     function addRound(text) {
         processTurn.toolMessages.push({ role: 'assistant', content: text, toolCalls: [{ id: 'same-id', name: 'Read', arguments: '{"private":"arguments"}' }] },
@@ -113,6 +113,22 @@ test('administrator message retains expanded text and only folds the work proces
     }
     const narration = () => [...dom.document.querySelectorAll('.admin-process-narration')].map(element => element.textContent.trim());
     const fold = () => dom.document.querySelector('.admin-process-toggle');
+    t.mock.timers.enable({ apis: ['Date', 'setInterval'], now: 100000 });
+    update(true); live.value = { ...live.value, phase: 'waiting' }; await flush();
+    const status = () => dom.document.querySelector('.admin-live-status');
+    assert.equal(status().dataset.phase, 'waiting');
+    t.mock.timers.tick(3000); await flush();
+    assert.equal(status().querySelector('time').getAttribute('datetime'), 'PT3S');
+    live.value = { ...live.value, phase: 'thinking' }; await flush();
+    assert.equal(status().dataset.phase, 'thinking');
+    assert.equal(status().querySelector('time').closest('[role="status"]'), null, 'The timer must not be announced every second');
+    mountKey.value++; await flush();
+    assert.equal(status().querySelector('time').getAttribute('datetime'), 'PT3S', 'Reopening retains the live run clock');
+    update(true); await flush();
+    assert.equal(status().querySelector('time').getAttribute('datetime'), 'PT0S', 'A new run starts its own clock');
+    update(false); await flush();
+    assert.equal(status(), null);
+    t.mock.timers.reset();
     addRound('first preface'); update(true, 'next streamed preface'); await flush();
     assert.deepEqual(narration(), ['first preface']); assert.equal(fold(), null);
     for (let index = 2; index <= 7; index++) {

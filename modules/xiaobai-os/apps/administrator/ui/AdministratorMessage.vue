@@ -6,6 +6,7 @@ import { ADMINISTRATOR_POLICY as POLICY } from '../domain/policy.js';
 import { ADMINISTRATOR_COPY as C, administratorError } from './copy.js';
 import MessageMarkdown from '../../../shell/app-src/components/MessageMarkdown.vue';
 import AdministratorProcess from './AdministratorProcess.vue';
+import AdministratorStatus from './AdministratorStatus.vue';
 const props = withDefaults(defineProps<{ row: AdministratorRow; live?: AdministratorLive | null; unsavedProcess?: AdministratorProcessRound[] | null; bridge: XiaobaiOsAppProps['bridge']; chatIdentity: string; disabled: boolean }>(), { live: null, unsavedProcess: null });
 const emit = defineEmits<{ delete: [AdministratorRow]; regenerate: [AdministratorRow]; details: [AdministratorRow] }>();
 const menu = ref(false), content = ref(props.row.text), loading = ref(false), error = ref('');
@@ -61,7 +62,7 @@ async function loadThrough(end: number, refresh = false) {
         <template v-if="live">
             <div v-for="op in live.preview" :key="op.id" class="admin-operation-line"><i class="admin-operation-dot" :class="`is-${op.status}`" /><span>{{ op.name }}</span><small>{{ C.operations[op.status] }}</small></div>
             <small v-if="live.totalChars > POLICY.textBlock" class="admin-muted">{{ C.longReply }}</small>
-            <div class="admin-live-status" role="status" aria-live="polite"><span class="admin-working-dot" />{{ C.phases[live.phase] }}</div>
+            <AdministratorStatus :phase="live.phase" :started-at="live.startedAt" />
         </template>
         <nav v-if="!live && row.totalChars > content.length" class="admin-pager" :aria-label="C.messagePages">
             <button type="button" :disabled="loading" @click="loadThrough(content.length + POLICY.textBlock)">{{ C.moreText }}</button>

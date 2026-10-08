@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
 import { estimateTokenCount } from '../../../../agent-core/runtime/context-tokens.js';
 import AppDialog from '../../../shell/app-src/components/AppDialog.vue';
+import { shouldSendOnEnter } from '../../../shell/app-src/input/composer-keyboard.js';
 import FourthWallContextButton from './FourthWallContextButton.vue';
 import FourthWallMemory from './FourthWallMemory.vue';
 import type { XiaobaiOsAppProps } from '../../../shell/app-contract.js';
@@ -136,13 +137,11 @@ function recoverInput(content?: string): void {
 }
 
 function handleComposerKeydown(event: KeyboardEvent): void {
-    if (event.key !== 'Enter' || event.shiftKey || composing.value) {
+    if (!shouldSendOnEnter(event, composing.value)) {
         return;
     }
     event.preventDefault();
-    if (isGenerating.value) {
-        cancel();
-    } else {
+    if (!isGenerating.value) {
         void send();
     }
 }
@@ -328,6 +327,7 @@ onBeforeUnmount(() => { unsubscribe(); clearTimeout(previewTimer); });
             <textarea
                 v-model="draft"
                 rows="1"
+                enterkeyhint="enter"
                 placeholder="聊点什么..."
                 :disabled="saving"
                 @compositionstart="composing = true"
