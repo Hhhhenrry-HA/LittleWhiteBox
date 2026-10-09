@@ -1,52 +1,56 @@
 /* eslint-disable */
-import { B as h, D as f, E as y, Z as g, b as _, dt as k, rt as w, s as E, v as C, x as P, y as I } from "./xiaobai-os-app-navigation-DbF27MCy.js";
-import { _ as j, t as B } from "./xiaobai-os-MapBrowser-CzT6eKeq.js";
-var L = {
+import { B as v, D as f, E as _, Z as k, b as w, dt as E, rt as j, s as x, v as C, x as P, y as b } from "./xiaobai-os-app-navigation-DbF27MCy.js";
+import { T as I, t as M, w as N } from "./xiaobai-os-MapBrowser-COaYif7n.js";
+var A = {
   key: 0,
   class: "map-notice",
   role: "status"
-}, M = /* @__PURE__ */ y({
+}, B = /* @__PURE__ */ _({
   __name: "MapProjection",
   props: {
     map: {},
     chatIdentity: {},
     message: {}
   },
-  setup(a) {
-    return (n, o) => (h(), I(B, {
+  setup(t) {
+    return (s, i) => (v(), b(M, {
       compact: "",
       class: "map-projection-view",
-      map: a.map,
-      "chat-identity": a.chatIdentity
+      map: t.map,
+      "chat-identity": t.chatIdentity
     }, {
-      feedback: g(() => [a.message ? (h(), P("aside", L, [C("p", null, k(a.message), 1)])) : _("", !0)]),
+      feedback: k(() => [t.message ? (v(), P("aside", A, [C("p", null, E(t.message), 1)])) : w("", !0)]),
       _: 1
     }, 8, ["map", "chat-identity"]));
   }
-}), b = M;
-function O(a) {
-  a.replaceChildren();
-  const n = a.attachShadow({ mode: "open" }), o = document.createElement("link");
-  o.rel = "stylesheet", o.href = new URL(
+}), L = B, O = ":host{--map-projection-height:clamp(260px,50cqw,280px)}.map-projection-root{display:none}.map-projection-loading{box-sizing:border-box;height:var(--map-projection-height);font:inherit;color:inherit;text-align:center;place-items:center;padding:16px;display:grid}";
+function V(t) {
+  t.replaceChildren();
+  const s = t.attachShadow({ mode: "open" }), i = document.createElement("style");
+  i.textContent = O;
+  const a = document.createElement("link");
+  a.rel = "stylesheet", a.href = new URL(
     /* @vite-ignore */
     "xiaobai-os-app.css",
     import.meta.url
   ).href;
-  const t = document.createElement("div");
-  t.className = "map-projection-root", n.append(o, t);
-  const s = w({
+  const o = document.createElement("div");
+  o.className = "map-projection-root";
+  const n = document.createElement("div");
+  n.className = "map-projection-loading", n.setAttribute("role", "status"), n.textContent = N.loading, s.append(i, a, n, o);
+  const r = j({
     map: null,
     chatIdentity: "",
     message: ""
   });
-  let r = "";
-  const c = E({ render: () => f(b, s) });
-  let i = !0;
-  const m = () => {
-    i && (i = !1, c.unmount());
-  }, p = () => {
-    m(), t.setAttribute("role", "alert"), t.textContent = j.loadFailed;
-  }, l = [
+  let c = "";
+  const p = x({ render: () => f(L, r) });
+  let m = !0;
+  const l = () => {
+    m && (m = !1, p.unmount());
+  }, d = () => {
+    l(), o.remove(), a.remove(), n.setAttribute("role", "alert"), n.textContent = I.loadFailed;
+  }, u = [
     "keydown",
     "keyup",
     "keypress",
@@ -63,21 +67,21 @@ function O(a) {
     "dblclick",
     "wheel",
     "contextmenu"
-  ], d = (e) => e.stopPropagation();
-  for (const e of l) t.addEventListener(e, d);
-  return o.addEventListener("error", p), c.mount(t), {
-    update(e, v) {
-      t.classList.toggle("theme-dark", v === "dark");
-      const u = JSON.stringify(e.map);
-      u !== r && (s.map = e.map, r = u), s.chatIdentity = e.chatIdentity, s.message = e.message;
+  ], h = (e) => e.stopPropagation();
+  for (const e of u) o.addEventListener(e, h);
+  return a.addEventListener("error", d), p.mount(o), {
+    update(e, y) {
+      o.classList.toggle("theme-dark", y === "dark");
+      const g = JSON.stringify(e.map);
+      g !== c && (r.map = e.map, c = g), r.chatIdentity = e.chatIdentity, r.message = e.message;
     },
     dispose() {
-      o.removeEventListener("error", p);
-      for (const e of l) t.removeEventListener(e, d);
-      m(), n.replaceChildren();
+      a.removeEventListener("error", d);
+      for (const e of u) o.removeEventListener(e, h);
+      l(), s.replaceChildren();
     }
   };
 }
 export {
-  O as mountMapProjection
+  V as mountMapProjection
 };

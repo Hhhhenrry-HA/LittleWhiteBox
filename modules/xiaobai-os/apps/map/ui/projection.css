@@ -1,4 +1,5 @@
-.map-projection-root { all: initial; display: block; --os-status-height: 0px; --map-projection-height: clamp(260px,50cqw,280px); width: 100%; height: var(--map-projection-height); overflow: hidden; font-family: "MiSans", "HarmonyOS Sans SC", "PingFang SC", "Microsoft YaHei UI", sans-serif; font-synthesis: none; }
+.map-projection-root { all: initial; display: block; --os-status-height: 0px; width: 100%; height: var(--map-projection-height); overflow: hidden; font-family: "MiSans", "HarmonyOS Sans SC", "PingFang SC", "Microsoft YaHei UI", sans-serif; font-synthesis: none; }
+.map-projection-loading { display: none; }
 .map-projection-view { --map-ground: #edf3ef; --map-surface: #ffffff; --map-canvas-bg: #edf3ef; background: var(--map-ground); }
 .theme-dark .map-projection-view { --map-ground: #202f2b; --map-surface: #30433b; --map-canvas-bg: #202f2b; background: var(--map-ground); }
 .map-projection-view.map-app .map-top { position: absolute; inset: 52px 8px auto; margin: 0; padding: 0; max-height: calc(100% - 98px); z-index: 15; }

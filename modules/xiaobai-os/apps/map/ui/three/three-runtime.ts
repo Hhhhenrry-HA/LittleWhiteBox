@@ -8,6 +8,7 @@ import { SCENE_ASSET_URLS } from './scene3d-asset-catalog.js';
 import { sceneAssetKind } from './scene3d-asset-fit.js';
 import { createSceneLighting } from './scene3d-lighting.js';
 import { trackMapPointerLifetime } from '../map-pointer-lifetime.js';
+import { createReflectionEnvironment } from './scene3d-environment.js';
 
 export function createThreeRuntime(host: HTMLElement, labelHost: HTMLElement, options: { fallback: (reason: string) => void }) {
     let renderer: WebGLRenderer | undefined;
@@ -16,6 +17,7 @@ export function createThreeRuntime(host: HTMLElement, labelHost: HTMLElement, op
     let model: ReturnType<typeof createSceneModel> | undefined;
     let assets: ReturnType<typeof createSceneAssetSession> | undefined;
     let labels: ReturnType<typeof createSceneLabels> | undefined;
+    let reflection: ReturnType<typeof createReflectionEnvironment> | undefined;
     let resizeObserver: ResizeObserver | undefined;
     let visibilityObserver: IntersectionObserver | undefined;
     let themeObserver: MutationObserver | undefined;
@@ -37,7 +39,7 @@ export function createThreeRuntime(host: HTMLElement, labelHost: HTMLElement, op
         disposed = true; cancelFrame(); abort.abort();
         resizeObserver?.disconnect(); visibilityObserver?.disconnect(); themeObserver?.disconnect();
         pointerLifetime?.dispose(); controls?.dispose(); labels?.dispose(); model?.dispose(); assets?.dispose(); lighting.dispose();
-        renderer?.dispose(); renderer?.forceContextLoss(); renderer?.domElement.remove();
+        reflection?.dispose(); renderer?.dispose(); renderer?.forceContextLoss(); renderer?.domElement.remove();
         scene.clear();
     }
     function fail(reason: string) {
@@ -120,9 +122,10 @@ export function createThreeRuntime(host: HTMLElement, labelHost: HTMLElement, op
         model = createSceneModel(next, dark, assets, frame);
         modelKey = next.key;
         scene.add(model.group); model.updateWalls(lowWalls);
-        labels = createSceneLabels(labelHost, next, model.anchors);
+        labels = createSceneLabels(labelHost, next, model.anchors, model.markerTops);
         labels.symbols(symbolsReady);
         lighting.update(next, model.frame, sceneBounds(), model.anchors);
+        reflection?.update(next.lighting);
         if (reset) {fit();}
         // Release obsolete prototypes only after removing their old instances.
         assets?.sync(next.elements.flatMap(element => {const kind = sceneAssetKind(element); return kind ? [kind] : [];}));
@@ -146,6 +149,7 @@ export function createThreeRuntime(host: HTMLElement, labelHost: HTMLElement, op
         renderer.toneMapping = NeutralToneMapping;
         renderer.toneMappingExposure = 1.1;
         renderer.shadowMap.enabled = true; renderer.shadowMap.type = PCFSoftShadowMap;
+        reflection = createReflectionEnvironment(renderer, scene);
         renderer.debug.onShaderError = () => fail('图形驱动无法绘制三维，已切换二维。');
         const canvas = renderer.domElement;
         canvas.setAttribute('aria-label', '三维场景：左键拖动旋转，Shift + 左键拖动平移，滚轮缩放；单指平移，双指拖动旋转、捏合缩放；方向键旋转，Home 全图');

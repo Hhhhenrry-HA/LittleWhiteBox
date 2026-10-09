@@ -2,10 +2,10 @@
 import { t as qe } from "./xiaobai-os-message-markdown-C9E8FiNZ.js";
 import { B as s, E as ne, H as ie, L as Ie, N as me, Q as Ce, T as ye, Y as te, Z as we, _ as F, at as ke, b as c, ct as a, dt as r, f as ue, i as ze, it as pe, j as ce, lt as ae, m as H, nt as g, p as de, r as Oe, u as Ae, ut as De, v as n, w as oe, x as u, y as ee } from "./xiaobai-os-app-navigation-DbF27MCy.js";
 import { t as Le } from "./xiaobai-os-descriptor-DmDuv1pM.js";
+import { t as Ne } from "./xiaobai-os-_plugin-vue_export-helper-Dj7HTbfw.js";
 import { t as xe } from "./xiaobai-os-AppDialog-CirfCMYM.js";
-import { n as Ne } from "./xiaobai-os-context-tokens-D2DVKxEb.js";
+import { n as Ve } from "./xiaobai-os-context-tokens-D2DVKxEb.js";
 import { t as Te } from "./xiaobai-os-MessageMarkdown-VJwp1nY6.js";
-import { t as Ve } from "./xiaobai-os-_plugin-vue_export-helper-Dj7HTbfw.js";
 import { t as je } from "./xiaobai-os-composer-keyboard-8bQRrNyB.js";
 var O = Object.freeze({
   inputBudget: 158e3,
@@ -312,7 +312,7 @@ var Ue = [
       }, r(a(t).elapsed(k.value)), 9, st)) : c("", !0)
     ], 8, it));
   }
-}), Me = /* @__PURE__ */ Ve(rt, [["__scopeId", "data-v-8eac51f2"]]);
+}), Me = /* @__PURE__ */ Ne(rt, [["__scopeId", "data-v-8eac51f2"]]);
 async function $e(i, v) {
   let e = v.text;
   const { turnId: k, role: p, revision: _, totalChars: x } = v.row;
@@ -925,7 +925,7 @@ var ut = ["data-row-id"], ot = ["aria-label"], dt = ["src", "alt"], vt = [
     }
     return te([x, m], () => {
       w && clearTimeout(w), w = setTimeout(() => {
-        $.value = Ne(x.value) + (m.value ? O.imageTokens : 0);
+        $.value = Ve(x.value) + (m.value ? O.imageTokens : 0);
       }, 160);
     }), Ie(() => {
       A = v.bridge.subscribe((o) => {

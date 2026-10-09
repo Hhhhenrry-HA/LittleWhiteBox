@@ -1,7 +1,7 @@
 /* eslint-disable */
 import { B as m, E as B, H as k, N as L, Y as $, _ as F, b as C, ct as A, dt as u, lt as c, m as b, nt as g, ut as R, v as a, x as v, y as p } from "./xiaobai-os-app-navigation-DbF27MCy.js";
-import { i as O } from "./xiaobai-os-room-catalog-CkYfL_60.js";
-import { n as G, t as T } from "./xiaobai-os-GameResult-D8MPnlks.js";
+import { i as O } from "./xiaobai-os-room-catalog-oSJ_1b4S.js";
+import { n as G, t as T } from "./xiaobai-os-GameResult-SrP3vHma.js";
 var S = { class: "ladder-table" }, z = { class: "room-heading" }, E = { class: "ladder-prize" }, I = {
   class: "ladder-stairs",
   "aria-label": "五层阶梯"

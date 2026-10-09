@@ -1,9 +1,9 @@
 /* eslint-disable */
-import { B as h, C as se, E as Me, F as Ye, H as ce, L as Be, M as Fe, N as Oe, T as re, Y as Te, _ as Q, b as q, ct as t, dt as m, i as Ne, it as we, j as Ze, lt as ue, m as te, nt as W, p as je, r as Ue, ut as xe, v as s, w as ne, x as y, y as Ve } from "./xiaobai-os-app-navigation-DbF27MCy.js";
-import { C as We, Dt as Ke, Ft as ve, Nt as Xe, Pt as Le, Q as Qe, S as Ce, Y as Je, at as et, bt as tt, g as Re, gt as at, i as nt, m as it, t as ot, u as lt, yt as rt } from "./xiaobai-os-three.module-CTsY3HDb.js";
+import { B as h, C as se, E as Me, F as Ye, H as ce, L as Be, M as Fe, N as Oe, T as re, Y as Te, _ as J, b as q, ct as t, dt as m, i as je, it as we, j as Ze, lt as ue, m as te, nt as W, p as Ne, r as Ue, ut as xe, v as s, w as ne, x as y, y as Ve } from "./xiaobai-os-app-navigation-DbF27MCy.js";
+import { C as Ce, Ft as We, It as Le, Lt as ve, St as Ke, X as Xe, _ as Re, a as Je, d as Qe, et, h as tt, kt as at, n as nt, st as it, vt as ot, w as lt, xt as rt } from "./xiaobai-os-three.module-Ah3xIFOr.js";
 import { o as st, r as dt, t as ct } from "./xiaobai-os-performance-C_L35DGq.js";
 import { t as ut } from "./xiaobai-os-outfit-model-KHha2DC2.js";
-import { t as ft } from "./xiaobai-os-RoundedBoxGeometry-BZgOkuSP.js";
+import { t as ft } from "./xiaobai-os-RoundedBoxGeometry-6yGznEQp.js";
 import { a as vt, c as he, i as o, n as De, o as pe, r as de, s as pt, t as bt } from "./xiaobai-os-outfit-BedKY6Cl.js";
 var Ge = [
   "cat",
@@ -27,7 +27,7 @@ function me(e) {
 function He(e, d) {
   return (e.items.length - d.remaining.length - d.tray.length) / 3;
 }
-function $e(e, d) {
+function _e(e, d) {
   return me(e) === "playing" && e.remaining.includes(d.id) && (!d.above || !e.remaining.includes(d.above));
 }
 function gt(e, d, a) {
@@ -40,7 +40,7 @@ function gt(e, d, a) {
     ok: !1,
     reason: "missing"
   };
-  if (!$e(d, n)) return {
+  if (!_e(d, n)) return {
     ok: !1,
     reason: "blocked"
   };
@@ -163,13 +163,13 @@ function Ct(e) {
 function ze(e) {
   return e.abandoned ? "abandoned" : me(Ct(e));
 }
-function $t() {
+function _t() {
   return [...crypto.getRandomValues(new Uint32Array(4))].map((e) => e.toString(16).padStart(8, "0")).join("");
 }
-function _t(e, d) {
+function $t(e, d) {
   const a = we(null), n = W(!1), i = W(""), r = W(!1), u = we(null);
   let l = !1, p = null;
-  const f = Q(() => n.value || !!u.value || !a.value?.ready || a.value.writeState !== "ready" || a.value.pending);
+  const f = J(() => n.value || !!u.value || !a.value?.ready || a.value.writeState !== "ready" || a.value.pending);
   function g(C) {
     l || (a.value = C);
   }
@@ -177,16 +177,16 @@ function _t(e, d) {
     if (l || n.value) return !1;
     n.value = !0, p = null, r.value = !!L && "command" in L && L.command.type === "challenge", i.value = "";
     try {
-      const _ = await e.request(`game/moving/${C}`, {
+      const $ = await e.request(`game/moving/${C}`, {
         chatIdentity: d,
         ...L
       }, 35e3), B = p;
-      return g(B && B.revision >= _.result.revision ? B : _.result), a.value?.writeState === "ready" && !a.value.pending && (u.value = null), !0;
-    } catch (_) {
+      return g(B && B.revision >= $.result.revision ? B : $.result), a.value?.writeState === "ready" && !a.value.pending && (u.value = null), !0;
+    } catch ($) {
       if (!l) {
-        if (p && g(p), C === "sound") throw _;
-        i.value = pt(_);
-        const B = _ && typeof _ == "object" && "code" in _ ? String(_.code) : _ instanceof Error ? _.message : "";
+        if (p && g(p), C === "sound") throw $;
+        i.value = pt($);
+        const B = $ && typeof $ == "object" && "code" in $ ? String($.code) : $ instanceof Error ? $.message : "";
         L && "command" in L && (B.startsWith("moving_save_") || B.startsWith("host_request_")) && (u.value = L);
       }
       return !1;
@@ -199,7 +199,7 @@ function _t(e, d) {
     const L = C.payload;
     L.chatIdentity === d && (n.value ? p = L.state : g(L.state));
   });
-  async function $() {
+  async function _() {
     const C = u.value;
     !await P("confirm") || !a.value || a.value.writeState !== "ready" || a.value.pending || C && a.value.revision === C.revision && await P("act", C);
   }
@@ -210,12 +210,12 @@ function _t(e, d) {
     generating: r,
     blocked: f,
     failed: u,
-    notice: Q(() => i.value || (a.value?.writeState === "conflict" ? o.conflict : a.value?.pending || a.value?.writeState === "unconfirmed" ? o.saveProblem : "")),
+    notice: J(() => i.value || (a.value?.writeState === "conflict" ? o.conflict : a.value?.pending || a.value?.writeState === "unconfirmed" ? o.saveProblem : "")),
     read: () => P("read"),
-    recover: $,
+    recover: _,
     setSoundEnabled: (C) => P("sound", { enabled: C }),
     act: (C) => f.value ? Promise.resolve(!1) : P("act", {
-      actionId: $t(),
+      actionId: _t(),
       revision: a.value.revision,
       command: C
     }),
@@ -530,12 +530,12 @@ function ye(e, d) {
 function Et() {
   const e = /* @__PURE__ */ new Map(), d = /* @__PURE__ */ new Map();
   function a(n, i, r, u, l) {
-    d.has(i) || d.set(i, r()), e.has(u) || e.set(u, new Qe({
+    d.has(i) || d.set(i, r()), e.has(u) || e.set(u, new et({
       color: u,
       roughness: 0.55,
       metalness: 0.02
     }));
-    const p = new Je(d.get(i), e.get(u));
+    const p = new Xe(d.get(i), e.get(u));
     return p.position.set(...l), p.castShadow = !0, p.receiveShadow = !0, n.add(p), p;
   }
   return {
@@ -552,14 +552,14 @@ function Et() {
       return a(n, `b:${i}:${p}`, () => new ft(...i, 2, p), r, u);
     },
     ball(n, i, r, u) {
-      const l = a(n, "ball", () => new Ke(1, 16, 12), r, u);
+      const l = a(n, "ball", () => new at(1, 16, 12), r, u);
       return l.scale.set(...i), l;
     },
     cylinder(n, i, r, u, l, p, f = 24) {
-      return a(n, `c:${i}:${r}:${u}:${f}`, () => new it(i, r, u, f), l, p);
+      return a(n, `c:${i}:${r}:${u}:${f}`, () => new tt(i, r, u, f), l, p);
     },
     ring(n, i, r, u, l) {
-      return a(n, `t:${i}:${r}`, () => new Xe(i, r, 8, 32), u, l);
+      return a(n, `t:${i}:${r}`, () => new We(i, r, 8, 32), u, l);
     },
     dispose() {
       d.forEach((n) => n.dispose()), e.forEach((n) => n.dispose()), d.clear(), e.clear();
@@ -859,13 +859,13 @@ function At(e) {
       0
     ]);
   }
-  const [$, C, L] = ie[1];
+  const [_, C, L] = ie[1];
   l(i, [
     2.35,
     C,
     1.45
   ], n.cabinet, [
-    $,
+    _,
     C / 2,
     L
   ], 0.09), l(i, [
@@ -873,7 +873,7 @@ function At(e) {
     0.13,
     1.56
   ], "#fff7e6", [
-    $,
+    _,
     C,
     L
   ], 0.05);
@@ -883,7 +883,7 @@ function At(e) {
       0.27,
       0.04
     ], n.trim, [
-      $,
+      _,
       b,
       L + 0.75
     ], 0.03), l(i, [
@@ -891,17 +891,17 @@ function At(e) {
       0.055,
       0.08
     ], "#fff7e6", [
-      $,
+      _,
       b,
       L + 0.81
     ], 0.02);
-  const [_, B, K] = ie[2];
+  const [$, B, K] = ie[2];
   l(i, [
     1.85,
     B,
     1.45
   ], "#e9be94", [
-    _,
+    $,
     B / 2,
     K
   ], 0.06), l(i, [
@@ -909,7 +909,7 @@ function At(e) {
     B + 0.016,
     1.48
   ], "#ffe5b7", [
-    _,
+    $,
     B / 2,
     K
   ], 0.01), l(i, [
@@ -917,7 +917,7 @@ function At(e) {
     0.25,
     0.02
   ], "#fff7e6", [
-    _ - 0.45,
+    $ - 0.45,
     0.35,
     K + 0.74
   ], 0.03);
@@ -1137,29 +1137,29 @@ function At(e) {
     ], 0.03);
     E.visible = !1;
   }
-  const J = d.ring(a, 0.49, 0.03, "#e6ac44", [
+  const Q = d.ring(a, 0.49, 0.03, "#e6ac44", [
     0,
     0.1,
     0
   ]);
-  return J.rotation.x = -Math.PI / 2, J.visible = !1, J.castShadow = !1, {
+  return Q.rotation.x = -Math.PI / 2, Q.visible = !1, Q.castShadow = !1, {
     root: a,
     items: r,
     markers: u,
     mascot: F,
     parcel: Z,
     shipped: O,
-    halo: J,
+    halo: Q,
     dispose: () => d.dispose()
   };
 }
 var ke = 0.42;
 function Pt() {
-  return new et(-7, 7, 7, -7, 0.1, 100);
+  return new it(-7, 7, 7, -7, 0.1, 100);
 }
 function Tt(e, d, a, n) {
   e.position.set(Math.sin(n) * 18, 13.5, Math.cos(n) * 18), e.lookAt(0, 1, 0.1), e.updateMatrixWorld(!0);
-  const i = new nt(new ve(-4.8, -0.8, -3.7), new ve(4.8, 4.7, 4.4));
+  const i = new Je(new ve(-4.8, -0.8, -3.7), new ve(4.8, 4.7, 4.4));
   let r = 0, u = 0;
   for (const f of [i.min.x, i.max.x]) for (const g of [i.min.y, i.max.y]) for (const P of [i.min.z, i.max.z]) {
     const T = new ve(f, g, P).applyMatrix4(e.matrixWorldInverse);
@@ -1169,11 +1169,11 @@ function Tt(e, d, a, n) {
   e.top = p, e.bottom = -p, e.left = -p * l, e.right = -e.left, e.updateProjectionMatrix();
 }
 function Lt(e, d, a, n) {
-  const i = new tt(), r = Pt(), u = new at(), l = new Le(), p = new Le(), f = At(d), g = f.mascot.position.clone(), P = dt(f.mascot, g), T = new AbortController();
-  let $, C, L, _ = !1, B = !1, K = !0, U = !0, I = 0, Y = 0, z = 0, w = ke;
+  const i = new Ke(), r = Pt(), u = new ot(), l = new Le(), p = new Le(), f = At(d), g = f.mascot.position.clone(), P = dt(f.mascot, g), T = new AbortController();
+  let _, C, L, $ = !1, B = !1, K = !0, U = !0, I = 0, Y = 0, z = 0, w = ke;
   const A = 0.86;
   let F = a, Z = null, O = null;
-  const J = matchMedia("(prefers-reduced-motion: reduce)");
+  const Q = matchMedia("(prefers-reduced-motion: reduce)");
   let b;
   const E = new Re("#fff4df", 3.1);
   E.position.set(-3, 10, 7), E.castShadow = !0, E.shadow.mapSize.set(1024, 1024), Object.assign(E.shadow.camera, {
@@ -1183,13 +1183,13 @@ function Lt(e, d, a, n) {
     bottom: -8,
     near: 0.5,
     far: 30
-  }), E.shadow.normalBias = 0.025, E.shadow.bias = -15e-5, i.add(new We("#f3f8ff", "#b6b2b0", 2.1), E, f.root);
+  }), E.shadow.normalBias = 0.025, E.shadow.bias = -15e-5, i.add(new lt("#f3f8ff", "#b6b2b0", 2.1), E, f.root);
   const x = new Re("#dbeaff", 0.7);
   x.position.set(6, 5, -3), i.add(x);
   function c() {
     for (const M of d.items) {
       const R = f.items.get(M.id);
-      R.visible = F.remaining.includes(M.id), R.position.set(...M.position), R.scale.setScalar(A), f.markers.get(M.id).visible = $e(F, M);
+      R.visible = F.remaining.includes(M.id), R.position.set(...M.position), R.scale.setScalar(A), f.markers.get(M.id).visible = _e(F, M);
     }
     P.rest(f.parcel), f.shipped.children.forEach((M, R) => {
       M.visible = R < He(d, F);
@@ -1203,30 +1203,30 @@ function Lt(e, d, a, n) {
     I && (cancelAnimationFrame(I), I = 0);
   }
   function H(M, R) {
-    _ || B || (B = !0, G(), k(), n.error(M, R));
+    $ || B || (B = !0, G(), k(), n.error(M, R));
   }
   function X() {
     Tt(r, Y, z, w);
   }
   function ee(M) {
-    if (I = 0, !(_ || B || !K || !U || document.hidden || Y <= 0 || z <= 0))
+    if (I = 0, !($ || B || !K || !U || document.hidden || Y <= 0 || z <= 0))
       try {
         if (b) {
-          const v = Math.min(1, (M - b.started) / b.duration), j = b.action;
-          if (j?.type === "pick") {
-            const D = d.items.find((le) => le.id === j.id), S = f.items.get(D.id), V = Math.min(1, v * (b.packed ? 4 : 1));
+          const v = Math.min(1, (M - b.started) / b.duration), N = b.action;
+          if (N?.type === "pick") {
+            const D = d.items.find((le) => le.id === N.id), S = f.items.get(D.id), V = Math.min(1, v * (b.packed ? 4 : 1));
             S.visible = V < 1, S.position.set(...D.position).lerp(g.clone().add(new ve(0, 0.43, 0)), V), S.position.y += Math.sin(V * Math.PI) * 1.4, S.scale.setScalar(A * (1 - V * 0.7)), b.packed && P.carry(v, f.shipped.position.x, f.parcel);
           }
           v >= 1 && k();
         }
         const R = Z ? f.items.get(Z) : void 0;
-        f.halo.visible = !!R?.visible, R?.visible && (f.halo.position.copy(R.position), f.halo.position.y -= 0.28), $.getSize(p), (p.x !== Y || p.y !== z) && $.setSize(Y, z, !1), $.render(i, r), b && N();
+        f.halo.visible = !!R?.visible, R?.visible && (f.halo.position.copy(R.position), f.halo.position.y -= 0.28), _.getSize(p), (p.x !== Y || p.y !== z) && _.setSize(Y, z, !1), _.render(i, r), b && j();
       } catch (R) {
         H("graphicsFailed", R);
       }
   }
-  function N() {
-    !I && !_ && !B && K && U && !document.hidden && Y > 0 && z > 0 && (I = requestAnimationFrame(ee));
+  function j() {
+    !I && !$ && !B && K && U && !document.hidden && Y > 0 && z > 0 && (I = requestAnimationFrame(ee));
   }
   function ae() {
     const M = e.getBoundingClientRect();
@@ -1234,13 +1234,13 @@ function Lt(e, d, a, n) {
       G();
       return;
     }
-    X(), N();
+    X(), j();
   }
   function ge(M, R) {
-    const v = $.domElement.getBoundingClientRect();
+    const v = _.domElement.getBoundingClientRect();
     l.set((M - v.left) / v.width * 2 - 1, -(R - v.top) / v.height * 2 + 1), u.setFromCamera(l, r);
-    const j = u.intersectObject(f.root, !0);
-    for (const D of j) {
+    const N = u.intersectObject(f.root, !0);
+    for (const D of N) {
       let S = D.object, V = !0;
       for (; S; ) {
         if (!S.visible) {
@@ -1262,13 +1262,13 @@ function Lt(e, d, a, n) {
     }
     return null;
   }
-  function _e(M, R) {
+  function $e(M, R) {
     const v = ge(M, R);
     if (v?.type === "pick") return v;
-    const j = $.domElement.getBoundingClientRect(), D = d.items.flatMap((S) => {
+    const N = _.domElement.getBoundingClientRect(), D = d.items.flatMap((S) => {
       const V = f.items.get(S.id);
       if (!V.visible) return [];
-      const le = V.position.clone().project(r), Ie = j.left + (le.x + 1) * j.width / 2, Ae = j.top + (1 - le.y) * j.height / 2, Pe = Math.hypot(M - Ie, R - Ae);
+      const le = V.position.clone().project(r), Ie = N.left + (le.x + 1) * N.width / 2, Ae = N.top + (1 - le.y) * N.height / 2, Pe = Math.hypot(M - Ie, R - Ae);
       return Pe <= 22 ? [{
         id: S.id,
         x: Ie,
@@ -1283,21 +1283,21 @@ function Lt(e, d, a, n) {
     return v;
   }
   function fe(M) {
-    r.zoom = Math.max(1, Math.min(1.8, r.zoom * M)), r.updateProjectionMatrix(), N();
+    r.zoom = Math.max(1, Math.min(1.8, r.zoom * M)), r.updateProjectionMatrix(), j();
   }
   function Se(M) {
-    w = Math.max(-0.15, Math.min(1.05, w + M)), X(), N();
+    w = Math.max(-0.15, Math.min(1.05, w + M)), X(), j();
   }
   function Ee() {
-    _ || (_ = !0, G(), k(), T.abort(), C?.disconnect(), L?.disconnect(), f.dispose(), E.shadow.dispose(), i.clear(), $?.dispose(), $?.forceContextLoss(), $?.domElement.remove());
+    $ || ($ = !0, G(), k(), T.abort(), C?.disconnect(), L?.disconnect(), f.dispose(), E.shadow.dispose(), i.clear(), _?.dispose(), _?.forceContextLoss(), _?.domElement.remove());
   }
   try {
-    $ = new ot({
+    _ = new nt({
       alpha: !0,
       antialias: !0,
       powerPreference: "low-power"
-    }), $.setPixelRatio(Math.min(window.devicePixelRatio, 2)), $.setClearColor(new lt("#e6f1ed"), 0), $.outputColorSpace = rt, $.toneMapping = 7, $.shadowMap.enabled = !0, $.shadowMap.type = 2, $.debug.onShaderError = () => H("graphicsFailed");
-    const M = $.domElement;
+    }), _.setPixelRatio(Math.min(window.devicePixelRatio, 2)), _.setClearColor(new Qe("#e6f1ed"), 0), _.outputColorSpace = rt, _.toneMapping = 7, _.shadowMap.enabled = !0, _.shadowMap.type = 2, _.debug.onShaderError = () => H("graphicsFailed");
+    const M = _.domElement;
     M.setAttribute("aria-label", o.sceneLabel), M.setAttribute("role", "img"), M.tabIndex = 0, e.prepend(M);
     const R = { signal: T.signal };
     M.addEventListener("webglcontextlost", (v) => {
@@ -1313,20 +1313,20 @@ function Lt(e, d, a, n) {
     }, R), M.addEventListener("pointermove", (v) => {
       if (!O) {
         if (b || v.pointerType !== "mouse") return;
-        const S = _e(v.clientX, v.clientY), V = S?.type === "pick" ? S.id : null;
-        M.style.cursor = S ? "pointer" : "grab", Z !== V && (Z = V, N());
+        const S = $e(v.clientX, v.clientY), V = S?.type === "pick" ? S.id : null;
+        M.style.cursor = S ? "pointer" : "grab", Z !== V && (Z = V, j());
         return;
       }
       if (O.id !== v.pointerId) return;
-      const j = v.clientX - O.x, D = v.clientY - O.y;
-      Math.hypot(j, D) > 7 && (O.dragged = !0), O.dragged && (w = Math.max(-0.15, Math.min(1.05, O.yaw - j / Y * 2.4)), X(), N());
+      const N = v.clientX - O.x, D = v.clientY - O.y;
+      Math.hypot(N, D) > 7 && (O.dragged = !0), O.dragged && (w = Math.max(-0.15, Math.min(1.05, O.yaw - N / Y * 2.4)), X(), j());
     }, R), M.addEventListener("pointerleave", () => {
-      Z && (Z = null, N());
+      Z && (Z = null, j());
     }, R), M.addEventListener("pointerup", (v) => {
       if (!O || O.id !== v.pointerId) return;
-      const j = O.dragged;
-      if (O = null, M.hasPointerCapture(v.pointerId) && M.releasePointerCapture(v.pointerId), !j && !b) {
-        const D = _e(v.clientX, v.clientY);
+      const N = O.dragged;
+      if (O = null, M.hasPointerCapture(v.pointerId) && M.releasePointerCapture(v.pointerId), !N && !b) {
+        const D = $e(v.clientX, v.clientY);
         D && n.action(D);
       }
     }, R);
@@ -1334,16 +1334,16 @@ function Lt(e, d, a, n) {
       O = null;
     }, R);
     return M.addEventListener("keydown", (v) => {
-      v.key === "ArrowLeft" || v.key === "ArrowRight" ? (v.preventDefault(), Se(v.key === "ArrowLeft" ? -0.14 : 0.14)) : v.key === "Home" ? (v.preventDefault(), w = ke, r.zoom = 1, X(), N()) : v.key === "+" || v.key === "=" ? (v.preventDefault(), fe(1.15)) : v.key === "-" && (v.preventDefault(), fe(1 / 1.15));
+      v.key === "ArrowLeft" || v.key === "ArrowRight" ? (v.preventDefault(), Se(v.key === "ArrowLeft" ? -0.14 : 0.14)) : v.key === "Home" ? (v.preventDefault(), w = ke, r.zoom = 1, X(), j()) : v.key === "+" || v.key === "=" ? (v.preventDefault(), fe(1.15)) : v.key === "-" && (v.preventDefault(), fe(1 / 1.15));
     }, R), M.addEventListener("wheel", (v) => {
       v.preventDefault(), fe(v.deltaY < 0 ? 1.1 : 1 / 1.1);
     }, {
       ...R,
       passive: !1
     }), document.addEventListener("visibilitychange", () => {
-      document.hidden ? (G(), k(), O = null) : N();
-    }, R), J.addEventListener("change", () => {
-      k(), N();
+      document.hidden ? (G(), k(), O = null) : j();
+    }, R), Q.addEventListener("change", () => {
+      k(), j();
     }, R), C = new ResizeObserver(() => {
       try {
         ae();
@@ -1351,40 +1351,40 @@ function Lt(e, d, a, n) {
         H("graphicsFailed", v);
       }
     }), C.observe(e), L = new IntersectionObserver((v) => {
-      U = v[0].isIntersecting, U ? N() : (G(), k());
+      U = v[0].isIntersecting, U ? j() : (G(), k());
     }), L.observe(e), c(), ae(), {
       dispose: Ee,
       rotate: Se,
       zoom: fe,
       visibleItems() {
-        const v = $.domElement.getBoundingClientRect();
-        return d.items.filter((j) => {
-          const D = f.items.get(j.id);
+        const v = _.domElement.getBoundingClientRect();
+        return d.items.filter((N) => {
+          const D = f.items.get(N.id);
           if (!D.visible) return !1;
           const S = D.position.clone().project(r);
           if (Math.abs(S.x) > 1 || Math.abs(S.y) > 1) return !1;
           const V = ge(v.left + (S.x + 1) * v.width / 2, v.top + (1 - S.y) * v.height / 2);
-          return V?.type === "pick" && V.id === j.id;
-        }).map((j) => j.id);
+          return V?.type === "pick" && V.id === N.id;
+        }).map((N) => N.id);
       },
       resetView() {
-        w = ke, r.zoom = 1, X(), N();
+        w = ke, r.zoom = 1, X(), j();
       },
       focus(v) {
-        Z = v, N();
+        Z = v, j();
       },
       active(v) {
         K = v, v ? ae() : (G(), k(), O = null);
       },
-      update(v, j, D = !1) {
-        return k(), F = v, c(), J.matches || !K || document.hidden || B || !U || !j ? (N(), Promise.resolve()) : new Promise((S) => {
+      update(v, N, D = !1) {
+        return k(), F = v, c(), Q.matches || !K || document.hidden || B || !U || !N ? (j(), Promise.resolve()) : new Promise((S) => {
           b = {
             started: performance.now(),
             duration: D ? ct : 300,
-            action: j,
+            action: N,
             packed: D,
             done: S
-          }, N();
+          }, j();
         });
       }
     };
@@ -1395,7 +1395,7 @@ function Lt(e, d, a, n) {
 var Rt = {
   key: 0,
   fill: "currentColor"
-}, zt = { key: 1 }, Bt = { key: 2 }, Ft = { key: 3 }, Ot = { key: 4 }, Nt = { key: 5 }, jt = { key: 6 }, Vt = { key: 7 }, Dt = /* @__PURE__ */ Me({
+}, zt = { key: 1 }, Bt = { key: 2 }, Ft = { key: 3 }, Ot = { key: 4 }, jt = { key: 5 }, Nt = { key: 6 }, Vt = { key: 7 }, Dt = /* @__PURE__ */ Me({
   __name: "ItemIcon",
   props: { kind: {} },
   setup(e) {
@@ -1404,7 +1404,7 @@ var Rt = {
       "aria-hidden": "true",
       style: xe({ color: t(qe)[e.kind] }),
       class: "moving-item-icon"
-    }, [e.kind === "cat" ? (h(), y("g", Rt, [...a[0] || (a[0] = [se('<path d="M11 23 10 6 22 15 29 14 39 6 38 26Z"></path><ellipse cx="24" cy="31" rx="14" ry="12"></ellipse><ellipse cx="24" cy="23" rx="17" ry="13"></ellipse><path d="M38 33q10 5 3 10" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"></path><g fill="#354353"><circle cx="18" cy="23" r="1.6"></circle><circle cx="30" cy="23" r="1.6"></circle></g><path d="m22 27 2 2 2-2" fill="#ce778a"></path>', 6)])])) : e.kind === "toast" ? (h(), y("g", zt, [...a[1] || (a[1] = [se('<path d="M9 17C1 2 47 2 39 17v24H9Z" fill="currentColor"></path><path d="M14 19C8 8 40 8 34 19v17H14Z" fill="#ffe9b9"></path><rect x="19" y="18" width="12" height="9" rx="2" fill="#f8ca54" transform="rotate(10 25 22)"></rect><g fill="#354353"><circle cx="19" cy="31" r="1.5"></circle><circle cx="29" cy="31" r="1.5"></circle></g>', 4)])])) : e.kind === "ufo" ? (h(), y("g", Bt, [...a[2] || (a[2] = [se('<ellipse cx="24" cy="29" rx="22" ry="8" fill="currentColor"></ellipse><path d="M12 27v-5a12 12 0 0 1 24 0v5Z" fill="#b0e4e8"></path><path d="M5 28q19 10 38 0" stroke="#eee4a6" stroke-width="3" fill="none"></path><g fill="#354353"><circle cx="20" cy="23" r="1.5"></circle><circle cx="28" cy="23" r="1.5"></circle></g>', 4)])])) : e.kind === "cup" ? (h(), y("g", Ft, [...a[3] || (a[3] = [se('<path d="M33 17h5c11 0 9 16-4 16" fill="none" stroke="currentColor" stroke-width="5"></path><path d="M7 13h29l-3 24q-12 8-23 0Z" fill="currentColor"></path><ellipse cx="21.5" cy="13" rx="14.5" ry="5" fill="#e7d9fb"></ellipse><ellipse cx="21.5" cy="13" rx="10" ry="3" fill="#806254"></ellipse><g fill="#354353"><circle cx="16" cy="27" r="1.5"></circle><circle cx="26" cy="27" r="1.5"></circle></g>', 5)])])) : e.kind === "duck" ? (h(), y("g", Ot, [...a[4] || (a[4] = [se('<ellipse cx="24" cy="32" rx="18" ry="11" fill="currentColor"></ellipse><circle cx="25" cy="17" r="12" fill="currentColor"></circle><ellipse cx="26" cy="23" rx="8" ry="4" fill="#f49c44"></ellipse><g fill="#354353"><circle cx="20" cy="16" r="1.5"></circle><circle cx="30" cy="16" r="1.5"></circle></g><path d="M11 30q3 8 9 4" fill="none" stroke="#eba93b" stroke-width="2"></path>', 5)])])) : e.kind === "plant" ? (h(), y("g", Nt, [...a[5] || (a[5] = [
+    }, [e.kind === "cat" ? (h(), y("g", Rt, [...a[0] || (a[0] = [se('<path d="M11 23 10 6 22 15 29 14 39 6 38 26Z"></path><ellipse cx="24" cy="31" rx="14" ry="12"></ellipse><ellipse cx="24" cy="23" rx="17" ry="13"></ellipse><path d="M38 33q10 5 3 10" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"></path><g fill="#354353"><circle cx="18" cy="23" r="1.6"></circle><circle cx="30" cy="23" r="1.6"></circle></g><path d="m22 27 2 2 2-2" fill="#ce778a"></path>', 6)])])) : e.kind === "toast" ? (h(), y("g", zt, [...a[1] || (a[1] = [se('<path d="M9 17C1 2 47 2 39 17v24H9Z" fill="currentColor"></path><path d="M14 19C8 8 40 8 34 19v17H14Z" fill="#ffe9b9"></path><rect x="19" y="18" width="12" height="9" rx="2" fill="#f8ca54" transform="rotate(10 25 22)"></rect><g fill="#354353"><circle cx="19" cy="31" r="1.5"></circle><circle cx="29" cy="31" r="1.5"></circle></g>', 4)])])) : e.kind === "ufo" ? (h(), y("g", Bt, [...a[2] || (a[2] = [se('<ellipse cx="24" cy="29" rx="22" ry="8" fill="currentColor"></ellipse><path d="M12 27v-5a12 12 0 0 1 24 0v5Z" fill="#b0e4e8"></path><path d="M5 28q19 10 38 0" stroke="#eee4a6" stroke-width="3" fill="none"></path><g fill="#354353"><circle cx="20" cy="23" r="1.5"></circle><circle cx="28" cy="23" r="1.5"></circle></g>', 4)])])) : e.kind === "cup" ? (h(), y("g", Ft, [...a[3] || (a[3] = [se('<path d="M33 17h5c11 0 9 16-4 16" fill="none" stroke="currentColor" stroke-width="5"></path><path d="M7 13h29l-3 24q-12 8-23 0Z" fill="currentColor"></path><ellipse cx="21.5" cy="13" rx="14.5" ry="5" fill="#e7d9fb"></ellipse><ellipse cx="21.5" cy="13" rx="10" ry="3" fill="#806254"></ellipse><g fill="#354353"><circle cx="16" cy="27" r="1.5"></circle><circle cx="26" cy="27" r="1.5"></circle></g>', 5)])])) : e.kind === "duck" ? (h(), y("g", Ot, [...a[4] || (a[4] = [se('<ellipse cx="24" cy="32" rx="18" ry="11" fill="currentColor"></ellipse><circle cx="25" cy="17" r="12" fill="currentColor"></circle><ellipse cx="26" cy="23" rx="8" ry="4" fill="#f49c44"></ellipse><g fill="#354353"><circle cx="20" cy="16" r="1.5"></circle><circle cx="30" cy="16" r="1.5"></circle></g><path d="M11 30q3 8 9 4" fill="none" stroke="#eba93b" stroke-width="2"></path>', 5)])])) : e.kind === "plant" ? (h(), y("g", jt, [...a[5] || (a[5] = [
       s("path", {
         d: "M24 33V10",
         stroke: "currentColor",
@@ -1426,7 +1426,7 @@ var Rt = {
         rx: "2",
         fill: "#ffc1ac"
       }, null, -1)
-    ])])) : e.kind === "potion" ? (h(), y("g", jt, [...a[6] || (a[6] = [
+    ])])) : e.kind === "potion" ? (h(), y("g", Nt, [...a[6] || (a[6] = [
       s("path", {
         d: "M19 9h10v10c19 14 8 25-5 25S0 33 19 19Z",
         fill: "currentColor"
@@ -1483,7 +1483,7 @@ var Rt = {
 }, Ut = ["aria-label"], Wt = { class: "moving-stage" }, Kt = {
   key: 0,
   class: "moving-view-tools"
-}, Xt = { class: "moving-rotate" }, Qt = ["aria-label"], Jt = ["aria-label"], ea = ["aria-label"], ta = ["aria-label"], aa = ["aria-label"], na = {
+}, Xt = { class: "moving-rotate" }, Jt = ["aria-label"], Qt = ["aria-label"], ea = ["aria-label"], ta = ["aria-label"], aa = ["aria-label"], na = {
   key: 0,
   class: "moving-gesture-hint"
 }, ia = {
@@ -1506,13 +1506,13 @@ var Rt = {
 }, pa = { class: "moving-tools" }, ba = ["disabled"], ma = ["disabled"], ga = ["disabled"], ha = ["disabled"], ya = ["disabled", "aria-pressed"], ka = { id: "moving-board-dialog" }, wa = ["aria-label"], xa = { class: "moving-rules" }, Ma = {
   key: 0,
   class: "moving-session-note"
-}, Ca = { class: "moving-session-note" }, $a = [
+}, Ca = { class: "moving-session-note" }, _a = [
   "data-item-id",
   "disabled",
   "aria-label",
   "onFocus",
   "onClick"
-], _a = ["aria-label"], Sa = /* @__PURE__ */ Me({
+], $a = ["aria-label"], Sa = /* @__PURE__ */ Me({
   __name: "MovingBoard",
   props: {
     active: {},
@@ -1533,45 +1533,45 @@ var Rt = {
     "animation"
   ],
   setup(e, { emit: d }) {
-    const a = e, n = d, i = Q(() => a.active.level), r = Q(() => a.active.stage === null), u = Q(() => a.active.abandoned ? "abandoned" : me(a.board)), l = Q(() => He(i.value, a.board)), p = W(!1), f = W(!1), g = St(), P = Q(() => a.soundEnabled && g.available), T = W(o.description), $ = W(""), C = W(null), L = W(null), _ = W(null), B = we([]), K = Q(() => Array.from({ length: 7 }, (x, c) => i.value.items.find((k) => k.id === a.board.tray[c]))), U = Q(() => i.value.stacks.map((x) => x.map((c) => i.value.items.find((k) => k.id === c)).filter((c) => a.board.remaining.includes(c.id))));
+    const a = e, n = d, i = J(() => a.active.level), r = J(() => a.active.stage === null), u = J(() => a.active.abandoned ? "abandoned" : me(a.board)), l = J(() => He(i.value, a.board)), p = W(!1), f = W(!1), g = St(), P = J(() => a.soundEnabled && g.available), T = W(o.description), _ = W(""), C = W(null), L = W(null), $ = W(null), B = we([]), K = J(() => Array.from({ length: 7 }, (x, c) => i.value.items.find((k) => k.id === a.board.tray[c]))), U = J(() => i.value.stacks.map((x) => x.map((c) => i.value.items.find((k) => k.id === c)).filter((c) => a.board.remaining.includes(c.id))));
     let I, Y = !1, z = !0, w = 0, A = null;
-    Ne(L, () => {
-      _.value = null;
+    je(L, () => {
+      $.value = null;
     });
     function F(x) {
       p.value = x, n("animation", x);
     }
     function Z() {
-      if (I?.dispose(), I = void 0, $.value = "", !!C.value)
+      if (I?.dispose(), I = void 0, _.value = "", !!C.value)
         try {
           I = Lt(C.value, i.value, a.board, {
             action: O,
             error: (x, c) => {
-              $.value = o[x], F(!1), c && console.error(o[x], c);
+              _.value = o[x], F(!1), c && console.error(o[x], c);
             }
           }), I.active(z);
         } catch (x) {
-          $.value = o.graphicsFailed, console.error(o.graphicsFailed, x);
+          _.value = o.graphicsFailed, console.error(o.graphicsFailed, x);
         }
     }
     function O(x) {
-      if (a.disabled || p.value || $.value || !z) return;
+      if (a.disabled || p.value || _.value || !z) return;
       const c = i.value.items.find((k) => k.id === x.id);
-      if (!c || !$e(a.board, c)) {
+      if (!c || !_e(a.board, c)) {
         T.value = vt.blocked, c?.above && I?.focus(c.above);
         return;
       }
-      _.value = null, A = P.value ? g.setEnabled(!0).catch((k) => (T.value = o.soundFailed, console.error(o.soundFailed, k), !1)) : null, n("pick", x.id);
+      $.value = null, A = P.value ? g.setEnabled(!0).catch((k) => (T.value = o.soundFailed, console.error(o.soundFailed, k), !1)) : null, n("pick", x.id);
     }
     Te(() => a.active.id, async () => {
       w++, A = null, F(!1), T.value = o.description, await Ze(), Z();
     }), Te(() => a.board, async (x, c) => {
       if (!Y || !c || c === x) return;
-      const k = ++w, G = c.remaining.filter((N) => !x.remaining.includes(N)), H = G.length === 1 && x.remaining.length === c.remaining.length - 1, X = H ? i.value.items.find((N) => N.id === G[0]) : void 0, ee = H && c.tray.length + 1 - x.tray.length === 3;
+      const k = ++w, G = c.remaining.filter((j) => !x.remaining.includes(j)), H = G.length === 1 && x.remaining.length === c.remaining.length - 1, X = H ? i.value.items.find((j) => j.id === G[0]) : void 0, ee = H && c.tray.length + 1 - x.tray.length === 3;
       if (X) {
         if (T.value = ee ? o.packed(de[X.kind]) : o.selected(de[X.kind]), z) {
-          const N = A;
-          A = null, N ? N.then((ae) => {
+          const j = A;
+          A = null, j ? j.then((ae) => {
             ae && z && k === w && g.play(ee);
           }).catch((ae) => {
             T.value = o.soundFailed, console.error(o.soundFailed, ae);
@@ -1583,7 +1583,7 @@ var Rt = {
         id: X.id
       } : void 0, ee), k === w && F(!1);
     });
-    async function J() {
+    async function Q() {
       if (f.value) return;
       f.value = !0;
       const x = !P.value;
@@ -1607,14 +1607,14 @@ var Rt = {
       }
     }
     function E() {
-      B.value = I?.visibleItems() ?? [], _.value = "items";
+      B.value = I?.visibleItems() ?? [], $.value = "items";
     }
     return Be(() => {
       Y = !0, Z();
     }), Fe(() => {
       z = !0, I?.active(!0);
     }), Ye(() => {
-      z = !1, A = null, _.value = null, I?.active(!1), b();
+      z = !1, A = null, $.value = null, I?.active(!1), b();
     }), Oe(() => {
       w++, Y = !1, I?.dispose(), F(!1), g.dispose().catch((x) => console.error(o.soundFailed, x));
     }), (x, c) => (h(), y("section", {
@@ -1639,7 +1639,7 @@ var Rt = {
         type: "button",
         class: "moving-icon-button",
         "aria-label": t(o).rules,
-        onClick: c[1] || (c[1] = (k) => _.value = "rules")
+        onClick: c[1] || (c[1] = (k) => $.value = "rules")
       }, "?", 8, Ut)]),
       s("div", Wt, [
         s("div", {
@@ -1647,17 +1647,17 @@ var Rt = {
           ref: C,
           class: "moving-canvas"
         }, null, 512),
-        $.value ? q("", !0) : (h(), y("div", Kt, [s("div", Xt, [
+        _.value ? q("", !0) : (h(), y("div", Kt, [s("div", Xt, [
           s("button", {
             type: "button",
             "aria-label": t(o).zoomOut,
             onClick: c[2] || (c[2] = (k) => t(I)?.zoom(1 / 1.2))
-          }, "−", 8, Qt),
+          }, "−", 8, Jt),
           s("button", {
             type: "button",
             "aria-label": t(o).rotateLeft,
             onClick: c[3] || (c[3] = (k) => t(I)?.rotate(-0.18))
-          }, "↶", 8, Jt),
+          }, "↶", 8, Qt),
           s("button", {
             type: "button",
             "aria-label": t(o).resetView,
@@ -1674,8 +1674,8 @@ var Rt = {
             onClick: c[6] || (c[6] = (k) => t(I)?.zoom(1.2))
           }, "+", 8, aa)
         ]), u.value === "playing" ? (h(), y("span", na, m(t(o).rotateHint), 1)) : q("", !0)])),
-        $.value ? (h(), y("section", ia, [
-          s("p", null, m($.value), 1),
+        _.value ? (h(), y("section", ia, [
+          s("p", null, m(_.value), 1),
           s("button", {
             type: "button",
             class: "moving-primary",
@@ -1740,7 +1740,7 @@ var Rt = {
           }, "↩ " + m(t(o).undo), 9, ba)),
           s("button", {
             type: "button",
-            disabled: e.disabled || p.value || !!$.value || u.value !== "playing",
+            disabled: e.disabled || p.value || !!_.value || u.value !== "playing",
             onClick: E
           }, "⌕ " + m(t(o).pickList), 9, ma),
           r.value ? (h(), y("button", {
@@ -1758,14 +1758,14 @@ var Rt = {
             type: "button",
             disabled: e.disabled || f.value || !t(g).available,
             "aria-pressed": P.value,
-            onClick: J
+            onClick: Q
           }, m(P.value ? t(o).soundOn : t(o).soundOff), 9, ya)
         ])
       ]),
-      _.value ? (h(), y("div", {
+      $.value ? (h(), y("div", {
         key: 0,
         class: "moving-modal-backdrop",
-        onClick: c[17] || (c[17] = je((k) => _.value = null, ["self"]))
+        onClick: c[17] || (c[17] = Ne((k) => $.value = null, ["self"]))
       }, [s("section", {
         ref_key: "dialog",
         ref: L,
@@ -1774,11 +1774,11 @@ var Rt = {
         "aria-modal": "true",
         "aria-labelledby": "moving-board-dialog",
         tabindex: "-1"
-      }, [s("header", null, [s("h2", ka, m(_.value === "rules" ? t(o).rules : t(o).pickListTitle), 1), s("button", {
+      }, [s("header", null, [s("h2", ka, m($.value === "rules" ? t(o).rules : t(o).pickListTitle), 1), s("button", {
         type: "button",
         "aria-label": t(o).close,
-        onClick: c[15] || (c[15] = (k) => _.value = null)
-      }, "×", 8, wa)]), _.value === "rules" ? (h(), y(te, { key: 0 }, [
+        onClick: c[15] || (c[15] = (k) => $.value = null)
+      }, "×", 8, wa)]), $.value === "rules" ? (h(), y(te, { key: 0 }, [
         s("ol", xa, [(h(!0), y(te, null, ce(t(o).instructions, (k) => (h(), y("li", { key: k }, m(k), 1))), 128))]),
         r.value ? (h(), y("p", Ma, m(t(o).admissionBody), 1)) : q("", !0),
         s("p", Ca, m(t(o).sessionNote), 1)
@@ -1798,10 +1798,10 @@ var Rt = {
           type: "pick",
           id: H.id
         })
-      }, [re(oe, { kind: H.kind }, null, 8, ["kind"]), s("span", null, m(t(o).available), 1)], 40, $a)) : (h(), y("div", {
+      }, [re(oe, { kind: H.kind }, null, 8, ["kind"]), s("span", null, m(t(o).available), 1)], 40, _a)) : (h(), y("div", {
         key: 1,
         "aria-label": `${t(de)[H.kind]} · ${t(o).underneath}`
-      }, [re(oe, { kind: H.kind }, null, 8, ["kind"])], 8, _a))], 64))), 128))]))), 128))], 4))], 512)])) : q("", !0)
+      }, [re(oe, { kind: H.kind }, null, 8, ["kind"])], 8, $a))], 64))), 128))]))), 128))], 4))], 512)])) : q("", !0)
     ], 10, Gt));
   }
 }), Ea = Sa, Ia = {
@@ -1818,7 +1818,7 @@ var Rt = {
 }, za = ["aria-label"], Ba = { class: "moving-chapter-card chapter-home" }, Fa = {
   class: "moving-chapter-art",
   "aria-hidden": "true"
-}, Oa = { class: "moving-chapter-title" }, Na = { class: "moving-stage-path" }, ja = [
+}, Oa = { class: "moving-chapter-title" }, ja = { class: "moving-stage-path" }, Na = [
   "data-stage",
   "aria-label",
   "disabled",
@@ -1836,7 +1836,7 @@ var Rt = {
   key: 5,
   class: "moving-generating",
   role: "status"
-}, Ka = { id: "moving-confirm-title" }, Xa = ["aria-label"], Qa = ["data-tier"], Ja = { class: "moving-confirm-actions" }, en = ["disabled"], tn = /* @__PURE__ */ Me({
+}, Ka = { id: "moving-confirm-title" }, Xa = ["aria-label"], Ja = ["data-tier"], Qa = { class: "moving-confirm-actions" }, en = ["disabled"], tn = /* @__PURE__ */ Me({
   __name: "MovingRoom",
   props: {
     bridge: {},
@@ -1844,10 +1844,10 @@ var Rt = {
     generationActive: { type: Boolean }
   },
   setup(e) {
-    const d = e, a = _t(d.bridge, d.chatIdentity), { view: n, busy: i, blocked: r, notice: u, generating: l, failed: p } = a, f = W("chapters"), g = W(null), P = W(null), T = W(!1);
-    let $ = !1;
-    const C = Q(() => n.value?.active ?? null), L = Q(() => !!C.value && C.value.stage === null && ze(C.value) === "playing"), _ = Q(() => n.value?.completed.length === be.length), B = Q(() => r.value || T.value || d.generationActive);
-    Ne(P, () => {
+    const d = e, a = $t(d.bridge, d.chatIdentity), { view: n, busy: i, blocked: r, notice: u, generating: l, failed: p } = a, f = W("chapters"), g = W(null), P = W(null), T = W(!1);
+    let _ = !1;
+    const C = J(() => n.value?.active ?? null), L = J(() => !!C.value && C.value.stage === null && ze(C.value) === "playing"), $ = J(() => n.value?.completed.length === be.length), B = J(() => r.value || T.value || d.generationActive);
+    je(P, () => {
       g.value = null;
     }), Ue(() => f.value !== "board" ? !1 : (f.value = "chapters", !0));
     async function K(z) {
@@ -1867,9 +1867,9 @@ var Rt = {
       C.value && (C.value.stage !== null && C.value.stage < be.length - 1 ? await K(C.value.stage + 1) : I());
     }
     return Be(async () => {
-      await a.read(), C.value && (f.value = "board"), $ = !0;
+      await a.read(), C.value && (f.value = "board"), _ = !0;
     }), Fe(() => {
-      $ && a.read();
+      _ && a.read();
     }), Oe(a.dispose), (z, w) => (h(), y("div", { class: ue(["moving-app", { "moving-app-board": f.value === "board" }]) }, [
       t(n) ? (h(), y("div", Ia, [s("span", null, m(t(o).balance(t(n).balance)), 1), s("small", Aa, m(e.generationActive ? t(o).storyBusy : t(i) ? t(l) ? t(o).generating : t(o).saving : t(n).writeState === "ready" && !t(p) ? t(o).saved : ""), 1)])) : q("", !0),
       t(u) || t(p) || t(n)?.pending || t(n)?.writeState === "failed" ? (h(), y("aside", Pa, [
@@ -1931,14 +1931,14 @@ var Rt = {
             s("h2", null, m(t(pe).weekend), 1),
             s("p", null, m(t(o).firstReward), 1)
           ]),
-          s("ol", Na, [(h(!0), y(te, null, ce(t(be), (A, F) => (h(), y("li", { key: A.key }, [s("button", {
+          s("ol", ja, [(h(!0), y(te, null, ce(t(be), (A, F) => (h(), y("li", { key: A.key }, [s("button", {
             type: "button",
             "data-stage": F,
             "aria-label": t(o).stage(F),
             disabled: B.value || L.value || F > t(n).completed.length,
             class: ue({ "is-cleared": t(n).completed.includes(F) }),
             onClick: (Z) => K(F)
-          }, [s("strong", null, m(F + 1), 1), s("small", null, m(t(n).completed.includes(F) ? "✓" : "+" + t(he).chapterReward), 1)], 10, ja)]))), 128))])
+          }, [s("strong", null, m(F + 1), 1), s("small", null, m(t(n).completed.includes(F) ? "✓" : "+" + t(he).chapterReward), 1)], 10, Na)]))), 128))])
         ]),
         s("article", Va, [
           s("div", Da, [re(oe, { kind: "potion" }), re(oe, { kind: "star" })]),
@@ -1947,14 +1947,14 @@ var Rt = {
             s("h2", null, m(t(pe).witch), 1),
             s("p", null, m(t(o).challengeTerms), 1)
           ]),
-          _.value ? (h(), y("p", qa, m(t(o).tierProgress(t(n).challenge)), 1)) : q("", !0),
+          $.value ? (h(), y("p", qa, m(t(o).tierProgress(t(n).challenge)), 1)) : q("", !0),
           s("button", {
             type: "button",
             class: "moving-primary",
-            disabled: B.value || !_.value || !L.value && t(n).balance < t(he).challengeFee,
+            disabled: B.value || !$.value || !L.value && t(n).balance < t(he).challengeFee,
             onClick: I
-          }, m(L.value ? t(o).resume : _.value ? t(o).admission : t(o).challengeLocked), 9, Ya),
-          _.value && !L.value && t(n).balance < t(he).challengeFee ? (h(), y("p", Za, m(t(o).noFunds), 1)) : q("", !0)
+          }, m(L.value ? t(o).resume : $.value ? t(o).admission : t(o).challengeLocked), 9, Ya),
+          $.value && !L.value && t(n).balance < t(he).challengeFee ? (h(), y("p", Za, m(t(o).noFunds), 1)) : q("", !0)
         ]),
         s("p", Ua, m(t(o).sessionNote), 1)
       ], 8, za)) : q("", !0) : (h(), y("p", Ra, m(t(o).loading), 1)),
@@ -1962,7 +1962,7 @@ var Rt = {
       g.value ? (h(), y("div", {
         key: 6,
         class: "moving-modal-backdrop moving-room-theme",
-        onClick: w[11] || (w[11] = je((A) => g.value = null, ["self"]))
+        onClick: w[11] || (w[11] = Ne((A) => g.value = null, ["self"]))
       }, [s("section", {
         ref_key: "dialog",
         ref: P,
@@ -1986,8 +1986,8 @@ var Rt = {
           ne(m(t(o).tierProgress(t(n).challenge)), 1),
           w[13] || (w[13] = s("br", null, null, -1)),
           ne(m(t(o).tierRule), 1)
-        ], 8, Qa)) : q("", !0),
-        s("div", Ja, [s("button", {
+        ], 8, Ja)) : q("", !0),
+        s("div", Qa, [s("button", {
           type: "button",
           class: "moving-plain",
           onClick: w[10] || (w[10] = (A) => g.value = null)

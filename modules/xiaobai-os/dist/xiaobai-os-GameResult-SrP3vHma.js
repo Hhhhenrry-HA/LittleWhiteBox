@@ -1,6 +1,6 @@
 /* eslint-disable */
 import { B as r, E as k, H as y, L as p, Q as C, _ as c, b, dt as s, lt as $, m as g, nt as f, u as x, v as a, w as h, x as u } from "./xiaobai-os-app-navigation-DbF27MCy.js";
-import { r as G } from "./xiaobai-os-room-catalog-CkYfL_60.js";
+import { r as G } from "./xiaobai-os-room-catalog-oSJ_1b4S.js";
 var N = { class: "game-entry-art" }, B = ["src"], L = { class: "game-entry-rules" }, R = {
   key: 0,
   class: "game-entry-blocked"

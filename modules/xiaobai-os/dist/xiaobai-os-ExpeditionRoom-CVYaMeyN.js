@@ -1,11 +1,11 @@
 /* eslint-disable */
 import { B as E, E as xt, F as kn, H as _e, L as ea, M as _n, N as Zt, Q as Sn, T as Xe, U as en, Y as Se, Z as tn, _ as oe, b as V, ct as p, dt as P, f as ps, i as an, it as Ct, j as Ft, lt as Et, m as ne, nt as J, p as rt, r as Pn, st as ms, u as In, ut as Pa, v as S, w as Le, x as $, y as qt } from "./xiaobai-os-app-navigation-DbF27MCy.js";
-import { n as va, t as ys } from "./xiaobai-os-context-tokens-D2DVKxEb.js";
 import { t as Fa } from "./xiaobai-os-_plugin-vue_export-helper-Dj7HTbfw.js";
+import { n as va, t as ys } from "./xiaobai-os-context-tokens-D2DVKxEb.js";
 import { t as gs } from "./xiaobai-os-constants-CDXgazQ7.js";
-import { C as zn, Ct as vs, Dt as bs, Ft as _t, J as xs, Nt as nn, Q as ws, S as St, St as sn, X as Ms, Y as vt, a as ks, at as Cn, bt as En, c as _s, f as Ss, g as Ia, gt as Ps, ht as Is, i as zs, m as Cs, t as An, u as qa, v as on, vt as ba, w as rn, x as Es, xt as As, yt as $n } from "./xiaobai-os-three.module-CTsY3HDb.js";
+import { C as _t, Ct as vs, Ft as nn, Lt as St, S as bs, St as zn, T as sn, Tt as xs, X as vt, Y as ws, Z as Ms, _ as Ia, _t as ks, a as _s, bt as ba, d as qa, et as Ss, h as Ps, kt as Is, l as zs, n as Cn, o as Cs, p as Es, st as En, vt as As, w as An, wt as on, xt as $n, y as rn } from "./xiaobai-os-three.module-Ah3xIFOr.js";
 import { n as $s, o as Ts } from "./xiaobai-os-performance-C_L35DGq.js";
-import { t as Zs } from "./xiaobai-os-BufferGeometryUtils-DP7IVjMs.js";
+import { t as Zs } from "./xiaobai-os-BufferGeometryUtils-BLglYbHr.js";
 import { C as Tn, S as js, _ as Pe, a as gt, b as za, c as me, d as xa, f as Ca, g as Zn, h as Rs, i as Dt, l as j, m as ie, n as Ea, o as ct, p as Be, r as kt, s as wa, t as Y, u as Gt, v as W, x as ye, y as dt } from "./xiaobai-os-copy-B9-7_xqW.js";
 function ta(e) {
   return e.seed = Math.imul(e.seed, 1664525) + 1013904223 >>> 0, e.seed / 4294967296;
@@ -3706,22 +3706,22 @@ function Bo(e, t) {
   };
 }
 function Oa() {
-  const e = new sn();
+  const e = new on();
   e.absarc(0, 0, 1.1, 0, Math.PI, !1), e.lineTo(-0.86, 0), e.absarc(0, 0, 0.86, Math.PI, 0, !0), e.closePath();
   const t = {
-    box: new ks(1, 1, 1),
-    sphere: new bs(1, 20, 14),
-    rock: new rn(1, 0),
-    crown: new rn(1, 1),
-    cylinder: new Cs(1, 1, 1, 24),
-    cone: new Ss(1, 1, 12),
-    disc: new _s(1, 48),
+    box: new Cs(1, 1, 1),
+    sphere: new Is(1, 20, 14),
+    rock: new sn(1, 0),
+    crown: new sn(1, 1),
+    cylinder: new Ps(1, 1, 1, 24),
+    cone: new Es(1, 1, 12),
+    disc: new zs(1, 48),
     ring: new ba(0.965, 1, 64),
     arc: new ba(0.87, 1, 40, 1, -0.2, Math.PI * 1.3),
     torus: new nn(1, 0.08, 8, 40),
     stroke: new ba(0.975, 1, 48, 1, -0.2, Math.PI * 1.3),
     crescent: new nn(1, 0.14, 6, 24, Math.PI * 1.45),
-    arch: new on(e, {
+    arch: new rn(e, {
       depth: 1,
       bevelEnabled: !1,
       curveSegments: 24
@@ -3736,7 +3736,7 @@ function Oa() {
       opacity: u,
       depthWrite: u === 1,
       side: 2
-    }) : new ws({
+    }) : new Ss({
       color: l,
       roughness: y ? 0.34 : 0.88,
       metalness: y ? 0.45 : 0.02,
@@ -3756,7 +3756,7 @@ function Oa() {
     0,
     0
   ]) {
-    const u = new St();
+    const u = new _t();
     return u.position.set(...h), l.add(u), u;
   }
   function d(l, h, u, y, f, g = 1, v = !1, b = 0.04) {
@@ -3779,22 +3779,22 @@ function Oa() {
     const g = JSON.stringify([h, f]);
     let v = s.get(g);
     if (!v) {
-      const m = new sn();
-      h.forEach(([x, w], k) => k ? m.lineTo(x, w) : m.moveTo(x, w)), m.closePath(), v = f ? new on(m, {
+      const m = new on();
+      h.forEach(([x, w], k) => k ? m.lineTo(x, w) : m.moveTo(x, w)), m.closePath(), v = f ? new rn(m, {
         depth: f,
         steps: 1,
         bevelEnabled: !0,
         bevelThickness: f * 0.3,
         bevelSize: f * 0.3,
         bevelSegments: 2
-      }) : new vs(m), s.set(g, v);
+      }) : new xs(m), s.set(g, v);
     }
     const b = new vt(v, n(u));
     return b.position.set(...y), b.castShadow = !0, b.receiveShadow = !0, l.add(b), b;
   }
   function c(l) {
     l.updateMatrixWorld(!0);
-    const h = l.matrixWorld.clone().invert(), u = new xs(), y = /* @__PURE__ */ new Map();
+    const h = l.matrixWorld.clone().invert(), u = new ws(), y = /* @__PURE__ */ new Map();
     l.traverse((g) => {
       if (!(g instanceof vt) || Array.isArray(g.material)) return;
       const v = (g.geometry.index ? g.geometry.toNonIndexed() : g.geometry.clone()).applyMatrix4(u.multiplyMatrices(h, g.matrixWorld)), b = `${g.material.uuid}/${g.castShadow}/${g.receiveShadow}`;
@@ -5591,7 +5591,7 @@ function Uo(e, t) {
   } };
 }
 function Yo(e, t) {
-  const s = e.group(t), a = new As({
+  const s = e.group(t), a = new vs({
     transparent: !0,
     depthWrite: !1,
     uniforms: {
@@ -6749,7 +6749,7 @@ function Vo(e) {
   t.className = "exp-world-ward", t.style.setProperty("--ward-color", Ee.ward), t.setAttribute("role", "meter"), t.setAttribute("aria-label", Y.ward), t.setAttribute("aria-valuemin", "0"), t.setAttribute("aria-valuemax", String(W.maxHp)), t.append(s);
   const a = document.createElement("div");
   a.className = "exp-world-defense", e.append(t, a), t.hidden = !0, a.hidden = !0;
-  const n = new _t();
+  const n = new St();
   let i = null, r = 0, d = 0, o = null;
   function c(l, h, u, y, f, g, v) {
     n.set(h, u, y).project(f), l.style.left = `${(n.x * 0.5 + 0.5) * g}px`, l.style.top = `${(-n.y * 0.5 + 0.5) * v}px`;
@@ -8186,7 +8186,7 @@ function ri(e, t, s) {
   return Math.hypot(e.x - t[0] - a * i, e.y - t[1] - n * i);
 }
 function li(e, t, s) {
-  const a = [], n = /* @__PURE__ */ new Map(), i = [], r = new Is(), d = new _t(), o = new Ps(), c = [];
+  const a = [], n = /* @__PURE__ */ new Map(), i = [], r = new ks(), d = new St(), o = new As(), c = [];
   function l(m, x) {
     const w = `${Math.floor(m / 16)}:${Math.floor(x / 16)}`;
     let k = n.get(w);
@@ -8332,7 +8332,7 @@ function li(e, t, s) {
         footprint: A
       }, s.vista === "interior") ? (a.push(e.bake(R)), i.push({
         root: R,
-        bounds: new zs().setFromObject(R).expandByScalar(0.35)
+        bounds: new _s().setFromObject(R).expandByScalar(0.35)
       })) : R.removeFromParent();
     }
   }
@@ -9312,7 +9312,7 @@ function ui(e, t, s, a) {
   };
 }
 function fi(e, t, s = {}) {
-  const a = new An({
+  const a = new Cn({
     antialias: !0,
     alpha: !1,
     powerPreference: s.world ? "default" : "high-performance"
@@ -9320,8 +9320,8 @@ function fi(e, t, s = {}) {
   a.outputColorSpace = $n, a.toneMapping = 7, a.toneMappingExposure = 1, a.setPixelRatio(Math.min(devicePixelRatio || 1, s.world ? 1.4 : 1.8)), a.shadowMap.enabled = !0, a.shadowMap.type = 2, e.append(a.domElement);
   const n = document.createElement("div");
   n.className = "exp-world-labels", n.setAttribute("aria-hidden", "true"), e.append(n);
-  const i = new En(), r = new Cn(-10, 10, 10, -10, 0.1, 180), d = Oa();
-  i.add(new zn("#effbff", "#74918a", 2));
+  const i = new zn(), r = new En(-10, 10, 10, -10, 0.1, 180), d = Oa();
+  i.add(new An("#effbff", "#74918a", 2));
   const o = new Ia("#fff4e5", 1.9);
   o.position.set(-12, 25, 13), o.castShadow = !0;
   const c = s.world ? 1024 : 1536;
@@ -9334,9 +9334,9 @@ function fi(e, t, s = {}) {
   }), o.shadow.bias = -4e-4, o.shadow.normalBias = 0.035, o.shadow.radius = 3, i.add(o);
   const l = new Ia("#c3edff", 1.1);
   l.position.set(7, 8, -15), i.add(l);
-  const h = new St(), u = new St(), y = new St();
+  const h = new _t(), u = new _t(), y = new _t();
   i.add(h, u, y);
-  const f = es(d, u), g = Ko(d, y), v = Yo(d, y), b = Vo(n), m = /* @__PURE__ */ new Map(), x = /* @__PURE__ */ new Map(), w = [], k = matchMedia("(prefers-reduced-motion: reduce)"), z = new _t(), C = new _t();
+  const f = es(d, u), g = Ko(d, y), v = Yo(d, y), b = Vo(n), m = /* @__PURE__ */ new Map(), x = /* @__PURE__ */ new Map(), w = [], k = matchMedia("(prefers-reduced-motion: reduce)"), z = new St(), C = new St();
   let L = null, N = "", A = "", R = "", q = null, G = null, B = NaN, T = NaN, O = NaN, xe = null, $e = 0, je = 0, ge = 1, de = 1, ce = !0, ke = !1, Te = !1, ze = 0, Mt = -1, nt = 0, Ve = !1;
   function Rt() {
     const re = e.getBoundingClientRect();
@@ -9353,7 +9353,7 @@ function fi(e, t, s = {}) {
     const H = document.createElement("span");
     H.className = ot ? "exp-damage is-player" : re < 0 ? "exp-damage is-heal" : "exp-damage", H.textContent = `${re < 0 ? "+" : ""}${Math.ceil(Math.abs(re))}`, n.append(H), w.push({
       element: H,
-      position: new _t(pt, 2, mt),
+      position: new St(pt, 2, mt),
       born: st
     });
   }
@@ -9379,7 +9379,7 @@ function fi(e, t, s = {}) {
           };
         } else
           G = null, L = Ho(d, h, mt, Q);
-        Ve = !1, N = Ua, i.background = new qa(ca.sky), i.fog = new Es(ca.haze, 42, 95);
+        Ve = !1, N = Ua, i.background = new qa(ca.sky), i.fog = new bs(ca.haze, 42, 95);
       } else H && xe !== H.facts && G?.setFacts(H.facts);
       (!!Q != !!q || Q && q && Q.tick < Mt) && (Z(), nt = Q?.player.hp ?? 0);
       const da = !H && st !== "battle", it = ge < 600, Ya = it || de < 400, ha = ge / de, Nt = H ? it ? Ue.mobileWidth : Math.max(Ue.minimumWidth, ha * (de < 400 ? Ue.shortSpan : Ue.tallSpan)) : da ? it ? 13 : 28 : it ? 18.5 : Math.max(27, ha * (de < 400 ? 14 : 23)), Ga = Math.max(0, W.arena - Nt / 2 + 0.5), ua = H ? H.location.position.x : Q ? Ya ? Q.player.x * 0.62 : Math.max(-Ga, Math.min(Ga, Q.player.x * 0.62)) : it ? 0 : 5.5, fa = H ? H.location.position.y - Ue.lead : Q ? Q.player.y * (Ya ? 0.62 : 0.2) - 0.4 : it ? -4.2 : -11.8;
@@ -10332,7 +10332,7 @@ var Ci = { class: "ember-map-header" }, Ei = ["aria-pressed"], Ai = ["viewBox", 
       g = !0;
       let C;
       try {
-        C = new An({
+        C = new Cn({
           antialias: !0,
           alpha: !1
         });
@@ -10341,11 +10341,11 @@ var Ci = { class: "ember-map-header" }, Ei = ["aria-pressed"], Ai = ["viewBox", 
         return;
       }
       C.outputColorSpace = $n, C.toneMapping = 7, C.setPixelRatio(Math.min(devicePixelRatio, 1.8));
-      const L = new En(), N = Oa(), A = new St(), R = es(N, A);
-      L.background = new qa("#d1e0e1"), L.add(A, new zn("#fff6e3", "#627c93", 2.7));
+      const L = new zn(), N = Oa(), A = new _t(), R = es(N, A);
+      L.background = new qa("#d1e0e1"), L.add(A, new An("#fff6e3", "#627c93", 2.7));
       const q = new Ia("#fff6e0", 3);
       q.position.set(-3, 5, 6), L.add(q);
-      const G = new Cn(-2.35, 2.35, 2.35, -2.35, 0.1, 30);
+      const G = new En(-2.35, 2.35, 2.35, -2.35, 0.1, 30);
       G.position.set(0, 2.9, 7), G.lookAt(0, 1.7, 0), C.setSize(144, 144, !1);
       try {
         for (const ce of y.value)

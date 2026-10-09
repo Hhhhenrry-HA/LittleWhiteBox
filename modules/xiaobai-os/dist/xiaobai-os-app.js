@@ -151,15 +151,15 @@ function Ve(t) {
   });
 }
 var qe = Object.freeze({
-  administrator: () => import("./xiaobai-os-AdministratorApp-FoSApskF.js"),
-  dice: () => import("./xiaobai-os-DiceApp-CWRcyqVL.js"),
+  administrator: () => import("./xiaobai-os-AdministratorApp-D18hyntc.js"),
+  dice: () => import("./xiaobai-os-DiceApp-DV3A-3fM.js"),
   "agent-api": () => import("./xiaobai-os-AgentApiApp-B8s-eq4l.js"),
   "fourth-wall": () => import("./xiaobai-os-FourthWallApp-DLxVtHNf.js"),
   wallet: () => import("./xiaobai-os-WalletApp-hJFGatMU.js"),
   shop: () => import("./xiaobai-os-ShopApp-JhsbQgfy.js"),
   bank: () => import("./xiaobai-os-BankApp-BWMoRKRt.js"),
-  game: () => import("./xiaobai-os-GameApp-w5xUTzOj.js"),
-  map: () => import("./xiaobai-os-MapApp-BheRilV1.js"),
+  game: () => import("./xiaobai-os-GameApp-CCm-lf_5.js"),
+  map: () => import("./xiaobai-os-MapApp-Bv5nHunz.js"),
   messages: () => import("./xiaobai-os-MessagesApp-CnvVIx6k.js"),
   tasks: () => import("./xiaobai-os-TasksApp-Bcxy_ZHY.js"),
   world: () => import("./xiaobai-os-WorldApp-fJo1usvo.js"),

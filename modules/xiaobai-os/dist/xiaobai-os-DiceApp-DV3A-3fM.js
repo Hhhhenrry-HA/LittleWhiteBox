@@ -1,8 +1,8 @@
 /* eslint-disable */
 import { B as d, E as J, H as B, L as ie, N as le, Y as se, Z as ne, _ as P, b as g, ct as l, dt as n, it as Q, lt as Y, m as j, nt as R, v as e, w as D, x as u, y as W } from "./xiaobai-os-app-navigation-DbF27MCy.js";
 import { n as re } from "./xiaobai-os-frame-bridge-BfVuKvnh.js";
-import { t as oe } from "./xiaobai-os-AppDialog-CirfCMYM.js";
 import { t as X } from "./xiaobai-os-_plugin-vue_export-helper-Dj7HTbfw.js";
+import { t as oe } from "./xiaobai-os-AppDialog-CirfCMYM.js";
 function m(t, i) {
   return {
     label: t,

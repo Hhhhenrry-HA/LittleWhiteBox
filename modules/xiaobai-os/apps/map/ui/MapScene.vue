@@ -4,10 +4,15 @@ import type { MapScene } from '../../../domains/map/types.js';
 import { loadMapSymbols } from './map-symbols.js';
 import MapViewport from './MapViewport.vue';
 import SceneMaterials from './SceneMaterials.vue';
+import SceneGroundMaterials from './SceneGroundMaterials.vue';
+import { isGroundSurface } from './scene-ground-surfaces.js';
 import SceneObject from './SceneObject.vue';
+import SceneSymbol from './SceneSymbol.vue';
+import { organicSymbol } from './scene-organic-symbols.js';
+import { formSurface, isGrowth } from './scene-forms.js';
 import { elementPresentation, sortedSceneElements } from './map-presentation.js';
 import { sceneLightingMatrix, sceneLightingStyle, sceneLightSources, sceneSurfaceMatrix, SCENE_SUN_DIRECTION } from './scene-lighting.js';
-import { forestCanopies, hasSceneObjectDrawing, isAreaElement, isSceneMarker, isSceneObject, sceneElementBounds, sceneElementLabelPoint, sceneElementPath, sceneElementTransform } from './scene-geometry.js';
+import { forestCanopies, hasSceneObjectDrawing, isAreaElement, isSceneMarker, isSceneObject, sceneElementBounds, sceneElementLabelPoint, sceneElementPath, sceneElementTransform, sceneUnitScale } from './scene-geometry.js';
 import { materialBase } from './scene-materials.js';
 import './scene.css';
 
@@ -19,10 +24,11 @@ const lightMatrix = computed(() => sceneLightingMatrix(props.scene.lighting));
 const lights = computed(() => sceneLightSources(props.scene));
 const sunShadow = computed(() => {
     if (props.scene.lighting?.natural !== 'sunlight') {return undefined;}
-    const unit = Math.max(props.scene.viewBox[2], props.scene.viewBox[3]) / 14;
+    const unit = sceneUnitScale(props.scene.viewBox[2], props.scene.viewBox[3]);
     return `translate(${-SCENE_SUN_DIRECTION[0] * unit * .45} ${-SCENE_SUN_DIRECTION[2] * unit * .45})`;
 });
 const crowns = computed(() => forestCanopies(props.scene.elements));
+const groundMaterials = computed(() => [...new Set(props.scene.elements.filter(element => element.category === 'terrain' && isAreaElement(element) && !isSceneObject(element)).map(element => element.material).filter(isGroundSurface))]);
 const items = computed(() => sortedSceneElements(props.scene.elements).map((element, index) => ({
     element,
     bounds: sceneElementBounds(element),
@@ -33,6 +39,7 @@ const items = computed(() => sortedSceneElements(props.scene.elements).map((elem
     clipId: `${prefix}-area-${index}`,
     object: isSceneObject(element) && !isSceneMarker(element),
     marker: isSceneMarker(element) && element.shape !== 'label',
+    growth: isGrowth(element),
 })));
 </script>
 
@@ -40,6 +47,7 @@ const items = computed(() => sortedSceneElements(props.scene.elements).map((elem
     <MapViewport class="map-scene-viewport" :style="sceneLightingStyle(scene)" :view-box="scene.viewBox" :reset-key="scene.key" :label="`${scene.name} 场景地图`">
         <template #default="{ unitScale }">
             <SceneMaterials :prefix="prefix" />
+            <SceneGroundMaterials :prefix="prefix" :materials="groundMaterials" :scale="sceneUnitScale(scene.viewBox[2], scene.viewBox[3])" />
             <defs v-if="lightMatrix"><filter :id="`${prefix}-lighting`" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" :values="lightMatrix" /></filter></defs>
             <defs>
                 <clipPath :id="`${prefix}-surfaces`"><template v-for="item in items" :key="item.element.id"><path v-if="item.element.category === 'terrain' && item.area" :d="item.path" :transform="item.transform" /></template></clipPath>
@@ -60,6 +68,7 @@ const items = computed(() => sortedSceneElements(props.scene.elements).map((elem
                         <g :transform="item.transform">
                             <SceneObject v-if="item.object" :element="item.element" :prefix="prefix" :unit-scale="unitScale" />
                             <template v-else-if="item.path">
+                                <path v-if="item.growth" :d="item.path" fill="none" :stroke="materialBase(formSurface(item.element)!)" stroke-width="9" stroke-linecap="round" vector-effect="non-scaling-stroke" />
                                 <path v-if="item.element.category === 'wall'" :d="item.path" fill="none" stroke="var(--scene-shadow)" stroke-width="9" opacity=".18" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
                                 <path v-if="item.element.category === 'road' && !item.area" :d="item.path" fill="none" stroke="var(--scene-soft-edge)" :stroke-width="item.presentation.width + 2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
                                 <path :d="item.path" :fill="item.presentation.fill" :stroke="item.presentation.stroke" :stroke-width="item.presentation.width" :stroke-dasharray="item.presentation.dash" stroke-linejoin="round" :stroke-linecap="item.element.category === 'wall' ? 'butt' : 'round'" fill-rule="evenodd" vector-effect="non-scaling-stroke" />
@@ -85,7 +94,8 @@ const items = computed(() => sortedSceneElements(props.scene.elements).map((elem
                 <g v-if="item.marker" class="map-scene-icon" :class="`is-${item.element.category}`" :opacity="item.presentation.opacity" :transform="`translate(${item.bounds.x + item.bounds.width / 2} ${item.bounds.y + item.bounds.height / 2}) scale(${unitScale})`">
                     <circle v-if="item.element.actorKey === 'player' || item.element.kind === 'player'" r="19" class="scene-player-halo" />
                     <circle r="11" :stroke="item.presentation.stroke" />
-                    <text v-if="symbolsReady" class="map-material-symbol" aria-hidden="true">{{ item.presentation.icon }}</text>
+                    <SceneSymbol v-if="organicSymbol(item.element.icon)" :icon="item.element.icon" x="-8" y="-8" width="16" height="16" style="color: var(--map-accent)" />
+                    <text v-else-if="symbolsReady" class="map-material-symbol" aria-hidden="true">{{ item.presentation.icon }}</text>
                     <text v-else class="map-symbol-fallback" aria-hidden="true">{{ item.presentation.fallback }}</text>
                 </g>
             </template>

@@ -1,12 +1,12 @@
 /* eslint-disable */
 import { B as c, C as ct, E as Ee, F as Wt, H as ke, L as Rt, M as qt, N as Ut, T as Ge, Y as Ze, _ as K, b as B, ct as t, dt as k, i as Zt, it as vt, j as mt, lt as tt, m as D, nt as Q, p as Yt, r as Gt, ut as _t, v, w as At, x as m, y as Ve } from "./xiaobai-os-app-navigation-DbF27MCy.js";
-import { A as Ft, B as at, C as Kt, D as Pt, E as Jt, F as De, H as O, I as Xt, L as Bt, M as Qt, N as Ae, O as ea, P as Z, R as Lt, S as Nt, T as wt, U as Mt, V as ta, W as St, _ as aa, a as Ye, b as la, c as ia, d as Ot, f as na, g as xt, h as oa, i as Ct, j as sa, k as ra, l as $t, m as ua, n as da, o as jt, p as ca, r as o, s as lt, t as va, u as ma, v as It, w as fa, x as it, y as Vt, z as st } from "./xiaobai-os-outfit-Bu9V9bRI.js";
-import { C as pa, Dt as ha, Ft as bt, J as ba, Nt as ya, Q as ka, S as Pe, Y as ft, a as ga, at as wa, bt as xa, g as _a, i as Ma, m as Sa, t as Ca, u as $a, yt as Ia } from "./xiaobai-os-three.module-CTsY3HDb.js";
+import { A as Ft, B as at, C as Kt, D as Pt, E as Xt, F as De, H as O, I as Jt, L as Bt, M as Qt, N as Ae, O as ea, P as Z, R as Lt, S as Nt, T as wt, U as Mt, V as ta, W as St, _ as aa, a as Ye, b as la, c as ia, d as Ot, f as na, g as xt, h as oa, i as Ct, j as sa, k as ra, l as $t, m as ua, n as da, o as jt, p as ca, r as o, s as lt, t as va, u as ma, v as It, w as fa, x as it, y as Vt, z as st } from "./xiaobai-os-outfit-Bu9V9bRI.js";
+import { C as Pe, Ft as pa, Lt as bt, St as ha, X as ft, Y as ba, _ as ya, a as ka, d as ga, et as wa, h as xa, kt as _a, n as Ma, o as Sa, st as Ca, w as $a, xt as Ia } from "./xiaobai-os-three.module-Ah3xIFOr.js";
 import { t as za } from "./xiaobai-os-design-Bb2ApHR1.js";
 import { a as Ea, i as Ta, o as Ra } from "./xiaobai-os-performance-C_L35DGq.js";
 import { t as Aa } from "./xiaobai-os-outfit-model-KHha2DC2.js";
-import { t as Pa } from "./xiaobai-os-RoundedBoxGeometry-BZgOkuSP.js";
-import { t as Ba } from "./xiaobai-os-BufferGeometryUtils-DP7IVjMs.js";
+import { t as Pa } from "./xiaobai-os-RoundedBoxGeometry-6yGznEQp.js";
+import { t as Ba } from "./xiaobai-os-BufferGeometryUtils-BLglYbHr.js";
 function La(e, l) {
   const a = xt(e, l), n = {
     bedroom: a.habitable,
@@ -271,8 +271,8 @@ function Ha(e, l, a) {
       actionId: Va(),
       revision: R.revision,
       command: z
-    }), X = n.value;
-    if (Y && N && X && X.active?.id === R.active?.id && X.revision === R.revision + 1) {
+    }), J = n.value;
+    if (Y && N && J && J.active?.id === R.active?.id && J.revision === R.revision + 1) {
       const W = z.type === "restore" ? P.slice(0, -1) : [
         "put",
         "remove",
@@ -280,7 +280,7 @@ function Ha(e, l, a) {
       ].includes(z.type) ? [...P, N] : [];
       h.value = {
         runId: R.active.id,
-        revision: X.revision,
+        revision: J.revision,
         layouts: W
       };
     } else h.value = null;
@@ -338,14 +338,14 @@ var Wa = {
 function qa() {
   const e = {
     box: new Pa(1, 1, 1, 2, 0.055),
-    flat: new ga(1, 1, 1),
-    sphere: new ha(1, 24, 16),
-    rod: new Sa(1, 1, 1, 16),
-    ring: new ya(1, 0.1, 8, 24)
+    flat: new Sa(1, 1, 1),
+    sphere: new _a(1, 24, 16),
+    rod: new xa(1, 1, 1, 16),
+    ring: new pa(1, 0.1, 8, 24)
   }, l = /* @__PURE__ */ new Map(), a = /* @__PURE__ */ new Set();
   function n(i, y = "chalk") {
     const d = `${i}:${y}`;
-    return l.has(d) || l.set(d, new ka({
+    return l.has(d) || l.set(d, new wa({
       color: i,
       ...Wa[y],
       emissive: y === "light" ? i : 0
@@ -1488,8 +1488,8 @@ var Ka = {
   rest: "sleeping",
   relax: "sipping",
   garden: "looking"
-}, Ja = 3600;
-function Xa(e, l, a, n) {
+}, Xa = 3600;
+function Ja(e, l, a, n) {
   const u = Ea(l), b = Ta(l), i = new Pe();
   i.position.set(0, -0.01, 0.39), i.rotation.x = -0.35, l.add(i);
   for (const L of [-1, 1]) {
@@ -1552,13 +1552,13 @@ function Xa(e, l, a, n) {
     i.visible = !1, d.visible = !1, b.reset();
   }
   function P(L, A, w) {
-    h = L, E = A, s = [], T = !1, x = !1, N(), w || !S || !Jt(h, E).has(O(S)) ? R() : l.position.copy(j(S)), z(null);
+    h = L, E = A, s = [], T = !1, x = !1, N(), w || !S || !Xt(h, E).has(O(S)) ? R() : l.position.copy(j(S)), z(null);
   }
   function Y(L) {
     const A = j(L.part);
     return L.activity === "read" && (A.x -= 0.18, A.z = Me(h, L.part.z) + 0.06, A.y += 0.15), L.activity === "sunbathe" && (A.x -= 0.31, A.z = Me(h, L.part.z) + 0.03, A.y += 0.18), L.activity === "rest" && (A.z = Me(h, L.part.z) - 0.13, A.y = L.part.y * Z.height + 0.68), L.activity === "relax" && (A.x += 0.2, A.z = Me(h, L.part.z) + 0.1, A.y += 0.23), A;
   }
-  function X(L) {
+  function J(L) {
     const A = p.space;
     i.visible = A.activity === "read", d.visible = A.activity === "relax", b.pose(Ka[A.activity], I, $, L);
     const w = L ? 0 : Math.max(0, Math.sin($ / 470));
@@ -1573,7 +1573,7 @@ function Xa(e, l, a, n) {
     }, $ = 0, z({
       phase: "using",
       space: A
-    }), X(L);
+    }), J(L);
   }
   function ve(L) {
     const A = s.shift();
@@ -1600,7 +1600,7 @@ function Xa(e, l, a, n) {
     w.length && (s = w, T = !0, (!x || A || p?.phase === "using") && (T = !1, ve(A)));
   }
   function ae(L) {
-    return !x || !p ? !1 : ($ += L, p.phase === "walking" ? u.walk(C, $) || (W(!1), T && (T = !1, ve(!1))) : (X(!1), $ >= Ja && ve(!1)), x);
+    return !x || !p ? !1 : ($ += L, p.phase === "walking" ? u.walk(C, $) || (W(!1), T && (T = !1, ve(!1))) : (J(!1), $ >= Xa && ve(!1)), x);
   }
   function te() {
     s = [], x = !1, p && (I = Y(p.space), W(!0));
@@ -1615,17 +1615,17 @@ function Xa(e, l, a, n) {
 var ot = Oa(17, Lt[0]), Et = wt(ot, ja(ot)[1]);
 function Qa(e, l, a, n, u, b) {
   return Ua((i) => {
-    const y = new Ca({
+    const y = new Ma({
       antialias: !0,
       alpha: !1,
       powerPreference: "low-power"
     });
     i.defer(() => y.domElement.remove()), i.defer(() => y.forceContextLoss()), i.own(y), y.domElement.className = "build-canvas", e.append(y.domElement), y.outputColorSpace = Ia, y.toneMapping = 7, y.shadowMap.enabled = !0, y.shadowMap.type = 2;
-    const d = new xa();
-    d.background = new $a(r.sky);
-    const h = new wa(-5, 5, 5, -5, 0.1, 100), E = i.own(qa());
-    d.add(new pa(r.porcelain, r.mint, 2.1));
-    const S = new _a(r.milk, 2.6);
+    const d = new ha();
+    d.background = new ga(r.sky);
+    const h = new Ca(-5, 5, 5, -5, 0.1, 100), E = i.own(qa());
+    d.add(new $a(r.porcelain, r.mint, 2.1));
+    const S = new ya(r.milk, 2.6);
     S.position.set(-5, 10, 8), S.castShadow = !0, S.shadow.mapSize.setScalar(kt.shadow), S.shadow.camera.left = -8, S.shadow.camera.right = 8, S.shadow.camera.top = 8, S.shadow.camera.bottom = -8, S.shadow.normalBias = 0.03, i.own(S.shadow), d.add(S, S.target);
     const s = new Pe();
     d.add(s);
@@ -1651,14 +1651,14 @@ function Qa(e, l, a, n, u, b) {
       }
     }, p, va);
     let x = null, $ = !1, T = null;
-    const C = -new Ma().setFromObject(p).min.y, I = Xa(E, p, C, (g) => {
+    const C = -new ka().setFromObject(p).min.y, I = Ja(E, p, C, (g) => {
       T = g, g?.phase === "using" && (x = null), b(g), $ && re();
     });
     let j = [], z = null, R = [], N = {
       project: null,
       enabled: !0,
       floor: null
-    }, P = ot, Y = Et, X = "", W = 1, ve = 1, ie = 1, ae = 0.55, te = null, L = 0, A = 0, w = 0, H = !1, Se = !1, se = !1, ye = !1, le = null, ne = null;
+    }, P = ot, Y = Et, J = "", W = 1, ve = 1, ie = 1, ae = 0.55, te = null, L = 0, A = 0, w = 0, H = !1, Se = !1, se = !1, ye = !1, le = null, ne = null;
     const ge = matchMedia("(prefers-reduced-motion: reduce)"), ce = /* @__PURE__ */ new Map();
     let me = !1;
     i.defer(() => {
@@ -1672,7 +1672,7 @@ function Qa(e, l, a, n, u, b) {
       h.left = -Re * oe, h.right = Re * oe, h.top = Re, h.bottom = -Re;
       const fe = _e ? Me(P, _e.z) : 0;
       h.position.set(ee + Math.sin(ae) * 12, je + 13, fe + Math.cos(ae) * 12), h.lookAt(ee, je, fe), h.updateProjectionMatrix(), h.updateMatrixWorld();
-      const J = [];
+      const X = [];
       for (const F of Mt(P)) {
         if (N.floor !== null && F.y !== N.floor) continue;
         const $e = [
@@ -1681,7 +1681,7 @@ function Qa(e, l, a, n, u, b) {
           [0.49, 0.49],
           [-0.49, 0.49]
         ].map(([f, be]) => new bt(ze(P, F.x) + f * Z.width, F.y * Z.height + 0.15, Me(P, F.z) + be * Z.depth).project(h)), He = $e.map((f) => (f.x + 1) * 50), We = $e.map((f) => (1 - f.y) * 50), qe = Math.min(...He), Ue = Math.min(...We), M = Math.max(...He) - qe, _ = Math.max(...We) - Ue;
-        J.push({
+        X.push({
           ...F,
           left: qe,
           top: Ue,
@@ -1690,7 +1690,7 @@ function Qa(e, l, a, n, u, b) {
           polygon: He.map((f, be) => `${(f - qe) / M * 100}% ${(We[be] - Ue) / _ * 100}%`).join(",")
         });
       }
-      l(J);
+      l(X);
     }
     function Te() {
       const g = e.getBoundingClientRect();
@@ -1709,32 +1709,32 @@ function Qa(e, l, a, n, u, b) {
       ]), oe = N.project?.id !== g.project?.id;
       oe && (x = null, ie = 1, ae = 0.55, $ = !1, ce.clear());
       const Ce = oe ? null : V.find((ee) => ee.kind !== "roof" && !Y.some((fe) => fe.kind !== "roof" && O(fe) === O(ee))), _e = oe ? null : g.project?.memories.find((ee) => !N.project?.memories.includes(ee)), Re = !oe && N.project?.state === "building" && g.project?.state === "living", je = new Set(Nt(P, Y).filter((ee) => !ee.issue).map((ee) => `${O(ee.part)}:${ee.activity}`));
-      if (N = g, P = U, X !== G) {
-        Ie(), le = null, ne = null, a(!1), R.forEach((J) => J.dispose()), j.forEach((J) => J.model.dispose()), s.clear(), z?.dispose(), z && d.remove(z.root), Y = V, X = G, z = Ga(E, P), d.add(z.root);
+      if (N = g, P = U, J !== G) {
+        Ie(), le = null, ne = null, a(!1), R.forEach((X) => X.dispose()), j.forEach((X) => X.model.dispose()), s.clear(), z?.dispose(), z && d.remove(z.root), Y = V, J = G, z = Ga(E, P), d.add(z.root);
         const ee = g.project ? Ot(P, g.project.rooms, g.project.memories) : [];
-        R = Y.map((J) => {
-          const F = Ya(E, P, Y, J, !0, ee.filter(($e) => O($e.part) === O(J) && $e.part.kind === J.kind).map(($e) => $e.id));
+        R = Y.map((X) => {
+          const F = Ya(E, P, Y, X, !0, ee.filter(($e) => O($e.part) === O(X) && $e.part.kind === X.kind).map(($e) => $e.id));
           return s.add(F.root), F;
-        }), j = ee.map((J) => {
-          const F = Fa(E, P, J);
+        }), j = ee.map((X) => {
+          const F = Fa(E, P, X);
           return s.add(F.root), {
             model: F,
-            floor: J.part.y
+            floor: X.part.y
           };
         }), I.configure(P, Y, oe), S.position.x = P.sunSide * 7;
-        const fe = it(P, Y).find((J) => !je.has(`${O(J.part)}:${J.activity}`));
+        const fe = it(P, Y).find((X) => !je.has(`${O(X.part)}:${X.activity}`));
         if (Ce && g.enabled && !ge.matches) {
-          const J = R[Y.indexOf(Ce)].root;
+          const X = R[Y.indexOf(Ce)].root;
           le = {
-            model: J,
-            y: J.position.y,
+            model: X,
+            y: X.position.y,
             elapsed: 0
           }, a(!0), u("release");
         } else Ce && u("land");
         if (_e && g.project) {
           u("reward");
-          const J = ee.find((F) => F.id === _e);
-          J && (x = J.part, $ = !0, ie = 0.75, I.visit(J.part, ge.matches));
+          const X = ee.find((F) => F.id === _e);
+          X && (x = X.part, $ = !0, ie = 0.75, I.visit(X.part, ge.matches));
         } else Re ? (u("reward"), I.visit(void 0, ge.matches)) : fe && !oe ? le ? ne = fe.part : I.visit(fe.part, ge.matches) : (!g.project || oe && g.project.state === "living") && I.visit(it(P, Y)[0]?.part, ge.matches);
       }
       R.forEach((ee, fe) => {
@@ -1789,7 +1789,7 @@ function Qa(e, l, a, n, u, b) {
     function Le(g) {
       ie = Math.max(0.48, Math.min(2, ie * g)), re(), pe();
     }
-    function Je(g) {
+    function Xe(g) {
       g.preventDefault(), Le(Math.exp(g.deltaY * (g.deltaMode === 1 ? 16 : g.deltaMode === 2 ? ve : 1) * 1e-3));
     }
     function dt(g) {
@@ -1814,15 +1814,15 @@ function Qa(e, l, a, n, u, b) {
     function Oe(g) {
       ce.delete(g.pointerId);
     }
-    function Xe(g) {
+    function Je(g) {
       me && (g.preventDefault(), g.stopPropagation(), me = !1);
     }
-    e.addEventListener("click", Xe, !0), i.defer(() => e.removeEventListener("click", Xe, !0));
+    e.addEventListener("click", Je, !0), i.defer(() => e.removeEventListener("click", Je, !0));
     const he = [
       [
         e,
         "wheel",
-        Je
+        Xe
       ],
       [
         e,
@@ -2344,7 +2344,7 @@ var al = {
       fill: "#f6d99b"
     }, null, 8, Fl))), 128))], 64))], 8, Hl))), 128))], 8, Vl));
   }
-}), Jl = Kl, Xl = [
+}), Xl = Kl, Jl = [
   "aria-label",
   "aria-busy",
   "data-build-presenting"
@@ -2427,7 +2427,7 @@ var al = {
 }, Fi = ["data-build-award"], Ki = {
   key: 2,
   class: "build-finished-actions"
-}, Ji = ["disabled"], Xi = { id: "build-dialog-title" }, Qi = ["aria-label"], en = {
+}, Xi = ["disabled"], Ji = { id: "build-dialog-title" }, Qi = ["aria-label"], en = {
   key: 0,
   class: "build-menu"
 }, tn = ["data-build-balance"], an = ["disabled"], ln = ["disabled"], nn = ["disabled", "aria-pressed"], on = ["disabled"], sn = {
@@ -2448,9 +2448,9 @@ var al = {
       getItem: (M) => localStorage.getItem(M),
       setItem: (M, _) => localStorage.setItem(M, _),
       removeItem: (M) => localStorage.removeItem(M)
-    }), n = Ha(l.bridge, l.chatIdentity, a), { view: u, busy: b, blocked: i, failed: y, notice: d, generating: h, canUndo: E } = n, S = Q(null), s = Q(null), p = Q(null), x = Q("desk"), $ = Q(!1), T = Q(null), C = Q("room"), I = Q(null), j = Q([]), z = Q(!1), R = Q(!0), N = Q(!1), P = Q(""), Y = Q(!1), X = Q(!1), W = Q(null), ve = Q(""), ie = Q(null), ae = Q(null);
+    }), n = Ha(l.bridge, l.chatIdentity, a), { view: u, busy: b, blocked: i, failed: y, notice: d, generating: h, canUndo: E } = n, S = Q(null), s = Q(null), p = Q(null), x = Q("desk"), $ = Q(!1), T = Q(null), C = Q("room"), I = Q(null), j = Q([]), z = Q(!1), R = Q(!0), N = Q(!1), P = Q(""), Y = Q(!1), J = Q(!1), W = Q(null), ve = Q(""), ie = Q(null), ae = Q(null);
     let te = null, L = !1;
-    const A = el(), w = K(() => T.value ? u.value?.collection.find((M) => M.id === T.value) ?? null : u.value?.active ?? null), H = K(() => w.value ? Fe(w.value) : null), Se = K(() => H.value && w.value ? xt(H.value, w.value.rooms) : null), se = K(() => H.value && w.value ? La(H.value, w.value.rooms) : null), ye = K(() => w.value?.supply ? sa(w.value.supply, w.value.rooms) : null), le = K(() => w.value?.supply?.offers ?? []), ne = K(() => x.value === "house" && !T.value && !!w.value?.supply?.remaining), ge = K(() => w.value && se.value?.bonus ? st[w.value.tier].award : Ae.habitableAward), ce = K(() => H.value && w.value?.state === "living" ? oa(H.value, w.value.rooms, w.value.memories) : null), me = K(() => Pt(w.value?.rooms ?? [])), q = K(() => I.value ? me.value.get(O(I.value)) ?? null : null), re = K(() => x.value === "house" && !!w.value && !T.value && !ne.value && (w.value.state === "building" || X.value)), Te = K(() => R.value && !l.generationActive && !p.value && !N.value), ue = K(() => !Te.value || i.value || z.value), Ke = K(() => Bt.filter((M) => M !== "terrace" || H.value?.terraces)), rt = K(() => H.value && w.value && C.value ? new Set(aa(H.value, w.value.rooms, C.value).map(O)) : /* @__PURE__ */ new Set()), pe = K(() => j.value.filter((M) => W.value !== null && (me.value.has(O(M)) || re.value && M.y < ta(H.value, M.x, M.z)))), Ie = K(() => Se.value?.spaces.find((M) => q.value && O(M.part) === O(q.value))), we = K(() => H.value && w.value && q.value ? pt(w.value, w.value.rooms.filter((M) => O(M) !== O(q.value))) : null), xe = K(() => {
+    const A = el(), w = K(() => T.value ? u.value?.collection.find((M) => M.id === T.value) ?? null : u.value?.active ?? null), H = K(() => w.value ? Fe(w.value) : null), Se = K(() => H.value && w.value ? xt(H.value, w.value.rooms) : null), se = K(() => H.value && w.value ? La(H.value, w.value.rooms) : null), ye = K(() => w.value?.supply ? sa(w.value.supply, w.value.rooms) : null), le = K(() => w.value?.supply?.offers ?? []), ne = K(() => x.value === "house" && !T.value && !!w.value?.supply?.remaining), ge = K(() => w.value && se.value?.bonus ? st[w.value.tier].award : Ae.habitableAward), ce = K(() => H.value && w.value?.state === "living" ? oa(H.value, w.value.rooms, w.value.memories) : null), me = K(() => Pt(w.value?.rooms ?? [])), q = K(() => I.value ? me.value.get(O(I.value)) ?? null : null), re = K(() => x.value === "house" && !!w.value && !T.value && !ne.value && (w.value.state === "building" || J.value)), Te = K(() => R.value && !l.generationActive && !p.value && !N.value), ue = K(() => !Te.value || i.value || z.value), Ke = K(() => Bt.filter((M) => M !== "terrace" || H.value?.terraces)), rt = K(() => H.value && w.value && C.value ? new Set(aa(H.value, w.value.rooms, C.value).map(O)) : /* @__PURE__ */ new Set()), pe = K(() => j.value.filter((M) => W.value !== null && (me.value.has(O(M)) || re.value && M.y < ta(H.value, M.x, M.z)))), Ie = K(() => Se.value?.spaces.find((M) => q.value && O(M.part) === O(q.value))), we = K(() => H.value && w.value && q.value ? pt(w.value, w.value.rooms.filter((M) => O(M) !== O(q.value))) : null), xe = K(() => {
       if (!q.value || !w.value || !H.value) return null;
       const M = q.value.kind === "room" ? "study" : "room", _ = la(w.value.rooms, q.value, M);
       return _ ? {
@@ -2468,7 +2468,7 @@ var al = {
         floor: W.value
       });
     }
-    function Je() {
+    function Xe() {
       te?.dispose(), te = null, N.value = !1, z.value = !1;
       try {
         te = Qa(S.value, (M) => {
@@ -2501,7 +2501,7 @@ var al = {
         P.value = o.soundError;
       }
     }
-    async function Xe() {
+    async function Je() {
       if (!(Y.value || !u.value)) {
         Y.value = !0;
         try {
@@ -2516,7 +2516,7 @@ var al = {
     }
     async function he(M) {
       const _ = M.type === "remember" ? ce.value?.part : null;
-      Oe(), P.value = "", await n.act(M) && (I.value = null, M.type === "start" && (T.value = null, x.value = "house", $.value = !1, C.value = "room", X.value = !1, W.value = 0), M.type === "remember" && w.value?.memories.includes(M.memory) && (ie.value = M.memory, X.value = !1, W.value = _?.y ?? null), M.type === "finish" && (X.value = !1, $.value = !0, W.value = null), M.type === "reside" && (T.value = null, x.value = "house", $.value = !1, X.value = !0, W.value = 0), M.type === "collect" && !M.save && (T.value = null));
+      Oe(), P.value = "", await n.act(M) && (I.value = null, M.type === "start" && (T.value = null, x.value = "house", $.value = !1, C.value = "room", J.value = !1, W.value = 0), M.type === "remember" && w.value?.memories.includes(M.memory) && (ie.value = M.memory, J.value = !1, W.value = _?.y ?? null), M.type === "finish" && (J.value = !1, $.value = !0, W.value = null), M.type === "reside" && (T.value = null, x.value = "house", $.value = !1, J.value = !0, W.value = 0), M.type === "collect" && !M.save && (T.value = null));
     }
     function Qe(M) {
       if (ue.value) return;
@@ -2544,7 +2544,7 @@ var al = {
       }
     }
     function et() {
-      X.value = !0, W.value = 0, ie.value = null;
+      J.value = !0, W.value = 0, ie.value = null;
     }
     function g() {
       !ue.value && ce.value?.part && he({
@@ -2559,13 +2559,13 @@ var al = {
       !ue.value && await n.undo() && (I.value = null);
     }
     function G() {
-      w.value?.state === "living" ? (X.value = !1, I.value = null, W.value = null) : se.value?.ready && (p.value = "deliver");
+      w.value?.state === "living" ? (J.value = !1, I.value = null, W.value = null) : se.value?.ready && (p.value = "deliver");
     }
     function oe() {
-      u.value?.active?.state === "living" ? (T.value = null, x.value = "house", $.value = !1, X.value = !1, W.value = null, I.value = null) : p.value = "collection";
+      u.value?.active?.state === "living" ? (T.value = null, x.value = "house", $.value = !1, J.value = !1, W.value = null, I.value = null) : p.value = "collection";
     }
     function Ce() {
-      x.value = "desk", T.value = null, I.value = null, X.value = !1, ie.value = null, $.value = !1;
+      x.value = "desk", T.value = null, I.value = null, J.value = !1, ie.value = null, $.value = !1;
     }
     function _e() {
       x.value = "house", $.value = !1, W.value = 0;
@@ -2588,12 +2588,12 @@ var al = {
       });
     }
     function ee(M) {
-      x.value = "house", $.value = !1, X.value = !1, W.value = null, T.value = M, I.value = null, p.value = null;
+      x.value = "house", $.value = !1, J.value = !1, W.value = null, T.value = M, I.value = null, p.value = null;
     }
     function fe() {
-      T.value = null, I.value = null, X.value = !1, $.value = !1, W.value = u.value?.active?.state === "building" ? 0 : null;
+      T.value = null, I.value = null, J.value = !1, $.value = !1, W.value = u.value?.active?.state === "building" ? 0 : null;
     }
-    async function J() {
+    async function X() {
       if (!(!te || !w.value))
         try {
           const M = await te.snapshot(), _ = URL.createObjectURL(M), f = document.createElement("a");
@@ -2623,7 +2623,7 @@ var al = {
       Te,
       W
     ], Le), Ze(() => w.value?.id, () => {
-      X.value = !1, $.value = !1, ie.value = null, W.value = w.value?.state === "building" ? 0 : null, ve.value = "", I.value = null;
+      J.value = !1, $.value = !1, ie.value = null, W.value = w.value?.state === "building" ? 0 : null, ve.value = "", I.value = null;
     }), Ze(() => u.value?.active?.state, (M, _) => {
       M === "living" && _ === "building" && ($.value = !0, W.value = null, I.value = null);
     }), Ze(ae, () => {
@@ -2631,7 +2631,7 @@ var al = {
     }), Ze(Te, (M) => {
       M || Ne();
     }), Rt(async () => {
-      Je(), document.addEventListener("visibilitychange", F), await n.read(), u.value?.active?.state === "building" && (x.value = "house"), L = !0;
+      Xe(), document.addEventListener("visibilitychange", F), await n.read(), u.value?.active?.state === "building" && (x.value = "house"), L = !0;
     }), qt(() => {
       R.value = !0, te?.resume(), L && n.read();
     }), Wt(() => {
@@ -2640,7 +2640,7 @@ var al = {
       n.dispose(), te?.dispose(), document.removeEventListener("visibilitychange", F), A.dispose().catch((M) => console.error(o.audioDispose, M));
     });
     async function Ue() {
-      await mt(), Je();
+      await mt(), Xe();
     }
     return (M, _) => (c(), m("section", {
       class: tt(["building-room", { "is-desk": x.value === "desk" }]),
@@ -2692,7 +2692,7 @@ var al = {
         class: "build-stage",
         "aria-label": t(o).scene
       }, [
-        x.value === "house" && (X.value && w.value?.state === "living" || ve.value || ie.value) ? (c(), m("p", di, k(ve.value || (ie.value ? t(Ye)[ie.value].thanks : ut.value)), 1)) : B("", !0),
+        x.value === "house" && (J.value && w.value?.state === "living" || ve.value || ie.value) ? (c(), m("p", di, k(ve.value || (ie.value ? t(Ye)[ie.value].thanks : ut.value)), 1)) : B("", !0),
         H.value?.tier === "sunroom" && re.value ? (c(), m("span", {
           key: 1,
           class: tt(["build-sun", { "from-left": H.value.sunSide === -1 }]),
@@ -2942,7 +2942,7 @@ var al = {
               type: "reside",
               runId: w.value.id
             }))
-          }, k(t(o).reside), 9, Ji)])) : B("", !0),
+          }, k(t(o).reside), 9, Xi)])) : B("", !0),
           T.value ? (c(), m("button", {
             key: 3,
             type: "button",
@@ -2971,7 +2971,7 @@ var al = {
         "aria-modal": "true",
         "aria-labelledby": "build-dialog-title",
         tabindex: "-1"
-      }, [v("header", null, [v("h2", Xi, k(p.value === "menu" ? t(o).name : p.value === "rules" ? t(o).rules : p.value === "collection" ? t(o).collection : p.value === "memories" ? t(o).memories : p.value === "brief" ? t(o).commission : p.value === "deliver" ? t(o).deliver : p.value === "start" ? t(o).newProject : p.value === "uncollect" ? t(o).uncollectTitle : t(o).abandonTitle), 1), v("button", {
+      }, [v("header", null, [v("h2", Ji, k(p.value === "menu" ? t(o).name : p.value === "rules" ? t(o).rules : p.value === "collection" ? t(o).collection : p.value === "memories" ? t(o).memories : p.value === "brief" ? t(o).commission : p.value === "deliver" ? t(o).deliver : p.value === "start" ? t(o).newProject : p.value === "uncollect" ? t(o).uncollectTitle : t(o).abandonTitle), 1), v("button", {
         type: "button",
         "aria-label": t(o).close,
         onClick: _[17] || (_[17] = (f) => p.value = null)
@@ -3014,7 +3014,7 @@ var al = {
             type: "button",
             disabled: t(i),
             onClick: _[23] || (_[23] = (f) => {
-              p.value = null, J();
+              p.value = null, X();
             })
           }, k(t(o).export), 9, ln)
         ], 64)) : B("", !0),
@@ -3022,7 +3022,7 @@ var al = {
           type: "button",
           disabled: Y.value || t(b) || !t(u),
           "aria-pressed": t(u)?.soundEnabled,
-          onClick: Xe
+          onClick: Je
         }, k(t(u)?.soundEnabled ? t(o).soundOn : t(o).soundOff), 9, nn),
         v("button", {
           type: "button",
@@ -3051,12 +3051,12 @@ var al = {
           key: f.id,
           type: "button",
           onClick: (hn) => ee(f.id)
-        }, [Ge(Jl, {
+        }, [Ge(Xl, {
           brief: t(Fe)(f),
           rooms: f.rooms
         }, null, 8, ["brief", "rooms"]), v("strong", null, k(t(o).archiveTitle(f.tier, be)), 1)], 8, cn))), 128))])
       ], 64)) : (c(), m(D, { key: 5 }, [
-        v("p", null, k(p.value === "deliver" ? t(o).deliveryTerms(ge.value, !!se.value?.bonus) : p.value === "start" ? t(o).admission(t(Xt)) : p.value === "uncollect" ? t(o).uncollectBody : t(o).abandonBody), 1),
+        v("p", null, k(p.value === "deliver" ? t(o).deliveryTerms(ge.value, !!se.value?.bonus) : p.value === "start" ? t(o).admission(t(Jt)) : p.value === "uncollect" ? t(o).uncollectBody : t(o).abandonBody), 1),
         p.value === "start" && t(u) && t(u).balance < t(Ae).fee ? (c(), m("p", vn, k(t(o).noFunds), 1)) : B("", !0),
         v("div", mn, [v("button", {
           type: "button",
@@ -3069,7 +3069,7 @@ var al = {
           onClick: je
         }, k(p.value === "start" ? t(o).start : p.value === "deliver" ? t(o).deliver : t(o).confirm), 9, fn)])
       ], 64))], 512)])) : B("", !0)
-    ], 10, Xl));
+    ], 10, Jl));
   }
 }), Sn = pn;
 export {

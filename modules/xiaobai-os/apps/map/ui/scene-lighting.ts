@@ -1,6 +1,6 @@
 import type { MapScene, MapSceneLighting } from '../../../domains/map/types.js';
 import { MAP_MOOD_RECIPES } from './map-presentation.js';
-import { isAreaElement, sceneElementBounds } from './scene-geometry.js';
+import { isAreaElement, sceneElementBounds, sceneUnitScale } from './scene-geometry.js';
 
 interface SceneLight {
     readonly color: string;
@@ -111,7 +111,7 @@ export function sceneLightSources(scene: MapScene): SceneLightSource[] {
     const floor = scene.elements.filter(element => element.category === 'terrain' && isAreaElement(element))
         .map(sceneElementBounds).sort((a, b) => b.width * b.height - a.width * a.height)[0];
     const [x, y, width, height] = floor ? [floor.x, floor.y, floor.width, floor.height] : scene.viewBox;
-    const unit = Math.max(width, height) / 14;
+    const unit = sceneUnitScale(width, height);
     const fixtures = scene.elements.filter(element => element.shape !== 'label' && element.material !== 'shadow'
         && (element.category === 'light' || element.icon === 'light' || element.icon === 'fire'))
         .sort((a, b) => a.id.localeCompare(b.id)).slice(0, MAX_SCENE_LIGHT_SOURCES);

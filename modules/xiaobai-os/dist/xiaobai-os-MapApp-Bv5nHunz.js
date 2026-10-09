@@ -1,6 +1,6 @@
 /* eslint-disable */
-import { B as r, E as F, L as Z, N as G, T as $, Y as K, Z as M, _ as A, at as Q, b as c, ct as e, dt as d, lt as J, m as W, nt as P, v as i, w as V, x as b, y as H } from "./xiaobai-os-app-navigation-DbF27MCy.js";
-import { _ as T, g as C, t as X, v as S } from "./xiaobai-os-MapBrowser-CzT6eKeq.js";
+import { B as r, E as F, L as Z, N as G, T as $, Y as K, Z as M, _ as A, at as Q, b as c, ct as e, dt as d, lt as J, m as W, nt as T, v as i, w as V, x as b, y as H } from "./xiaobai-os-app-navigation-DbF27MCy.js";
+import { E as S, T as P, t as X, w as C } from "./xiaobai-os-MapBrowser-COaYif7n.js";
 import { t as x } from "./xiaobai-os-AppDialog-CirfCMYM.js";
 var _ = { class: "map-dialog-header" }, ee = { key: 0 }, te = { class: "map-settings-content" }, ae = { class: "map-auto-setting" }, ne = ["aria-checked", "disabled"], se = { class: "map-auto-setting" }, ie = [
   "aria-checked",
@@ -62,12 +62,12 @@ var _ = { class: "map-dialog-header" }, ee = { key: 0 }, te = { class: "map-sett
             disabled: t.autoToggleBusy,
             onClick: s[1] || (s[1] = (l) => a.$emit("setAuto", !t.autoMaintenance))
           }, [...s[8] || (s[8] = [i("span", null, null, -1)])], 8, ne)]),
-          i("section", se, [i("div", null, [i("h3", null, d(e(T).label), 1), i("p", null, d(e(T).description), 1)]), i("button", {
+          i("section", se, [i("div", null, [i("h3", null, d(e(P).label), 1), i("p", null, d(e(P).description), 1)]), i("button", {
             type: "button",
             class: "map-switch",
             role: "switch",
             "aria-checked": t.projectToChat,
-            "aria-label": e(T).label,
+            "aria-label": e(P).label,
             disabled: t.autoToggleBusy,
             onClick: s[2] || (s[2] = (l) => a.$emit("setProjection", !t.projectToChat))
           }, [...s[10] || (s[10] = [i("span", null, null, -1)])], 8, ie)]),
@@ -116,7 +116,7 @@ function z(t) {
   return t.maintenanceStatus === "maintaining" || t.maintenanceStatus === "rebuilding";
 }
 function fe(t) {
-  const a = P(structuredClone(Q(t.initialState))), s = P(null), l = P(""), m = P(!1);
+  const a = T(structuredClone(Q(t.initialState))), s = T(null), l = T(""), m = T(!1);
   let p = !1, f = 0, k = 0, w = () => {
   };
   const B = A(() => a.value.status === "unconfirmed" || a.value.writeState === "unconfirmed"), y = A(() => s.value !== null || ["loading", "saving"].includes(a.value.status) || ["maintaining", "rebuilding"].includes(a.value.maintenanceStatus || "")), j = A(() => y.value ? "正在更新地图，请稍候" : B.value ? "请先检查上一次是否保存成功" : a.value.status === "conflict" ? "存档有变化，请先选择要保留的版本" : a.value.status !== "ready" ? a.value.message || "地图暂时不可更新" : a.value.chatIdentity ? "" : "请先打开一个聊天"), q = A(() => a.value.maintenanceStatus === "rebuilding" || s.value === "rebuild" ? "正在绘制世界…" : a.value.maintenanceStatus === "maintaining" || s.value === "maintain" ? "正在更新地图…" : s.value === "confirm" ? "正在检查保存…" : y.value ? "请稍候…" : ""), U = A(() => a.value.message || l.value), D = A(() => a.value.message ? [
@@ -144,7 +144,7 @@ function fe(t) {
       }, 35e3);
       if (!p || I !== f || a.value.chatIdentity !== N) return;
       const g = R(O) ? O.result : void 0, Y = R(g) && R(g.state) ? g.state : g;
-      L === k && R(Y) && Y.chatIdentity === N && h(Y), (n === "maintain" || n === "rebuild") && R(g) && typeof g.message == "string" && g.message && (l.value = g.message), n === "refresh" && a.value.status === "ready" && (l.value = "已加载保存的地图。"), n === "settings" && (l.value = a.value.autoMaintenance ? "自动更新已开启。" : "自动更新已关闭。"), n === "projection" && (l.value = a.value.projectToChat ? T.enabled : T.disabled), n === "confirm" && a.value.status === "ready" && (l.value = "已确认保存成功。"), n === "adopt" && R(g) && g.adoption === "adopted" && (l.value = "已使用当前聊天里保存的 OS 存档。");
+      L === k && R(Y) && Y.chatIdentity === N && h(Y), (n === "maintain" || n === "rebuild") && R(g) && typeof g.message == "string" && g.message && (l.value = g.message), n === "refresh" && a.value.status === "ready" && (l.value = "已加载保存的地图。"), n === "settings" && (l.value = a.value.autoMaintenance ? "自动更新已开启。" : "自动更新已关闭。"), n === "projection" && (l.value = a.value.projectToChat ? P.enabled : P.disabled), n === "confirm" && a.value.status === "ready" && (l.value = "已确认保存成功。"), n === "adopt" && R(g) && g.adoption === "adopted" && (l.value = "已使用当前聊天里保存的 OS 存档。");
     } catch (O) {
       p && I === f && a.value.chatIdentity === N && (l.value = E(O, n), m.value = !0);
     } finally {
@@ -209,7 +209,7 @@ var ye = {
     initialState: {}
   },
   setup(t) {
-    const { state: a, activeRequest: s, busy: l, disabledReason: m, requiresConfirmation: p, status: f, notice: k, isError: w, dismissNotice: B, refresh: y, confirmSave: j, adopt: q, setAuto: U, setProjection: D, update: h, rebuild: E } = fe(t), v = P(!1);
+    const { state: a, activeRequest: s, busy: l, disabledReason: m, requiresConfirmation: p, status: f, notice: k, isError: w, dismissNotice: B, refresh: y, confirmSave: j, adopt: q, setAuto: U, setProjection: D, update: h, rebuild: E } = fe(t), v = T(!1);
     return K(() => a.value.chatIdentity, () => {
       v.value = !1;
     }), (o, n) => (r(), H(X, {
@@ -323,7 +323,7 @@ var ye = {
       _: 1
     }, 8, ["map", "chat-identity"]));
   }
-}), Pe = Re;
+}), Te = Re;
 export {
-  Pe as default
+  Te as default
 };

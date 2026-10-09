@@ -12,7 +12,7 @@ import { generateGroupWrapper as uS, is_group_generating as dr, saveGroupChat as
 import { GENERATE_INTERCEPTOR_ORDER as co, observeGenerateInterceptors as mS, registerGenerateInterceptor as pu, unregisterGenerateInterceptor as hu } from "../../../shared/common/generate-interceptor.js";
 import { createModuleEvents as mn, event_types as ce } from "../../../core/event-manager.js";
 import { isGenerating as gu } from "../../../shared/common/sillytavern-generation-state.js";
-import { SCRIPT_TYPES as Bg, getScriptsByType as pS, saveScriptsByType as hS } from "../../../../../regex/engine.js";
+import { SCRIPT_TYPES as Bg, getScriptsByType as pS, saveScriptsByType as hS } from "../../../../../../extensions/regex/engine.js";
 import { rebaseImageOffset as gS, rebaseImageText as yS, restoreChatImagePlacements as wS, subscribeChatImagePlacement as vS } from "../../draw/shared/chat-image-placement.js";
 import { initAfterAiGate as bS, notifyAfterAiHint as kS, registerAfterAiHandler as _S } from "../../../core/after-ai-gate.js";
 import { user_avatar as qg } from "../../../../../../personas.js";
@@ -1850,7 +1850,7 @@ async function Qg(e) {
 }
 var ey = [
   "你是 LittleWhiteBox（中文常称“小白X”）的小白 OS 管理员助手，通过管理员 APP 与用户交流。LittleWhiteBox 运行在用户的 SillyTavern 实例中，小白 OS 是其中承载各个 APP 的界面。",
-  "这里是剧情之外的交流空间。你和用户一起了解这些应用、查找问题，也按他们的想法整理和修正记录。",
+  "这里是剧情之外的交流空间。你和用户一起了解这些应用、查找问题、按他们的想法整理和修正记录，也可以闲聊。",
   "",
   "# 你的职责",
   "用户想了解功能或商量做法时，和他们把事情聊清楚；请你调整记录时，查清目标记录后动手处理。",
@@ -29795,7 +29795,7 @@ function qP(e) {
         const Nt = e.actor === "companion" ? {
           kind: "story",
           osId: R.osId
-        } : L.scope ?? (v ? { kind: "public" } : L.action.kind === "review-prepare" ? Z$(Ke, L.action.itemIds, R.osId) : xn ? xn.scope : !en && hn ? hn.scope : { kind: "public" }), le = X$(L.action, Nt, R.osId), ue = (Ce) => v || qe(Ce, Nt.kind === "story" ? Nt.osId : null), _e = r.filter((Ce) => Ce.status !== "running" && ue(Ce.scope));
+        } : L.scope ?? (v ? { kind: "public" } : L.action.kind === "review-prepare" ? Z$(Ke, L.action.itemIds, R.osId) : xn ? xn.scope : !en && hn ? hn.scope : { kind: "public" }), le = X$(L.action, Nt, R.osId), ue = (Ce) => v || qe(Ce, Nt.kind === "story" ? Nt.osId : null), ke = r.filter((Ce) => Ce.status !== "running" && ue(Ce.scope));
         let ut = ue(l) ? o : "";
         B.references = [...new Set([
           ...L.references ?? [],
@@ -29814,7 +29814,7 @@ function qP(e) {
           data: ee?.data ?? { profiles: [] },
           workbench: e.actor === "companion" ? e.workbench : void 0
         }), { prefix: F, turn: V, references: Q, taskReferences: ve, scope: re } = Ye;
-        B.scope = Ze(Nt, re), M && (B.scope = Ze(B.scope, M.scope), B.references = [.../* @__PURE__ */ new Set([...B.references, ...M.references ?? []])]), B.scope = _e.reduce((Ce, tt) => Ze(Ce, tt.scope), B.scope), ut && (B.scope = Ze(B.scope, l)), z = xP(e.repository, {
+        B.scope = Ze(Nt, re), M && (B.scope = Ze(B.scope, M.scope), B.references = [.../* @__PURE__ */ new Set([...B.references, ...M.references ?? []])]), B.scope = ke.reduce((Ce, tt) => Ze(Ce, tt.scope), B.scope), ut && (B.scope = Ze(B.scope, l)), z = xP(e.repository, {
           ...R,
           action: L.action,
           inputScope: B.scope,
@@ -29828,7 +29828,7 @@ function qP(e) {
           ...B.references,
           ...Q,
           ...c,
-          ..._e.flatMap((Ce) => Ce.references ?? [])
+          ...ke.flatMap((Ce) => Ce.references ?? [])
         ])] : B.references = [.../* @__PURE__ */ new Set([...B.references, ...ve])], B.messages.push(V);
         const ie = z;
         let xe = !1, it = null;
@@ -29873,11 +29873,11 @@ function qP(e) {
           prefix: F,
           messages: () => M ? [...Ye.messages, LN(M)] : Ye.messages,
           summaryPrompt: ON(e.actor),
-          history: _e,
+          history: ke,
           historySummary: ut,
           reopen: () => e.gateway.openSession(Te),
           onCompact: (Ce, tt) => {
-            const Sn = _e.slice(X, X + Ce);
+            const Sn = ke.slice(X, X + Ce);
             if (ut === o && Sn.every((jn, tf) => r[tf] === jn)) {
               c = [.../* @__PURE__ */ new Set([...c, ...Sn.flatMap((jn) => jn.references ?? [])])], l = Sn.reduce((jn, tf) => Ze(jn, tf.scope), l), r.splice(0, Ce), s += Ce, o = tt, ut = tt;
               for (const jn of Sn) jn.purpose !== "task-result" && g.delete(jn.id);
@@ -30538,7 +30538,7 @@ function JP(e) {
     const V = z_(F, en().materials), Q = $().unit?.materials.find((ve) => ve.id === V.materialId);
     return K(Q && !Q.hidden, "selection", "Reveal the transcript before selecting text"), V;
   }
-  async function _e(F, V, Q, ve) {
+  async function ke(F, V, Q, ve) {
     if (F === "reset-learning") {
       if (X(await b.resetInvalid(Q, () => {
         L(), P.reset(), U.reset();
@@ -30802,7 +30802,7 @@ function JP(e) {
         if (!ie()) return;
         if (xe || F === "reset-learning") await D.settle();
         else if (!await D.flush()) return;
-        tn = b.snapshot().document, ie() && await _e(F, V, ie, Q);
+        tn = b.snapshot().document, ie() && await ke(F, V, ie, Q);
       } catch (Oe) {
         ie() && (f = Oe instanceof dn ? Wi(F, Oe.code, {
           stage: "save",
@@ -31418,7 +31418,9 @@ var al = Object.freeze([
   "rune",
   "warm-light",
   "cold-light",
-  "shadow"
+  "shadow",
+  "flesh",
+  "slime"
 ]), Yh = Object.freeze([
   "confirmed",
   "inferred",
@@ -31496,6 +31498,31 @@ var al = Object.freeze([
       "rock"
     ],
     hint: "tree is one tree; a forest is terrain with material forest."
+  },
+  {
+    name: "Growing forms and conduits",
+    icons: [
+      "vine",
+      "root",
+      "tentacle",
+      "pipe"
+    ],
+    hint: "Use an open path/curve along the centreline, from base to tip. Thickness and surface details are drawn by the app."
+  },
+  {
+    name: "Natural formations",
+    icons: ["mushroom", "crystal"],
+    hint: "Use a rect/circle footprint for one formation."
+  },
+  {
+    name: "Creatures",
+    icons: [
+      "slime",
+      "dragon",
+      "dwarf",
+      "elf"
+    ],
+    hint: "Actors keep their identity and location marker. A rect/circle also gives their occupied size; a point is only a symbol."
   },
   {
     name: "Lighting and signs",
@@ -33717,7 +33744,7 @@ function eg(e) {
                     maxLength: 80,
                     description: 'Stable actor identity for a new cat "actor" element. The player is always "player". An existing actor keeps its stored actorKey.'
                   },
-                  icon: Ss(Xh, `Object type or marker symbol. Sized objects use rect/circle footprints; other outlines retain their original shape. On shape icon/label it is only a position marker/text. Actors and entrances retain their marker identity regardless of icon. Use null to clear.
+                  icon: Ss(Xh, `Object type or marker symbol. Sized objects use rect/circle footprints; other outlines retain their original shape. On shape icon/label it is only a position marker/text. Sized creatures can have a model while retaining their actor identity marker. Entrances retain their marker identity. Use null to clear.
 ${cL}`),
                   material: Ss(Jh, "What the surface is made of, independent of object type: e.g. icon table + material metal. Floors, ground, decks and platforms are cat terrain with a surface material; fabric and bed-sheet describe soft objects, not a floor. Textures are automatic. Use null to clear."),
                   certainty: Ss(Yh, "Use inferred for ordinary structures you plausibly add beyond explicit setting/story facts. Omit for established facts; approximate coordinates alone are not inferred. Use null to clear."),
@@ -39517,7 +39544,7 @@ function Cj(e) {
     r[ja.key] = ja.serialize(s ? Ej(a.value, i.messages) : Ox(a.value, i.messages));
   };
 }
-var ke = class extends Error {
+var _e = class extends Error {
   code;
   constructor(e, t = e) {
     super(t), this.name = "ShopError", this.code = e;
@@ -39594,7 +39621,7 @@ var ke = class extends Error {
   "rule"
 ]);
 function St(e) {
-  throw new ke("shop_invalid_catalog", `invalid shop catalog: ${e}`);
+  throw new _e("shop_invalid_catalog", `invalid shop catalog: ${e}`);
 }
 function Bi(e, t, n) {
   return (typeof e != "string" || !e.trim() || Array.from(e).length > n) && St(`${t} must be non-empty text up to ${n} code points`), e;
@@ -40038,14 +40065,14 @@ function Kj(e) {
 var hp = Kj($x), Wj = new Set($x);
 function Qt(e = "") {
   const t = String(e || "").trim();
-  if (!t) throw new ke("shop_item_id_required");
+  if (!t) throw new _e("shop_item_id_required");
   const n = Rx.get(t);
-  if (!n) throw new ke("shop_item_missing", `unknown shop item: ${t}`);
+  if (!n) throw new _e("shop_item_missing", `unknown shop item: ${t}`);
   return n;
 }
 function Uj(e = "", t = hp) {
   const n = Qt(e);
-  if (!(t === hp ? Wj : new Set(t.map((r) => r.id))).has(n.id)) throw new ke("shop_item_not_for_sale", `shop item is not on the current shelf: ${n.id}`);
+  if (!(t === hp ? Wj : new Set(t.map((r) => r.id))).has(n.id)) throw new _e("shop_item_not_for_sale", `shop item is not on the current shelf: ${n.id}`);
   return n;
 }
 function Gj() {
@@ -40060,16 +40087,16 @@ function wo(e) {
 }
 function Ua(e, t, n) {
   const r = Object.keys(e).sort(), i = [...t].sort();
-  if (r.length !== i.length || r.some((a, s) => a !== i[s])) throw new ke("shop_invalid_domain", `${n} has unexpected or missing fields`);
+  if (r.length !== i.length || r.some((a, s) => a !== i[s])) throw new _e("shop_invalid_domain", `${n} has unexpected or missing fields`);
 }
 function Ui(e, t, n) {
-  if (typeof e != "string" || !e || e !== e.trim() || Array.from(e).length > n || /[\u0000-\u001f\u007f-\u009f]/u.test(e)) throw new ke("shop_invalid_domain", `${t} must be a canonical non-empty string`);
+  if (typeof e != "string" || !e || e !== e.trim() || Array.from(e).length > n || /[\u0000-\u001f\u007f-\u009f]/u.test(e)) throw new _e("shop_invalid_domain", `${t} must be a canonical non-empty string`);
   return e;
 }
 function ru(e, t) {
-  if (!Array.isArray(e) || e.length > 100) throw new ke("shop_invalid_domain", `${t} must be an id array`);
+  if (!Array.isArray(e) || e.length > 100) throw new _e("shop_invalid_domain", `${t} must be an id array`);
   const n = e.map((r, i) => Ui(r, `${t}.${i}`, 200));
-  if (new Set(n).size !== n.length) throw new ke("shop_invalid_domain", `${t} must not contain duplicates`);
+  if (new Set(n).size !== n.length) throw new _e("shop_invalid_domain", `${t} must not contain duplicates`);
   return n;
 }
 function Jj(e, t) {
@@ -40080,7 +40107,7 @@ function wg(e, t = {}) {
   const n = wo(t) ? t : {}, r = {};
   for (const i of e.inputs) {
     const a = Jj(n[i.key], i.maxLength);
-    if (i.required && !a) throw new ke("shop_parameters_invalid", `required parameter is missing: ${e.id}.${i.key}`);
+    if (i.required && !a) throw new _e("shop_parameters_invalid", `required parameter is missing: ${e.id}.${i.key}`);
     a && (r[i.key] = a);
   }
   return r;
@@ -40098,7 +40125,7 @@ function Yj(e, t) {
   }
 }
 function Xj(e) {
-  if (!wo(e)) throw new ke("shop_invalid_domain", "event action must be an object");
+  if (!wo(e)) throw new _e("shop_invalid_domain", "event action must be an object");
   const t = e.kind;
   if (t === "purchase")
     return Ua(e, ["kind", "itemId"], "purchase action"), {
@@ -40113,7 +40140,7 @@ function Xj(e) {
       "parameters"
     ], "activate action");
     const n = Qt(Ui(e.itemId, "action.itemId", 80)), r = Ui(e.activationId, "action.activationId", 200);
-    if (!Yj(n, e.parameters)) throw new ke("shop_invalid_domain", `activation parameters are not canonical: ${n.id}`);
+    if (!Yj(n, e.parameters)) throw new _e("shop_invalid_domain", `activation parameters are not canonical: ${n.id}`);
     return {
       kind: t,
       itemId: n.id,
@@ -40138,26 +40165,26 @@ function Xj(e) {
       "transitionActivationIds"
     ], "deliver action");
     const n = ru(e.consumedActivationIds, "action.consumedActivationIds"), r = ru(e.transitionActivationIds, "action.transitionActivationIds");
-    if (n.length === 0 && r.length === 0) throw new ke("shop_invalid_domain", "deliver action must advance at least one effect");
-    if (n.some((i) => r.includes(i))) throw new ke("shop_invalid_domain", "one delivery cannot consume and transition the same activation");
+    if (n.length === 0 && r.length === 0) throw new _e("shop_invalid_domain", "deliver action must advance at least one effect");
+    if (n.some((i) => r.includes(i))) throw new _e("shop_invalid_domain", "one delivery cannot consume and transition the same activation");
     return {
       kind: t,
       consumedActivationIds: n,
       transitionActivationIds: r
     };
   }
-  throw new ke("shop_invalid_domain", "event action kind is invalid");
+  throw new _e("shop_invalid_domain", "event action kind is invalid");
 }
 function Zj(e, t) {
-  if (!wo(e)) throw new ke("shop_invalid_domain", "shop event must be an object");
+  if (!wo(e)) throw new _e("shop_invalid_domain", "shop event must be an object");
   if (Ua(e, [
     "revision",
     "eventId",
     "actionId",
     "action",
     "createdAt"
-  ], "shop event"), !Number.isSafeInteger(e.revision) || e.revision !== t) throw new ke("shop_invalid_domain", "event revisions must be contiguous from 1");
-  if (!Number.isSafeInteger(e.createdAt) || Number(e.createdAt) < 0 || Number(e.createdAt) > Hj) throw new ke("shop_invalid_domain", "createdAt must be a valid non-negative integer timestamp");
+  ], "shop event"), !Number.isSafeInteger(e.revision) || e.revision !== t) throw new _e("shop_invalid_domain", "event revisions must be contiguous from 1");
+  if (!Number.isSafeInteger(e.createdAt) || Number(e.createdAt) < 0 || Number(e.createdAt) > Hj) throw new _e("shop_invalid_domain", "createdAt must be a valid non-negative integer timestamp");
   return {
     revision: Number(e.revision),
     eventId: Ui(e.eventId, "event.eventId", 200),
@@ -40176,18 +40203,18 @@ function eD(e, t, n, r) {
   const i = e.action;
   if (i.kind === "purchase") {
     const a = Qt(i.itemId), s = (n.get(a.id) || 0) + 1;
-    if (a.purchaseLimit !== void 0 && s > a.purchaseLimit) throw new ke("shop_invalid_domain", `purchase limit exceeded: ${a.id}`);
+    if (a.purchaseLimit !== void 0 && s > a.purchaseLimit) throw new _e("shop_invalid_domain", `purchase limit exceeded: ${a.id}`);
     n.set(a.id, s), t.set(a.id, (t.get(a.id) || 0) + 1);
     return;
   }
   if (i.kind === "activate") {
     const a = Qt(i.itemId);
-    if (r.has(i.activationId)) throw new ke("shop_invalid_domain", `activationId is duplicated: ${i.activationId}`);
-    if ((t.get(a.id) || 0) < 1) throw new ke("shop_invalid_domain", `activation has no inventory: ${a.id}`);
+    if (r.has(i.activationId)) throw new _e("shop_invalid_domain", `activationId is duplicated: ${i.activationId}`);
+    if ((t.get(a.id) || 0) < 1) throw new _e("shop_invalid_domain", `activation has no inventory: ${a.id}`);
     const s = iu(a, i.parameters);
     for (const o of r.values())
       if (!(o.itemId !== a.id || !Qf(o, a)) && (a.stacking === "global-single" || iu(a, o.parameters) === s))
-        throw new ke("shop_invalid_domain", `activation scope overlaps: ${a.id}`);
+        throw new _e("shop_invalid_domain", `activation scope overlaps: ${a.id}`);
     t.set(a.id, (t.get(a.id) || 0) - 1), r.set(i.activationId, {
       activationId: i.activationId,
       itemId: a.id,
@@ -40200,52 +40227,52 @@ function eD(e, t, n, r) {
   }
   if (i.kind === "deactivate") {
     const a = Qt(i.itemId), s = r.get(i.activationId);
-    if (!s || s.itemId !== a.id) throw new ke("shop_invalid_domain", `deactivation target is missing: ${i.activationId}`);
-    if (a.duration.kind !== "manual" || !Qf(s, a)) throw new ke("shop_invalid_domain", `deactivation target is not an active manual effect: ${i.activationId}`);
+    if (!s || s.itemId !== a.id) throw new _e("shop_invalid_domain", `deactivation target is missing: ${i.activationId}`);
+    if (a.duration.kind !== "manual" || !Qf(s, a)) throw new _e("shop_invalid_domain", `deactivation target is not an active manual effect: ${i.activationId}`);
     s.deactivatedByEventId = e.eventId;
     return;
   }
   for (const a of i.consumedActivationIds) {
     const s = r.get(a);
-    if (!s) throw new ke("shop_invalid_domain", `delivery target is missing: ${a}`);
+    if (!s) throw new _e("shop_invalid_domain", `delivery target is missing: ${a}`);
     const o = Qt(s.itemId);
-    if (o.duration.kind !== "replies" || !Qf(s, o)) throw new ke("shop_invalid_domain", `delivery cannot consume effect: ${a}`);
+    if (o.duration.kind !== "replies" || !Qf(s, o)) throw new _e("shop_invalid_domain", `delivery cannot consume effect: ${a}`);
     s.appliedCount += 1;
   }
   for (const a of i.transitionActivationIds) {
     const s = r.get(a);
-    if (!s || !Qj(s, Qt(s.itemId))) throw new ke("shop_invalid_domain", `delivery has no pending transition: ${a}`);
+    if (!s || !Qj(s, Qt(s.itemId))) throw new _e("shop_invalid_domain", `delivery has no pending transition: ${a}`);
     s.transitionDeliveredByEventId = e.eventId;
   }
 }
 function ba(e) {
-  if (!wo(e)) throw new ke("shop_invalid_domain", "shop domain must be an object");
-  if (e.schemaVersion !== 2) throw new ke("shop_unsupported_version", "unsupported shop schema version");
-  if (Ua(e, ["schemaVersion", "events"], "shop domain"), !Array.isArray(e.events)) throw new ke("shop_invalid_domain", "shop events must be an array");
+  if (!wo(e)) throw new _e("shop_invalid_domain", "shop domain must be an object");
+  if (e.schemaVersion !== 2) throw new _e("shop_unsupported_version", "unsupported shop schema version");
+  if (Ua(e, ["schemaVersion", "events"], "shop domain"), !Array.isArray(e.events)) throw new _e("shop_invalid_domain", "shop events must be an array");
   const t = /* @__PURE__ */ new Set(), n = /* @__PURE__ */ new Set(), r = /* @__PURE__ */ new Map(), i = /* @__PURE__ */ new Map(), a = /* @__PURE__ */ new Map();
   for (let s = 0; s < e.events.length; s += 1) {
     const o = Zj(e.events[s], s + 1);
-    if (t.has(o.eventId) || n.has(o.actionId)) throw new ke("shop_invalid_domain", "eventId and actionId must be unique");
+    if (t.has(o.eventId) || n.has(o.actionId)) throw new _e("shop_invalid_domain", "eventId and actionId must be unique");
     t.add(o.eventId), n.add(o.actionId), eD(o, r, i, a);
   }
 }
 function vo(e) {
-  if (!wo(e)) throw new ke("shop_effect_receipt_invalid");
+  if (!wo(e)) throw new _e("shop_effect_receipt_invalid");
   try {
     if (Ua(e, [
       "schemaVersion",
       "activeActivationIds",
       "transitionActivationIds"
-    ], "shop effect receipt"), e.schemaVersion !== 1) throw new ke("shop_effect_receipt_invalid");
+    ], "shop effect receipt"), e.schemaVersion !== 1) throw new _e("shop_effect_receipt_invalid");
     const t = ru(e.activeActivationIds, "receipt.activeActivationIds"), n = ru(e.transitionActivationIds, "receipt.transitionActivationIds");
-    if (t.some((r) => n.includes(r))) throw new ke("shop_effect_receipt_invalid");
+    if (t.some((r) => n.includes(r))) throw new _e("shop_effect_receipt_invalid");
     return {
       schemaVersion: 1,
       activeActivationIds: t,
       transitionActivationIds: n
     };
   } catch (t) {
-    throw t instanceof ke && t.code === "shop_effect_receipt_invalid" ? t : new ke("shop_effect_receipt_invalid");
+    throw t instanceof _e && t.code === "shop_effect_receipt_invalid" ? t : new _e("shop_effect_receipt_invalid");
   }
 }
 var tD = 864e13;
@@ -40254,11 +40281,11 @@ function nD() {
 }
 function vg(e, t) {
   const n = String(e ?? "").trim();
-  if (!n || Array.from(n).length > 200 || /[\u0000-\u001f\u007f-\u009f]/u.test(n)) throw new ke(t);
+  if (!n || Array.from(n).length > 200 || /[\u0000-\u001f\u007f-\u009f]/u.test(n)) throw new _e(t);
   return n;
 }
 function Gu(e) {
-  if (!Number.isSafeInteger(e.expectedRevision) || e.expectedRevision < 0 || typeof e.expectedEventId != "string" || e.expectedRevision === 0 != (e.expectedEventId === "")) throw new ke("shop_invalid_context", "shop command CAS token is invalid");
+  if (!Number.isSafeInteger(e.expectedRevision) || e.expectedRevision < 0 || typeof e.expectedEventId != "string" || e.expectedRevision === 0 != (e.expectedEventId === "")) throw new _e("shop_invalid_context", "shop command CAS token is invalid");
   return {
     actionId: vg(e.actionId, "shop_action_required"),
     expectedRevision: e.expectedRevision,
@@ -40281,7 +40308,7 @@ function rD(e, t) {
 function Vu(e, t, n) {
   const r = e.events.find((a) => a.actionId === t);
   if (!r) return null;
-  if (!rD(r.action, n)) throw new ke("shop_action_conflict", "actionId was reused with a different normalized action");
+  if (!rD(r.action, n)) throw new _e("shop_action_conflict", "actionId was reused with a different normalized action");
   const i = structuredClone(e);
   return {
     domain: i,
@@ -40292,14 +40319,14 @@ function Vu(e, t, n) {
 }
 function sl(e, t) {
   const n = e.events.length, r = e.events.at(-1)?.eventId || "";
-  if (t.expectedRevision !== n) throw new ke("shop_revision_conflict", "shop revision changed");
-  if (t.expectedEventId !== r) throw new ke("shop_event_id_conflict", "shop event head changed");
+  if (t.expectedRevision !== n) throw new _e("shop_revision_conflict", "shop revision changed");
+  if (t.expectedEventId !== r) throw new _e("shop_event_id_conflict", "shop event head changed");
 }
 function Hu(e, t, n, { now: r = Date.now, createEventId: i = nD }) {
   sl(e, t);
   const a = String(i() || "").trim(), s = r();
-  if (!a || Array.from(a).length > 200 || e.events.some((l) => l.eventId === a)) throw new ke("shop_invalid_context", "event id is missing, too long or duplicated");
-  if (!Number.isSafeInteger(s) || s < 0 || s > tD) throw new ke("shop_invalid_context", "event timestamp is invalid");
+  if (!a || Array.from(a).length > 200 || e.events.some((l) => l.eventId === a)) throw new _e("shop_invalid_context", "event id is missing, too long or duplicated");
+  if (!Number.isSafeInteger(s) || s < 0 || s > tD) throw new _e("shop_invalid_context", "event timestamp is invalid");
   const o = {
     revision: e.events.length + 1,
     eventId: a,
@@ -40359,7 +40386,7 @@ function Ri(e) {
     }
     if (i.kind === "activate") {
       const a = t.inventory[i.itemId];
-      if (!a) throw new ke("shop_invalid_domain", "validated inventory disappeared");
+      if (!a) throw new _e("shop_invalid_domain", "validated inventory disappeared");
       a.quantity -= 1;
       const s = {
         activationId: i.activationId,
@@ -40374,18 +40401,18 @@ function Ri(e) {
     }
     if (i.kind === "deactivate") {
       const a = n.get(i.activationId);
-      if (!a) throw new ke("shop_invalid_domain", "validated deactivation target disappeared");
+      if (!a) throw new _e("shop_invalid_domain", "validated deactivation target disappeared");
       a.deactivatedByEventId = r.eventId;
       continue;
     }
     for (const a of i.consumedActivationIds) {
       const s = n.get(a);
-      if (!s) throw new ke("shop_invalid_domain", "validated delivery target disappeared");
+      if (!s) throw new _e("shop_invalid_domain", "validated delivery target disappeared");
       s.appliedCount += 1;
     }
     for (const a of i.transitionActivationIds) {
       const s = n.get(a);
-      if (!s) throw new ke("shop_invalid_domain", "validated transition target disappeared");
+      if (!s) throw new _e("shop_invalid_domain", "validated transition target disappeared");
       s.transitionDeliveredByEventId = r.eventId;
     }
   }
@@ -40404,7 +40431,7 @@ function Lx(e) {
   };
 }
 function sD(e, t) {
-  if (!au(e.activeActivationIds, t.activeActivationIds) || !au(e.transitionActivationIds, t.transitionActivationIds)) throw new ke("shop_effect_receipt_invalid", "effect receipt no longer matches Shop state");
+  if (!au(e.activeActivationIds, t.activeActivationIds) || !au(e.transitionActivationIds, t.transitionActivationIds)) throw new _e("shop_effect_receipt_invalid", "effect receipt no longer matches Shop state");
 }
 function jx(e, t, n = {}) {
   ba(e);
@@ -40436,7 +40463,7 @@ function oD(e, t, n = {}) {
   if (s) return s;
   Uj(r.id), sl(e, i);
   const o = Ri(e).inventory[r.id]?.purchasedCount || 0;
-  if (r.purchaseLimit !== void 0 && o >= r.purchaseLimit) throw new ke("shop_purchase_limit_reached", `purchase limit reached: ${r.id}`);
+  if (r.purchaseLimit !== void 0 && o >= r.purchaseLimit) throw new _e("shop_purchase_limit_reached", `purchase limit reached: ${r.id}`);
   return Hu(e, i, a, n);
 }
 function cD(e, t, n = {}) {
@@ -40450,10 +40477,10 @@ function cD(e, t, n = {}) {
   if (c) return c;
   sl(e, i);
   const l = Ri(e);
-  if (l.activations.some((u) => u.activationId === a)) throw new ke("shop_activation_id_conflict", `activationId already exists: ${a}`);
-  if ((l.inventory[r.id]?.quantity || 0) < 1) throw new ke("shop_quantity_insufficient", `no inventory available: ${r.id}`);
+  if (l.activations.some((u) => u.activationId === a)) throw new _e("shop_activation_id_conflict", `activationId already exists: ${a}`);
+  if ((l.inventory[r.id]?.quantity || 0) < 1) throw new _e("shop_quantity_insufficient", `no inventory available: ${r.id}`);
   const d = iu(r, s);
-  if (l.activations.some((u) => u.itemId === r.id && Ju(u, r) && (r.stacking === "global-single" || iu(r, u.parameters) === d))) throw new ke("shop_activation_duplicate", `effect is already active: ${r.id}`);
+  if (l.activations.some((u) => u.itemId === r.id && Ju(u, r) && (r.stacking === "global-single" || iu(r, u.parameters) === d))) throw new _e("shop_activation_duplicate", `effect is already active: ${r.id}`);
   return Hu(e, i, o, n);
 }
 function lD(e, t, n = {}) {
@@ -40466,9 +40493,9 @@ function lD(e, t, n = {}) {
   if (o) return o;
   sl(e, i);
   const c = Ri(e).activations.find((l) => l.activationId === a);
-  if (!c || c.itemId !== r.id) throw new ke("shop_activation_missing", `activation does not exist for item: ${a}`);
-  if (r.duration.kind !== "manual") throw new ke("shop_activation_not_manual", `item is not manually closable: ${r.id}`);
-  if (!Ju(c, r)) throw new ke("shop_activation_not_active", `activation is already closed: ${a}`);
+  if (!c || c.itemId !== r.id) throw new _e("shop_activation_missing", `activation does not exist for item: ${a}`);
+  if (r.duration.kind !== "manual") throw new _e("shop_activation_not_manual", `item is not manually closable: ${r.id}`);
+  if (!Ju(c, r)) throw new _e("shop_activation_not_active", `activation is already closed: ${a}`);
   return Hu(e, i, s, n);
 }
 function Hv(e) {
@@ -40949,14 +40976,14 @@ function Qv(e, t, n) {
 }
 function eb(e, t) {
   const n = e.activations.find((r) => r.activationId === t);
-  if (!n) throw new ke("shop_effect_receipt_invalid", `activation is missing: ${t}`);
+  if (!n) throw new _e("shop_effect_receipt_invalid", `activation is missing: ${t}`);
   return n;
 }
 function kD(e, t) {
   const n = vo(t), r = [], i = [];
   for (const o of n.transitionActivationIds) {
     const c = eb(e, o), l = Qt(c.itemId), d = l.duration.kind === "manual" ? l.deactivationRule : l.expirationRule;
-    if (!d) throw new ke("shop_effect_receipt_invalid", `transition rule is missing: ${o}`);
+    if (!d) throw new _e("shop_effect_receipt_invalid", `transition rule is missing: ${o}`);
     i.push({
       activation: c,
       item: l,
@@ -47629,8 +47656,8 @@ function K6({ documentTarget: e = document, windowTarget: t = window, stylesheet
     if (N += 1, j = null, !G) {
       try {
         await h.cancelForeground?.(le);
-      } catch (_e) {
-        b(_e);
+      } catch (ke) {
+        b(ke);
       }
       return;
     }
@@ -47638,14 +47665,14 @@ function K6({ documentTarget: e = document, windowTarget: t = window, stylesheet
     G = null;
     try {
       await h.deactivate?.(ue, le);
-    } catch (_e) {
-      b(_e);
+    } catch (ke) {
+      b(ke);
     }
   }
   function ne() {
     const le = c();
     w?.refresh();
-    const ue = new Set(le.map((_e) => _e.id));
+    const ue = new Set(le.map((ke) => ke.id));
     (G && !ue.has(G.appId) || j && !ue.has(j.appId)) && W(() => ee("app-disabled")), E?.isReady() && E.post("os/apps-changed", { apps: L() });
   }
   function X(le, ue) {
@@ -47660,7 +47687,7 @@ function K6({ documentTarget: e = document, windowTarget: t = window, stylesheet
   async function fe(le = "closed") {
     w?.hide(!1), v = null, z += 1;
     const ue = ee(le);
-    E?.dispose(), E = null, O = null, Ae(), A?.remove(), A = null, C = null, (le === "closed" || le === "frame-close") && _?.focus({ preventScroll: !0 }), await Promise.allSettled([ue, Promise.resolve().then(() => h.handleWindowClosed?.(le))]);
+    E?.dispose(), E = null, O = null, Ae(), A?.close(), A?.remove(), A = null, C = null, (le === "closed" || le === "frame-close") && _?.focus({ preventScroll: !0 }), await Promise.allSettled([ue, Promise.resolve().then(() => h.handleWindowClosed?.(le))]);
   }
   function pe() {
     if (w?.updateTheme(), !E?.isReady()) return;
@@ -47686,25 +47713,25 @@ function K6({ documentTarget: e = document, windowTarget: t = window, stylesheet
   async function Fe(le, ue) {
     try {
       await O;
-    } catch (_e) {
-      ue === z && le === E && le.post("os/error", { message: _e instanceof Error ? _e.message : String(_e) });
+    } catch (ke) {
+      ue === z && le === E && le.post("os/error", { message: ke instanceof Error ? ke.message : String(ke) });
       return;
     }
     try {
-      const _e = await o();
+      const ke = await o();
       if (ue !== z || le !== E) return;
       le.post("os/init", {
-        ..._e,
+        ...ke,
         apps: L(),
         initialAppId: v,
         appOrder: l()
       }), v = null;
-    } catch (_e) {
-      ue === z && le === E && le.post("os/error", { message: _e instanceof Error ? _e.message : String(_e) }), b(_e);
+    } catch (ke) {
+      ue === z && le === E && le.post("os/error", { message: ke instanceof Error ? ke.message : String(ke) }), b(ke);
     }
   }
-  async function Ke(le, ue, _e) {
-    if (_e !== z || ue !== E) return;
+  async function Ke(le, ue, ke) {
+    if (ke !== z || ue !== E) return;
     const { type: ut, requestId: Ye = "", payload: F = {} } = le;
     if (ut === "os/set-app-order") {
       const ie = ti(F) ? F.appOrder : void 0;
@@ -47716,13 +47743,13 @@ function K6({ documentTarget: e = document, windowTarget: t = window, stylesheet
         return;
       }
       try {
-        if (await d(ie), _e !== z || ue !== E) return;
+        if (await d(ie), ke !== z || ue !== E) return;
         ue.post("os/app-order-result", {
           ok: !0,
           appOrder: l()
         }, Ye);
       } catch (xe) {
-        if (_e !== z || ue !== E) return;
+        if (ke !== z || ue !== E) return;
         ue.post("os/app-order-result", {
           ok: !1,
           error: "app_order_save_failed",
@@ -47816,8 +47843,8 @@ function K6({ documentTarget: e = document, windowTarget: t = window, stylesheet
           post: (Vn, Yr = {}, ka = "") => $(Oe) && (j === Oe || G === Oe) ? ue.post(Vn, Yr, ka, Oe) : !1
         }), wt = f()[ie];
         if (wt?.state === "failed") throw Object.assign(new Error(wt.failure.message), wt.failure);
-        if (_e !== z || ue !== E || j !== Oe || !$(Oe) || !await g(Oe.binding)) {
-          _e === z && ue === E && N === it + 1 && W(() => h.cancelForeground?.("activation-cancelled")), ue.post("app/activation-result", {
+        if (ke !== z || ue !== E || j !== Oe || !$(Oe) || !await g(Oe.binding)) {
+          ke === z && ue === E && N === it + 1 && W(() => h.cancelForeground?.("activation-cancelled")), ue.post("app/activation-result", {
             ok: !1,
             error: "activation_cancelled"
           }, Ye);
@@ -47831,7 +47858,7 @@ function K6({ documentTarget: e = document, windowTarget: t = window, stylesheet
         }, Ye);
       } catch (yt) {
         j === Oe && (j = null);
-        const wt = _e !== z || ue !== E || !$(Oe), Vn = f()[ie]?.state === "failed";
+        const wt = ke !== z || ue !== E || !$(Oe), Vn = f()[ie]?.state === "failed";
         wt || b(yt), ue.post("app/activation-result", {
           ok: !1,
           error: wt ? "activation_cancelled" : ti(yt) && typeof yt.code == "string" ? yt.code : "app_activation_failed",
@@ -47860,7 +47887,7 @@ function K6({ documentTarget: e = document, windowTarget: t = window, stylesheet
         requestId: Ye,
         payload: F
       });
-      Ye && _e === z && ue === E && (!re() || !await g(V.binding) ? ue.post(`${Q}/result`, {
+      Ye && ke === z && ue === E && (!re() || !await g(V.binding) ? ue.post(`${Q}/result`, {
         ok: !1,
         error: "app_inactive"
       }, Ye, V) : ie !== void 0 && ue.post(`${Q}/result`, {
@@ -47868,7 +47895,7 @@ function K6({ documentTarget: e = document, windowTarget: t = window, stylesheet
         result: ie
       }, Ye, V));
     } catch (ie) {
-      b(ie), Ye && _e === z && ue === E && ue.post(`${Q}/result`, {
+      b(ie), Ye && ke === z && ue === E && ue.post(`${Q}/result`, {
         ok: !1,
         error: re() ? ti(ie) && typeof ie.code == "string" ? ie.code : "app_request_failed" : "app_inactive",
         ...re() ? { message: ie instanceof Error ? ie.message : String(ie) } : {}
@@ -47879,16 +47906,18 @@ function K6({ documentTarget: e = document, windowTarget: t = window, stylesheet
     return x ? m() ? !0 : (p(), !1) : !1;
   }
   function It(le) {
-    if (!et() || le && !c().some((_e) => _e.id === le)) return !1;
+    if (!et() || le && !c().some((ke) => ke.id === le)) return !1;
     if (w?.hide(!1), v = le || null, A?.isConnected)
       return E?.isReady() && (E.post("os/navigate", { appId: v }), v = null), C?.focus(), !0;
     z += 1;
     const ue = z;
-    return A = e.createElement("div"), A.id = D1, A.className = "xiaobaix-os-overlay", C = e.createElement("iframe"), C.id = D6, C.className = "xiaobaix-os-frame", C.src = S, C.title = "小白 OS", C.setAttribute("allow", "clipboard-read; clipboard-write"), A.append(C), e.body.append(A), E = k({
+    return A = e.createElement("dialog"), A.id = D1, A.className = "xiaobaix-os-overlay", A.setAttribute("aria-label", _?.getAttribute("aria-label") ?? ""), A.addEventListener("cancel", (ke) => {
+      ke.preventDefault(), W(() => fe());
+    }), C = e.createElement("iframe"), C.id = D6, C.className = "xiaobaix-os-frame", C.src = S, C.title = "小白 OS", C.setAttribute("allow", "clipboard-read; clipboard-write"), A.append(C), e.body.append(A), A.showModal(), E = k({
       iframe: C,
       windowTarget: t,
-      onReady: (_e) => Fe(_e, ue),
-      onMessage: (_e, ut) => Ke(_e, ut, ue)
+      onReady: (ke) => Fe(ke, ue),
+      onMessage: (ke, ut) => Ke(ke, ut, ue)
     }), O = Promise.resolve().then(async () => {
       await h.handleWindowOpened?.();
     }), q(O), Te(), !0;
@@ -47923,11 +47952,11 @@ function K6({ documentTarget: e = document, windowTarget: t = window, stylesheet
     z += 1;
     const le = Promise.resolve().then(() => h.cancelAll?.("cleanup")), ue = fe("cleanup");
     Ae();
-    const _e = Promise.resolve().then(() => h.stopBackground?.());
+    const ke = Promise.resolve().then(() => h.stopBackground?.());
     T?.(), T = null, M?.(), M = null, R?.(), R = null, P?.(), P = null, t.removeEventListener("pagehide", en), w?.destroy(), w = null, _?.remove(), _ = null, e.getElementById(ld)?.remove(), x = !1, await Promise.allSettled([
       le,
       ue,
-      _e,
+      ke,
       ...B
     ]);
   }
@@ -48952,8 +48981,8 @@ function Y6(e) {
         c.has(pe.identityKey) || k(pe.identityKey, "loading");
         try {
           Ae = await x(pe), !Ae && !pe.reference && e.prepareInitialPartitions && (Fe = zt(await e.prepareInitialPartitions(pe, fe.signal))), await h(pe), k(pe.identityKey, "ready");
-        } catch (_e) {
-          const ut = Rr(_e, "storage_read_failed");
+        } catch (ke) {
+          const ut = Rr(ke, "storage_read_failed");
           return k(pe.identityKey, "failed", ut), {
             status: "failed",
             error: ut
@@ -48964,13 +48993,13 @@ function Y6(e) {
           partitions: n,
           binder: e.capabilityBinder,
           allowedCapabilities: q.allowedCapabilities ?? [],
-          readRaw: (_e) => (Ae?.partitions ?? Fe)[_e.key]
+          readRaw: (ke) => (Ae?.partitions ?? Fe)[ke.key]
         });
         let It;
         try {
           It = await se(Ke);
-        } catch (_e) {
-          throw k(pe.identityKey, "ready"), _e;
+        } catch (ke) {
+          throw k(pe.identityKey, "ready"), ke;
         }
         if (et.size === 0) return {
           status: "unchanged",
@@ -48982,14 +49011,14 @@ function Y6(e) {
         };
         try {
           await h(pe);
-        } catch (_e) {
+        } catch (ke) {
           return {
             status: "failed",
-            error: Rr(_e, "chat_changed")
+            error: Rr(ke, "chat_changed")
           };
         }
         const hn = Ae?.osId ?? i(), en = zt(Ae ? Ae.partitions : Fe);
-        for (const [_e, ut] of et) en[_e] = ut;
+        for (const [ke, ut] of et) en[ke] = ut;
         const xn = {
           formatVersion: 1,
           osId: hn,
@@ -49003,10 +49032,10 @@ function Y6(e) {
             envelope: zt(xn),
             changedPartitionKeys: new Set(et.keys())
           });
-        } catch (_e) {
+        } catch (ke) {
           return {
             status: "failed",
-            error: Rr(_e, "candidate_invariant_failed")
+            error: Rr(ke, "candidate_invariant_failed")
           };
         }
         const Nt = {
@@ -49027,8 +49056,8 @@ function Y6(e) {
             expected: Nt.expected,
             candidate: Nt.candidate
           }, fe.signal);
-        } catch (_e) {
-          const ut = Rr(_e, "storage_write_failed");
+        } catch (ke) {
+          const ut = Rr(ke, "storage_write_failed");
           return Nt.retainFailedCandidate ? (l.set(pe.identityKey, Nt), k(pe.identityKey, "failed", ut)) : k(pe.identityKey, "ready"), {
             status: "failed",
             error: ut

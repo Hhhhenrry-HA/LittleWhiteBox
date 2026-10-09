@@ -1,4 +1,4 @@
-import type { MAP_ARTIFICIAL_LIGHTS, MAP_ICON_TOKENS, MAP_LIGHTING_SPACES, MAP_NATURAL_LIGHTS } from './semantics.js';
+import type { MAP_ARTIFICIAL_LIGHTS, MAP_ICON_TOKENS, MAP_LIGHTING_SPACES, MAP_MATERIALS, MAP_NATURAL_LIGHTS } from './semantics.js';
 
 export type MapLocationScale = 'world' | 'region' | 'city' | 'district' | 'building' | 'floor' | 'room' | 'outdoor';
 export type MapTerrain = 'urban' | 'plain' | 'forest' | 'water' | 'mountain' | 'desert' | 'snow';
@@ -48,29 +48,7 @@ export type MapElementKind =
     | 'actor';
 
 /** Closed material recipes understood by the renderer. */
-export type MapMaterial =
-    | 'unknown'
-    | 'wood'
-    | 'stone'
-    | 'tile'
-    | 'carpet'
-    | 'bed-sheet'
-    | 'fabric'
-    | 'tatami'
-    | 'sand'
-    | 'marble'
-    | 'blood'
-    | 'water'
-    | 'grass'
-    | 'forest'
-    | 'glass'
-    | 'dirt'
-    | 'snow'
-    | 'metal'
-    | 'rune'
-    | 'warm-light'
-    | 'cold-light'
-    | 'shadow';
+export type MapMaterial = (typeof MAP_MATERIALS)[number];
 
 /** Local renderer vocabulary; arbitrary SVG, CSS and remote icon names are never persisted. */
 export type MapIconToken = (typeof MAP_ICON_TOKENS)[number];
