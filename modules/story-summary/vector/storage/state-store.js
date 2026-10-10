@@ -123,21 +123,21 @@ export async function getStateVectorDescriptors(chatId) {
  * 删除指定楼层及之后的 StateVectors
  */
 export async function deleteStateVectorsFromFloor(chatId, floor) {
-    if (!chatId) return;
+    if (!chatId) return 0;
 
     const deleted = await stateVectorsTable
-        .where('chatId')
-        .equals(chatId)
-        .filter(v => v.floor >= floor)
+        .where('[chatId+floor]')
+        .between([chatId, floor], [chatId, Infinity], true, true)
         .delete();
 
-    applyRecallRuntimeMutationBestEffort(chatId, {
-        type: 'deleteStateVectorsFromFloor',
-        floor,
-    });
     if (deleted > 0) {
+        applyRecallRuntimeMutationBestEffort(chatId, {
+            type: 'deleteStateVectorsFromFloor',
+            floor,
+        });
         xbLog.info(MODULE_ID, `删除 ${deleted} 个 StateVector (floor >= ${floor})`);
     }
+    return deleted;
 }
 
 /**

@@ -31,26 +31,35 @@ export function createHideStateController({
 
     function capture() {
         const state = getState();
-        return { ...state, length: state.chat?.length || 0 };
+        // The host reorders this array in place without a move event. Keep only
+        // positional object references, not copies of messages or their flags.
+        const messages = Array.isArray(state.chat) ? state.chat.slice() : [];
+        return { ...state, messages, length: messages.length };
+    }
+
+    function matchesMessagePrefix(state, messages) {
+        return messages.length <= (state.chat?.length || 0)
+            && messages.every((message, id) => state.chat[id] === message);
     }
 
     function isCurrent(state, version) {
         if (version !== revision) return false;
-        const current = capture();
+        const current = getState();
         return state.chatId === current.chatId
             && state.chat === current.chat
-            && state.length === current.length
+            && state.length === (current.chat?.length || 0)
             && state.enabled === current.enabled
             && state.summaryBoundary === current.summaryBoundary
             && state.useVectorBoundary === current.useVectorBoundary
-            && state.keepVisibleCount === current.keepVisibleCount;
+            && state.keepVisibleCount === current.keepVisibleCount
+            && matchesMessagePrefix(current, state.messages);
     }
 
-    function apply(state, end) {
+    function apply(state, end, messageId) {
         if (!state.chatId || !Array.isArray(state.chat)) return 0;
         const previous = applied;
         const audit = !previous || previous.chat !== state.chat || previous.chatId !== state.chatId
-            || state.length < previous.length;
+            || !matchesMessagePrefix(state, previous.messages);
         let changed = 0;
         const updateRange = (start, last) => {
             for (let id = Math.max(0, start); id <= Math.min(last, state.length - 1); id++) {
@@ -67,9 +76,10 @@ export function createHideStateController({
         } else {
             updateRange(Math.min(previous.end, end) + 1, Math.max(previous.end, end));
             // New messages outside the moving boundary must also be visible.
-            updateRange(Math.max(previous.length, Math.max(previous.end, end) + 1), state.length - 1);
+            updateRange(Math.max(previous.messages.length, Math.max(previous.end, end) + 1), state.length - 1);
+            if (Number.isInteger(messageId) && messageId >= 0) updateRange(messageId, messageId);
         }
-        applied = { chatId: state.chatId, chat: state.chat, length: state.length, end };
+        applied = { chatId: state.chatId, chat: state.chat, messages: state.messages, end };
         if (changed) refresh();
         return changed;
     }
@@ -85,7 +95,7 @@ export function createHideStateController({
         }
     }
 
-    async function reconcile({ full = true } = {}) {
+    async function reconcile({ full = true, messageId } = {}) {
         if (full) applied = null;
         const version = invalidate();
         const state = capture();
@@ -101,7 +111,7 @@ export function createHideStateController({
             }
         }
         if (!isCurrent(state, version)) return;
-        const changed = apply(state, getHiddenThrough({ ...state, vectorBoundary }));
+        const changed = apply(state, getHiddenThrough({ ...state, vectorBoundary }), messageId);
         if (readError) onError(readError, 'boundary');
         await saveChanges(state, changed);
     }
@@ -115,9 +125,9 @@ export function createHideStateController({
                 reconcile({ full: false }).catch(error => onError(error, 'apply'));
             }, debounceMs);
         },
-        cancel() {
+        cancel({ resetProjection = true } = {}) {
             invalidate();
-            applied = null;
+            if (resetProjection) applied = null;
         },
         clear({ persist = true } = {}) {
             invalidate();

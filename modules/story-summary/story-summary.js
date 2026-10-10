@@ -2791,12 +2791,12 @@ const hideState = createHideStateController({
     },
 });
 
-function applyHideState() {
-    return hideState.reconcile();
+function applyHideState(options) {
+    return hideState.reconcile(options);
 }
 
-function cancelPendingHide() {
-    hideState.cancel();
+function cancelPendingHide(options) {
+    hideState.cancel(options);
 }
 
 function applyHideStateDebounced() {
@@ -3955,9 +3955,9 @@ async function handleMessageUpdated(scheduledChatId, messageId) {
         scheduleLexicalWarmup();
         rememberVectorMaintenance(scheduledChatId, editedFloor, 'message_edited');
         scheduleAutoL0Backfill(AUTO_L0_BACKFILL_DELAY_MS, scheduledChatId);
+        addSummaryBtnToMessage(editedFloor);
     }
-    initButtonsForAll();
-    await applyHideState();
+    await applyHideState({ full: false, messageId: editedFloor });
     notifyStorySummaryChatState();
 }
 
@@ -4365,9 +4365,8 @@ function scheduleWithChatGuard(fn, delay = 0, ...args) {
  * 正文变更事件（删除 / swipe / 编辑）：把一致性任务的 Promise 直接交回宿主。
  *
  * SillyTavern 用 `await eventSource.emit(...)` 派发这些事件，EventCenter 也会
- * 原样返回 handler 的返回值，所以宿主会等我们同步完再往下走 —— 聊天切换不可能
- * 插进来，任务内的 isChatStale 也就不会再静默跳过。原来的 setTimeout 主动脱离了
- * 这条等待链，才需要事后补偿。
+ * 原样返回 handler 的返回值，所以宿主会等我们同步完再完成本次编辑/删除。
+ * 异步等待期间仍可能切聊天，任务内的 isChatStale 必须保留。
  *
  * 先取消在飞的 embedding：正文已经变了，它正在处理的是失效文本；顺带避免宿主
  * 卡在长 embedding 队列后面。被取消的延迟维护由 retryVectorMaintenanceAfterCancel
@@ -4386,7 +4385,7 @@ function runContentChangeSync(handler, ...args) {
             clearExtensionPrompt();
         }
     }
-    cancelPendingHide();
+    cancelPendingHide({ resetProjection: handler !== handleMessageUpdated });
     cancelEmbeddingWriteTasks('Chat content changed');
     return handler(chatId, ...args).catch(async (error) => {
         // 派生数据同步失败时边界不可信。所有正文变更统一恢复原文，

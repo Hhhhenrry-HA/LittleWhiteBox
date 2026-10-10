@@ -578,15 +578,18 @@ export async function rollbackSummaryIfNeeded({ changedFromFloor = null, invalid
     if (getRuntimeInvalidSourceFloor() != null) validPrefixLength = Math.min(validPrefixLength, getRuntimeInvalidSourceFloor());
     assertMemoryWritable(chatId);
     const previous = readSummaryMemory();
-    const next = structuredClone(previous);
     // Retire before undo, including operations whose anchors were already deleted by the Agent.
     const invalidFrom = Math.min(validPrefixLength, invalidateFromFloor ?? changedFromFloor ?? currentLength);
-    invalidateMemoryAnchors(next, invalidFrom);
+    let { next } = invalidateMemoryAnchors(previous, invalidFrom);
     const invalidate = () => deleteStateVectorsFromFloor(chatId, invalidFrom);
     if (!store || !isSummaryRollbackRequired(store, validPrefixLength)) {
-        delete next.storySummary.sourceInvalidFromFloor;
+        if (Object.hasOwn(next.storySummary, 'sourceInvalidFromFloor')) {
+            const storySummary = { ...next.storySummary };
+            delete storySummary.sourceInvalidFromFloor;
+            next = { ...next, storySummary };
+        }
         try {
-            if (!sameMemory(next, previous) || getRuntimeInvalidSourceFloor() != null) {
+            if (next !== previous || getRuntimeInvalidSourceFloor() != null) {
                 await commitSummaryMemory(chatId, next, { previous, invalidate, resolvesSourceInvalidity: true });
             }
             else await invalidate();
@@ -606,6 +609,8 @@ export async function rollbackSummaryIfNeeded({ changedFromFloor = null, invalid
                 : { status: 'not_needed' };
     }
     noteInvalidMemorySource(validPrefixLength);
+    // Real L2 undo mutates its draft; never let it change the detached baseline.
+    next = structuredClone(next);
     const history = next.storySummary.summaryHistory || [];
     const target = [...history].reverse().find(entry => entry.endMesId < validPrefixLength)?.endMesId ?? -1;
     const baseline = history.find(entry => entry.kind === 'baseline');
@@ -628,8 +633,7 @@ export async function rollbackSummaryIfNeeded({ changedFromFloor = null, invalid
 export async function invalidateSummaryAnchors(chatId, fromFloor = 0, reason = 'source_changed') {
     getSummaryStore();
     const previous = readSummaryMemory();
-    const next = structuredClone(previous);
-    const impact = invalidateMemoryAnchors(next, fromFloor, reason);
+    const { next, ...impact } = invalidateMemoryAnchors(previous, fromFloor, reason);
     await commitSummaryMemory(chatId, next, { previous,
         invalidate: () => deleteStateVectorsFromFloor(chatId, fromFloor) });
     return impact;
@@ -740,10 +744,10 @@ export async function rollbackSummaryOnce(chatId) {
 export async function clearSummaryData(chatId) {
     getSummaryStore();
     const previous = readSummaryMemory();
-    const next = structuredClone(previous);
+    const invalidSourceFloor = Math.min(previous.storySummary.sourceInvalidFromFloor ?? Infinity, getRuntimeInvalidSourceFloor() ?? Infinity);
+    const retired = Number.isFinite(invalidSourceFloor) ? invalidateMemoryAnchors(previous, invalidSourceFloor).next : previous;
+    const next = structuredClone(retired);
     const store = next.storySummary;
-    const invalidSourceFloor = Math.min(store.sourceInvalidFromFloor ?? Infinity, getRuntimeInvalidSourceFloor() ?? Infinity);
-    if (Number.isFinite(invalidSourceFloor)) invalidateMemoryAnchors(next, invalidSourceFloor);
     delete store.json;
     store.lastSummarizedMesId = -1;
     store.summaryHistory = [];

@@ -120,30 +120,32 @@ export async function getChunksByFloors(chatId, floors) {
 }
 
 /**
- * 删除指定楼层及之后的所有 chunk 和向量
+ * Atomically discard the affected L1 range and rewind its contiguous boundary.
  */
 export async function deleteChunksFromFloor(chatId, fromFloor) {
-    const chunks = await chunksTable
-        .where('chatId')
-        .equals(chatId)
-        .filter(c => c.floor >= fromFloor)
-        .toArray();
-
-    const chunkIds = chunks.map(c => c.chunkId);
-
-    await chunksTable
-        .where('chatId')
-        .equals(chatId)
-        .filter(c => c.floor >= fromFloor)
-        .delete();
-
-    for (const chunkId of chunkIds) {
-        await chunkVectorsTable.delete([chatId, chunkId]);
-    }
-    applyRecallRuntimeMutationBestEffort(chatId, {
-        type: 'deleteChunksFromFloor',
-        floor: fromFloor,
+    const result = await db.transaction('rw', chunksTable, chunkVectorsTable, metaTable, async () => {
+        const keys = await chunksTable.where('[chatId+floor]')
+            .between([chatId, fromFloor], [chatId, Infinity], true, true).primaryKeys();
+        const meta = await metaTable.get(chatId);
+        const previousFloor = meta?.lastChunkFloor ?? -1;
+        const lastChunkFloor = meta ? Math.min(previousFloor, fromFloor - 1) : previousFloor;
+        const boundaryChanged = lastChunkFloor !== previousFloor;
+        if (keys.length) {
+            await chunksTable.bulkDelete(keys);
+            await chunkVectorsTable.bulkDelete(keys);
+        }
+        if (boundaryChanged) {
+            await metaTable.put({ ...meta, lastChunkFloor, updatedAt: Date.now() });
+        }
+        return { deletedCount: keys.length, boundaryChanged, lastChunkFloor };
     });
+    if (result.deletedCount || result.boundaryChanged) {
+        applyRecallRuntimeMutationBestEffort(chatId, {
+            type: 'deleteChunksFromFloor',
+            floor: fromFloor,
+        });
+    }
+    return result;
 }
 
 /**

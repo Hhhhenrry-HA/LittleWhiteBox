@@ -294,11 +294,11 @@ async function buildIncrementalChunksInner(options, activity) {
 export async function syncOnMessageDeleted(chatId, newLength) {
     if (!chatId || newLength < 0) return;
 
-    await deleteChunksFromFloor(chatId, newLength);
-    const meta = await getMeta(chatId);
-    await updateMeta(chatId, { lastChunkFloor: Math.min(meta.lastChunkFloor, newLength - 1) });
-
-    xbLog.info(MODULE_ID, `消息删除同步：删除 floor >= ${newLength}`);
+    const result = await deleteChunksFromFloor(chatId, newLength);
+    if (result.deletedCount || result.boundaryChanged) {
+        xbLog.info(MODULE_ID, `消息删除同步：删除 floor >= ${newLength}`);
+    }
+    return result;
 }
 
 /**

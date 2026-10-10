@@ -3345,7 +3345,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/data/anchor-invalidation.js",
       "relativePath": "modules/story-summary/data/anchor-invalidation.js",
       "extension": ".js",
-      "sizeBytes": 2232
+      "sizeBytes": 3713
     },
     {
       "source": "littlewhitebox",
@@ -3429,7 +3429,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/data/memory-commit.js",
       "relativePath": "modules/story-summary/data/memory-commit.js",
       "extension": ".js",
-      "sizeBytes": 6840
+      "sizeBytes": 6967
     },
     {
       "source": "littlewhitebox",
@@ -3464,7 +3464,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/data/store.js",
       "relativePath": "modules/story-summary/data/store.js",
       "extension": ".js",
-      "sizeBytes": 32277
+      "sizeBytes": 32567
     },
     {
       "source": "littlewhitebox",
@@ -3506,7 +3506,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/docs/memory-maintenance-target-design.md",
       "relativePath": "modules/story-summary/docs/memory-maintenance-target-design.md",
       "extension": ".md",
-      "sizeBytes": 31019
+      "sizeBytes": 32265
     },
     {
       "source": "littlewhitebox",
@@ -3674,7 +3674,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/hide-state.js",
       "relativePath": "modules/story-summary/hide-state.js",
       "extension": ".js",
-      "sizeBytes": 5171
+      "sizeBytes": 5896
     },
     {
       "source": "littlewhitebox",
@@ -3793,7 +3793,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/maintenance/ranges.js",
       "relativePath": "modules/story-summary/maintenance/ranges.js",
       "extension": ".js",
-      "sizeBytes": 6279
+      "sizeBytes": 6704
     },
     {
       "source": "littlewhitebox",
@@ -3947,7 +3947,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/story-summary.js",
       "relativePath": "modules/story-summary/story-summary.js",
       "extension": ".js",
-      "sizeBytes": 212124
+      "sizeBytes": 212184
     },
     {
       "source": "littlewhitebox",
@@ -4171,7 +4171,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/tests/hide-state.test.js",
       "relativePath": "modules/story-summary/tests/hide-state.test.js",
       "extension": ".js",
-      "sizeBytes": 8092
+      "sizeBytes": 14981
     },
     {
       "source": "littlewhitebox",
@@ -4283,7 +4283,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/tests/memory-storage.test.js",
       "relativePath": "modules/story-summary/tests/memory-storage.test.js",
       "extension": ".js",
-      "sizeBytes": 39763
+      "sizeBytes": 46615
     },
     {
       "source": "littlewhitebox",
@@ -4612,7 +4612,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/vector/pipeline/chunk-builder.js",
       "relativePath": "modules/story-summary/vector/pipeline/chunk-builder.js",
       "extension": ".js",
-      "sizeBytes": 13484
+      "sizeBytes": 13448
     },
     {
       "source": "littlewhitebox",
@@ -4927,7 +4927,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/vector/storage/chunk-store.js",
       "relativePath": "modules/story-summary/vector/storage/chunk-store.js",
       "extension": ".js",
-      "sizeBytes": 14251
+      "sizeBytes": 14811
     },
     {
       "source": "littlewhitebox",
@@ -4983,7 +4983,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/vector/storage/state-store.js",
       "relativePath": "modules/story-summary/vector/storage/state-store.js",
       "extension": ".js",
-      "sizeBytes": 6606
+      "sizeBytes": 6655
     },
     {
       "source": "littlewhitebox",
@@ -13870,17 +13870,10 @@
     },
     {
       "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/expedition-cards/chapter1-handoff.md",
-      "relativePath": "modules/xiaobai-os/docs/expedition-cards/chapter1-handoff.md",
-      "extension": ".md",
-      "sizeBytes": 9172
-    },
-    {
-      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/docs/expedition-cards/chapter1-plan.md",
       "relativePath": "modules/xiaobai-os/docs/expedition-cards/chapter1-plan.md",
       "extension": ".md",
-      "sizeBytes": 15413
+      "sizeBytes": 15546
     },
     {
       "source": "littlewhitebox",

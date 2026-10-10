@@ -17,7 +17,7 @@ const shims = {
     'extensions.js': 'export const getContext=()=>globalThis.__memoryStorageTest.context;',
     'script.js': 'export let chat_metadata=globalThis.__memoryStorageTest.metadata; export function reload(){chat_metadata=globalThis.__memoryStorageTest.metadata;} export const getRequestHeaders=()=>({});',
     'debug-core.js': 'export const xbLog={info(){},warn(){},error(){},debug(){}};',
-    'runtime.js': 'export const applyRecallRuntimeMutationBestEffort=()=>{}; export const clearRecallRuntime=async()=>{};',
+    'runtime.js': 'export const applyRecallRuntimeMutationBestEffort=(chatId,change)=>globalThis.__memoryStorageTest.mutations.push({chatId,...change}); export const clearRecallRuntime=async()=>{};',
     'modules/story-summary/data/config.js': 'export const getTextFilterRules=()=>[]; export const getVectorConfig=()=>globalThis.__memoryStorageTest.vectorConfig; export const getSummaryPanelConfig=()=>({memoryMaintenanceEnabled:false});',
     'modules/story-summary/generate/llm.js': 'export const generateSummary=(...args)=>globalThis.__memoryStorageTest.generate(...args); export const parseSummaryJson=JSON.parse; export const isSummaryGenerationCancelledError=()=>false;',
     'modules/story-summary/maintenance/runner.js': 'export const createSharedMemoryAgent=()=>{throw Error("unexpected Agent request");}; export const runMemoryAgent=createSharedMemoryAgent;',
@@ -40,7 +40,8 @@ const bundled = await build({
         "export * from './modules/story-summary/maintenance/host.js';",
         "export * from './modules/story-summary/generate/generator.js';",
         "export * from './modules/story-summary/vector/storage/state-store.js';",
-        "export { db, stateVectorsTable } from './modules/story-summary/data/db.js';",
+        "export { db, stateVectorsTable, chunksTable, chunkVectorsTable, metaTable } from './modules/story-summary/data/db.js';",
+        "export { deleteChunksFromFloor } from './modules/story-summary/vector/storage/chunk-store.js';",
         "export { reload } from 'script.js';",
     ].join('\n') },
     bundle: true, write: false, format: 'esm', platform: 'node',
@@ -63,7 +64,7 @@ const disk = () => host.files.get(host.context.chatId).extensions.LittleWhiteBox
 beforeEach(async () => {
     for (const table of mod.db.tables) await table.clear();
     const fixture = maintenanceFixture();
-    Object.assign(host, { fixture, mode: 'save', reads: 0, writes: 0, afterSave: null, files: new Map(), metadata: { extensions: { LittleWhiteBox: {} } } });
+    Object.assign(host, { fixture, mode: 'save', reads: 0, writes: 0, mutations: [], afterSave: null, files: new Map(), metadata: { extensions: { LittleWhiteBox: {} } } });
     host.vectorConfig = { enabled: false, embeddingApi: {} };
     host.generate = () => assert.fail('unexpected summary request');
     host.embed = () => assert.fail('unexpected embedding request');
@@ -112,6 +113,128 @@ async function maintain(commands) {
 }
 const fixFact = { kind: 'edit', collection: 'facts', key: 'f-1', patch: { o: '未经证实的传闻' } };
 const fixAnchor = { kind: 'edit', collection: 'anchors', key: 'atom-1-0', patch: { semantic: '夏实说听说可能如此，自己没有确证。' } };
+
+async function seedCacheRange(chatId, floors, lastChunkFloor = Math.max(...floors)) {
+    const keys = floors.map(floor => ({ chatId, floor, chunkId: `c-${floor}-0` }));
+    await mod.chunksTable.bulkPut(keys.map(row => ({ ...row, text: `floor ${row.floor}` })));
+    await mod.chunkVectorsTable.bulkPut(keys.map(({ chatId: owner, chunkId }) => ({ chatId: owner, chunkId, vector: new ArrayBuffer(8) })));
+    await mod.saveStateVectors(chatId, floors.map(floor => ({ atomId: `a-${floor}`, floor, vector: [1, 0] })), 'test');
+    await mod.metaTable.put({ chatId, lastChunkFloor, fingerprint: 'test', updatedAt: 1 });
+}
+
+function observeCacheWrites(t) {
+    let writes = 0;
+    const record = () => { writes++; };
+    for (const table of mod.db.tables) for (const event of ['creating', 'updating', 'deleting']) {
+        table.hook(event, record);
+        t.after(() => table.hook(event).unsubscribe(record));
+    }
+    return () => writes;
+}
+
+test('tail invalidation preserves other chats and earlier floors, with a matching durable L1 boundary', async () => {
+    const chatId = host.context.chatId;
+    await seedCacheRange(chatId, [0, 5, 22, 23]);
+    await seedCacheRange('other-chat', [22, 23]);
+    host.mutations = [];
+    assert.equal(await mod.deleteStateVectorsFromFloor(chatId, 22), 2);
+    assert.deepEqual(await mod.deleteChunksFromFloor(chatId, 22), { deletedCount: 2, boundaryChanged: true, lastChunkFloor: 21 });
+    assert.deepEqual((await mod.chunksTable.where('chatId').equals(chatId).toArray()).map(row => row.floor).sort((a, b) => a - b), [0, 5]);
+    assert.deepEqual((await mod.stateVectorsTable.where('chatId').equals(chatId).toArray()).map(row => row.floor).sort((a, b) => a - b), [0, 5]);
+    assert.equal(await mod.chunkVectorsTable.where('chatId').equals(chatId).count(), 2);
+    for (const table of [mod.chunksTable, mod.chunkVectorsTable, mod.stateVectorsTable]) {
+        assert.equal(await table.where('chatId').equals('other-chat').count(), 2);
+    }
+    const meta = await mod.metaTable.get(chatId);
+    assert.equal(meta.lastChunkFloor, 21);
+    assert.equal(meta.fingerprint, 'test');
+    assert.ok(host.mutations.every(change => change.chatId === chatId));
+});
+
+for (const failureStage of ['vectors', 'boundary']) test(`L1 range deletion rolls back all tables when ${failureStage} fail`, async t => {
+    const chatId = host.context.chatId;
+    await seedCacheRange(chatId, [20, 22, 23]);
+    const before = await Promise.all(mod.db.tables.map(table => table.toArray()));
+    host.mutations = [];
+    const fail = () => { throw new Error('fixture storage failure'); };
+    const table = failureStage === 'vectors' ? mod.chunkVectorsTable : mod.metaTable;
+    const event = failureStage === 'vectors' ? 'deleting' : 'updating';
+    table.hook(event, fail);
+    t.after(() => table.hook(event).unsubscribe(fail));
+    await assert.rejects(mod.deleteChunksFromFloor(chatId, 22));
+    assert.deepEqual(await Promise.all(mod.db.tables.map(table => table.toArray())), before);
+    assert.deepEqual(host.mutations, []);
+});
+
+test('empty invalidation does not write, create metadata or announce cache changes', async t => {
+    const chatId = host.context.chatId;
+    await seedCacheRange(chatId, [0, 5], 5);
+    const originalMeta = await mod.metaTable.get(chatId);
+    host.mutations = [];
+    const writes = observeCacheWrites(t);
+    for (const owner of [chatId, 'missing-chat']) {
+        assert.equal(await mod.deleteStateVectorsFromFloor(owner, 22), 0);
+        assert.deepEqual(await mod.deleteChunksFromFloor(owner, 22), {
+            deletedCount: 0, boundaryChanged: false, lastChunkFloor: owner === chatId ? 5 : -1,
+        });
+    }
+    assert.equal(writes(), 0);
+    assert.deepEqual(await mod.metaTable.get(chatId), originalMeta);
+    assert.equal(await mod.metaTable.get('missing-chat'), undefined);
+    assert.deepEqual(host.mutations, []);
+});
+
+test('L1 boundary rewinds even when a processed range contains no chunks', async () => {
+    const chatId = host.context.chatId;
+    await seedCacheRange(chatId, [0], 23);
+    host.mutations = [];
+    assert.deepEqual(await mod.deleteChunksFromFloor(chatId, 22), { deletedCount: 0, boundaryChanged: true, lastChunkFloor: 21 });
+    assert.equal((await mod.metaTable.get(chatId)).lastChunkFloor, 21);
+    assert.equal(host.mutations.length, 1);
+});
+
+test('ordinary tail edits without affected memory do not add a memory save or readback', async t => {
+    await importFixture(); await seedAnchors();
+    const before = mod.readSummaryMemory(), saves = host.writes, reads = host.reads;
+    const cacheWrites = observeCacheWrites(t);
+    host.mutations = [];
+    host.context.chat[22].mes = 'edited user text';
+    await mod.rollbackSummaryIfNeeded({ invalidateFromFloor: 22 });
+    await mod.deleteChunksFromFloor(host.context.chatId, 22);
+    assert.deepEqual(mod.readSummaryMemory(), before);
+    assert.equal(host.writes, saves);
+    assert.equal(host.reads, reads);
+    assert.equal(cacheWrites(), 0);
+    assert.deepEqual(host.mutations, []);
+});
+
+test('an extraction status alone still requires a confirmed source invalidation', async () => {
+    await importFixture();
+    const memory = mod.readSummaryMemory();
+    memory.l0Index.byFloor[23] = { floor: 23, status: 'empty', atoms: 0 };
+    await mod.commitSummaryMemory(host.context.chatId, memory);
+    const saves = host.writes;
+    await mod.rollbackSummaryIfNeeded({ invalidateFromFloor: 22 });
+    assert.equal(host.writes, saves + 1);
+    assert.equal(ext().l0Index.byFloor[23], undefined);
+    assert.deepEqual(disk(), ext());
+});
+
+test('pure source retirement preserves its input, including absent anchors and completed history', async () => {
+    await importFixture(); await seedAnchors(); await maintain([{ ...fixAnchor, kind: 'delete' }]); await completeRange();
+    const before = mod.readSummaryMemory(), original = structuredClone(before);
+    const result = mod.invalidateMemoryAnchors(before, 1);
+    assert.deepEqual(before, original);
+    assert.deepEqual(result.next.storySummary.json, original.storySummary.json);
+    assert.ok(result.atomIds.includes('atom-1-0'));
+    assert.ok(result.retired > 0);
+    assert.ok(result.next.stateAtoms.every(atom => atom.floor < 1));
+    assert.deepEqual(mod.maintenanceRanges(result.next.storySummary.summaryHistory, 23).pending, [{ from: 2, to: 24 }]);
+    const repeated = mod.invalidateMemoryAnchors(result.next, 1);
+    assert.deepEqual(repeated.next, result.next);
+    assert.equal(repeated.retired, 0);
+    assert.deepEqual(repeated.atomIds, []);
+});
 
 for (const identityShape of ['portable', 'duplicate']) {
     test(`imported ${identityShape} fact identities support maintenance and undo without changing their content`, async () => {
@@ -323,8 +446,9 @@ test('late anchors reopen just their floor; clear and same-ID regeneration never
     await mod.commitSummaryMemory(host.context.chatId, next);
     assert.deepEqual(progress().pending, [{ from: 2, to: 2 }]);
     await completeRange(2, 2);
-    const cleared = mod.readSummaryMemory(); mod.invalidateMemoryAnchors(cleared, 1, 'anchors_cleared');
+    const { next: cleared } = mod.invalidateMemoryAnchors(mod.readSummaryMemory(), 1, 'anchors_cleared');
     await mod.commitSummaryMemory(host.context.chatId, cleared);
+    assert.equal(ext().stateAtoms.length, 0);
     const afterClear = progress();
     host.metadata = structuredClone(host.metadata); mod.reload(); mod.getSummaryStore();
     const rebuilt = mod.readSummaryMemory(); rebuilt.stateAtoms.push(structuredClone(host.fixture.atoms[0]));

@@ -29,12 +29,161 @@ function fixture({ length = 61, hiddenThrough = 56, summaryBoundary = 49, vector
     });
     return {
         state, chat, controller, rendered, saves, errors,
+        move: (sourceId, targetId) => {
+            // The host swaps adjacent message objects and moves their DOM nodes;
+            // is_system travels with the object, without replacing the chat array.
+            assert.equal(Math.abs(sourceId - targetId), 1);
+            [state.chat[sourceId], state.chat[targetId]] = [state.chat[targetId], state.chat[sourceId]];
+            const sourceHidden = rendered.get(sourceId);
+            rendered.set(sourceId, rendered.get(targetId));
+            rendered.set(targetId, sourceHidden);
+        },
         readWith: fn => { read = fn; },
         saveWith: fn => { save = fn; },
         visible: () => state.chat.flatMap((message, id) => message.is_system ? [] : [id]),
         refreshes: () => refreshes,
     };
 }
+
+test('ordinary tail edits inspect only edited visibility flags, including after a reorder was reconciled', async () => {
+    for (const reorder of [false, true]) {
+        const f = fixture({ length: 1000, hiddenThrough: 995, summaryBoundary: 899, vectorBoundary: 999 });
+        await f.controller.reconcile();
+        if (reorder) {
+            f.move(996, 995);
+            await f.controller.reconcile({ full: false, messageId: 995 });
+        }
+        const savedBeforeEditing = f.saves.length;
+        const inspected = new Set();
+        for (const [id, message] of f.chat.entries()) {
+            let hidden = message.is_system;
+            Object.defineProperty(message, 'is_system', {
+                enumerable: true,
+                get() { inspected.add(id); return hidden; },
+                set(value) { hidden = value; },
+            });
+        }
+        for (const messageId of [998, 999]) {
+            f.chat[messageId].mes = `edited ${messageId}`;
+            f.controller.cancel({ resetProjection: false });
+            await f.controller.reconcile({ full: false, messageId });
+        }
+        // References may be checked for order; unrelated visibility flags must not be re-audited.
+        assert.deepEqual([...inspected], [998, 999]);
+        assert.equal(f.saves.length, savedBeforeEditing);
+        assert.equal(f.chat[998].mes, 'edited 998');
+        assert.equal(f.chat[999].mes, 'edited 999');
+    }
+});
+
+test('an edit repairs its visibility and moving boundary, saving the resulting state once', async () => {
+    const f = fixture();
+    await f.controller.reconcile();
+    f.chat[59].is_system = true;
+    f.rendered.set(59, true);
+    f.chat[59].mes = 'edited second-to-last message';
+    f.readWith(async () => 58);
+    f.controller.cancel({ resetProjection: false });
+    await f.controller.reconcile({ full: false, messageId: 59 });
+    assert.deepEqual(f.visible(), [55, 56, 57, 58, 59, 60]);
+    assert.equal(f.rendered.get(59), false);
+    assert.equal(f.chat[59].mes, 'edited second-to-last message');
+    assert.equal(f.saves.length, 1);
+    f.controller.cancel({ resetProjection: false });
+    await f.controller.reconcile({ full: false, messageId: 59 });
+    assert.equal(f.saves.length, 1);
+});
+
+test('saving a message moved from 57 to 56 restores every floor from 52 through 60', async () => {
+    const f = fixture();
+    await f.controller.reconcile();
+    const moved = f.chat[57];
+    const displaced = f.chat[56];
+    f.move(57, 56);
+    f.chat[56].mes = 'edited after moving up';
+    f.readWith(async () => 55);
+    f.controller.cancel({ resetProjection: false });
+    await f.controller.reconcile({ full: false, messageId: 56 });
+
+    const expected = Array.from({ length: 61 }, (_, id) => id <= 51);
+    assert.equal(f.state.chat, f.chat);
+    assert.equal(f.chat[56], moved);
+    assert.equal(f.chat[57], displaced);
+    assert.equal(f.chat[56].mes, 'edited after moving up');
+    assert.deepEqual(f.visible(), [52, 53, 54, 55, 56, 57, 58, 59, 60]);
+    assert.deepEqual([...f.rendered.values()], expected);
+    assert.deepEqual(f.saves, [expected]);
+    await f.controller.reconcile({ full: false, messageId: 56 });
+    assert.equal(f.saves.length, 1);
+});
+
+test('reorders repair both sides of the hidden boundary, including repeated moves and background reconciliation', async () => {
+    for (const { moves, messageId } of [
+        { moves: [[57, 56]], messageId: 56 },
+        { moves: [[56, 57]], messageId: 57 },
+        { moves: [[58, 57], [57, 56], [56, 55]], messageId: 55 },
+        { moves: [[55, 56], [56, 57], [57, 58]], messageId: 58 },
+        { moves: [[57, 56]], messageId: undefined },
+        // A different edit must not endorse an unnoticed earlier reorder.
+        { moves: [[57, 56]], messageId: 60 },
+    ]) {
+        const f = fixture();
+        await f.controller.reconcile();
+        for (const [sourceId, targetId] of moves) f.move(sourceId, targetId);
+        f.controller.cancel({ resetProjection: false });
+        await f.controller.reconcile({ full: false, messageId });
+        const expected = Array.from({ length: 61 }, (_, id) => id <= 56);
+        assert.deepEqual(f.chat.map(message => message.is_system), expected);
+        assert.deepEqual([...f.rendered.values()], expected);
+        assert.deepEqual(f.saves, [expected]);
+    }
+});
+
+test('reordering during a boundary read discards its result and the next reconciliation repairs visibility', async () => {
+    const f = fixture();
+    await f.controller.reconcile();
+    const boundary = deferred();
+    f.readWith(() => boundary.promise);
+    const pending = f.controller.reconcile({ full: false, messageId: 57 });
+    f.move(57, 56);
+    const afterMove = f.chat.map(message => message.is_system);
+    boundary.resolve(55);
+    await pending;
+    assert.deepEqual(f.chat.map(message => message.is_system), afterMove);
+    assert.deepEqual([...f.rendered.values()], afterMove);
+    assert.equal(f.saves.length, 0);
+    assert.equal(f.refreshes(), 0);
+
+    f.readWith(async () => 55);
+    await f.controller.reconcile({ full: false, messageId: 56 });
+    const expected = Array.from({ length: 61 }, (_, id) => id <= 51);
+    assert.deepEqual(f.chat.map(message => message.is_system), expected);
+    assert.deepEqual([...f.rendered.values()], expected);
+    assert.deepEqual(f.saves, [expected]);
+});
+
+test('edit cancellation revokes old projections while chat changes and error recovery still audit fully', async () => {
+    const f = fixture();
+    await f.controller.reconcile();
+    const pendingBoundary = deferred();
+    f.readWith(() => pendingBoundary.promise);
+    const stale = f.controller.reconcile({ full: false, messageId: 59 });
+    f.controller.cancel({ resetProjection: false });
+    f.readWith(async () => 58);
+    await f.controller.reconcile({ full: false, messageId: 59 });
+    pendingBoundary.resolve(60);
+    await stale;
+    assert.deepEqual(f.visible(), [55, 56, 57, 58, 59, 60]);
+
+    f.state.chatId = 'new-chat';
+    f.state.chat = Array.from({ length: 61 }, () => ({ is_system: true }));
+    f.controller.cancel();
+    await f.controller.reconcile({ full: false, messageId: 59 });
+    assert.deepEqual(f.visible(), [55, 56, 57, 58, 59, 60]);
+    f.state.chat[60].is_system = true;
+    await f.controller.clear();
+    assert.equal(f.visible().length, 61);
+});
 
 test('deleting below a stale vector boundary keeps the configured tail and saves only the final state', async () => {
     const f = fixture();

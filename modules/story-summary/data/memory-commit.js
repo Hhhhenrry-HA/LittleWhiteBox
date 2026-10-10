@@ -17,11 +17,12 @@ function extension() {
 }
 
 function project(owner) {
-    return structuredClone({ storySummary: owner.storySummary || {}, stateAtoms: owner.stateAtoms || [],
-        l0Index: owner.l0Index || { version: 1, byFloor: {} } });
+    // Borrowed only for synchronous comparison; snapshots leaving this layer stay detached.
+    return { storySummary: owner.storySummary || {}, stateAtoms: owner.stateAtoms || [],
+        l0Index: owner.l0Index || { version: 1, byFloor: {} } };
 }
 
-export function readSummaryMemory() { return project(extension()); }
+export function readSummaryMemory() { return structuredClone(project(extension())); }
 
 export function rememberLoadedMemory() {
     const owner = extension();
@@ -55,7 +56,7 @@ export function noteInvalidMemorySource(fromFloor) {
     const owner = extension();
     const current = transactions.get(owner);
     const sourceInvalidFloor = Math.min(current?.sourceInvalidFloor ?? fromFloor, fromFloor);
-    transactions.set(owner, { status: 'source_invalid', previous: project(owner), sourceInvalidFloor });
+    transactions.set(owner, { status: 'source_invalid', previous: structuredClone(project(owner)), sourceInvalidFloor });
 }
 
 export function readPublishedSummaryMemory() {
@@ -101,7 +102,7 @@ export async function commitSummaryMemory(chatId, next, { previous = readSummary
     const settled = new Promise(resolve => { settle = resolve; });
     const transaction = { status: 'saving', previous: structuredClone(previous), sourceInvalidFloor, settled };
     const release = resolved => {
-        if (sourceInvalidFloor != null && !resolved) transactions.set(owner, { status: 'source_invalid', previous: project(owner), sourceInvalidFloor });
+        if (sourceInvalidFloor != null && !resolved) transactions.set(owner, { status: 'source_invalid', previous: structuredClone(project(owner)), sourceInvalidFloor });
         else transactions.delete(owner);
     };
     transactions.set(owner, transaction);
