@@ -4,7 +4,7 @@ import type { XiaobaiOsFrameBridge } from '../../../shell/app-src/frame-bridge.j
 import { useAppBack, useAppLayer } from '../../../shell/app-src/navigation/app-navigation.js';
 import { createExpeditionClient } from './client.js';
 import { createCampaignPlayback } from './presentation/playback.js';
-import { createCampaign, CAMPAIGN_RULES, loadoutIssue } from './campaign/rules.js';
+import { CAMPAIGN_RULES, loadoutIssue } from './campaign/rules.js';
 import { CAMPAIGN_COPY as c, FACT_COPY, campaignObjective } from './content/campaign-copy.js';
 import { WORLD_COPY as w } from './content/world-copy.js';
 import { COURTYARD } from './content/courtyard.js';
@@ -12,40 +12,51 @@ import type { CourtyardFact } from './content/world-types.js';
 import { isPerson, participantName, type Participant } from './content/participants.js';
 import { parleyInteractions } from './campaign/parley.js';
 import { DIALOGUE_COPY as dialogueCopy } from './content/dialogue-copy.js';
-import { availableChoices, CAMPAIGN_ACTIONS } from './content/campaign-actions.js';
 import { COPY, ENEMY_NAMES, RELIC_COPY, WEAPON_COPY, skillDetail, errorText } from './copy.js';
-import { RULES, WEAPON_LIST, isBoss } from './content.js';
-import type { Command, Weapon } from './types.js';
+import { RULES, isBoss } from './content.js';
+import type { Command, JourneySetup } from './types.js';
 import { createExpeditionSound } from './sound.js';
 import ExplorationField from './presentation/ExplorationField.vue';
 import CampaignMap from './presentation/CampaignMap.vue';
 import ExpeditionIcon from './ExpeditionIcon.vue';
 import ExpeditionWardrobe from './ExpeditionWardrobe.vue';
 import ConversationMeters from './presentation/ConversationMeters.vue';
+import JourneyEntry from './presentation/JourneyEntry.vue';
+import DialogueComposer from './presentation/DialogueComposer.vue';
+import DialogueBubble from './performance/DialogueBubble.vue';
+import { SCENE_ART, STORY_ART } from './artwork.js';
+import { JOURNEY_COPY as j } from './content/journey-copy.js';
+import { chapterTitle } from './content/chapters.js';
 import { campaignInteractions } from './world/people.js';
 import './presentation/campaign.css';
 
 const props = defineProps<{ bridge: XiaobaiOsFrameBridge; chatIdentity: string; generationActive: boolean }>();
 const client = createExpeditionClient(props.bridge, props.chatIdentity), playback = createCampaignPlayback(client);
 const { view, notice, busy, blocked, talking, conversationFailure } = client, { current: run, dirty } = playback;
-const weapon = ref<Weapon>('blade'), paused = ref(true), sound = ref(false), renderingError = ref(false), epoch = ref(0);
-const panel = ref<'map' | 'journal' | 'build' | 'wardrobe' | 'person' | 'passage' | 'ending' | 'arrival' | 'restart' | null>(null);
-const person = ref<Participant>('sanniang'), passage = ref<keyof typeof w.passages>('warning'), draft = ref(''), dialog = ref<HTMLElement | null>(null);
+const paused = ref(true), sound = ref(false), renderingError = ref(false), epoch = ref(0), entered = ref(false);
+const entry = ref<InstanceType<typeof JourneyEntry> | null>(null);
+const panel = ref<'map' | 'journal' | 'build' | 'person' | 'passage' | 'ending' | 'arrival' | 'prologue' | null>(null);
+const packTab = ref<'relics' | 'wardrobe'>('relics');
+const panelTitle = computed(() => panel.value === 'map' ? c.map : panel.value === 'journal' ? c.journal : panel.value === 'build' ? c.build : panel.value === 'person' ? participantName(person.value) : panel.value === 'passage' ? w.passages[passage.value].title : panel.value === 'arrival' ? w.scenes.camp : panel.value === 'ending' || panel.value === 'prologue' ? chapterTitle : run.value?.phase === 'reward' ? c.reward : run.value?.phase === 'lost' ? c.fallen : c.pause);
+const person = ref<Participant>('sanniang'), passage = ref<keyof typeof w.passages>('warning'), dialog = ref<HTMLElement | null>(null);
+const drafts = ref<Partial<Record<Participant, string>>>({});
+const draft = computed({ get: () => drafts.value[person.value] ?? '', set: value => { drafts.value[person.value] = value; } });
+const reading = new Map<Participant, { top: number; latest: boolean }>();
 const transcript = ref<HTMLElement | null>(null);
 const noticePanel = ref<HTMLElement | null>(null);
 const field = ref<InstanceType<typeof ExplorationField> | null>(null);
-const preview = createCampaign('preview', 1, 'blade', 'traveler');
 const facts = computed<ReadonlySet<CourtyardFact>>(previous => {
     const ids = run.value?.facts ?? [];
     return previous && previous.size === ids.length && ids.every(id => previous.has(id)) ? previous : new Set(ids);
 });
-const world = computed(() => ({ definition: COURTYARD[run.value?.location.scene ?? 'camp'], location: run.value?.location ?? preview.location, facts: facts.value, people: run.value?.people ?? preview.people }));
+const world = computed(() => run.value ? { definition: COURTYARD[run.value.location.scene], location: run.value.location, facts: facts.value, people: run.value.people } : null);
+const sceneArtStyle = computed(() => run.value ? { '--scene-art': `url("${SCENE_ART[run.value.location.scene]}")` } : undefined);
 const outfit = computed(() => run.value?.outfit ?? view.value?.data.equippedOutfit ?? 'traveler');
-const halted = computed(() => !run.value || !!run.value.pendingParley || paused.value || !!panel.value || !!notice.value || talking.value || renderingError.value || props.generationActive
+const halted = computed(() => !entered.value || !run.value || !!run.value.pendingParley || paused.value || !!panel.value || !!notice.value || talking.value || renderingError.value || props.generationActive
     || !['exploration', 'battle'].includes(run.value.phase) || !view.value?.ready || view.value.pending || view.value.writeState !== 'ready');
 const boss = computed(() => run.value?.battle?.enemies.find(e => isBoss(e.kind)));
 const history = computed(() => run.value?.conversations[person.value] ?? []);
-const choices = computed(() => run.value && isPerson(person.value) ? availableChoices(run.value.facts, person.value, run.value.people[person.value]) : []);
+const freshReply = ref<string | null>(null);
 const loadoutOptions = computed(() => run.value?.collection.map(relic => {
     const equipped = run.value!.equipped.includes(relic.id) ? run.value!.equipped.filter(id => id !== relic.id) : [...run.value!.equipped, relic.id];
     return { ...relic, equipped, issue: loadoutIssue(run.value!, equipped) };
@@ -53,14 +64,14 @@ const loadoutOptions = computed(() => run.value?.collection.map(relic => {
 const audio = createExpeditionSound(() => { client.error.value = COPY.presentationError.sound; sound.value = false; });
 let mounted = false;
 function close() {
-    if (run.value?.pendingParley) { if (run.value.pendingParley.decision === 'pass') { void resolveParley(); } return; }
-    panel.value = null; paused.value = true;
+    if (panel.value || run.value && ['exploration', 'battle'].includes(run.value.phase)) { void resume(); }
 }
 async function resolveParley() {
     if (await act({ type: 'resolve_parley' })) { panel.value = null; await nextTick(); field.value?.focus(); }
 }
 useAppLayer(dialog, close);
 useAppBack(() => {
+    if (!entered.value) { return entry.value?.back() ?? false; }
     if (panel.value) { close(); return true; }
     if (!paused.value) { pause(); return true; }
     return false;
@@ -69,16 +80,23 @@ useAppLayer(noticePanel, () => {
     if (!busy.value && !renderingError.value && !props.generationActive) { client.dismissError(); }
 });
 function pause() { paused.value = true; void playback.flush(); }
+function menu() { panel.value = null; pause(); }
 async function open(next: NonNullable<typeof panel.value>) {
-    paused.value = true;
-    if (await playback.flush()) { panel.value = next; }
+    paused.value = true; panel.value = next;
+    if (next === 'build') { packTab.value = 'relics'; }
+    await playback.flush();
 }
 async function resume() {
     if (run.value?.pendingParley) { if (run.value.pendingParley.decision === 'pass') { await resolveParley(); } return; }
     if (!notice.value && !props.generationActive) {
-        panel.value = null; paused.value = false;
+        entered.value = true; panel.value = null; paused.value = false;
         await nextTick(); field.value?.focus();
     }
+}
+function continueJourney() {
+    entered.value = true;
+    if (run.value?.pendingParley) { person.value = run.value.pendingParley.enemy; panel.value = 'person'; paused.value = true; }
+    else { void resume(); }
 }
 async function act(command: Command) {
     paused.value = true;
@@ -91,23 +109,32 @@ async function act(command: Command) {
     }
     return ok;
 }
-async function start() { await act({ type: 'start', weapon: weapon.value, outfit: outfit.value }); }
-async function restart() { if (await act({ type: 'restart', weapon: weapon.value, outfit: outfit.value })) { draft.value = ''; panel.value = null; } }
+async function start(setup: Omit<JourneySetup, 'outfit'>) {
+    if (await act({ type: run.value ? 'restart' : 'start', ...setup, outfit: outfit.value })) { entered.value = true; panel.value = 'prologue'; }
+}
+function returnToTitle() { paused.value = true; panel.value = null; entered.value = false; void playback.flush(); }
 async function interact(id: string) {
+    if (!run.value) { return; }
     paused.value = true;
-    if (!await playback.flush() || !run.value) { return; }
     const target = [...campaignInteractions(run.value), ...parleyInteractions(run.value.location.scene, run.value.location.position, new Set(run.value.facts))].find(item => item.target.id === id);
     const object = target?.kind === 'object' ? target.target : null;
-    if (object?.kind === 'person') { person.value = object.person; draft.value = ''; panel.value = 'person'; return; }
-    if (object?.kind === 'enemy') { person.value = object.enemy; draft.value = ''; panel.value = 'person'; return; }
+    if (object?.kind === 'person' || object?.kind === 'enemy') {
+        person.value = object.kind === 'person' ? object.person : object.enemy; panel.value = 'person'; await playback.flush(); return;
+    }
     if (await act({ type: 'interact', id }) && object?.kind === 'inspect') { passage.value = object.passage; panel.value = 'passage'; }
 }
 async function send() {
-    if (!draft.value.trim() || !await playback.flush()) { return; }
-    const text = draft.value.trim();
-    if (await client.talk(person.value, text)) {
-        draft.value = ''; playback.sync();
+    const recipient = person.value, text = draft.value.trim();
+    if (blocked.value || !text || !await playback.flush()) { return; }
+    reading.delete(recipient);
+    if (await client.talk(recipient, text)) {
+        if (drafts.value[recipient]?.trim() === text) { drafts.value[recipient] = ''; }
+        playback.sync();
     }
+}
+function rememberReading() {
+    const element = transcript.value;
+    if (element) { reading.set(person.value, { top: element.scrollTop, latest: element.scrollHeight - element.clientHeight - element.scrollTop < 32 }); }
 }
 async function recover() { if (await playback.recover()) { paused.value = true; epoch.value++; } }
 watch(() => props.generationActive, value => { if (value) { pause(); } });
@@ -123,20 +150,38 @@ watch(() => view.value?.data, (next, previous) => {
     if (!before.has('chapter_completed') && after.has('chapter_completed')) { panel.value = 'ending'; }
     else if (!before.has('captives_arrived') && after.has('captives_arrived')) { panel.value = 'arrival'; }
 });
-watch(() => [panel.value, person.value, history.value.length, talking.value], async () => {
+watch(() => run.value?.id, () => { drafts.value = {}; reading.clear(); });
+watch([panel, person], () => { freshReply.value = null; });
+watch(notice, value => { if (value) { freshReply.value = null; } });
+watch(() => [person.value, history.value] as const, ([recipient, next], [priorRecipient, previous]) => {
+    const latest = next.filter(turn => turn.kind === 'dialogue').at(-1);
+    if (recipient === priorRecipient && panel.value === 'person' && latest && !previous.some(turn => turn.id === latest.id)) { freshReply.value = latest.id; }
+});
+watch([transcript, person], ([element, recipient]) => {
+    const position = reading.get(recipient);
+    if (element) { element.scrollTop = position && !position.latest ? position.top : element.scrollHeight; }
+}, { flush: 'post' });
+watch(() => [history.value.length, talking.value], async () => {
     await nextTick();
-    if (transcript.value) { transcript.value.scrollTop = transcript.value.scrollHeight; }
+    const log = transcript.value;
+    if (log && reading.get(person.value)?.latest !== false) {
+        const latest = freshReply.value ? log.querySelector<HTMLElement>('[data-fresh-reply="true"]') : null;
+        log.scrollTop = latest && latest.offsetHeight > log.clientHeight
+            ? latest.getBoundingClientRect().top - log.getBoundingClientRect().top + log.scrollTop - 12 : log.scrollHeight;
+    }
 });
 onMounted(async () => { await client.read(); mounted = true; });
 onActivated(() => { if (mounted && !dirty.value) { void client.read(); } });
-onDeactivated(() => { pause(); });
+onDeactivated(() => { freshReply.value = null; pause(); });
 onBeforeUnmount(() => { playback.dispose(); client.dispose(); audio.dispose(); });
 </script>
 
 <template>
     <section class="ember-campaign">
+        <JourneyEntry v-if="!entered" ref="entry" :campaign="run" :ready="!!view?.ready" :busy="busy" :blocked="blocked || generationActive" @start="start" @continue="continueJourney" />
         <ExplorationField
-            :key="epoch" ref="field" :world="world" :paused="halted" :weapon="run?.weapon ?? weapon" :outfit="outfit" :battle="run?.battle"
+            v-if="entered && run && world"
+            :key="epoch" ref="field" :world="world" :traveler="run.traveler" :paused="halted" :weapon="run.weapon" :outfit="outfit" :battle="run.battle"
             @input="playback.input" @interact="interact" @pause="pause" @resume="resume" @error="renderingError = true"
         >
             <template #status>
@@ -148,16 +193,16 @@ onBeforeUnmount(() => { playback.dispose(); client.dispose(); audio.dispose(); }
             </template>
             <template #overlay><span /></template>
         </ExplorationField>
-        <nav v-if="run && !run.pendingParley" class="ember-tools" :aria-label="c.prepare">
+        <nav v-if="entered && run && !run.pendingParley" class="ember-tools" :aria-label="c.prepare">
             <button type="button" :aria-label="c.map" @click="open('map')"><ExpeditionIcon name="map" /><span>{{ c.map }}</span></button>
             <button type="button" :aria-label="c.build" @click="open('build')"><ExpeditionIcon name="bag" /><span>{{ c.build }}</span></button>
             <button type="button" :aria-label="c.journal" @click="open('journal')"><ExpeditionIcon name="journal" /><span>{{ c.journal }}</span></button>
-            <button type="button" :aria-label="c.pause" @click="pause"><ExpeditionIcon name="pause" /></button>
+            <button type="button" :aria-label="c.pause" @click="menu"><ExpeditionIcon name="pause" /><span>{{ c.pause }}</span></button>
         </nav>
-        <div v-if="boss && !panel" class="ember-boss">
+        <div v-if="entered && boss && !panel" class="ember-boss">
             <strong>{{ ENEMY_NAMES[boss.kind] }}</strong><meter min="0" :max="boss.maxHp" :value="boss.hp" :aria-label="ENEMY_NAMES[boss.kind]" />
         </div>
-        <div v-if="run?.phase === 'battle' && ['gate', 'beacon'].includes(run.location.scene) && !facts.has('alarm_silenced')" class="ember-alarm">
+        <div v-if="entered && run?.phase === 'battle' && ['gate', 'beacon'].includes(run.location.scene) && !facts.has('alarm_silenced')" class="ember-alarm">
             {{ facts.has('alarm_raised') ? c.alarmRaised : c.alarmSeconds(Math.ceil((CAMPAIGN_RULES.alarmTicks - run.alarmTicks) / RULES.hz)) }}
         </div>
 
@@ -176,57 +221,49 @@ onBeforeUnmount(() => { playback.dispose(); client.dispose(); audio.dispose(); }
             <button type="button" @click="client.dismissConversationFailure">{{ c.acknowledge }}</button>
         </aside>
 
-        <section v-if="!run" class="ember-intro">
-            <p class="ember-chapter">{{ c.chapter }}</p><h1>{{ c.title }}</h1><p class="ember-opening">{{ c.opening }}</p>
-            <div class="ember-weapons" :aria-label="COPY.weapons">
-                <button v-for="id in WEAPON_LIST" :key="id" type="button" :aria-pressed="weapon === id" @click="weapon = id"><ExpeditionIcon :name="id" /><span>{{ WEAPON_COPY[id].name }}</span></button>
-            </div>
-            <p class="ember-weapon-detail">{{ WEAPON_COPY[weapon].detail }}<small>{{ skillDetail(weapon) }}</small></p>
-            <button class="ember-primary" type="button" :disabled="blocked || generationActive" @click="start">{{ view ? c.start : COPY.preparing }}</button>
-        </section>
-
-        <div v-else-if="!notice && !renderingError && !generationActive && (panel || paused || run.phase === 'reward' || run.phase === 'lost')" class="ember-curtain">
-            <section ref="dialog" class="ember-panel" :class="{ 'ember-wide': panel === 'map' || panel === 'wardrobe', 'ember-map-panel': panel === 'map', 'ember-wardrobe-panel': panel === 'wardrobe', 'ember-dialogue': panel === 'person' }" role="dialog" aria-modal="true" :aria-label="panel === 'person' ? participantName(person) : c.chapter" tabindex="-1">
-                <header v-if="panel !== 'map'" class="ember-panel-heading">
-                    <h2 v-if="panel === 'wardrobe'">{{ c.wardrobe }}</h2><span v-else>{{ c.chapter }}</span>
-                    <button v-if="run.pendingParley?.decision !== 'attack' && (panel || run.phase !== 'lost' && run.phase !== 'reward')" type="button" :disabled="!!run.pendingParley && blocked" @click="resume">{{ c.close }}</button>
+        <div v-if="entered && run && !notice && !renderingError && !generationActive && (panel || paused || run.phase === 'reward' || run.phase === 'lost')" class="ember-curtain" :style="panel === 'person' ? sceneArtStyle : undefined">
+            <section ref="dialog" class="ember-panel" :class="{ 'ember-wide': panel === 'map' || panel === 'build' && packTab === 'wardrobe', 'ember-map-panel': panel === 'map', 'ember-wardrobe-panel': panel === 'build' && packTab === 'wardrobe', 'ember-dialogue': panel === 'person' }" role="dialog" aria-modal="true" :aria-label="panelTitle" tabindex="-1">
+                <header v-if="panel !== 'map' && panel !== 'person'" class="ember-panel-heading">
+                    <h2>{{ panelTitle }}</h2>
+                    <nav v-if="panel === 'build'" class="ember-pack-tabs" :aria-label="c.build"><button type="button" :aria-pressed="packTab === 'relics'" @click="packTab = 'relics'">{{ j.equipment }}</button><button type="button" :aria-pressed="packTab === 'wardrobe'" @click="packTab = 'wardrobe'">{{ c.wardrobe }}</button></nav>
+                    <button v-if="panel !== 'prologue' && run.pendingParley?.decision !== 'attack' && (panel || run.phase !== 'lost' && run.phase !== 'reward')" type="button" :disabled="!!run.pendingParley && blocked" @click="resume">{{ c.close }}</button>
                 </header>
                 <template v-if="panel === 'map'"><CampaignMap :campaign="run" @close="resume" /></template>
-                <template v-else-if="panel === 'restart'">
-                    <h2>{{ c.restart }}</h2><p>{{ c.restartWarning }}</p>
-                    <div class="ember-weapons" :aria-label="COPY.weapons"><button v-for="id in WEAPON_LIST" :key="id" type="button" :aria-pressed="weapon === id" @click="weapon = id"><ExpeditionIcon :name="id" /><span>{{ WEAPON_COPY[id].name }}</span></button></div>
-                    <p class="ember-weapon-detail">{{ WEAPON_COPY[weapon].detail }}<small>{{ skillDetail(weapon) }}</small></p>
-                    <button class="ember-primary" type="button" :disabled="blocked" @click="restart">{{ c.restart }}</button>
-                </template>
+                <template v-else-if="panel === 'prologue'"><p class="ember-prose ember-prologue">{{ c.opening }}</p><button class="ember-primary" type="button" @click="resume">{{ c.start }}</button></template>
                 <template v-else-if="panel === 'journal'">
-                    <h2>{{ c.journal }}</h2><p class="ember-objective-panel">{{ campaignObjective(run) }}</p>
+                    <p class="ember-objective-panel">{{ campaignObjective(run) }}</p>
                     <ol class="ember-journal"><li v-for="fact in run.facts" :key="fact">{{ FACT_COPY[fact] }}</li></ol>
                 </template>
                 <template v-else-if="panel === 'build'">
-                    <h2>{{ c.build }} <small>{{ c.slots(run.equipped.length, RULES.relicSlots) }}</small></h2>
-                    <p>{{ WEAPON_COPY[run.weapon].name }} · {{ skillDetail(run.weapon) }}</p>
-                    <p v-if="run.location.scene !== 'camp'">{{ c.safeBuild }}</p>
-                    <p v-if="!run.collection.length">{{ c.emptyBuild }}</p>
-                    <div class="ember-relics">
-                        <article v-for="relic in loadoutOptions" :key="relic.id">
-                            <ExpeditionIcon :name="relic.id" /><h3>{{ RELIC_COPY[relic.id].name }} <small>{{ COPY.rank(relic.rank) }}</small></h3><p>{{ RELIC_COPY[relic.id].detail }}</p>
-                            <small v-if="relic.issue === 'dependency' || relic.issue === 'capacity'">{{ c.loadoutIssue[relic.issue] }}</small>
-                            <button type="button" :disabled="blocked || !!relic.issue" @click="act({ type: 'loadout', equipped: relic.equipped })">{{ run.equipped.includes(relic.id) ? c.takeOff : c.putOn }}</button>
-                        </article>
-                    </div>
-                </template>
-                <template v-else-if="panel === 'wardrobe' && view">
-                    <ExpeditionWardrobe :data="view.data" :balance="view.balance" :blocked="blocked" :weapon="run.weapon" @command="act" />
+                    <ExpeditionWardrobe v-if="packTab === 'wardrobe' && view" :data="view.data" :traveler="run.traveler" :balance="view.balance" :blocked="blocked" :weapon="run.weapon" @command="act" />
+                    <template v-else>
+                        <div class="ember-pack-heading"><strong>{{ run.traveler.name }}</strong><span>{{ j.genders[run.traveler.gender] }} · {{ j.identityRole }}</span></div>
+                        <small>{{ c.slots(run.equipped.length, RULES.relicSlots) }}</small>
+                        <p>{{ WEAPON_COPY[run.weapon].name }} · {{ skillDetail(run.weapon) }}</p>
+                        <p v-if="run.location.scene !== 'camp'">{{ c.safeBuild }}</p>
+                        <p v-if="!run.collection.length">{{ c.emptyBuild }}</p>
+                        <div class="ember-relics">
+                            <article v-for="relic in loadoutOptions" :key="relic.id">
+                                <ExpeditionIcon :name="relic.id" /><h3>{{ RELIC_COPY[relic.id].name }} <small>{{ COPY.rank(relic.rank) }}</small></h3><p>{{ RELIC_COPY[relic.id].detail }}</p>
+                                <small v-if="relic.issue === 'dependency' || relic.issue === 'capacity'">{{ c.loadoutIssue[relic.issue] }}</small>
+                                <button type="button" :disabled="blocked || !!relic.issue" @click="act({ type: 'loadout', equipped: relic.equipped })">{{ run.equipped.includes(relic.id) ? c.takeOff : c.putOn }}</button>
+                            </article>
+                        </div>
+                    </template>
                 </template>
                 <template v-else-if="panel === 'person'">
-                    <div class="ember-dialogue-heading"><h2>{{ participantName(person) }}</h2><ConversationMeters :key="person" :campaign="run" :person="person" :draft="draft" /></div>
-                    <div ref="transcript" class="ember-dialogue-scroll" role="log" aria-live="polite">
-                        <p v-if="!history.length" class="ember-greeting">{{ w.scenes[run.location.scene] }} · {{ participantName(person) }}</p>
+                    <header class="ember-dialogue-heading">
+                        <div class="ember-person-heading"><h2>{{ participantName(person) }}</h2><small>{{ w.scenes[run.location.scene] }}</small></div>
+                        <ConversationMeters :key="person" :campaign="run" :person="person" :draft="draft" />
+                        <button v-if="run.pendingParley?.decision !== 'attack'" type="button" :disabled="!!run.pendingParley && blocked" @click="resume">{{ c.close }}</button>
+                    </header>
+                    <div ref="transcript" class="ember-dialogue-scroll" role="log" aria-live="polite" @scroll="rememberReading">
                         <template v-for="turn in history" :key="turn.id">
-                            <p v-if="turn.kind !== 'interaction'" class="ember-player-line"><small>{{ c.player }}</small>{{ turn.player }}</p>
+                            <p class="ember-player-line"><small>{{ run.traveler.name }}</small>{{ turn.player }}</p>
                             <p v-if="turn.issue" class="ember-dialogue-issue">{{ dialogueCopy.issues[turn.issue] }}</p>
-                            <details v-if="turn.kind === 'receipt'"><summary>{{ dialogueCopy.rawReply }}</summary><p class="ember-prose">{{ turn.reply }}</p></details>
-                            <p v-else :class="turn.kind === 'interaction' ? 'ember-greeting' : 'ember-npc-line'">{{ turn.reply }}</p>
+                            <details v-if="turn.kind === 'receipt' && turn.issue === 'reply_invalid'"><summary>{{ dialogueCopy.rawReply }}</summary><p class="ember-prose">{{ turn.reply }}</p></details>
+                            <p v-else-if="turn.kind === 'receipt'" class="ember-prose">{{ turn.reply }}</p>
+                            <DialogueBubble v-else :person="person" :reply="turn.reply" :performance="turn.performance" :animate="freshReply === turn.id" :data-fresh-reply="freshReply === turn.id" />
                         </template>
                         <div v-if="conversationFailure?.person === person && !history.some(turn => turn.id === conversationFailure?.actionId)" class="ember-dialogue-issue" role="status">
                             <p>{{ errorText(conversationFailure) }}</p>
@@ -235,29 +272,23 @@ onBeforeUnmount(() => { playback.dispose(); client.dispose(); audio.dispose(); }
                         </div>
                         <p v-if="talking">{{ c.thinking }}</p>
                     </div>
-                    <div v-if="choices.length && !run.pendingParley" class="ember-choices">
-                        <button v-for="id in choices" :key="id" :data-choice="id" type="button" :disabled="blocked" @click="isPerson(person) && act({ type: 'choice', id, person })">{{ CAMPAIGN_ACTIONS[id].label }}</button>
-                    </div>
                     <button v-if="run.pendingParley?.decision === 'attack'" class="ember-primary" type="button" :disabled="blocked" @click="resolveParley">{{ dialogueCopy.fight }}</button>
-                    <form v-if="!run.pendingParley" class="ember-chat-form" @submit.prevent="send">
-                        <textarea v-model="draft" :maxlength="CAMPAIGN_RULES.playerTextLimit" :aria-label="c.input" :placeholder="c.input" :disabled="talking" rows="2" />
-                        <button v-if="talking" type="button" @click="client.cancelTalk">{{ c.cancel }}</button><button v-else class="ember-primary" type="submit" :disabled="blocked || !draft.trim()">{{ c.send }}</button>
-                    </form><small v-if="!run.pendingParley" class="ember-ai-note">{{ c.aiNotice }}</small>
+                    <DialogueComposer v-if="!run.pendingParley" v-model="draft" :blocked="blocked" :talking="talking" @send="send" @cancel="client.cancelTalk" />
                 </template>
-                <template v-else-if="panel === 'passage'"><h2>{{ w.passages[passage].title }}</h2><p class="ember-prose">{{ w.passages[passage].body }}</p></template>
-                <template v-else-if="panel === 'arrival'"><h2>{{ w.scenes.camp }}</h2><p class="ember-prose">{{ c.received }}</p><button class="ember-primary" type="button" @click="resume">{{ c.resume }}</button></template>
-                <template v-else-if="panel === 'ending'"><h2>{{ c.endingTitle }}</h2><p class="ember-prose">{{ c.ending }}</p><strong class="ember-continued">{{ c.continued }}</strong><p>{{ c.optional }}</p><button class="ember-primary" type="button" @click="resume">{{ c.remain }}</button></template>
+                <template v-else-if="panel === 'passage'"><p class="ember-prose">{{ w.passages[passage].body }}</p></template>
+                <template v-else-if="panel === 'arrival'"><img class="ember-story-art" :src="STORY_ART.arrival" alt="" decoding="async"><p class="ember-prose">{{ c.received }}</p><button class="ember-primary" type="button" @click="resume">{{ c.resume }}</button></template>
+                <template v-else-if="panel === 'ending'"><img class="ember-story-art" :src="STORY_ART.ending" alt="" decoding="async"><h2>{{ c.endingTitle }}</h2><p class="ember-prose">{{ c.ending }}</p><strong class="ember-continued">{{ c.continued }}</strong><p>{{ c.optional }}</p><button class="ember-primary" type="button" @click="resume">{{ c.remain }}</button></template>
                 <template v-else-if="run.phase === 'reward'">
-                    <h2>{{ c.reward }}</h2><p>{{ c.rewardDetail }}</p>
+                    <p>{{ c.rewardDetail }}</p>
                     <div class="ember-relics"><button v-for="offer in run.offers" :key="offer.id" type="button" :disabled="blocked" @click="act({ type: 'relic', id: offer.id })"><ExpeditionIcon :name="offer.id" /><h3>{{ RELIC_COPY[offer.id].name }} <small>{{ COPY.rank(offer.rank) }}</small></h3><p>{{ RELIC_COPY[offer.id].detail }}</p></button></div>
                     <button type="button" :disabled="blocked" @click="act({ type: 'leave' })">{{ c.skip }}</button>
                 </template>
-                <template v-else-if="run.phase === 'lost'"><h2>{{ c.fallen }}</h2><p class="ember-prose">{{ c.fallenDetail }}</p><button class="ember-primary" type="button" :disabled="blocked" @click="act({ type: 'retry' })">{{ c.retry }}</button><button type="button" :disabled="blocked" @click="act({ type: 'retreat' })">{{ c.retreat }}</button></template>
+                <template v-else-if="run.phase === 'lost'"><p class="ember-prose">{{ c.fallenDetail }}</p><button class="ember-primary" type="button" :disabled="blocked" @click="act({ type: 'retry' })">{{ c.retry }}</button><button type="button" :disabled="blocked" @click="act({ type: 'retreat' })">{{ c.retreat }}</button></template>
                 <template v-else>
-                    <h2>{{ c.title }}</h2><p>{{ campaignObjective(run) }}</p><button class="ember-primary" type="button" :disabled="!!notice || generationActive" @click="resume">{{ c.resume }}</button>
-                    <div class="ember-pause-actions"><button type="button" @click="open('map')">{{ c.map }}</button><button type="button" @click="open('build')">{{ c.build }}</button><button v-if="run.location.scene === 'camp'" type="button" @click="open('wardrobe')">{{ c.wardrobe }}</button><button type="button" :aria-pressed="sound" @click="sound = !sound">{{ c.sound }}</button></div>
-                    <p class="ember-help ember-keyboard-help">{{ c.controls }}</p><p class="ember-help ember-touch-help">{{ c.touchControls }}</p>
-                    <button v-if="run.location.scene === 'camp' && run.phase === 'exploration'" type="button" @click="weapon = run.weapon; open('restart')">{{ c.restart }}</button>
+                    <button class="ember-primary" type="button" :disabled="!!notice || generationActive" @click="resume">{{ c.resume }}</button>
+                    <div class="ember-pause-actions"><button type="button" :aria-pressed="sound" @click="sound = !sound">{{ c.sound }}</button></div>
+                    <details><summary>{{ j.controls }}</summary><p class="ember-help ember-keyboard-help">{{ c.controls }}</p><p class="ember-help ember-touch-help">{{ c.touchControls }}</p></details>
+                    <button type="button" @click="returnToTitle">{{ j.title }}</button>
                 </template>
             </section>
         </div>

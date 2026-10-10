@@ -20,6 +20,9 @@ import { DESTINATIONS } from './content/people-places.js';
 import { isPerson, PARTICIPANT_IDS } from './content/participants.js';
 import { PERSON_IDS } from './content/people.js';
 import { PARLEY_IDS, PARLEY_ENEMIES } from './content/parley.js';
+import { parseTraveler } from './campaign/traveler.js';
+import { FIRST_CHAPTER } from './content/chapters.js';
+import { readPerformance } from './performance/catalog.js';
 export { expeditionId } from './validation.js';
 
 const weapon = (v: unknown) => member(v, WEAPON_LIST);
@@ -37,7 +40,7 @@ function stacks(v: unknown, max: number): RelicStack[] {
 export function parseCommand(value: unknown): Command {
     const v = object(value);
     switch (v.type) {
-        case 'start': case 'restart': return { type: v.type, weapon: weapon(v.weapon), outfit: outfit(v.outfit) };
+        case 'start': case 'restart': return { type: v.type, weapon: weapon(v.weapon), outfit: outfit(v.outfit), traveler: parseTraveler(v.traveler), chapter: member(v.chapter, [FIRST_CHAPTER.id]) };
         case 'purchase': case 'equip': return { type: v.type, id: outfit(v.id) };
         case 'interact': return { type: 'interact', id: expeditionId(v.id) };
         case 'choice': return { type: 'choice', id: member(v.id, CAMPAIGN_CHOICES), person: member(v.person, PERSON_IDS) };
@@ -57,6 +60,7 @@ export function parseCommand(value: unknown): Command {
 }
 function validateCampaign(raw: unknown, data: ExpeditionData) {
     const r = object(raw); expeditionId(r.id); integer(r.seed, 0, 0xffffffff); const w = weapon(r.weapon);
+    parseTraveler(r.traveler); member(r.chapter, [FIRST_CHAPTER.id]);
     if (!ownsOutfit(data, outfit(r.outfit))) { fault('invalid'); }
     const owned = stacks(r.collection, RELICS.length), equipped = unique(list(r.equipped, RULES.relicSlots, relic)), offered = stacks(r.offers, 3);
     if ([...owned, ...offered].some(s => !compatibleRelics(w).includes(s.id)) || equipped.some(id => !owned.some(s => s.id === id))) { fault('invalid'); }
@@ -102,14 +106,19 @@ function validateCampaign(raw: unknown, data: ExpeditionData) {
         }
         const entries = list(conversations[person], Number.MAX_SAFE_INTEGER, raw => {
             const t = object(raw); const id = boundedText(t.id, 150); boundedText(t.player, CAMPAIGN_RULES.playerTextLimit);
-            member(t.kind, ['dialogue', 'interaction', 'receipt']); scene(t.scene);
+            member(t.kind, ['dialogue', 'receipt']); scene(t.scene);
             if (t.action !== null) { member(t.action, isPerson(person) ? [...CAMPAIGN_CHOICES, 'share_secret', 'follow', 'stay', ...Object.keys(DESTINATIONS).map(id => `go:${id}`)] : ['pass', 'attack']); }
             if (t.affectionDelta !== undefined) { integer(t.affectionDelta, -RELATIONSHIP_RULES.changeMax, RELATIONSHIP_RULES.changeMax); }
-            if (t.kind === 'interaction' && t.action === null) { fault('invalid'); }
+            if (t.performance !== undefined && (t.kind !== 'dialogue' || !readPerformance(person, t.performance))) { fault('invalid'); }
             if (t.kind === 'receipt') {
                 member(t.issue, ['reply_invalid', 'reply_incomplete']);
                 if (t.action !== null || t.affectionDelta !== undefined) { fault('invalid'); }
-            } else if (t.issue !== undefined && (t.kind !== 'dialogue' || t.issue !== 'action_rejected' || t.action !== null)) { fault('invalid'); }
+            } else if (t.issue !== undefined) {
+                const issue = member(t.issue, ['action_rejected', 'performance_rejected', 'metadata_invalid']);
+                if (t.kind !== 'dialogue' || issue === 'action_rejected' && t.action !== null
+                    || issue === 'performance_rejected' && t.performance !== undefined
+                    || issue === 'metadata_invalid' && (t.action !== null || t.performance !== undefined || t.affectionDelta)) { fault('invalid'); }
+            }
             boundedText(t.reply, t.kind === 'receipt' ? Number.MAX_SAFE_INTEGER : CAMPAIGN_RULES.replyTextLimit);
             if (facts(t.facts).some(f => !knownFacts.includes(f))) { fault('invalid'); } return id;
         });

@@ -1,11 +1,11 @@
 import { BoxGeometry, type BufferGeometry, CircleGeometry, ConeGeometry, CylinderGeometry, DoubleSide, ExtrudeGeometry, Group, IcosahedronGeometry,
     Mesh, MeshBasicMaterial, MeshStandardMaterial, RingGeometry, Shape, ShapeGeometry, SphereGeometry, TorusGeometry,
-    Matrix4, type Material, type Object3D } from 'three';
+    Matrix4, type Material, type Object3D, type Texture } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export type Vec3 = [number, number, number];
 /** Scene-owned shared resources. Static architecture is baked by material, not drawn block by block. */
-export function createSceneKit() {
+export function createSceneKit(textures?: ReadonlyMap<string, Texture>) {
     const archProfile = new Shape(); archProfile.absarc(0, 0, 1.1, 0, Math.PI, false);
     archProfile.lineTo(-.86, 0); archProfile.absarc(0, 0, .86, Math.PI, 0, true); archProfile.closePath();
     const geometries = {
@@ -18,18 +18,29 @@ export function createSceneKit() {
         arch: new ExtrudeGeometry(archProfile, { depth: 1, bevelEnabled: false, curveSegments: 24 }).translate(0, 0, -.5),
     };
     const shapes = new Map<string, BufferGeometry>(), materials = new Map<string, MeshStandardMaterial | MeshBasicMaterial>();
+    const texturedGeometry = new Set<BufferGeometry>();
     function material(color: string, flat = false, opacity = 1, metal = false) {
         const key = `${color}/${flat}/${opacity}/${metal}`;
         let m = materials.get(key);
         if (!m) {
             m = flat ? new MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity === 1, side: DoubleSide })
-                : new MeshStandardMaterial({ color, roughness: metal ? .34 : .88, metalness: metal ? .45 : .02, side: DoubleSide });
+                : new MeshStandardMaterial({ color, map: textures?.get(color) ?? null, roughness: metal ? .34 : .88, metalness: metal ? .45 : .02, side: DoubleSide });
             materials.set(key, m);
         }
         return m;
     }
     function mesh(parent: Object3D, kind: keyof typeof geometries, color: string, size: Vec3, pos: Vec3 = [0, 0, 0], flat = false, opacity = 1, metal = false) {
-        const m = new Mesh(geometries[kind], material(color, flat, opacity, metal));
+        let geometry = geometries[kind];
+        if (!flat && kind === 'box' && textures?.has(color)) {
+            geometry = geometry.clone(); texturedGeometry.add(geometry);
+            const positions = geometry.getAttribute('position'), normals = geometry.getAttribute('normal'), uv = geometry.getAttribute('uv');
+            for (let i = 0; i < uv.count; i++) {
+                const u = Math.abs(normals.getX(i)) > .5 ? positions.getZ(i) * size[2] : positions.getX(i) * size[0];
+                const v = Math.abs(normals.getY(i)) > .5 ? positions.getZ(i) * size[2] : positions.getY(i) * size[1];
+                uv.setXY(i, u / 8, v / 8);
+            }
+        }
+        const m = new Mesh(geometry, material(color, flat, opacity, metal));
         m.scale.set(...size); m.position.set(...pos); m.castShadow = !flat; m.receiveShadow = !flat; parent.add(m); return m;
     }
     function group(parent: Object3D, pos: Vec3 = [0, 0, 0]) { const g = new Group(); g.position.set(...pos); parent.add(g); return g; }
@@ -37,10 +48,15 @@ export function createSceneKit() {
         const m = mesh(parent, filled ? 'disc' : 'ring', color, [radius, radius, 1], [x, height, z], true, opacity); m.rotation.x = -Math.PI / 2; return m;
     }
     function shape(parent: Object3D, points: readonly [number, number][], color: string, pos: Vec3 = [0, 0, 0], depth = 0) {
-        const key = JSON.stringify([points, depth]); let geo = shapes.get(key);
+        const textured = textures?.has(color) ?? false;
+        const key = JSON.stringify([points, depth, textured]); let geo = shapes.get(key);
         if (!geo) {
             const s = new Shape(); points.forEach(([x, y], i) => i ? s.lineTo(x, y) : s.moveTo(x, y)); s.closePath();
             geo = depth ? new ExtrudeGeometry(s, { depth, steps: 1, bevelEnabled: true, bevelThickness: depth * .3, bevelSize: depth * .3, bevelSegments: 2 }) : new ShapeGeometry(s);
+            if (textured) {
+                const uv = geo.getAttribute('uv');
+                for (let i = 0; i < uv.count; i++) { uv.setXY(i, uv.getX(i) / 8, uv.getY(i) / 8); }
+            }
             shapes.set(key, geo);
         }
         const m = new Mesh(geo, material(color)); m.position.set(...pos); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m;
@@ -69,6 +85,6 @@ export function createSceneKit() {
         return () => { root.clear(); baked.forEach(g => g.dispose()); };
     }
     return { mesh, group, ring, shape, material, bake, geometries,
-        dispose() { Object.values(geometries).forEach(g => g.dispose()); shapes.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); } };
+        dispose() { Object.values(geometries).forEach(g => g.dispose()); shapes.forEach(g => g.dispose()); texturedGeometry.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); } };
 }
 export type SceneKit = ReturnType<typeof createSceneKit>;

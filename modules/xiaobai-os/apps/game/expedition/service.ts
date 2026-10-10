@@ -97,6 +97,7 @@ export function createExpeditionService(store: PartitionStore<ExpeditionData>, f
             const affectionDelta = response.kind === 'dialogue' && isPerson(input.person) ? settleAffection(spoken.active!, input.person, response.affection) : undefined;
             spoken.active!.conversations[input.person].push({ id: input.actionId, kind: response.kind, player: input.text,
                 reply: response.reply, action: response.action, ...(response.issue ? { issue: response.issue } : {}),
+                ...(response.performance ? { performance: response.performance } : {}),
                 ...(affectionDelta === undefined ? {} : { affectionDelta }), scene: data.active.location.scene, facts: [...data.active.knowledge[input.person]] });
             if (response.action === 'share_secret' && isPerson(input.person)) {
                 const fact = secretFact(input.person); if (!fact) { fault('invalid'); }

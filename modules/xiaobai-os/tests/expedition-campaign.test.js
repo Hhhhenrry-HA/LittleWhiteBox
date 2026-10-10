@@ -1,12 +1,26 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { journey } from './fixtures/expedition-traveler.js';
 import { advanceExpedition, emptyExpedition } from '../apps/game/expedition/domain.ts';
-import { EXPEDITION_PARTITION, validateExpedition } from '../apps/game/expedition/partition.ts';
+import { EXPEDITION_PARTITION, validateExpedition, parseCommand } from '../apps/game/expedition/partition.ts';
 import { campaignLoadout, tickCampaign } from '../apps/game/expedition/campaign/rules.ts';
 import { campaignDriver } from './fixtures/campaign-driver.mjs';
 import { COURTYARD } from '../apps/game/expedition/content/courtyard.ts';
 import { startWorld } from '../apps/game/expedition/world/exploration.ts';
-const start = { type: 'start', weapon: 'blade', outfit: 'traveler' };
+const start = { type: 'start', weapon: 'blade', outfit: 'traveler', ...journey };
+test('a journey requires the chosen identity and chapter; the saved profile survives a round trip', () => {
+    for (const gender of ['male', 'female']) {
+        const command = parseCommand({ ...start, traveler: { name: '  江雪  ', gender } });
+        const state = advanceExpedition(emptyExpedition(), command, 'identity', 7);
+        assert.deepEqual(state.active.traveler, { name: '江雪', gender });
+        assert.equal(state.active.chapter, journey.chapter);
+        assert.deepEqual(EXPEDITION_PARTITION.parse(EXPEDITION_PARTITION.serialize(state)).value, state);
+    }
+    for (const traveler of [null, {}, { name: ' ' }, { name: '江雪' }, { name: '江雪', gender: 'unknown' }, { name: 'a\nb', gender: 'male' }]) {
+        assert.throws(() => parseCommand({ ...start, traveler }), { code: 'expedition_invalid' });
+    }
+    assert.throws(() => parseCommand({ ...start, chapter: 'future' }), { code: 'expedition_invalid' });
+});
 function fixture(seed = 7) {
     let state = advanceExpedition(emptyExpedition(), start, 'start', seed), serial = 0;
     const act = command => { state = advanceExpedition(state, command, `act-${++serial}`, 0); validateExpedition(state); };
@@ -38,14 +52,16 @@ test('remote interactions and client-claimed results cannot alter chapter facts'
     const h = fixture(); assert.throws(() => h.act({ type: 'choice', id: 'receiving', person: 'laobai' }));
     assert.throws(() => h.act({ type: 'interact', id: 'release' })); assert.deepEqual(h.get().active.facts, []);
 });
-test('an interaction belongs to its selected speaker even when another eligible person stands beside them', () => {
+test('a plot result belongs to its selected witness without appending a second scripted dialogue', () => {
     const h = fixture(), c = h.get().active;
     c.location.position = { ...COURTYARD.camp.anchors.guard };
     c.people.sanniang.position = { ...c.location.position };
     h.act({ type: 'choice', id: 'briefing', person: 'laobai' });
-    assert.equal(h.get().active.conversations.laobai.at(-1).action, 'briefing');
+    assert.ok(h.get().active.knowledge.laobai.includes('briefed'));
+    assert.equal(h.get().active.knowledge.sanniang.includes('briefed'), false);
+    assert.equal(h.get().active.conversations.laobai.length, 0);
     assert.equal(h.get().active.conversations.sanniang.length, 0);
-    assert.throws(() => h.act({ type: 'choice', id: 'sit', person: 'sanniang' }));
+    assert.throws(() => h.act({ type: 'choice', id: 'briefing', person: 'sanniang' }));
 });
 test('encounter checkpoints restore exact combat without rewinding confirmed chapter facts', () => {
     const h = fixture(), c = h.get().active;
@@ -57,12 +73,23 @@ test('encounter checkpoints restore exact combat without rewinding confirmed cha
 
 test('returning to camp retains progress; explicit new chapter replaces only its story and collection', async () => {
     const h = fixture(); await h.driver.complete('waterway');
-    await h.driver.walk('guard'); h.act({ type: 'choice', id: 'stones', person: 'laobai' });
     await h.driver.walk('clinic'); h.act({ type: 'choice', id: 'clinic', person: 'sanniang' });
-    const completed = h.get(); assert.ok(completed.active.facts.includes('clinic_helped')); assert.equal(completed.active.conversations.laobai.at(-1).action, 'stones');
+    const completed = h.get(); assert.ok(completed.active.facts.includes('clinic_helped'));
     const receipts = structuredClone(completed.awards), priorId = completed.active.id;
-    h.act({ type: 'restart', weapon: 'staff', outfit: 'traveler' });
+    h.act({ type: 'restart', weapon: 'staff', outfit: 'traveler', ...journey });
     assert.notEqual(h.get().active.id, priorId); assert.equal(h.get().active.weapon, 'staff');
     assert.deepEqual(h.get().active.facts, []); assert.deepEqual(h.get().active.collection, []);
     assert.deepEqual(h.get().awards, receipts);
+});
+
+test('an explicit restart from outside camp replaces the traveler and leaves owned outfits intact', () => {
+    const state = advanceExpedition(emptyExpedition(), start, 'old', 7);
+    state.active.location = startWorld(COURTYARD.cells, 'waterway');
+    state.purchases.push({ id: 'ranger', actionId: 'purchase', amount: 180 });
+    const next = advanceExpedition(state, { ...start, type: 'restart', traveler: { name: '江雪', gender: 'female' } }, 'new', 9);
+    validateExpedition(next);
+    assert.deepEqual(next.active.traveler, { name: '江雪', gender: 'female' });
+    assert.equal(next.active.location.scene, 'camp');
+    assert.deepEqual(next.purchases, state.purchases);
+    assert.deepEqual(state.active.traveler, journey.traveler);
 });

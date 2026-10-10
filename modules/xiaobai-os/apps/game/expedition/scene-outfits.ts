@@ -3,14 +3,15 @@ import { OUTFITS } from './outfits.js';
 import type { SceneKit } from './scene-kit.js';
 import type { Outfit } from './types.js';
 
-/** Clothing attaches to the shared mascot; its face, body proportions and ears are never replaced. */
+/** Outfit ownership/palettes stay unchanged; all garments fit the expedition traveler rig. */
 export function dressHero(k: SceneKit, parent: Group, id: Outfit) {
     const c = OUTFITS[id], { mesh, group, shape } = k;
-    const cape = group(parent, [0, .2, -.23]), head = group(parent), orbit = group(parent, [0, .33, 0]);
+    const cape = group(parent, [0, .2, -.23]), head = group(parent, [0, .328, 0]), orbit = group(parent, [0, .55, 0]);
+    head.scale.set(.64, .78, .72);
     const long = c.silhouette === 'robe' || c.silhouette === 'coat';
     shape(cape, [[-.23, 0], [.23, 0], [.38, long ? -.68 : -.48], [.1, long ? -.77 : -.59], [-.36, long ? -.68 : -.5]], c.fabric);
     shape(cape, [[-.04, -.08], [.04, -.08], [.055, long ? -.61 : -.45], [0, long ? -.68 : -.5], [-.05, long ? -.61 : -.45]], c.metal, [0, 0, -.012]);
-    mesh(parent, 'torus', c.fabric, [.25, .18, .24], [0, -.045, 0]).rotation.x = Math.PI / 2;
+    mesh(parent, 'torus', c.fabric, [.2, .15, .19], [0, .19, 0]).rotation.x = Math.PI / 2;
     if (c.silhouette === 'armor') {
         mesh(parent, 'sphere', c.metal, [.295, .18, .27], [0, -.15, 0], false, 1, true);
         mesh(parent, 'rock', c.glow, [.065, .09, .025], [0, -.07, .285]);

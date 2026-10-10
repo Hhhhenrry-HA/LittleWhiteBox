@@ -8,6 +8,7 @@ import { campaignInteractions } from '../world/people.js';
 import { interactionLabel } from './interaction-copy.js';
 import type { CourtyardScene } from '../content/world-types.js';
 import { discoveredRoutes, mapMarkers } from './map-projection.js';
+import { SCENE_ART } from '../artwork.js';
 const props = defineProps<{ campaign: Campaign }>();
 const emit = defineEmits<{ close: [] }>();
 const overview = ref(false);
@@ -43,7 +44,7 @@ const markers = computed(() => {
 </script>
 <template>
     <div ref="root" class="ember-map" :class="{ 'ember-map-wide': wide, 'ember-map-local': !overview }">
-        <div class="ember-map-header"><h2>{{ overview ? c.chapterMap : w.scenes[scene.id] }}</h2><div><button type="button" :aria-pressed="overview" @click="overview = !overview">{{ overview ? c.localMap : c.chapterMap }}</button><button type="button" @click="emit('close')">{{ c.close }}</button></div></div>
+        <div class="ember-map-header"><img :src="SCENE_ART[scene.id]" alt="" decoding="async"><h2>{{ overview ? c.chapterMap : w.scenes[scene.id] }}</h2><div><button type="button" :aria-pressed="overview" @click="overview = !overview">{{ overview ? c.localMap : c.chapterMap }}</button><button type="button" @click="emit('close')">{{ c.close }}</button></div></div>
         <svg v-if="overview" ref="routeMap" :viewBox="`0 0 ${mapSize.width} ${mapSize.height}`" role="img" :aria-label="c.chapterMap" class="ember-route-map">
             <line v-for="link in links" :key="link.id" :x1="positions[link.from][0]" :y1="positions[link.from][1]" :x2="positions[link.to][0]" :y2="positions[link.to][1]" stroke="#9ab5ae" stroke-width="1.5" :stroke-dasharray="campaign.location.visited.includes(link.from) && campaign.location.visited.includes(link.to) ? undefined : '4 4'" />
             <g v-for="(position, id) in positions" :key="id" :transform="`translate(${position.join(',')})`">
@@ -64,7 +65,10 @@ const markers = computed(() => {
 </template>
 <style scoped>
 .ember-map { display:grid; min-height:0; flex:1; grid-template-rows:auto minmax(0,1fr) auto; gap:8px; }
-.ember-map-header { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+.ember-map-header { display:flex; justify-content:space-between; align-items:flex-end; gap:12px; min-height:112px; padding:16px; position:relative; isolation:isolate; overflow:hidden; border-radius:4px; color:#fafbff; background:#263853; }
+.ember-map-header img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center 58%; opacity:.6; z-index:-1; }
+.ember-map-header::after { content:""; position:absolute; inset:0; z-index:-1; background:linear-gradient(0deg,#152440b8,transparent); }
+.ember-map-header button { color:#29374f; background:#f5f6fdeb; }
 .ember-map-header h2 { font-size:20px; }
 .ember-map-header>div { display:flex; gap:8px; }
 .ember-map-header button { flex-shrink:0; }
@@ -79,4 +83,5 @@ text { font-size:3.5px; fill:#234958; paint-order:stroke; stroke:#f5f6e8; stroke
 .ember-map-wide .ember-map-header { grid-column:1/-1; }
 .ember-map-wide .ember-map-places { grid-template-columns:1fr; overflow:auto; align-content:start; }
 @container (max-width:600px) { .ember-map-places { grid-template-columns:repeat(2,1fr); }.ember-map-header h2 { font-size:18px; } }
+@media (max-height:450px) { .ember-map-header { min-height:44px; padding:8px 12px; align-items:center; }.ember-map-header h2 { font-size:18px; } }
 </style>

@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { B as b, E as q, H as ye, I as be, L as pe, N as ue, T as Y, U as fe, V as xe, W as ke, X as Ae, Y as _e, Z as te, _ as ae, a as Oe, b as X, ct as D, dt as V, et as ce, g as Se, it as oe, j as ve, lt as J, m as de, n as Ee, nt as x, o as Pe, p as ie, s as Re, t as Le, ut as ne, v as d, w as he, x as O, y as W } from "./xiaobai-os-app-navigation-DbF27MCy.js";
+import { D as N, E as Y, G as ye, H as be, L as xe, M as pe, P as ue, Q as te, R as fe, S as O, T as ve, U as ke, V as b, W as he, X as Ae, Z as _e, _ as Oe, a as Se, at as oe, b as W, dt as ne, ft as q, h as ce, lt as T, m as ae, n as Ee, o as Pe, rt as x, s as Re, t as Le, tt as de, ut as Q, v as ie, x as X, y as d } from "./xiaobai-os-app-navigation-Dv7QNwzp.js";
 import { t as Ie } from "./xiaobai-os-descriptor-DmDuv1pM.js";
 import { n as re, r as Me } from "./xiaobai-os-frame-bridge-BfVuKvnh.js";
 var se = [
@@ -21,22 +21,22 @@ var se = [
   name: "Agent API",
   description: "Configure the shared model connection used by OS agents and test that connection from this APP.",
   accent: "#00b8c5"
-}), Be = Object.freeze({
+}), $e = Object.freeze({
   id: "bank",
   name: "银行",
   description: "Deposit and invest Xiaobai coins, track positions and collect available proceeds.",
   accent: "#175ce5"
-}), $e = Object.freeze({
+}), Be = Object.freeze({
   id: "fourth-wall",
   name: "四次元壁",
   description: "Have out-of-story conversations with characters and receive their commentary on the roleplay.",
   accent: "#8b50f5"
-}), Te = Object.freeze({
+}), De = Object.freeze({
   id: "game",
   name: "游戏",
   description: "Play standalone wagering games using Xiaobai coins; game results are independent of roleplay.",
   accent: "#ef486f"
-}), De = Object.freeze({
+}), Te = Object.freeze({
   id: "map",
   name: "地图",
   description: "Explore the story’s places, routes, character positions and scene layouts.",
@@ -90,7 +90,7 @@ var se = [
     icon: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='12'%20y1='0'%20x2='76'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%2325dccc'/%3e%3cstop%20offset='1'%20stop-color='%2300a9c4'/%3e%3c/linearGradient%3e%3cclipPath%20id='tile'%3e%3crect%20width='88'%20height='88'%20rx='22'/%3e%3c/clipPath%3e%3c/defs%3e%3cg%20clip-path='url(%23tile)'%3e%3crect%20width='88'%20height='88'%20fill='url(%23bg)'/%3e%3crect%20x='24'%20y='24'%20width='40'%20height='40'%20rx='11'%20stroke='%23fff'%20stroke-width='4'/%3e%3cpath%20d='M34%2016v8m10-8v8m10-8v8M34%2064v8m10-8v8m10-8v8M16%2034h8m-8%2010h8m-8%2010h8m40-20h8m-8%2010h8m-8%2010h8'%20stroke='%23fff'%20stroke-width='3.5'%20stroke-linecap='round'/%3e%3cpath%20d='m39%2036-8%208%208%208m10-16%208%208-8%208'%20stroke='%23fff'%20stroke-width='3.5'%20stroke-linecap='round'%20stroke-linejoin='round'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href
   },
   {
-    ...$e,
+    ...Be,
     icon: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='12'%20y1='0'%20x2='76'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23a168ff'/%3e%3cstop%20offset='1'%20stop-color='%236837f1'/%3e%3c/linearGradient%3e%3cclipPath%20id='tile'%3e%3crect%20width='88'%20height='88'%20rx='22'/%3e%3c/clipPath%3e%3c/defs%3e%3cg%20clip-path='url(%23tile)'%3e%3crect%20width='88'%20height='88'%20fill='url(%23bg)'/%3e%3cpath%20d='M26%2022h37a10%2010%200%200%201%2010%2010v20a10%2010%200%200%201-10%2010H43L27%2074V62h-1a10%2010%200%200%201-10-10V32a10%2010%200%200%201%2010-10Z'%20fill='%23fff'/%3e%3cpath%20d='M32%2035v16m-4-16h8m-8%2016h8m8-16%206%2016%207-16'%20stroke='%238046ee'%20stroke-width='3.5'%20stroke-linecap='round'%20stroke-linejoin='round'/%3e%3cpath%20d='m70%2011%202%206%206%202-6%202-2%206-2-6-6-2%206-2Z'%20fill='%23c8fff3'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href
   },
   {
@@ -106,15 +106,15 @@ var se = [
     icon: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='12'%20y1='0'%20x2='76'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23ff805d'/%3e%3cstop%20offset='1'%20stop-color='%23ff434e'/%3e%3c/linearGradient%3e%3cclipPath%20id='tile'%3e%3crect%20width='88'%20height='88'%20rx='22'/%3e%3c/clipPath%3e%3c/defs%3e%3cg%20clip-path='url(%23tile)'%3e%3crect%20width='88'%20height='88'%20fill='url(%23bg)'/%3e%3cpath%20d='M23%2029h42l6%2039a6%206%200%200%201-6%207H23a6%206%200%200%201-6-7Z'%20fill='%23fff'/%3e%3cpath%20d='M33%2032V25a11%2011%200%200%201%2022%200v7'%20stroke='%23fff'%20stroke-width='4.5'%20stroke-linecap='round'/%3e%3cpath%20d='M33%2049c2%2014%2020%2014%2022%200'%20stroke='%23fa5951'%20stroke-width='3.5'%20stroke-linecap='round'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href
   },
   {
-    ...Be,
+    ...$e,
     icon: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='12'%20y1='0'%20x2='76'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23353c4c'/%3e%3cstop%20offset='1'%20stop-color='%23111723'/%3e%3c/linearGradient%3e%3cclipPath%20id='tile'%3e%3crect%20width='88'%20height='88'%20rx='22'/%3e%3c/clipPath%3e%3c/defs%3e%3cg%20clip-path='url(%23tile)'%3e%3crect%20width='88'%20height='88'%20fill='url(%23bg)'/%3e%3cpath%20d='m18%2034%2026-17%2026%2017Z'%20fill='%23fff'/%3e%3cpath%20d='M22%2063V42m15%2021V42m14%2021V42m15%2021V42'%20stroke='%23fff'%20stroke-width='6'%20stroke-linecap='round'/%3e%3cpath%20d='M18%2072h52'%20stroke='%23fff'%20stroke-width='5'%20stroke-linecap='round'/%3e%3ccircle%20cx='44'%20cy='29'%20r='3'%20fill='%23465368'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href
   },
   {
-    ...Te,
+    ...De,
     icon: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='12'%20y1='0'%20x2='76'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23ff7386'/%3e%3cstop%20offset='1'%20stop-color='%23ef385e'/%3e%3c/linearGradient%3e%3cclipPath%20id='tile'%3e%3crect%20width='88'%20height='88'%20rx='22'/%3e%3c/clipPath%3e%3c/defs%3e%3cg%20clip-path='url(%23tile)'%3e%3crect%20width='88'%20height='88'%20fill='url(%23bg)'/%3e%3cpath%20d='M30%2028h28a13%2013%200%200%201%2013%2010l6%2020a9%209%200%200%201-15%209l-8-8H34l-8%208a9%209%200%200%201-15-9l6-20a13%2013%200%200%201%2013-10Z'%20fill='%23fff'/%3e%3cpath%20d='M28%2037v17m-8-8h16'%20stroke='%23ed4066'%20stroke-width='4'%20stroke-linecap='round'/%3e%3ccircle%20cx='60'%20cy='39'%20r='3.5'%20fill='%238554ed'/%3e%3ccircle%20cx='67'%20cy='48'%20r='3.5'%20fill='%2316bad0'/%3e%3cpath%20d='M38%2025v-4a6%206%200%200%201%206-6h8'%20stroke='%23fff'%20stroke-width='3'%20stroke-linecap='round'%20opacity='.8'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href
   },
   {
-    ...De,
+    ...Te,
     icon: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='12'%20y1='0'%20x2='76'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%23f8fcff'/%3e%3cstop%20offset='1'%20stop-color='%23e7f3ff'/%3e%3c/linearGradient%3e%3cclipPath%20id='tile'%3e%3crect%20width='88'%20height='88'%20rx='22'/%3e%3c/clipPath%3e%3c/defs%3e%3cg%20clip-path='url(%23tile)'%3e%3crect%20width='88'%20height='88'%20fill='url(%23bg)'/%3e%3cpath%20d='M0%200h39v32H0Z'%20fill='%2389eb9b'/%3e%3cpath%20d='M53%200h35v39H53Z'%20fill='%2345cf86'/%3e%3cpath%20d='M0%2048h28v40H0Z'%20fill='%23a0e89d'/%3e%3cpath%20d='M46%2053h42v35H46Z'%20fill='%2390d6ff'/%3e%3cpath%20d='M0%2039h88M39%200v88'%20stroke='%23fff'%20stroke-width='9'/%3e%3cpath%20d='m4%2085%2077-63'%20stroke='%23fff'%20stroke-width='12'/%3e%3cpath%20d='m4%2085%2077-63'%20stroke='%23ffcb45'%20stroke-width='5'/%3e%3cpath%20d='M60%2014a16%2016%200%200%200-16%2016c0%2013%2016%2028%2016%2028s16-15%2016-28a16%2016%200%200%200-16-16Z'%20fill='%23fa4c60'/%3e%3ccircle%20cx='60'%20cy='30'%20r='6'%20fill='%23fff'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href
   },
   {
@@ -129,12 +129,12 @@ var se = [
     ...ze,
     icon: new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2088%2088'%20fill='none'%3e%3cdefs%3e%3clinearGradient%20id='bg'%20x1='12'%20y1='0'%20x2='76'%20y2='88'%20gradientUnits='userSpaceOnUse'%3e%3cstop%20stop-color='%234099ff'/%3e%3cstop%20offset='1'%20stop-color='%232260f1'/%3e%3c/linearGradient%3e%3cclipPath%20id='tile'%3e%3crect%20width='88'%20height='88'%20rx='22'/%3e%3c/clipPath%3e%3c/defs%3e%3cg%20clip-path='url(%23tile)'%3e%3crect%20width='88'%20height='88'%20fill='url(%23bg)'/%3e%3cpath%20d='M23%2017h32a9%209%200%200%201%209%209v25a9%209%200%200%201-9%209H37L23%2070V60a9%209%200%200%201-9-9V26a9%209%200%200%201%209-9Z'%20fill='%23fff'/%3e%3cpath%20d='m27%2048%2010-23%2010%2023m-17-7h14'%20stroke='%232773f5'%20stroke-width='3.5'%20stroke-linecap='round'%20stroke-linejoin='round'/%3e%3crect%20x='48'%20y='48'%20width='29'%20height='29'%20rx='9'%20fill='%2390ecff'/%3e%3cpath%20d='M54%2058h17m-9-4v4m5%200c-1%208-6%2011-12%2014m2-12c2%205%207%2010%2013%2012'%20stroke='%231952aa'%20stroke-width='2'%20stroke-linecap='round'/%3e%3c/g%3e%3c/svg%3e", "" + import.meta.url).href
   }
-], Ne = Object.freeze(se.map((t) => {
+], Ve = Object.freeze(se.map((t) => {
   const i = Ze.find((e) => e.id === t);
   if (!i) throw new Error(`missing_shell_app:${t}`);
   return Object.freeze(i);
 }));
-function Ve(t) {
+function qe(t) {
   let i = null, e = null;
   return Object.freeze({
     load() {
@@ -150,24 +150,24 @@ function Ve(t) {
     }
   });
 }
-var qe = Object.freeze({
-  administrator: () => import("./xiaobai-os-AdministratorApp-D18hyntc.js"),
-  dice: () => import("./xiaobai-os-DiceApp-DV3A-3fM.js"),
-  "agent-api": () => import("./xiaobai-os-AgentApiApp-B8s-eq4l.js"),
-  "fourth-wall": () => import("./xiaobai-os-FourthWallApp-DLxVtHNf.js"),
-  wallet: () => import("./xiaobai-os-WalletApp-hJFGatMU.js"),
-  shop: () => import("./xiaobai-os-ShopApp-JhsbQgfy.js"),
-  bank: () => import("./xiaobai-os-BankApp-BWMoRKRt.js"),
-  game: () => import("./xiaobai-os-GameApp-CCm-lf_5.js"),
-  map: () => import("./xiaobai-os-MapApp-Bv5nHunz.js"),
-  messages: () => import("./xiaobai-os-MessagesApp-CnvVIx6k.js"),
-  tasks: () => import("./xiaobai-os-TasksApp-Bcxy_ZHY.js"),
-  world: () => import("./xiaobai-os-WorldApp-fJo1usvo.js"),
-  learning: () => import("./xiaobai-os-LearningApp-DJnRxEKY.js")
-}), me = Object.freeze(Ne.map((t) => {
-  const i = qe[t.id];
+var Ne = Object.freeze({
+  administrator: () => import("./xiaobai-os-AdministratorApp-fZdn3KPS.js"),
+  dice: () => import("./xiaobai-os-DiceApp-sdzDaRRH.js"),
+  "agent-api": () => import("./xiaobai-os-AgentApiApp-B3euwaoi.js"),
+  "fourth-wall": () => import("./xiaobai-os-FourthWallApp-BxuWX7dV.js"),
+  wallet: () => import("./xiaobai-os-WalletApp-CH5_1vWE.js"),
+  shop: () => import("./xiaobai-os-ShopApp-lc-XqWN4.js"),
+  bank: () => import("./xiaobai-os-BankApp-BpQfiyUe.js"),
+  game: () => import("./xiaobai-os-GameApp-CvcNZ51l.js"),
+  map: () => import("./xiaobai-os-MapApp-C1EActEY.js"),
+  messages: () => import("./xiaobai-os-MessagesApp-BpoE7bRH.js"),
+  tasks: () => import("./xiaobai-os-TasksApp-ZX7BeD4-.js"),
+  world: () => import("./xiaobai-os-WorldApp-D_71GV6l.js"),
+  learning: () => import("./xiaobai-os-LearningApp-Cw4D94PA.js")
+}), me = Object.freeze(Ve.map((t) => {
+  const i = Ne[t.id];
   if (!i) throw new Error(`missing_shell_app:${t.id}`);
-  const e = Ve(i);
+  const e = qe(i);
   return Object.freeze({
     ...t,
     load: e.load,
@@ -189,7 +189,7 @@ function Ke() {
     }
   };
 }
-var Ye = /* @__PURE__ */ q({
+var Ye = /* @__PURE__ */ N({
   __name: "AppNavigationScope",
   props: { owner: {} },
   setup(t, { expose: i }) {
@@ -198,7 +198,7 @@ var Ye = /* @__PURE__ */ q({
       layers: y,
       stack: E
     };
-    return xe(Le, f), Ae((o) => {
+    return be(Le, f), _e((o) => {
       const h = Ee(f);
       if (!h || !l.value?.contains(h)) return;
       const p = /* @__PURE__ */ new Set();
@@ -228,16 +228,16 @@ var Ye = /* @__PURE__ */ q({
       ref: l,
       class: "xiaobai-os-app-route",
       tabindex: "-1"
-    }, [fe(o.$slots, "default")], 512));
+    }, [he(o.$slots, "default")], 512));
   }
-}), We = Ye, Je = /* @__PURE__ */ q({
+}), We = Ye, Qe = /* @__PURE__ */ N({
   __name: "AppBoundary",
   emits: ["failed"],
   setup(t, { emit: i }) {
     const e = i;
-    return be((l) => (e("failed", l), !1)), (l, y) => fe(l.$slots, "default");
+    return xe((l) => (e("failed", l), !1)), (l, y) => he(l.$slots, "default");
   }
-}), Qe = Je;
+}), Je = Qe;
 function et(t) {
   if (!Array.isArray(t)) return [];
   const i = new Set(se);
@@ -277,9 +277,9 @@ function at(t) {
     if (M) {
       const U = M.getBoundingClientRect();
       let n = 0, g = 1 / 0;
-      [...M.querySelectorAll("[data-app-id]")].forEach((u, $) => {
-        const j = U.left + u.offsetLeft + u.offsetWidth / 2 - s.x, N = U.top + u.offsetTop + u.offsetHeight / 2 - s.y, G = j * j + N * N;
-        G < g && (g = G, n = $);
+      [...M.querySelectorAll("[data-app-id]")].forEach((u, B) => {
+        const j = U.left + u.offsetLeft + u.offsetWidth / 2 - s.x, V = U.top + u.offsetTop + u.offsetHeight / 2 - s.y, G = j * j + V * V;
+        G < g && (g = G, n = B);
       }), t.move(s.id, n);
     }
   }
@@ -332,7 +332,7 @@ function at(t) {
   function I(r) {
     e?.pointerId === r.pointerId && k(!0);
   }
-  function B(r) {
+  function $(r) {
     if (r.touches.length !== 1) {
       k(!0);
       return;
@@ -354,10 +354,10 @@ function at(t) {
     document.hidden && _();
   }
   let P = null;
-  return pe(() => {
-    P = t.root.value, P?.addEventListener("touchstart", B, { passive: !1 }), P?.addEventListener("touchmove", z, { passive: !1 }), P?.addEventListener("touchend", F, { passive: !1 }), P?.addEventListener("touchcancel", _), document.addEventListener("visibilitychange", w);
+  return fe(() => {
+    P = t.root.value, P?.addEventListener("touchstart", $, { passive: !1 }), P?.addEventListener("touchmove", z, { passive: !1 }), P?.addEventListener("touchend", F, { passive: !1 }), P?.addEventListener("touchcancel", _), document.addEventListener("visibilitychange", w);
   }), ue(() => {
-    _(), P?.removeEventListener("touchstart", B), P?.removeEventListener("touchmove", z), P?.removeEventListener("touchend", F), P?.removeEventListener("touchcancel", _), document.removeEventListener("visibilitychange", w);
+    _(), P?.removeEventListener("touchstart", $), P?.removeEventListener("touchmove", z), P?.removeEventListener("touchend", F), P?.removeEventListener("touchcancel", _), document.removeEventListener("visibilitychange", w);
   }), {
     floating: i,
     pointerDown: S,
@@ -382,7 +382,7 @@ var Ft = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'
 }, ft = ["src"], vt = { class: "xiaobai-os-app-name" }, ht = {
   class: "xiaobai-os-sort-announcement",
   role: "status"
-}, mt = { class: "xiaobai-os-app-icon" }, gt = ["src"], wt = { class: "xiaobai-os-app-name" }, yt = /* @__PURE__ */ q({
+}, mt = { class: "xiaobai-os-app-icon" }, gt = ["src"], wt = { class: "xiaobai-os-app-name" }, yt = /* @__PURE__ */ N({
   __name: "XiaobaiOsHome",
   props: {
     apps: {},
@@ -393,9 +393,9 @@ var Ft = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'
   setup(t, { expose: i, emit: e }) {
     const l = t, y = e, E = x(null), f = x(!1), o = x([]), h = x(!1), p = x(""), k = x(""), S = x("");
     let m = [], c = null;
-    const I = ae(() => f.value ? le(l.apps, o.value) : l.apps);
-    function B(n) {
-      ve(() => E.value?.querySelector(`[data-app-id="${n}"]`)?.focus({ preventScroll: !0 }));
+    const I = ie(() => f.value ? le(l.apps, o.value) : l.apps);
+    function $(n) {
+      pe(() => E.value?.querySelector(`[data-app-id="${n}"]`)?.focus({ preventScroll: !0 }));
     }
     function z(n) {
       f.value || (o.value = l.apps.map((g) => g.id)), f.value = !0, S.value = n;
@@ -403,8 +403,8 @@ var Ft = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'
     function F(n, g) {
       const u = o.value.indexOf(n);
       if (u < 0 || u === g) return;
-      const $ = [...o.value];
-      $.splice(u, 1), $.splice(g, 0, n), o.value = $;
+      const B = [...o.value];
+      B.splice(u, 1), B.splice(g, 0, n), o.value = B;
     }
     async function _(n) {
       h.value = !0, p.value = "", c = n;
@@ -425,11 +425,11 @@ var Ft = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'
       },
       move: F,
       finish(n) {
-        n ? o.value = m : o.value.some((g, u) => g !== m[u]) && _([...o.value]), B(S.value);
+        n ? o.value = m : o.value.some((g, u) => g !== m[u]) && _([...o.value]), $(S.value);
       }
-    }), s = ae(() => l.apps.find((n) => n.id === w.value?.id));
+    }), s = ie(() => l.apps.find((n) => n.id === w.value?.id));
     function R() {
-      h.value || (r(), f.value = !1, B(S.value));
+      h.value || (r(), f.value = !1, $(S.value));
     }
     i({
       get editing() {
@@ -455,32 +455,32 @@ var Ft = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'
         return;
       }
       if (!f.value) return;
-      const $ = g?.parentElement, j = $ ? getComputedStyle($).gridTemplateColumns.split(" ").length : 4, N = {
+      const B = g?.parentElement, j = B ? getComputedStyle(B).gridTemplateColumns.split(" ").length : 4, V = {
         ArrowLeft: -1,
         ArrowRight: 1,
         ArrowUp: -j,
         ArrowDown: j
       }[n.key];
-      if (N === void 0) return;
+      if (V === void 0) return;
       n.preventDefault();
-      const G = o.value.indexOf(u), Q = Math.max(0, Math.min(o.value.length - 1, G + N));
-      Q !== G && (F(u, Q), S.value = u, B(u), _([...o.value]));
+      const G = o.value.indexOf(u), J = Math.max(0, Math.min(o.value.length - 1, G + V));
+      J !== G && (F(u, J), S.value = u, $(u), _([...o.value]));
     }
     function U(n) {
       n.key === " " && n.target instanceof Element && n.target.closest("[data-app-id]") && n.preventDefault();
     }
-    return _e(() => l.apps.map((n) => n.id).sort().join(","), () => {
+    return Ae(() => l.apps.map((n) => n.id).sort().join(","), () => {
       r(), o.value = l.apps.map((n) => n.id);
     }), (n, g) => (b(), O("main", {
       ref_key: "root",
       ref: E,
-      class: J(["xiaobai-os-home", { "is-editing": f.value }]),
-      onPointerdown: g[1] || (g[1] = (...u) => D(P) && D(P)(...u)),
+      class: Q(["xiaobai-os-home", { "is-editing": f.value }]),
+      onPointerdown: g[1] || (g[1] = (...u) => T(P) && T(P)(...u)),
       onKeydown: M,
       onKeyup: U,
-      onContextmenu: g[2] || (g[2] = ie(() => {
+      onContextmenu: g[2] || (g[2] = ae(() => {
       }, ["prevent"])),
-      onDragstart: g[3] || (g[3] = ie(() => {
+      onDragstart: g[3] || (g[3] = ae(() => {
       }, ["prevent"]))
     }, [
       d("div", it, [t.characterAvatar ? (b(), O("img", {
@@ -493,10 +493,10 @@ var Ft = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'
       d("div", nt, [f.value ? X("", !0) : (b(), O("img", {
         key: 0,
         class: "xiaobai-os-mobile-brand",
-        src: D(we),
+        src: T(we),
         alt: "",
         "aria-hidden": "true"
-      }, null, 8, lt)), f.value ? (b(), O(de, { key: 1 }, [d("button", {
+      }, null, 8, lt)), f.value ? (b(), O(ce, { key: 1 }, [d("button", {
         type: "button",
         disabled: h.value || !!p.value,
         onClick: H
@@ -506,10 +506,10 @@ var Ft = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'
         disabled: h.value,
         onClick: R
       }, "完成", 8, st)], 64)) : X("", !0)]),
-      p.value ? (b(), O("div", ct, [d("span", null, V(p.value), 1), d("button", {
+      p.value ? (b(), O("div", ct, [d("span", null, q(p.value), 1), d("button", {
         type: "button",
         disabled: h.value,
-        onClick: g[0] || (g[0] = (u) => _(D(c)))
+        onClick: g[0] || (g[0] = (u) => _(T(c)))
       }, "重试", 8, dt)])) : X("", !0),
       Y(Pe, {
         tag: "section",
@@ -517,45 +517,45 @@ var Ft = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'
         class: "xiaobai-os-app-grid",
         "aria-label": "应用"
       }, {
-        default: te(() => [(b(!0), O(de, null, ye(I.value, (u) => (b(), O("button", {
+        default: te(() => [(b(!0), O(ce, null, ke(I.value, (u) => (b(), O("button", {
           key: u.id,
           type: "button",
-          class: J(["xiaobai-os-app-tile", { "is-lifted": D(w)?.id === u.id }]),
+          class: Q(["xiaobai-os-app-tile", { "is-lifted": T(w)?.id === u.id }]),
           "data-app-id": u.id,
           "aria-label": u.name,
           "aria-keyshortcuts": f.value ? "ArrowUp ArrowDown ArrowLeft ArrowRight Space" : "F2 Space",
           style: ne({ "--app-accent": u.accent }),
-          onClick: ($) => Z(u)
+          onClick: (B) => Z(u)
         }, [d("span", ut, [d("img", {
           src: u.icon,
           alt: "",
           width: "64",
           height: "64",
           draggable: "false"
-        }, null, 8, ft)]), d("span", vt, V(u.name), 1)], 14, pt))), 128))]),
+        }, null, 8, ft)]), d("span", vt, q(u.name), 1)], 14, pt))), 128))]),
         _: 1
       }),
-      d("span", ht, V(k.value), 1),
-      (b(), W(Se, { to: "body" }, [D(w) && s.value ? (b(), O("div", {
+      d("span", ht, q(k.value), 1),
+      (b(), W(Oe, { to: "body" }, [T(w) && s.value ? (b(), O("div", {
         key: 0,
         class: "xiaobai-os-dragged-app xiaobai-os-app-tile",
         "aria-hidden": "true",
         style: ne({
-          left: `${D(w).x}px`,
-          top: `${D(w).y}px`,
-          width: `${D(w).width}px`
+          left: `${T(w).x}px`,
+          top: `${T(w).y}px`,
+          width: `${T(w).width}px`
         })
       }, [d("span", mt, [d("img", {
         src: s.value.icon,
         alt: "",
         draggable: "false"
-      }, null, 8, gt)]), d("span", wt, V(s.value.name), 1)], 4)) : X("", !0)]))
+      }, null, 8, gt)]), d("span", wt, q(s.value.name), 1)], 4)) : X("", !0)]))
     ], 34));
   }
 }), bt = yt, xt = ["disabled"], kt = {
   key: 0,
   "aria-hidden": "true"
-}, At = /* @__PURE__ */ q({
+}, At = /* @__PURE__ */ N({
   __name: "XiaobaiOsNavigation",
   props: {
     isHome: { type: Boolean },
@@ -568,7 +568,7 @@ var Ft = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'
   ],
   setup(t) {
     return (i, e) => (b(), O("nav", {
-      class: J(["xiaobai-os-navigation", { "is-home": t.isHome }]),
+      class: Q(["xiaobai-os-navigation", { "is-home": t.isHome }]),
       "aria-label": "系统导航"
     }, [
       d("button", {
@@ -576,7 +576,7 @@ var Ft = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'
         class: "xiaobai-os-nav-button",
         disabled: !t.canBack,
         "aria-label": "返回",
-        onPointerdown: e[0] || (e[0] = ie(() => {
+        onPointerdown: e[0] || (e[0] = ae(() => {
         }, ["prevent"])),
         onClick: e[1] || (e[1] = (l) => i.$emit("back"))
       }, [...e[4] || (e[4] = [d("svg", {
@@ -603,18 +603,18 @@ var Ft = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'
       }, [d("path", { d: "m7 9.5 5 5 5-5" })])], -1)])])
     ], 2));
   }
-}), _t = At, Ot = { class: "xiaobai-os-system-mark" }, St = ["src"], Et = /* @__PURE__ */ q({
+}), _t = At, Ot = { class: "xiaobai-os-system-mark" }, St = ["src"], Et = /* @__PURE__ */ N({
   __name: "XiaobaiOsSystemBar",
   props: { isHome: { type: Boolean } },
   setup(t) {
     return (i, e) => (b(), O("header", {
-      class: J(["xiaobai-os-system-bar", { "is-home": t.isHome }]),
+      class: Q(["xiaobai-os-system-bar", { "is-home": t.isHome }]),
       "aria-label": "系统栏"
     }, [d("span", Ot, [d("img", {
-      src: D(we),
+      src: T(we),
       alt: "",
       "aria-hidden": "true"
-    }, null, 8, St), e[0] || (e[0] = he("小白 OS", -1))])], 2));
+    }, null, 8, St), e[0] || (e[0] = ve("小白 OS", -1))])], 2));
   }
 }), Pt = Et, Rt = { class: "xiaobai-os-device" }, Lt = { class: "xiaobai-os-glass" }, It = {
   key: "failure",
@@ -624,7 +624,7 @@ var Ft = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'
   key: "loading",
   class: "xiaobai-os-app-loading",
   role: "status"
-}, Bt = /* @__PURE__ */ q({
+}, $t = /* @__PURE__ */ N({
   __name: "XiaobaiOsDevice",
   props: {
     apps: {},
@@ -648,7 +648,7 @@ var Ft = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'
     "reload"
   ],
   setup(t, { expose: i }) {
-    const e = t, l = ae(() => e.activeApp === null), y = x(null), E = x(null);
+    const e = t, l = ie(() => e.activeApp === null), y = x(null), E = x(null);
     return i({
       back: () => l.value && y.value?.editing ? (y.value.finishEditing(), !0) : !e.appLoading && !e.appFailure && E.value?.owner === `${e.activeApp?.id}:${e.appRenderKey}` && E.value.back(),
       finishHomeEditing: () => y.value?.finishEditing()
@@ -657,7 +657,7 @@ var Ft = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'
       d("div", {
         class: "xiaobai-os-stage",
         style: ne(t.activeApp ? { "--app-accent": t.activeApp.accent } : null)
-      }, [Y(Oe, {
+      }, [Y(Se, {
         name: "xiaobai-os-route",
         mode: "out-in"
       }, {
@@ -678,8 +678,8 @@ var Ft = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'
             class: "xiaobai-os-app-failure-mark",
             "aria-hidden": "true"
           }, "!", -1)),
-          d("h1", null, V(t.activeApp?.name) + "暂时无法打开", 1),
-          d("p", null, V(t.appFailure.message), 1),
+          d("h1", null, q(t.activeApp?.name) + "暂时无法打开", 1),
+          d("p", null, q(t.appFailure.message), 1),
           d("div", Mt, [t.appFailure.retryable ? (b(), O("button", {
             key: 0,
             type: "button",
@@ -688,14 +688,14 @@ var Ft = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'
             type: "button",
             onClick: o[2] || (o[2] = (h) => f.$emit("reload"))
           }, "重新打开 OS")])
-        ])) : t.appLoading ? (b(), O("div", Ct, [o[8] || (o[8] = d("span", { "aria-hidden": "true" }, null, -1)), he(" 正在打开" + V(t.activeApp?.name), 1)])) : t.activeApp && t.activeComponent ? (b(), W(We, {
+        ])) : t.appLoading ? (b(), O("div", Ct, [o[8] || (o[8] = d("span", { "aria-hidden": "true" }, null, -1)), ve(" 正在打开" + q(t.activeApp?.name), 1)])) : t.activeApp && t.activeComponent ? (b(), W(We, {
           key: `app:${t.activeApp.id}:${t.appRenderKey}`,
           ref_key: "navigation",
           ref: E,
           owner: `${t.activeApp.id}:${t.appRenderKey}`
         }, {
-          default: te(() => [Y(Qe, { onFailed: o[3] || (o[3] = (h) => f.$emit("renderFailed", h)) }, {
-            default: te(() => [(b(), W(ke(t.activeComponent), {
+          default: te(() => [Y(Je, { onFailed: o[3] || (o[3] = (h) => f.$emit("renderFailed", h)) }, {
+            default: te(() => [(b(), W(ye(t.activeComponent), {
               bridge: t.bridge,
               "initial-state": t.activeState
             }, null, 8, ["bridge", "initial-state"]))]),
@@ -714,27 +714,27 @@ var Ft = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'
       }, null, 8, ["is-home", "can-back"])
     ])]));
   }
-}), $t = Bt, Tt = {
+}), Bt = $t, Dt = {
   key: 0,
   class: "xiaobai-os-error",
   role: "alert"
-}, Dt = {
+}, Tt = {
   key: 1,
   class: "xiaobai-os-loading",
   role: "status"
-}, Ut = /* @__PURE__ */ q({
+}, Ut = /* @__PURE__ */ N({
   __name: "App",
   setup(t) {
-    const i = Me(), e = x(null), l = x(null), y = x(!1), E = x("light"), f = x(/* @__PURE__ */ new Set()), o = x([]), h = x(""), p = x(null), k = oe(null), S = x(null), m = x(!1), c = x(null), I = x(0), B = x("");
+    const i = Me(), e = x(null), l = x(null), y = x(!1), E = x("light"), f = x(/* @__PURE__ */ new Set()), o = x([]), h = x(""), p = x(null), k = oe(null), S = x(null), m = x(!1), c = x(null), I = x(0), $ = x("");
     let z = null, F = () => {
     }, _ = 0, w = null;
-    const P = ae(() => le(me, o.value).filter((a) => f.value.has(a.id)));
+    const P = ie(() => le(me, o.value).filter((a) => f.value.has(a.id)));
     async function r(a) {
       const v = a === null ? [] : tt(o.value, a);
       o.value = (await i.request("os/set-app-order", { appOrder: v })).appOrder;
     }
     function s(a) {
-      const v = new Set(a.map((T) => String(T.id))), A = p.value && !v.has(p.value.id), L = w && !v.has(w.appId);
+      const v = new Set(a.map((D) => String(D.id))), A = p.value && !v.has(p.value.id), L = w && !v.has(w.appId);
       f.value = v, !(!A && !L) && (_ += 1, w = null, p.value = null, k.value = null, S.value = null, m.value = !1, c.value = null, i.clearAppSession());
     }
     function R(a) {
@@ -758,15 +758,15 @@ var Ft = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'
         s(L?.apps || []);
       }
       if (a.type === "os/app-state") {
-        const L = a.payload, T = L?.status;
-        L?.appId === p.value?.id && T?.state === "failed" && (m.value = !1, c.value = {
-          phase: T.failure?.phase || "host",
-          message: T.failure?.message || "应用暂时无法运行",
-          retryable: T.failure?.retryable !== !1,
+        const L = a.payload, D = L?.status;
+        L?.appId === p.value?.id && D?.state === "failed" && (m.value = !1, c.value = {
+          phase: D.failure?.phase || "host",
+          message: D.failure?.message || "应用暂时无法运行",
+          retryable: D.failure?.retryable !== !1,
           requiresAppRetry: !0
         }, i.clearAppSession());
       }
-      a.type === "os/error" && (B.value = String(a.payload?.message || "小白 OS 启动失败"));
+      a.type === "os/error" && ($.value = String(a.payload?.message || "小白 OS 启动失败"));
       const v = a.payload?.state;
       w && a.appId === w.appId && a.type === `${w.appId}/state` && (w.latestState = v);
       const A = i.getAppSession();
@@ -776,8 +776,8 @@ var Ft = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'
       const v = ++_;
       I.value += 1;
       const A = { appId: a.id };
-      w = A, p.value = a, k.value = null, S.value = null, m.value = !0, c.value = null, i.clearAppSession(), B.value = "";
-      const L = i.request("app/activate", { appId: a.id }), T = a.load(), [K, ee] = await Promise.allSettled([L, T]);
+      w = A, p.value = a, k.value = null, S.value = null, m.value = !0, c.value = null, i.clearAppSession(), $.value = "";
+      const L = i.request("app/activate", { appId: a.id }), D = a.load(), [K, ee] = await Promise.allSettled([L, D]);
       try {
         if (v !== _) return;
         if (K.status === "fulfilled") {
@@ -795,7 +795,7 @@ var Ft = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'
             requiresAppRetry: C instanceof re && C.requiresAppRetry
           };
         }
-        ee.status === "fulfilled" ? k.value = ce(ee.value) : c.value || (c.value = {
+        ee.status === "fulfilled" ? k.value = de(ee.value) : c.value || (c.value = {
           phase: "ui-load",
           message: ee.reason instanceof Error ? ee.reason.message : "应用页面加载失败",
           retryable: !0
@@ -820,7 +820,7 @@ var Ft = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'
         if (v.phase === "ui-load" && i.getAppSession()?.appId === a.id) {
           m.value = !0, c.value = null, a.resetLoader();
           try {
-            k.value = ce(await a.load());
+            k.value = de(await a.load());
           } catch (A) {
             c.value = {
               phase: "ui-load",
@@ -865,7 +865,7 @@ var Ft = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'
     function u(a) {
       !p.value || m.value || c.value || (a.preventDefault(), n(a.reason));
     }
-    function $() {
+    function B() {
       window.location.reload();
     }
     function j() {
@@ -875,38 +875,38 @@ var Ft = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'
       }
       _ += 1, w = null, i.post("app/deactivate", { appId: p.value?.id || "" }), i.clearAppSession(), p.value = null, k.value = null, S.value = null, m.value = !1, c.value = null;
     }
-    function N() {
+    function V() {
       l.value?.back() || j();
     }
     function G() {
       _ += 1, w = null, i.post("os/close"), i.clearAppSession();
     }
-    function Q(a) {
+    function J(a) {
       if (a.key === "Escape") {
-        a.preventDefault(), p.value ? N() : l.value?.back() || G();
+        a.preventDefault(), p.value ? V() : l.value?.back() || G();
         return;
       }
       if (a.key !== "Tab" || !e.value) return;
-      const v = Array.from(e.value.querySelectorAll('button:not(:disabled), [href], input:not(:disabled), textarea:not(:disabled), select:not(:disabled), summary, [tabindex]:not([tabindex="-1"])')).filter((T) => !T.closest("[inert]") && T.getClientRects().length > 0);
+      const v = Array.from(e.value.querySelectorAll('button:not(:disabled), [href], input:not(:disabled), textarea:not(:disabled), select:not(:disabled), summary, [tabindex]:not([tabindex="-1"])')).filter((D) => !D.closest("[inert]") && D.getClientRects().length > 0);
       if (v.length === 0) return;
       const A = v[0], L = v[v.length - 1];
       a.shiftKey && document.activeElement === A ? (a.preventDefault(), L.focus()) : !a.shiftKey && document.activeElement === L && (a.preventDefault(), A.focus());
     }
-    return pe(async () => {
-      z = document.activeElement instanceof HTMLElement ? document.activeElement : null, F = i.subscribe(Z), i.start(), window.addEventListener("error", g), window.addEventListener("unhandledrejection", u), await ve(), e.value?.focus();
+    return fe(async () => {
+      z = document.activeElement instanceof HTMLElement ? document.activeElement : null, F = i.subscribe(Z), i.start(), window.addEventListener("error", g), window.addEventListener("unhandledrejection", u), await pe(), e.value?.focus();
     }), ue(() => {
       _ += 1, w = null, window.removeEventListener("error", g), window.removeEventListener("unhandledrejection", u), F(), i.dispose(), z?.focus();
     }), (a, v) => (b(), O("main", {
       ref_key: "root",
       ref: e,
-      class: J(["xiaobai-os-shell", `theme-${E.value}`]),
+      class: Q(["xiaobai-os-shell", `theme-${E.value}`]),
       role: "dialog",
       "aria-modal": "true",
       "aria-label": "小白 OS",
       tabindex: "-1",
-      onKeydown: Q,
-      onClick: ie(G, ["self"])
-    }, [B.value ? (b(), O("div", Tt, V(B.value), 1)) : X("", !0), y.value ? (b(), W($t, {
+      onKeydown: J,
+      onClick: ae(G, ["self"])
+    }, [$.value ? (b(), O("div", Dt, q($.value), 1)) : X("", !0), y.value ? (b(), W(Bt, {
       key: 2,
       ref_key: "device",
       ref: l,
@@ -917,16 +917,16 @@ var Ft = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'
       "app-failure": c.value,
       "app-loading": m.value,
       "app-render-key": I.value,
-      bridge: D(i),
+      bridge: T(i),
       "character-avatar": h.value,
       "save-app-order": r,
       onOpenApp: M,
-      onBack: N,
+      onBack: V,
       onHome: j,
       onClose: G,
       onRenderFailed: n,
       onRetry: U,
-      onReload: $
+      onReload: B
     }, null, 8, [
       "apps",
       "active-app",
@@ -937,7 +937,7 @@ var Ft = new URL("data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'
       "app-render-key",
       "bridge",
       "character-avatar"
-    ])) : (b(), O("div", Dt, "正在启动小白 OS"))], 34));
+    ])) : (b(), O("div", Tt, "正在启动小白 OS"))], 34));
   }
 }), Ht = Ut;
 Re(Ht).mount("#app");

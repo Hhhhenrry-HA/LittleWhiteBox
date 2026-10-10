@@ -7,16 +7,18 @@ import { createControls } from '../controls.js';
 import { createJoystick } from '../joystick.js';
 import { createExpeditionScene, type ExplorationFrame } from '../scene.js';
 import type { Battle, InputFrame, Outfit, Weapon } from '../types.js';
+import type { Traveler } from '../campaign/traveler.js';
 import { reachableInteractions } from '../world/exploration.js';
 import { reachablePersonInteractions } from '../world/people.js';
 import { parleyInteractions } from '../campaign/parley.js';
 import { interactionLabel } from './interaction-copy.js';
 import './world-feedback.css';
 
-const props = defineProps<{ world: ExplorationFrame; paused: boolean; weapon: Weapon; outfit: Outfit; battle?: Battle | null }>();
+const props = defineProps<{ world: ExplorationFrame; traveler: Traveler; paused: boolean; weapon: Weapon; outfit: Outfit; battle?: Battle | null }>();
 const emit = defineEmits<{ input: [frame: InputFrame]; interact: [id: string]; pause: []; resume: []; error: [error: unknown] }>();
 const root = ref<HTMLElement | null>(null), canvas = ref<HTMLElement | null>(null), knob = ref({ x: 0, y: 0 });
 const selection = ref<string | null>(null);
+const artwork = ref({ failed: 0, pending: 0 });
 const nearby = computed(() => props.battle ? [] : [
     ...parleyInteractions(props.world.definition.id, props.world.location.position, props.world.facts),
     ...reachableInteractions(props.world.definition, props.world.location, props.world.facts),
@@ -29,6 +31,7 @@ let animation = 0, last = 0, accumulator = 0, disposed = false, active = true;
 const joystick = createJoystick((x, y) => { knob.value = { x: x * 26, y: y * 26 }; controls?.stick(x, y); }, () => root.value?.focus({ preventScroll: true }));
 function clear() { joystick.clear(); controls?.clear(); accumulator = 0; }
 function pause() { clear(); emit('pause'); }
+function retryArtwork() { scene?.retryArtwork(); }
 function visibility() { if (document.hidden) { cancelAnimationFrame(animation); animation = 0; pause(); } else { scene?.invalidate(); schedule(); } }
 function schedule() {
     if (!animation && !disposed && active) { last = 0; animation = requestAnimationFrame(render); }
@@ -68,7 +71,7 @@ watch(() => props.world.definition.id, () => { clear(); selection.value = nearby
 watch(() => props.paused, value => { clear(); schedule(); if (!value) { root.value?.focus({ preventScroll: true }); } });
 watch(() => [props.world.definition, props.world.facts, props.world.location.position.x, props.world.location.position.y, props.weapon, props.outfit], schedule);
 onMounted(() => {
-    try { scene = createExpeditionScene(canvas.value!, () => { pause(); emit('error', new Error('expedition_webgl_context_lost')); }, { world: true, invalidate: schedule }); }
+    try { scene = createExpeditionScene(canvas.value!, () => { pause(); emit('error', new Error('expedition_webgl_context_lost')); }, { traveler: props.traveler, world: true, invalidate: schedule, artworkStatus: (failed, pending) => { artwork.value = { failed, pending }; } }); }
     catch (error) { emit('error', error); return; }
     controls = createControls(root.value!, pause, () => {});
     document.addEventListener('visibilitychange', visibility);
@@ -87,6 +90,7 @@ defineExpose({ stats: () => scene?.stats(), focus: () => root.value?.focus({ pre
     <section ref="root" class="journey-field" tabindex="0" :aria-label="battle ? combatCopy.controls : c.actions.controls">
         <div ref="canvas" class="journey-canvas" />
         <header class="journey-heading"><h1>{{ c.scenes[world.definition.id] }}</h1><slot name="status" /></header>
+        <div v-if="artwork.failed" class="journey-artwork-issue" role="status"><span>{{ c.artwork.unavailable }}</span><button type="button" :disabled="artwork.pending > 0" @click="retryArtwork">{{ artwork.pending ? c.artwork.loading : c.artwork.retry }}</button></div>
         <div v-if="!paused" class="journey-controls">
             <div class="journey-stick" role="group" :aria-label="c.actions.move" @pointerdown.prevent="joystick.down" @pointermove.prevent="joystick.move" @pointerup="joystick.release" @pointercancel="joystick.release" @lostpointercapture="joystick.release" @contextmenu.prevent>
                 <span :style="{ transform: `translate(${knob.x}px, ${knob.y}px)` }" />
@@ -113,8 +117,10 @@ defineExpose({ stats: () => scene?.stats(), focus: () => root.value?.focus({ pre
 .journey-field { position: relative; width: 100%; height: 100%; overflow: hidden; outline: none; color: #203e4c; background: #bfe3e8; font-family: inherit; container: moving-frame / inline-size; }
 .journey-canvas { position: absolute; inset: 0; }
 .journey-canvas :deep(canvas) { display: block; width: 100%; height: 100%; }
-.journey-heading { position: absolute; top: max(22px, env(safe-area-inset-top)); left: max(24px, env(safe-area-inset-left)); pointer-events: none; }
-.journey-heading h1 { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: .07em; text-shadow: 0 1px 5px #e9f9fb; }
+.journey-heading { position: absolute; top: max(22px, env(safe-area-inset-top)); left: max(24px, env(safe-area-inset-left)); pointer-events: none; padding:10px 12px; border-left:2px solid #afbed4; border-radius:3px; background:#f5f7fde8; color:var(--ember-ink); }
+.journey-heading h1 { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: .07em; }
+.journey-artwork-issue { position:absolute; bottom:140px; left:18px; right:18px; display:flex; align-items:center; gap:10px; width:fit-content; max-width:calc(100% - 36px); padding:8px 12px; border:1px solid #c3c9da; border-radius:6px; background:#f8f9fded; color:#344361; font-size:12px; }
+.journey-artwork-issue button { flex-shrink:0; }
 .journey-controls { position: absolute; inset: auto max(24px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left)); display: flex; align-items: flex-end; justify-content: space-between; pointer-events: none; gap: 16px; }
 .journey-stick { width: 104px; height: 104px; flex: 0 0 104px; border-radius: 50%; background: #f5fcfb4d; border: 1px solid #fff9; box-shadow: inset 0 0 0 14px #8cb4bd14; display: grid; place-items: center; touch-action: none; pointer-events: auto; }
 .journey-stick span { width: 42px; height: 42px; border-radius: 50%; background: #f4faf6c9; border: 1px solid #fff; box-shadow: 0 3px 9px #3255692b; }

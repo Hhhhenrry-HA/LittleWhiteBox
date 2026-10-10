@@ -1,8 +1,11 @@
 export const DIALOGUE_COPY = Object.freeze({
     affection: '好感', context: '上下文', close: '关闭', loading: '正在读取人物资料',
     retry: '重新读取', rawReply: '查看回复原文',
+    reloadArtwork: '重新加载人物画面',
     issues: {
         action_rejected: '对白已保存，附带行动不成立，未执行。',
+        performance_rejected: '对白已保存，附带表演未能呈现。',
+        metadata_invalid: '对白已保存，附带信息未能读取，未执行行动或改变好感。',
         reply_invalid: '回复格式有误。原文已保存，未执行行动或改变好感。',
         reply_incomplete: '回复未完整生成。已收到的原文已保存，未执行行动或改变好感。',
     },

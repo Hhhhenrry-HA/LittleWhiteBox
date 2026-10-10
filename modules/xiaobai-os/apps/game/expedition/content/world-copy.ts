@@ -2,6 +2,7 @@ import type { CourtyardPerson, CourtyardScene, CourtyardSwitch } from './world-t
 import { PERSON_NAMES } from './people.js';
 
 export const WORLD_COPY = Object.freeze({
+    artwork: { unavailable: '部分场景纹理未载入，不影响游玩。', retry: '重新载入', loading: '载入中…' },
     scenes: {
         camp: '檐下', crossroads: '外墙岔口', gate: '哨站正门', beacon: '烽火台',
         waterway: '旧水道', cells: '牢房', hall: '内堡门厅', roots: '根庭',

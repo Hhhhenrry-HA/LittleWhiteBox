@@ -6,16 +6,22 @@ import type { Relationship } from './relationships.js';
 import type { PeopleLocations } from '../world/people.js';
 import type { Participant } from '../content/participants.js';
 import type { PendingParley } from './parley.js';
+import type { Traveler } from './traveler.js';
+import type { ChapterId } from '../content/chapters.js';
+import type { Performance } from '../performance/catalog.js';
 
 export interface ConversationTurn {
-    id: string; kind: 'dialogue' | 'interaction' | 'receipt'; player: string; reply: string;
+    id: string; kind: 'dialogue' | 'receipt'; player: string; reply: string;
     action: NarrativeAction | null; facts: CourtyardFact[]; scene: CourtyardScene;
     affectionDelta?: number;
-    issue?: 'action_rejected' | 'reply_invalid' | 'reply_incomplete';
+    performance?: Performance;
+    issue?: 'action_rejected' | 'performance_rejected' | 'metadata_invalid' | 'reply_invalid' | 'reply_incomplete';
 }
 export interface ConversationMemory { throughId: string; text: string }
 export interface Campaign {
     id: string;
+    traveler: Traveler;
+    chapter: ChapterId;
     seed: number;
     weapon: Weapon;
     outfit: Outfit;

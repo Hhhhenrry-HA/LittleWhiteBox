@@ -1,5 +1,7 @@
 import type { BOSS_IDS, EFFECT_IDS, ENCOUNTER_IDS, EXPEDITION_FORMAT_VERSION, MOB_IDS, OATH_IDS, OUTFIT_IDS, RELIC_IDS, WEAPON_IDS } from './ids.js';
 import type { Campaign } from './campaign/types.js';
+import type { Traveler } from './campaign/traveler.js';
+import type { ChapterId } from './content/chapters.js';
 import type { CampaignChoice } from './content/campaign-actions.js';
 import type { CourtyardPerson } from './content/world-types.js';
 export type Weapon = typeof WEAPON_IDS[number];
@@ -53,9 +55,9 @@ export type PresentationError = 'rendering' | 'sound';
 export interface Route { id: number; kind: RouteKind; encounter: EncounterKind }
 export interface Award { key: string; actionId: string; runId: string; amount: number }
 export interface Purchase { id: Outfit; actionId: string; amount: number }
+export interface JourneySetup { weapon: Weapon; outfit: Outfit; traveler: Traveler; chapter: ChapterId }
 export type Command =
-    | { type: 'start'; weapon: Weapon; outfit: Outfit }
-    | { type: 'restart'; weapon: Weapon; outfit: Outfit }
+    | (({ type: 'start' } | { type: 'restart' }) & JourneySetup)
     | { type: 'interact'; id: string }
     | { type: 'input'; spans: InputSpan[] }
     | { type: 'relic'; id: Relic }

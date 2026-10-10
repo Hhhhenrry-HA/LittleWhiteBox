@@ -16,11 +16,13 @@ import { participantName } from './content/participants.js';
 import { reachablePersonInteractions, type PeopleLocations } from './world/people.js';
 import { parleyInteractions } from './campaign/parley.js';
 import { WORLD_COPY } from './content/world-copy.js';
+import type { Traveler } from './campaign/traveler.js';
+import { createWorldTextures } from './presentation/world-textures.js';
 
 export type SceneMode = 'camp' | 'battle' | 'between';
 export interface ExplorationFrame { definition: SceneDefinition; location: WorldLocation; facts: ReadonlySet<CourtyardFact>; people: PeopleLocations }
 /** Owns presentation lifetime only: camera, meshes and transient damage labels. */
-export function createExpeditionScene(host: HTMLElement, onError: () => void, options: { world?: boolean; invalidate?: () => void } = {}) {
+export function createExpeditionScene(host: HTMLElement, onError: () => void, options: { traveler: Traveler; world?: boolean; invalidate?: () => void; artworkStatus?: (failed: number, pending: number) => void }) {
     const renderer = new WebGLRenderer({ antialias: true, alpha: false, powerPreference: options.world ? 'default' : 'high-performance' });
     renderer.outputColorSpace = SRGBColorSpace; renderer.toneMapping = NeutralToneMapping; renderer.toneMappingExposure = 1;
     renderer.setPixelRatio(Math.min(devicePixelRatio || 1, options.world ? 1.4 : 1.8)); renderer.shadowMap.enabled = true; renderer.shadowMap.type = PCFSoftShadowMap;
@@ -34,7 +36,7 @@ export function createExpeditionScene(host: HTMLElement, onError: () => void, op
     sun.shadow.bias = -.0004; sun.shadow.normalBias = .035; sun.shadow.radius = 3; scene.add(sun);
     const rim = new DirectionalLight('#c3edff', 1.1); rim.position.set(7, 8, -15); scene.add(rim);
     const environment = new Group(), actors = new Group(), effects = new Group(); scene.add(environment, actors, effects);
-    const hero = createHero(k, actors), fx = createBattleEffects(k, effects);
+    const hero = createHero(k, actors, options.traveler.gender), fx = createBattleEffects(k, effects);
     const ward = createWardShell(k, effects), status = createWorldStatus(labels);
     const enemies = new Map<number, { actor: ReturnType<typeof createEnemyActor>; hp: number; death: number | null; marker: HTMLElement }>();
     const nameplates = new Map<string, HTMLElement>();
@@ -44,6 +46,7 @@ export function createExpeditionScene(host: HTMLElement, onError: () => void, op
     let worldScenery: ExplorableScenery | null = null;
     let worldX = NaN, worldY = NaN, worldFacing = NaN, drawnFacts: ReadonlySet<CourtyardFact> | null = null, draws = 0, submitMs = 0;
     let width = 1, height = 1, dirty = true, disposed = false, failed = false, lastFrame = 0, lastTick = -1, lastHp = 0, cameraReady = false;
+    const worldTextures = options.world ? createWorldTextures(() => { worldKey = ''; dirty = true; options.invalidate?.(); }, (failed, pending) => options.artworkStatus?.(failed, pending)) : null;
     function resize() {
         const rect = host.getBoundingClientRect(); width = Math.max(1, rect.width); height = Math.max(1, rect.height);
         renderer.setSize(width, height, false); dirty = true; cameraReady = false; options.invalidate?.();
@@ -72,7 +75,7 @@ export function createExpeditionScene(host: HTMLElement, onError: () => void, op
                 nameplates.forEach(label => label.remove()); nameplates.clear();
                 disposeWorld?.();
                 if (world) {
-                    const worldKit = createSceneKit();
+                    const worldKit = createSceneKit(worldTextures?.maps);
                     worldScenery = buildExplorableWorld(worldKit, environment, world.definition, world.facts);
                     const scenery = worldScenery;
                     disposeWorld = () => { scenery.dispose(); worldKit.dispose(); };
@@ -165,11 +168,12 @@ export function createExpeditionScene(host: HTMLElement, onError: () => void, op
             if (world) { worldX = world.location.position.x; worldY = world.location.position.y; worldFacing = world.location.facing; drawnFacts = world.facts; }
         },
         invalidate() { dirty = true; options.invalidate?.(); },
+        retryArtwork() { worldTextures?.retry(); },
         stats() { return { draws, submitMs, calls: renderer.info.render.calls, triangles: renderer.info.render.triangles,
             geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }; },
         dispose() {
             disposed = true; observer.disconnect(); renderer.domElement.removeEventListener('webglcontextlost', contextLost);
-            clearActors(); status.dispose(); ward.dispose(); disposeWorld?.(); sun.shadow.dispose(); k.dispose(); scene.clear(); renderer.dispose(); renderer.forceContextLoss(); renderer.domElement.remove(); labels.remove();
+            clearActors(); hero.dispose(); status.dispose(); ward.dispose(); disposeWorld?.(); worldTextures?.dispose(); sun.shadow.dispose(); k.dispose(); scene.clear(); renderer.dispose(); renderer.forceContextLoss(); renderer.domElement.remove(); labels.remove();
         },
     };
 }

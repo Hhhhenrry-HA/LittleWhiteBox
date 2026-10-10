@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { journey } from './fixtures/expedition-traveler.js';
 import { ref } from 'vue';
 import { createExpeditionClient } from '../apps/game/expedition/client.ts';
 import { emptyExpedition } from '../apps/game/expedition/domain.ts';
@@ -23,7 +24,7 @@ test('lost response recovery retries only the same action when storage has not a
         if (type.endsWith('/act') && ++attempts === 1) throw Object.assign(new Error('timeout'), { code: 'host_request_timeout' });
         return { result: state(type.endsWith('/act') ? 1 : 0) };
     });
-    await h.client.read(); assert.equal(await h.client.act({ type: 'start', weapon: 'blade', outfit: 'traveler', oaths: [] }), false);
+    await h.client.read(); assert.equal(await h.client.act({ type: 'start', weapon: 'blade', outfit: 'traveler', ...journey }), false);
     assert.equal(h.client.blocked.value, true); assert.equal(await h.client.recover(), true);
     const writes = h.requests.filter(r => r.type.endsWith('/act')); assert.deepEqual(writes[0].payload, writes[1].payload); assert.equal(h.client.failed.value, null);
     h.client.dispose();
@@ -34,7 +35,7 @@ test('confirmed late state and unrelated chats cannot cause repeated or rolled-b
         if (type.endsWith('/act')) { revision = 1; h.push(state(1)); throw Object.assign(new Error('timeout'), { code: 'host_request_timeout' }); }
         return { result: state(revision) };
     });
-    await h.client.read(); await h.client.act({ type: 'start', weapon: 'blade', outfit: 'traveler', oaths: [] }); await h.client.recover();
+    await h.client.read(); await h.client.act({ type: 'start', weapon: 'blade', outfit: 'traveler', ...journey }); await h.client.recover();
     assert.equal(h.requests.filter(r => r.type.endsWith('/act')).length, 1);
     h.push(state(4), 'chat-b'); h.push(state(0)); assert.equal(h.client.view.value.data.revision, 1);
     h.client.dispose(); h.push(state(9)); assert.equal(h.client.view.value.data.revision, 1);
@@ -42,7 +43,7 @@ test('confirmed late state and unrelated chats cannot cause repeated or rolled-b
 
 test('a business rejection never becomes a saved operation that is blindly retried', async () => {
     const h = fixture(async type => { if (type.endsWith('/act')) throw Object.assign(new Error('locked'), { code: 'expedition_locked' }); return { result: state(0) }; });
-    await h.client.read(); await h.client.act({ type: 'start', weapon: 'bow', outfit: 'traveler', oaths: [] });
+    await h.client.read(); await h.client.act({ type: 'start', weapon: 'bow', outfit: 'traveler', ...journey });
     assert.equal(h.client.failed.value, null); await h.client.recover(); assert.equal(h.requests.filter(r => r.type.endsWith('/act')).length, 1); h.client.dispose();
 });
 
@@ -54,7 +55,7 @@ test('conversation errors can be dismissed without a file operation, but unknown
     });
     await h.client.read(); await h.client.talk('sanniang', 'Hello');
     assert.equal(h.client.recoveryRequired.value, false); h.client.dismissError(); assert.equal(h.client.notice.value, '');
-    await h.client.act({ type: 'start', weapon: 'blade', outfit: 'traveler' });
+    await h.client.act({ type: 'start', weapon: 'blade', outfit: 'traveler', ...journey });
     assert.equal(h.client.recoveryRequired.value, true); h.client.dismissError(); assert.notEqual(h.client.notice.value, '');
     assert.equal(h.requests.length, 3); h.client.dispose();
 });

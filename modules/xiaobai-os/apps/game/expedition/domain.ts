@@ -1,9 +1,8 @@
 import { EXPEDITION_FORMAT_VERSION } from './ids.js';
 import { BOSSES, BOSS_SPECS, OATHS, RULES, WEAPONS } from './content.js';
-import { OUTFITS, ownsOutfit } from './outfits.js';
+import { OUTFITS, ownsOutfit, canChangeOutfit } from './outfits.js';
 import { fault } from './random.js';
 import { createCampaign, advanceCampaign } from './campaign/rules.js';
-import { CAMPAIGN_ACTIONS } from './content/campaign-actions.js';
 import type { Command, ExpeditionData, Weapon } from './types.js';
 
 export function emptyExpedition(): ExpeditionData {
@@ -27,24 +26,16 @@ export function advanceExpedition(current: ExpeditionData, command: Command, act
         data.purchases.push({ id: command.id, actionId, amount: spec.price });
     } else if (command.type === 'equip') {
         if (!ownsOutfit(data, command.id)) { fault('locked'); }
-        if (data.active && (data.active.location.scene !== 'camp' || data.active.phase !== 'exploration')) { fault('unavailable'); }
+        if (!canChangeOutfit(data.active)) { fault('unavailable'); }
         data.equippedOutfit = command.id;
         if (data.active) { data.active.outfit = command.id; }
     } else if (command.type === 'start' || command.type === 'restart') {
-        if (command.type === 'start' ? !!data.active : !data.active || data.active.location.scene !== 'camp' || data.active.phase !== 'exploration') { fault('unavailable'); }
+        if (command.type === 'start' ? !!data.active : !data.active) { fault('unavailable'); }
         if (!ownsOutfit(data, command.outfit)) { fault('locked'); }
-        data.active = createCampaign(actionId, seed, command.weapon, command.outfit);
+        data.active = createCampaign(actionId, seed, command.weapon, command.outfit, command.traveler);
     } else {
         if (!data.active) { fault('unavailable'); }
-        const action = command.type === 'choice' ? CAMPAIGN_ACTIONS[command.id] : null;
-        const person = command.type === 'choice' ? command.person : null;
         advanceCampaign(data.active, command);
-        if (command.type === 'choice' && action && person) {
-            const count = data.active.conversations[person].filter(turn => turn.kind === 'interaction' && turn.action === command.id).length;
-            data.active.conversations[person].push({ id: `${actionId}_interaction`, kind: 'interaction',
-                player: action.label, reply: action.moments[count % action.moments.length], action: command.id, scene: data.active.location.scene,
-                facts: [...data.active.knowledge[person]] });
-        }
         const awards = [
             { fact: 'warden_defeated', key: BOSS_SPECS.warden.awardKey },
             { fact: 'roots_cleared', key: BOSS_SPECS.thornheart.awardKey },

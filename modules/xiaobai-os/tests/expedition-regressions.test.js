@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { traveler } from './fixtures/expedition-traveler.js';
 import { Group, Box3 } from 'three';
 import { createBattle } from '../apps/game/expedition/combat.ts';
 import { hurtEnemy } from '../apps/game/expedition/combat/damage.ts';
@@ -66,7 +67,7 @@ test('bomber lead uses its fuse, not imaginary projectile flight distance', () =
 });
 
 test('chapter map only reveals reachable frontier silhouettes, never undiscovered names or closed links', () => {
-    const c = createCampaign('map', 7, 'blade', 'traveler');
+    const c = createCampaign('map', 7, 'blade', 'traveler', traveler);
     const initial = discoveredRoutes(c);
     assert.deepEqual(initial.scenes.sort(), ['camp', 'crossroads']);
     assert.equal(initial.links.length, 1);

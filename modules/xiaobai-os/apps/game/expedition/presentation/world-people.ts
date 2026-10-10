@@ -11,7 +11,7 @@ export function person(k: SceneKit, root: Group, id: CourtyardPerson, x: number,
     actor.rotation.y = medic ? .25 : -.35;
     if (seated && (worker || id === 'anian')) { actor.position.y = -.3; }
     actor.scale.setScalar(guard ? 1.24 : worker ? 1.06 : id === 'anian' ? 1.19 : 1.12);
-    const cloth = medic ? '#426e69' : guard ? '#485d74' : worker ? '#a08652' : '#a76850', leather = '#615047', skin = '#dfbaa0';
+    const cloth = medic ? '#343d59' : guard ? '#596a80' : worker ? '#53617a' : '#79647d', leather = '#615047', skin = '#dfbaa0';
     const shoulder = guard ? .39 : worker ? .25 : .29, waist = guard ? .31 : .23;
     const legs: Group[] = [];
     for (const side of [-1, 1]) {
@@ -27,7 +27,7 @@ export function person(k: SceneKit, root: Group, id: CourtyardPerson, x: number,
     k.mesh(actor, 'cylinder', skin, [.095, .2, .1], [0, 1.68, 0]);
     const head = k.group(actor, [0, 1.93, .025]); head.rotation.x = medic ? .1 : -.025;
     k.mesh(head, 'sphere', skin, [.215, .285, .22]);
-    const hair = medic ? '#654336' : '#424344';
+    const hair = medic ? '#272b42' : worker ? '#643d41' : id === 'anian' ? '#483b40' : '#30343e';
     k.mesh(head, 'sphere', hair, [.23, .18, .23], [0, .16, -.025]);
     for (const side of [-1, 1]) {
         k.mesh(head, 'sphere', hair, [.045, .17, .095], [side * .2, .02, -.03]);
@@ -54,8 +54,11 @@ export function person(k: SceneKit, root: Group, id: CourtyardPerson, x: number,
         k.shape(actor, [[-.21, .36], [.21, .36], [.3, -.36], [-.3, -.36]], '#eee7d3', [0, 1.02, .238], .014);
         k.mesh(actor, 'box', '#d0c4a4', [.18, .17, .025], [.07, .85, .276]);
         for (const side of [-1, 1]) { const strap = k.mesh(actor, 'box', '#eee7d3', [.052, .53, .025], [side * .16, 1.39, .19]); strap.rotation.z = -side * .15; }
-        for (let i = 0; i < 5; i++) { k.mesh(head, 'sphere', hair, [.085 - i * .008, .12, .095 - i * .01], [.16, -.04 - i * .15, -.2]); }
-        k.mesh(head, 'box', '#dfba7a', [.16, .065, .12], [.16, -.46, -.2]);
+        k.mesh(head, 'sphere', hair, [.19, .17, .13], [.09, -.03, -.22]);
+        k.mesh(head, 'cylinder', '#dfba7a', [.014, .38, .014], [.12, .03, -.26]).rotation.z = 1.2;
+        k.mesh(actor, 'cone', cloth, [.4, .85, .32], [0, .66, 0]);
+        k.mesh(actor, 'cylinder', '#803f4e', [.27, .075, .245], [0, 1.01, 0]);
+        k.shape(actor, [[-.35, .2], [.35, .2], [.43, -.22], [-.43, -.22]], cloth, [0, 1.43, -.23], .018);
         k.mesh(actor, 'box', leather, [.24, .28, .17], [-.31, .9, -.05]);
     } else if (guard) {
         k.mesh(actor, 'sphere', cloth, [.34, .35, .2], [0, 1.17, .1]);
@@ -66,6 +69,10 @@ export function person(k: SceneKit, root: Group, id: CourtyardPerson, x: number,
         k.mesh(book, 'box', '#e4dfcd', [.27, .36, .025], [0, 0, .047]);
         k.mesh(actor, 'cylinder', '#e4dfcd', [.13, .25, .14], [.16, .36, .06]);
     } else if (worker) {
+        k.mesh(actor, 'cylinder', '#b48859', [.18, .17, .17], [0, 1.65, 0]);
+        k.mesh(actor, 'box', '#b48859', [.17, .38, .04], [.08, 1.42, .24]);
+        k.mesh(actor, 'cylinder', '#74869e', [.025, .48, .025], [-.36, .67, .18]);
+        k.mesh(actor, 'box', '#74869e', [.13, .11, .055], [-.36, .92, .18]);
         if (arrived && seated) {
             actor.position.y = .5;
             const pipe = k.mesh(furniture, 'cylinder', '#849b95', [.24, 2.4, .24], [x, .72, z]); pipe.rotation.z = Math.PI / 2;
@@ -76,8 +83,8 @@ export function person(k: SceneKit, root: Group, id: CourtyardPerson, x: number,
         if (facts.has('supplies_secured')) { k.mesh(actor, 'cylinder', '#8caaa7', [.035, .44, .035], [-.32, 1.11, .22]); }
         k.mesh(actor, 'box', '#6b5944', [.52, .43, .03], [0, 1.29, .24]);
     } else {
-        k.mesh(actor, 'cone', cloth, [.34, .75, .25], [0, .78, 0]);
-        k.mesh(head, 'sphere', hair, [.2, .32, .16], [0, -.12, -.16]);
+        k.mesh(actor, 'cone', cloth, [.36, 1.05, .28], [0, .67, 0]);
+        k.mesh(head, 'sphere', hair, [.22, .48, .16], [0, -.26, -.17]);
         for (let i = 0; i < 3; i++) { const slip = k.mesh(actor, 'box', '#ded3b5', [.29, .34, .018], [-.12 + i * .02, 1.02, .31 + i * .023]); slip.rotation.z = i * .1; }
         const strap = k.mesh(actor, 'box', '#d8ba87', [.075, .83, .04], [0, 1.25, .22]); strap.rotation.z = -.55;
         k.mesh(actor, 'box', leather, [.42, .44, .21], [.21, .91, -.28]);

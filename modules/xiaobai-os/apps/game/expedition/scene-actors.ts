@@ -1,6 +1,6 @@
 import { Mesh, type Group, type Material } from 'three';
-import { createMascot } from '../../../brand/mascot/model.js';
-import { createMascotFighter } from '../../../brand/mascot/performance.js';
+import { createTraveler } from './scene-traveler.js';
+import type { Traveler } from './campaign/traveler.js';
 import { ENEMIES, isBoss } from './content.js';
 import type { Enemy, EnemyKind, Outfit, Player, Weapon } from './types.js';
 import type { SceneKit } from './scene-kit.js';
@@ -18,12 +18,10 @@ function addBow(k: SceneKit, parent: Group, scale = 1) {
     k.mesh(bow, 'box', '#705444', [.09, .18, .09], [.12, 0, .06]);
 }
 
-export function createHero(k: SceneKit, parent: Group) {
-    const root = k.group(parent), body = createMascot({ group: k.group, ball(p, s, c, at) { return k.mesh(p, 'sphere', c, s, at); } }, root, [0, .78, 0]);
-    body.scale.setScalar(2.1);
-    const fighter = createMascotFighter(body);
+export function createHero(k: SceneKit, parent: Group, gender: Traveler['gender']) {
+    const root = k.group(parent), traveler = createTraveler(k, root, gender), body = traveler.body;
     const shadow = k.ring(root, '#193f49', .6, 0, 0, .14, true);
-    const equipment = k.group(body), hand = k.group(equipment, [.3, .05, .17]), clothing = k.group(equipment);
+    const equipment = k.group(body), hand = traveler.hand, clothing = k.group(equipment);
     const guardShield = createGuardShield(k, equipment);
     let grimoire: ReturnType<typeof createGrimoire> | null = null;
     let motionTime = -1, facing = Math.PI / 2;
@@ -31,7 +29,7 @@ export function createHero(k: SceneKit, parent: Group) {
     function equip(nextWeapon: Weapon, nextOutfit: Outfit) {
         if (nextWeapon === weapon && nextOutfit === outfit) { return; }
         weapon = nextWeapon; outfit = nextOutfit; clothing.clear(); hand.clear(); grimoire = null; wardrobe = dressHero(k, clothing, outfit);
-        k.mesh(hand, 'sphere', '#fffaf2', [.1, .1, .09]);
+        traveler.dress(outfit);
         if (weapon === 'blade') {
             k.mesh(hand, 'cylinder', '#624d42', [.035, .28, .035], [0, -.08, .06]);
             k.mesh(hand, 'box', '#d4b470', [.32, .05, .11], [0, .07, .06], false, 1, true);
@@ -64,8 +62,7 @@ export function createHero(k: SceneKit, parent: Group) {
             const moving = !!p && (Math.abs(p.x - lastX) + Math.abs(p.y - lastY) > .001), dash = !!p?.dashTime;
             root.position.set(p?.x ?? 0, portrait ? .3 : 0, p?.y ?? -8);
             root.scale.setScalar(portrait ? 1.65 : 1);
-            fighter.pose(0, 0, facing, time, moving, dash, reduced);
-            body.position.y += .3;
+            traveler.pose(facing, time, moving, dash, reduced, !!p?.swing || casting);
             wardrobe!.cape.rotation.x = !reduced ? -.15 - (moving ? .5 : .06) - Math.sin(time * .15) * .12 : -.15;
             wardrobe!.animate(time, reduced);
             const swing = p?.swing && !reduced ? Math.sin(p.swing / (nextWeapon === 'cannon' ? 16 : 9) * Math.PI) : 0;
@@ -77,6 +74,7 @@ export function createHero(k: SceneKit, parent: Group) {
             shadow.scale.set(.6 + (dash ? .25 : 0), .6, 1);
             if (p) { lastX = p.x; lastY = p.y; }
         },
+        dispose() { traveler.dispose(); root.removeFromParent(); },
     };
 }
 

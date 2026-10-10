@@ -9,6 +9,36 @@ import { buildLandscape } from '../apps/game/expedition/presentation/landscape-s
 import { CAMERA_EIGHTH_TURNS, WORLD_CAMERA } from '../apps/game/expedition/visuals.ts';
 import { roadSurface } from '../apps/game/expedition/presentation/landscape-roads.ts';
 import { buildExplorableWorld } from '../apps/game/expedition/presentation/world-scenery.ts';
+import { landscapeFeature } from '../apps/game/expedition/presentation/landscape-models.ts';
+
+// Moving the camera exposed two different materials at exactly the same wall-foot depth.
+// Ray intersections test the rendered surface, before and after static batching.
+test('wall feet have one surface per side and remain solid when the upper wall cuts away', () => {
+    for (const interior of [false, true]) {
+        const kit = createSceneKit(), base = new Group(), upper = new Group();
+        landscapeFeature(kit, base, upper, { id: 'wall', kind: 'wall', height: 5, footprint: { x: 0, z: 0, width: 6, depth: 2 } }, interior);
+        const disposers = [];
+        try {
+            for (const batched of [false, true]) {
+                if (batched) { disposers.push(kit.bake(base), kit.bake(upper)); }
+                base.updateMatrixWorld(true); upper.updateMatrixWorld(true);
+                for (const [origin, direction] of [
+                    [new Vector3(.37, .21, 3), new Vector3(0, 0, -1)],
+                    [new Vector3(.37, .21, -3), new Vector3(0, 0, 1)],
+                    [new Vector3(4, .21, .37), new Vector3(-1, 0, 0)],
+                    [new Vector3(-4, .21, .37), new Vector3(1, 0, 0)],
+                ]) {
+                    const ray = new Raycaster(origin, direction);
+                    const hits = ray.intersectObjects([base, upper]);
+                    assert.equal(hits.length, 2);
+                    const retained = ray.intersectObject(base);
+                    assert.equal(retained.length, 2);
+                    assert.equal(retained[0].distance, hits[0].distance);
+                }
+            }
+        } finally { disposers.forEach(dispose => dispose()); kit.dispose(); }
+    }
+});
 
 // Reachability alone cannot detect a moved building whose old collision footprint was left behind.
 test('every authored outdoor solid and water surface blocks its actual footprint', () => {

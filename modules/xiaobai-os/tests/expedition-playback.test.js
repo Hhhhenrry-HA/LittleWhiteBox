@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { journey } from './fixtures/expedition-traveler.js';
 import { createExpeditionClient } from '../apps/game/expedition/client.ts';
 import { createCampaignPlayback } from '../apps/game/expedition/presentation/playback.ts';
 import { advanceExpedition, emptyExpedition } from '../apps/game/expedition/domain.ts';
@@ -7,7 +8,7 @@ import { tickCampaign } from '../apps/game/expedition/campaign/rules.ts';
 
 // Prediction/confirmation is a separate failure boundary from the reducer or file transaction.
 async function fixture() {
-    let state = advanceExpedition(emptyExpedition(), { type: 'start', weapon: 'blade', outfit: 'traveler' }, 'start', 7);
+    let state = advanceExpedition(emptyExpedition(), { type: 'start', weapon: 'blade', outfit: 'traveler', ...journey }, 'start', 7);
     let release, delay = false, unknown = false;
     const writes = [];
     const view = () => ({ data: structuredClone(state), balance: 100, ready: true, pending: false, writeState: 'ready' });

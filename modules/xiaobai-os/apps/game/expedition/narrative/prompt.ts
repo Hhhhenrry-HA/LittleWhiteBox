@@ -1,53 +1,50 @@
-import type { Campaign, ConversationMemory, ConversationTurn } from '../campaign/types.js';
+import type { Campaign } from '../campaign/types.js';
 import { isPerson, participantName, type Participant } from '../content/participants.js';
 import { PARLEY_ENEMIES } from '../content/parley.js';
-import { FACT_COPY } from '../content/campaign-copy.js';
-import { WORLD_COPY } from '../content/world-copy.js';
+import { OUTFIT_COPY, WEAPON_COPY } from '../copy.js';
 import { narrativeActions, secretFact } from './actions.js';
 import { projectStage, type RelationshipStage } from './stages.js';
 import { personMap } from '../world/people.js';
 import type { NarrativeCanon } from './canon.js';
+import { performanceOptions } from '../performance/catalog.js';
+import { responseInstruction } from './response.js';
+import { memoryBoundary, replayTurns, witnessedEvents } from './history.js';
+import { conversationScene } from './scene.js';
 
 export function conversationContext(campaign: Campaign, person: Participant, stages: readonly RelationshipStage[] = []) {
     const actionMeanings = narrativeActions(campaign, person, stages), actions = Object.keys(actionMeanings);
+    const shared = { person: participantName(person), ...conversationScene(campaign, person),
+        events: witnessedEvents(campaign.knowledge[person]), actions, actionMeanings };
     if (!isPerson(person)) {
         const spec = PARLEY_ENEMIES[person];
-        return { person: participantName(person), place: WORLD_COPY.scenes[spec.scene],
-            rescued: false, resolved: campaign.facts.includes(spec.complete),
-            events: campaign.knowledge[person].map(id => ({ id, event: FACT_COPY[id], source: '亲历' })),
-            companions: Object.entries(campaign.people).filter(([, p]) => p.mode === 'follow' && p.scene === spec.scene).map(([id]) => participantName(id as Participant)),
-            actions, actionMeanings };
+        return { ...shared, rescued: false, resolved: campaign.facts.includes(spec.complete) };
     }
-    return { person: WORLD_COPY.people[person], place: WORLD_COPY.scenes[campaign.people[person].scene], map: personMap(campaign, person),
+    return { ...shared, map: personMap(campaign, person),
         rescued: campaign.knowledge[person].includes('captives_arrived'),
-        events: campaign.knowledge[person].map(id => ({ id, event: FACT_COPY[id], source: '亲历' })),
-        affection: campaign.relationships[person].affection, actions, actionMeanings };
+        affection: campaign.relationships[person].affection };
 }
-export function replayTurns(turns: readonly ConversationTurn[]) {
-    return turns.filter(t => t.kind !== 'receipt').flatMap(t => t.kind === 'interaction' ? [
-        { role: 'user', content: JSON.stringify({ source: '游戏确认的互动结果', player: t.player, action: t.action,
-            result: t.reply, place: WORLD_COPY.scenes[t.scene], events: t.facts.map(id => ({ id, event: FACT_COPY[id] })) }) },
-    ] : [
-        { role: 'user', content: t.player },
-        { role: 'assistant', content: JSON.stringify({ reply: t.reply, action: t.action }) },
-    ]);
-}
-export function memoryBoundary(turns: readonly ConversationTurn[], memory: ConversationMemory | null) {
-    return memory ? turns.findIndex(turn => turn.id === memory.throughId) + 1 : 0;
-}
+function block(tag: string, content: string) { return `<${tag}>\n${content}\n</${tag}>`; }
 export function buildConversationPrompt(campaign: Campaign, person: Participant, text: string, canon: NarrativeCanon,
     memory = campaign.memories[person]) {
     const context = conversationContext(campaign, person, canon.stages);
+    const performance = performanceOptions(person);
     const secret = isPerson(person) ? secretFact(person) : null;
     const stage = isPerson(person) ? projectStage(canon.stages, campaign.relationships[person], !!secret && campaign.facts.includes(secret)) : null;
+    const { actions: _actions, actionMeanings, events, ...situation } = context;
+    const operations = { actions: actionMeanings, performance };
+    const story = { memory: memory?.text ?? null, events, ...situation,
+        opening: campaign.conversations[person].some(t => t.kind !== 'receipt') || !isPerson(person) && campaign.facts.includes(PARLEY_ENEMIES[person].complete)
+            ? null : context.rescued ? canon.opening.returned : canon.opening.initial,
+        stage };
     return {
-        systemPrompt: [canon.system, canon.world, canon.character].join('\n\n'),
+        systemPrompt: [canon.system.trim(), block('background', canon.world.trim()),
+            block('player', `${canon.player.trim()}\n\n${JSON.stringify({ ...campaign.traveler,
+                outfit: OUTFIT_COPY[campaign.outfit].detail, equipment: WEAPON_COPY[campaign.weapon].equipment }, null, 2)}`),
+            block('NPCs', `${canon.npcs}\n\n${canon.character.trim()}`)].join('\n\n'),
         messages: [
-            { role: 'user', content: JSON.stringify({ source: '游戏提供的当前处境与本人亲历', ...context,
-                opening: campaign.conversations[person].some(t => t.kind !== 'receipt') || !isPerson(person) && campaign.facts.includes(PARLEY_ENEMIES[person].complete) ? null : context.rescued ? canon.opening.returned : canon.opening.initial,
-                stage, memory: memory?.text ?? null }) },
+            { role: 'user', content: `${block('meta_protocol', `${canon.protocol.trim()}\n\n${block('operations', JSON.stringify(operations, null, 2))}`)}\n\n<story>\n${JSON.stringify(story, null, 2)}` },
             ...replayTurns(campaign.conversations[person].slice(memoryBoundary(campaign.conversations[person], memory))),
-            { role: 'user', content: text },
+            { role: 'user', content: `${text}\n</story>\n\n${responseInstruction(context.person)}` },
         ],
     };
 }

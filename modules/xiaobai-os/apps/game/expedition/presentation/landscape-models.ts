@@ -1,16 +1,7 @@
 import type { Group } from 'three';
 import type { SceneKit } from '../scene-kit.js';
 import type { LandscapeFeature } from '../world/landscape.js';
-
-export const LAND = {
-    grass: '#7eaa8a', grassLight: '#91b699', grassDark: '#689b7d', soil: '#637f72',
-    stone: '#d2d3bc', light: '#f3eedb', mortar: '#8b9e92', slate: '#3e7478', roof: '#407c7c', roofLight: '#57908a',
-    timber: '#635748', wood: '#a88b63', shadow: '#304f52', brass: '#c49d60', cloth: '#e6b978',
-    leaf: '#568876', leafLight: '#82ad86', amber: '#d9a568', amberLight: '#ebc78a', rose: '#c78f86',
-    water: '#5fa5af', ripple: '#b6d7c9', ember: '#ffce87', pottery: '#b4775e',
-    undercroft: '#536f75', wetStone: '#96b5b5', marble: '#c6d4d0', marbleLight: '#e4e9dc',
-    root: '#665e58', rootLight: '#9b8870',
-} as const;
+import { LAND } from './world-palette.js';
 
 export function lamp(k: SceneKit, root: Group, x: number, z: number, height = 2.8) {
     k.mesh(root, 'cylinder', LAND.shadow, [.055, height, .055], [x, height / 2, z]);
@@ -39,7 +30,7 @@ function roof(k: SceneKit, root: Group, width: number, depth: number, eave: numb
 
 function windowFrame(k: SceneKit, root: Group, x: number, z: number, y: number, width = 1.1) {
     k.mesh(root, 'box', LAND.shadow, [width, 1.45, .12], [x, y, z]);
-    k.mesh(root, 'box', '#a5c5ba', [width - .18, 1.25, .14], [x, y, z + .07]);
+    k.mesh(root, 'box', LAND.window, [width - .18, 1.25, .14], [x, y, z + .07]);
     for (const side of [-1, 1]) {
         k.mesh(root, 'box', LAND.wood, [.13, 1.6, .2], [x + side * width / 2, y, z + .12]);
         k.mesh(root, 'box', LAND.light, [width + .28, .14, .26], [x, y + side * .8, z + .12]);
@@ -190,9 +181,10 @@ export function landscapeFeature(k: SceneKit, ground: Group, upper: Group, item:
             break;
         }
         case 'wall': {
-            const h = item.height!;
-            k.mesh(base, 'box', LAND.mortar, [f.width, Math.min(h, .65), f.depth], [0, Math.min(h, .65) / 2, 0]);
-            k.mesh(model, 'box', interior ? LAND.marble : LAND.stone, [f.width, h, f.depth], [0, h / 2, 0]);
+            const h = item.height!, plinth = Math.min(h, .65);
+            k.mesh(base, 'box', LAND.mortar, [f.width, plinth, f.depth], [0, plinth / 2, 0]);
+            // The cutaway leaves the plinth standing; its sides must not share the wall's surface.
+            if (h > plinth) { k.mesh(model, 'box', interior ? LAND.marble : LAND.stone, [f.width, h - plinth, f.depth], [0, (h + plinth) / 2, 0]); }
             k.mesh(model, 'box', LAND.light, [f.width + .12, .23, f.depth + .12], [0, h, 0]);
             const alongX = f.width > f.depth, length = Math.max(f.width, f.depth);
             if (interior) {

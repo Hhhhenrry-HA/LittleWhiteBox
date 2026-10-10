@@ -2,7 +2,8 @@ import { Box3, Ray, Raycaster, Vector3, type Group, type Intersection } from 'th
 import type { SceneKit } from '../scene-kit.js';
 import type { Point } from '../types.js';
 import { insideFootprint, type Footprint, type Landscape } from '../world/landscape.js';
-import { LAND, landscapeFeature, lamp } from './landscape-models.js';
+import { landscapeFeature, lamp } from './landscape-models.js';
+import { LAND } from './world-palette.js';
 import { WORLD_CAMERA } from '../visuals.js';
 import { buildRoads } from './landscape-roads.js';
 
@@ -71,7 +72,7 @@ export function buildLandscape(k: SceneKit, root: Group, land: Landscape): Lands
                 const a = (stone + course % 2 * .5) / count * Math.PI * 2 + .008, b = a + Math.PI * 2 / count - .02;
                 const points: [number, number][] = [[Math.cos(a) * inner, Math.sin(a) * inner], [Math.cos(b) * inner, Math.sin(b) * inner],
                     [Math.cos(b) * outer, Math.sin(b) * outer], [Math.cos(a) * outer, Math.sin(a) * outer]];
-                const slab = k.shape(plaza, points, (course * 7 + stone) % 5 ? LAND.stone : '#c5c9b7', [0, .096, 8]); slab.rotation.x = -Math.PI / 2;
+                const slab = k.shape(plaza, points, (course * 7 + stone) % 5 ? LAND.stone : LAND.pavingAccent, [0, .096, 8]); slab.rotation.x = -Math.PI / 2;
             }
         }
         k.ring(plaza, LAND.mortar, 4.5, 0, 6, 1, false, .11);
@@ -127,21 +128,21 @@ export function buildLandscape(k: SceneKit, root: Group, land: Landscape): Lands
     // Distant city occupies its own cheap batches; it is not loaded as an offscreen playable district.
     const vista = k.group(root);
     const interior = land.vista === 'interior';
-    k.mesh(vista, 'box', interior ? LAND.undercroft : '#709d87', [300, 8, 300], [0, -4.65, 0]).castShadow = false;
+    k.mesh(vista, 'box', interior ? LAND.undercroft : LAND.distantGround, [300, 8, 300], [0, -4.65, 0]).castShadow = false;
     for (let i = 0; i < (interior ? 0 : 12); i++) {
         const side = i % 2 ? 1 : -1, x = side * (bounds.width / 2 + 15 + i % 3 * 8), z = bounds.z - 25 + i * 7;
-        k.mesh(vista, 'crown', i % 3 ? '#7da993' : '#92b6a1', [17 + i % 4 * 3, 6 + i % 3 * 2, 22], [x, -3, z]);
+        k.mesh(vista, 'crown', i % 3 ? LAND.distantGround : LAND.distantLeaf, [17 + i % 4 * 3, 6 + i % 3 * 2, 22], [x, -3, z]);
     }
     for (let i = 0; i < (interior || land.vista === 'garden' ? 0 : 9); i++) {
         const x = (i - 4) * 12, z = bounds.z - bounds.depth / 2 - 15 - i % 3 * 6;
         const h = 9 + i % 4 * 3;
-        k.mesh(vista, 'box', '#9dbab0', [9, h, 9], [x, h / 2 - 2, z]);
-        k.mesh(vista, 'cone', '#669692', [7, 6, 7], [x, h + 1, z]);
-        for (let j = -1; j <= 1; j++) { k.mesh(vista, 'box', '#759c96', [.8, 2.5, .08], [x + j * 2.2, h - 4, z + 4.55]); }
+        k.mesh(vista, 'box', LAND.distantWall, [9, h, 9], [x, h / 2 - 2, z]);
+        k.mesh(vista, 'cone', LAND.distantRoof, [7, 6, 7], [x, h + 1, z]);
+        for (let j = -1; j <= 1; j++) { k.mesh(vista, 'box', LAND.distantGround, [.8, 2.5, .08], [x + j * 2.2, h - 4, z + 4.55]); }
     }
     if (!interior && land.vista !== 'garden') {
     const clockZ = bounds.z - bounds.depth / 2 - 25;
-    k.mesh(vista, 'box', '#d6dcc9', [8, 35, 8], [-17, 15.5, clockZ]);
+    k.mesh(vista, 'box', LAND.distantWall, [8, 35, 8], [-17, 15.5, clockZ]);
     k.mesh(vista, 'cone', LAND.slate, [7, 13, 7], [-17, 39, clockZ]);
     k.mesh(vista, 'torus', LAND.brass, [2.5, 2.5, .6], [-17, 28, clockZ + 4.1]);
     k.mesh(vista, 'box', LAND.shadow, [.13, 1.8, .1], [-17, 28.8, clockZ + 4.2]);

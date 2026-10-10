@@ -1,17 +1,18 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { journey } from './fixtures/expedition-traveler.js';
 import { setImmediate } from 'node:timers';
 import { userEconomyHarness } from './user-economy-harness.js';
 import { EXPEDITION_PARTITION } from '../apps/game/expedition/partition.ts';
 import { createExpeditionService } from '../apps/game/expedition/service.ts';
 import { RULES } from '../apps/game/expedition/content.ts';
 import { campaignDriver } from './fixtures/campaign-driver.mjs';
-import { narrativeOptions } from './fixtures/expedition-narrative.js';
+import { narrativeOptions, narrativeReply, inspectNarrativePrompt } from './fixtures/expedition-narrative.js';
 import { withExpeditionRuntime } from '../apps/game/expedition/host.ts';
 import { createExpeditionClient } from '../apps/game/expedition/client.ts';
 import { conversationContext } from '../apps/game/expedition/narrative/prompt.ts';
 import { courtyardBattle } from '../apps/game/expedition/content/courtyard-encounters.ts';
-const start = { type: 'start', weapon: 'blade', outfit: 'traveler' };
+const start = { type: 'start', weapon: 'blade', outfit: 'traveler', ...journey };
 async function setup(files, dependencies = {}) {
     const h = await userEconomyHarness({ files }); await h.economy.ensureOpen();
     const service = createExpeditionService(h.store(EXPEDITION_PARTITION), h.transactions, h.economy, { seed: () => 7, ...narrativeOptions, ...dependencies });
@@ -37,29 +38,11 @@ test('complete chapter commits rescue, ending, equipment and wallet rewards and 
     await assert.rejects(reloaded.act({ type: 'choice', id: 'finish', person: 'sanniang' })); assert.equal(reloaded.service.view().balance, end.balance);
 });
 
-test('repeatable scenes rotate from confirmed interactions across failed saves and file reload', async () => {
-    let h = await setup(); await h.act(start); await h.driver.complete('waterway');
-    for (const [person, id, anchor] of [['sanniang', 'sit', 'clinic'], ['laobai', 'stones', 'guard'], ['anian', 'play', 'anian'], ['kouzi', 'tools', 'kouzi']]) {
-        await h.driver.walk(anchor); const replies = [];
-        for (let i = 0; i < 4; i++) {
-            if (i === 1) {
-                h.state.mode = 'rejected';
-                await assert.rejects(h.act({ type: 'choice', id, person }), { code: 'expedition_save_failed' });
-                h.state.mode = 'confirmed'; await h.service.confirm(() => true);
-                h = await setup(h.state.files);
-            } else { await h.act({ type: 'choice', id, person }); }
-            replies.push(h.service.view().data.active.conversations[person].at(-1).reply);
-        }
-        assert.equal(new Set(replies.slice(0, 3)).size, 3); assert.equal(replies[0], replies[3]);
-        assert.equal(h.service.view().data.active.conversations[person].filter(t => t.kind === 'interaction' && t.action === id).length, 4);
-    }
-});
-
 test('both persuaded and mixed routes finish; Chang suppresses already-raised reinforcements after a failed-save recovery', async () => {
     for (const persuadeGate of [true, false]) {
         let response = { reply: 'fixture', affection: 'up' }, calls = 0;
         const agent = { loadConfig: async () => ({}), openSession: async () => ({ providerConfig: { model: 'fixture' }, run: async () => {
-            calls++; return { text: JSON.stringify(response) };
+            calls++; return { text: narrativeReply(response) };
         } }) };
         let h = await setup(undefined, { agent }); await h.act(start);
         const talk = person => h.service.converse({ actionId: crypto.randomUUID(), revision: h.service.view().data.revision, person, text: 'fixture' }, () => true, new AbortController().signal);
@@ -137,7 +120,7 @@ test('main generation and identity guards block writes without consuming a seed'
 test('NPC dialogue and allowed action commit atomically; unknown save confirmation never repeats a paid call', async () => {
     let calls = 0, captured;
     const agent = { loadConfig: async () => ({}), openSession: async () => ({ providerConfig: { model: 'fixture' }, run: async request => {
-        calls++; captured = request; return { text: JSON.stringify({ reply: '我在这里等你回来。', action: 'briefing', affection: 'up' }) };
+        calls++; captured = request; return { text: narrativeReply({ reply: '我在这里等你回来。', action: 'briefing', affection: 'up' }) };
     } }) };
     const h = await setup(undefined, { agent }); await h.act(start); await h.driver.walk('clinic');
     const input = { actionId: 'conversation-one', revision: h.service.view().data.revision, person: 'sanniang', text: '我去把他们带回来。' };
@@ -146,17 +129,19 @@ test('NPC dialogue and allowed action commit atomically; unknown save confirmati
     assert.equal(h.service.view().data.active.conversations.sanniang.length, 0);
     assert.equal(h.service.view().data.active.facts.includes('briefed'), false);
     h.state.mode = 'confirmed'; await h.service.confirm(() => true);
-    const c = h.service.view().data.active; assert.equal(c.conversations.sanniang.length, 2); assert.ok(c.facts.includes('briefed')); assert.equal(calls, 1);
+    const c = h.service.view().data.active; assert.equal(c.conversations.sanniang.length, 1); assert.ok(c.facts.includes('briefed')); assert.equal(calls, 1);
     assert.ok(c.relationships.sanniang.affection >= 2 && c.relationships.sanniang.affection <= 4);
     assert.equal(c.conversations.sanniang[0].affectionDelta, c.relationships.sanniang.affection);
     assert.equal(h.service.view().replyFailure, null);
-    assert.equal(c.conversations.sanniang[0].action, 'briefing'); assert.equal(c.conversations.sanniang[1].kind, 'interaction');
+    assert.equal(c.conversations.sanniang[0].action, 'briefing'); assert.equal(c.conversations.sanniang[0].reply, '我在这里等你回来。');
     await h.service.converse(input, () => true, new AbortController().signal); assert.equal(calls, 1);
     assert.equal(h.service.view().data.active.relationships.sanniang.affection, c.relationships.sanniang.affection);
     const restored = await setup(h.state.files, { agent }); assert.deepEqual(restored.service.view().data.active, c);
-    assert.equal(captured.messages.at(-1).content, input.text);
-    assert.ok(JSON.parse(captured.messages[0].content).actions.includes('briefing'));
-    assert.ok(JSON.parse(captured.messages[0].content).actions.includes('follow'));
+    assert.equal(inspectNarrativePrompt(captured).input, input.text);
+    assert.equal(c.conversations.sanniang[0].player, input.text);
+    const actions = inspectNarrativePrompt(captured).operations.actions;
+    assert.ok(Object.hasOwn(actions, 'briefing'));
+    assert.ok(Object.hasOwn(actions, 'follow'));
 });
 
 test('model errors, invalid actions, cancellation and changed identity never fabricate saved dialogue', async () => {
@@ -168,7 +153,7 @@ test('model errors, invalid actions, cancellation and changed identity never fab
     const request = { actionId: 'cancelled-conversation', revision: h.service.view().data.revision, person: 'sanniang', text: '等一等。' };
     const controller = new AbortController(), pending = h.service.converse(request, () => current, controller.signal);
     while (!respond) { await new Promise(resolve => setImmediate(resolve)); }
-    current = false; controller.abort(); respond({ text: JSON.stringify({ reply: '应当被丢弃', action: null }) });
+    current = false; controller.abort(); respond({ text: narrativeReply({ reply: '应当被丢弃', action: null }) });
     await assert.rejects(pending); assert.equal(h.service.view().data.active.conversations.sanniang.length, 0);
     assert.equal(h.service.view().data.revision, request.revision);
 });
@@ -176,7 +161,7 @@ test('model errors, invalid actions, cancellation and changed identity never fab
 test('cancelling while a reply save fails does not poison its retained candidate or shared-file writes', async () => {
     let calls = 0;
     const agent = { loadConfig: async () => ({}), openSession: async () => ({ providerConfig: { model: 'fixture' }, run: async () => {
-        calls++; return { text: JSON.stringify({ reply: 'received', action: 'briefing', affection: 'up' }) };
+        calls++; return { text: narrativeReply({ reply: 'received', action: 'briefing', affection: 'up' }) };
     } }) };
     const h = await setup(undefined, { agent }); await h.act(start); await h.driver.walk('clinic');
     const controller = new AbortController(); let began, rejectSave;
@@ -192,17 +177,18 @@ test('cancelling while a reply save fails does not poison its retained candidate
     assert.ok(recovered.data.active.facts.includes('briefed')); assert.equal(calls, 1);
     const affection = recovered.data.active.relationships.sanniang.affection;
     await h.service.confirm(() => true); assert.equal(h.service.view().data.active.relationships.sanniang.affection, affection);
-    await h.act({ type: 'choice', id: 'sit', person: 'sanniang' });
+    await h.act({ type: 'loadout', equipped: [] });
     assert.equal(h.service.view().data.active.conversations.sanniang.filter(t => t.id === 'cancel-during-save').length, 1);
 });
 
 test('rejected actions and raw receipts survive reload without fictional facts, affection or a replacement model request', async () => {
-    let calls = 0, response = { text: '{"reply":"received","action":"finish"}' };
+    let calls = 0, response = { text: narrativeReply({ reply: 'received', action: 'finish' }) };
     const agent = { loadConfig: async () => ({}), openSession: async () => ({ providerConfig: { model: 'fixture' }, run: async () => { calls++; return response; } }) };
     let h = await setup(undefined, { agent }); await h.act(start); await h.driver.walk('clinic');
     const inputs = [];
-    for (const [index, value] of [{ text: '{"reply":"received","action":"finish"}' }, { text: '{broken' },
-        { text: '{"reply":"partial","action":"briefing","affection":"up"}', truncated: true }].entries()) {
+    for (const [index, value] of [{ text: narrativeReply({ reply: 'received', action: 'finish' }) }, { text: '{broken' },
+        { text: narrativeReply({ reply: 'partial', action: 'briefing', affection: 'up' }), truncated: true },
+        { text: '<dialogue>完整的付费对白。</dialogue>\n{"action":"briefing"' }].entries()) {
         response = value;
         const input = { actionId: `receipt-${index}`, revision: h.service.view().data.revision, person: 'sanniang', text: 'hello' };
         inputs.push(input); await h.service.converse(input, () => true, new AbortController().signal);
@@ -210,11 +196,11 @@ test('rejected actions and raw receipts survive reload without fictional facts, 
     const c = h.service.view().data.active;
     assert.deepEqual(c.facts, []); assert.equal(c.relationships.sanniang.affection, 0);
     assert.deepEqual(c.conversations.sanniang.map(t => [t.kind, t.action, t.issue]), [
-        ['dialogue', null, 'action_rejected'], ['receipt', null, 'reply_invalid'], ['receipt', null, 'reply_incomplete'],
+        ['dialogue', null, 'action_rejected'], ['receipt', null, 'reply_invalid'], ['receipt', null, 'reply_incomplete'], ['dialogue', null, 'metadata_invalid'],
     ]);
     h = await setup(h.state.files, { agent }); assert.deepEqual(h.service.view().data.active, c);
     for (const input of inputs) await h.service.converse(input, () => true, new AbortController().signal);
-    assert.equal(calls, 3);
+    assert.equal(calls, 4);
 });
 
 test('a cancelled summary save remains recoverable and never starts a dialogue request after cancellation', async () => {
@@ -264,7 +250,7 @@ test('a reattached client sees background conversation failure without blocking 
         assert.equal(client.conversationFailure.value.code, 'expedition_agent_failed'); assert.equal(client.conversationFailure.value.person, 'sanniang');
         assert.equal(client.talking.value, false); assert.equal(client.blocked.value, false);
         client.dismissConversationFailure(); assert.equal(client.conversationFailure.value, null);
-        assert.equal(await client.act({ type: 'choice', id: 'sit', person: 'sanniang' }), true);
+        assert.equal(await client.act({ type: 'loadout', equipped: [] }), true);
     } finally { client.dispose(); await runtime.stopBackground(); }
 });
 
@@ -285,7 +271,7 @@ test('a live paid request survives deactivation and reactivation, including main
     await activate();
     const inFlight = await runtime.handleMessage({ type: 'game/expedition/read', payload: { chatIdentity: 'chat' } });
     assert.equal(inFlight.conversation.actionId, 'live-reply');
-    resolveReply({ text: '{"reply":"answer"}' }); await pending;
+    resolveReply({ text: narrativeReply({ reply: 'answer' }) }); await pending;
     assert.equal(calls, 1); assert.equal(h.service.view().data.active.conversations.sanniang.at(-1).id, 'live-reply');
     assert.equal(states.at(-1).payload.state.conversation, null);
 });
@@ -302,7 +288,7 @@ test('malformed expedition data cannot turn a local game error into a fatal whol
 test('parley waits for acknowledgement, persists its result, and cannot be escaped or submitted without intel', async () => {
     let response = { reply: 'fixture', affection: 'up' }, calls = 0;
     const agent = { loadConfig: async () => ({}), openSession: async () => ({ providerConfig: { model: 'fixture' }, run: async () => {
-        calls++; return { text: JSON.stringify(response) };
+        calls++; return { text: narrativeReply(response) };
     } }) };
     let h = await setup(undefined, { agent }); await h.act(start);
     const talk = person => h.service.converse({ actionId: crypto.randomUUID(), revision: h.service.view().data.revision, person, text: 'fixture' }, () => true, new AbortController().signal);

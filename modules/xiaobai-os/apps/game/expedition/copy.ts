@@ -2,6 +2,7 @@ import { BOSSES, BOSS_SPECS, RELIC_RULES as R, RULES, WEAPON_LIST } from './cont
 import type { EncounterKind, EnemyKind, Oath, Outfit, Relic, RouteKind, Weapon } from './types.js';
 import { CAMPAIGN_COPY } from './content/campaign-copy.js';
 import { DIALOGUE_COPY } from './content/dialogue-copy.js';
+import { JOURNEY_COPY } from './content/journey-copy.js';
 
 const TITLE = ['余烬', '远征'];
 export const COPY = {
@@ -12,7 +13,7 @@ export const COPY = {
     chapter: (n: number) => `第 ${n + 1} 章`, bossDefeated: (name: string) => `${name}已被击败`,
     equipped: '已装备', noRelics: '击败敌人后，选择你的第一件遗物。',
     nextGoal: (name: string) => `下一位首领 · ${name}`,
-    name: CAMPAIGN_COPY.title, category: '冒险', tagline: CAMPAIGN_COPY.chapter, entry: '探索 · 战斗 · 人物交谈',
+    name: CAMPAIGN_COPY.title, category: '冒险', tagline: JOURNEY_COPY.city, entry: '探索 · 战斗 · 人物交谈',
     start: '启程', resume: '继续远征', pause: '暂停', paused: '远征已暂停', continue: '继续战斗',
     preparing: '正在打开远征…', saving: '正在保存', saved: '已保存', retry: '核实并恢复', refresh: '重新读取',
     saveError: '进度尚未确认，远征已暂停。核实保存后继续，不会重新抽取奖励。',
@@ -74,13 +75,13 @@ export const OUTFIT_COPY: Record<Outfit, { name: string; detail: string }> = {
     machinist: { name: '铜翼工匠', detail: '护目镜、皮革长衣与铜制动力背包。' }, beastcaller: { name: '森之契约', detail: '鹿角、叶羽披肩与发光的契约石。' },
     frostbound: { name: '霜海巡礼', detail: '晶冠、雪绒长衣与冰晶背饰。' }, stargazer: { name: '观星使徒', detail: '星环冠、层叠长袍与悬浮的星轨。' },
 };
-export const WEAPON_COPY: Record<Weapon, { name: string; detail: string; action: string; skill: string }> = {
-    blade: { name: '破晓剑士', detail: '近身横斩蓄势，三连击打断敌人。', action: '回旋斩', skill: '消耗蓄势重击，同时举盾格挡。接住攻击可回充蓄势，举盾瞬间接招为完美格挡。' },
-    bow: { name: '逐风射手', detail: '长距离连射；射击时走位减慢。', action: '穿云箭', skill: '五束贯穿箭矢，后撤拉开距离。' },
-    staff: { name: '星灯术士', detail: '溅射星弹蓄能；施法时走位较慢。', action: '星落', skill: '消耗蓄能，在敌群中心落下三次冲击。' },
-    daggers: { name: '绯影双刃', detail: '极近距离快攻，在敌人身后寻找破绽。', action: '影袭', skill: '突进目标背后重击，使其短暂易伤。' },
-    grimoire: { name: '契约使', detail: '自动召出使魔缠斗，咒弹积攒契约之力。', action: '共鸣', skill: '恢复在场使魔生命，让所有使魔的伤害与攻速提高，并诅咒目标。契约之力越多，强化越久；期间补召同样生效。' },
-    cannon: { name: '机巧炮手', detail: '重炮范围爆破；开火时难以迅速转移。', action: '部署', skill: '放置可承伤的自动炮台，建立火力阵地。' },
+export const WEAPON_COPY: Record<Weapon, { name: string; equipment: string; detail: string; action: string; skill: string }> = {
+    blade: { name: '破晓剑士', equipment: '剑与盾', detail: '近身横斩蓄势，三连击打断敌人。', action: '回旋斩', skill: '消耗蓄势重击，同时举盾格挡。接住攻击可回充蓄势，举盾瞬间接招为完美格挡。' },
+    bow: { name: '逐风射手', equipment: '弓', detail: '长距离连射；射击时走位减慢。', action: '穿云箭', skill: '五束贯穿箭矢，后撤拉开距离。' },
+    staff: { name: '星灯术士', equipment: '法杖', detail: '溅射星弹蓄能；施法时走位较慢。', action: '星落', skill: '消耗蓄能，在敌群中心落下三次冲击。' },
+    daggers: { name: '绯影双刃', equipment: '双匕首', detail: '极近距离快攻，在敌人身后寻找破绽。', action: '影袭', skill: '突进目标背后重击，使其短暂易伤。' },
+    grimoire: { name: '契约使', equipment: '魔导书', detail: '自动召出使魔缠斗，咒弹积攒契约之力。', action: '共鸣', skill: '恢复在场使魔生命，让所有使魔的伤害与攻速提高，并诅咒目标。契约之力越多，强化越久；期间补召同样生效。' },
+    cannon: { name: '机巧炮手', equipment: '手炮', detail: '重炮范围爆破；开火时难以迅速转移。', action: '部署', skill: '放置可承伤的自动炮台，建立火力阵地。' },
 };
 export const skillDetail = (weapon: Weapon) => `${WEAPON_COPY[weapon].action}：${WEAPON_COPY[weapon].skill}`;
 export const ENEMY_NAMES: Record<EnemyKind, string> = {
@@ -179,6 +180,8 @@ export function errorText(cause: unknown) {
     if (code === 'expedition_narrative_unavailable') { return CAMPAIGN_COPY.narrativeFailed; }
     if (code.startsWith('expedition_memory_')) { return CAMPAIGN_COPY.memoryFailed; }
     if (code === 'expedition_action_rejected') { return DIALOGUE_COPY.issues.action_rejected; }
+    if (code === 'expedition_performance_rejected') { return DIALOGUE_COPY.issues.performance_rejected; }
+    if (code === 'expedition_metadata_invalid') { return DIALOGUE_COPY.issues.metadata_invalid; }
     if (code.startsWith('expedition_reply_')) { return CAMPAIGN_COPY.emptyReply; }
     if (code === 'expedition_stale') { return COPY.stale; }
     if (code === 'expedition_locked') { return COPY.locked; }

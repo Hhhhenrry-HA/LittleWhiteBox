@@ -1,7 +1,7 @@
 import type { Group } from 'three';
 import type { SceneKit } from '../scene-kit.js';
 import type { LandscapeRoad } from '../world/landscape.js';
-import { LAND } from './landscape-models.js';
+import { LAND } from './world-palette.js';
 
 type Vertex = [number, number];
 type Polygon = Vertex[];

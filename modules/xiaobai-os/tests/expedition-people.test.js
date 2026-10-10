@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { traveler } from './fixtures/expedition-traveler.js';
 import { createCampaign, recordFact, canTalk, tickCampaign, advanceCampaign } from '../apps/game/expedition/campaign/rules.ts';
 import { movePerson, tickPeople, personMap, campaignInteractions } from '../apps/game/expedition/world/people.ts';
 import { COURTYARD } from '../apps/game/expedition/content/courtyard.ts';
@@ -7,7 +8,7 @@ import { DESTINATIONS } from '../apps/game/expedition/content/people-places.ts';
 import { narrativeActions } from '../apps/game/expedition/narrative/actions.ts';
 import { validateExpedition } from '../apps/game/expedition/partition.ts';
 import { emptyExpedition } from '../apps/game/expedition/domain.ts';
-const create = () => createCampaign('people', 7, 'blade', 'traveler');
+const create = () => createCampaign('people', 7, 'blade', 'traveler', traveler);
 const idle = { move: 0, dash: false, skill: false };
 
 test('captives can talk across their locked bars without moving out or offering camp activities', () => {
@@ -42,8 +43,8 @@ test('every follower settles within talking reach instead of waiting just beyond
     }
     for (let t = 0; t < 2000; t++) { tickPeople(c); }
     for (const id of Object.keys(c.people)) { assert.equal(canTalk(c, id), true, id); }
-    assert.ok(!('sit' in narrativeActions(c, 'sanniang')));
-    assert.ok('stones' in narrativeActions(c, 'laobai'));
+    assert.ok('stay' in narrativeActions(c, 'sanniang'));
+    assert.ok('receiving' in narrativeActions(c, 'laobai'));
 });
 
 test('chapter handoff stays available beside Sanniang at a camp appointment, without another model request', () => {

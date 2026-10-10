@@ -1,11 +1,11 @@
 /* eslint-disable */
-import { B as v, D as f, E as _, Z as k, b as w, dt as E, rt as j, s as x, v as C, x as P, y as b } from "./xiaobai-os-app-navigation-DbF27MCy.js";
-import { T as I, t as M, w as N } from "./xiaobai-os-MapBrowser-COaYif7n.js";
+import { D as y, O as _, Q as k, S as w, V as v, b as j, ft as x, it as E, s as C, x as P, y as b } from "./xiaobai-os-app-navigation-Dv7QNwzp.js";
+import { T as I, t as M, w as N } from "./xiaobai-os-MapBrowser-SBR06gBj.js";
 var A = {
   key: 0,
   class: "map-notice",
   role: "status"
-}, B = /* @__PURE__ */ _({
+}, L = /* @__PURE__ */ y({
   __name: "MapProjection",
   props: {
     map: {},
@@ -13,21 +13,21 @@ var A = {
     message: {}
   },
   setup(t) {
-    return (s, i) => (v(), b(M, {
+    return (s, i) => (v(), j(M, {
       compact: "",
       class: "map-projection-view",
       map: t.map,
       "chat-identity": t.chatIdentity
     }, {
-      feedback: k(() => [t.message ? (v(), P("aside", A, [C("p", null, E(t.message), 1)])) : w("", !0)]),
+      feedback: k(() => [t.message ? (v(), w("aside", A, [b("p", null, x(t.message), 1)])) : P("", !0)]),
       _: 1
     }, 8, ["map", "chat-identity"]));
   }
-}), L = B, O = ":host{--map-projection-height:clamp(260px,50cqw,280px)}.map-projection-root{display:none}.map-projection-loading{box-sizing:border-box;height:var(--map-projection-height);font:inherit;color:inherit;text-align:center;place-items:center;padding:16px;display:grid}";
-function V(t) {
+}), O = L, B = ":host{--map-projection-height:clamp(260px,50cqw,280px)}.map-projection-root{display:none}.map-projection-loading{box-sizing:border-box;height:var(--map-projection-height);font:inherit;color:inherit;text-align:center;place-items:center;padding:16px;display:grid}";
+function R(t) {
   t.replaceChildren();
   const s = t.attachShadow({ mode: "open" }), i = document.createElement("style");
-  i.textContent = O;
+  i.textContent = B;
   const a = document.createElement("link");
   a.rel = "stylesheet", a.href = new URL(
     /* @vite-ignore */
@@ -38,13 +38,13 @@ function V(t) {
   o.className = "map-projection-root";
   const n = document.createElement("div");
   n.className = "map-projection-loading", n.setAttribute("role", "status"), n.textContent = N.loading, s.append(i, a, n, o);
-  const r = j({
+  const r = E({
     map: null,
     chatIdentity: "",
     message: ""
   });
   let c = "";
-  const p = x({ render: () => f(L, r) });
+  const p = C({ render: () => _(O, r) });
   let m = !0;
   const l = () => {
     m && (m = !1, p.unmount());
@@ -70,8 +70,8 @@ function V(t) {
   ], h = (e) => e.stopPropagation();
   for (const e of u) o.addEventListener(e, h);
   return a.addEventListener("error", d), p.mount(o), {
-    update(e, y) {
-      o.classList.toggle("theme-dark", y === "dark");
+    update(e, f) {
+      o.classList.toggle("theme-dark", f === "dark");
       const g = JSON.stringify(e.map);
       g !== c && (r.map = e.map, c = g), r.chatIdentity = e.chatIdentity, r.message = e.message;
     },
@@ -83,5 +83,5 @@ function V(t) {
   };
 }
 export {
-  V as mountMapProjection
+  R as mountMapProjection
 };

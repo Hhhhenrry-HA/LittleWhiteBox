@@ -109,7 +109,7 @@ export default defineConfig(({ mode }) => {
         experimental: {
             renderBuiltUrl(filename, { hostType }) {
                 // Map models and the atlas tile worker live beside the lazy UI chunk, not at SillyTavern's web root.
-                if (hostType === 'js' && (filename.startsWith('map-assets/') || /\.worker-[\w-]+\.js$/.test(filename))) {
+                if (hostType === 'js' && (filename.startsWith('map-assets/') || filename.startsWith('ember-assets/') || /\.worker-[\w-]+\.js$/.test(filename))) {
                     return { runtime: `new URL(${JSON.stringify(filename)}, import.meta.url).href` };
                 }
             },
@@ -141,7 +141,9 @@ export default defineConfig(({ mode }) => {
                     manualChunks: undefined,
                     chunkFileNames: 'xiaobai-os-[name]-[hash].js',
                     assetFileNames: asset => asset.names.some(name => name.endsWith('.glb'))
-                        ? 'map-assets/[name]-[hash][extname]' : '[name][extname]',
+                        ? 'map-assets/[name]-[hash][extname]'
+                        : asset.originalFileNames.some(name => name.replace(/\\/g, '/').includes('/game/expedition/assets/'))
+                            ? 'ember-assets/[name]-[hash][extname]' : '[name][extname]',
                     paths: buildHost
                         ? (id) => {
                             if (!path.isAbsolute(id)) return id;

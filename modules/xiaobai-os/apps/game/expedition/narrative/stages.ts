@@ -25,7 +25,7 @@ export function parseStages(document: string, chapter = 1): RelationshipStage[] 
 }
 export function projectStage(stages: readonly RelationshipStage[], relation: Relationship, disclosed: boolean) {
     const current = stages[relationshipBand(relation.affection)];
-    return { name: current.name, relationship: current.relationship, shadow: current.shadow, intimacy: current.intimacy,
-        memory: stages.slice(0, relation.highestBand + 1).map(stage => stage.memory).filter(Boolean),
+    return { relationship: current.relationship, shadow: current.shadow, intimacy: current.intimacy,
+        personalPast: stages.slice(0, relation.highestBand + 1).map(stage => stage.memory).filter(Boolean),
         secret: current.secret, disclosedSecret: disclosed ? stages.find(stage => stage.secret)?.secret ?? null : null };
 }

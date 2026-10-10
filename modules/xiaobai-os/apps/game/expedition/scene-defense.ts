@@ -6,7 +6,6 @@ import { DEFENSE_COLORS as C } from './visuals.js';
 /** A held shield is distinct from the full-body, consumable ward shell. Resources belong to the scene kit. */
 export function createGuardShield(k: SceneKit, body: Group) {
     const arm = k.group(body), shield = k.group(arm);
-    k.mesh(arm, 'sphere', '#fffaf2', [.11, .11, .1], [0, 0, -.04]);
     const outline: [number, number][] = [[0, .35], [.16, .32], [.26, .22], [.25, -.02], [.19, -.18], [.09, -.29], [0, -.34], [-.09, -.29], [-.19, -.18], [-.25, -.02], [-.26, .22], [-.16, .32]];
     const rim = k.shape(shield, outline, C.block, [0, 0, 0], .055);
     const face = k.shape(shield, outline, C.enamel, [0, 0, .057], .025); face.scale.set(.87, .87, 1);
@@ -51,7 +50,7 @@ export function createWardShell(k: SceneKit, parent: Group) {
         root.visible = !!p && p.ward > 0;
         if (!p || !root.visible) { return; }
         root.position.set(p.x, 0, p.y);
-        // Full absorption must look like a hit on the shell, not a wound on Xiaobai.
+        // Full absorption must look like a hit on the shell, not a wound on the traveler.
         material.uniforms.impact.value = impact;
         root.scale.setScalar(1 + impact * .035);
     }, dispose() { material.dispose(); root.removeFromParent(); } };

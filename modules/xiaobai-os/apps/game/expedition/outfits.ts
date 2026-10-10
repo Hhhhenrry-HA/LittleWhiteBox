@@ -1,4 +1,8 @@
 import type { ExpeditionData, Outfit } from './types.js';
+import type { Campaign } from './campaign/types.js';
+export function canChangeOutfit(campaign: Campaign | null) {
+    return !campaign || campaign.location.scene === 'camp' && campaign.phase === 'exploration';
+}
 export interface OutfitSpec { price: number; achievement: string | null; fabric: string; metal: string; glow: string; silhouette: 'cloak' | 'armor' | 'robe' | 'hood' | 'coat'; head: 'none' | 'helm' | 'crown' | 'hat' | 'hood' | 'horns' | 'goggles'; }
 export const OUTFITS: Record<Outfit, OutfitSpec> = {
     traveler: { price: 0, achievement: null, fabric: '#326d9f', metal: '#d5b77b', glow: '#a7def3', silhouette: 'cloak', head: 'none' },

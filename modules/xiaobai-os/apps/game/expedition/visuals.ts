@@ -1,5 +1,6 @@
 import type { Relic } from './types.js';
 import { RELIC_SPECS, type RelicFamily } from './relics.js';
+import { LAND } from './presentation/world-palette.js';
 
 export const CAMERA_EIGHTH_TURNS = 1;
 export const WORLD_CAMERA = { height: 23, distance: 25, lead: 5, minimumWidth: 42, mobileWidth: 26, tallSpan: 28, shortSpan: 19 } as const;
@@ -9,7 +10,7 @@ export const CONTRACT_COLORS = { familiar: '#8cc9bc', empowered: '#f1d89e', cres
 
 /** Presentation only. Combat distances, damage and rewards never depend on this palette. */
 export const PALETTES = [
-    { sky: '#bfe3e8', haze: '#d2edef', stone: '#dce1cf', light: '#f2f0dc', floor: '#b8c6b1', tile: '#becab6', seam: '#a0b59f', dark: '#214e54', trim: '#c0a477', accent: '#78baa0', foliage: '#39775f', flower: '#e8b995', water: '#82aeb0' },
+    { sky: LAND.sky, haze: LAND.haze, stone: LAND.stone, light: LAND.light, floor: LAND.grass, tile: LAND.grassLight, seam: LAND.mortar, dark: LAND.shadow, trim: LAND.brass, accent: LAND.ember, foliage: LAND.leaf, flower: LAND.rose, water: LAND.water },
     { sky: '#bfcfe9', haze: '#dde5f5', stone: '#dce3ed', light: '#f4f1ff', floor: '#abb6cb', tile: '#b2bcd0', seam: '#93a1bb', dark: '#364869', trim: '#c4bcdf', accent: '#9cbeff', foliage: '#626ca0', flower: '#e0b2dd', water: '#88a0bc' },
     { sky: '#f3d8b0', haze: '#fbebd2', stone: '#f0ddba', light: '#fff4da', floor: '#c9bda5', tile: '#cfc3ac', seam: '#b6a88f', dark: '#5a565d', trim: '#c99249', accent: '#ffd481', foliage: '#b87056', flower: '#ffe2a3', water: '#a6b8b0' },
     { sky: '#e0c6bb', haze: '#f0dccc', stone: '#bfada1', light: '#eee3ce', floor: '#a9a1a0', tile: '#b4aaa5', seam: '#88878c', dark: '#3e4a55', trim: '#c18c59', accent: '#ffb06d', foliage: '#8a634b', flower: '#ffd6a5', water: '#c77446' },

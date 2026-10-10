@@ -1,5 +1,5 @@
 export const WEAPON_IDS = ['blade', 'bow', 'staff', 'daggers', 'grimoire', 'cannon'] as const;
-export const EXPEDITION_FORMAT_VERSION = 4;
+export const EXPEDITION_FORMAT_VERSION = 6;
 export const OATH_IDS = ['haste', 'scarcity', 'legion'] as const;
 export const MOB_IDS = ['soldier', 'archer', 'guard', 'priest', 'charger', 'stalker', 'bomber', 'wisp'] as const;
 export const BOSS_IDS = ['warden', 'thornheart', 'weaver', 'astrologer', 'king', 'phoenix', 'forgemaster', 'colossus', 'frostqueen', 'leviathan', 'archivist', 'voidknight'] as const;

@@ -15,6 +15,8 @@ import { PERSON_PLACES } from '../content/people-places.js';
 import { isPerson, PARTICIPANT_IDS, type Participant } from '../content/participants.js';
 import { PARLEY_ENEMIES, PARLEY_IDS } from '../content/parley.js';
 import { canParley } from './parley.js';
+import { parseTraveler, type Traveler } from './traveler.js';
+import { FIRST_CHAPTER } from '../content/chapters.js';
 
 export const CAMPAIGN_RULES = Object.freeze({ encounterReach: 14, alarmTicks: 900, explorationSpeed: 1.65, playerTextLimit: 2000, replyTextLimit: 8000 });
 export function campaignLoadout(campaign: Campaign): Loadout {
@@ -27,8 +29,8 @@ export function loadoutIssue(campaign: Campaign, equipped: Relic[]) {
     const loadout = { weapon: campaign.weapon, oaths: [], relics: campaign.collection.filter(r => equipped.includes(r.id)) };
     return equipped.some(id => !relicReady(loadout, id)) ? 'dependency' : null;
 }
-export function createCampaign(id: string, seed: number, weapon: Weapon, outfit: Outfit): Campaign {
-    return { id, seed, weapon, outfit, location: startWorld(COURTYARD.camp, 'start'), facts: [], hp: RULES.maxHp,
+export function createCampaign(id: string, seed: number, weapon: Weapon, outfit: Outfit, traveler: Traveler): Campaign {
+    return { id, seed, weapon, outfit, traveler: parseTraveler(traveler), chapter: FIRST_CHAPTER.id, location: startWorld(COURTYARD.camp, 'start'), facts: [], hp: RULES.maxHp,
         collection: [], equipped: [], offers: [], phase: 'exploration', battle: null, checkpoint: null, alarmTicks: 0,
         relationships: Object.fromEntries(PERSON_IDS.map(person => [person, { affection: 0, highestBand: 0 }])) as Campaign['relationships'], people: initialPeople(),
         pendingParley: null, evidence: { dispatchNoteSeen: false },
@@ -152,7 +154,7 @@ export function advanceCampaign(campaign: Campaign, command: Exclude<Command, { 
             const action = CAMPAIGN_ACTIONS[command.id];
             const person = command.person;
             if (!canTalk(campaign, person) || !availableChoices(campaign.facts, person, campaign.people[person]).includes(command.id)) { fault('unavailable'); }
-            if (action.fact) { recordFact(campaign, action.fact, [person]); }
+            recordFact(campaign, action.fact, [person]);
             receiveCaptives(campaign);
             break;
         }
