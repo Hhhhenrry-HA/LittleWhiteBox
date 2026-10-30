@@ -4045,7 +4045,14 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/message-preview.js",
       "relativePath": "modules/message-preview.js",
       "extension": ".js",
-      "sizeBytes": 60254
+      "sizeBytes": 57453
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/message-preview.test.js",
+      "relativePath": "modules/message-preview.test.js",
+      "extension": ".js",
+      "sizeBytes": 20672
     },
     {
       "source": "littlewhitebox",
@@ -16071,7 +16078,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/xiaobai-os/domains/map/projection.ts",
       "relativePath": "modules/xiaobai-os/domains/map/projection.ts",
       "extension": ".ts",
-      "sizeBytes": 5798
+      "sizeBytes": 7361
     },
     {
       "source": "littlewhitebox",
@@ -17289,7 +17296,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/plugin-entry.js",
       "relativePath": "plugin-entry.js",
       "extension": ".js",
-      "sizeBytes": 56239
+      "sizeBytes": 56190
     },
     {
       "source": "littlewhitebox",
