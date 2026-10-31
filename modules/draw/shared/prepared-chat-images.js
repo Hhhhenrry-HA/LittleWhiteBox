@@ -96,7 +96,7 @@ export async function submitPreparedChatImages({ ctx, message, messageId, source
         if (getImageChatIdentity(live) !== chatIdentity || liveId < 0
             || (message.swipe_id ?? 0) !== swipeIndex || placementSource?.invalid
             || !(existingSlots ? ids.every(item => isSceneSlotAlive(message.mes, item.slotId))
-                : nativeMessage ? message.mes.startsWith(placementSource?.sourceText ?? sourceText) : message.mes === expectedText)
+                : message.mes.startsWith(nativeMessage ? placementSource?.sourceText ?? sourceText : expectedText))
             || isMessageBeingEdited(liveId)) throw new Error(DRAW_SLOT_COPY.sourceChanged);
     };
     const validateSource = () => {
@@ -140,7 +140,7 @@ export async function submitPreparedChatImages({ ctx, message, messageId, source
             // Manual tags use the same synchronous text/card handoff as native
             // tags. The host's own autosave persists this edit.
             if (replacesTags) placeTags();
-            else setActiveMessageText(message, plannedText);
+            else setActiveMessageText(message, plannedText + message.mes.slice(sourceText.length));
             const liveId = getContext().chat.indexOf(message);
             void syncRenderedMessageFromState(liveId, { chatId, expectedMessage: message,
                 insertedSlotIds: ids.map(item => item.slotId) }).catch(error => console.error(DRAW_SLOT_COPY.renderFailed, error));

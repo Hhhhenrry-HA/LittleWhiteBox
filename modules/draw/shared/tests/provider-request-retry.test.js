@@ -17,6 +17,7 @@ globalThis.__providerRetryTest = host;
 const { window, document } = parseHTML('<html><body></body></html>');
 Object.assign(globalThis, { window, document });
 const stubs = {
+    'drawing-runtime-client.js': 'exports.drawingRuntimeHeaders=()=>({});exports.DRAWING_RUNTIME_ABI=1;exports.prepareDrawingRuntime=async()=>({});',
     'extensions.js': 'exports.getContext=()=>({chat:[],characters:[]});',
     'script.js': 'exports.getRequestHeaders=()=>({});',
     'utils.js': 'exports.uuidv4=()=>"retry-fixture";',

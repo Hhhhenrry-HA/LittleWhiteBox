@@ -15,12 +15,12 @@ function freezeBlock(block) {
 export const BUILTIN_BLOCKS = Object.freeze([
     freezeBlock({ id: 'opening', label: '开场与视角', role: 'system' }),
     freezeBlock({ id: 'frame', label: '材料说明与输出去向', role: 'system' }),
-    freezeBlock({ id: 'guide', label: 'TAG指南', role: 'system' }),
-    freezeBlock({ id: 'rules', label: '场景规则', role: 'system' }),
+    freezeBlock({ id: 'guide', label: 'TAG指南', role: 'tool' }),
+    freezeBlock({ id: 'rules', label: '场景规则', role: 'tool' }),
     freezeBlock({ id: 'tools', label: '工具说明', role: 'system' }),
-    freezeBlock({ id: 'worldInfo', label: '世界书', role: 'user' }),
-    freezeBlock({ id: 'content', label: '角色与正文', role: 'user', required: true }),
-    freezeBlock({ id: 'limits', label: '数量约束', role: 'user', required: true }),
+    freezeBlock({ id: 'worldInfo', label: '世界书', role: 'tool' }),
+    freezeBlock({ id: 'content', label: '角色与正文', role: 'tool', required: true }),
+    freezeBlock({ id: 'limits', label: '数量约束', role: 'tool', required: true }),
 ]);
 
 export const BUILTIN_BLOCK_IDS = Object.freeze(BUILTIN_BLOCKS.map(block => block.id));

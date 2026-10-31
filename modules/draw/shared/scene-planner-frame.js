@@ -1,6 +1,7 @@
 import { createSubmitScenePlanTool } from './scene-plan-tool.js';
 import { normalizeScenePlannerProfile } from './scene-planner-profile.js';
 import { spliceLiteral } from './scene-prompt-expansion.js';
+import { SCENE_PLANNER_ACTION, buildScenePlannerExchange } from './scene-planner-handoff.js';
 
 /**
  * The fixed part of the planner request. It describes the world the model is in — what the
@@ -25,16 +26,12 @@ export const CONTENT_TEMPLATE = `<content>
 {{lastMessage}}
 </content>`;
 
-function joinBlocks(blocks) {
-    return blocks.map((block) => String(block || '').trim()).filter(Boolean).join('\n\n');
-}
-
 export function buildScenePlannerFrameText(profile) {
     const { imageModelName } = normalizeScenePlannerProfile(profile);
     return `## 你收到的材料
 - <worldInfo>：世界书。其中的 tag 组合、同人角色资料、姿势库是写提示词时的参考来源；未知角色的外貌优先参考其中的数据。
 - <content>：本次唯一的叙事来源。开头是【已录入角色】列表；固定外貌由角色库自动写入，你只写本图中的状态，不要重复固定外貌里已有的 tag；正文里每个可插图的位置已标为【插图点 N】。
-- 消息末尾的数量约束：可用插图点数、images 数量、每图人数上限。
+- 绘图要求中的数量约束：可用插图点数、images 数量、每图人数上限。
 
 ## 你的输出去哪
 The app uses each image's scene and character fields, together with the character library and the user's generation settings, to build a request for ${imageModelName}. Field meanings and model-specific controls are described in submit_scene_plan.`;
@@ -52,17 +49,7 @@ export function buildScenePlannerRulesSection(rules = '') {
     return rulesText ? `## 场景规则\n\n${rulesText}` : '';
 }
 
-export function buildScenePlannerSystemPrompt({ opening = '', guide = '', sceneRules = '', profile } = {}) {
-    const effective = normalizeScenePlannerProfile(profile);
-    return joinBlocks([
-        opening,
-        buildScenePlannerFrameText(effective),
-        buildScenePlannerGuideSection(guide, effective),
-        buildScenePlannerRulesSection(sceneRules),
-    ]);
-}
-
-// 世界书 / 正文两个内置块的未展开模板（槽位哨兵已拼入）；布局组装与默认用户任务共用，保证两条路径同源。
+// 世界书 / 正文的未展开模板；槽位值在宏展开后原样插入。
 export function buildScenePlannerWorldInfoBlock(worldInfoSlot) {
     return spliceLiteral(WORLD_INFO_TEMPLATE, '{$worldInfo}', worldInfoSlot);
 }
@@ -73,15 +60,6 @@ export function buildScenePlannerContentBlock(characterInfoSlot, lastMessageSlot
         '{{lastMessage}}',
         lastMessageSlot,
     );
-}
-
-/** Slots are opaque tokens; the caller resolves them after macro expansion. */
-export function buildScenePlannerUserTask({ worldInfoSlot, characterInfoSlot, lastMessageSlot, limitsLine = '' } = {}) {
-    return joinBlocks([
-        buildScenePlannerWorldInfoBlock(worldInfoSlot),
-        buildScenePlannerContentBlock(characterInfoSlot, lastMessageSlot),
-        limitsLine,
-    ]);
 }
 
 function flattenSchemaFields(schema, path, out) {
@@ -103,48 +81,67 @@ export function listScenePlanFieldDescriptions(profile, descriptions = {}) {
     return flattenSchemaFields(tool.function.parameters, '', []);
 }
 
-/**
- * Read-only request structure for the prompt editor: one system, one user, one tool.
- * `editable` sections map onto the three user-editable textareas.
- */
+function previewExchange(kind, summary, sections) {
+    const [call, result] = buildScenePlannerExchange(kind);
+    return [
+        {
+            role: call.role,
+            key: `${kind}-call`,
+            summary: `assistant：${summary}`,
+            sections: [{ key: `${kind}-request`, summary, content: call.template }],
+        },
+        {
+            role: result.role,
+            key: `${kind}-result`,
+            summary: `tool：${kind === 'approval' ? '批准交付' : summary}`,
+            sections: sections || [{ key: `${kind}-response`, summary: '交付授权', content: result.template }],
+        },
+    ];
+}
+
+/** Default request structure; editable sections still point to the existing textareas. */
 export function buildScenePlannerChainPreview({ profile, hasTagGuide = true, descriptions = {} } = {}) {
     const effective = normalizeScenePlannerProfile(profile);
     return [
         {
             role: 'system',
             key: 'system',
-            summary: 'system：规划器的身份、材料说明、指南与规则',
+            summary: 'system：规划器的身份、材料说明与输出去向',
             sections: [
                 { key: 'topSystem', editable: true, summary: '开场与视角' },
                 { key: 'frame', summary: '材料说明与输出去向（内置）', content: buildScenePlannerFrameText(effective) },
-                {
-                    key: 'tagGuide',
-                    editable: true,
-                    summary: `${effective.imageModelName} Tag 指南${hasTagGuide ? '' : '（当前为空，不注入）'}`,
-                },
-                { key: 'sceneRules', editable: true, summary: '场景规则' },
             ],
         },
         {
             role: 'user',
             key: 'userTask',
-            summary: 'user：本次材料',
-            sections: [
-                {
-                    key: 'worldInfo',
-                    summary: '世界书',
-                    content: WORLD_INFO_TEMPLATE,
-                    variables: ['{{persona}} — 用户角色设定', '{{description}} — 世界/场景', '{$worldInfo} — 世界书条目'],
-                },
-                {
-                    key: 'content',
-                    summary: '已录入角色 + 正文（含【插图点 N】）',
-                    content: CONTENT_TEMPLATE,
-                    variables: ['{{characterInfo}} — 已录入角色列表', '{{lastMessage}} — 正文'],
-                },
-                { key: 'limits', summary: '本次数量约束：可用插图点数、images 数量、每图人数上限' },
-            ],
+            summary: 'user：执行清单',
+            sections: [{ key: 'action', summary: '执行步骤', content: SCENE_PLANNER_ACTION }],
         },
+        ...previewExchange('materials', '读取场景资料', [
+            {
+                key: 'worldInfo',
+                summary: '世界书',
+                content: WORLD_INFO_TEMPLATE,
+                variables: ['{{persona}} — 用户角色设定', '{{description}} — 世界/场景', '{$worldInfo} — 世界书条目'],
+            },
+            {
+                key: 'content',
+                summary: '已录入角色 + 正文（含【插图点 N】）',
+                content: CONTENT_TEMPLATE,
+                variables: ['{{characterInfo}} — 已录入角色列表', '{{lastMessage}} — 正文'],
+            },
+        ]),
+        ...previewExchange('guide', '读取绘图要求', [
+            {
+                key: 'tagGuide',
+                editable: true,
+                summary: `${effective.imageModelName} Tag 指南${hasTagGuide ? '' : '（当前为空，不注入）'}`,
+            },
+            { key: 'sceneRules', editable: true, summary: '场景规则' },
+            { key: 'limits', summary: '本次数量约束：可用插图点数、images 数量、每图人数上限' },
+        ]),
+        ...previewExchange('approval', '申请交付'),
         {
             role: 'tools',
             key: 'tools',

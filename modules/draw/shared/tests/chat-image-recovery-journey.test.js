@@ -15,6 +15,7 @@ import { hashSceneSource } from '../scene-source.js';
 // - Explicitly deleted slots stay deleted, including after late results.
 // - Drawing never saves the chat itself; the host's autosave owns persistence.
 // - Recovered multi-image scene insertions retain their original batch order.
+// - Reopening or continuing a chat never duplicates an existing or recovered image slot.
 
 async function setup(t, sources, options) {
     const h = await fixture(sources, options);
@@ -145,6 +146,26 @@ test('placing, reopening and rerolling never save the chat; reopening never rege
     assert.equal((await h.api.getPreviewsForMessage(h.ctx.chatId, 0)).filter(h.api.hasPreviewImage).length, 2);
 });
 
+test('a paid image whose slot was not saved is recovered after continuation without another purchase', async t => {
+    const h = await setup(t, ['The story.\n[img: chosen]']);
+    h.start(); await h.pump(5);
+    h.body(0).querySelector('[data-xb-draw-tag-action]').click(); await h.pump(10);
+    const [record] = await h.api.getPreviewsForMessage(h.ctx.chatId, 0);
+    const continuation = '\nThe next paragraph.';
+    h.ctx.chat[0] = structuredClone(h.persisted()[0]);
+    h.ctx.chat[0].mes += continuation;
+    h.body(0).textContent = h.ctx.chat[0].mes;
+    await h.emit('CHAT_CHANGED'); await h.pump(12);
+    assert.equal(h.ctx.chat[0].mes, `The story.\n[image:${record.slotId}]${continuation}`);
+    assert.ok(h.body(0).querySelector('img'));
+    assert.equal(h.counters.requests.length, 1);
+    h.ctx.chat[0].mes += '\nAnother continuation.';
+    h.body(0).textContent = h.ctx.chat[0].mes;
+    await h.emit('CHAT_CHANGED'); await h.pump(12);
+    assert.ok(h.body(0).querySelector('img'));
+    assert.equal(h.counters.requests.length, 1);
+});
+
 test('removal cannot be recovered after reload', async t => {
     const h = await setup(t, ['body\n[image:delete-slot]']);
     await h.api.storePreview({ imgId: 'paid', slotId: 'delete-slot', messageId: 0, chatId: h.ctx.chatId,
@@ -245,6 +266,40 @@ test('native completion submits only new tags and does not await paid transport;
 function generate(h, placements = [{ mode: 'tail' }]) {
     return h.api.generatePreparedChatImages('review-provider', { ctx: h.ctx, message: h.ctx.chat[0], messageId: 0,
         sourceText: h.ctx.chat[0].mes, tasks: placements.map((placement, index) => ({ scene: `paid-${index}`, placement })) });
+}
+
+for (const mode of ['tail', 'source']) for (const count of [1, 2]) {
+    test(`reopening and continuation preserve ${count} ${mode} image slots before and after unsaved recovery`, async t => {
+        const source = 'The story.';
+        const h = await setup(t, [source]);
+        h.start(); await h.pump(3);
+        const placement = mode === 'tail' ? { mode } : { mode, sourceHash: hashSceneSource(source), offset: source.length };
+        await generate(h, Array.from({ length: count }, () => placement)); await h.pump(4);
+        const placed = h.ctx.chat[0].mes;
+        const paid = await h.api.getPreviewsForMessage(h.ctx.chatId, 0);
+        assert.equal(paid.length, count);
+        const reopen = async expected => {
+            h.ctx.chat[0] = structuredClone(h.ctx.chat[0]);
+            h.body(0).textContent = h.ctx.chat[0].mes;
+            await h.emit('CHAT_CHANGED'); await h.pump(6);
+            assert.equal(h.ctx.chat[0].mes, expected);
+            for (const record of paid) {
+                assert.equal(h.ctx.chat[0].mes.split(`[image:${record.slotId}]`).length - 1, 1);
+                assert.ok((await h.api.getPreview(record.imgId)).base64);
+            }
+            assert.equal(h.body(0).querySelectorAll('.xb-nd-img').length, count);
+            assert.equal(h.counters.requests.length, count);
+            assert.equal(h.counters.saves, 0);
+        };
+        for (let repeat = 0; repeat < 3; repeat++) await reopen(placed);
+        const continuation = '\nThe next paragraph.';
+        h.ctx.chat[0].mes += continuation;
+        await reopen(placed + continuation);
+        // Reload the pre-placement text, as when the host save never completed.
+        h.ctx.chat[0] = structuredClone(h.persisted()[0]);
+        h.ctx.chat[0].mes += continuation;
+        for (let repeat = 0; repeat < 3; repeat++) await reopen(placed + continuation);
+    });
 }
 
 for (const scope of ['character', 'group', 'account']) test(`same filename and source in another ${scope} cannot recover the original image`, async t => {

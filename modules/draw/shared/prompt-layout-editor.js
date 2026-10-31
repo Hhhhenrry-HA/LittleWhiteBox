@@ -180,7 +180,7 @@ export function createPromptLayoutEditor({
     const resetButton = create(document, 'button', { className: 'lwb-ple-btn', text: '恢复默认结构', attrs: { type: 'button', 'data-ple-reset': '', title: '恢复内置块的默认顺序并移除自定义消息（只改草稿，保存后才生效）' } });
     const hint = create(document, 'p', {
         className: 'lwb-ple-hint',
-        text: '按发送顺序排列。点击编辑，拖动手柄调整顺序。',
+        text: '资料和绘图要求分别集中读取，自定义消息按排列顺序发送。点击编辑，拖动手柄调整顺序。',
     });
     const notice = create(document, 'p', { className: 'lwb-ple-notice', attrs: { hidden: true, role: 'alert', 'data-ple-notice': '' } });
     const selectionCount = create(document, 'span', { className: 'lwb-ple-selection-count', attrs: { 'data-ple-selection-count': '' } });
