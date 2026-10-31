@@ -191,6 +191,19 @@ test('default structure preview locates editable sections in their actual messag
     assert.equal(preview.find(item => item.sections?.some(section => section.key === 'content')).role, 'tool');
 });
 
+test('current-draft preview follows actual assembly after custom insertion, disabling and legacy reordering', async () => {
+    const extras = [custom('user', 'EARLY'), custom('assistant', 'MIDDLE'), custom('user', 'DISABLED', { enabled: false })];
+    for (const order of [ORDER, [...ORDER].reverse()]) {
+        const layout = { version: 1, blocks: [...order.slice(0, 2).map(id => ({ id })), extras[0],
+            ...order.slice(2, 5).map(id => ({ id })), extras[1], ...order.slice(5).map(id => ({ id })), extras[2]] };
+        const { task } = await build(layout);
+        const preview = buildScenePlannerChainPreview({ layout }).filter(item => item.role !== 'tools');
+        assert.deepEqual(preview.map(item => item.role), task.messages.map(message => message.role));
+        const shown = preview.flatMap(item => item.sections).filter(section => extras.some(block => block.id === section.key));
+        assert.deepEqual(shown.map(section => section.content), ['EARLY', 'MIDDLE']);
+    }
+});
+
 const VALID_ARGUMENTS = { images: [{ index: 1, insert_after: 1, scene: 'opening door, indoor', characters: [] }] };
 async function runPlanner(toolMode, replies) {
     resetDrawAgentRuntimeForTests();

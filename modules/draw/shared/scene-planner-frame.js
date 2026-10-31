@@ -1,7 +1,8 @@
 import { createSubmitScenePlanTool } from './scene-plan-tool.js';
 import { normalizeScenePlannerProfile } from './scene-planner-profile.js';
 import { spliceLiteral } from './scene-prompt-expansion.js';
-import { SCENE_PLANNER_ACTION, buildScenePlannerExchange } from './scene-planner-handoff.js';
+import { planScenePlannerMessages } from './scene-planner-assembly.js';
+import { BUILTIN_BLOCKS, PREBUILT_MESSAGE_LABELS, PROMPT_ROLE_LABELS, SCENE_PLANNER_STAGES, TOOL_DEFINITIONS_LABEL, normalizeLayout } from './scene-planner-layout.js';
 
 /**
  * The fixed part of the planner request. It describes the world the model is in — what the
@@ -81,71 +82,41 @@ export function listScenePlanFieldDescriptions(profile, descriptions = {}) {
     return flattenSchemaFields(tool.function.parameters, '', []);
 }
 
-function previewExchange(kind, summary, sections) {
-    const [call, result] = buildScenePlannerExchange(kind);
-    return [
-        {
-            role: call.role,
-            key: `${kind}-call`,
-            summary: `assistant：${summary}`,
-            sections: [{ key: `${kind}-request`, summary, content: call.template }],
-        },
-        {
-            role: result.role,
-            key: `${kind}-result`,
-            summary: `tool：${kind === 'approval' ? '批准交付' : summary}`,
-            sections: sections || [{ key: `${kind}-response`, summary: '交付授权', content: result.template }],
-        },
-    ];
-}
-
-/** Default request structure; editable sections still point to the existing textareas. */
-export function buildScenePlannerChainPreview({ profile, hasTagGuide = true, descriptions = {} } = {}) {
+/** Preview is a projection of the actual assembly, including the current custom-message draft. */
+export function buildScenePlannerChainPreview({ profile, hasTagGuide = true, descriptions = {}, layout, builtinTexts = {} } = {}) {
     const effective = normalizeScenePlannerProfile(profile);
+    const sections = {
+        opening: { key: 'topSystem', editable: true, summary: '开场与视角' },
+        frame: { key: 'frame', summary: '材料说明与输出去向', content: buildScenePlannerFrameText(effective) },
+        tools: { key: 'toolDeclaration', summary: '可用工具', content: createSubmitScenePlanTool({ profile: effective, descriptions }).function.name },
+        worldInfo: { key: 'worldInfo', summary: '世界书', content: WORLD_INFO_TEMPLATE },
+        content: { key: 'content', summary: '角色与正文', content: CONTENT_TEMPLATE },
+        guide: { key: 'tagGuide', editable: true, summary: `${effective.imageModelName} Tag 指南${hasTagGuide ? '' : '（当前为空，不注入）'}` },
+        rules: { key: 'sceneRules', editable: true, summary: '场景规则' },
+        limits: { key: 'limits', summary: '本次数量约束：可用插图点数、images 数量、每图人数上限' },
+    };
+    for (const block of normalizeLayout(layout).layout.blocks) {
+        if (!sections[block.id]) sections[block.id] = { key: block.id, summary: block.name || '自定义消息', content: block.content };
+    }
+    const texts = { ...Object.fromEntries(BUILTIN_BLOCKS.map(block => [block.id, block.id])), ...builtinTexts };
+    const { templates } = planScenePlannerMessages({ layout, builtinTexts: texts });
     return [
-        {
-            role: 'system',
-            key: 'system',
-            summary: 'system：规划器的身份、材料说明与输出去向',
-            sections: [
-                { key: 'topSystem', editable: true, summary: '开场与视角' },
-                { key: 'frame', summary: '材料说明与输出去向（内置）', content: buildScenePlannerFrameText(effective) },
-            ],
-        },
-        {
-            role: 'user',
-            key: 'userTask',
-            summary: 'user：执行清单',
-            sections: [{ key: 'action', summary: '执行步骤', content: SCENE_PLANNER_ACTION }],
-        },
-        ...previewExchange('materials', '读取场景资料', [
-            {
-                key: 'worldInfo',
-                summary: '世界书',
-                content: WORLD_INFO_TEMPLATE,
-                variables: ['{{persona}} — 用户角色设定', '{{description}} — 世界/场景', '{$worldInfo} — 世界书条目'],
-            },
-            {
-                key: 'content',
-                summary: '已录入角色 + 正文（含【插图点 N】）',
-                content: CONTENT_TEMPLATE,
-                variables: ['{{characterInfo}} — 已录入角色列表', '{{lastMessage}} — 正文'],
-            },
-        ]),
-        ...previewExchange('guide', '读取绘图要求', [
-            {
-                key: 'tagGuide',
-                editable: true,
-                summary: `${effective.imageModelName} Tag 指南${hasTagGuide ? '' : '（当前为空，不注入）'}`,
-            },
-            { key: 'sceneRules', editable: true, summary: '场景规则' },
-            { key: 'limits', summary: '本次数量约束：可用插图点数、images 数量、每图人数上限' },
-        ]),
-        ...previewExchange('approval', '申请交付'),
+        ...templates.map((item, index) => {
+            const roleLabel = item.stageId
+                ? PREBUILT_MESSAGE_LABELS[item.tool_calls ? 'call' : 'result']
+                : PROMPT_ROLE_LABELS[item.role];
+            const items = item.blockIds.filter(id => !(id in texts) || String(texts[id]).trim()).map(id => sections[id]);
+            const summary = items.length ? items.map(section => section.summary).join('、')
+                : SCENE_PLANNER_STAGES.find(stage => stage.id === item.stageId)?.label
+                    || (item.stageId === 'approval' ? (item.approved ? '确认提交' : '申请提交') : '执行步骤');
+            return { role: item.role, roleLabel, key: `message-${index}`, summary,
+                sections: items.length ? items : [{ key: `message-${index}`, summary, content: item.template }] };
+        }),
         {
             role: 'tools',
+            roleLabel: PROMPT_ROLE_LABELS.tools,
             key: 'tools',
-            summary: 'tools：submit_scene_plan 字段说明（模型读到的字段语义）',
+            summary: TOOL_DEFINITIONS_LABEL,
             fields: listScenePlanFieldDescriptions(effective, descriptions),
         },
     ];

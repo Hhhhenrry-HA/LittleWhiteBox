@@ -4063,6 +4063,9 @@ async function handleFrameMessage(event) {
             const currentPrompts = getActivePromptPreset() || {};
             const model = String(data.model || getActiveParamsPreset()?.params?.model || '');
             const promptDraft = {
+                layout: data.promptDraft?.layout ?? currentPrompts.layout,
+                topSystem: data.promptDraft?.topSystem ?? currentPrompts.topSystem,
+                sceneRules: data.promptDraft?.sceneRules ?? currentPrompts.sceneRules,
                 modelGuideOverrides: normalizeNovelPromptGuideOverrides(
                     data.promptDraft?.modelGuideOverrides ?? currentPrompts.modelGuideOverrides,
                 ),

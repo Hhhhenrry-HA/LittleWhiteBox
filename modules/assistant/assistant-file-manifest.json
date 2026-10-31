@@ -202,7 +202,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/docs/scene-planner-design.md",
       "relativePath": "docs/scene-planner-design.md",
       "extension": ".md",
-      "sizeBytes": 11375
+      "sizeBytes": 13606
     },
     {
       "source": "littlewhitebox",
@@ -496,7 +496,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/agent-core/adapters/google.js",
       "relativePath": "modules/agent-core/adapters/google.js",
       "extension": ".js",
-      "sizeBytes": 32991
+      "sizeBytes": 33193
     },
     {
       "source": "littlewhitebox",
@@ -798,6 +798,13 @@
       "relativePath": "modules/agent-core/tests/gemini-tool-schema.test.js",
       "extension": ".js",
       "sizeBytes": 4326
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/agent-core/tests/google-request-inspection.test.js",
+      "relativePath": "modules/agent-core/tests/google-request-inspection.test.js",
+      "extension": ".js",
+      "sizeBytes": 2997
     },
     {
       "source": "littlewhitebox",
@@ -1791,21 +1798,21 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/providers/novelai/novel-draw-page.js",
       "relativePath": "modules/draw/providers/novelai/novel-draw-page.js",
       "extension": ".js",
-      "sizeBytes": 260919
+      "sizeBytes": 261213
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/providers/novelai/novel-draw.html",
       "relativePath": "modules/draw/providers/novelai/novel-draw.html",
       "extension": ".html",
-      "sizeBytes": 110318
+      "sizeBytes": 110519
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/providers/novelai/novel-draw.js",
       "relativePath": "modules/draw/providers/novelai/novel-draw.js",
       "extension": ".js",
-      "sizeBytes": 217240
+      "sizeBytes": 217486
     },
     {
       "source": "littlewhitebox",
@@ -1840,7 +1847,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/providers/novelai/novel-prompts.js",
       "relativePath": "modules/draw/providers/novelai/novel-prompts.js",
       "extension": ".js",
-      "sizeBytes": 4305
+      "sizeBytes": 4692
     },
     {
       "source": "littlewhitebox",
@@ -2876,7 +2883,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/shared/llm-records-view.js",
       "relativePath": "modules/draw/shared/llm-records-view.js",
       "extension": ".js",
-      "sizeBytes": 18327
+      "sizeBytes": 18774
     },
     {
       "source": "littlewhitebox",
@@ -3023,14 +3030,14 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/shared/prompt-layout-editor.css",
       "relativePath": "modules/draw/shared/prompt-layout-editor.css",
       "extension": ".css",
-      "sizeBytes": 15263
+      "sizeBytes": 16117
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/shared/prompt-layout-editor.js",
       "relativePath": "modules/draw/shared/prompt-layout-editor.js",
       "extension": ".js",
-      "sizeBytes": 54296
+      "sizeBytes": 57418
     },
     {
       "source": "littlewhitebox",
@@ -3114,14 +3121,14 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/shared/scene-planner-assembly.js",
       "relativePath": "modules/draw/shared/scene-planner-assembly.js",
       "extension": ".js",
-      "sizeBytes": 3565
+      "sizeBytes": 2563
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/shared/scene-planner-chain-view.js",
       "relativePath": "modules/draw/shared/scene-planner-chain-view.js",
       "extension": ".js",
-      "sizeBytes": 6635
+      "sizeBytes": 6640
     },
     {
       "source": "littlewhitebox",
@@ -3149,7 +3156,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/shared/scene-planner-frame.js",
       "relativePath": "modules/draw/shared/scene-planner-frame.js",
       "extension": ".js",
-      "sizeBytes": 6685
+      "sizeBytes": 6600
     },
     {
       "source": "littlewhitebox",
@@ -3163,7 +3170,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/shared/scene-planner-layout.js",
       "relativePath": "modules/draw/shared/scene-planner-layout.js",
       "extension": ".js",
-      "sizeBytes": 20371
+      "sizeBytes": 22148
     },
     {
       "source": "littlewhitebox",
@@ -3702,14 +3709,14 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/shared/tests/prompt-layout-editor-tools.test.js",
       "relativePath": "modules/draw/shared/tests/prompt-layout-editor-tools.test.js",
       "extension": ".js",
-      "sizeBytes": 10024
+      "sizeBytes": 11943
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/shared/tests/prompt-layout-editor.test.js",
       "relativePath": "modules/draw/shared/tests/prompt-layout-editor.test.js",
       "extension": ".js",
-      "sizeBytes": 35333
+      "sizeBytes": 32349
     },
     {
       "source": "littlewhitebox",
@@ -3751,21 +3758,21 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/shared/tests/scene-planner-assembly.test.js",
       "relativePath": "modules/draw/shared/tests/scene-planner-assembly.test.js",
       "extension": ".js",
-      "sizeBytes": 6502
+      "sizeBytes": 6469
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/shared/tests/scene-planner-layout-request.test.js",
       "relativePath": "modules/draw/shared/tests/scene-planner-layout-request.test.js",
       "extension": ".js",
-      "sizeBytes": 15805
+      "sizeBytes": 16806
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/shared/tests/scene-planner-layout.test.js",
       "relativePath": "modules/draw/shared/tests/scene-planner-layout.test.js",
       "extension": ".js",
-      "sizeBytes": 31732
+      "sizeBytes": 7555
     },
     {
       "source": "littlewhitebox",

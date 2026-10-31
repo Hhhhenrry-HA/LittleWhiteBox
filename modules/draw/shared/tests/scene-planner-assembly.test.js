@@ -41,11 +41,11 @@ test('empty document sections disappear without dropping the completed read exch
     assert.equal(results(templates).length, 3);
 });
 
-test('document blocks follow their layout order within each reading', () => {
+test('legacy document order cannot rearrange the fixed readings', () => {
     const layout = reorderBlocks(createDefaultLayout(), ['opening', 'frame', 'limits', 'rules', 'guide', 'tools', 'content', 'worldInfo']);
     const templates = plan(layout);
-    assert.equal(results(templates)[0].template, 'CONTENT\n\nWORLD');
-    assert.equal(results(templates)[1].template, 'LIMITS\n\nRULES\n\nGUIDE');
+    assert.equal(results(templates)[0].template, 'WORLD\n\nCONTENT');
+    assert.equal(results(templates)[1].template, 'GUIDE\n\nRULES\n\nLIMITS');
 });
 
 test('custom blocks retain their roles and relative order outside atomic tool pairs', () => {
@@ -84,10 +84,10 @@ for (const order of [
     ['opening', 'frame', 'guide', 'rules', 'worldInfo', 'tools', 'content', 'limits'],
     [...ORDER.filter(id => id !== 'tools'), 'tools'],
 ]) {
-    test(`tool protocol block keeps its layout placement: ${order.indexOf('tools')}`, () => {
+    test(`legacy tool placement is normalized to the opening: ${order.indexOf('tools')}`, () => {
         const templates = plan(reorderBlocks(createDefaultLayout(), order));
         const directIds = templates.filter(item => item.role !== 'tool').flatMap(item => item.blockIds);
-        assert.deepEqual(directIds, order.filter(id => ['opening', 'frame', 'tools'].includes(id)));
+        assert.deepEqual(directIds, ['opening', 'frame', 'tools']);
         const holders = templates.filter(item => item.template.includes(M));
         assert.equal(holders.length, 1);
         assert.equal(holders[0].role, 'system');
