@@ -1,5 +1,5 @@
 {
-  "buildId": "785c0f7f2e9f65da6e27",
+  "buildId": "d6a5ee8a7f5e9c799080",
   "entries": {
     "apps/assistant": {
       "file": "apps/assistant-DBnEM2pO.js",
@@ -1631,8 +1631,6 @@
     "modules/draw/providers/sd-webui/sd-draw.html",
     "modules/ebook/ebook.html",
     "modules/ena-planner/ena-planner.html",
-    "modules/scheduled-tasks/embedded-tasks.html",
-    "modules/scheduled-tasks/scheduled-tasks.html",
     "modules/story-outline/story-outline.html",
     "modules/story-summary/story-summary.html",
     "modules/tavern/tavern.html",

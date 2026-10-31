@@ -81,7 +81,7 @@ extension_settings[EXT_ID] = extension_settings[EXT_ID] || {
     enabled: true,
     recorded: { enabled: true },
     templateEditor: { enabled: true, characterBindings: {} },
-    tasks: { enabled: true, globalTasks: [], processedMessages: [], character_allowed_tasks: [] },
+    tasks: { enabled: true, globalTasks: [], processedMessages: [] },
     preview: { enabled: false },
     immersive: { enabled: false },
     xiaobaiOs: createDefaultXiaobaiOsSettings(),

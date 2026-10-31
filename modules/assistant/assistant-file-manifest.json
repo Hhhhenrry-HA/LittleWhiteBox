@@ -4136,14 +4136,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/scheduled-tasks/README.md",
       "relativePath": "modules/scheduled-tasks/README.md",
       "extension": ".md",
-      "sizeBytes": 28353
-    },
-    {
-      "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/scheduled-tasks/embedded-tasks.html",
-      "relativePath": "modules/scheduled-tasks/embedded-tasks.html",
-      "extension": ".html",
-      "sizeBytes": 1653
+      "sizeBytes": 29587
     },
     {
       "source": "littlewhitebox",
@@ -4164,7 +4157,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/scheduled-tasks/preset-lifecycle.test.js",
       "relativePath": "modules/scheduled-tasks/preset-lifecycle.test.js",
       "extension": ".js",
-      "sizeBytes": 107820
+      "sizeBytes": 134300
     },
     {
       "source": "littlewhitebox",
@@ -4175,17 +4168,10 @@
     },
     {
       "source": "littlewhitebox",
-      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/scheduled-tasks/scheduled-tasks.html",
-      "relativePath": "modules/scheduled-tasks/scheduled-tasks.html",
-      "extension": ".html",
-      "sizeBytes": 1653
-    },
-    {
-      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/scheduled-tasks/scheduled-tasks.js",
       "relativePath": "modules/scheduled-tasks/scheduled-tasks.js",
       "extension": ".js",
-      "sizeBytes": 138138
+      "sizeBytes": 139967
     },
     {
       "source": "littlewhitebox",
@@ -17296,7 +17282,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/plugin-entry.js",
       "relativePath": "plugin-entry.js",
       "extension": ".js",
-      "sizeBytes": 56190
+      "sizeBytes": 56161
     },
     {
       "source": "littlewhitebox",
@@ -17835,7 +17821,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/settings.html",
       "relativePath": "settings.html",
       "extension": ".html",
-      "sizeBytes": 37211
+      "sizeBytes": 36958
     },
     {
       "source": "littlewhitebox",
@@ -17982,7 +17968,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/style.css",
       "relativePath": "style.css",
       "extension": ".css",
-      "sizeBytes": 10010
+      "sizeBytes": 9591
     },
     {
       "source": "littlewhitebox",
