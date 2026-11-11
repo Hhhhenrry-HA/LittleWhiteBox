@@ -1,3 +1,5 @@
+import { ASSISTANT_WINDOW_COPY } from '../../shared/window-layout.js';
+
 export const ACTIVITY_COPY = {
     statuses: {
         queued: '等待中',
@@ -37,5 +39,6 @@ export const ACTIVITY_COPY = {
     restoreFailed: '存档读取失败，已停止加载。请重新打开助手。',
     configLoadFailed: reason => `配置读取失败，请重新打开助手：${reason}`,
     settingsToggle: collapsed => collapsed ? '展开 API 配置' : '收起 API 配置',
-    closeAssistant: '关闭小白助手',
+    closeAssistant: ASSISTANT_WINDOW_COPY.close,
+    minimizeAssistant: ASSISTANT_WINDOW_COPY.minimize,
 };

@@ -18,7 +18,10 @@ export function buildAppMarkup(state) {
                         <button id="xb-assistant-clear" type="button" class="xb-assistant-chrome-button" aria-label="${C.clearConversation}" title="${C.clearConversation}">${chromeIcon('clear')}</button>
                     </div>
                 </section>
-                <button id="xb-assistant-mobile-close" type="button" class="xb-assistant-chrome-button xb-assistant-mobile-close" aria-label="${C.closeAssistant}" title="${C.closeAssistant}">${chromeIcon('close')}</button>
+                <div class="xb-assistant-mobile-actions">
+                    <button id="xb-assistant-mobile-minimize" type="button" class="xb-assistant-chrome-button" aria-label="${C.minimizeAssistant}" title="${C.minimizeAssistant}">${chromeIcon('minimize')}</button>
+                    <button id="xb-assistant-mobile-close" type="button" class="xb-assistant-chrome-button" aria-label="${C.closeAssistant}" title="${C.closeAssistant}">${chromeIcon('close')}</button>
+                </div>
             </header>
             <aside class="xb-assistant-sidebar ${state.sidebarCollapsed ? 'is-collapsed' : ''}">
                 <div class="xb-assistant-sidebar-header">

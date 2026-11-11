@@ -1,5 +1,5 @@
 import { getSafeViewportStyles, observeViewport } from '../../shared/common/viewport.js';
-import { ASSISTANT_HEADER_HEIGHT, ASSISTANT_WINDOW_CONTROLS_WIDTH, ASSISTANT_WINDOW_MODE_PARAM } from './shared/window-layout.js';
+import { ASSISTANT_HEADER_HEIGHT, ASSISTANT_WINDOW_CONTROLS_WIDTH, ASSISTANT_WINDOW_MODE_PARAM, ASSISTANT_WINDOW_COPY, isAssistantMobileDevice } from './shared/window-layout.js';
 
 const ASSISTANT_OVERLAY_Z_INDEX = 100001;
 
@@ -12,6 +12,7 @@ export function createAssistantHostWindow(options) {
     } = options;
 
     let overlay = null;
+    let controller = null;
 
     function ensureMinimizedAssistantStyles() {
         if (document.getElementById(minimizedStyleId)) return;
@@ -66,6 +67,8 @@ export function createAssistantHostWindow(options) {
             .xb-assistant-minimized-icon svg {
                 display: block;
                 overflow: visible;
+                width: 64%;
+                height: 64%;
             }
             .xb-assistant-minimized-icon.is-visible {
                 display: inline-flex;
@@ -129,19 +132,6 @@ export function createAssistantHostWindow(options) {
         document.head.appendChild(style);
     }
 
-    function isAssistantMobileDevice() {
-        const mobileTypes = ['mobile', 'tablet'];
-        try {
-            const platformType = globalThis.Bowser?.parse?.(navigator.userAgent)?.platform?.type;
-            if (mobileTypes.includes(platformType)) {
-                return true;
-            }
-        } catch (caughtError) {
-            console.warn({ source: import.meta.url, operation: "isAssistantMobileDevice" }, caughtError);
-        }
-        return window.matchMedia('(pointer: coarse)').matches && window.matchMedia('(max-width: 900px)').matches;
-    }
-
     function getAssistantMobileTopOffset() {
         const rawValue = getComputedStyle(document.documentElement).getPropertyValue('--topBarBlockSize').trim();
         const parsedValue = Number.parseFloat(rawValue);
@@ -163,6 +153,7 @@ export function createAssistantHostWindow(options) {
             overlayEl.remove();
         }
         overlay = null;
+        controller = null;
     }
 
     function open() {
@@ -170,6 +161,7 @@ export function createAssistantHostWindow(options) {
         if (existingOverlay) {
             overlay = existingOverlay;
             overlay.style.zIndex = String(ASSISTANT_OVERLAY_Z_INDEX);
+            controller.restore();
             return true;
         }
         ensureMinimizedAssistantStyles();
@@ -244,7 +236,7 @@ export function createAssistantHostWindow(options) {
         minimizedIcon.className = 'xb-assistant-minimized-icon';
         minimizedIcon.setAttribute('aria-label', '恢复小白助手');
         minimizedIcon.title = '唤醒小白助手';
-        minimizedIcon.style.cssText = 'position: absolute; inset: 0; margin: auto; z-index: 10001;';
+        minimizedIcon.style.cssText = 'position: absolute; z-index: 10001;';
         minimizedIcon.innerHTML = `
             <svg width="23" height="23" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
                 <g class="xb-bot-group">
@@ -315,10 +307,10 @@ export function createAssistantHostWindow(options) {
             return button;
         };
 
-        const minimizeButton = createTitleActionButton('─', '最小化');
+        const minimizeButton = createTitleActionButton('─', ASSISTANT_WINDOW_COPY.minimize);
         const sidebarLayoutButton = createTitleActionButton('⊟', '侧边栏布局');
         const fullscreenButton = createTitleActionButton('⛶', '全屏布局');
-        const closeButton = createTitleActionButton('✕', '关闭小白助手', true);
+        const closeButton = createTitleActionButton('✕', ASSISTANT_WINDOW_COPY.close, true);
         closeButton.style.font = '600 14px/1 "Microsoft YaHei", sans-serif';
         closeButton.addEventListener('click', () => {
             if (iframe.contentWindow) {
@@ -387,11 +379,11 @@ export function createAssistantHostWindow(options) {
                 );
         `;
 
-        shell.append(titleBar, titleActions, minimizedIcon, resizeHint, iframe, resizeMask);
-        overlay.appendChild(shell);
+        shell.append(titleBar, titleActions, resizeHint, iframe, resizeMask);
+        overlay.append(shell, minimizedIcon);
         document.body.appendChild(overlay);
 
-        const controller = createWindowInteractionController({
+        controller = createWindowInteractionController({
             overlay,
             shell,
             titleBar,
@@ -419,6 +411,7 @@ export function createAssistantHostWindow(options) {
         close,
         isOpen,
         getIframe,
+        minimize: () => controller?.minimize(),
     };
 }
 
@@ -449,12 +442,11 @@ function createWindowInteractionController(options) {
     };
     const QUICK_LAYOUT_MODE = Object.freeze({
         FREE: 'free',
-        MINIMIZED: 'minimized',
         FULLSCREEN: 'fullscreen',
         SIDEBAR: 'sidebar',
     });
     let quickLayoutMode = QUICK_LAYOUT_MODE.FREE;
-    let minimizedRestoreSnapshot = null;
+    let isMinimized = false;
     let layoutFrame = 0;
     let pendingLayout = null;
     let dragState = null;
@@ -527,7 +519,6 @@ function createWindowInteractionController(options) {
         iframe.style.height = '100%';
         titleActions.style.display = 'flex';
         titleActions.style.top = '14px';
-        minimizedIcon.classList.remove('is-visible');
         resizeHint.style.display = '';
         resizeMask.style.top = '0';
         resizeMask.style.height = '100%';
@@ -538,27 +529,6 @@ function createWindowInteractionController(options) {
             iframe.style.borderRadius = '0';
             resizeMask.style.borderRadius = '0';
             resizeHint.style.borderRadius = '0';
-            return;
-        }
-        if (quickLayoutMode === QUICK_LAYOUT_MODE.MINIMIZED) {
-            shell.style.borderRadius = '0';
-            shell.style.border = 'none';
-            shell.style.boxShadow = 'none';
-            shell.style.background = 'transparent';
-            shell.style.overflow = 'visible';
-            titleBar.style.height = '100%';
-            titleBar.style.padding = '0';
-            titleBar.style.justifyContent = 'center';
-            titleBar.style.background = 'transparent';
-            titleBar.style.borderBottom = 'none';
-            titleBar.style.cursor = 'default';
-            titleBar.style.pointerEvents = 'none';
-            dragPill.style.display = 'none';
-            iframe.style.display = 'none';
-            titleActions.style.display = 'none';
-            minimizedIcon.classList.add('is-visible');
-            resizeHint.style.display = 'none';
-            resizeMask.style.display = 'none';
             return;
         }
         if (quickLayoutMode === QUICK_LAYOUT_MODE.SIDEBAR) {
@@ -586,44 +556,55 @@ function createWindowInteractionController(options) {
             button.style.color = active ? '#814733' : '#6f675d';
             button.style.transform = '';
         };
-        setButtonState(minimizeButton, quickLayoutMode === QUICK_LAYOUT_MODE.MINIMIZED);
         setButtonState(fullscreenButton, quickLayoutMode === QUICK_LAYOUT_MODE.FULLSCREEN);
         setButtonState(sidebarLayoutButton, quickLayoutMode === QUICK_LAYOUT_MODE.SIDEBAR);
     };
 
-    const getShellSnapshot = (mode = quickLayoutMode) => {
-        const rect = shell.getBoundingClientRect();
-        return {
-            mode,
-            width: pendingLayout?.width ?? shellMetrics.width ?? rect.width,
-            height: pendingLayout?.height ?? shellMetrics.height ?? rect.height,
-            left: pendingLayout?.left ?? shellMetrics.left ?? rect.left,
-            top: pendingLayout?.top ?? shellMetrics.top ?? rect.top,
-        };
+    const positionMinimizedIcon = () => {
+        if (!isMinimized) return;
+        const bounds = overlay.getBoundingClientRect();
+        const anchor = document.getElementById('options_button')?.getBoundingClientRect();
+        const size = anchor?.width || 36;
+        const left = anchor ? anchor.left - bounds.left + (anchor.width - size) / 2 : 12;
+        const top = anchor ? anchor.top - bounds.top - size - 8 : bounds.height - size - 72;
+        Object.assign(minimizedIcon.style, {
+            width: `${size}px`, height: `${size}px`,
+            left: `${Math.max(0, Math.min(left, bounds.width - size))}px`,
+            top: `${Math.max(8, Math.min(top, bounds.height - size - 8))}px`,
+        });
     };
 
-    const getMinimizedLayout = () => {
-        const width = 36;
-        const height = 36;
-        const anchor = document.querySelector('.fa-solid.fa-bars.interactable');
-        const anchorRect = anchor?.getBoundingClientRect?.();
-        if (anchorRect) {
-            const left = Math.max(
-                8,
-                Math.min(
-                    Math.round(anchorRect.left + ((anchorRect.width - width) / 2)),
-                    window.innerWidth - width - 8,
-                ),
-            );
-            const top = Math.max(8, Math.round(anchorRect.top - height));
-            return { width, height, left, top };
+    let anchorObserver = null;
+    const stopFollowingAnchor = () => {
+        anchorObserver?.disconnect();
+        anchorObserver = null;
+        window.removeEventListener('scroll', positionMinimizedIcon, true);
+    };
+    const minimize = () => {
+        if (isMinimized) return;
+        isMinimized = true;
+        // Keep the iframe and its dimensions alive: no run cancellation,
+        // remount, editor teardown or scroll reflow when hiding the window.
+        iframe.contentDocument?.activeElement?.blur();
+        shell.style.visibility = 'hidden';
+        shell.style.pointerEvents = 'none';
+        shell.inert = true;
+        minimizedIcon.classList.add('is-visible');
+        anchorObserver = new ResizeObserver(positionMinimizedIcon);
+        for (const element of [document.documentElement, document.getElementById('send_form'), document.getElementById('options_button')]) {
+            if (element) anchorObserver.observe(element);
         }
-        return {
-            width,
-            height,
-            left: 12,
-            top: Math.max(8, window.innerHeight - height - 72),
-        };
+        window.addEventListener('scroll', positionMinimizedIcon, true);
+        positionMinimizedIcon();
+    };
+    const restore = () => {
+        if (!isMinimized) return;
+        isMinimized = false;
+        stopFollowingAnchor();
+        minimizedIcon.classList.remove('is-visible');
+        shell.style.visibility = '';
+        shell.style.pointerEvents = 'auto';
+        shell.inert = false;
     };
 
     const getSidebarLayoutWidth = () => {
@@ -641,8 +622,8 @@ function createWindowInteractionController(options) {
         const viewportHeight = window.innerHeight;
         const maxWidth = Math.max(320, viewportWidth);
         const maxHeight = Math.max(240, viewportHeight);
-        const minWidth = quickLayoutMode === QUICK_LAYOUT_MODE.MINIMIZED ? 36 : 360;
-        const minHeight = quickLayoutMode === QUICK_LAYOUT_MODE.MINIMIZED ? 36 : 140;
+        const minWidth = 360;
+        const minHeight = 140;
         const nextWidth = Math.max(minWidth, Math.min(width, maxWidth));
         const nextHeight = Math.max(minHeight, Math.min(height, maxHeight));
         shell.style.maxWidth = 'none';
@@ -671,10 +652,6 @@ function createWindowInteractionController(options) {
         if (mode === QUICK_LAYOUT_MODE.SIDEBAR) {
             applyShellBounds(getSidebarLayoutWidth(), window.innerHeight, { left: 0, top: 0 });
             return;
-        }
-        if (mode === QUICK_LAYOUT_MODE.MINIMIZED) {
-            const minimizedLayout = getMinimizedLayout();
-            applyShellBounds(minimizedLayout.width, minimizedLayout.height, minimizedLayout);
         }
     };
 
@@ -767,12 +744,14 @@ function createWindowInteractionController(options) {
             shell.style.height = '100%';
             shell.style.maxHeight = '100%';
             shell.style.minHeight = '0';
+            positionMinimizedIcon();
             return;
         }
         overlay.style.top = '0';
         overlay.style.left = '0';
         overlay.style.width = '100vw';
         overlay.style.height = `${window.innerHeight}px`;
+        positionMinimizedIcon();
         if (quickLayoutMode !== QUICK_LAYOUT_MODE.FREE) {
             applyQuickLayout(quickLayoutMode);
         } else {
@@ -834,29 +813,10 @@ function createWindowInteractionController(options) {
         minimizedIcon.addEventListener('click', (event) => {
             event.preventDefault();
             event.stopPropagation();
-            if (quickLayoutMode !== QUICK_LAYOUT_MODE.MINIMIZED) return;
-            if (minimizedRestoreSnapshot?.mode && minimizedRestoreSnapshot.mode !== QUICK_LAYOUT_MODE.FREE) {
-                applyQuickLayout(minimizedRestoreSnapshot.mode);
-                return;
-            }
-            quickLayoutMode = QUICK_LAYOUT_MODE.FREE;
-            applyShellChrome();
-            updateQuickLayoutButtons();
-            applyShellBounds(
-                minimizedRestoreSnapshot?.width || 980,
-                minimizedRestoreSnapshot?.height || 720,
-                {
-                    left: minimizedRestoreSnapshot?.left ?? Math.max(0, Math.round((window.innerWidth - 980) / 2)),
-                    top: minimizedRestoreSnapshot?.top ?? Math.max(0, Math.round((window.innerHeight - 720) / 2)),
-                },
-            );
+            restore();
         });
 
-        minimizeButton.addEventListener('click', () => {
-            if (isAssistantMobileDevice()) return;
-            minimizedRestoreSnapshot = getShellSnapshot(quickLayoutMode);
-            applyQuickLayout(QUICK_LAYOUT_MODE.MINIMIZED);
-        });
+        minimizeButton.addEventListener('click', minimize);
         fullscreenButton.addEventListener('click', () => {
             if (isAssistantMobileDevice()) return;
             applyQuickLayout(QUICK_LAYOUT_MODE.FULLSCREEN);
@@ -915,10 +875,13 @@ function createWindowInteractionController(options) {
             pendingLayout = null;
         }
         stopViewport?.();
+        stopFollowingAnchor();
     };
 
     return {
         initialize,
         cleanup,
+        minimize,
+        restore,
     };
 }

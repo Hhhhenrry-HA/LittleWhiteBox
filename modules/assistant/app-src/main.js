@@ -30,6 +30,7 @@ import { createSessionStore } from './state/session-store.js';
 import { createWorkspaceStore } from './workspace/workspace-store.js';
 import { closeAssistantWorkspace } from './workspace/workspace-lifecycle.js';
 import { ACTIVITY_COPY } from './ui/activity-copy.js';
+import { isAssistantMobileDevice, shouldAutoRevealWorkspace } from '../shared/window-layout.js';
 import { locateFile } from '../../card-workspace/files.js';
 import { COPY as CARD_COPY } from '../../card-workspace/copy.js';
 import { createAttachmentsManager } from './attachments.js';
@@ -155,7 +156,6 @@ const pendingToolCalls = new Map();
 const pendingHostRequests = new Map();
 const pendingApprovals = new Map();
 let toastTimer = null;
-let parsedAssistantUA = null;
 let configSaveTimeout = null;
 let configSaveResetTimer = null;
 let suppressNextIdentityUpdatedToast = false;
@@ -418,7 +418,7 @@ function selectSkillFile(targetPath = '', options = {}) {
         return false;
     }
     state.skillFiles = normalizedSkillFiles;
-    state.isWorkspaceOpen = true;
+    if (options.reveal !== false) state.isWorkspaceOpen = true;
     state.workspacePanelMode = 'memory';
     state.selectedSkillFilePath = selectedFile.path;
     state.viewerMode = 'current';
@@ -731,24 +731,6 @@ function toggleWorkspacePanel() {
         }
     }
     openWorkspace(state.selectedFilePath);
-}
-
-function getAssistantParsedUA() {
-    if (parsedAssistantUA !== null) return parsedAssistantUA;
-    try {
-        parsedAssistantUA = globalThis.Bowser?.parse?.(navigator.userAgent) || {};
-    } catch {
-        parsedAssistantUA = {};
-    }
-    return parsedAssistantUA;
-}
-
-function isAssistantMobile() {
-    const mobileTypes = ['mobile', 'tablet'];
-    if (mobileTypes.includes(getAssistantParsedUA()?.platform?.type)) {
-        return true;
-    }
-    return window.matchMedia('(pointer: coarse)').matches && window.matchMedia('(max-width: 900px)').matches;
 }
 
 function buildSlashApprovalResult(command, approved) {
@@ -1685,6 +1667,10 @@ function bindEvents(root) {
         observeBackgroundTask(closeAssistantAfterWorkspaceFlush(), { source: import.meta.url, operation: "callback" });
     });
 
+    root.querySelector('#xb-assistant-mobile-minimize')?.addEventListener('click', () => {
+        post('xb-assistant:minimize');
+    });
+
     root.querySelector('#xb-assistant-open-workspace')?.addEventListener('click', () => {
         if (!state.isWorkspaceOpen && window.matchMedia('(max-width: 900px)').matches) state.sidebarCollapsed = true;
         toggleWorkspacePanel();
@@ -2030,7 +2016,7 @@ function bindEvents(root) {
     });
 
     input.addEventListener('keydown', (event) => {
-        const sendOnEnter = !isAssistantMobile();
+        const sendOnEnter = !isAssistantMobileDevice();
         if (!event.isComposing && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey && event.key === 'Enter' && sendOnEnter) {
             event.preventDefault();
             const form = root.querySelector('#xb-assistant-form');
@@ -2052,7 +2038,15 @@ window.addEventListener('message', (event) => {
     }
     const data = event.data || {};
     if (data.type === 'xb-assistant:card-workspace') {
-        observeBackgroundTask(applyExternalLocalSources(data.payload.localSources).then(() => openWorkspacePanelTarget(data.payload.path)),
+        observeBackgroundTask(applyExternalLocalSources(data.payload.localSources).then(() => {
+            state.workspacePanelMode = 'workspace';
+            if (!shouldAutoRevealWorkspace()) {
+                closeWorkspace();
+                state.sidebarCollapsed = true;
+            }
+            localSourcesManager.selectWorkspaceFile(data.payload.path, { reveal: shouldAutoRevealWorkspace() });
+            render();
+        }),
             { source: import.meta.url, operation: 'openCardWorkspace' });
         return;
     }
@@ -2140,7 +2134,7 @@ window.addEventListener('message', (event) => {
             skillFiles: state.skillFiles,
         };
         const focusSkillPath = String(data.payload?.focusSkillPath || '').trim();
-        if (focusSkillPath && selectSkillFile(focusSkillPath, { persist: false })) {
+        if (focusSkillPath && selectSkillFile(focusSkillPath, { persist: false, reveal: shouldAutoRevealWorkspace() })) {
             render();
         } else {
             ensureSkillSelection({ fallbackToFirst: false });
@@ -2210,6 +2204,7 @@ window.addEventListener('beforeunload', (event) => {
 
 async function bootstrap() {
     await Promise.all([restoreSession(), workspaceStore.restoreWorkspace()]);
+    if (!shouldAutoRevealWorkspace()) state.isWorkspaceOpen = false;
     injectAssistantStyles(ROOT_ID);
     post(WORKSPACE_MESSAGE_TYPES.HYDRATE, {
         localSources: normalizeLocalSources(state.localSources),

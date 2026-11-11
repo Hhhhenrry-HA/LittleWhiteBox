@@ -540,7 +540,7 @@ export function injectAssistantStyles(rootId) {
         .xb-assistant-topbar .xb-assistant-toolbar { flex: 1; }
         .xb-assistant-topbar .xb-assistant-toolbar-cluster { flex: 0 1 auto; }
         :root[data-host-desktop="true"] .xb-assistant-topbar { padding-right: ${ASSISTANT_WINDOW_CONTROLS_WIDTH}px; }
-        :root[data-host-desktop="true"] .xb-assistant-mobile-close { display: none; }
+        :root[data-host-desktop="true"] .xb-assistant-mobile-actions { display: none; }
         #xb-assistant-open-workspace {
             position: relative;
             border: none;
@@ -636,7 +636,8 @@ export function injectAssistantStyles(rootId) {
         .xb-assistant-context-popover header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .xb-assistant-context-popover p { margin: 12px 0 0; font-size: 12px; line-height: 1.6; color: var(--xb-assistant-text-soft); }
         .xb-assistant-context-popover .xb-assistant-context-total { font-size: 18px; font-variant-numeric: tabular-nums; color: var(--xb-assistant-text); }
-        .xb-assistant-mobile-close, .xb-assistant-toolbar .xb-assistant-mobile-settings { display: none; }
+        .xb-assistant-mobile-actions { display: flex; flex-shrink: 0; gap: 4px; }
+        .xb-assistant-toolbar .xb-assistant-mobile-settings { display: none; }
         .xb-assistant-chat-wrap {
             position: relative;
             display: flex;
@@ -1898,9 +1899,6 @@ export function injectAssistantStyles(rootId) {
             }
             .xb-assistant-main-body.workspace-open {
                 grid-template-columns: minmax(0, 1fr);
-            }
-            .xb-assistant-mobile-close {
-                display: inline-flex;
             }
             .xb-assistant-compose {
                 padding: 0 12px;

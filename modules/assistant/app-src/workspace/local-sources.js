@@ -28,6 +28,7 @@ import {
 } from '../../shared/workspace-protocol.js';
 import { buildWorkspacePreconditions, workspaceMutationScopes, WORKSPACE_CONFLICT } from '../../shared/workspace-preconditions.js';
 import { WORKSPACE_COPY } from './workspace-copy.js';
+import { shouldAutoRevealWorkspace } from '../../shared/window-layout.js';
 import { TOOL_NAMES } from '../tooling.js';
 import { buildWorkspaceTree, collectDirectoryExpansionKeys } from './local-workspace-tree.js';
 import { displayCardWorkspacePath } from '../../../card-workspace/paths.js';
@@ -401,7 +402,7 @@ export function createLocalSourcesManager(deps) {
     function primeWorkspaceSelection(targetPath = '', options = {}) {
         const normalizedPath = normalizeLocalSourcePath(targetPath);
         if (!normalizedPath) return false;
-        state.isWorkspaceOpen = true;
+        if (shouldAutoRevealWorkspace()) state.isWorkspaceOpen = true;
         state.selectedSourceId = 'all';
         if (normalizedPath.endsWith('/')) {
             state.selectedTreePath = normalizeLocalDirectoryPath(normalizedPath) || LOCAL_SOURCE_PREFIX;
@@ -602,7 +603,7 @@ export function createLocalSourcesManager(deps) {
         const match = findLocalFileByPath(getDisplaySources(), targetPath);
         if (!match) return false;
 
-        state.isWorkspaceOpen = true;
+        if (options.reveal !== false) state.isWorkspaceOpen = true;
         state.selectedSourceId = 'all';
         state.selectedFilePath = match.file.path;
         state.selectedTreePath = match.file.path;

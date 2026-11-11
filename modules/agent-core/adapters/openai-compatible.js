@@ -857,13 +857,36 @@ function appendStreamDeltaField(target, key, value) {
     appendStreamField(target, key, value);
 }
 
+function resolveStreamToolCallIndex(calls, delta, batchSize) {
+    const id = delta?.id;
+    const idIndex = id ? calls.findIndex(call => call?.id === id) : -1;
+    let index;
+    if (delta?.index !== undefined && delta.index !== null) {
+        index = Number(delta.index);
+    } else if (id) {
+        // Some OpenAI-compatible relays omit index but retain the call ID.
+        // Different IDs must never share the implicit slot zero.
+        index = idIndex >= 0 ? idIndex : calls.length;
+    } else if (batchSize === 1 && calls.filter(Boolean).length <= 1) {
+        index = Math.max(0, calls.findIndex(Boolean));
+    }
+    if (!Number.isSafeInteger(index) || index < 0
+        || (idIndex >= 0 && idIndex !== index)
+        || (id && calls[index]?.id && calls[index].id !== id)) {
+        const error = new Error('Cannot associate a streamed tool-call fragment with a unique call.');
+        error.code = 'OPENAI_COMPATIBLE_TOOL_CALL_IDENTITY_INVALID';
+        throw error;
+    }
+    return index;
+}
+
 function appendStreamToolCalls(target, toolCalls = []) {
     if (!Array.isArray(toolCalls) || !toolCalls.length) return;
     if (!Array.isArray(target.tool_calls)) {
         target.tool_calls = [];
     }
     toolCalls.forEach((toolCallDelta) => {
-        const index = Number(toolCallDelta?.index ?? 0);
+        const index = resolveStreamToolCallIndex(target.tool_calls, toolCallDelta, toolCalls.length);
         const current = target.tool_calls[index] || {};
         const nextToolCall = { ...current };
 

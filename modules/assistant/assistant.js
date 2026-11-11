@@ -12,6 +12,7 @@ import { extensionFolderPath } from "../../core/constants.js";
 import { isTrustedIframeEvent, postToIframe } from "../../core/iframe-messaging.js";
 import { AssistantStorage } from "../../core/server-storage.js";
 import { createAssistantHostWindow } from "./assistant-host-window.js";
+import { shouldAutoRevealWorkspace } from './shared/window-layout.js';
 import { TOOL_NAMES } from "./app-src/tooling.js";
 import { BUILTIN_SKILLS, skillCatalogLine } from './shared/skill-tools.js';
 import { CARD_SKILL, cardSkillContent } from '../card-workspace/assistant-contract.js';
@@ -3222,7 +3223,7 @@ export async function openCardWorkspace({ variables = false, version } = {}) {
     const request = cardWorkspaceRequest(card, { variables, version, variablesMode: extensionsModule.extension_settings?.LittleWhiteBox?.variablesMode });
     setAssistantEditorContext({ source: 'card-files', note: `角色卡：${card.name}。工作区：${readableCardWorkspacePath(card.root)}。ReadSkill id: ${request.skillId}` });
     const workspace = await workspaceRepository.readWorkspace();
-    await workspaceRepository.saveWorkspaceUiState({ ...workspace, isWorkspaceOpen: true, workspacePanelMode: 'workspace',
+    await workspaceRepository.saveWorkspaceUiState({ ...workspace, isWorkspaceOpen: shouldAutoRevealWorkspace(), workspacePanelMode: 'workspace',
         selectedFilePath: request.selectedFilePath,
         fileSearchQuery: '', showModifiedOnly: false, mobileWorkspacePane: 'viewer' });
     openAssistant({ draftMessage: request.draftMessage });
@@ -3335,6 +3336,9 @@ async function handleIframeMessage(event) {
         }
         case 'xb-assistant:close':
             closeAssistant();
+            break;
+        case 'xb-assistant:minimize':
+            getAssistantHostWindow().minimize();
             break;
         case 'xb-assistant:save-config': {
             const patch = payload && typeof payload === 'object' ? payload : {};
