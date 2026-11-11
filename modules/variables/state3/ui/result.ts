@@ -23,7 +23,7 @@ export function resultLabel(result: Result): string {
 export function showDiagnostics(root: HTMLElement, diagnostics: Diagnostic[], definition?: Definition) {
     for (const error of diagnostics) {
         const rule = [...(definition?.rules || []), ...(definition?.constraints || []), ...(definition?.triggers || [])].find(item => item.id === error.rule);
-        root.append(element('p', [errorText(error), !error.condition && !error.parameters ? rule?.description : undefined].filter(Boolean).join(' ')));
+        root.append(element('p', [errorText(error, definition), !error.condition && !error.parameters ? rule?.description : undefined].filter(Boolean).join(' ')));
         if (Array.isArray(error.errors) && !error.parameters) {
             const fields = parameterIssues(error.code === 'state-schema' && definition ? definition.schema : {}, error.errors as ErrorObject[]);
             for (const field of fields) {root.append(element('p', parameterIssueText(field)));}
@@ -64,7 +64,7 @@ export function showResult(root: HTMLElement, result: Result, definition?: Defin
         if (result.restoration.some(issue => ['constraint', 'state-schema'].includes(issue.code))) {warning.append(element('p', COPY.conflictHelp));}
         root.append(warning);
     }
-    for (const error of result.diagnostics) {root.append(element('p', errorText(error)));}
+    for (const error of result.diagnostics) {root.append(element('p', errorText(error, definition)));}
     if (result.receipt?.beforeUpdate?.diagnostics.length) {showDiagnostics(root, result.receipt.beforeUpdate.diagnostics, definition);}
     const shown = result.changes;
     const shownReasons = new Set<number>();

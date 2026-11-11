@@ -1,27 +1,17 @@
-import type { Compiled, Json, JsonObject, Result, RunOptions, EvaluationContext, Success, Source } from '../types.js';
-import { changes, clone, contains, overlaps, assertJson, pathOf, setAt, equal } from './data.js';
+import type { Compiled, Json, JsonObject, Result, RunOptions, EvaluationContext, Success, Source, SubmissionItem } from '../types.js';
+import { changes, clone, assertJson, pathOf, setAt, equal } from './data.js';
 import { evaluate, explainCondition } from './expressions.js';
-import { parameterIssues } from '../definition/schema-fields.js';
 import { reject, diagnostic } from './diagnostics.js';
 import { difference } from './difference.js';
 import { displayChanges } from './delta-view.js';
 import { digest } from '../definition/digest.js';
-import { applyDirectInput, inputFields, validateInput } from './input.js';
+import { applyDirectInput, inputFields, inspectInput, validateActionParameters } from './input.js';
 import { validateState } from './validation.js';
-import { allowsStage, canWriteDirect } from '../definition/stages.js';
+import { authorize } from './permissions.js';
 import { createFunctionRunner } from './functions.js';
 
 // A runaway, non-repeating trigger chain must also return control to the player.
 export const TRIGGER_ROUND_LIMIT = 1024;
-
-function authorize(compiled: Compiled, before: Json, after: Json, actor: string) {
-    for (const change of changes(before, after)) {
-        const derived = compiled.rules.find(rule => rule.kind === 'derive' && overlaps(rule.path, change.path));
-        if (derived) {reject('derived-write', { path: change.path, rule: derived.id, actor });}
-        const access = compiled.definition.access.filter(entry => contains(entry.path, change.path));
-        if (!access.length || access.some(entry => !entry.write.includes(actor))) {reject('permission', { path: change.path, actor });}
-    }
-}
 
 // No storage, host events, or publication here. The returned candidate belongs to
 // the caller; every path (including preview) executes this same settlement.
@@ -29,13 +19,16 @@ export async function settle(compiled: Compiled, start: Json, input: unknown, { 
     const provenance: Success['provenance'] = [], actions: Success['actions'] = [];
     let operationIndex: number | undefined;
     let ruleId: string | undefined;
+    let items: SubmissionItem[] | undefined;
     const functions = createFunctionRunner();
     try {
         signal?.throwIfAborted();
         if (stage && !compiled.definition.updates.includes(stage)) {reject('stage-disabled', { stage });}
         assertJson(start);
-        input = clone(input);
-        validateInput(input);
+        const checked = inspectInput(clone(input), compiled, stage);
+        if (!checked.ok) {return checked;}
+        const operations = checked.input;
+        items = operations.map(item => ({ item, status: 'unchecked' }));
         const before = clone(start), state = clone(start);
         const context: EvaluationContext = { bundle: compiled.bundle, before, state, params: {}, signal, functions };
         const record = (previous: Json, source: Source) => {
@@ -103,22 +96,24 @@ export async function settle(compiled: Compiled, start: Json, input: unknown, { 
         };
         // Stored derived values may predate the current rules; actions read the recalculated state.
         let pendingDirect = true;
-        for (const [index, operation] of input.entries()) {
+        for (const [index, operation] of operations.entries()) {
             operationIndex = index;
             signal?.throwIfAborted();
             if (!operation.action) {
-                if (stage && !canWriteDirect(compiled.definition, pathOf(operation.path), stage)) {reject('stage-permission', { stage, path: operation.path });}
                 const previous = clone(state);
                 applyDirectInput(state, operation);
                 authorize(compiled, previous, state, 'direct');
                 record(previous, { kind: 'input' });
                 pendingDirect = true;
+                items[index].status = 'passed';
                 continue;
             }
-            if (pendingDirect) { await stabilize(); pendingDirect = false; }
-            const action = compiled.actions.get(String(operation.action));
-            if (!action) {reject('action-missing', { action: operation.action });}
-            if (!allowsStage(compiled.definition, action, stage)) {reject('stage-permission', { stage, action: action.id });}
+            if (pendingDirect) {
+                operationIndex = undefined;
+                await stabilize(); pendingDirect = false;
+                operationIndex = index;
+            }
+            const action = compiled.actions.get(String(operation.action))!;
             ruleId = action.id;
             context.params = clone(operation.params as JsonObject);
             for (const conversion of action.conversions) {
@@ -126,8 +121,7 @@ export async function settle(compiled: Compiled, start: Json, input: unknown, { 
                 assertJson(value);
                 setAt(context.params, conversion.path, value);
             }
-            if (!action.validate(context.params)) {reject('action-parameters', { action: action.id, actionTitle: action.title,
-                errors: clone(action.validate.errors), parameters: parameterIssues(action.parameters, action.validate.errors || []) });}
+            if (action.conversions.length) {validateActionParameters(action, context.params);}
             if (await evaluate(action.requires, context) !== true) {reject('action-precondition', { action: action.id, actionTitle: action.title,
                 condition: await explainCondition(action.requires, context, action.parameters) });}
             const previous = clone(state);
@@ -139,24 +133,28 @@ export async function settle(compiled: Compiled, start: Json, input: unknown, { 
             await stabilize();
             context.params = {};
             await trigger('action');
+            items[index].status = 'passed';
         }
+        operationIndex = undefined;
         context.params = {};
         await stabilize();
         await trigger('batch');
         const errors = await validateState(compiled, context);
-        if (errors.length) { const { code, ...detail } = errors[0]; reject(code, detail); }
+        if (errors.length) {return { ok: false, diagnostics: [errors[0]], items };}
         signal?.throwIfAborted();
-        const annotations = input.flatMap((operation, index) => {
+        const annotations = operations.flatMap((operation, index) => {
             const fields = Object.entries(operation).filter(([name]) => !inputFields(operation).includes(name));
             return fields.length ? [{ index, ...(operation.action ? { action: String(operation.action) } : { path: pathOf(operation.path) }), fields }] : [];
         });
         return { ok: true, state, changes: displayChanges(difference(before, state)), provenance, actions, diagnostics: [], ...(annotations.length ? { annotations } : {}) };
     } catch (error) {
         const detail = diagnostic(error);
-        return { ok: false, diagnostics: [signal?.aborted ? { code: 'cancelled' } : { ...detail,
+        const issue = signal?.aborted ? { code: 'cancelled' } : { ...detail,
             ...(ruleId && !detail.rule ? { rule: ruleId } : {}),
-            ...(operationIndex === undefined ? {} : { operation: operationIndex, path: detail.path ?? (input as JsonObject[])[operationIndex]?.path }),
-        }] };
+            ...(operationIndex === undefined ? {} : { operation: operationIndex, path: detail.path ?? (items?.[operationIndex].item as JsonObject)?.path }),
+        };
+        if (items && operationIndex !== undefined) {items[operationIndex] = { ...items[operationIndex], status: 'rejected', diagnostics: [issue] };}
+        return { ok: false, diagnostics: [issue], ...(items ? { items } : {}) };
     } finally { functions.dispose(); }
 }
 

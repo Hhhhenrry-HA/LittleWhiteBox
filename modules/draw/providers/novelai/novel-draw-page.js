@@ -3,6 +3,7 @@ import { GALLERY_JPEG_COPY } from '../../shared/gallery-image-codec.js';
 import { DOMPurify } from '../../../../../../../../lib.js';
 import { createGalleryImageWindow } from '../../shared/gallery-image-window.js';
 import { createFilterRuleHandle, createFilterRuleSortable } from '../../shared/filter-rule-sort.js';
+import { DEFAULT_MESSAGE_FILTER_RULES } from '../../shared/message-filter-rules.js';
 import { createGalleryImageRequests } from './gallery-image-requests.js';
 import { createGalleryFeedback } from './gallery-feedback.js';
 import { createGalleryPromptView } from './gallery-prompt-view.js';
@@ -460,19 +461,6 @@ function handleSaveResult(success, targetBtn) {
 // 消息过滤规则
 // ═══════════════════════════════════════════════════════════════════════════
 
-const ND_DEFAULT_FILTER_RULES = [
-    { start: '<think>',    end: '</think>' },
-    { start: '<thinking>', end: '</thinking>' },
-    { start: '<system>',   end: '</system>' },
-    { start: '<meta>',     end: '</meta>' },
-    { start: '<options>',  end: '</options>' },
-    { start: '<WorldState>', end: '</WorldState>' },
-    { start: '<state>',    end: '</state>' },
-    { start: '<UpdateVariable>', end: '</UpdateVariable>' },
-    { start: '<—',         end: '—>' },
-    { start: '',           end: '</think>' },
-];
-
 // 「发给 AI」是每行一个勾选框，列标题写在列表上方（不在每行重复文字）。
 // 存储形态：只有勾选「发给 AI」时才写 keep:true，不勾（默认）不写这个键
 function renderFilterRuleRow(rule, container) {
@@ -492,7 +480,7 @@ function renderFilterRules(rules) {
     const list = $('nd_filter_rules_list');
     if (!list) return;
     list.innerHTML = '';
-    const arr = (Array.isArray(rules) && rules.length) ? rules : ND_DEFAULT_FILTER_RULES;
+    const arr = (Array.isArray(rules) && rules.length) ? rules : DEFAULT_MESSAGE_FILTER_RULES;
     arr.forEach(r => renderFilterRuleRow(r, list));
 }
 
@@ -3147,7 +3135,7 @@ function closeGalleryModal() {
     syncGalleryImages();
 }
 
-// ── 完整提示词弹窗 ──────────────────────────────────────────────────────
+// ── 图片提示词弹窗 ──────────────────────────────────────────────────────
 
 function openPromptModal() {
     const current = modalData.images[modalData.currentIndex];
@@ -5844,7 +5832,7 @@ function initializePage() {
     });
     $('nd_filter_reset').addEventListener('click', () => {
         if (!confirm('确定恢复为默认过滤规则？当前未保存的修改将丢失。')) return;
-        renderFilterRules(ND_DEFAULT_FILTER_RULES);
+        renderFilterRules(DEFAULT_MESSAGE_FILTER_RULES);
     });
 
     // ═══════════════════════════════════════════════════════════════════════

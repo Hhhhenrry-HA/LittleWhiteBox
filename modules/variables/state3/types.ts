@@ -24,9 +24,10 @@ export interface Definition {
     views: Record<string, { paths: Path[]; description: string }>;
 }
 export interface Bundle { definition: Definition; functions: Record<string, string> }
+export interface CompiledAction extends Action { validate: ValidateFunction }
 export interface Compiled {
     bundle: Bundle; definition: Definition; rules: Rule[];
-    actions: Map<string, Action & { validate: ValidateFunction }>;
+    actions: Map<string, CompiledAction>;
     validate: ValidateFunction;
 }
 export type Operation = ({ op: 'set'; path: Path; value: Json } | { op: 'remove'; path: Path } | { op: 'inc'; path: Path; delta: number } | { action: string; params: JsonObject }) & { [note: string]: unknown };
@@ -40,7 +41,13 @@ export type Condition = { kind: 'comparison'; operator: Comparison; left: Condit
     | { kind: 'value'; operand: ConditionValue; expected: boolean };
 export interface ParameterIssue { keyword: string; path: Path; name: string; params: Record<string, unknown> }
 export interface Diagnostic { code: string; message?: string; path?: unknown; rule?: string; actionTitle?: string; condition?: Condition; parameters?: ParameterIssue[]; [key: string]: unknown }
-export interface Failure { ok: false; diagnostics: Diagnostic[] }
+/** Per-attempt checks only; never saved in receipts or history. */
+export interface SubmissionItem {
+    item: unknown;
+    status: 'static-passed' | 'passed' | 'rejected' | 'unchecked';
+    diagnostics?: Diagnostic[];
+}
+export interface Failure { ok: false; diagnostics: Diagnostic[]; items?: SubmissionItem[] }
 export interface Success {
     ok: true; state: Json; changes: Change[]; provenance: (Change & { source: Source })[];
     actions: { id: string; params?: JsonObject }[]; diagnostics: Diagnostic[];

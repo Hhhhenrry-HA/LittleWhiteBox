@@ -32,15 +32,14 @@
 	function F8(x) {
 		if (x instanceof A8) return {
 			code: x.code,
-			...x.details,
-			message: x.message
+			...x.details
 		};
 		if (x instanceof Error) {
-			const A = x;
+			const A = x, F = A.code || "execution";
 			return {
-				code: A.code || "execution",
+				code: F,
 				...A.details,
-				message: x.message
+				...x.message === F ? {} : { message: x.message }
 			};
 		}
 		return {

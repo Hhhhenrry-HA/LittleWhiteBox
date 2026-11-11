@@ -1,6 +1,6 @@
 import type { PublicAgentSession, AgentChatResult } from '../../../agent-core/public-api.js';
 import { correctionTask } from '../../updater/correction.js';
-import type { Result, RunOptions, UpdateStage } from '../types.js';
+import type { Diagnostic, Failure, Result, RunOptions, UpdateStage } from '../types.js';
 import type { SettlementService } from '../runtime/service.js';
 import { state3Context as getContext, latestUserIndex, type createHostAdapter } from '../runtime/host.js';
 import { exposeVariableReads } from '../../var-commands.js';
@@ -25,6 +25,17 @@ export function parseSubmission(response: AgentChatResult): unknown[] {
     return args.state;
 }
 
+function correctionErrors(result: Failure): unknown[] {
+    const project = (issue: Diagnostic) => {
+        const detail = { ...issue }; delete detail.actionTitle; delete detail.operation; return detail;
+    };
+    if (!result.items) {return result.diagnostics.map(project);}
+    const diagnostics = result.diagnostics.filter(issue => issue.operation === undefined).map(project);
+    return [{ items: result.items.map(({ item, status, diagnostics }) => ({ item, status,
+        ...(diagnostics ? { diagnostics: diagnostics.map(project) } : {}) })),
+    ...(diagnostics.length ? { diagnostics } : {}) }];
+}
+
 export function createState3Updater({ service, adapter, available, changed, rewound }: { service: SettlementService; adapter: ReturnType<typeof createHostAdapter>; available(): void; changed?(): void; rewound?(): Promise<void> }) {
     let controller: AbortController | undefined, phase = 'ready', activeIndex: number | undefined;
     // One retry slot, not a history/cache. No session, prompt, Worker or full
@@ -34,7 +45,7 @@ export function createState3Updater({ service, adapter, available, changed, rewo
         ['function_startup_failed', 'function_worker_error', 'function_worker_unresponsive', 'function_message_error'].includes(issue.code));
     const correctable = (result: Result) => !result.ok && result.diagnostics.every(issue => [
         'model-submission', 'input-shape', 'input-number', 'path', 'missing-parent', 'array-index', 'action-missing', 'action-parameters',
-        'action-precondition', 'stage-permission', 'permission', 'derived-write', 'state-schema', 'constraint', 'increment-target', 'increment-overflow',
+        'action-precondition', 'direct-other-stage', 'action-other-stage', 'direct-not-allowed', 'permission', 'derived-write', 'state-schema', 'constraint', 'increment-target', 'increment-overflow',
     ].includes(issue.code));
     function retryIndex() {
         if (pending && adapter.submissionBasis(pending.index) !== pending.basis) {pending = undefined;}
@@ -147,10 +158,7 @@ export function createState3Updater({ service, adapter, available, changed, rewo
                         setPhase('failed'); return preview;
                     }
                     const submission = { text: response.text, toolCalls: response.toolCalls, completion: response.completion, truncated: response.truncated };
-                    // Action titles label UI controls; the model uses action ids and descriptions.
-                    task = correctionTask(prepared.task, submission, preview.diagnostics.map(issue => {
-                        const detail = { ...issue }; delete detail.actionTitle; return detail;
-                    }), 'state');
+                    task = correctionTask(prepared.task, submission, correctionErrors(preview), 'state');
                 }
                 return { ok: false, diagnostics: [{ code: 'model-submission' }] };
             } catch (error) {

@@ -122,6 +122,56 @@ function useFunction(h: Awaited<ReturnType<typeof harness>>) {
     h.f.setCard(bundle);
 }
 
+// F7: both paid update phases send per-item facts on the sole correction request;
+// failed attempts write nothing, successful corrections execute only the returned batch.
+test('F7: before and after carry precise correction results and never request a third attempt', async t => {
+    for (const stage of ['before', 'after'] as const) {
+        for (const kind of ['direct-not-allowed', 'direct-other-stage', 'action-other-stage', 'derived-write'] as const) {
+            const h = await harness(); t.after(() => h.dispose());
+            const bundle = h.f.saved().card;
+            bundle.definition.actions.forEach(action => {action.stages = [stage];});
+            bundle.definition.access[1].stages = [stage === 'before' ? 'after' : 'before'];
+            if (kind === 'action-other-stage') {bundle.definition.actions[1].stages = [stage === 'before' ? 'after' : 'before'];}
+            h.f.setCard(bundle);
+            h.append({ mes: 'Take off the amulet.', is_user: stage === 'before', name: 'Player' });
+            const valid = { action: 'unequip', params: {} };
+            const invalid = kind === 'action-other-stage' ? { action: 'equip', params: {} }
+                : { path: ['hero', kind === 'derived-write' ? 'maxHealth' : kind === 'direct-other-stage' ? 'health' : 'amulet'], value: 40 };
+            const batch = [valid, invalid], saved = h.f.saved(), counts = h.f.counts();
+            h.answer(() => {
+                if (h.requests.length === 2) {
+                    assert.deepEqual(h.f.saved(), saved); assert.deepEqual(h.f.counts(), counts);
+                    const task = h.requests[1];
+                    assert.deepEqual(task.messages.slice(0, -1), h.requests[0].messages);
+                    const report = JSON.parse(String(task.messages.at(-1)!.content).split('\n\n').at(-1)!);
+                    const items = report.errors[0].items;
+                    assert.deepEqual(items.map((item: { status: string }) => item.status), ['static-passed', 'rejected']);
+                    assert.deepEqual(items.map((item: { item: unknown }) => item.item), batch);
+                    assert.equal(items[1].diagnostics[0].code, kind);
+                    assert.equal(items[1].diagnostics[0].message, undefined);
+                    assert.equal(items[1].diagnostics[0].operation, undefined);
+                    assert.equal(items[1].diagnostics[0].actions, undefined);
+                }
+                return { completion: 'complete', truncated: false, text: '', toolCalls: [{ name: 'write',
+                    arguments: JSON.stringify({ state: h.requests.length === 1 ? batch : [valid] }) }] };
+            });
+            accepted(await h.updater.update({ stage, index: 1 }));
+            assert.equal(h.requests.length, 2); assert.equal(h.disposedSessions(), 1);
+            assert.equal((h.f.saved().state as { hero: { health: number } }).hero.health, 60);
+            assert.equal(h.f.saved().records[1].entries.length, 1);
+            h.dispose();
+        }
+        const h = await harness(); t.after(() => h.dispose());
+        h.append({ mes: 'Unsupported edit.', is_user: stage === 'before', name: 'Player' });
+        h.answer(() => ({ completion: 'complete', toolCalls: [{ name: 'write', arguments: JSON.stringify({ state: [{ path: ['hero', 'amulet'], value: false }] }) }] }));
+        const saved = h.f.saved(), counts = h.f.counts();
+        assert.equal((await h.updater.update({ stage, index: 1 })).ok, false);
+        assert.equal(h.requests.length, 2);
+        assert.deepEqual(h.f.saved(), saved); assert.deepEqual(h.f.counts(), counts);
+        h.dispose();
+    }
+});
+
 // Recalculation must expose the real rollback while saving, then build the paid
 // request from that state; the latest USER may still have a later AI outcome.
 test('B12: USER recalculation waits for rollback persistence and never retains the old AI outcome', async t => {

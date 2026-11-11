@@ -528,7 +528,7 @@ body:has(#view-gallery.active #nd_batch.btn-primary) .gallery-notice { top: calc
     .gallery-modal-thumb { width: 40px; height: 40px; }
     .gallery-modal .btn { min-height: 40px; }
 }
-/* 完整提示词弹窗：叠在画廊大图之上，复用 gallery-modal 外壳变量 */
+/* 图片提示词弹窗：叠在画廊大图之上，复用 gallery-modal 外壳变量 */
 #nd_prompt_modal { z-index: 1001; padding: 16px; }
 .prompt-modal [hidden] { display: none; }
 .prompt-modal-content {
@@ -1854,18 +1854,18 @@ button.nd-vibe-badge:disabled { cursor: default; }
             <div class="gallery-modal-load-status" id="nd_modal_load_status" role="status" aria-live="polite" hidden></div>
             <div class="gallery-modal-actions">
                 <button class="btn btn-primary" id="nd_modal_use" type="button"><i class="fa-solid fa-check"></i> 使用此图</button>
-                <button class="btn" id="nd_modal_prompt" type="button"><i class="fa-solid fa-quote-right"></i> 完整提示词</button>
+                <button class="btn" id="nd_modal_prompt" type="button"><i class="fa-solid fa-quote-right"></i> <span id="nd_modal_prompt_label"></span></button>
                 <button class="btn" id="nd_modal_save" type="button"><i class="fa-solid fa-floppy-disk"></i> 保存到服务器</button>
                 <button class="btn btn-danger" id="nd_modal_delete" type="button"><i class="fa-solid fa-trash"></i> 删除</button>
             </div>
         </div>
     </div>
 
-    <!-- 完整提示词弹窗（画廊大图内） -->
-    <div id="nd_prompt_modal" class="gallery-modal prompt-modal" role="dialog" aria-modal="true" aria-label="完整提示词">
+    <!-- 图片提示词弹窗（画廊大图内） -->
+    <div id="nd_prompt_modal" class="gallery-modal prompt-modal" role="dialog" aria-modal="true" aria-labelledby="nd_prompt_title">
         <div class="prompt-modal-content" id="nd_prompt_content" tabindex="0">
             <div class="prompt-modal-header">
-                <h3 class="prompt-modal-title">完整提示词</h3>
+                <h3 class="prompt-modal-title" id="nd_prompt_title"></h3>
                 <button class="gallery-modal-close" id="nd_prompt_close" type="button" aria-label="关闭" title="关闭（Esc）">✕</button>
             </div>
             <div id="nd_prompt_status" role="status" aria-live="polite" hidden></div>

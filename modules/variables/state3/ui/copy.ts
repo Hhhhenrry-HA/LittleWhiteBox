@@ -1,6 +1,7 @@
 import { diagnostic } from '../engine/diagnostics.js';
 import { UPDATE_BUTTONS } from '../../shared/update-buttons.js';
-import type { Condition, ConditionValue, Diagnostic, Json, ParameterIssue, Path, Success } from '../types.js';
+import { fieldName } from '../definition/schema-fields.js';
+import type { Condition, ConditionValue, Definition, Diagnostic, Json, ParameterIssue, Path, Success, UpdateStage } from '../types.js';
 export const COPY = {
     ...UPDATE_BUTTONS,
     title: '变量 3.0', author: '制作规则', play: '当前聊天', close: '关闭',
@@ -55,6 +56,9 @@ export const COPY = {
     afterHelp: '回复后不勾自动时，点 AI 回复下方的「更新变量」。',
     pluginUpdateHelp: '前后阶段分别请求更新模型，产生各自的 API 费用。模型 API 在小白助手的齿轮中配置。',
     stageNames: { before: '回复前', after: '回复后' },
+    actionStageOnly: (name: string, stages: string) => `「${name}」只在${stages}结算。`,
+    directStageOnly: (name: string, stages: string) => `「${name}」只允许在${stages}直接修改。`,
+    derivedField: (name: string) => `本次修改涉及自动计算的「${name}」。`,
     beforeOutcomes: { applied: '已结算', rejected: '行动未成立', failed: '结算失败', skipped: '已跳过结算', undone: '已撤销结算' },
     beforeEdited: '这条消息改过了，仍保留原结算。要按新内容计算，请点「重新结算」。',
     messageEdited: '消息已修改', retryCalculation: '重试结算',
@@ -83,7 +87,9 @@ export const COPY = {
         'stage-missing': '前后都更新的卡，需要给每个动作和可直接修改的字段指定阶段。',
         'stage-unknown': '动作或字段使用了这张卡未启用的更新阶段。',
         'stage-disabled': '这张卡没有启用这个更新阶段。',
-        'stage-permission': '这个动作或字段不属于本次更新阶段。',
+        'direct-other-stage': '此字段不允许在本次更新阶段直接修改。',
+        'action-other-stage': '此动作不属于本次更新阶段。',
+        'direct-not-allowed': '卡上的规则不允许直接修改这项变量。',
         'not-enabled': '当前聊天尚未启用规则。', 'already-enabled': '当前聊天已启用 3.0。',
         'definition-missing': '这张卡还没有 3.0 规则。', 'definition-shape': '规则包格式不完整。', 'definition-schema': '规则定义的结构不正确。',
         'unowned-root': '只能修改此聊天初始化过的变量及其子字段。',
@@ -155,8 +161,20 @@ export function restorationText(issue: Diagnostic): string {
     }
     return COPY.ruleCheckFailed(issue.description ? String(issue.description) : issue.rule);
 }
-export function errorText(error: unknown): string {
+export function errorText(error: unknown, definition?: Definition): string {
     const detail = error && typeof error === 'object' && 'code' in error ? error as Diagnostic : diagnostic(error);
+    const path = Array.isArray(detail.blockedPath) ? detail.blockedPath : Array.isArray(detail.path) ? detail.path : undefined;
+    const name = path ? fieldName(definition?.schema ?? {}, path) : undefined;
+    if (detail.code === 'direct-not-allowed') {
+        return [name, COPY.errors['direct-not-allowed']].filter(Boolean).join(' · ');
+    }
+    if (detail.code === 'derived-write' && name) {return COPY.derivedField(name);}
+    if (detail.code === 'action-other-stage' || detail.code === 'direct-other-stage') {
+        const stages = (detail.allowedStages as UpdateStage[] | undefined)?.map(stage => COPY.stageNames[stage]).join('、');
+        const actionName = definition?.actions.find(action => action.id === detail.action)?.title || detail.actionTitle || detail.action;
+        if (stages && detail.code === 'action-other-stage' && actionName) {return COPY.actionStageOnly(String(actionName), stages);}
+        if (stages && detail.code === 'direct-other-stage' && name) {return COPY.directStageOnly(name, stages);}
+    }
     if (detail.code === 'action-precondition' && detail.condition) {
         return [detail.actionTitle || detail.action || detail.rule, COPY.conditionFailed(conditionText(detail.condition))].filter(Boolean).join(' · ');
     }

@@ -60,7 +60,7 @@ test('B1: stages restrict tools, instructions and whole submissions, not shared 
     assert.ok(validateAfter([edit])); assert.equal(validateAfter([action]), false);
     for (const stage of ['before', 'after'] as const) {
         const rejected = await settle(compiled, start.state, [action, edit], { stage });
-        assert.equal(rejected.ok, false); assert.equal(rejected.diagnostics[0].code, 'stage-permission');
+        assert.equal(rejected.ok, false); assert.equal(rejected.diagnostics[0].code, stage === 'before' ? 'direct-other-stage' : 'action-other-stage');
     }
     assert.equal((accepted(await settle(compiled, start.state, [action], { stage: 'before' })).state as { hero: { health: number } }).hero.health, 60);
     assert.ok((await settle(compiled, start.state, [action, edit])).ok);

@@ -6,6 +6,7 @@ export function projectGalleryPrompt(record) {
 }
 
 export const GALLERY_PROMPT_COPY = Object.freeze({
+    title: '查看提示词',
     loading: '正在读取提示词…',
     failed: '提示词读取失败，请重试。',
     empty: '这张图片没有保存提示词。',

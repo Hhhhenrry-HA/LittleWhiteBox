@@ -32,7 +32,7 @@ export function initState3() {
     let resultMessage: ChatMessage | undefined;
     let beforeResult: Success | undefined;
     let swipeRecovery: MutationObserver | undefined;
-    let pendingGeneration: { chat: ChatMessage[]; message?: ChatMessage } | undefined;
+    let pendingGeneration: { chat: ChatMessage[]; message?: ChatMessage; waiting: boolean; replacement?: ChatMessage; length: number } | undefined;
     let lifecycle = new AbortController(), selectedMode = state3Selected();
     let resultSequence = 0;
     const adapter = createHostAdapter();
@@ -212,39 +212,65 @@ export function initState3() {
         refresh();
     }
     events.on(event_types.CHAT_CHANGED, changed);
-    events.on(event_types.MESSAGE_DELETED, () => { clearSwipeRecovery(); return report(restoreSelection('delete')); });
+    events.on(event_types.MESSAGE_DELETED, () => {
+        clearSwipeRecovery();
+        const ctx = getContext(), generation = pendingGeneration;
+        // Regenerate deletes its old reply before receiving the replacement.
+        if (generation?.chat === ctx.chat && generation.replacement && ctx.chat.length === generation.length - 1 && !ctx.chat.includes(generation.replacement)) {
+            generation.replacement = undefined;
+        } else {pendingGeneration = undefined;}
+        return report(restoreSelection('delete'));
+    });
     events.on(event_types.MESSAGE_SWIPED, (index: number) => {
+        pendingGeneration = undefined;
         const restoring = report(restoreSelection('swipe', Number(index)));
         watchSwipeRecovery(Number(index));
         return restoring;
     });
-    events.on(event_types.MESSAGE_EDITED, () => { clearSwipeRecovery(); invalidateResult(); refresh(); });
+    events.on(event_types.MESSAGE_EDITED, () => { pendingGeneration = undefined; clearSwipeRecovery(); invalidateResult(); refresh(); });
     // The host emits MESSAGE_SWIPED after deleting the selected swipe; that event owns restoration.
     events.on(event_types.SETTINGS_UPDATED, modeChanged);
-    events.on(event_types.CHARACTER_MESSAGE_RENDERED, refresh);
+    events.on(event_types.CHARACTER_MESSAGE_RENDERED, (index: number) => { refresh(); afterGeneration(Number(index)); });
     events.on(event_types.GENERATION_STARTED, (type: string, _options: unknown, dryRun: boolean) => {
         if (dryRun) {return syncProjection();}
         if (!state3Selected() || !['normal', 'regenerate', 'swipe', 'continue', undefined, ''].includes(type)) {return;}
-        invalidateResult(true); adapter.remember(); pendingGeneration = { chat: getContext().chat };
+        invalidateResult(true); adapter.remember();
+        const chat = getContext().chat;
+        pendingGeneration = { chat, waiting: false, length: chat.length,
+            replacement: type === 'regenerate' && !chat.at(-1)?.is_user ? chat.at(-1) : undefined };
         return syncProjection();
     });
-    events.on(event_types.MESSAGE_RECEIVED, (index: number) => {
-        if (pendingGeneration && pendingGeneration.chat === getContext().chat) {pendingGeneration.message = getContext().chat[Number(index)];}
-    });
-    events.on(event_types.GENERATION_ENDED, () => {
-        if (!state3Selected() || !pendingGeneration) {return;}
-        const generation = pendingGeneration, signal = lifecycle.signal, chatId = String(getContext().chatId);
+    events.on(event_types.MESSAGE_RECEIVED, (index: number) => afterGeneration(Number(index)));
+    events.on(event_types.GENERATION_ENDED, () => afterGeneration());
+    function afterGeneration(index?: number) {
+        const generation = pendingGeneration, ctx = getContext();
+        if (!state3Selected() || !generation || ctx.chat !== generation.chat) {return;}
+        if (index !== undefined) {
+            const message = ctx.chat[index];
+            if (!message || message.is_user || message.is_system || !message.mes?.trim()) {return;}
+            generation.message = message;
+        }
+        // Completion can arrive before the reply notification. Keep the turn
+        // eligible; the later received/rendered event starts its single waiter.
+        if (!generation.message || generation.waiting) {return;}
+        generation.waiting = true;
+        const signal = lifecycle.signal, chatId = String(ctx.chatId);
         observeBackgroundTask(report((async () => {
-            if (!await waitForAfterAiReady(chatId, signal) || pendingGeneration !== generation) {return;}
-            const ctx = getContext(), message = generation.message;
-            if (ctx.chat !== generation.chat || !message || !state3Selected()) {return;}
-            const messageId = ctx.chat.indexOf(message);
-            if (messageId < 0) {return;}
-            pendingGeneration = undefined;
-            if (ctx.chatMetadata[CHAT_KEY] && readSettings().auto && adapter.bundle().definition.updates.includes('after')) {await api.update();}
-            adapter.remember(); refresh();
+            try {
+                if (!await waitForAfterAiReady(chatId, signal) || signal.aborted || pendingGeneration !== generation) {return;}
+                const current = getContext(), message = generation.message;
+                if (current.chat !== generation.chat || !message || !state3Selected()) {return;}
+                const messageId = current.chat.indexOf(message);
+                if (messageId < 0) {return;}
+                // Consume before awaiting the model, including failed requests.
+                pendingGeneration = undefined;
+                if (current.chatMetadata[CHAT_KEY] && readSettings().auto && adapter.bundle().definition.updates.includes('after')) {
+                    await retain(updater.update(owned({ stage: 'after' as const, index: messageId })), messageId);
+                }
+                if (!signal.aborted) {adapter.remember(); refresh();}
+            } finally {generation.waiting = false;}
         })()), { source: import.meta.url, operation: 'afterGeneration' });
-    });
+    }
     events.on(event_types.CHAT_CREATED, async () => {
         const ctx = getContext();
         if (inGroup(ctx) || !state3Selected() || ctx.chatMetadata?.[CHAT_KEY]) {return;}

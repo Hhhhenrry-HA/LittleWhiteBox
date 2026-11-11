@@ -4,6 +4,8 @@ import { createIdentifier } from '../../../../shared/common/identifier.js';
 // Closing the dialog invalidates its read. Late replies cannot fill another image.
 export function createGalleryPromptView(document, post) {
     const $ = id => document.getElementById(id);
+    $('nd_modal_prompt_label').textContent = GALLERY_PROMPT_COPY.title;
+    $('nd_prompt_title').textContent = GALLERY_PROMPT_COPY.title;
     let pending = null;
     let imgId = null;
     const fields = ['tags', 'vibe', 'positive', 'character', 'negative', 'post'];

@@ -42,7 +42,7 @@ function harness() {
     return { ctx, message, exports, saves: () => saves };
 }
 
-function runtimeHarness(bundle: Bundle | null = equipmentExample(), initialMode = '3.0') {
+function runtimeHarness(bundle: Bundle | null = equipmentExample(), initialMode = '3.0', ready: (chatId: string, signal: AbortSignal) => Promise<boolean> = async () => true) {
     const h = harness(), pending = new Set<Promise<unknown>>(), handlers = new Map<string, (...args: unknown[]) => unknown>();
     if (bundle) {h.ctx.characters[0].data!.extensions![CARD_EXTENSION] = JSON.stringify(bundle);}
     else {delete h.ctx.characters[0].data!.extensions![CARD_EXTENSION];}
@@ -52,9 +52,9 @@ function runtimeHarness(bundle: Bundle | null = equipmentExample(), initialMode 
         extension_settings: preferences, reject, saveSettingsDebounced() {}, structuredClone,
         document: { getElementById: () => selector },
     });
-    let finish!: (value: unknown) => void, requested!: () => void, disposed = false, lateControls = 0, lateMacros = 0, controls = false, requests = 0;
+    let finish!: (value: unknown) => void, fail!: (error: Error) => void, requested!: () => void, disposed = false, lateControls = 0, lateMacros = 0, controls = false, requests = 0;
     const started = new Promise<void>(resolve => { requested = resolve; });
-    const response = new Promise(resolve => { finish = resolve; });
+    const response = new Promise((resolve, reject) => { finish = resolve; fail = reject; });
     const agentWindow = { xiaobaixAgent: { openSession: async () => ({ chat: async () => { requests++; requested(); return response; }, dispose() {} }) } };
     const { createState3Updater } = runInNewContext(source('model/updater.ts') + '\n({createState3Updater})', {
         getContext: () => h.ctx, exposeVariableReads: () => () => {}, captureContext: async () => ({}), passageText: (text: string) => text,
@@ -68,7 +68,7 @@ function runtimeHarness(bundle: Bundle | null = equipmentExample(), initialMode 
     const env = {
         ...settings, createModuleEvents: () => ({ on: (key: string, fn: (...args: unknown[]) => unknown) => handlers.set(key, fn), cleanup: () => handlers.clear() }), event_types,
         observeBackgroundTask(p: Promise<unknown>) { pending.add(p); p.then(() => pending.delete(p), () => pending.delete(p)); },
-        isGenerating: () => false, waitForAfterAiReady: async () => true, createSettlementService,
+        isGenerating: () => false, waitForAfterAiReady: ready, createSettlementService,
         ...h.exports, getContext: () => h.ctx, compileDefinition, diagnostic, reject, receiptResult, CHAT_KEY, CARD_EXTENSION, digest,
         exportRules() {}, prepareRuleImport() {}, importRules() {}, onRulesSaved: () => () => {},
         createState3Macros: () => ({ clear() {}, set() { if (disposed) {lateMacros++;} }, dispose() {} }),
@@ -85,11 +85,80 @@ function runtimeHarness(bundle: Bundle | null = equipmentExample(), initialMode 
         window: {} as { LWB_StateV3: State3Api },
     };
     const runtime = runInNewContext(source('index.ts') + '\ninitState3(); ({cleanupState3})', env);
-    return { ...h, api: env.window.LWB_StateV3, handlers, preferences, selector, started, finish, emitted, resumed,
+    return { ...h, api: env.window.LWB_StateV3, handlers, preferences, selector, started, finish, fail, emitted, resumed,
         cleanup: () => runtime.cleanupState3(), late: () => ({ controls: lateControls, macros: lateMacros }), controls: () => controls, requests: () => requests,
         async drain() { while (pending.size) {await Promise.all([...pending]);} },
     };
 }
+
+// A1: completion signals may arrive in any order, but one reply must start only
+// one update request, including after request failure (lost state / API cost).
+test('A1: late reply notifications recover automatic updates without duplicate requests', async t => {
+    for (const first of ['MESSAGE_RECEIVED', 'CHARACTER_MESSAGE_RENDERED']) {
+        const h = runtimeHarness(); t.after(() => h.cleanup()); await h.drain();
+        accepted(await h.api.enable()); h.preferences.LittleWhiteBox.state3Updater.auto = true;
+        await h.handlers.get('GENERATION_STARTED')!('normal', {}, false);
+        await h.handlers.get('GENERATION_ENDED')!(); await h.drain();
+        assert.equal(h.requests(), 0);
+        h.ctx.chat.push({ mes: 'New reply.', extra: {} });
+        const index = h.ctx.chat.length - 1;
+        await h.handlers.get(first)!(index);
+        // Late events must not buy another request after either success or failure.
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(h.requests(), 1);
+        if (first === 'MESSAGE_RECEIVED') {h.finish({ completion: 'complete', truncated: false, text: '', toolCalls: [{ name: 'write', arguments: '{"state":[{"op":"inc","path":["hero","health"],"delta":-1}]}' }] });}
+        else {h.fail(new Error('offline'));}
+        await h.drain(); assert.equal(h.requests(), 1);
+        assert.equal((accepted(await h.api.inspect()).state as { hero: { health: number } }).hero.health, first === 'MESSAGE_RECEIVED' ? 79 : 80);
+        for (const event of ['MESSAGE_RECEIVED', 'CHARACTER_MESSAGE_RENDERED', 'GENERATION_ENDED']) {await h.handlers.get(event)!(index);}
+        await h.drain(); assert.equal(h.requests(), 1);
+    }
+});
+
+// A1 also covers replacing/reusing a floor: a legitimate new generation gets one
+// request, while replaying its completion notifications never buys another.
+test('A1: regeneration, continuation and new swipes each retain their own automatic update', async t => {
+    const h = runtimeHarness(); t.after(() => h.cleanup()); await h.drain(); accepted(await h.api.enable());
+    h.preferences.LittleWhiteBox.state3Updater.auto = true;
+    h.finish({ completion: 'complete', truncated: false, text: '', toolCalls: [{ name: 'write', arguments: '{"state":[]}' }] });
+    for (const [count, type] of ['normal', 'continue', 'regenerate', 'swipe'].entries()) {
+        if (type === 'swipe') {await h.handlers.get('MESSAGE_SWIPED')!(h.ctx.chat.length - 1); await h.drain();}
+        await h.handlers.get('GENERATION_STARTED')!(type, {}, false);
+        if (type === 'regenerate') {h.ctx.chat.pop(); await h.handlers.get('MESSAGE_DELETED')!(); await h.drain();}
+        if (type === 'normal' || type === 'regenerate') {h.ctx.chat.push({ mes: 'Reply.', extra: {} });}
+        const index = h.ctx.chat.length - 1;
+        if (type === 'continue') {h.ctx.chat[index].mes += ' Continued.';}
+        if (type === 'swipe') {h.ctx.chat[index] = { mes: 'New swipe.', extra: {}, swipe_id: 0 };}
+        for (const event of ['MESSAGE_RECEIVED', 'GENERATION_ENDED', 'CHARACTER_MESSAGE_RENDERED']) {await h.handlers.get(event)!(index);}
+        await h.drain(); assert.equal(h.requests(), count + 1, type);
+        for (const event of ['MESSAGE_RECEIVED', 'GENERATION_ENDED', 'CHARACTER_MESSAGE_RENDERED']) {await h.handlers.get(event)!(index);}
+        await h.drain(); assert.equal(h.requests(), count + 1, type);
+    }
+});
+
+// A2: delayed readiness coalesces signals and cancellation discards the waiting
+// turn; it must not update another chat or a restored swipe (wrong state / cost).
+test('A2: waiting completion coalesces signals and cannot survive chat or generation changes', async t => {
+    for (const boundary of ['ready', 'chat', 'generation', 'edit', 'dispose']) {
+        let release!: (ready: boolean) => void, waits = 0;
+        const h = runtimeHarness(equipmentExample(), '3.0', () => { waits++; return new Promise(resolve => { release = resolve; }); });
+        t.after(() => h.cleanup()); await h.drain(); accepted(await h.api.enable());
+        h.preferences.LittleWhiteBox.state3Updater.auto = true;
+        await h.handlers.get('GENERATION_STARTED')!('normal', {}, false);
+        h.ctx.chat.push({ mes: 'New reply.', extra: {} }); const index = h.ctx.chat.length - 1;
+        for (let repeat = 0; repeat < 3; repeat++) {
+            for (const event of ['MESSAGE_RECEIVED', 'CHARACTER_MESSAGE_RENDERED', 'GENERATION_ENDED']) {await h.handlers.get(event)!(index);}
+        }
+        assert.equal(waits, 1); assert.equal(h.requests(), 0);
+        if (boundary === 'chat') {h.ctx.chatId = 'other'; await h.handlers.get('CHAT_CHANGED')!();}
+        if (boundary === 'generation') {await h.handlers.get('GENERATION_STARTED')!('continue', {}, false);}
+        if (boundary === 'edit') {await h.handlers.get('MESSAGE_EDITED')!(index);}
+        if (boundary === 'dispose') {h.cleanup();}
+        release(true);
+        h.finish({ completion: 'complete', truncated: false, text: '', toolCalls: [{ name: 'write', arguments: '{"state":[]}' }] });
+        await h.drain(); assert.equal(h.requests(), boundary === 'ready' ? 1 : 0);
+    }
+});
 
 // R9: selecting 3.0 does not enroll ordinary cards. Opening/rendering/generating
 // must neither fail nor request updates; missing rules on an enabled chat still fail
