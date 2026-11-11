@@ -2439,6 +2439,13 @@
     },
     {
       "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/providers/novelai/gallery-prompt-view.js",
+      "relativePath": "modules/draw/providers/novelai/gallery-prompt-view.js",
+      "extension": ".js",
+      "sizeBytes": 3496
+    },
+    {
+      "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/providers/novelai/novel-api-config.js",
       "relativePath": "modules/draw/providers/novelai/novel-api-config.js",
       "extension": ".js",
@@ -2463,21 +2470,21 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/providers/novelai/novel-draw-page.js",
       "relativePath": "modules/draw/providers/novelai/novel-draw-page.js",
       "extension": ".js",
-      "sizeBytes": 310659
+      "sizeBytes": 311645
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/providers/novelai/novel-draw.html",
       "relativePath": "modules/draw/providers/novelai/novel-draw.html",
       "extension": ".html",
-      "sizeBytes": 127929
+      "sizeBytes": 131511
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/providers/novelai/novel-draw.js",
       "relativePath": "modules/draw/providers/novelai/novel-draw.js",
       "extension": ".js",
-      "sizeBytes": 259407
+      "sizeBytes": 259992
     },
     {
       "source": "littlewhitebox",
@@ -2631,7 +2638,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/providers/novelai/tests/quick-test-handler.test.js",
       "relativePath": "modules/draw/providers/novelai/tests/quick-test-handler.test.js",
       "extension": ".js",
-      "sizeBytes": 10783
+      "sizeBytes": 11751
     },
     {
       "source": "littlewhitebox",
@@ -3128,35 +3135,35 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/shared/chat-image-placement.js",
       "relativePath": "modules/draw/shared/chat-image-placement.js",
       "extension": ".js",
-      "sizeBytes": 3646
+      "sizeBytes": 3743
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/shared/chat-image-session.js",
       "relativePath": "modules/draw/shared/chat-image-session.js",
       "extension": ".js",
-      "sizeBytes": 10585
+      "sizeBytes": 10682
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/shared/chat-image-tag-migration.js",
       "relativePath": "modules/draw/shared/chat-image-tag-migration.js",
       "extension": ".js",
-      "sizeBytes": 10439
+      "sizeBytes": 10573
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/shared/chat-message-image-markup.js",
       "relativePath": "modules/draw/shared/chat-message-image-markup.js",
       "extension": ".js",
-      "sizeBytes": 4919
+      "sizeBytes": 5238
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/shared/chat-message-images.js",
       "relativePath": "modules/draw/shared/chat-message-images.js",
       "extension": ".js",
-      "sizeBytes": 12283
+      "sizeBytes": 12470
     },
     {
       "source": "littlewhitebox",
@@ -3254,7 +3261,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/shared/draw-common.js",
       "relativePath": "modules/draw/shared/draw-common.js",
       "extension": ".js",
-      "sizeBytes": 64767
+      "sizeBytes": 64307
     },
     {
       "source": "littlewhitebox",
@@ -3366,7 +3373,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/shared/draw-settings.js",
       "relativePath": "modules/draw/shared/draw-settings.js",
       "extension": ".js",
-      "sizeBytes": 9388
+      "sizeBytes": 9595
     },
     {
       "source": "littlewhitebox",
@@ -3458,6 +3465,13 @@
       "relativePath": "modules/draw/shared/gallery-metadata.js",
       "extension": ".js",
       "sizeBytes": 1033
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/shared/gallery-prompt.js",
+      "relativePath": "modules/draw/shared/gallery-prompt.js",
+      "extension": ".js",
+      "sizeBytes": 1035
     },
     {
       "source": "littlewhitebox",
@@ -3688,7 +3702,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/shared/message-filter-rules.js",
       "relativePath": "modules/draw/shared/message-filter-rules.js",
       "extension": ".js",
-      "sizeBytes": 1125
+      "sizeBytes": 1864
     },
     {
       "source": "littlewhitebox",
@@ -4052,7 +4066,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/shared/scene-source.js",
       "relativePath": "modules/draw/shared/scene-source.js",
       "extension": ".js",
-      "sizeBytes": 12330
+      "sizeBytes": 13091
     },
     {
       "source": "littlewhitebox",
@@ -4276,7 +4290,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/shared/tests/chat-image-recovery-journey.test.js",
       "relativePath": "modules/draw/shared/tests/chat-image-recovery-journey.test.js",
       "extension": ".js",
-      "sizeBytes": 21277
+      "sizeBytes": 22892
     },
     {
       "source": "littlewhitebox",
@@ -4284,6 +4298,13 @@
       "relativePath": "modules/draw/shared/tests/chat-image-removal-journey.test.js",
       "extension": ".js",
       "sizeBytes": 3741
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/shared/tests/chat-message-image-markup.test.js",
+      "relativePath": "modules/draw/shared/tests/chat-message-image-markup.test.js",
+      "extension": ".js",
+      "sizeBytes": 7218
     },
     {
       "source": "littlewhitebox",
@@ -4311,7 +4332,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/shared/tests/continuity-limits-and-edit-handler.test.js",
       "relativePath": "modules/draw/shared/tests/continuity-limits-and-edit-handler.test.js",
       "extension": ".js",
-      "sizeBytes": 12834
+      "sizeBytes": 12794
     },
     {
       "source": "littlewhitebox",
@@ -4466,6 +4487,13 @@
       "relativePath": "modules/draw/shared/tests/gallery-metadata.test.js",
       "extension": ".js",
       "sizeBytes": 3250
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/draw/shared/tests/gallery-prompt.test.js",
+      "relativePath": "modules/draw/shared/tests/gallery-prompt.test.js",
+      "extension": ".js",
+      "sizeBytes": 4020
     },
     {
       "source": "littlewhitebox",
@@ -19648,7 +19676,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/plugin-entry.js",
       "relativePath": "plugin-entry.js",
       "extension": ".js",
-      "sizeBytes": 59148
+      "sizeBytes": 59507
     },
     {
       "source": "littlewhitebox",

@@ -1,4 +1,5 @@
 import { createVibeEncodingService } from './vibe-encoding.js';
+import { projectGalleryPrompt } from '../../shared/gallery-prompt.js';
 import { createIdentifier as createVibeCacheKey } from '../../../../shared/common/identifier.js';
 import { getVibeModelKey, clampVibeInfoExtracted, vibeEncodingKey, normalizeVibeEncodings } from './vibe.js';
 import novelBackendTransport from './backend-transport-contract.cjs';
@@ -4904,6 +4905,15 @@ async function handleFrameMessage(event) {
                 console.error('[NovelDraw] 加载预览失败:', e);
                 if (iframe) postToIframe(iframe, { type: 'CHARACTER_PREVIEWS_FAILED', charName, requestId }, 'LittleWhiteBox-NovelDraw');
             }
+            break;
+        }
+
+        case 'LOAD_GALLERY_PROMPT': {
+            const iframe = document.getElementById('xiaobaix-novel-draw-iframe');
+            let prompt = null;
+            try { prompt = projectGalleryPrompt(await getPreview(data.imgId)); }
+            catch (error) { console.error('[NovelDraw] Gallery prompt read failed:', error); }
+            if (iframe?.isConnected) postToIframe(iframe, { type: 'GALLERY_PROMPT_LOADED', requestId: data.requestId, prompt }, 'LittleWhiteBox-NovelDraw');
             break;
         }
 

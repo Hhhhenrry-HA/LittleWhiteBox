@@ -5,6 +5,7 @@ import { createGalleryImageWindow } from '../../shared/gallery-image-window.js';
 import { createFilterRuleHandle, createFilterRuleSortable } from '../../shared/filter-rule-sort.js';
 import { createGalleryImageRequests } from './gallery-image-requests.js';
 import { createGalleryFeedback } from './gallery-feedback.js';
+import { createGalleryPromptView } from './gallery-prompt-view.js';
 import { mountServerPluginGuide } from '../../../../shared/server-plugin/installation-guide.js';
 import { NOVEL_API_DEFAULTS, NOVEL_API_FIELDS, normalizeNovelApiConfig } from './novel-api-config.js';
 import { API_PRESET_COPY } from '../../shared/api-presets-copy.js';
@@ -227,6 +228,7 @@ function escapeHtml(str) {
 
 const galleryImageRequests = createGalleryImageRequests(postToParent);
 const galleryFeedback = createGalleryFeedback(document, postToParent);
+const galleryPrompt = createGalleryPromptView(document, postToParent);
 const galleryImageWindow = createGalleryImageWindow({ load: galleryImageRequests.load });
 function syncGalleryImages() {
     const root = modalData.slotId ? $('nd_gallery_modal') : $('view-gallery');
@@ -3133,6 +3135,7 @@ function openGalleryModalFromCache(charName, slotId) {
 
 let galleryModalOpener = null;
 function closeGalleryModal() {
+    galleryPrompt.close();
     $('nd_gallery_modal').classList.remove('visible');
     galleryModalOpener?.focus?.({ preventScroll: true });
     galleryModalOpener = null;
@@ -3142,6 +3145,14 @@ function closeGalleryModal() {
     $('nd_modal_thumbs').replaceChildren();
     modalData = { slotId: null, images: [], currentIndex: 0, charName: null };
     syncGalleryImages();
+}
+
+// ── 完整提示词弹窗 ──────────────────────────────────────────────────────
+
+function openPromptModal() {
+    const current = modalData.images[modalData.currentIndex];
+    if (!current) return;
+    galleryPrompt.open(current.imgId);
 }
 
 function renderModalThumbs() {
@@ -3222,6 +3233,7 @@ function renderModalContent() {
     const { images, currentIndex } = modalData;
     if (!images.length) return;
     const current = images[currentIndex];
+    galleryPrompt.selected(current.imgId);
     // 同一张图（例如保存后 savedUrl 变了）不重设 src，避免大图重新加载闪一下。
     const imgEl = $('nd_modal_img');
     const imgKey = String(current.imgId ?? '');
@@ -5325,6 +5337,10 @@ window.addEventListener('message', event => {
             galleryImageRequests.receive(data);
             break;
 
+        case 'GALLERY_PROMPT_LOADED':
+            galleryPrompt.receive(data);
+            break;
+
         case 'SLOT_VERSIONS_LOADED':
             handleSlotVersionsLoaded(data);
             break;
@@ -5482,6 +5498,7 @@ window.addEventListener('message', event => {
 });
 
 window.addEventListener('pagehide', event => {
+    galleryPrompt.close();
     if (!event.persisted) { quickTestView?.dispose(); galleryZipDownload.dispose(); galleryFeedback.destroy(); }
 });
 window.addEventListener('beforeunload', () => {
@@ -5924,10 +5941,18 @@ function initializePage() {
     $('nd_modal_prev').addEventListener('click', () => stepGallerySlot(-1));
     $('nd_modal_next').addEventListener('click', () => stepGallerySlot(1));
 
+    $('nd_modal_prompt').addEventListener('click', openPromptModal);
+
     document.addEventListener('keydown', e => {
         if (!$('nd_gallery_modal').classList.contains('visible')) return;
-        if (e.key === 'Escape') { closeGalleryModal(); return; }
+        if (e.key === 'Escape') {
+            // 提示词弹窗开着时 Esc 先收它，不关整个大图
+            if (galleryPrompt.isOpen()) { galleryPrompt.close(); return; }
+            closeGalleryModal();
+            return;
+        }
         if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        if (galleryPrompt.isOpen()) return;
         if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
         const tag = String(e.target?.tagName || '').toUpperCase();
         if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target?.isContentEditable) return;
