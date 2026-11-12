@@ -38,7 +38,11 @@ export const ACTIVITY_COPY = {
     clearFailed: reason => `对话清空失败：${reason}`,
     restoreFailed: '存档读取失败，已停止加载。请重新打开助手。',
     configLoadFailed: reason => `配置读取失败，请重新打开助手：${reason}`,
-    settingsToggle: collapsed => collapsed ? '展开 API 配置' : '收起 API 配置',
+    sidebarToggle: collapsed => collapsed ? '打开文件目录' : '收起文件目录',
+    apiSettings: 'API 配置',
+    closeApiSettings: '关闭 API 配置',
+    apiSummary: (preset, model) => `API 配置：${preset} · ${model}`,
+    modelMissing: '未设置模型',
     closeAssistant: ASSISTANT_WINDOW_COPY.close,
     minimizeAssistant: ASSISTANT_WINDOW_COPY.minimize,
 };

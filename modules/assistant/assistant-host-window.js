@@ -1,4 +1,5 @@
 import { getSafeViewportStyles, observeViewport } from '../../shared/common/viewport.js';
+import { observeBackgroundTask } from '../../shared/common/async-errors.js';
 import { ASSISTANT_HEADER_HEIGHT, ASSISTANT_WINDOW_CONTROLS_WIDTH, ASSISTANT_WINDOW_MODE_PARAM, ASSISTANT_WINDOW_COPY, isAssistantMobileDevice } from './shared/window-layout.js';
 
 const ASSISTANT_OVERLAY_Z_INDEX = 100001;
@@ -308,8 +309,8 @@ export function createAssistantHostWindow(options) {
         };
 
         const minimizeButton = createTitleActionButton('─', ASSISTANT_WINDOW_COPY.minimize);
-        const sidebarLayoutButton = createTitleActionButton('⊟', '侧边栏布局');
-        const fullscreenButton = createTitleActionButton('⛶', '全屏布局');
+        const sidebarLayoutButton = createTitleActionButton('⊟', ASSISTANT_WINDOW_COPY.sidebar);
+        const fullscreenButton = createTitleActionButton('⛶', ASSISTANT_WINDOW_COPY.fullscreen(false));
         const closeButton = createTitleActionButton('✕', ASSISTANT_WINDOW_COPY.close, true);
         closeButton.style.font = '600 14px/1 "Microsoft YaHei", sans-serif';
         closeButton.addEventListener('click', () => {
@@ -442,7 +443,6 @@ function createWindowInteractionController(options) {
     };
     const QUICK_LAYOUT_MODE = Object.freeze({
         FREE: 'free',
-        FULLSCREEN: 'fullscreen',
         SIDEBAR: 'sidebar',
     });
     let quickLayoutMode = QUICK_LAYOUT_MODE.FREE;
@@ -451,6 +451,11 @@ function createWindowInteractionController(options) {
     let pendingLayout = null;
     let dragState = null;
     let resizeState = null;
+    // Browser fullscreen is owned by the document; the shell only reads it.
+    const isFullscreen = () => document.fullscreenElement === shell;
+    const exitFullscreen = () => {
+        if (isFullscreen()) observeBackgroundTask(document.exitFullscreen(), { source: import.meta.url, operation: 'exitFullscreen' });
+    };
 
     const clampShellPosition = (left, top, width = shellMetrics.width, height = shellMetrics.height) => {
         const maxLeft = Math.max(0, window.innerWidth - width);
@@ -522,7 +527,10 @@ function createWindowInteractionController(options) {
         resizeHint.style.display = '';
         resizeMask.style.top = '0';
         resizeMask.style.height = '100%';
-        if (quickLayoutMode === QUICK_LAYOUT_MODE.FULLSCREEN) {
+        if (isFullscreen()) {
+            titleBar.style.cursor = 'default';
+            dragPill.style.display = 'none';
+            resizeHint.style.display = 'none';
             shell.style.borderRadius = '0';
             shell.style.border = 'none';
             shell.style.boxShadow = 'none';
@@ -556,8 +564,11 @@ function createWindowInteractionController(options) {
             button.style.color = active ? '#814733' : '#6f675d';
             button.style.transform = '';
         };
-        setButtonState(fullscreenButton, quickLayoutMode === QUICK_LAYOUT_MODE.FULLSCREEN);
-        setButtonState(sidebarLayoutButton, quickLayoutMode === QUICK_LAYOUT_MODE.SIDEBAR);
+        setButtonState(fullscreenButton, isFullscreen());
+        const fullscreenTitle = ASSISTANT_WINDOW_COPY.fullscreen(isFullscreen());
+        fullscreenButton.title = fullscreenTitle;
+        fullscreenButton.setAttribute('aria-label', fullscreenTitle);
+        setButtonState(sidebarLayoutButton, !isFullscreen() && quickLayoutMode === QUICK_LAYOUT_MODE.SIDEBAR);
     };
 
     const positionMinimizedIcon = () => {
@@ -583,6 +594,7 @@ function createWindowInteractionController(options) {
     const minimize = () => {
         if (isMinimized) return;
         isMinimized = true;
+        exitFullscreen();
         // Keep the iframe and its dimensions alive: no run cancellation,
         // remount, editor teardown or scroll reflow when hiding the window.
         iframe.contentDocument?.activeElement?.blur();
@@ -645,10 +657,6 @@ function createWindowInteractionController(options) {
         quickLayoutMode = mode;
         applyShellChrome();
         updateQuickLayoutButtons();
-        if (mode === QUICK_LAYOUT_MODE.FULLSCREEN) {
-            applyShellBounds(window.innerWidth, window.innerHeight, { left: 0, top: 0 });
-            return;
-        }
         if (mode === QUICK_LAYOUT_MODE.SIDEBAR) {
             applyShellBounds(getSidebarLayoutWidth(), window.innerHeight, { left: 0, top: 0 });
             return;
@@ -770,7 +778,7 @@ function createWindowInteractionController(options) {
         titleBar.addEventListener('pointerdown', (event) => {
             if (isAssistantMobileDevice()) return;
             if (event.target.closest('button')) return;
-            if (quickLayoutMode === QUICK_LAYOUT_MODE.MINIMIZED) return;
+            if (isFullscreen()) return;
             event.preventDefault();
             exitQuickLayout();
             const rect = shell.getBoundingClientRect();
@@ -819,12 +827,24 @@ function createWindowInteractionController(options) {
         minimizeButton.addEventListener('click', minimize);
         fullscreenButton.addEventListener('click', () => {
             if (isAssistantMobileDevice()) return;
-            applyQuickLayout(QUICK_LAYOUT_MODE.FULLSCREEN);
+            if (isFullscreen()) {
+                exitFullscreen();
+                return;
+            }
+            observeBackgroundTask(shell.requestFullscreen(), { source: import.meta.url, operation: 'requestFullscreen' });
         });
         sidebarLayoutButton.addEventListener('click', () => {
             if (isAssistantMobileDevice()) return;
+            exitFullscreen();
             applyQuickLayout(QUICK_LAYOUT_MODE.SIDEBAR);
         });
+        document.addEventListener('fullscreenchange', onFullscreenChange);
+    };
+
+    // Esc, F11 or the close button can all end fullscreen; follow the document state.
+    const onFullscreenChange = () => {
+        applyShellChrome();
+        updateQuickLayoutButtons();
     };
 
     const initializeMobileMode = () => {
@@ -876,6 +896,8 @@ function createWindowInteractionController(options) {
         }
         stopViewport?.();
         stopFollowingAnchor();
+        document.removeEventListener('fullscreenchange', onFullscreenChange);
+        exitFullscreen();
     };
 
     return {

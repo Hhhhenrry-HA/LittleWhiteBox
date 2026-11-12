@@ -9,6 +9,7 @@ export function buildVectorIntegrityIssues({
     incompleteL0FloorCount = 0,
     missingEventVectorCount = 0,
     cacheInconsistent = false,
+    cacheRepairable = false,
 } = {}) {
     const issues = [];
     const copy = SUMMARY_FEEDBACK_COPY.vectorIntegrity;
@@ -16,7 +17,7 @@ export function buildVectorIntegrityIssues({
         issues.push({ code: 'fingerprint_mismatch', action: 'rebuild', message: copy.fingerprintMismatch });
     }
     if (cacheInconsistent) {
-        issues.push({ code: 'cache_inconsistent', action: 'rebuild', message: copy.cacheInconsistent });
+        issues.push({ code: 'cache_inconsistent', action: cacheRepairable ? 'fill' : 'rebuild', message: copy.cacheInconsistent });
     }
 
     const gap = Math.max(0, Math.trunc(Number(chunkFloorGap) || 0));

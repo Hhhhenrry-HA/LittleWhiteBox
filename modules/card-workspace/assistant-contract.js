@@ -25,7 +25,7 @@ message/0.md is the first greeting. Consecutive numbers starting at 1 are altern
 world_book/<book-name>/<numeric-uid>.json contains entry settings; the matching .md contains its content. A new book is created when its first entry is saved. Set world in card.json to link a primary book. Existing shared lorebook edits affect its other users too.
 regex/<id>.json contains scoped regex settings; the matching .html contains replaceString.
 tasks/<id>.json contains LittleWhiteBox task settings; the matching .js contains the complete commands, including taskjs wrappers when used.
-variables/definition.json and variables/functions/<name>.js hold the variable 3.0 rule bundle; ReadSkill builtin-state3 describes them.
+variables/definition.json, variables/functions/<name>.js, variables/tools/<name>.js and variables/scripts/{prepare,calculate,committed}.js hold the variable 3.0 rule bundle; ReadSkill builtin-state3 describes them. Saving or refreshing any variable file handles this complete package, including removed source files.
 Card paths keep Chinese, other Unicode names and spaces readable. Reuse paths returned by the tools. Literal percent signs, path separators and control characters inside a name are percent-escaped; the same path works with Read, Write, apply_patch and CardFiles.
 New regex/task IDs can be distinct descriptive strings. Existing filenames keep the original IDs. Settings files omit id, uid and the separate body field. Omitted settings preserve saved values. Create both files for a new entry and submit both paths together. Settings and code of an existing entry can also be saved separately.
 

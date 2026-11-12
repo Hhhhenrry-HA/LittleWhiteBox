@@ -8,15 +8,23 @@ import { variableRoots } from './variables.js';
 import { reject, diagnostic } from '../engine/diagnostics.js';
 import { validateState } from '../engine/validation.js';
 import { checkpoint, digest, makeReceipt, rebase, rewind } from './history.js';
-import type { BeforeUpdate, History, HostAdapter, Json, JsonObject, Receipt, Result, RunOptions, Snapshot, Success, SwipeRecord } from '../types.js';
+import type { BeforeUpdate, Compiled, History, HostAdapter, Json, JsonObject, Receipt, Result, RunOptions, Snapshot, Success, SwipeRecord } from '../types.js';
 import { modelSource } from '../definition/stages.js';
+import { createExtensionRun, type ExtensionHost } from '../extensions/runtime.js';
+import { inspectInput } from '../engine/input.js';
 
 interface StageOptions extends RunOptions { index?: number; replace?: boolean }
 interface ApplyOptions extends StageOptions { preview?: boolean; source?: string; beforeUpdate?: BeforeUpdate }
 const success = (state: Json): Success => ({ ok: true, state, changes: [], provenance: [], actions: [], diagnostics: [] });
 
-export function createSettlementService<S extends Snapshot>(adapter: HostAdapter<S>) {
+export function createSettlementService<S extends Snapshot>(adapter: HostAdapter<S>, extensionHost?: ExtensionHost) {
+    const definitions = new WeakMap<object, Compiled>();
     const assertCurrent = (snapshot: S) => { if (!adapter.isCurrent(snapshot)) {reject('stale-target');} };
+    async function authorize({ signal, stage }: RunOptions = {}) {
+        const snapshot = adapter.capture();
+        await (extensionHost?.requestAuthorization ?? extensionHost?.authorize)?.(adapter.bundle(), signal, stage);
+        assertCurrent(snapshot); signal?.throwIfAborted();
+    }
     async function checkRestoration(state: Json, signal?: AbortSignal) {
         try {
             const compiled = compileDefinition(adapter.bundle());
@@ -56,7 +64,7 @@ export function createSettlementService<S extends Snapshot>(adapter: HostAdapter
         assertCurrent(rolledBack); adapter.assertMutable(rolledBack);
         return result;
     }
-    async function stage({ index, replace, signal, stage: preparedStage }: StageOptions = {}) {
+    async function stage({ index, replace, signal, stage: preparedStage }: StageOptions = {}, runCommitted = true) {
         const snapshot = adapter.capture(index), history = snapshot.history;
         const compiled = compileDefinition(adapter.bundle());
         if (!history) {reject('not-enabled');}
@@ -69,12 +77,17 @@ export function createSettlementService<S extends Snapshot>(adapter: HostAdapter
         const start = replace ? rewind(history, snapshot.state, suffix) : clone(snapshot.state);
         assertCurrent(snapshot);
         let consumed = false;
-        let candidate: { input: unknown; stage: RunOptions['stage']; result: Success } | undefined;
+        let executionSnapshot = snapshot;
+        let assertExecutionCurrent = () => assertCurrent(executionSnapshot);
+        const extensions = createExtensionRun(compiled.bundle, { state: clone(start), target: snapshot.target, signal,
+            assertCurrent: () => assertExecutionCurrent() }, extensionHost, undefined, compiled.tools);
+        let candidate: { input: unknown; stage: RunOptions['stage']; prepared?: Json; result: Success } | undefined;
         async function commit(result: Success, source: string, beforeUpdate?: BeforeUpdate): Promise<Success> {
             if (consumed) {reject('stage-consumed');}
             assertCurrent(snapshot); adapter.assertMutable(snapshot); signal?.throwIfAborted();
             if (records.slice(snapshot.index + 1).some(record => record.entries.length)) {reject('stale-target');}
-            const receipt = makeReceipt({ before: start, result, source, revision: history!.revision + 1 });
+            const receipt = makeReceipt({ before: start, result, source, revision: history!.revision + 1,
+                retainParams: target.entries.some(entry => entry.beforeUpdate) });
             if (beforeUpdate) {receipt.beforeUpdate = clone(beforeUpdate);}
             const next = clone(records);
             next[snapshot.index].entries = [...target.entries, receipt];
@@ -84,11 +97,23 @@ export function createSettlementService<S extends Snapshot>(adapter: HostAdapter
             if (snapshot.index === records.length - 1) {checkpoint(updated, state, snapshot.index, updated.revision + 1);}
             const hostSaves = snapshot.index === records.length - 1 && beforeUpdate !== undefined
                 && ['applied', 'rejected', 'skipped'].includes(beforeUpdate.outcome);
-            return publish(snapshot, updated, next, { ...result, state, version: updated.version, receipt }, true, hostSaves);
+            const publication = publish(snapshot, updated, next, { ...result, state, version: updated.version, receipt }, true, hostSaves);
+            executionSnapshot = adapter.capture(snapshot.index);
+            return publication;
         }
-        return {
+        const staged = {
             ok: true as const, snapshot: clone(start), bundle: clone(compiled.bundle), roots: clone(history.roots), target: snapshot.target,
-            assertCurrent: () => assertCurrent(snapshot),
+            assertCurrent: () => assertExecutionCurrent(), extensions,
+            async prepare(input: unknown, stage?: RunOptions['stage'], activeSignal?: AbortSignal) {
+                const checked = inspectInput(clone(input), compiled, stage);
+                if (!checked.ok) {return checked;}
+                try {
+                    const prepared = await extensions.prepare(checked.input, stage, mergeAbortSignals(signal, activeSignal) ?? undefined);
+                    return { ok: true as const, prepared };
+                } catch (error) {
+                    return { ok: false as const, diagnostics: [signal?.aborted || activeSignal?.aborted ? { code: 'cancelled' } : diagnostic(error)], extensions: { calls: clone(extensions.calls) } };
+                }
+            },
             async recordBefore(outcome: BeforeUpdate): Promise<Success> {
                 if (replace && snapshot.lastReceiptIndex >= snapshot.index) {
                     assertCurrent(snapshot); consumed = true;
@@ -99,31 +124,67 @@ export function createSettlementService<S extends Snapshot>(adapter: HostAdapter
                 }
                 return commit(success(clone(start)), modelSource('before'), outcome);
             },
-            async run(input: unknown, { preview = true, source = 'api', signal: runSignal, stage: updateStage = preparedStage, beforeUpdate }: ApplyOptions = {}): Promise<Result> {
+            async run(input: unknown, { preview = true, source = 'api', signal: runSignal, stage: updateStage = preparedStage, beforeUpdate, prepared }: ApplyOptions = {}): Promise<Result> {
                 if (consumed) {reject('stage-consumed');}
                 assertCurrent(snapshot); adapter.assertMutable(snapshot);
                 const activeSignal = mergeAbortSignals(signal, runSignal) ?? undefined;
+                if (!preview && prepared !== undefined) {reject('prepared-preview-only');}
+                if (!preview) {await authorize({ signal: activeSignal, stage: updateStage });}
                 if (!preview && replace && snapshot.lastReceiptIndex >= snapshot.index) {
                     consumed = true;
                     const rolledBack = await rollback({ index: snapshot.index, signal: activeSignal });
                     if (rolledBack.saved === false) {return rolledBack;}
                     activeSignal?.throwIfAborted();
-                    return (await stage({ index: snapshot.index, signal: activeSignal })).run(input,
+                    return (await stage({ index: snapshot.index, signal: activeSignal }, runCommitted)).run(input,
                         { preview: false, source, stage: updateStage, signal: activeSignal, beforeUpdate });
                 }
+                if (!preview) {
+                    const checked = inspectInput(clone(input), compiled, updateStage);
+                    if (!checked.ok) {return checked;}
+                    try {prepared = await extensions.prepare(checked.input, updateStage, activeSignal);}
+                    catch (error) {return { ok: false, diagnostics: [diagnostic(error)], extensions: { calls: clone(extensions.calls) } };}
+                }
                 const result = candidate && candidate.stage === updateStage && equal(candidate.input as Json, input as Json)
-                    ? clone(candidate.result) : await settle(compiled, start, input, { signal: activeSignal, stage: updateStage });
-                if (!result.ok) {return result;}
+                    && equal(candidate.prepared as Json, prepared as Json)
+                    ? clone(candidate.result) : await settle(compiled, start, input, { signal: activeSignal, stage: updateStage, prepared });
+                const liveDetails = { calls: [...extensions.calls, ...(result.extensions?.calls || [])] };
+                if (!result.ok) {return { ...result, ...(liveDetails.calls.length ? { extensions: liveDetails } : {}) };}
                 if (Object.keys(result.state as JsonObject).some(root => !history.roots.includes(root))) {reject('unowned-root');}
                 assertCurrent(snapshot); activeSignal?.throwIfAborted();
-                candidate = { input: clone(input), stage: updateStage, result: clone(result) };
-                if (preview) {return { ...result, version: digest(compiled.bundle), committed: false };}
-                return commit(result, source, beforeUpdate);
+                candidate = { input: clone(input), stage: updateStage, prepared: clone(prepared), result: clone(result) };
+                if (preview) {return { ...result, ...(liveDetails.calls.length ? { extensions: liveDetails } : {}), version: digest(compiled.bundle), committed: false };}
+                const precedingCalls = extensions.calls.length;
+                const published = await commit(result, source, beforeUpdate);
+                try { if (runCommitted) {await extensions.committed(published, updateStage, activeSignal, async input => {
+                    assertExecutionCurrent(); activeSignal?.throwIfAborted();
+                    const next = await stage({ index: snapshot.index, signal: activeSignal }, false);
+                    const result = await next.run(input, { preview: false, source: 'script:committed', stage: updateStage, signal: activeSignal });
+                    assertExecutionCurrent = next.assertCurrent;
+                    assertExecutionCurrent();
+                    if (result.ok && result.committed) {
+                        published.state = clone(result.state);
+                        published.changes = displayChanges(difference(start, published.state));
+                        published.actions.push(...clone(result.actions));
+                        published.receipt = { ...published.receipt!, revision: result.receipt!.revision, delta: difference(start, published.state), actions: clone(published.actions) };
+                        published.provenance.push(...clone(result.provenance));
+                        published.diagnostics.push(...clone(result.diagnostics));
+                        if (result.saved === undefined) {delete published.saved;} else {published.saved = result.saved;}
+                        if (result.persistence) {published.persistence = result.persistence;} else {delete published.persistence;}
+                    }
+                    return result;
+                });} }
+                catch (error) { published.diagnostics.push({ ...diagnostic(error), code: 'extension-after-failed' }); }
+                const calls = [...extensions.calls.slice(0, precedingCalls), ...(result.extensions?.calls || []), ...extensions.calls.slice(precedingCalls)];
+                if (calls.length) {published.extensions = { calls };}
+                return published;
             },
         };
+        definitions.set(staged, compiled);
+        return staged;
     }
     return {
-        stage, rollback,
+        stage: (options?: StageOptions) => stage(options), rollback, authorize,
+        compiled: (staged: object) => definitions.get(staged)!,
         async recordBefore(index: number, outcome: BeforeUpdate, options: RunOptions = {}) {
             const staged = await stage({ index, replace: true, ...options });
             return staged.recordBefore(outcome);
@@ -139,10 +200,11 @@ export function createSettlementService<S extends Snapshot>(adapter: HostAdapter
             const snapshot = adapter.capture();
             if (snapshot.history) {reject('already-enabled');}
             const compiled = compileDefinition(adapter.bundle());
+            await authorize({ signal });
             const existing = snapshot.state as JsonObject;
             const start = { ...clone(compiled.definition.initial), ...Object.fromEntries(variableRoots(compiled.definition)
                 .filter(root => Object.hasOwn(existing, root)).map(root => [root, clone(existing[root])])) };
-            const result = await settle(compiled, start, [], { signal });
+            const result = await settle(compiled, start, [], { signal, initialize: true });
             if (!result.ok) {return result;}
             signal?.throwIfAborted();
             const roots = variableRoots(compiled.definition);

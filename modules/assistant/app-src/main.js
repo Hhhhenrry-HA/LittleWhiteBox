@@ -31,10 +31,12 @@ import { createWorkspaceStore } from './workspace/workspace-store.js';
 import { closeAssistantWorkspace } from './workspace/workspace-lifecycle.js';
 import { ACTIVITY_COPY } from './ui/activity-copy.js';
 import { isAssistantMobileDevice, shouldAutoRevealWorkspace } from '../shared/window-layout.js';
+import { isLocalSourceFileModified } from '../shared/local-workspace-kernel.js';
 import { locateFile } from '../../card-workspace/files.js';
 import { COPY as CARD_COPY } from '../../card-workspace/copy.js';
 import { createAttachmentsManager } from './attachments.js';
-import { renderAppChrome, renderContextHint, resolveWorkspaceWidth } from './ui/app-chrome.js';
+import { applyWorkspaceLayout, renderAppChrome, renderContextHint, resolveWorkspaceWidth } from './ui/app-chrome.js';
+import { bindApiPopover, setApiPopoverOpen } from './ui/api-entry.js';
 import { bindContextMeter, renderContextMeter } from './ui/context-meter.js';
 import { buildAppMarkup as buildAssistantAppMarkup } from './ui/app-shell.js';
 import { createChatUi } from './ui/chat-ui.js';
@@ -137,9 +139,9 @@ const state = {
     fileSearchQuery: '',
     showModifiedOnly: false,
     viewerMode: 'current',
-    mobileWorkspacePane: 'tree',
     treeExpandedKeys: [],
     skillTreeExpandedKeys: [],
+    // Only narrow screens use this: the sidebar becomes a closed-by-default drawer.
     sidebarCollapsed: true,
     configPage: 'main',
     configFormSyncPending: true,
@@ -294,25 +296,23 @@ async function closeAssistantAfterWorkspaceFlush() {
     });
 }
 
+function getWorkspaceContainers(root) {
+    return {
+        nav: root.querySelector('#xb-assistant-workspace-nav'),
+        viewer: root.querySelector('#xb-assistant-workspace-panel'),
+    };
+}
+
 function renderWorkspaceOnly() {
     const root = document.getElementById(ROOT_ID);
-    if (!root) return;
-    const workspacePanel = root.querySelector('#xb-assistant-workspace-panel');
-    if (!workspacePanel) return;
-    if (!state.isWorkspaceOpen) {
-        renderWorkspacePanelWhenOpen(workspacePanel, {
-            disabled: state.isBusy || state.isClosingAssistant,
-            onEditorSelectionChange: handleWorkspaceEditorSelectionChange,
-        });
-        renderContextHint(root, state);
-        return;
-    }
+    if (!root?.querySelector('#xb-assistant-workspace-nav')) return;
     if (state.workspacePanelMode === 'memory') {
         ensureSkillSelection({ fallbackToFirst: false });
     } else {
         ensureWorkspaceSelection();
     }
-    renderWorkspacePanelWhenOpen(workspacePanel, {
+    applyWorkspaceLayout(root, state);
+    renderWorkspacePanel(getWorkspaceContainers(root), {
         disabled: state.isBusy || state.isClosingAssistant,
         onEditorSelectionChange: handleWorkspaceEditorSelectionChange,
     });
@@ -327,16 +327,7 @@ function hasOriginalSnapshot(file) {
     return !!file && typeof file.originalContent === 'string';
 }
 
-function isTrackedFileModified(file) {
-    if (!file) return false;
-    if (file.originalContent === null) {
-        return true;
-    }
-    if (typeof file.originalContent === 'string') {
-        return String(file.content || '') !== file.originalContent;
-    }
-    return false;
-}
+const isTrackedFileModified = isLocalSourceFileModified;
 
 function buildSkillPanelSources(skillFiles = state.skillFiles) {
     return [{
@@ -386,7 +377,6 @@ function ensureSkillSelection(options = {}) {
     }
     state.selectedSkillFilePath = '';
     state.viewerMode = 'current';
-    state.mobileWorkspacePane = 'tree';
 }
 
 function setWorkspacePanelMode(mode = 'workspace', options = {}) {
@@ -423,7 +413,6 @@ function selectSkillFile(targetPath = '', options = {}) {
     state.selectedSkillFilePath = selectedFile.path;
     state.viewerMode = 'current';
     state.selectedTreePath = '';
-    state.mobileWorkspacePane = 'viewer';
     if (options.persist !== false) {
         observeBackgroundTask(persistWorkspaceUiState(), { source: import.meta.url, operation: "selectSkillFile" });
     }
@@ -572,7 +561,8 @@ async function editCardFiles(path = '') {
     } catch (error) { showToast(describeError(error)); }
 }
 
-function renderWorkspacePanel(container, options = {}) {
+function renderWorkspacePanel(containers, options = {}) {
+    options = { ...options, showViewer: !!state.isWorkspaceOpen };
     if (state.workspacePanelMode === 'memory') {
         ensureSkillSelection({ fallbackToFirst: false });
         const normalizedSkills = normalizeSkillFiles(state.skillFiles);
@@ -593,15 +583,13 @@ function renderWorkspacePanel(container, options = {}) {
             }
             : rawWorkspaceTree;
         const selectedMatch = findTrackedFileByPath(skillSources, state.selectedSkillFilePath);
-        renderWorkspaceUi(container, {
+        renderWorkspaceUi(containers, {
             ...options,
             localSources: skillSources,
             summary,
             workspaceTree,
             selectedMatch,
             activePanelMode: 'memory',
-            hideNavActions: true,
-            hideTreeActions: true,
             emptyTreeText: summary.fileCount ? WORKSPACE_COPY.emptyFilter : WORKSPACE_COPY.emptyMemory,
             workspaceState: {
                 selectedSourceId: 'all',
@@ -610,11 +598,9 @@ function renderWorkspacePanel(container, options = {}) {
                 fileSearchQuery: state.fileSearchQuery,
                 showModifiedOnly: state.showModifiedOnly,
                 viewerMode: state.viewerMode,
-                mobileWorkspacePane: state.mobileWorkspacePane,
                 treeExpandedKeys: state.skillTreeExpandedKeys,
             },
             isModifiedFile: isTrackedFileModified,
-            hasOriginalSnapshot,
             onSelectPanelMode: (mode) => {
                 setWorkspacePanelMode(mode);
             },
@@ -630,7 +616,7 @@ function renderWorkspacePanel(container, options = {}) {
             onToggleModifiedOnly: (value) => {
                 state.showModifiedOnly = !!value;
                 ensureSkillSelection();
-                observeBackgroundTask(persistWorkspaceUiState(), { source: import.meta.url, operation: "onToggleModifiedOnly" });
+                observeBackgroundTask(persistWorkspaceUiState(), { source: import.meta.url, operation: 'onToggleModifiedOnly' });
                 renderWorkspaceOnly();
             },
             onToggleNode: (nodeKey) => {
@@ -651,9 +637,6 @@ function renderWorkspacePanel(container, options = {}) {
                 observeBackgroundTask(persistWorkspaceUiState(), { source: import.meta.url, operation: "onSetViewerMode" });
                 renderWorkspaceOnly();
             },
-            onShowTree: () => {
-                setMobileWorkspacePane('tree', { render: true });
-            },
             onDownloadFile: (targetPath) => {
                 downloadSkillFile(targetPath);
             },
@@ -661,42 +644,39 @@ function renderWorkspacePanel(container, options = {}) {
                 restoreSkillFile(targetPath);
             },
             onUpdateFileContent: (targetPath, content) => updateSkillFileContent(targetPath, content),
-            onSaveFile: (targetPath) => {
-                observeBackgroundTask(saveSkillFile(targetPath), { source: import.meta.url, operation: "onSaveFile" });
-            },
-            canSaveFile: (file) => isTrackedFileModified(file),
-            showDownloadButton: true,
-            showRestoreButton: true,
-            showRenameButton: false,
-            showDeleteButton: false,
-            showSaveButton: true,
+            primaryFileActions: file => isTrackedFileModified(file)
+                ? [{ action: 'save-file', label: WORKSPACE_COPY.save, primary: true, callback: path => observeBackgroundTask(saveSkillFile(path), { source: import.meta.url, operation: 'onSaveFile' }) }]
+                : [],
         });
         return;
     }
 
-    localSourcesManager.renderWorkspace(container, {
+    localSourcesManager.renderWorkspace(containers, {
         ...options,
         activePanelMode: 'workspace',
         onSelectPanelMode: mode => setWorkspacePanelMode(mode),
-        showDownloadButton: true,
-        showRestoreButton: true,
-        showRenameButton: true,
-        showDeleteButton: true,
-        showSaveButton: !!locateFile(state.selectedFilePath || ''),
-        saveLabel: CARD_COPY.save,
-        canSaveFile: file => !!locateFile(file.path),
-        onSaveFile: path => observeBackgroundTask(editCardFiles(path), { source: import.meta.url, operation: 'saveCardFile' }),
-        extraNavActions: [{ action: 'open-card', icon: 'file', label: CARD_COPY.open,
-            onClick: () => observeBackgroundTask(editCardFiles(), { source: import.meta.url, operation: 'openCardFiles' }) }],
+        createMenuItems: [{ label: CARD_COPY.openCurrent, hint: CARD_COPY.openHint,
+            onSelect: () => observeBackgroundTask(editCardFiles(), { source: import.meta.url, operation: 'openCardFiles' }) }],
+        primaryFileActions: file => {
+            const target = locateFile(file.path);
+            if (!target) return [];
+            return [
+                ...(target.kind === 'variables' ? [
+                    { action: 'state3-check', label: CARD_COPY.checkRules, callback: path => openVariableWorkbench(path, 'rules') },
+                    { action: 'state3-test', label: CARD_COPY.testRules, callback: path => openVariableWorkbench(path, 'test') },
+                ] : []),
+                { action: 'save-file', label: CARD_COPY.save, primary: true,
+                    callback: path => observeBackgroundTask(editCardFiles(path), { source: import.meta.url, operation: 'saveCardFile' }) },
+            ];
+        },
     });
 }
 
-function renderWorkspacePanelWhenOpen(container, options = {}) {
-    if (!container) return;
-    if (!state.isWorkspaceOpen) {
-        return;
-    }
-    renderWorkspacePanel(container, options);
+function openVariableWorkbench(path, tab) {
+    observeBackgroundTask((async () => {
+        if (!await flushPendingWorkspaceChanges()) return;
+        post('xb-assistant:state3-workbench', { path, tab });
+    })(), { source: import.meta.url, operation: 'openVariableWorkbench' });
 }
 
 function openWorkspacePanelTarget(targetPath = '') {
@@ -715,22 +695,6 @@ function openWorkspacePanelTarget(targetPath = '') {
         return true;
     }
     return openWorkspace(normalizedPath);
-}
-
-function toggleWorkspacePanel() {
-    if (state.isWorkspaceOpen) {
-        closeWorkspace();
-        return;
-    }
-    if (state.workspacePanelMode === 'memory') {
-        ensureSkillSelection();
-        if (state.selectedSkillFilePath) {
-            selectSkillFile(state.selectedSkillFilePath, { persist: false });
-            render();
-            return;
-        }
-    }
-    openWorkspace(state.selectedFilePath);
 }
 
 function buildSlashApprovalResult(command, approved) {
@@ -969,7 +933,6 @@ const {
     normalizeLocalSources,
     summarizeLocalSources,
     appendLocalSourceFiles,
-    clearLocalSources,
     applyExternalLocalSources,
     openWorkspace,
     closeWorkspace,
@@ -979,7 +942,6 @@ const {
     flushPendingWorkspaceChanges,
     hasPendingWorkspaceChanges,
     captureRunWorkspaceBaseline,
-    setMobileWorkspacePane,
 } = localSourcesManager;
 
 function describeError(error) {
@@ -1043,6 +1005,12 @@ const {
     syncConfigToForm,
     bindSettingsPanelEvents,
 } = settingsPanel;
+
+// The sidebar row reflects saved settings, not an unsaved form draft.
+function getApiSummary() {
+    const presetName = state.config?.currentPresetName || DEFAULT_PRESET_NAME;
+    return { presetName, model: state.config?.presets?.[presetName]?.model || '' };
+}
 
 function isJsApiPermissionEnabled() {
     return normalizeJsApiPermission(state.config?.jsApiPermission) === 'allow';
@@ -1515,16 +1483,11 @@ function render() {
         maxImageAttachments: MAX_IMAGE_ATTACHMENTS,
         getWorkspaceSummary,
         renderAttachmentGallery,
-        renderWorkspace: renderWorkspacePanelWhenOpen,
+        renderWorkspace: options => renderWorkspacePanel(getWorkspaceContainers(root), options),
+        apiSummary: getApiSummary(),
         onRemoveDraftAttachment: (index) => {
             state.draftAttachments = state.draftAttachments.filter((_, itemIndex) => itemIndex !== index);
             render();
-        },
-        onOpenWorkspace: () => {
-            toggleWorkspacePanel();
-        },
-        onClearLocalSources: () => {
-            observeBackgroundTask(clearLocalSources(), { source: import.meta.url, operation: "onClearLocalSources" });
         },
     });
     syncAgentSettingsPanelFeedback(root, {
@@ -1657,10 +1620,10 @@ function bindEvents(root) {
         setWorkspaceWidth(workspaceResizeLastWidth, { persist: false, render: false });
     };
 
+    // Desktop keeps the sidebar visible; on narrow screens it is a drawer.
     root.querySelector('#xb-assistant-sidebar-toggle')?.addEventListener('click', () => {
         state.sidebarCollapsed = !state.sidebarCollapsed;
-        if (!state.sidebarCollapsed && state.isWorkspaceOpen && window.matchMedia('(max-width: 900px)').matches) closeWorkspace();
-        else render();
+        render();
     });
 
     root.querySelector('#xb-assistant-mobile-close')?.addEventListener('click', () => {
@@ -1671,10 +1634,7 @@ function bindEvents(root) {
         post('xb-assistant:minimize');
     });
 
-    root.querySelector('#xb-assistant-open-workspace')?.addEventListener('click', () => {
-        if (!state.isWorkspaceOpen && window.matchMedia('(max-width: 900px)').matches) state.sidebarCollapsed = true;
-        toggleWorkspacePanel();
-    });
+    bindApiPopover(root);
 
     root.querySelector('#xb-assistant-workspace-backdrop')?.addEventListener('click', () => {
         closeWorkspace();
@@ -2040,11 +2000,11 @@ window.addEventListener('message', (event) => {
     if (data.type === 'xb-assistant:card-workspace') {
         observeBackgroundTask(applyExternalLocalSources(data.payload.localSources).then(() => {
             state.workspacePanelMode = 'workspace';
-            if (!shouldAutoRevealWorkspace()) {
+            const reveal = data.payload.reveal || shouldAutoRevealWorkspace();
+            if (!reveal) {
                 closeWorkspace();
-                state.sidebarCollapsed = true;
             }
-            localSourcesManager.selectWorkspaceFile(data.payload.path, { reveal: shouldAutoRevealWorkspace() });
+            localSourcesManager.selectWorkspaceFile(data.payload.path, { reveal });
             render();
         }),
             { source: import.meta.url, operation: 'openCardWorkspace' });
@@ -2085,19 +2045,23 @@ window.addEventListener('message', (event) => {
 
     if (data.type === 'xb-assistant:compose') {
         const input = document.querySelector('#xb-assistant-input');
-        if (input && !input.value.trim()) {
-            input.value = String(data.payload?.text || '');
+        const text = String(data.payload?.text || '').trim();
+        if (input && text) {
+            if (!input.value.trimEnd().endsWith(text)) {
+                input.value = input.value.trim() ? `${input.value}\n\n${text}` : text;
+            }
             input.dispatchEvent(new Event('input', { bubbles: true }));
             input.focus();
+            input.setSelectionRange(input.value.length, input.value.length);
+            input.scrollTop = input.scrollHeight;
         }
         return;
     }
 
     if (data.type === 'xb-assistant:open-settings') {
-        if (state.sidebarCollapsed) {
-            state.sidebarCollapsed = false;
-            render();
-        }
+        state.sidebarCollapsed = false;
+        render();
+        setApiPopoverOpen(document.getElementById(ROOT_ID), true);
         return;
     }
 

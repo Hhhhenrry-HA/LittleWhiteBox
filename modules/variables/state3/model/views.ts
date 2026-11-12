@@ -7,6 +7,8 @@ import { references } from '../engine/expressions.js';
 
 const authoredRules = (definition: Definition) => definition.rules.map(({ id, kind, path, description }) => ({ id, kind, path: clone(path), description }));
 const authoredConstraints = (definition: Definition) => definition.constraints.map(({ id, description }) => ({ id, description }));
+const authoredScripts = (definition: Definition) => Object.entries(definition.extensions?.scripts || {})
+    .filter(([, entry]) => entry.enabled).map(([phase, { description }]) => ({ phase, description }));
 
 // How the world works around the selected fields: the RP model narrates with
 // these facts, while submission instructions stay in the update view.
@@ -20,6 +22,7 @@ function worldFacts(definition: Definition, paths: Path[]) {
         triggers: (definition.triggers || []).filter(trigger => touches([...references(trigger.when, definition), ...effects(trigger.effects)]))
             .map(({ description }) => description),
         constraints: definition.constraints.filter(constraint => touches(references(constraint.test, definition))).map(({ description }) => description),
+        ...(authoredScripts(definition).length ? { scripts: authoredScripts(definition) } : {}),
     };
 }
 
@@ -51,5 +54,6 @@ export function buildUpdateView(compiled: Compiled, state: Json, stage?: UpdateS
         triggers: (definition.triggers || []).map(({ id, description, timing }) => ({ id, description, timing: timing || 'batch' })),
         rules: authoredRules(definition), constraints: authoredConstraints(definition),
         functions: Object.entries(definition.functions).map(([id, fn]) => ({ id, description: fn.description })),
+        ...(authoredScripts(definition).length ? { scripts: authoredScripts(definition) } : {}),
     };
 }

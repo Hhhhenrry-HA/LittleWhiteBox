@@ -8,7 +8,7 @@ export type Path = string[];
 export type UpdateStage = 'before' | 'after';
 export type Schema = boolean | Record<string, unknown>;
 export interface Expression {
-    literal?: Json; get?: Path; before?: Path; param?: Path;
+    literal?: Json; get?: Path; before?: Path; param?: Path; prepared?: Path;
     op?: string; args?: Expression[]; call?: string;
 }
 export interface Effect { path: Path; value: Expression }
@@ -22,16 +22,26 @@ export interface Definition {
     constraints: { id: string; test: Expression; description: string }[];
     functions: Record<string, { reads: Path[]; description: string }>;
     views: Record<string, { paths: Path[]; description: string }>;
+    extensions?: ExtensionDefinitions;
 }
-export interface Bundle { definition: Definition; functions: Record<string, string> }
+export type ScriptPhase = 'prepare' | 'calculate' | 'committed';
+export interface ExtensionEntry { title: string; description: string; enabled: boolean }
+export interface ToolEntry extends ExtensionEntry { parameters: Schema; stages: UpdateStage[] }
+export interface ExtensionDefinitions { tools?: Record<string, ToolEntry>; scripts?: Partial<Record<ScriptPhase, ExtensionEntry>> }
+export interface Bundle { definition: Definition; functions: Record<string, string>; tools?: Record<string, string>; scripts?: Partial<Record<ScriptPhase, string>> }
+/** Reproduction data lives with the current result only, never in chat history. */
+export interface ExtensionContext { state: Json; beforeState?: Json; stage?: UpdateStage; target?: { floor: number; swipeId: number }; text?: string; prepared?: Json; tools?: { name: string; input: Json; output: Json }[] }
+export interface ExtensionTrace { kind: 'tool' | ScriptPhase; name: string; path: string; input: Json; output?: Json; error?: string; context?: ExtensionContext }
+export interface ExtensionDetails { calls: ExtensionTrace[]; modelRequests?: number }
 export interface CompiledAction extends Action { validate: ValidateFunction }
 export interface Compiled {
     bundle: Bundle; definition: Definition; rules: Rule[];
     actions: Map<string, CompiledAction>;
+    tools: Map<string, ValidateFunction>;
     validate: ValidateFunction;
 }
 export type Operation = ({ op: 'set'; path: Path; value: Json } | { op: 'remove'; path: Path } | { op: 'inc'; path: Path; delta: number } | { action: string; params: JsonObject }) & { [note: string]: unknown };
-export interface Source { kind: 'input' | 'action' | 'derive' | 'correct' | 'trigger'; id?: string; title?: string; description?: string }
+export interface Source { kind: 'input' | 'action' | 'derive' | 'correct' | 'trigger' | 'script'; id?: string; title?: string; description?: string }
 export interface Change { path: Path; before?: Json; after?: Json; removed: boolean }
 export type Comparison = 'eq' | 'ne' | 'lt' | 'lte' | 'gt' | 'gte';
 export interface ConditionValue { kind: 'field' | 'parameter' | 'value'; name?: string; path?: Path; before?: boolean; value?: Json }
@@ -47,7 +57,7 @@ export interface SubmissionItem {
     status: 'static-passed' | 'passed' | 'rejected' | 'unchecked';
     diagnostics?: Diagnostic[];
 }
-export interface Failure { ok: false; diagnostics: Diagnostic[]; items?: SubmissionItem[] }
+export interface Failure { ok: false; diagnostics: Diagnostic[]; items?: SubmissionItem[]; extensions?: ExtensionDetails }
 export interface Success {
     ok: true; state: Json; changes: Change[]; provenance: (Change & { source: Source })[];
     actions: { id: string; params?: JsonObject }[]; diagnostics: Diagnostic[];
@@ -56,9 +66,10 @@ export interface Success {
     /** Live restoration feedback only; never stored in receipts or chat metadata. */
     restoration?: Diagnostic[];
     annotations?: { index: number; path?: Path; action?: string; fields: [string, unknown][] }[];
+    extensions?: ExtensionDetails;
 }
 export type Result = Success | Failure;
-export interface RunOptions { signal?: AbortSignal; stage?: UpdateStage }
+export interface RunOptions { signal?: AbortSignal; stage?: UpdateStage; prepared?: Json; initialize?: boolean }
 export interface EvaluationContext extends RunOptions { bundle: Bundle; before?: Json; state: Json; params: JsonObject; functions?: ReturnType<typeof createFunctionRunner> }
 export interface Receipt {
     id: string; revision: number; source: string; delta: StoredDelta; actions: Success['actions'];

@@ -1,5 +1,7 @@
 /* global Buffer */
 import { createTestModuleUrl } from './helpers/bundle-module.js';
+import { entry } from './helpers/story-summary-entry.js';
+import { orphanVectorIds } from '../vector/utils/vector-source.js';
 import assert from 'node:assert/strict';
 import { beforeEach, after, test } from 'node:test';
 import { readFile } from 'node:fs/promises';
@@ -43,6 +45,9 @@ const bundled = await build({
         "export * from './modules/story-summary/vector/pipeline/chunk-maintenance.js';",
         "export * from './modules/story-summary/vector/pipeline/chunk-repair.js';",
         "export * from './modules/story-summary/vector/pipeline/event-vector-input.js';",
+        "export * from './modules/story-summary/vector/utils/embedder.js';",
+        "export * from './modules/story-summary/maintenance/indexes.js';",
+        "export { getSummaryStore } from './modules/story-summary/data/store.js';",
         "export { db } from './modules/story-summary/data/db.js';",
     ].join('\n') },
     bundle: true, write: false, format: 'esm', platform: 'node',
@@ -90,6 +95,120 @@ async function createBytes() { await seedCache(); return (await mod.createVector
 function maintainL1(options = {}) {
     return mod.maintainChunks({ targetChatId: fixture.chatId, chatSnapshot: host.context.chat, vectorConfig: host.config, ...options });
 }
+
+// Acceptance (cost: wrong recalled memory / repeated paid embedding):
+// - Repair updates changed inputs and removes orphan caches, preserving healthy rows and source memory.
+// - Maintenance repair includes deleted targets, and repeated repair makes no model request.
+// - Partial failure/cancellation preserves completed work and retries only unfinished inputs.
+function repairAll() {
+    const boundary = entry(['repairVectorsNow', 'repairMissingEventVectorsNow', 'repairMissingEventVectorsInner'], {
+        structuredClone, ...mod.store, ...mod.coordinator,
+        getContext: () => host.context, getVectorConfig: () => host.config,
+        getSummaryStore: () => memory().storySummary, isStorySummaryEnabledForCurrentChat: () => true,
+        getEngineFingerprint: mod.getEngineFingerprint, embed: mod.embed,
+        inputDigest: mod.inputDigest,
+        selectMissingEventVectorPairs: mod.selectMissingEventVectorPairs, buildEventVectorText: mod.buildEventVectorText,
+        orphanVectorIds, saveEventVectorsToDb: mod.store.saveEventVectors,
+        repairMissingChunks: mod.repairMissingChunks, vectorizeMissingStateAtoms: mod.pipeline.vectorizeMissingStateAtoms,
+        trackVectorActivity: async (_options, run) => run({ update() {} }),
+        postToFrame() {}, addChunkDocuments() {}, scheduleLexicalWarmup() {},
+        isChatStale: chatId => host.context.chatId !== chatId, sendVectorStatsToFrame: async () => {},
+        executeSlashCommand: async () => {}, shouldNotifyMemoryFailure: () => true,
+        formatSafeFailure: code => code, getVectorFailureAdvice: code => code,
+        xbLog: { info() {}, warn() {} }, MODULE_ID: 'repair-fixture',
+    });
+    return mod.coordinator.runVectorGenerationTask({ chatId: fixture.chatId, operationId: 'repair-fixture' },
+        session => boundary.repairVectorsNow(host.config, fixture.chatId, session));
+}
+
+test('ordinary repair updates only stale saved inputs across all layers, then remains idle', async () => {
+    host.context.chat.push({ mes: 'Healthy material.' });
+    memory().stateAtoms.push({ ...structuredClone(fixture.atoms[0]), atomId: 'healthy-atom', floor: 1 });
+    memory().storySummary.json.events.push({ ...fixture.events[0], id: 'healthy-event' });
+    await seedCache();
+    const healthy = await Promise.all([db.chunkVectors.get([fixture.chatId, 'c-1-0']),
+        db.stateVectors.get([fixture.chatId, 'healthy-atom']), db.eventVectors.get([fixture.chatId, 'healthy-event'])]);
+    await db.chunks.update([fixture.chatId, 'c-0-0'], { text: 'Changed saved chunk.' });
+    memory().stateAtoms[0].semantic = 'Changed anchor.';
+    memory().stateAtoms[0].edges[0].r = 'Changed relation';
+    memory().storySummary.json.events[0].summary = 'Changed event.';
+    const metadata = structuredClone(host.metadata);
+    const before = await mod.checkVectorCacheConsistency();
+    assert.equal(before.repairable, true);
+    assert.equal(mod.buildVectorIntegrityIssues({ cacheInconsistent: true, cacheRepairable: before.repairable })[0].action, 'fill');
+    await repairAll();
+    assert.deepEqual(host.embeddingInputs.sort(), ['Changed saved chunk.', 'Changed anchor.', 'Changed relation', 'Library visit Changed event.'].sort());
+    assert.equal((await mod.checkVectorCacheConsistency()).status, 'consistent');
+    assert.deepEqual(await Promise.all([db.chunkVectors.get([fixture.chatId, 'c-1-0']),
+        db.stateVectors.get([fixture.chatId, 'healthy-atom']), db.eventVectors.get([fixture.chatId, 'healthy-event'])]), healthy);
+    assert.deepEqual(host.metadata, metadata);
+    const cache = await cacheSnapshot();
+    host.embeddingInputs = [];
+    await repairAll();
+    assert.deepEqual(host.embeddingInputs, []);
+    assert.deepEqual(await cacheSnapshot(), cache);
+});
+
+for (const maintenance of [false, true]) test(`${maintenance ? 'maintenance' : 'ordinary'} repair removes deleted source vectors without embedding`, async () => {
+    await seedCache();
+    const impact = { eventIds: fixture.events.map(event => event.id), atomIds: fixture.atoms.map(atom => atom.atomId) };
+    for (const table of [db.stateVectors, db.eventVectors]) {
+        await table.bulkPut((await table.toArray()).map(row => ({ ...row, chatId: 'other-chat' })));
+    }
+    const other = await Promise.all([db.stateVectors.where('chatId').equals('other-chat').toArray(), db.eventVectors.where('chatId').equals('other-chat').toArray()]);
+    memory().stateAtoms = [];
+    memory().storySummary.json.events = [];
+    if (maintenance) mod.getSummaryStore();
+    const metadata = structuredClone(host.metadata);
+    assert.equal((await mod.checkVectorCacheConsistency()).repairable, true);
+    if (maintenance) {
+        assert.equal((await mod.inspectMaintenanceIndexes(fixture.chatId, impact)).status, 'pending');
+        assert.equal((await mod.repairMaintenanceIndexes(fixture.chatId, impact)).status, 'ready');
+        assert.equal((await mod.inspectMaintenanceIndexes(fixture.chatId, impact)).status, 'ready');
+    } else await repairAll();
+    assert.equal((await mod.checkVectorCacheConsistency()).status, 'consistent');
+    assert.deepEqual(host.embeddingInputs, []);
+    assert.deepEqual(host.metadata, metadata);
+    assert.deepEqual(await Promise.all([db.stateVectors.where('chatId').equals('other-chat').toArray(), db.eventVectors.where('chatId').equals('other-chat').toArray()]), other);
+});
+
+test('ordinary repair removes an L1 vector with no remaining material without reembedding healthy chunks', async () => {
+    await seedCache();
+    await mod.store.saveChunkVectors(fixture.chatId, [{ chunkId: 'c-99-0', vector: [1, 0], sourceHash: mod.inputDigest('chunk', 'removed') }], fixture.fingerprint);
+    await repairAll();
+    assert.equal(await db.chunkVectors.get([fixture.chatId, 'c-99-0']), undefined);
+    assert.deepEqual(host.embeddingInputs, []);
+    assert.equal((await mod.checkVectorCacheConsistency()).status, 'consistent');
+});
+
+test('maintenance and ordinary repair agree on stale inputs and do not rebuy healthy vectors', async () => {
+    await seedCache();
+    memory().stateAtoms[0].edges[0].r = 'changed relation';
+    memory().storySummary.json.events[0].summary = 'changed event';
+    const impact = { eventIds: fixture.events.map(event => event.id), atomIds: fixture.atoms.map(atom => atom.atomId) };
+    await mod.repairMaintenanceIndexes(fixture.chatId, impact);
+    assert.equal((await mod.checkVectorCacheConsistency()).status, 'consistent');
+    assert.equal(host.embeddingInputs.length, 3);
+    host.embeddingInputs = [];
+    await repairAll();
+    await mod.repairMaintenanceIndexes(fixture.chatId, impact);
+    assert.deepEqual(host.embeddingInputs, []);
+});
+
+test('retry after partial repair failure never repeats already successful L1 or L2 requests', async () => {
+    await seedCache();
+    await db.chunks.update([fixture.chatId, 'c-0-0'], { text: 'changed chunk' });
+    memory().stateAtoms[0].semantic = 'changed anchor';
+    memory().storySummary.json.events[0].summary = 'changed event';
+    host.onEmbed = texts => { if (texts.includes('changed anchor')) throw new Error('fixture embedding failure'); };
+    await repairAll();
+    assert.equal((await mod.checkVectorCacheConsistency()).status, 'inconsistent');
+    host.embeddingInputs = [];
+    host.onEmbed = null;
+    await repairAll();
+    assert.deepEqual(host.embeddingInputs, ['changed anchor', 'greets']);
+    assert.equal((await mod.checkVectorCacheConsistency()).status, 'consistent');
+});
 
 for (const mode of ['incremental', 'repair']) test(`${mode} model wait does not block local writes or refill cleared chunks`, async () => {
     let release, entered, configRead = false;

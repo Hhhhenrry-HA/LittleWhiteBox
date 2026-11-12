@@ -8,13 +8,14 @@ import { equipmentExample } from '../definition/example.js';
 import { compileDefinition } from '../definition/compile.js';
 import { digest } from '../definition/digest.js';
 import { modelSource } from '../definition/stages.js';
-import { beforeReceipt, beforeOutcome } from '../runtime/before-result.js';
+import { beforeReceipt, beforeOutcome, beforeFloorOutcome } from '../runtime/before-result.js';
 import { buildUpdateTask, beforeProsePrompt } from '../model/prompts.js';
 import { correctionTask } from '../../updater/correction.js';
 import { mergeAbortSignals } from '../../../../shared/common/abort-utils.js';
 import { diagnostic, reject } from '../engine/diagnostics.js';
 import { runFunctionInVm, type FunctionOptions } from '../engine/functions-vm.js';
 import { CHAT_KEY } from '../definition/format.js';
+import { activeTools, TOOL_CALL_LIMIT } from '../extensions/definition.js';
 import type { createBeforeGeneration } from '../runtime/before-generation.js';
 import type { createState3Updater } from '../model/updater.js';
 import type { ChatMessage } from '../runtime/host.js';
@@ -45,8 +46,8 @@ async function harness() {
     let answer: () => unknown | Promise<unknown> = () => ({ completion: 'complete', truncated: false, text: '',
         toolCalls: [{ name: 'write', arguments: JSON.stringify({ state: [{ action: 'unequip', params: {} }] }) }] });
     const env = {
-        getContext: ctx, latestUserIndex, digest, modelSource, beforeReceipt, beforeOutcome, beforeProsePrompt,
-        compileDefinition, buildUpdateTask, correctionTask, mergeAbortSignals, diagnostic, reject, CHAT_KEY,
+        getContext: ctx, latestUserIndex, digest, modelSource, beforeReceipt, beforeOutcome, beforeFloorOutcome, beforeProsePrompt,
+        compileDefinition, buildUpdateTask, correctionTask, mergeAbortSignals, diagnostic, reject, CHAT_KEY, activeTools, TOOL_CALL_LIMIT,
         AbortController, setTimeout, structuredClone, Promise, isGenerating: () => generating, inGroup: () => false,
         document: { getElementById: () => ({ value: composer }) },
         state3Selected: () => selected, passageText: (text: string) => text, exposeVariableReads: () => () => {},
@@ -381,6 +382,16 @@ test('B5: failed requests persist without prose, explicit skip resumes, valid re
     h.reopen(); await h.generate('regenerate');
     assert.deepEqual(JSON.parse(h.prose.at(-1)!.prompt.split('\n').slice(1).join('\n')), rejected);
     assert.equal(h.requests.length, 3);
+});
+
+test('X8: before failure keeps extension diagnostics available without adding them to history', async t => {
+    const h = await harness(); t.after(() => h.dispose());
+    const extensions = { calls: [{kind:'prepare' as const,name:'prepare',path:'variables/scripts/prepare.js',input:[],error:'unavailable'}],modelRequests:1 };
+    h.updater.update = async () => ({ok:false,diagnostics:[{code:'extension-execution',path:'variables/scripts/prepare.js'}],extensions});
+    await h.generate('normal','Try the extension.'); await h.drain();
+    assert.deepEqual(h.results.at(-1)!.extensions,extensions);
+    assert.equal(h.prose.length,0);
+    assert.equal('extensions' in h.f.saved().records[1].entries[0],false);
 });
 
 // B10: empty/skip/undo outcomes stay out of prose while their receipts prevent

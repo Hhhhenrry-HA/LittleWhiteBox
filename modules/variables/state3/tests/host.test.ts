@@ -9,10 +9,10 @@ import { createSaveQueue } from '../runtime/persistence.js';
 import { clone, equal } from '../engine/data.js';
 import { readVariables, writeVariables, variableRoots } from '../runtime/variables.js';
 import { reject, diagnostic } from '../engine/diagnostics.js';
-import { receiptResult } from '../runtime/history.js';
+import { recordResult } from '../runtime/history.js';
 import { digest } from '../definition/digest.js';
 import { modelSource } from '../definition/stages.js';
-import { beforeReceipt, beforeOutcome } from '../runtime/before-result.js';
+import { beforeReceipt, beforeOutcome, beforeFloorOutcome } from '../runtime/before-result.js';
 import { compileDefinition } from '../definition/compile.js';
 import { decodeBundle } from '../definition/card-files.js';
 import { equipmentExample } from '../definition/example.js';
@@ -22,6 +22,7 @@ import type { Context, ChatMessage, createHostAdapter } from '../runtime/host.js
 import { accepted } from './fixture.js';
 import { runFunctionInVm } from '../engine/functions-vm.js';
 import type { Bundle } from '../types.js';
+import { activeTools, TOOL_CALL_LIMIT } from '../extensions/definition.js';
 
 const source = (file: string) => ts.transpileModule(readFileSync(new URL('../' + file, import.meta.url), 'utf8'), {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
@@ -58,18 +59,19 @@ function runtimeHarness(bundle: Bundle | null = equipmentExample(), initialMode 
     const agentWindow = { xiaobaixAgent: { openSession: async () => ({ chat: async () => { requests++; requested(); return response; }, dispose() {} }) } };
     const { createState3Updater } = runInNewContext(source('model/updater.ts') + '\n({createState3Updater})', {
         getContext: () => h.ctx, exposeVariableReads: () => () => {}, captureContext: async () => ({}), passageText: (text: string) => text,
-        compileDefinition, buildUpdateTask: () => ({}), SUBMIT_TOOL: 'write', ...settings, reject, diagnostic,
-        digest, modelSource, beforeReceipt, beforeOutcome, mergeAbortSignals, latestUserIndex: h.exports.latestUserIndex,
+        compileDefinition, buildUpdateTask: () => ({}), SUBMIT_TOOL: 'write', ...settings, reject, diagnostic, activeTools, TOOL_CALL_LIMIT,
+        digest, modelSource, beforeReceipt, beforeOutcome, beforeFloorOutcome, mergeAbortSignals, latestUserIndex: h.exports.latestUserIndex,
         AbortController, structuredClone, window: agentWindow, correctionTask() { throw new Error('unexpected correction'); },
     });
     const event_types = Object.fromEntries(['CHAT_CHANGED', 'MESSAGE_DELETED', 'MESSAGE_SWIPED', 'MESSAGE_EDITED', 'SETTINGS_UPDATED',
         'CHARACTER_MESSAGE_RENDERED', 'GENERATION_STARTED', 'MESSAGE_RECEIVED', 'GENERATION_ENDED', 'CHAT_CREATED'].map(key => [key, key]));
     const emitted: { state: unknown }[] = [], resumed: number[] = [];
     const env = {
+        authorizeExtensions: async () => {}, assertExtensionTrust: async () => {}, revokeExtensionTrust() {}, extensionTrust: () => 'unused',
         ...settings, createModuleEvents: () => ({ on: (key: string, fn: (...args: unknown[]) => unknown) => handlers.set(key, fn), cleanup: () => handlers.clear() }), event_types,
         observeBackgroundTask(p: Promise<unknown>) { pending.add(p); p.then(() => pending.delete(p), () => pending.delete(p)); },
         isGenerating: () => false, waitForAfterAiReady: ready, createSettlementService,
-        ...h.exports, getContext: () => h.ctx, compileDefinition, diagnostic, reject, receiptResult, CHAT_KEY, CARD_EXTENSION, digest,
+        ...h.exports, getContext: () => h.ctx, compileDefinition, diagnostic, reject, recordResult, CHAT_KEY, CARD_EXTENSION, digest,
         exportRules() {}, prepareRuleImport() {}, importRules() {}, onRulesSaved: () => () => {},
         createState3Macros: () => ({ clear() {}, set() { if (disposed) {lateMacros++;} }, dispose() {} }),
         createState3Updater,
@@ -298,15 +300,18 @@ test('B9: a late save retry never resumes another chat or replaces its result', 
         const result = accepted(await h.api.apply([], { index: 0, source: modelSource('before'), stage: 'before',
             beforeUpdate: { inputDigest: digest(h.message.mes), outcome: 'applied', diagnostics: [] } }));
         assert.equal(result.saved, false);
+        // A preview in between must not hide the pending save from lastResult().
+        accepted(await h.api.preview([]));
+        assert.equal(h.api.lastResult(), result);
         let started!: () => void, release!: () => void;
         const saving = new Promise<void>(resolve => { started = resolve; }), gate = new Promise<void>(resolve => { release = resolve; });
         h.ctx.saveChat = async () => { started(); await gate; };
         const retrying = h.api.retrySave(); await saving;
-        let current = result;
+        let current: typeof result | undefined = result;
         if (switchChat) {
             h.ctx.chat = [{ mes: 'another chat', extra: {} }]; h.ctx.chatMetadata = clone(h.ctx.chatMetadata); h.ctx.chatId = 'another';
             await h.handlers.get('CHAT_CHANGED')!(); await h.drain();
-            current = accepted(await h.api.preview([]));
+            current = h.api.lastResult();
         }
         release(); await retrying; await h.drain();
         assert.deepEqual(h.resumed, switchChat ? [] : [0]);
@@ -349,10 +354,11 @@ test('K14/K13: native silent swipe recovery restores values and controls without
     const event_types = Object.fromEntries(['CHAT_CHANGED', 'MESSAGE_DELETED', 'MESSAGE_SWIPED', 'MESSAGE_EDITED', 'SETTINGS_UPDATED',
         'CHARACTER_MESSAGE_RENDERED', 'GENERATION_STARTED', 'MESSAGE_RECEIVED', 'GENERATION_ENDED', 'CHAT_CREATED'].map(key => [key, key]));
     const env = {
+        authorizeExtensions: async () => {}, assertExtensionTrust: async () => {}, revokeExtensionTrust() {}, extensionTrust: () => 'unused',
         createModuleEvents: () => ({ on: (key: string, fn: (...args: unknown[]) => unknown) => handlers.set(key, fn), cleanup: () => handlers.clear() }), event_types,
         observeBackgroundTask(p: Promise<unknown>) { pending.add(p); p.then(() => pending.delete(p), () => pending.delete(p)); },
         isGenerating: () => false, waitForAfterAiReady: async () => true, createSettlementService,
-        ...h.exports, getContext: () => h.ctx, compileDefinition, diagnostic, reject, receiptResult, CHAT_KEY, CARD_EXTENSION, digest,
+        ...h.exports, getContext: () => h.ctx, compileDefinition, diagnostic, reject, recordResult, CHAT_KEY, CARD_EXTENSION, digest,
         createBeforeGeneration: () => ({ status: () => ({ phase: 'ready', busy: false }), cancel() {}, changed() {}, dispose() {} }),
         exportRules() {}, prepareRuleImport() {}, importRules() {}, onRulesSaved: () => () => {}, state3Selected: () => true, selectState3() {},
         readSettings: () => ({ auto: mode === 'auto', source: 'main' }), saveSettings() {},

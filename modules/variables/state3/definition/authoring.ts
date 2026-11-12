@@ -4,9 +4,8 @@ import { runCardFiles } from '../../../card-workspace/service.js';
 import { currentCard, readCharacter, replaceVariableBundle } from '../../../card-workspace/host.js';
 import { readFiles } from '../../../card-workspace/workspace.js';
 import { workspaceRepository } from '../../../assistant/shared/workspace-repository.js';
-import { upsertLocalSourceFile } from '../../../assistant/shared/local-workspace-kernel.js';
+import { upsertLocalSourceFile, removeLocalSourcePath } from '../../../assistant/shared/local-workspace-kernel.js';
 import { buildWorkspacePreconditions } from '../../../assistant/shared/workspace-preconditions.js';
-import { INTERNAL_WORKSPACE_TOOL_NAMES } from '../../../assistant/shared/workspace-protocol.js';
 import { CARD_EXTENSION, DEFINITION_FILE } from './format.js';
 import { variableBundleFromFiles, decodeBundle, type CardFile } from './card-files.js';
 import { digest } from './digest.js';
@@ -23,21 +22,25 @@ export async function openDraft() {
 
 export async function saveDraft(draft: Draft, updates: CardFile[]) {
     if (currentCard().avatar !== draft.avatar) {reject('stale-target');}
-    const args = { files: updates };
+    const args = { path: `${draft.root}variables/` };
     const sources = (await workspaceRepository.readWorkspace()).localSources;
-    const observed = buildWorkspacePreconditions(INTERNAL_WORKSPACE_TOOL_NAMES.BATCH_WRITE_FILES, args, sources);
+    const observed = buildWorkspacePreconditions('Delete', args, sources);
+    const removed = draft.files.filter(file => !updates.some(update => update.path === file.path));
+    const currentFiles = new Map((await readFiles()).map(file => [file.path, file]));
     // The editor's observed contents, not a fresh read, protect assistant edits
     // made while this page was open. Imports/save receipts alone advance baseline.
-    for (const file of updates) {
-        const current = (await readFiles()).find(item => item.path === file.path);
+    for (const file of [...updates, ...removed]) {
+        if (!file.path.startsWith(args.path)) {reject('draft-conflict', { path: file.path });}
+        const current = currentFiles.get(file.path);
         const original = draft.files.find(item => item.path === file.path);
         if ((current?.content ?? null) !== (original?.content ?? null) && current?.content !== file.content) {reject('draft-conflict', { path: file.path });}
     }
     const result = await workspaceRepository.commitWorkspaceMutation({
-        name: INTERNAL_WORKSPACE_TOOL_NAMES.BATCH_WRITE_FILES, args, preconditions: observed,
+        name: 'Delete', args, preconditions: observed,
         signal: undefined, retryContent: undefined,
         execute: async (sources: Awaited<ReturnType<typeof workspaceRepository.readWorkspace>>['localSources']) => {
             let nextSources: Parameters<typeof upsertLocalSourceFile>[0] = sources;
+            for (const file of removed) {nextSources = removeLocalSourcePath(nextSources, file.path).nextSources;}
             for (const file of updates) {nextSources = upsertLocalSourceFile(nextSources, file.path, file.content).nextSources;}
             return { result: { ok: true }, nextSources };
         },
@@ -47,13 +50,14 @@ export async function saveDraft(draft: Draft, updates: CardFile[]) {
 }
 
 export function draftBundle(draft: Draft) { return variableBundleFromFiles(draft.root, draft.files); }
-export async function checkDraft(draft: Draft, input: unknown = [], { signal, state, stage }: RunOptions & { state?: Json } = {}): Promise<Result> {
+export async function checkDraft(draft: Draft, input: unknown = [], { signal, state, stage, prepared, checkOnly = false }: RunOptions & { state?: Json; checkOnly?: boolean } = {}): Promise<Result> {
     try {
         const compiled = compileDefinition(draftBundle(draft));
-        if (state !== undefined) {return settle(compiled, state, input, { signal, stage });}
+        if (checkOnly) {return initialize(compiled, { signal });}
+        if (state !== undefined) {return settle(compiled, state, input, { signal, stage, prepared });}
         const initial = await initialize(compiled, { signal });
         if (!initial.ok) {return initial;}
-        return settle(compiled, initial.state, input, { signal, stage });
+        return settle(compiled, initial.state, input, { signal, stage, prepared });
     } catch (error) {return { ok: false, diagnostics: [diagnostic(error)] };}
 }
 export async function saveCardDraft(draft: Draft) {

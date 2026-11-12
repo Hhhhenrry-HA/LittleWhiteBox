@@ -17,6 +17,8 @@ const PATHS = {
     download: ['M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5'],
     restore: ['M3 3v5h5', 'M3 8a9 9 0 1 1 0 8'],
     save: ['M4 3h12l4 4v14H4Z', 'M8 3v6h7V3M8 21v-7h8v7'],
+    plus: ['M12 5v14M5 12h14'],
+    more: ['M7.2 12a1.2 1.2 0 1 1-2.4 0 1.2 1.2 0 0 1 2.4 0Z', 'M13.2 12a1.2 1.2 0 1 1-2.4 0 1.2 1.2 0 0 1 2.4 0Z', 'M19.2 12a1.2 1.2 0 1 1-2.4 0 1.2 1.2 0 0 1 2.4 0Z'],
 };
 
 export function chromeIcon(name) {

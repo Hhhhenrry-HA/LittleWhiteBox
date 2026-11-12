@@ -1,5 +1,5 @@
-import type { Compiled, Json, JsonObject, Result, RunOptions, EvaluationContext, Success, Source, SubmissionItem } from '../types.js';
-import { changes, clone, assertJson, pathOf, setAt, equal } from './data.js';
+import type { Compiled, Json, JsonObject, Path, Result, RunOptions, EvaluationContext, Success, Source, SubmissionItem } from '../types.js';
+import { changes, clone, assertJson, pathOf, setAt, equal, overlaps } from './data.js';
 import { evaluate, explainCondition } from './expressions.js';
 import { reject, diagnostic } from './diagnostics.js';
 import { difference } from './difference.js';
@@ -9,17 +9,22 @@ import { applyDirectInput, inputFields, inspectInput, validateActionParameters }
 import { validateState } from './validation.js';
 import { authorize } from './permissions.js';
 import { createFunctionRunner } from './functions.js';
+import { activeScript, extensionPath } from '../extensions/definition.js';
 
 // A runaway, non-repeating trigger chain must also return control to the player.
 export const TRIGGER_ROUND_LIMIT = 1024;
 
 // No storage, host events, or publication here. The returned candidate belongs to
 // the caller; every path (including preview) executes this same settlement.
-export async function settle(compiled: Compiled, start: Json, input: unknown, { signal, stage }: RunOptions = {}): Promise<Result> {
+export async function settle(compiled: Compiled, start: Json, input: unknown, { signal, stage, prepared, initialize: initializing }: RunOptions = {}): Promise<Result> {
     const provenance: Success['provenance'] = [], actions: Success['actions'] = [];
     let operationIndex: number | undefined;
     let ruleId: string | undefined;
     let items: SubmissionItem[] | undefined;
+    let extensions: Success['extensions'];
+    let calculating = false;
+    let calculatedPaths: Path[] = [];
+    const scriptIssue = (cause: ReturnType<typeof diagnostic>) => ({ code: 'extension-calculation', path: extensionPath('calculate'), cause });
     const functions = createFunctionRunner();
     try {
         signal?.throwIfAborted();
@@ -30,7 +35,7 @@ export async function settle(compiled: Compiled, start: Json, input: unknown, { 
         const operations = checked.input;
         items = operations.map(item => ({ item, status: 'unchecked' }));
         const before = clone(start), state = clone(start);
-        const context: EvaluationContext = { bundle: compiled.bundle, before, state, params: {}, signal, functions };
+        const context: EvaluationContext = { bundle: compiled.bundle, before, state, params: {}, signal, functions, prepared };
         const record = (previous: Json, source: Source) => {
             const definition = source.kind === 'action' ? compiled.actions.get(source.id!)
                 : source.kind === 'trigger' ? compiled.definition.triggers?.find(item => item.id === source.id)
@@ -138,24 +143,56 @@ export async function settle(compiled: Compiled, start: Json, input: unknown, { 
         operationIndex = undefined;
         context.params = {};
         await stabilize();
+        if (!initializing && activeScript(compiled.bundle, 'calculate')) {
+            calculating = true;
+            ruleId = 'calculate';
+            const scriptInput: Json = { submission: operations, prepared: prepared ?? null };
+            extensions = { calls: [{ kind: 'calculate', name: 'calculate', path: extensionPath('calculate'), input: scriptInput,
+                context: { state: clone(state), beforeState: clone(before), ...(stage ? { stage } : {}) } }] };
+            const edits = await functions.run({ id: 'calculate', source: compiled.bundle.scripts!.calculate!, input: scriptInput,
+                reads: Object.keys(compiled.definition.initial).map(key => [key]), state, beforeState: before, signal });
+            extensions.calls[0].output = edits;
+            if (!Array.isArray(edits) || edits.some(item => item && typeof item === 'object' && 'action' in item)) {reject('extension-result', { path: extensionPath('calculate') });}
+            const checkedEdits = inspectInput(edits, compiled);
+            if (!checkedEdits.ok) {const { code, ...detail } = checkedEdits.diagnostics[0]; reject(code, detail);}
+            const previous = clone(state);
+            for (const edit of checkedEdits.input) {
+                if (!Object.hasOwn(compiled.definition.initial, pathOf(edit.path)[0])) {reject('unowned-root');}
+                applyDirectInput(state, edit);
+            }
+            authorize(compiled, previous, state, 'calculate');
+            record(previous, { kind: 'script', id: 'calculate', ...compiled.definition.extensions!.scripts!.calculate! });
+            await stabilize();
+            calculatedPaths = changes(previous, state).map(change => change.path);
+            calculating = false;
+            ruleId = undefined;
+        }
         await trigger('batch');
         const errors = await validateState(compiled, context);
-        if (errors.length) {return { ok: false, diagnostics: [errors[0]], items };}
+        if (errors.length) {
+            const issue = errors[0];
+            const fields = issue.fields as { path: Path }[] | undefined;
+            const calculationFailed = fields?.some(field => calculatedPaths.some(path => overlaps(path, field.path)));
+            if (calculationFailed) { extensions!.calls[0].error = issue.code; }
+            return { ok: false, diagnostics: [calculationFailed ? scriptIssue(issue) : issue], items, ...(extensions ? {extensions} : {}) };
+        }
         signal?.throwIfAborted();
         const annotations = operations.flatMap((operation, index) => {
             const fields = Object.entries(operation).filter(([name]) => !inputFields(operation).includes(name));
             return fields.length ? [{ index, ...(operation.action ? { action: String(operation.action) } : { path: pathOf(operation.path) }), fields }] : [];
         });
-        return { ok: true, state, changes: displayChanges(difference(before, state)), provenance, actions, diagnostics: [], ...(annotations.length ? { annotations } : {}) };
+        return { ok: true, state, changes: displayChanges(difference(before, state)), provenance, actions, diagnostics: [], ...(annotations.length ? { annotations } : {}), ...(extensions ? { extensions } : {}) };
     } catch (error) {
         const detail = diagnostic(error);
-        const issue = signal?.aborted ? { code: 'cancelled' } : { ...detail,
+        const issue = signal?.aborted ? { code: 'cancelled' } : calculating ? scriptIssue(detail) : { ...detail,
+            ...(ruleId === 'calculate' ? { path: extensionPath('calculate') } : {}),
             ...(ruleId && !detail.rule ? { rule: ruleId } : {}),
             ...(operationIndex === undefined ? {} : { operation: operationIndex, path: detail.path ?? (items?.[operationIndex].item as JsonObject)?.path }),
         };
         if (items && operationIndex !== undefined) {items[operationIndex] = { ...items[operationIndex], status: 'rejected', diagnostics: [issue] };}
-        return { ok: false, diagnostics: [issue], ...(items ? { items } : {}) };
+        if (extensions && calculating) {extensions.calls[0].error = String(detail.message || detail.code);}
+        return { ok: false, diagnostics: [issue], ...(items ? { items } : {}), ...(extensions ? {extensions} : {}) };
     } finally { functions.dispose(); }
 }
 
-export const initialize = (compiled: Compiled, options: RunOptions = {}) => settle(compiled, compiled.definition.initial, [], options);
+export const initialize = (compiled: Compiled, options: RunOptions = {}) => settle(compiled, compiled.definition.initial, [], { ...options, initialize: true });

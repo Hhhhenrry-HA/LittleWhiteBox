@@ -7,6 +7,8 @@ import * as runtimeModule from '../runtime-src/jsapi-runtime.js';
 import { JSAPI_ABORTED, JSAPI_CANCEL_NOTICE } from '../shared/jsapi-contract.js';
 import { toolOutcome } from '../app-src/ui/tool-activity.js';
 import { createHostToolRequestController } from '../app-src/runtime/host-tool-requests.js';
+import { executeJavaScriptApi } from '../runtime-src/jsapi-execution.js';
+import { parseJavaScriptApi } from '../runtime-src/jsapi-analysis.js';
 
 // 验收契约（只覆盖高代价边界）：
 // 正常读写与原生 JS 语义一致，真正修改不冒充只读；代价：协议错误、越权修改。
@@ -22,6 +24,22 @@ const deferred = () => {
     const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
     return { promise, resolve, reject };
 };
+
+test('syntax failures retain the location in the authored body', () => {
+    assert.throws(() => parseJavaScriptApi('const a = 1;\nconst b = ;'), error => {
+        assert.equal(error.loc.line, 2); assert.equal(error.loc.column, 10);
+        assert.equal(error.pos, 23); return true;
+    });
+});
+
+test('script exceptions preserve null and undefined instead of replacing them with wrapper failures', async () => {
+    for (const value of [null, undefined, 42]) {
+        let caught = false;
+        try {await executeJavaScriptApi('throw ctx.value;', {ctx:{value},st:{}});}
+        catch(error) {caught=true; assert.equal(error,value);}
+        assert.equal(caught,true);
+    }
+});
 
 test('ordinary data access, creation and JavaScript syntax have native results', async () => {
     const samples = [

@@ -59,7 +59,7 @@ test('old-window UI saves cannot overwrite new content; two connections retain d
     const oldState = await rb.readWorkspace();
     const ui = createWorkspaceStore({ state: oldState, repository: rb });
     assert.equal((await commit(ra, 'Write', { path: fileA, content: 'A1' })).committed, true);
-    oldState.viewerMode = 'original'; oldState.workspaceWidth = 600;
+    oldState.viewerMode = 'diff'; oldState.workspaceWidth = 600;
     assert.equal((await ui.persistWorkspaceUiState()).ok, true);
     assert.equal(content((await ra.readWorkspace()).localSources), 'A1');
     assert.equal((await commit(rb, 'Write', { path: fileB, content: 'B1' })).committed, true);
@@ -175,7 +175,6 @@ test('remote deletion keeps an accessible draft until explicit discard', async t
     assert.equal(manager.selectWorkspaceFile(fileA), true);
     manager.ensureWorkspaceSelection();
     assert.equal(state.selectedFilePath, fileA);
-    assert.equal(state.mobileWorkspacePane, 'viewer');
     assert.equal(state.workspaceDrafts[fileA].content, 'still here');
     assert.equal(content((await ra.readWorkspace()).localSources), undefined);
     await manager.resolveEditorConflict(fileA, 'saved');
@@ -553,7 +552,7 @@ test('close waits for a canceled host mutation to leave the queue before removin
 
 test('closing retries a failed UI-only save once using the latest UI state', async t => {
     const { b, rb } = await setup(t);
-    const state = { viewerMode: 'original' };
+    const state = { viewerMode: 'diff' };
     const workspaceStore = createWorkspaceStore({ state, repository: rb });
     const failed = t.mock.method(b.table('workspace'), 'put', async () => { throw new Error('temporary failure'); });
     assert.equal((await workspaceStore.persistWorkspaceUiState()).ok, false);

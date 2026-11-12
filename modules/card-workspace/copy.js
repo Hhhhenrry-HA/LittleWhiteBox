@@ -1,5 +1,9 @@
 export const COPY = Object.freeze({
     title: '编辑角色卡', open: '打开角色卡文件', save: '写回角色卡', saved: '已写回角色卡',
+    openCurrent: '编辑当前角色卡', openHint: '拆成文件放进来，改完可写回',
+    checkRules: '查看规则', testRules: '让助手测试',
+    testRequest: '请帮我测试当前文件涉及的变量玩法。有错误就修复并重新测试，告诉我结果。',
+    variableFiles: { variables: '变量规则', 'definition.json': '规则定义', functions: '计算函数', tools: '模型工具', scripts: '阶段脚本' },
     savedLater: '已写回点击时的内容，之后的编辑仍在工作区',
     noCard: '请先打开一张角色卡', changedCard: '当前角色卡已切换，请回到对应角色卡后写回',
     conflict: '这项内容已在酒馆中改过，未覆盖。重新读取这个文件后再修改。',

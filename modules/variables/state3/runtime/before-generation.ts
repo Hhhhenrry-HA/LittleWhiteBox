@@ -8,7 +8,7 @@ import { state3Selected } from './settings.js';
 import { CHAT_KEY } from '../definition/format.js';
 import { digest } from '../definition/digest.js';
 import { diagnostic, reject } from '../engine/diagnostics.js';
-import { beforeReceipt, beforeOutcome } from './before-result.js';
+import { beforeReceipt, beforeFloorOutcome } from './before-result.js';
 import { beforeProsePrompt } from '../model/prompts.js';
 import type { createState3Updater } from '../model/updater.js';
 import type { SettlementService } from './service.js';
@@ -69,7 +69,9 @@ export function createBeforeGeneration({ adapter, service, updater, retain, refr
             if (!result.ok && updater.status().retryIndex !== index && (!previous || previous.outcome === 'failed')) {
                 // Failure is recorded on the already-rolled-back state. Never
                 // restore a superseded USER/AI settlement when recomputation fails.
-                result = await retain(service.recordBefore(index, { inputDigest, outcome: 'failed', diagnostics: result.diagnostics }, { signal }), index);
+                const extensions = result.extensions;
+                result = await retain(service.recordBefore(index, { inputDigest, outcome: 'failed', diagnostics: result.diagnostics }, { signal })
+                    .then(recorded => extensions ? { ...recorded, extensions } : recorded), index);
             }
         } finally {
             finish();
@@ -96,7 +98,7 @@ export function createBeforeGeneration({ adapter, service, updater, retain, refr
             const receipt = receiptAt(index);
             if (receipt?.beforeUpdate) {
                 if (receipt.beforeUpdate.outcome === 'failed') {if (eligible) {abort(true); refresh();} return;}
-                const outcome = beforeOutcome(receipt);
+                const outcome = beforeFloorOutcome(adapter.capture(index), index)!;
                 if (outcome.outcome === 'rejected' || outcome.outcome === 'applied' && (outcome.actions.length || outcome.changes.length)) {
                     setExtensionPrompt(ID, beforeProsePrompt(outcome), extension_prompt_types.IN_CHAT, 0, false, extension_prompt_roles.SYSTEM);
                 }

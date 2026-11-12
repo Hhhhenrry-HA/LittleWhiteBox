@@ -38,7 +38,7 @@ async function loadDraftChecker(): Promise<typeof DraftChecker> {
                     : { path: args.path, namespace: 'host-stub' };
             });
             builder.onLoad({ filter: /.*/, namespace: 'host-stub' }, () => ({ contents:
-                'export const runCardFiles=undefined,currentCard=undefined,readCharacter=undefined,replaceVariableBundle=undefined,readFiles=undefined,workspaceRepository=undefined,upsertLocalSourceFile=undefined,buildWorkspacePreconditions=undefined,INTERNAL_WORKSPACE_TOOL_NAMES=undefined;' }));
+                'export const runCardFiles=undefined,currentCard=undefined,readCharacter=undefined,replaceVariableBundle=undefined,readFiles=undefined,workspaceRepository=undefined,upsertLocalSourceFile=undefined,removeLocalSourcePath=undefined,buildWorkspacePreconditions=undefined,INTERNAL_WORKSPACE_TOOL_NAMES=undefined;' }));
         } }],
     });
     // eslint-disable-next-line no-unsanitized/method -- Execute compiled local production code, never model input.

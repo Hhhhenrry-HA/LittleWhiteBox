@@ -106,7 +106,9 @@ export const SUMMARY_FEEDBACK_COPY = Object.freeze({
         status: issues => {
             if (!issues.length) return '';
             const rebuild = issues.some(issue => issue.action === 'rebuild');
-            const advice = rebuild ? VECTOR_REBUILD_ADVICE : '';
+            const advice = rebuild ? VECTOR_REBUILD_ADVICE
+                : issues.some(issue => issue.code === 'cache_inconsistent')
+                    ? '请执行「向量数据 → 补齐缺漏」，只更新需要修复的向量并清理已删除记忆的缓存。' : '';
             const anchors = issues.some(issue => issue.code === 'l0_gap')
                 ? '缺失的锚点文本需在「记忆锚点」中生成/补齐。' : '';
             return `${issues.map(issue => issue.message).join('、')}。${advice}${anchors}`;

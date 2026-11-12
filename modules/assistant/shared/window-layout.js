@@ -4,6 +4,8 @@ export const ASSISTANT_WINDOW_CONTROLS_WIDTH = 144;
 export const ASSISTANT_WINDOW_MODE_PARAM = 'windowMode';
 export const ASSISTANT_WINDOW_COPY = {
     minimize: '最小化',
+    sidebar: '侧边栏布局',
+    fullscreen: active => active ? '退出全屏' : '全屏',
     close: '关闭小白助手',
 };
 

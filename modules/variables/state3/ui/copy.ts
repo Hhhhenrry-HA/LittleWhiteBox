@@ -1,23 +1,20 @@
 import { diagnostic } from '../engine/diagnostics.js';
-import { DEFINITION_ERRORS } from '../definition/copy.js';
 import { UPDATE_BUTTONS } from '../../shared/update-buttons.js';
+import { EXTENSION_COPY } from '../extensions/copy.js';
 import { fieldName } from '../definition/schema-fields.js';
 import type { Condition, ConditionValue, Definition, Diagnostic, Json, ParameterIssue, Path, Success, UpdateStage } from '../types.js';
 export const COPY = {
     ...UPDATE_BUTTONS,
     title: '变量 3.0', author: '制作规则', play: '当前聊天', close: '关闭',
-    authorHelp: [
-        '3.0 是一个结算引擎：直接改值、动作、关联计算、规则修正和条件触发，在一次结算里按顺序算完并整体检查，全部通过才生效，任何一步不通过就整批不生效。掷骰、战斗回合这类复杂玩法可以写成函数。更新模型和卡片面板上的按钮用的都是这同一套规则。',
-        `从一个想法开始就行：点「${UPDATE_BUTTONS.assistant}」，说你想怎么玩，助手会写设定、世界书、规则和面板。规则保存在角色卡里，随卡分享。也可以在下面直接编辑：definition.json 是规则本体，functions 里放规则引用的函数。`,
-        '编辑后点「检查规则」，看开局变量和问题；「保存草稿」只保存编辑内容；「存入角色卡」后，新聊天会用这套规则开局，已有聊天在「当前聊天」页启用。',
-    ],
+    noRules: '还没有变量规则', fields: '记录什么', actions: '可以做什么', editSource: '编辑规则源码', sharing: '规则包分享',
+    packageHelp: '规则包包含这张卡的变量规则、工具和脚本。导出的是已存入角色卡的版本。',
     file: '文件', playHelp: '当前值在变量面板查看，仅最新一条用户消息和 AI 回复提供结算操作与「查看结果」。',
     draft: '规则草稿', saveDraft: '保存草稿', savedDraft: '草稿已保存', check: '检查规则',
     checkTitle: '检查规则', checkPassed: '规则可以使用。开局变量：', checkFailed: '规则还不能使用：',
     saveCard: '存入角色卡', savedCard: '规则已保存到角色卡',
     enable: '启用规则',
-    importRules: '导入规则', exportRules: '导出规则',
-    importConfirm: '将完整替换当前角色卡的规则和函数。聊天变量、回滚记录及未保存的草稿不变。继续吗？',
+    importRules: '导入规则包到此卡', exportRules: '导出卡上规则包',
+    importConfirm: '将完整替换当前角色卡的规则与扩展源码。聊天变量、回滚记录及未保存的草稿不变。继续吗？',
     importedRules: '卡上规则已替换，之后的更新直接使用新规则。已有草稿已保留。', exportedRules: '规则已导出',
     notEnabled: '此聊天还没有启用 3.0 规则。卡上有规则时，点下面的按钮按规则开局；还没有规则，请先到「制作规则」。',
     details: '详细信息', parameterName: '参数',
@@ -54,7 +51,7 @@ export const COPY = {
     pluginUpdate: '更新方式', auto: '回复后自动更新', model: '更新模型',
     updateModes: { before: '回复前更新', after: '回复后更新', both: '回复前＋回复后更新' },
     beforeAuto: '回复前由卡的规则自动执行。',
-    afterHelp: '回复后不勾自动时，点 AI 回复下方的「更新变量」。',
+    afterHelp: '关闭自动更新后，在 AI 回复下方手动结算。',
     pluginUpdateHelp: '前后阶段分别请求更新模型，产生各自的 API 费用。模型 API 在小白助手的齿轮中配置。',
     stageNames: { before: '回复前', after: '回复后' },
     actionStageOnly: (name: string, stages: string) => `「${name}」只在${stages}结算。`,
@@ -65,7 +62,7 @@ export const COPY = {
     messageEdited: '消息已修改', retryCalculation: '重试结算',
     hostSave: '结果已生效，随酒馆聊天保存。',
     beforeFailure: '回复前结算失败，正文尚未生成。可以重试，或跳过这次结算。',
-    settleBefore: '结算', unsettled: '未结算', recompute: '重新结算', retryBefore: '重试', skipBefore: '跳过结算',
+    settle: '手动结算', unsettled: '未结算', recompute: '重新结算', skipBefore: '跳过结算',
     sources: { main: '小白助手 · 主助手 API', delegate: '小白助手 · 分身 API' },
     undoReply: '撤销结算',
     recomputeConfirm: '重新结算将撤销本条及之后的全部变量变化，旧 AI 结算结果不再保留。继续吗？',
@@ -74,6 +71,7 @@ export const COPY = {
     previewTitle: '试算结果', empty: '变量没有变化', success: '结算成功', previewLabel: '已试算', previewed: '执行后变量会这样变化：',
     noResult: '还没有结算结果', floorResult: (index: number) => `第 ${index + 1} 楼`,
     failed: '本次未生效', saved: '已保存', unconfirmed: '结果已生效，但未确认保存。请重试保存，不要重复执行动作。',
+    technicalFailure: '结算遇到错误，本次变量没有生效。可以重试；如果仍然失败，请联系作者。',
     restored: '已恢复变量', restoredConflict: '已恢复，但有规则冲突', restoredUnchecked: '已恢复，但规则检查失败',
     conflictHelp: '请切回原回复，或在后续剧情中解决这个冲突，否则变量更新会继续报错。',
     constraintConflict: (description: string) => `当前状态违反作者规则：“${description}”。`,
@@ -81,10 +79,12 @@ export const COPY = {
     ruleCheckFailed: (rule?: string) => `无法检查${rule ? `作者规则：“${rule}”` : '卡上的规则'}。变量已恢复，请检查规则定义。`,
     currentFields: (fields: string[]) => `当前：${fields.join('；')}。`,
     missingValue: '不存在',
-    refreshing: '正在读取…', newFunction: '新建函数', functionName: '函数名（字母、数字、下划线或短横线）',
-    phases: { ready: '', preparing: '正在读取资料', requesting: '正在更新', calculating: '正在结算', correcting: '正在重试', saving: '正在保存', success: '已更新', unsaved: '尚未保存', failed: '更新失败', cancelled: '已取消' } as Record<string, string>,
-    reasons: { input: '直接修改', action: '动作', derive: '关联计算', correct: '规则修正', trigger: '状态触发' },
+    refreshing: '正在读取…', newFunction: '让助手添加计算函数',
+    functionRequest: '请按我需要的玩法添加自定义计算函数。先和我确认计算用途，再将函数源码及其声明写入当前规则草稿，检查并试算。',
+    phases: { ready: '', preparing: '正在读取资料', requesting: '正在更新', tool: '正在执行工具', calculating: '正在结算', correcting: '正在重试', saving: '正在保存', success: '已更新', unsaved: '尚未保存', failed: '更新失败', cancelled: '已取消' } as Record<string, string>,
+    reasons: { input: '直接修改', action: '动作', derive: '关联计算', correct: '规则修正', trigger: '状态触发', script: '计算脚本' },
     errors: {
+        ...EXTENSION_COPY.errors,
         'stage-missing': '前后都更新的卡，需要给每个动作和可直接修改的字段指定阶段。',
         'stage-unknown': '动作或字段使用了这张卡未启用的更新阶段。',
         'stage-disabled': '这张卡没有启用这个更新阶段。',
@@ -92,7 +92,6 @@ export const COPY = {
         'action-other-stage': '此动作不属于本次更新阶段。',
         'direct-not-allowed': '卡上的规则不允许直接修改这项变量。',
         'not-enabled': '当前聊天尚未启用规则。', 'already-enabled': '当前聊天已启用 3.0。',
-        ...DEFINITION_ERRORS,
         'definition-missing': '这张卡还没有 3.0 规则。', 'definition-shape': '规则包格式不完整。', 'definition-schema': '规则定义的结构不正确。',
         'unowned-root': '只能修改此聊天初始化过的变量及其子字段。',
         'rules-conflict': '卡上规则已被修改，请重新选择导入文件。',
@@ -129,6 +128,12 @@ export const COPY = {
         'async-schema': '结构校验应是同步规则；领域自定义计算请使用规则函数。',
     },
 };
+export function playerErrorText(error: unknown, definition?: Definition): string {
+    const detail = error && typeof error === 'object' && 'code' in error ? error as Diagnostic : diagnostic(error);
+    if (detail.code === 'extension-after-failed') {return EXTENSION_COPY.afterFailureNotice;}
+    if (['action-precondition', 'action-parameters', 'direct-other-stage', 'action-other-stage', 'derived-write', 'direct-not-allowed'].includes(detail.code)) {return errorText(detail, definition);}
+    return (COPY.errors as Record<string, string>)[detail.code] || COPY.technicalFailure;
+}
 function displayValue(value: unknown): string {
     if (value === undefined) {return COPY.missingValue;}
     if (value === true) {return COPY.trueValue;}
@@ -184,6 +189,6 @@ export function errorText(error: unknown, definition?: Definition): string {
         return [detail.actionTitle || detail.action || detail.rule, detail.parameters.map(parameterIssueText).join('；')].filter(Boolean).join(' · ');
     }
     const label = (COPY.errors as Record<string, string>)[detail.code] || detail.message || detail.code || COPY.failed;
-    return [typeof detail.operation === 'number' ? '第 ' + (detail.operation + 1) + ' 条操作' : '', Array.isArray(detail.path) ? detail.path.join(' → ') : '', detail.rule,
-        Array.isArray(detail.rules) ? detail.rules.join(' → ') : '', detail.functionId, label].filter(Boolean).join(' · ');
+    return [typeof detail.operation === 'number' ? '第 ' + (detail.operation + 1) + ' 条操作' : '', Array.isArray(detail.path) ? detail.path.join(' → ') : typeof detail.path === 'string' ? detail.path : '', detail.rule,
+        Array.isArray(detail.rules) ? detail.rules.join(' → ') : '', detail.functionId, label, detail.message !== label ? detail.message : ''].filter(Boolean).join(' · ');
 }

@@ -71,7 +71,7 @@ test('card display/search preserves raw keys, paths and files without decoding u
 });
 
 test('rendered card selections and save actions keep encoded targets', t => {
-    const { document } = parseHTML('<html><body><div id="workspace"></div></body></html>');
+    const { document } = parseHTML('<html><body><div id="nav"></div><div id="viewer"></div></body></html>');
     const previousDocument = globalThis.document;
     globalThis.document = document;
     t.after(() => {
@@ -80,16 +80,15 @@ test('rendered card selections and save actions keep encoded targets', t => {
     });
     const tree = buildWorkspaceTree([source]);
     const calls = [];
-    const container = document.querySelector('#workspace');
-    renderWorkspace(container, {
+    const containers = { nav: document.querySelector('#nav'), viewer: document.querySelector('#viewer') };
+    const container = document.body;
+    renderWorkspace(containers, {
         workspaceTree: tree,
         selectedMatch: { source, file: source.files[0] },
-        workspaceState: { selectedFilePath: paths[0], viewerMode: 'original', treeExpandedKeys: [...collectDirectoryExpansionKeys(tree.nodes)] },
-        showSaveButton: true, canSaveFile: () => true,
-        hasOriginalSnapshot: () => true,
+        workspaceState: { selectedFilePath: paths[0], viewerMode: 'diff', treeExpandedKeys: [...collectDirectoryExpansionKeys(tree.nodes)] },
+        primaryFileActions: () => [{ action: 'save-file', label: 'save', callback: path => calls.push(['save', path]) }],
         onSelectNode: path => calls.push(['directory', path]),
         onSelectFile: path => calls.push(['file', path]),
-        onSaveFile: path => calls.push(['save', path]),
     });
     const directoryButton = [...container.querySelectorAll('.type-dir.xb-assistant-workspace-tree-button')]
         .find(button => button.textContent.includes('作者测试.png'));
@@ -98,12 +97,11 @@ test('rendered card selections and save actions keep encoded targets', t => {
     selectedButton.click();
     container.querySelector('[data-action="save-file"]').click();
     assert.deepEqual(calls, [['directory', rootFor('作者测试.png')], ['file', paths[0]], ['save', paths[0]]]);
-    renderWorkspace(container, {
+    renderWorkspace(containers, {
         workspaceTree: tree,
         selectedMatch: { source, file: source.files[1] },
-        workspaceState: { selectedFilePath: paths[1], viewerMode: 'original', treeExpandedKeys: [...collectDirectoryExpansionKeys(tree.nodes)] },
-        showSaveButton: true, canSaveFile: () => true, hasOriginalSnapshot: () => true,
-        onSaveFile: path => calls.push(['save-next', path]),
+        workspaceState: { selectedFilePath: paths[1], viewerMode: 'diff', treeExpandedKeys: [...collectDirectoryExpansionKeys(tree.nodes)] },
+        primaryFileActions: () => [{ action: 'save-file', label: 'save', callback: path => calls.push(['save-next', path]) }],
     });
     container.querySelector('[data-action="save-file"]').click();
     assert.deepEqual(calls.at(-1), ['save-next', paths[1]]);

@@ -402,12 +402,10 @@ export function createLocalSourcesManager(deps) {
     function primeWorkspaceSelection(targetPath = '', options = {}) {
         const normalizedPath = normalizeLocalSourcePath(targetPath);
         if (!normalizedPath) return false;
-        if (shouldAutoRevealWorkspace()) state.isWorkspaceOpen = true;
         state.selectedSourceId = 'all';
         if (normalizedPath.endsWith('/')) {
             state.selectedTreePath = normalizeLocalDirectoryPath(normalizedPath) || LOCAL_SOURCE_PREFIX;
             state.selectedFilePath = '';
-            state.mobileWorkspacePane = 'tree';
             if (options.viewerMode) {
                 state.viewerMode = options.viewerMode;
             } else {
@@ -416,9 +414,9 @@ export function createLocalSourcesManager(deps) {
             return true;
         }
 
+        if (shouldAutoRevealWorkspace()) state.isWorkspaceOpen = true;
         state.selectedFilePath = normalizeWritableLocalFilePath(normalizedPath) || normalizedPath;
         state.selectedTreePath = state.selectedFilePath;
-        state.mobileWorkspacePane = 'viewer';
         if (options.viewerMode) {
             state.viewerMode = options.viewerMode;
         }
@@ -552,12 +550,6 @@ export function createLocalSourcesManager(deps) {
         return summarizeLocalSources(state.localSources);
     }
 
-    function findFirstModifiedFile() {
-        return flattenLocalSourceFiles(state.localSources).find((file) => (
-            file.originalContent === null || file.content !== file.originalContent
-        )) || null;
-    }
-
     function getCurrentWorkspaceDirectoryPath() {
         const selectedTreeDirectory = normalizeLocalDirectoryPath(state.selectedTreePath);
         if (selectedTreeDirectory) return selectedTreeDirectory;
@@ -588,17 +580,6 @@ export function createLocalSourcesManager(deps) {
         return getCurrentWorkspaceDirectoryPath();
     }
 
-    function setMobileWorkspacePane(pane, options = {}) {
-        const nextPane = pane === 'viewer' ? 'viewer' : 'tree';
-        state.mobileWorkspacePane = nextPane;
-        if (options.persist !== false) {
-            persistWorkspaceUiState();
-        }
-        if (options.render) {
-            renderWorkspaceOnly?.();
-        }
-    }
-
     function selectWorkspaceFile(targetPath, options = {}) {
         const match = findLocalFileByPath(getDisplaySources(), targetPath);
         if (!match) return false;
@@ -607,7 +588,6 @@ export function createLocalSourcesManager(deps) {
         state.selectedSourceId = 'all';
         state.selectedFilePath = match.file.path;
         state.selectedTreePath = match.file.path;
-        state.mobileWorkspacePane = 'viewer';
         if (!options.preserveSearch) {
             state.fileSearchQuery = '';
         }
@@ -625,7 +605,7 @@ export function createLocalSourcesManager(deps) {
         state.treeExpandedKeys = Array.from(expandedKeys);
 
         if (!options.preserveViewerMode) {
-            state.viewerMode = isLocalSourceFileModified(match.file) ? 'diff' : 'current';
+            state.viewerMode = 'current';
         }
         onWorkspaceSelectionChanged?.();
         persistWorkspaceUiStateImmediately();
@@ -636,14 +616,12 @@ export function createLocalSourcesManager(deps) {
         const match = findLocalDirectoryByPath(state.localSources, targetPath);
         if (!match) return false;
 
-        state.isWorkspaceOpen = true;
         state.selectedSourceId = 'all';
         state.selectedTreePath = match.directoryPath;
         state.selectedFilePath = '';
         state.fileSearchQuery = '';
         state.showModifiedOnly = false;
         state.viewerMode = 'current';
-        state.mobileWorkspacePane = 'tree';
         state.treeExpandedKeys = match.source
             ? Array.from(buildExpandedKeysForWorkspaceTarget(match.source.sourceId, match.relativeDirectoryPath))
             : Array.from(collectDirectoryExpansionKeys(buildWorkspaceTree(normalizeLocalSources(state.localSources), {
@@ -664,7 +642,6 @@ export function createLocalSourcesManager(deps) {
             state.selectedFilePath = '';
             state.selectedTreePath = LOCAL_SOURCE_PREFIX;
             state.viewerMode = 'current';
-            state.mobileWorkspacePane = 'tree';
             state.treeExpandedKeys = [];
             return;
         }
@@ -693,25 +670,8 @@ export function createLocalSourcesManager(deps) {
             state.selectedTreePath = state.selectedFilePath || workspaceTree.visibleNodePaths[0] || LOCAL_SOURCE_PREFIX;
         }
 
-        if (!['current', 'original', 'diff'].includes(state.viewerMode)) {
-            state.viewerMode = 'current';
-        }
-        if (!['tree', 'viewer'].includes(String(state.mobileWorkspacePane || ''))) {
-            state.mobileWorkspacePane = state.selectedFilePath ? 'viewer' : 'tree';
-        }
-
         const selected = findLocalFileByPath(normalizedSources, state.selectedFilePath);
-        if (selected) {
-            if (state.viewerMode === 'original' && !hasOriginalSnapshot(selected.file)) {
-                state.viewerMode = isLocalSourceFileModified(selected.file) ? 'diff' : 'current';
-            }
-            if (state.viewerMode === 'diff' && !hasOriginalSnapshot(selected.file)) {
-                state.viewerMode = 'current';
-            }
-        } else {
-            state.viewerMode = 'current';
-            state.mobileWorkspacePane = 'tree';
-        }
+        if (state.viewerMode !== 'diff' || !hasOriginalSnapshot(selected?.file)) state.viewerMode = 'current';
     }
 
     async function applyExternalLocalSources(nextSources, toastText = '') {
@@ -1131,7 +1091,7 @@ export function createLocalSourcesManager(deps) {
             showToast?.(`新建失败：${String(result?.error || 'workspace_write_failed')}`);
             return false;
         }
-        primeWorkspaceSelection(normalizedPath, { viewerMode: 'diff' });
+        primeWorkspaceSelection(normalizedPath, { viewerMode: 'current' });
         return true;
     }
 
@@ -1274,22 +1234,14 @@ export function createLocalSourcesManager(deps) {
         openWorkspace(state.selectedFilePath);
     }
 
-    function openFirstModifiedFile() {
-        const firstModified = findFirstModifiedFile();
-        if (!firstModified) return false;
-        return openWorkspace(firstModified.path);
-    }
-
     function selectWorkspaceNode(targetPath, options = {}) {
         const normalizedTargetPath = normalizeLocalSourcePath(targetPath);
         if (!normalizedTargetPath) return false;
         if (isLocalRootPath(normalizedTargetPath)) {
-            state.isWorkspaceOpen = true;
             state.selectedSourceId = 'all';
             state.selectedTreePath = LOCAL_SOURCE_PREFIX;
             state.selectedFilePath = '';
             state.viewerMode = 'current';
-            state.mobileWorkspacePane = 'tree';
             state.treeExpandedKeys = Array.from(collectDirectoryExpansionKeys(buildWorkspaceTree(normalizeLocalSources(state.localSources), {
                 selectedSourceId: 'all',
                 searchQuery: state.fileSearchQuery,
@@ -1318,12 +1270,10 @@ export function createLocalSourcesManager(deps) {
         const dirMatch = findLocalDirectoryByPath(state.localSources, normalizedTargetPath);
         if (!dirMatch) return false;
 
-        state.isWorkspaceOpen = true;
         state.selectedSourceId = 'all';
         state.selectedTreePath = dirMatch.directoryPath;
         state.selectedFilePath = '';
         state.viewerMode = 'current';
-        state.mobileWorkspacePane = 'tree';
         onWorkspaceSelectionChanged?.();
         persistWorkspaceUiState();
         if (options.render !== false) renderWorkspaceOnly?.();
@@ -1363,7 +1313,7 @@ export function createLocalSourcesManager(deps) {
     }
 
     function setWorkspaceViewerMode(mode) {
-        if (!['current', 'original', 'diff'].includes(mode)) return;
+        if (!['current', 'diff'].includes(mode)) return;
         state.viewerMode = mode;
         ensureWorkspaceSelection();
         persistWorkspaceUiState();
@@ -1419,13 +1369,12 @@ export function createLocalSourcesManager(deps) {
                 fileSearchQuery: state.fileSearchQuery,
                 showModifiedOnly: state.showModifiedOnly,
                 viewerMode: state.viewerMode,
-                mobileWorkspacePane: state.mobileWorkspacePane,
                 treeExpandedKeys: state.treeExpandedKeys,
                 workspaceVersion: getWorkspaceRuntimeMeta().version,
                 workspaceDrafts: state.workspaceDrafts,
             },
             isModifiedFile: isLocalSourceFileModified,
-            hasOriginalSnapshot,
+            manageFiles: true,
             onDownloadAll: () => {
                 downloadAllLocalSources();
             },
@@ -1457,9 +1406,6 @@ export function createLocalSourcesManager(deps) {
             },
             onSetViewerMode: (mode) => {
                 setWorkspaceViewerMode(mode);
-            },
-            onShowTree: () => {
-                setMobileWorkspacePane('tree', { render: true });
             },
             onDownloadFile: (targetPath) => {
                 downloadLocalFile(targetPath);
@@ -1495,7 +1441,6 @@ export function createLocalSourcesManager(deps) {
         downloadAllLocalSources,
         restoreLocalFile,
         updateLocalFileContent,
-        setMobileWorkspacePane,
         createLocalFileAt,
         createLocalDirectoryAt,
         renameLocalPath,
@@ -1511,7 +1456,6 @@ export function createLocalSourcesManager(deps) {
         renderWorkspace,
         ensureWorkspaceSelection,
         getWorkspaceSummary,
-        openFirstModifiedFile,
         flushPendingWorkspaceChanges,
         hasPendingWorkspaceChanges,
         resolveEditorConflict,

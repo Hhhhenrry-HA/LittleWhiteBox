@@ -26,6 +26,8 @@ Every path segment is a string: `"0"` indexes an array, while `"00"` can be an o
 
 Permissions follow literal subtree prefixes. Setting `direct:true` at `["camp","people"]` covers dynamically named descendants, subject to any more specific restrictions. `"*"` is a literal key here, not a wildcard. Replacing a parent is also checked for changes to protected children. The same literal-path rule applies to rule outputs and function read declarations; a calculation over dynamic members can read the collection and use a pure function.
 
+For changing collections, the executable [member rules example](<examples/member-rules.ts>) shows three independent choices: a constraint compares retained members' identities with `before`; a correction function clamps each member's mood separately; a `max(current,before)` correction makes reputation rise only. New members are accepted with their complete schema. A static `direct:false` child path cannot protect the same property under every future member key.
+
 Submission paths and macro paths have different notation. The member above is addressed by `{{xbgetvar::camp.people["Lv.3"].mood}}`; an array item uses `{{xbgetvar::camp.inventory[0]}}`. Whole-root `{{xbgetvar::camp}}` avoids reconstructing a path for every field. Verify the actual expansion after initialization, including keys with punctuation. Native `{{getvar::name}}` addresses a native variable by name, not a nested path.
 
 ## Limits, gradual changes and free text

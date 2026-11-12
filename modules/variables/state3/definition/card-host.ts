@@ -2,7 +2,6 @@ import { CARD_EXTENSION } from './format.js';
 import { CARD_FILES_COPY, decodeBundle, locateVariableFile, prepareVariableWrite, projectVariableFiles, variableExtensionWrite, type CardFile } from './card-files.js';
 import { compileDefinition } from './compile.js';
 import { diagnostic, reject } from '../engine/diagnostics.js';
-import { DEFINITION_ERRORS } from './copy.js';
 import type { Bundle } from '../types.js';
 import { digest } from './digest.js';
 import { readFiles, storeFiles, observeTree } from '../../../card-workspace/workspace.js';
@@ -49,9 +48,7 @@ export function variableCardHost(host: Host) {
             const { bundle, unchanged } = prepareVariableWrite(target.root, files, card.data.extensions?.[CARD_EXTENSION]);
             try { compileDefinition(bundle); }
             catch (error) {
-                const issue = diagnostic(error);
-                const message = (DEFINITION_ERRORS as Record<string, string>)[issue.code] ?? CARD_FILES_COPY.invalidRules;
-                throw new Error(`${message}\n${JSON.stringify(issue)}`, { cause: error });
+                throw new Error(`${CARD_FILES_COPY.invalidRules}\n${JSON.stringify(diagnostic(error))}`, { cause: error });
             }
             if (!unchanged) {
                 host.assertCard(target.avatar);

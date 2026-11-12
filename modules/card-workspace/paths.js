@@ -1,3 +1,4 @@
+import { COPY } from './copy.js';
 export const CARD_ROOT = 'local/cards/';
 export const rootFor = avatar => `${CARD_ROOT}${encodeURIComponent(avatar)}/`;
 
@@ -49,5 +50,7 @@ export function displayCardWorkspacePath(path) {
 
 export function displayCardWorkspaceName(path, fallback) {
     if (!path.startsWith(CARD_ROOT)) return fallback;
-    return mapCardSegments(path.replace(/\/$/, ''), decodeName).at(-1);
+    const segments = mapCardSegments(path.replace(/\/$/, ''), decodeName);
+    const name = segments.at(-1);
+    return segments[3] === 'variables' && segments.length <= 5 ? COPY.variableFiles[name] || name : name;
 }

@@ -8,7 +8,7 @@ import { createHostAdapter, state3Context as getContext, inGroup, latestUserInde
 import { compileDefinition } from './definition/compile.js';
 import { initialize, settle } from './engine/settle.js';
 import { diagnostic, reject } from './engine/diagnostics.js';
-import { receiptResult } from './runtime/history.js';
+import { recordResult } from './runtime/history.js';
 import { openDraft, saveDraft, checkDraft, saveCardDraft, exportRules, prepareRuleImport, importRules } from './definition/authoring.js';
 import { onRulesSaved } from './definition/card-host.js';
 import { createState3Page } from './ui/settings.js';
@@ -22,6 +22,9 @@ import { readSettings, saveSettings, state3Selected, selectState3 } from './runt
 export { state3Selected } from './runtime/settings.js';
 import type { Result, RunOptions, Success } from './types.js';
 import type { State3Api } from './runtime/api.js';
+import { authorizeExtensions, assertExtensionTrust, revokeExtensionTrust, extensionTrust } from './extensions/trust.js';
+import { testDraftExtension } from './extensions/testing.js';
+import { EXTENSION_COPY } from './extensions/copy.js';
 
 let runtime: { page: ReturnType<typeof createState3Page>; modeChanged(): void; dispose(): void } | undefined;
 
@@ -39,7 +42,8 @@ export function initState3() {
     const topology = new MutationObserver(() => { if (adapter.rememberOrder()) {refresh();} });
     const chatElement = document.getElementById('chat');
     if (chatElement) {topology.observe(chatElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['mesid'] });}
-    const service = createSettlementService(adapter);
+    const extensionHost = { authorize: assertExtensionTrust, requestAuthorization: authorizeExtensions, context: getContext, passage: (index: number) => getContext().chat[index]?.mes || '' };
+    const service = createSettlementService(adapter, extensionHost);
     const report = (promise: Promise<unknown>) => {
         const handled = promise.catch(notifyError);
         observeBackgroundTask(handled, { source: import.meta.url, operation: 'state3' });
@@ -89,7 +93,12 @@ export function initState3() {
     const api: State3Api = {
         stage(options) { writable(); return service.stage(owned(options)); },
         apply(input, options) { writable(); return retain(service.apply(input, owned(options)), options?.index); },
-        preview(input, options) { available(); return retain(service.preview(input, owned(options)), options?.index); },
+        // Previews never replace the live result or its pending save.
+        async preview(input, options) {
+            available();
+            try { return await service.preview(input, owned(options)); }
+            catch (error) { return { ok: false, diagnostics: [diagnostic(error)] }; }
+        },
         undo(options) { writable(); return retain(service.undo(owned(options)), options?.index); },
         inspect: () => service.inspect(),
         async enable(options) {
@@ -102,12 +111,12 @@ export function initState3() {
                 return result;
             })());
         },
-        async tryDefinition(bundle, input = [], { state, signal, stage } = {}) {
+        async tryDefinition(bundle, input = [], { state, signal, stage, prepared } = {}) {
             try {
                 const compiled = compileDefinition(bundle);
-                if (state !== undefined) {return settle(compiled, state, input, { signal, stage });}
+                if (state !== undefined) {return settle(compiled, state, input, { signal, stage, prepared });}
                 const initial = await initialize(compiled, { signal });
-                return initial.ok ? settle(compiled, initial.state, input, { signal, stage }) : initial;
+                return initial.ok ? settle(compiled, initial.state, input, { signal, stage, prepared }) : initial;
             } catch (error) { return { ok: false, diagnostics: [diagnostic(error)] }; }
         },
         openDraft, saveDraft, checkDraft, exportRules, prepareRuleImport,
@@ -129,9 +138,22 @@ export function initState3() {
         recomputeBefore: index => before.run(index), skipBefore: index => before.skip(index), undoBefore: index => before.undo(index),
         previewRequest: options => updater.previewRequest(owned(options)),
         cancel: () => before.cancel(), updateStatus: () => before.status(),
-        async openAssistant() {
+        revokeExtensionTrust,
+        extensionTrust: () => extensionTrust(adapter.bundle()),
+        authorizeExtensions: options => authorizeExtensions(adapter.bundle(), owned(options).signal),
+        async testExtension(draft, test, options = {}) {
+            const ctx = getContext(), avatar = ctx.characters[ctx.characterId]?.avatar, chat = ctx.chat;
+            const assertCurrent = () => {
+                const next = getContext();
+                if (next.characters[next.characterId]?.avatar !== draft.avatar || avatar !== draft.avatar || next.chat !== chat) {reject('stale-target');}
+            };
+            assertCurrent();
+            if (test.kind !== 'calculate' && !globalThis.confirm(EXTENSION_COPY.liveConfirm)) {return { ok: false, diagnostics: [{ code: 'cancelled' }] };}
+            return testDraftExtension(draft, test, owned(options), { ...extensionHost, authorize: async () => {} }, assertCurrent);
+        },
+        async openAssistant(options) {
             const { openCardWorkspace } = await import('../../assistant/assistant.js');
-            await openCardWorkspace({ variables: true, version: '3.0' });
+            await openCardWorkspace({ variables: true, version: '3.0', ...options });
         },
     };
     page = createState3Page(api);
@@ -145,8 +167,9 @@ export function initState3() {
             const userIndex = latestUserIndex(ctx.chat);
             const beforeIndex = snapshot.history && updates.includes('before') && ctx.chat[userIndex]?.mes?.trim() ? userIndex : -1;
             const results = snapshot.records.flatMap((record, index) => {
-                const receipt = record.entries.at(-1);
-                return receipt && snapshot.history ? [{ index, result: (receipt.id === beforeResult?.receipt?.id ? beforeResult : receiptResult(snapshot.state, receipt)) as Result,
+                if (index !== beforeIndex && index !== snapshot.index) {return [];}
+                const projected = recordResult(snapshot.state, snapshot.records, index), receipt = projected?.receipt;
+                return receipt && snapshot.history ? [{ index, result: (receipt.id === beforeResult?.receipt?.id && receipt.revision === beforeResult.receipt.revision ? beforeResult : projected) as Result,
                     stage: ctx.chat[index]?.is_user ? 'before' as const : 'after' as const,
                     edited: Boolean(receipt.beforeUpdate && receipt.beforeUpdate.inputDigest !== digest(ctx.chat[index]?.mes)) }] : [];
             });
@@ -212,6 +235,7 @@ export function initState3() {
         refresh();
     }
     events.on(event_types.CHAT_CHANGED, changed);
+    if (event_types.CHARACTER_DELETED) {events.on(event_types.CHARACTER_DELETED, ({ character }: { character: { avatar: string } }) => revokeExtensionTrust(character.avatar));}
     events.on(event_types.MESSAGE_DELETED, () => {
         clearSwipeRecovery();
         const ctx = getContext(), generation = pendingGeneration;
@@ -281,8 +305,8 @@ export function initState3() {
     refresh();
     if (state3Selected()) {observeBackgroundTask(report(syncProjection()), { source: import.meta.url, operation: 'projection' });}
 }
-export async function openState3(page?: 'play' | 'author') {
-    try { if (!runtime) {reject('not-enabled');} await runtime.page.open(page); }
+export async function openState3(page?: 'play' | 'author', tab?: 'rules' | 'extensions', path?: string) {
+    try { if (!runtime) {reject('not-enabled');} await runtime.page.open(page, tab, path); }
     catch (error) { notifyError(error); }
 }
 export function syncState3Mode() { runtime?.modeChanged(); }

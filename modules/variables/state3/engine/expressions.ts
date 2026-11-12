@@ -16,6 +16,7 @@ export function readsOf(expression: Expression, definition: Definition): Path[] 
     if (expression.get) {return [pathOf(expression.get)];}
     if (expression.before) { pathOf(expression.before); return []; }
     if (expression.param) { pathOf(expression.param); return []; }
+    if (expression.prepared) { pathOf(expression.prepared); return []; }
     const nested = (expression.args || []).flatMap(item => readsOf(item, definition));
     if (expression.call) {
         const fn = definition.functions[expression.call];
@@ -34,6 +35,10 @@ export async function evaluate(expression: Expression, context: EvaluationContex
         return getAt(context.before, expression.before);
     }
     if (expression.param) {return getAt(context.params, expression.param);}
+    if (expression.prepared) {
+        if (context.prepared === undefined) {reject('prepared-missing', { path: expression.prepared });}
+        return getAt(context.prepared, expression.prepared);
+    }
     const args = expression.args || [];
     // Branches are lazy: inactive rules need not read absent optional state.
     if (expression.op === 'if') {return evaluate(args[await evaluate(args[0], context) ? 1 : 2], context);}
