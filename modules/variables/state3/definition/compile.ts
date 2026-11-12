@@ -34,14 +34,15 @@ export function compileDefinition(input: unknown): Compiled {
     const bundle = clone(input) as unknown as Bundle, { definition, functions } = bundle;
     if (Object.keys(bundle).some(key => !['definition', 'functions'].includes(key))) {reject('definition-shape');}
     if (!definition || !functions || typeof functions !== 'object' || Array.isArray(functions)) {reject('definition-shape');}
-    if (!validateDefinition(definition)) {reject('definition-schema', { errors: clone(validateDefinition.errors) });}
+    if (!validateDefinition(definition)) {
+        const oldAccess = validateDefinition.errors?.find(error => /^\/access\/\d+$/.test(error.instancePath)
+            && error.keyword === 'additionalProperties' && error.params.additionalProperty === 'write');
+        if (oldAccess) {reject('access-format', { location: oldAccess.instancePath });}
+        reject('definition-schema', { errors: clone(validateDefinition.errors) });
+    }
     checkStages(definition);
     unique([...definition.rules, ...definition.actions, ...definition.constraints, ...(definition.triggers || [])]);
-    const actionIds = new Set(definition.actions.map(action => action.id));
-    for (const entry of definition.access) {
-        pathOf(entry.path);
-        for (const actor of entry.write) {if (actor !== 'direct' && !actionIds.has(actor)) {reject('access-action', { action: actor, path: entry.path });}}
-    }
+    definition.access.forEach(entry => pathOf(entry.path));
     for (const rule of definition.rules) { pathOf(rule.path); checkExpression(rule.value, definition); }
     for (const constraint of definition.constraints) {checkExpression(constraint.test, definition);}
     for (const trigger of definition.triggers || []) {

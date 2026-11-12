@@ -45,14 +45,15 @@ async function until(predicate: () => boolean) {
 // real engine; invalid batches must leave their input untouched (silent state corruption).
 test('guide definition and documented dynamic-member batch are executable', async () => {
     const compiled = compileDefinition(bundle), start = accepted(await initialize(compiled)).state;
+    const unchanged = structuredClone(start);
     const guide = readFileSync(new URL('../skill/references/state-design.md', import.meta.url), 'utf8');
     for (const [, body] of guide.matchAll(/```json\r?\n([\s\S]*?)```/g)) {
         const input = JSON.parse(body), result = accepted(await settle(compiled, start, input));
         assert.ok(result.changes.length);
-        assert.deepEqual(start, bundle.definition.initial);
+        assert.deepEqual(start, unchanged);
         const rejected = await settle(compiled, start, [input[1]]);
         assert.equal(rejected.ok, false, 'missing parent is not silently created');
-        assert.deepEqual(start, bundle.definition.initial);
+        assert.deepEqual(start, unchanged);
     }
     const rest = [{ action: 'rest', params: {} }];
     const host = await createGuideFixture(bundle), initial = host.state();
@@ -116,7 +117,7 @@ test('guide panel handles pending, rejected, corrected, no-change and unsaved re
         assert.deepEqual(p.state(), invalid);
         assert.equal(p.element('details').hidden, false);
 
-        p.external(bundle.definition.initial); p.tick();
+        p.external(accepted(await initialize(compileDefinition(bundle))).state); p.tick();
         p.controls.offline = true;
         p.click('rest'); await until(() => !p.pending());
         const unsaved = p.host.LWB_StateV3.lastResult();

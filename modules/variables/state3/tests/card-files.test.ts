@@ -12,11 +12,58 @@ import { projectVariableFiles, variableBundleFromFiles, prepareVariableWrite, va
 import { variableCardHost, onRulesSaved } from '../definition/card-host.js';
 import { equipmentExample } from '../definition/example.js';
 import { digest } from '../definition/digest.js';
+import { compileDefinition } from '../definition/compile.js';
+import { DEFINITION_ERRORS } from '../definition/copy.js';
 
 const readFiles = async (): Promise<CardFile[]> => await rawFiles() as CardFile[];
 const storeFiles = writeFiles as (files: CardFile[], options?: { baselineOnly?: boolean; observed?: Awaited<ReturnType<typeof observeTree>>; scopeRoot?: string; removePaths?: string[] }) => Promise<unknown>;
 const root = 'local/cards/isolated.png/';
 const original = { definition: { name: 'unfinished', functions: { old: { reads: [] } } }, functions: { old: 'unfinished(' } };
+
+// A4: obsolete access lists and invalid packages cannot be saved or imported;
+// failed saves preserve the card, while corrected drafts round-trip (silent rule loss).
+test('A4: actual save boundary rejects old access arrays, including unchanged cards, and accepts the boolean format', async () => {
+    const valid = equipmentExample();
+    let card = { avatar: 'isolated.png', name: 'isolated', data: { extensions: { [CARD_EXTENSION]: JSON.stringify(valid), other: { keep: true } } } };
+    let writes = 0;
+    const host = variableCardHost({
+        readCharacter: async () => structuredClone(card), assertCard() {},
+        async request(_url, body) {
+            writes++;
+            card.data.extensions[CARD_EXTENSION] = (body as ReturnType<typeof variableExtensionWrite>).data.extensions[CARD_EXTENSION];
+        },
+        publishCharacter(saved) {card = saved as typeof card;}, unconfirmed: 'not saved',
+    });
+    const save = (draft: unknown) => {
+        const files = projectVariableFiles(root, draft);
+        files[0].originalGroupHash = digest(JSON.parse(card.data.extensions[CARD_EXTENSION]));
+        return host.save({ avatar: card.avatar, root }, files[0], undefined, files.slice(1).map(file => ({ file })));
+    };
+    for (const write of [[], ['direct'], ['unequip'], ['missing-action']]) {
+        for (const keepDirect of [false, true]) {
+            const old = structuredClone(valid);
+            const entry = old.definition.access[0] as unknown as Record<string, unknown>;
+            entry.write = write;
+            if (!keepDirect) {delete entry.direct;}
+            assert.throws(() => compileDefinition(old), { code: 'access-format' });
+            for (const stored of [valid, old]) {
+                card.data.extensions[CARD_EXTENSION] = JSON.stringify(stored);
+                const before = structuredClone(card);
+                await assert.rejects(save(old), error => error instanceof Error && error.message.startsWith(DEFINITION_ERRORS['access-format']));
+                await assert.rejects(host.replace(card.avatar, old, digest(card.data.extensions[CARD_EXTENSION])), { code: 'access-format' });
+                assert.deepEqual(card, before); assert.equal(writes, 0);
+            }
+        }
+    }
+    const invalid = structuredClone(valid); invalid.functions.undeclared = '() => 1';
+    await assert.rejects(save(invalid)); assert.equal(writes, 0);
+    const saved = await save(valid);
+    assert.equal(saved.unchanged, false); assert.equal(writes, 1);
+    assert.deepEqual(JSON.parse(card.data.extensions[CARD_EXTENSION]), valid);
+    assert.deepEqual(card.data.extensions.other, { keep: true });
+    assert.deepEqual(variableBundleFromFiles(root, await host.read({ avatar: card.avatar, root })), valid);
+    assert.equal((await save(valid)).unchanged, true); assert.equal(writes, 1);
+});
 
 async function edit(path: string, content: string) {
     const args = { path, content }, { localSources } = await workspaceRepository.readWorkspace();

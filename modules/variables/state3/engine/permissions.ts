@@ -21,15 +21,17 @@ export function checkAction(compiled: Compiled, id: string, stage?: UpdateStage)
 // Unstaged card APIs keep checking actual changed leaves, so replacing an object
 // without changing its protected children remains valid. Model stage checks above
 // inspect the submitted path, just as the tool projection does.
-export function authorize(compiled: Compiled, before: Json, after: Json, actor: string) {
+export function authorize(compiled: Compiled, before: Json, after: Json, action?: string) {
     for (const change of changes(before, after)) {
         const derived = compiled.rules.find(rule => rule.kind === 'derive' && overlaps(rule.path, change.path));
         if (derived) {
-            reject('derived-write', { path: change.path, rule: derived.id, actor });
+            reject('derived-write', { path: change.path, rule: derived.id, actor: action ?? 'direct' });
         }
-        const access = compiled.definition.access.filter(entry => contains(entry.path, change.path));
-        if (!access.length || access.some(entry => !entry.write.includes(actor))) {
-            reject(actor === 'direct' ? 'direct-not-allowed' : 'permission', { path: change.path, actor });
+        if (action === undefined) {
+            const access = compiled.definition.access.filter(entry => contains(entry.path, change.path));
+            if (!access.length || access.some(entry => !entry.direct)) {
+                reject('direct-not-allowed', { path: change.path, actor: 'direct' });
+            }
         }
     }
 }

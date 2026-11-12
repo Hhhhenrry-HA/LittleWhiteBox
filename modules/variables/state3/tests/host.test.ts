@@ -221,7 +221,7 @@ function workerGate() {
 function doorBundle(): Bundle {
     const bundle = equipmentExample();
     bundle.definition = { ...bundle.definition, schema: {}, initial: { key: false, door: false },
-        access: ['key', 'door'].map(key => ({ path: [key], write: ['direct'], description: key })),
+        access: ['key', 'door'].map(key => ({ path: [key], direct: true, description: key })),
         rules: [], actions: [], triggers: [], views: {},
         functions: { valid: { reads: [['key'], ['door']], description: '钥匙与门' } },
         constraints: [{ id: 'door-key', description: '开门必须持有钥匙', test: { call: 'valid', args: [] } }] };
@@ -534,7 +534,7 @@ test('K15/K17: current card rules govern the next operation, owned roots do not 
     const h = harness();
     const bundle = equipmentExample();
     bundle.definition = { ...bundle.definition, schema: {}, initial: { own: {}, text: '123', flag: false },
-        access: [{ path: ['own'], write: ['direct'], description: 'test' }, { path: ['text'], write: ['direct'], description: 'test' }],
+        access: [{ path: ['own'], direct: true, description: 'test' }, { path: ['text'], direct: true, description: 'test' }],
         rules: [], actions: [], triggers: [], constraints: [], functions: {}, views: {} };
     const setCard = () => { h.ctx.characters[0].data!.extensions![CARD_EXTENSION] = JSON.stringify(bundle); };
     setCard();
@@ -546,7 +546,7 @@ test('K15/K17: current card rules govern the next operation, owned roots do not 
     native.gold = 75;
     const staged = await service.stage();
     bundle.definition.name = 'new';
-    bundle.definition.access.push({ path: ['gold'], write: ['direct'], description: 'test' });
+    bundle.definition.access.push({ path: ['gold'], direct: true, description: 'test' });
     bundle.definition.schema = { type: 'object', properties: { own: true, text: true, flag: true, gold: true } };
     bundle.definition.rules = [{ id: 'new-rule', kind: 'derive', path: ['own', 'calculated'], value: { literal: 3 }, description: 'test' }];
     setCard();
@@ -573,7 +573,7 @@ test('K16: native historical selections retain child effects, but explicit write
     ]) {
         const h = harness(), bundle = equipmentExample();
         bundle.definition = { ...bundle.definition, schema: {}, initial: { own: {} },
-            access: [{ path: ['own'], write: ['direct'], description: 'test' }], rules: [], actions: [], constraints: [], views: {} };
+            access: [{ path: ['own'], direct: true, description: 'test' }], rules: [], actions: [], constraints: [], views: {} };
         h.ctx.characters[0].data!.extensions![CARD_EXTENSION] = JSON.stringify(bundle);
         let adapter = h.exports.createHostAdapter(), service = createSettlementService(adapter);
         accepted(await service.enable());

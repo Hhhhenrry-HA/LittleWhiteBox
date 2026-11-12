@@ -24,7 +24,7 @@ The following batch works with the camp definition:
 
 Every path segment is a string: `"0"` indexes an array, while `"00"` can be an object key. `"Lv.3"` above is one literal key, not two levels. Array writes can address an existing index or the current length to append; they do not create gaps. `remove` deletes the field or the indexed element, not an element found by its value.
 
-Permissions follow literal subtree prefixes. Granting `direct` at `["camp","people"]` covers dynamically named descendants, subject to any more specific restrictions. `"*"` is a literal key here, not a wildcard. Replacing a parent is also checked for changes to protected children. The same literal-path rule applies to rule outputs and function read declarations; a calculation over dynamic members can read the collection and use a pure function.
+Permissions follow literal subtree prefixes. Setting `direct:true` at `["camp","people"]` covers dynamically named descendants, subject to any more specific restrictions. `"*"` is a literal key here, not a wildcard. Replacing a parent is also checked for changes to protected children. The same literal-path rule applies to rule outputs and function read declarations; a calculation over dynamic members can read the collection and use a pure function.
 
 Submission paths and macro paths have different notation. The member above is addressed by `{{xbgetvar::camp.people["Lv.3"].mood}}`; an array item uses `{{xbgetvar::camp.inventory[0]}}`. Whole-root `{{xbgetvar::camp}}` avoids reconstructing a path for every field. Verify the actual expansion after initialization, including keys with punctuation. Native `{{getvar::name}}` addresses a native variable by name, not a nested path.
 
@@ -37,6 +37,7 @@ Choose the consequence of an invalid value before choosing a constraint:
 | Reject an invalid final number or finite choice | JSON Schema bounds/types/`enum`, or a cross-field `constraint` | The whole submission fails; chat values stay unchanged |
 | Cap a valid change at a fixed or changing limit | A `correct` rule, such as `min(current, maximum)` | The corrected value and its source appear in the result |
 | Calculate a value such as maximum health | A `derive` rule | Inputs change its dependencies; the rule computes the result |
+| Keep a base price, travel duration or other value fixed | A `derive` rule with a `literal` value, as in the camp's maximum stamina | Actions and direct edits cannot change it; the literal is defined only in the rule, not repeated in `initial` |
 | Limit how fast a relationship can change | Decide whether this is advice, a per-action limit or a per-batch rule, then express that choice | An absolute range alone does not limit one turn's change |
 
 Use `enum` for genuinely finite choices such as a fixed quest stage. Locations, nicknames and evolving situations often need free text: an unlisted value would reject the batch. Give such fields a writing convention in `access[].update` and let the panel display unfamiliar values, rather than silently substituting a known location. For hierarchical locations, a panel can locate recognized segments and display an unfamiliar trailing segment literally.

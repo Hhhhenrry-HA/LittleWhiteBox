@@ -45,7 +45,7 @@ export function createState3Updater({ service, adapter, available, changed, rewo
         ['function_startup_failed', 'function_worker_error', 'function_worker_unresponsive', 'function_message_error'].includes(issue.code));
     const correctable = (result: Result) => !result.ok && result.diagnostics.every(issue => [
         'model-submission', 'input-shape', 'input-number', 'path', 'missing-parent', 'array-index', 'action-missing', 'action-parameters',
-        'action-precondition', 'direct-other-stage', 'action-other-stage', 'direct-not-allowed', 'permission', 'derived-write', 'state-schema', 'constraint', 'increment-target', 'increment-overflow',
+        'action-precondition', 'direct-other-stage', 'action-other-stage', 'direct-not-allowed', 'derived-write', 'state-schema', 'constraint', 'increment-target', 'increment-overflow',
     ].includes(issue.code));
     function retryIndex() {
         if (pending && adapter.submissionBasis(pending.index) !== pending.basis) {pending = undefined;}

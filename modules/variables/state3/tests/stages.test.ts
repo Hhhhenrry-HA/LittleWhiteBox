@@ -41,7 +41,7 @@ test('B13: replacement preview is read-only and rejected replacement stays at th
 function dualCard() {
     const bundle = equipmentExample(); bundle.definition.updates = ['before', 'after'];
     for (const action of bundle.definition.actions) {action.stages = ['before'];}
-    for (const entry of bundle.definition.access) {if (entry.write.includes('direct')) {entry.stages = ['after'];}}
+    for (const entry of bundle.definition.access) {if (entry.direct) {entry.stages = ['after'];}}
     return bundle;
 }
 

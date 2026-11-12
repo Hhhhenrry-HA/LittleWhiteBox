@@ -28,7 +28,7 @@ const source = (file: string) => ts.transpileModule(readFileSync(new URL('../' +
 async function harness() {
     const f = fixture(), bundle = equipmentExample(); bundle.definition.updates = ['before', 'after'];
     bundle.definition.actions.forEach(action => {action.stages = ['before'];});
-    bundle.definition.access.filter(entry => entry.write.includes('direct')).forEach(entry => {entry.stages = ['after'];});
+    bundle.definition.access.filter(entry => entry.direct).forEach(entry => {entry.stages = ['after'];});
     accepted(await f.service.enable(bundle));
     let chat: ChatMessage[] = [{ mes: 'opening', name: 'Hero' }], generating = false, prompt = '', selected = true, composer = '';
     let interceptor: (...args: unknown[]) => Promise<void>;
@@ -430,7 +430,6 @@ test('B10: actions without net changes and empty submissions with rule changes b
 test('B11: no-change before actions keep converted parameters across reload and after handoff', async t => {
     const h = await harness(); t.after(() => h.dispose());
     const bundle = h.f.saved().card;
-    bundle.definition.access.find(entry => entry.path.at(-1) === 'health')!.write.push('heal');
     bundle.definition.actions.push({ id: 'heal', title: '治疗', stages: ['before'], description: 'Heal by twice the submitted amount.',
         parameters: { type: 'object', additionalProperties: false, required: ['amount'], properties: { amount: { type: 'number' } } },
         conversions: [{ path: ['amount'], value: { op: 'multiply', args: [{ param: ['amount'] }, { literal: 2 }] } }],

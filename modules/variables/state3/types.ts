@@ -17,7 +17,7 @@ export interface Action { id: string; title: string; stages?: UpdateStage[]; par
 export interface Trigger { id: string; description: string; timing?: 'batch' | 'action'; when: Expression; effects: Effect[] }
 export interface Definition {
     format: number; name: string; updates: UpdateStage[]; schema: Schema; initial: JsonObject;
-    access: { path: Path; write: string[]; stages?: UpdateStage[]; description: string; update?: string }[];
+    access: { path: Path; direct: boolean; stages?: UpdateStage[]; description: string; update?: string }[];
     rules: Rule[]; actions: Action[]; triggers?: Trigger[];
     constraints: { id: string; test: Expression; description: string }[];
     functions: Record<string, { reads: Path[]; description: string }>;

@@ -102,7 +102,7 @@ export async function settle(compiled: Compiled, start: Json, input: unknown, { 
             if (!operation.action) {
                 const previous = clone(state);
                 applyDirectInput(state, operation);
-                authorize(compiled, previous, state, 'direct');
+                authorize(compiled, previous, state);
                 record(previous, { kind: 'input' });
                 pendingDirect = true;
                 items[index].status = 'passed';

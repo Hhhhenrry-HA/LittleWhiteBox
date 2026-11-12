@@ -9,6 +9,7 @@ export const CARD_FILES_COPY = Object.freeze({
     invalid: '变量定义需要是 JSON 对象，函数文件需要是文本。未写回角色卡。',
     missing: '请先在工作区创建 variables/definition.json。',
     conflict: '变量定义包已在酒馆中改变，未覆盖。请重新读取定义及函数文件后再修改。',
+    invalidRules: '规则检查未通过，未写回角色卡。',
 });
 
 export function locateVariableFile(relative: string) {

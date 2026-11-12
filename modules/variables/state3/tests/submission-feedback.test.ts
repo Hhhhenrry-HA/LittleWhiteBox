@@ -11,7 +11,7 @@ import type { JsonObject, UpdateStage } from '../types.js';
 // removing it permits the remaining batch, with no partial writes or extra save.
 test('F1: forbidden input reports its permission before operands, without applying the other actions', async () => {
     const f = fixture(), bundle = equipmentExample();
-    bundle.definition.access[1].write = [];
+    bundle.definition.access[1].direct = false;
     accepted(await f.service.enable(bundle));
     const actions = [{ action: 'unequip', params: {} }, { action: 'equip', params: {} }];
     const batch = [...actions, { path: ['hero', 'health'], value: 40 }];
@@ -69,8 +69,8 @@ test('F3: nested restrictions, dynamic paths, whole-object writes and no-ops ret
     bundle.definition.schema = { type: 'object', properties: { bag: { type: 'object', additionalProperties: { type: 'number' } } } };
     bundle.definition.rules = []; bundle.definition.actions = []; bundle.definition.constraints = []; bundle.definition.views = {};
     bundle.definition.access = [
-        { path: ['bag'], write: ['direct'], description: 'Bag.' },
-        { path: ['bag', 'fixed'], write: [], description: 'Fixed.' },
+        { path: ['bag'], direct: true, description: 'Bag.' },
+        { path: ['bag', 'fixed'], direct: false, description: 'Fixed.' },
     ];
     const compiled = compileDefinition(bundle), start = accepted(await initialize(compiled)).state;
     for (const [input, staged, unstaged] of [

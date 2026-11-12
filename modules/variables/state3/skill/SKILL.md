@@ -59,11 +59,11 @@ The after updater receives the already settled before outcome with the current s
 
 Definition format is `1`. JSON Schema describes structure; explicit conversions happen in action parameter conversions. Schema checks validate values as submitted: they insert no defaults, delete no unknown fields and coerce nothing.
 
-Paths are string-segment arrays, such as `["hero", "health"]`. Access entries grant `direct` or named actions permission to change the specified subtree. Undeclared writes are rejected; an ancestor lock also covers its descendants. Derived outputs are calculated by their rules, not ordinary input.
+Paths are string-segment arrays, such as `["hero", "health"]`. Each access entry has a `direct` boolean: `true` permits direct edits to that subtree, and `false` blocks them. Direct edits require a covering permission and obey restrictions on ancestors and descendants. Actions use their own declared effects, independently of this switch.
 
 Rules have `kind: "derive"` or `kind: "correct"`, an output `path`, a `value` expression and a description. Expressions read current state with `get`, the batch start with `before`, action parameters with `param`, or call a declared function with `call` and `args`. A correction must be stable after settlement; cycles and overlapping rule outputs are rejected.
 
-An action declares its parameter schema, parameter conversions, condition (`requires`) and changes (`effects`). Every effect reads the values from before that action. Actions run in submitted order, with associated calculations between actions. The final values must pass the structure checks and constraints before they replace the chat's current values.
+An action declares its parameter schema, parameter conversions, condition (`requires`) and changes (`effects`). Every effect reads the values from before that action. Actions run in submitted order, with associated calculations between actions. Derived outputs are protected from both actions and direct edits. The final values must pass the structure checks and constraints before they replace the chat's current values.
 
 Use `triggers` for state-dependent consequences such as a first reward, a threshold event or an unlocked stage. Each trigger has `id`, `description`, `when`, `effects`, and optional `timing`. The default `batch` observes the completed batch; `action` observes each action after associated calculations. Conditions are evaluated in definition order, with associated calculations after each changed effect. The same trigger can run again until stable. Put one-time claim flags in ordinary state and change them with the reward. A cycle or an unbounded chain rejects the whole batch and reports the involved rules.
 
@@ -116,7 +116,7 @@ Put each instruction where its reader needs it:
 
 - `access[].description`, view descriptions, and rule, action, trigger and constraint descriptions: how the world works, read by both models. Write them as facts of the world, such as "Wearing the amulet raises maximum health by 40." or "A healing spell restores 10 health."
 - `access[].update`: when the passage calls for a change and which field or action to submit, read only by the update model. For example, "Submit heal when the passage casts a healing spell."
-- The update model receives each action's id, description and parameters, each rule's id, kind, output path and description, each trigger's id, description and timing, and each constraint's description. Expressions, requirements, effects and tests stay with the engine, so any judgement a model needs belongs in a description.
+- The update model receives each action's id, description and parameters, each rule's id, kind, output path and description, each trigger's id, description and timing, and each constraint's description. Its field-to-action list is generated from the actions' effect paths for the current stage. Expressions, requirements, effects and tests stay with the engine, so any judgement a model needs belongs in a description.
 - Worldbook prose: story context for both models.
 
 Descriptions are where both models learn how the world works. Every consequence a player can notice belongs in a description, including one calculated inside a function, such as deterioration, a cost or a stoppage. A consequence that exists only in code still happens, and the RP model can narrate the opposite.
@@ -187,7 +187,7 @@ return await st.state3.preview([{action:'unequip',params:{}}]);
 
 ## How to save and enable
 
-Save the definition path with CardFiles save; its function files are included automatically. `saveCardDraft(draft)` saves the same files after checking that the selected card matches the draft. Both write the workspace's current variable files, including edits made after the draft snapshot, and return `{ok, results:[{path, saved, unchanged?, hasUnsavedEdits?, error?}]}`. Inspect every result.
+Save the definition path with CardFiles save; its function files are included automatically. `saveCardDraft(draft)` saves the same files after checking that the selected card matches the draft. Both validate the complete rule package before writing the workspace's current variable files, including edits made after the draft snapshot, and return `{ok, results:[{path, saved, unchanged?, hasUnsavedEdits?, error?}]}`. Invalid rules stay in the workspace; the saved card is unchanged. Inspect every result.
 
 `enable()` fills missing native roots from the saved card's initial values and settles them with that definition. The managed roots are the top-level keys of `initial` at that moment, with all their descendants; a later settlement that would create another top-level key fails with `unowned-root`, and enabling an already enabled chat fails with `already-enabled`. Get the user's agreement before initializing or changing their active chat or mode. A new chat started in 3.0 mode with a card that has saved rules is enabled automatically.
 

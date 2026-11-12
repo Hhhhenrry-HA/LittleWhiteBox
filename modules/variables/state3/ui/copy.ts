@@ -1,4 +1,5 @@
 import { diagnostic } from '../engine/diagnostics.js';
+import { DEFINITION_ERRORS } from '../definition/copy.js';
 import { UPDATE_BUTTONS } from '../../shared/update-buttons.js';
 import { fieldName } from '../definition/schema-fields.js';
 import type { Condition, ConditionValue, Definition, Diagnostic, Json, ParameterIssue, Path, Success, UpdateStage } from '../types.js';
@@ -91,6 +92,7 @@ export const COPY = {
         'action-other-stage': '此动作不属于本次更新阶段。',
         'direct-not-allowed': '卡上的规则不允许直接修改这项变量。',
         'not-enabled': '当前聊天尚未启用规则。', 'already-enabled': '当前聊天已启用 3.0。',
+        ...DEFINITION_ERRORS,
         'definition-missing': '这张卡还没有 3.0 规则。', 'definition-shape': '规则包格式不完整。', 'definition-schema': '规则定义的结构不正确。',
         'unowned-root': '只能修改此聊天初始化过的变量及其子字段。',
         'rules-conflict': '卡上规则已被修改，请重新选择导入文件。',
@@ -107,7 +109,7 @@ export const COPY = {
         'nothing-to-save': '没有等待重试保存的结果。',
         'state-schema': '结算后的状态不符合定义。', 'constraint': '结算未通过规则检查。',
         'action-precondition': '动作的前提不成立。', 'action-parameters': '动作参数不符合要求。', 'action-missing': '找不到这个动作。',
-        'permission': '此字段不允许通过当前方式修改。', 'derived-write': '此字段由规则计算，不能直接修改。',
+        'derived-write': '此字段由规则计算，不能直接修改。',
         'stale-target': '聊天、回复、变量或卡上规则已变化，请重新更新。', 'cancelled': '已取消，状态未改变。',
         'save-unconfirmed': '无法确认聊天已经保存。', 'draft-conflict': '草稿已被其他编辑修改，请重新打开后合并。',
         'dependency-cycle': '规则存在循环依赖。',
