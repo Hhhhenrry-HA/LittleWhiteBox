@@ -1546,7 +1546,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/assistant/app-src/prompts/system-prompt.js",
       "relativePath": "modules/assistant/app-src/prompts/system-prompt.js",
       "extension": ".js",
-      "sizeBytes": 16605
+      "sizeBytes": 16682
     },
     {
       "source": "littlewhitebox",
@@ -1798,7 +1798,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/assistant/assistant.js",
       "relativePath": "modules/assistant/assistant.js",
       "extension": ".js",
-      "sizeBytes": 135006
+      "sizeBytes": 135087
     },
     {
       "source": "littlewhitebox",
@@ -1952,7 +1952,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/assistant/shared/skill-tools.js",
       "relativePath": "modules/assistant/shared/skill-tools.js",
       "extension": ".js",
-      "sizeBytes": 2565
+      "sizeBytes": 2597
     },
     {
       "source": "littlewhitebox",
@@ -2204,7 +2204,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/assistant/tests/skill-tools.test.js",
       "relativePath": "modules/assistant/tests/skill-tools.test.js",
       "extension": ".js",
-      "sizeBytes": 4629
+      "sizeBytes": 4664
     },
     {
       "source": "littlewhitebox",
@@ -2239,7 +2239,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/card-workspace/assistant-contract.js",
       "relativePath": "modules/card-workspace/assistant-contract.js",
       "extension": ".js",
-      "sizeBytes": 6663
+      "sizeBytes": 7566
     },
     {
       "source": "littlewhitebox",
@@ -2330,7 +2330,21 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/card-workspace/skill/SKILL.md",
       "relativePath": "modules/card-workspace/skill/SKILL.md",
       "extension": ".md",
-      "sizeBytes": 9927
+      "sizeBytes": 7171
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/card-workspace/skill/frontend/SKILL.md",
+      "relativePath": "modules/card-workspace/skill/frontend/SKILL.md",
+      "extension": ".md",
+      "sizeBytes": 6232
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/card-workspace/skill/frontend/examples.md",
+      "relativePath": "modules/card-workspace/skill/frontend/examples.md",
+      "extension": ".md",
+      "sizeBytes": 1785
     },
     {
       "source": "littlewhitebox",
@@ -2344,14 +2358,14 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/card-workspace/skill/references/xiaobaix-capabilities.md",
       "relativePath": "modules/card-workspace/skill/references/xiaobaix-capabilities.md",
       "extension": ".md",
-      "sizeBytes": 35293
+      "sizeBytes": 35353
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/card-workspace/skill/references/xiaobaix-heavy-ui.md",
       "relativePath": "modules/card-workspace/skill/references/xiaobaix-heavy-ui.md",
       "extension": ".md",
-      "sizeBytes": 4697
+      "sizeBytes": 4868
     },
     {
       "source": "littlewhitebox",
@@ -10856,7 +10870,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/skill/references/examples/jieling.md",
       "relativePath": "modules/variables/state3/skill/references/examples/jieling.md",
       "extension": ".md",
-      "sizeBytes": 8346
+      "sizeBytes": 8719
     },
     {
       "source": "littlewhitebox",
@@ -10870,7 +10884,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/skill/references/examples/jieling/description.md",
       "relativePath": "modules/variables/state3/skill/references/examples/jieling/description.md",
       "extension": ".md",
-      "sizeBytes": 1340
+      "sizeBytes": 1784
     },
     {
       "source": "littlewhitebox",
@@ -10898,21 +10912,21 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/skill/references/examples/jieling/regex/解铃会：最新一楼.md",
       "relativePath": "modules/variables/state3/skill/references/examples/jieling/regex/解铃会：最新一楼.md",
       "extension": ".md",
-      "sizeBytes": 37996
+      "sizeBytes": 38035
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/skill/references/examples/jieling/scenario.md",
       "relativePath": "modules/variables/state3/skill/references/examples/jieling/scenario.md",
       "extension": ".md",
-      "sizeBytes": 119
+      "sizeBytes": 299
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/skill/references/examples/jieling/variables/definition.json",
       "relativePath": "modules/variables/state3/skill/references/examples/jieling/variables/definition.json",
       "extension": ".json",
-      "sizeBytes": 23823
+      "sizeBytes": 24530
     },
     {
       "source": "littlewhitebox",
@@ -10940,7 +10954,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/skill/references/examples/jieling/variables/functions/close_week.js",
       "relativePath": "modules/variables/state3/skill/references/examples/jieling/variables/functions/close_week.js",
       "extension": ".js",
-      "sizeBytes": 3070
+      "sizeBytes": 3221
     },
     {
       "source": "littlewhitebox",
@@ -10955,6 +10969,13 @@
       "relativePath": "modules/variables/state3/skill/references/examples/jieling/variables/functions/incident_open.js",
       "extension": ".js",
       "sizeBytes": 83
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/skill/references/examples/jieling/variables/functions/interview_count.js",
+      "relativePath": "modules/variables/state3/skill/references/examples/jieling/variables/functions/interview_count.js",
+      "extension": ".js",
+      "sizeBytes": 50
     },
     {
       "source": "littlewhitebox",
@@ -11010,14 +11031,14 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/skill/references/examples/jieling/world_book/解铃会/经营状态.md",
       "relativePath": "modules/variables/state3/skill/references/examples/jieling/world_book/解铃会/经营状态.md",
       "extension": ".md",
-      "sizeBytes": 1198
+      "sizeBytes": 1322
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/skill/references/examples/jieling/world_book/解铃会/面谈.md",
       "relativePath": "modules/variables/state3/skill/references/examples/jieling/world_book/解铃会/面谈.md",
       "extension": ".md",
-      "sizeBytes": 1124
+      "sizeBytes": 1692
     },
     {
       "source": "littlewhitebox",
@@ -11185,7 +11206,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/tests/jieling-example.test.ts",
       "relativePath": "modules/variables/state3/tests/jieling-example.test.ts",
       "extension": ".ts",
-      "sizeBytes": 12211
+      "sizeBytes": 19074
     },
     {
       "source": "littlewhitebox",
