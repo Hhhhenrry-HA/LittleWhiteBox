@@ -4,6 +4,7 @@ import type { openDraft, saveDraft, checkDraft, saveCardDraft, exportRules, prep
 import type { readSettings, saveSettings } from './settings.js';
 import type { createState3Updater } from '../model/updater.js';
 import type { ExtensionTest, ExtensionTestResult } from '../extensions/testing.js';
+import type { RefreshOptions, RefreshResult } from '../definition/refresh.js';
 
 export interface State3Api {
     stage: SettlementService['stage']; apply: SettlementService['apply']; preview: SettlementService['preview'];
@@ -12,6 +13,7 @@ export interface State3Api {
     tryDefinition(bundle: Bundle, input?: unknown, options?: RunOptions & { state?: Json; opening?: number }): Promise<Result>;
     openDraft: typeof openDraft; saveDraft: typeof saveDraft; checkDraft: typeof checkDraft; saveCardDraft: typeof saveCardDraft;
     exportRules: typeof exportRules; prepareRuleImport: typeof prepareRuleImport; importRules: typeof importRules;
+    refreshRules(options: RefreshOptions): Promise<RefreshResult>;
     lastResult(): Result | undefined;
     retrySave(): Promise<{ ok: true; saved: true }>;
     settings: typeof readSettings; saveSettings: typeof saveSettings;

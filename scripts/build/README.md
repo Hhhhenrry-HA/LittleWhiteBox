@@ -55,6 +55,7 @@ dist/
   apps/                   带内容哈希的独立页面入口
   runtime/                带内容哈希的延迟公共入口
   server/                 签名的自包含绘图执行包与许可证
+  tools/state3.cjs         自包含变量 3.0 离线制卡工具（同目录附许可证）
   shared/                 从真实依赖图提取的公共块
   assets/                 CSS、小型资源及构建器生成的 Worker
   manifest.json           入口、CSS、依赖与确定性 buildId

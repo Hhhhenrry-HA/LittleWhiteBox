@@ -11,6 +11,8 @@ import { diagnostic, reject } from './engine/diagnostics.js';
 import { recordResult } from './runtime/history.js';
 import { openDraft, saveDraft, checkDraft, saveCardDraft, exportRules, prepareRuleImport, importRules } from './definition/authoring.js';
 import { onRulesSaved } from './definition/card-host.js';
+import { createRuleRefresh } from './definition/refresh.js';
+import { currentCard, readCharacter } from '../../card-workspace/host.js';
 import { createState3Page } from './ui/settings.js';
 import { notifyError } from './ui/notifications.js';
 import { CHAT_KEY, CARD_EXTENSION } from './definition/format.js';
@@ -85,7 +87,12 @@ export function initState3() {
         return result;
     };
     // Every rule writeback, through CardFiles or this API, refreshes the description macros before it resolves.
-    const stopRulesSaved = onRulesSaved(() => { updater.cancel(); return report(syncProjection().then(refresh)); });
+    const rulesChanged = async () => {
+        before.changed();
+        try {await syncProjection();} finally {refresh();}
+    };
+    const stopRulesSaved = onRulesSaved(rulesChanged);
+    const reloadRules = createRuleRefresh({ current: currentCard, read: readCharacter, changed: rulesChanged });
     const updater = createState3Updater({ service, adapter, available, changed: () => { refresh(); afterGeneration(); }, rewound: async () => {
         lastResult = undefined; resultMessage = undefined; beforeResult = undefined;
         await syncProjection(); refresh();
@@ -125,6 +132,7 @@ export function initState3() {
         },
         openDraft, saveDraft, checkDraft, exportRules, prepareRuleImport,
         saveCardDraft, importRules,
+        refreshRules: options => reloadRules({ ...options, signal: mergeAbortSignals(lifecycle.signal, options.signal)! }),
         lastResult: () => lastResult,
         async retrySave() {
             const epoch = lifecycle, result = lastResult;

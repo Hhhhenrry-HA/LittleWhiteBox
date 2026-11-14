@@ -23,6 +23,7 @@ import { accepted } from './fixture.js';
 import { runFunctionInVm } from '../engine/functions-vm.js';
 import type { Bundle } from '../types.js';
 import { activeTools, TOOL_CALL_LIMIT } from '../extensions/definition.js';
+import { createRuleRefresh } from '../definition/refresh.js';
 
 const source = (file: string) => ts.transpileModule(readFileSync(new URL('../' + file, import.meta.url), 'utf8'), {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
@@ -74,7 +75,8 @@ function runtimeHarness(bundle: Bundle | null = equipmentExample(), initialMode 
     });
     const event_types = Object.fromEntries(['CHAT_CHANGED', 'MESSAGE_DELETED', 'MESSAGE_SWIPED', 'MESSAGE_EDITED', 'SETTINGS_UPDATED',
         'CHARACTER_MESSAGE_RENDERED', 'GENERATION_STARTED', 'GENERATION_AFTER_COMMANDS', 'GENERATION_STOPPED', 'MESSAGE_SENT', 'MESSAGE_RECEIVED', 'GENERATION_ENDED', 'CHAT_CREATED'].map(key => [key, key]));
-    const emitted: { state: unknown }[] = [], resumed: number[] = [];
+    const emitted: { state: unknown }[] = [], resumed: number[] = [], macroVersions: string[] = [];
+    let remoteCard = structuredClone(h.ctx.characters[0]);
     let interceptor: ((chat: unknown, size: number, abort: (immediately: boolean) => void, type: string, dispatch: { input: { deferred: boolean; rebuild: boolean } }) => Promise<void>) | undefined;
     const beforeHost = {
         ...settings, createModuleEvents, event_types, ...h.exports, getContext: () => h.ctx,
@@ -92,7 +94,8 @@ function runtimeHarness(bundle: Bundle | null = equipmentExample(), initialMode 
         isGenerating: () => false, waitForAfterAiReady: ready, createSettlementService,
         ...h.exports, getContext: () => h.ctx, compileDefinition, diagnostic, reject, recordResult, CHAT_KEY, CARD_EXTENSION, digest,
         exportRules() {}, prepareRuleImport() {}, importRules() {}, onRulesSaved: () => () => {},
-        createState3Macros: () => ({ clear() {}, set() { if (disposed) {lateMacros++;} }, dispose() {} }),
+        createRuleRefresh, currentCard: () => h.ctx.characters[h.ctx.characterId], readCharacter: async () => structuredClone(remoteCard),
+        createState3Macros: () => ({ clear() {macroVersions.length = 0;}, set(compiled: ReturnType<typeof compileDefinition>) { macroVersions.push(digest(compiled.bundle)); if (disposed) {lateMacros++;} }, dispose() {} }),
         createState3Updater,
         createBeforeGeneration: realBeforeGeneration ?? (({ updater }: { updater: ReturnType<typeof createState3Updater> }) => ({
             status: updater.status, cancel: updater.cancel, changed: updater.cancel, dispose: updater.cancel,
@@ -106,7 +109,8 @@ function runtimeHarness(bundle: Bundle | null = equipmentExample(), initialMode 
         window: {} as { LWB_StateV3: State3Api },
     };
     const runtime = runInNewContext(source('index.ts') + '\ninitState3(); ({cleanupState3})', env);
-    return { ...h, api: env.window.LWB_StateV3, handlers, preferences, selector, started, finish, fail, emitted, resumed,
+    return { ...h, api: env.window.LWB_StateV3, handlers, preferences, selector, started, finish, fail, emitted, resumed, macroVersions,
+        setRemote(card: typeof remoteCard) {remoteCard = structuredClone(card);},
         cleanup: () => runtime.cleanupState3(), late: () => ({ controls: lateControls, macros: lateMacros }), controls: () => controls, requests: () => requests,
         async prepare(type = 'normal') {
             let aborted = false;
@@ -116,6 +120,32 @@ function runtimeHarness(bundle: Bundle | null = equipmentExample(), initialMode 
         async drain() { while (pending.size) {await Promise.all([...pending]);} },
     };
 }
+
+// O4: external refresh replaces only rules, updates macros before resolving,
+// preserves progress and makes pending old-rule work stale (silent state loss).
+test('O4: external refresh updates rules/macros, preserves progress, rejects old stages and surfaces malformed rules', async t => {
+    const h = runtimeHarness(); t.after(() => h.cleanup()); await h.drain();
+    accepted(await h.api.enable());
+    const before = structuredClone(h.ctx.chatMetadata), stage = await h.api.stage();
+    const next = equipmentExample();
+    next.definition.rules.find(rule => rule.id === 'base-health')!.value = { literal: 30 };
+    const remote = structuredClone(h.ctx.characters[0]); remote.data!.extensions![CARD_EXTENSION] = JSON.stringify(next);
+    remote.name = 'unrelated remote name'; h.setRemote(remote);
+    assert.equal((await h.api.refreshRules({ avatar: 'test.png' })).changed, true);
+    assert.deepEqual(h.ctx.chatMetadata, before);
+    assert.equal(h.ctx.characters[0].name, 'test');
+    assert.deepEqual(h.macroVersions, [digest(next)]);
+    await assert.rejects(stage.run([], { preview: false }), { code: 'stale-target' });
+    const result = accepted(await h.api.apply([{ action: 'unequip', params: {} }]));
+    assert.equal((result.state as { hero: { health: number } }).hero.health, 30);
+    assert.equal((await h.api.refreshRules({ avatar: 'test.png' })).changed, false);
+    remote.data!.extensions![CARD_EXTENSION] = '{broken'; h.setRemote(remote);
+    const progress = structuredClone(h.ctx.chatMetadata);
+    await assert.rejects(h.api.refreshRules({ avatar: 'test.png' }));
+    assert.deepEqual(h.ctx.chatMetadata, progress);
+    assert.deepEqual(h.macroVersions, []);
+    assert.equal(h.ctx.characters[0].data!.extensions![CARD_EXTENSION], '{broken');
+});
 
 // A1: completion signals may arrive in any order, but one reply must start only
 // one update request, including after request failure (lost state / API cost).
@@ -443,6 +473,7 @@ test('K14/K13: native silent swipe recovery restores values and controls without
         ...h.exports, getContext: () => h.ctx, compileDefinition, diagnostic, reject, recordResult, CHAT_KEY, CARD_EXTENSION, digest,
         createBeforeGeneration: () => ({ status: () => ({ phase: 'ready', busy: false }), cancel() {}, changed() {}, dispose() {} }),
         exportRules() {}, prepareRuleImport() {}, importRules() {}, onRulesSaved: () => () => {}, state3Selected: () => true, selectState3() {},
+        createRuleRefresh, currentCard: () => h.ctx.characters[0], readCharacter: async () => structuredClone(h.ctx.characters[0]),
         readSettings: () => ({ auto: mode === 'auto', source: 'main' }), saveSettings() {},
         createState3Macros: () => ({ clear() {}, set() {}, dispose() {} }),
         createState3Updater: () => ({ cancel() {}, status: () => ({ phase: 'ready', busy: false }), async update() {
