@@ -335,7 +335,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/docs/user/variables-v3.md",
       "relativePath": "docs/user/variables-v3.md",
       "extension": ".md",
-      "sizeBytes": 27900
+      "sizeBytes": 29570
     },
     {
       "source": "littlewhitebox",
@@ -2330,7 +2330,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/card-workspace/skill/SKILL.md",
       "relativePath": "modules/card-workspace/skill/SKILL.md",
       "extension": ".md",
-      "sizeBytes": 7171
+      "sizeBytes": 7407
     },
     {
       "source": "littlewhitebox",
@@ -5970,7 +5970,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/feedback-copy.js",
       "relativePath": "modules/story-summary/feedback-copy.js",
       "extension": ".js",
-      "sizeBytes": 9188
+      "sizeBytes": 9266
     },
     {
       "source": "littlewhitebox",
@@ -6502,7 +6502,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/story-summary.js",
       "relativePath": "modules/story-summary/story-summary.js",
       "extension": ".js",
-      "sizeBytes": 231138
+      "sizeBytes": 231236
     },
     {
       "source": "littlewhitebox",
@@ -6531,6 +6531,13 @@
       "relativePath": "modules/story-summary/tests/abort-utils.test.js",
       "extension": ".js",
       "sizeBytes": 3101
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/tests/anchor-integrity-refresh.test.js",
+      "relativePath": "modules/story-summary/tests/anchor-integrity-refresh.test.js",
+      "extension": ".js",
+      "sizeBytes": 5614
     },
     {
       "source": "littlewhitebox",
@@ -6950,7 +6957,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/tests/state-vector-policy.test.js",
       "relativePath": "modules/story-summary/tests/state-vector-policy.test.js",
       "extension": ".js",
-      "sizeBytes": 1437
+      "sizeBytes": 1428
     },
     {
       "source": "littlewhitebox",
@@ -7048,14 +7055,14 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/tests/vector-integrity-policy.test.js",
       "relativePath": "modules/story-summary/tests/vector-integrity-policy.test.js",
       "extension": ".js",
-      "sizeBytes": 1841
+      "sizeBytes": 2994
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/tests/vector-package.test.js",
       "relativePath": "modules/story-summary/tests/vector-package.test.js",
       "extension": ".js",
-      "sizeBytes": 69666
+      "sizeBytes": 72920
     },
     {
       "source": "littlewhitebox",
@@ -7090,7 +7097,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/vector/integrity-policy.js",
       "relativePath": "modules/story-summary/vector/integrity-policy.js",
       "extension": ".js",
-      "sizeBytes": 1458
+      "sizeBytes": 1775
     },
     {
       "source": "littlewhitebox",
@@ -7468,7 +7475,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/story-summary/vector/storage/cache-consistency.js",
       "relativePath": "modules/story-summary/vector/storage/cache-consistency.js",
       "extension": ".js",
-      "sizeBytes": 6906
+      "sizeBytes": 7260
     },
     {
       "source": "littlewhitebox",
@@ -10506,7 +10513,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/definition/authoring.ts",
       "relativePath": "modules/variables/state3/definition/authoring.ts",
       "extension": ".ts",
-      "sizeBytes": 5747
+      "sizeBytes": 5801
     },
     {
       "source": "littlewhitebox",
@@ -10527,7 +10534,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/definition/compile.ts",
       "relativePath": "modules/variables/state3/definition/compile.ts",
       "extension": ".ts",
-      "sizeBytes": 5166
+      "sizeBytes": 5449
     },
     {
       "source": "littlewhitebox",
@@ -10548,7 +10555,14 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/definition/format.ts",
       "relativePath": "modules/variables/state3/definition/format.ts",
       "extension": ".ts",
-      "sizeBytes": 4453
+      "sizeBytes": 4517
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/definition/openings.ts",
+      "relativePath": "modules/variables/state3/definition/openings.ts",
+      "extension": ".ts",
+      "sizeBytes": 965
     },
     {
       "source": "littlewhitebox",
@@ -10653,7 +10667,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/engine/settle.ts",
       "relativePath": "modules/variables/state3/engine/settle.ts",
       "extension": ".ts",
-      "sizeBytes": 12635
+      "sizeBytes": 13624
     },
     {
       "source": "littlewhitebox",
@@ -10716,7 +10730,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/index.ts",
       "relativePath": "modules/variables/state3/index.ts",
       "extension": ".ts",
-      "sizeBytes": 21332
+      "sizeBytes": 24726
     },
     {
       "source": "littlewhitebox",
@@ -10758,14 +10772,14 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/runtime/api.ts",
       "relativePath": "modules/variables/state3/runtime/api.ts",
       "extension": ".ts",
-      "sizeBytes": 2133
+      "sizeBytes": 2151
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/runtime/before-generation.ts",
       "relativePath": "modules/variables/state3/runtime/before-generation.ts",
       "extension": ".ts",
-      "sizeBytes": 10352
+      "sizeBytes": 10549
     },
     {
       "source": "littlewhitebox",
@@ -10779,14 +10793,14 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/runtime/history.ts",
       "relativePath": "modules/variables/state3/runtime/history.ts",
       "extension": ".ts",
-      "sizeBytes": 4172
+      "sizeBytes": 4302
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/runtime/host.ts",
       "relativePath": "modules/variables/state3/runtime/host.ts",
       "extension": ".ts",
-      "sizeBytes": 14095
+      "sizeBytes": 14973
     },
     {
       "source": "littlewhitebox",
@@ -10807,7 +10821,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/runtime/service.ts",
       "relativePath": "modules/variables/state3/runtime/service.ts",
       "extension": ".ts",
-      "sizeBytes": 18893
+      "sizeBytes": 21350
     },
     {
       "source": "littlewhitebox",
@@ -10828,7 +10842,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/skill/SKILL.md",
       "relativePath": "modules/variables/state3/skill/SKILL.md",
       "extension": ".md",
-      "sizeBytes": 32530
+      "sizeBytes": 32974
     },
     {
       "source": "littlewhitebox",
@@ -10849,7 +10863,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/skill/references/card-side.md",
       "relativePath": "modules/variables/state3/skill/references/card-side.md",
       "extension": ".md",
-      "sizeBytes": 9480
+      "sizeBytes": 9600
     },
     {
       "source": "littlewhitebox",
@@ -10870,7 +10884,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/skill/references/examples/jieling.md",
       "relativePath": "modules/variables/state3/skill/references/examples/jieling.md",
       "extension": ".md",
-      "sizeBytes": 8719
+      "sizeBytes": 9564
     },
     {
       "source": "littlewhitebox",
@@ -10892,6 +10906,13 @@
       "relativePath": "modules/variables/state3/skill/references/examples/jieling/message/0.md",
       "extension": ".md",
       "sizeBytes": 810
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/skill/references/examples/jieling/message/1.md",
+      "relativePath": "modules/variables/state3/skill/references/examples/jieling/message/1.md",
+      "extension": ".md",
+      "sizeBytes": 858
     },
     {
       "source": "littlewhitebox",
@@ -10919,14 +10940,14 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/skill/references/examples/jieling/scenario.md",
       "relativePath": "modules/variables/state3/skill/references/examples/jieling/scenario.md",
       "extension": ".md",
-      "sizeBytes": 299
+      "sizeBytes": 370
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/skill/references/examples/jieling/variables/definition.json",
       "relativePath": "modules/variables/state3/skill/references/examples/jieling/variables/definition.json",
       "extension": ".json",
-      "sizeBytes": 24530
+      "sizeBytes": 24929
     },
     {
       "source": "littlewhitebox",
@@ -11059,7 +11080,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/skill/references/state-design.md",
       "relativePath": "modules/variables/state3/skill/references/state-design.md",
       "extension": ".md",
-      "sizeBytes": 9495
+      "sizeBytes": 9658
     },
     {
       "source": "littlewhitebox",
@@ -11136,7 +11157,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/tests/fixture.ts",
       "relativePath": "modules/variables/state3/tests/fixture.ts",
       "extension": ".ts",
-      "sizeBytes": 3010
+      "sizeBytes": 3147
     },
     {
       "source": "littlewhitebox",
@@ -11164,14 +11185,14 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/tests/guide-examples.test.ts",
       "relativePath": "modules/variables/state3/tests/guide-examples.test.ts",
       "extension": ".ts",
-      "sizeBytes": 7636
+      "sizeBytes": 8433
     },
     {
       "source": "littlewhitebox",
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/tests/guide-fixture.ts",
       "relativePath": "modules/variables/state3/tests/guide-fixture.ts",
       "extension": ".ts",
-      "sizeBytes": 3838
+      "sizeBytes": 4007
     },
     {
       "source": "littlewhitebox",
@@ -11185,7 +11206,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/tests/host.test.ts",
       "relativePath": "modules/variables/state3/tests/host.test.ts",
       "extension": ".ts",
-      "sizeBytes": 49272
+      "sizeBytes": 67465
     },
     {
       "source": "littlewhitebox",
@@ -11206,7 +11227,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/tests/jieling-example.test.ts",
       "relativePath": "modules/variables/state3/tests/jieling-example.test.ts",
       "extension": ".ts",
-      "sizeBytes": 19074
+      "sizeBytes": 20374
     },
     {
       "source": "littlewhitebox",
@@ -11228,6 +11249,13 @@
       "relativePath": "modules/variables/state3/tests/native-results.test.ts",
       "extension": ".ts",
       "sizeBytes": 3551
+    },
+    {
+      "source": "littlewhitebox",
+      "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/tests/openings.test.ts",
+      "relativePath": "modules/variables/state3/tests/openings.test.ts",
+      "extension": ".ts",
+      "sizeBytes": 5524
     },
     {
       "source": "littlewhitebox",
@@ -11262,7 +11290,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/tests/result-dialog.test.ts",
       "relativePath": "modules/variables/state3/tests/result-dialog.test.ts",
       "extension": ".ts",
-      "sizeBytes": 8707
+      "sizeBytes": 9618
     },
     {
       "source": "littlewhitebox",
@@ -11290,7 +11318,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/types.ts",
       "relativePath": "modules/variables/state3/types.ts",
       "extension": ".ts",
-      "sizeBytes": 6801
+      "sizeBytes": 6948
     },
     {
       "source": "littlewhitebox",
@@ -11311,7 +11339,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/ui/copy.ts",
       "relativePath": "modules/variables/state3/ui/copy.ts",
       "extension": ".ts",
-      "sizeBytes": 19721
+      "sizeBytes": 20308
     },
     {
       "source": "littlewhitebox",
@@ -11339,7 +11367,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/ui/result-dialog.ts",
       "relativePath": "modules/variables/state3/ui/result-dialog.ts",
       "extension": ".ts",
-      "sizeBytes": 9779
+      "sizeBytes": 9874
     },
     {
       "source": "littlewhitebox",
@@ -11353,7 +11381,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/variables/state3/ui/settings.ts",
       "relativePath": "modules/variables/state3/ui/settings.ts",
       "extension": ".ts",
-      "sizeBytes": 18772
+      "sizeBytes": 18825
     },
     {
       "source": "littlewhitebox",
@@ -20908,7 +20936,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/style.css",
       "relativePath": "style.css",
       "extension": ".css",
-      "sizeBytes": 9591
+      "sizeBytes": 10099
     },
     {
       "source": "littlewhitebox",
