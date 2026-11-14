@@ -32,7 +32,6 @@ import { shouldAutoRevealWorkspace } from '../../shared/window-layout.js';
 import { TOOL_NAMES } from '../tooling.js';
 import { buildWorkspaceTree, collectDirectoryExpansionKeys } from './local-workspace-tree.js';
 import { displayCardWorkspacePath } from '../../../card-workspace/paths.js';
-import { cardItemGroupKey } from '../../../card-workspace/display.js';
 import { observeBackgroundTask } from '../../../../shared/common/async-errors.js';
 
 
@@ -496,7 +495,7 @@ export function createLocalSourcesManager(deps) {
 
     function shouldSkipAuthoritativeRender(nextSources = []) {
         const selectedFilePath = normalizeWritableLocalFilePath(state.selectedFilePath);
-        if (!state.isWorkspaceOpen || state.viewerMode !== 'current' || !selectedFilePath) {
+        if (!state.isWorkspaceOpen || state.viewerMode === 'diff' || !selectedFilePath) {
             return false;
         }
         const pendingEntry = pendingEditorWrites.get(selectedFilePath);
@@ -596,8 +595,6 @@ export function createLocalSourcesManager(deps) {
         }
 
         const expandedKeys = new Set(Array.isArray(state.treeExpandedKeys) ? state.treeExpandedKeys : []);
-        const itemKey = cardItemGroupKey(match.file.path);
-        if (itemKey) expandedKeys.add(itemKey);
         buildExpandedKeysForWorkspaceTarget(
             match.source.sourceId,
             match.file.relativePath.split('/').slice(0, -1).join('/'),
@@ -671,7 +668,7 @@ export function createLocalSourcesManager(deps) {
         }
 
         const selected = findLocalFileByPath(normalizedSources, state.selectedFilePath);
-        if (state.viewerMode !== 'diff' || !hasOriginalSnapshot(selected?.file)) state.viewerMode = 'current';
+        if (state.viewerMode === 'diff' && !hasOriginalSnapshot(selected?.file)) state.viewerMode = 'current';
     }
 
     async function applyExternalLocalSources(nextSources, toastText = '') {
@@ -1313,7 +1310,7 @@ export function createLocalSourcesManager(deps) {
     }
 
     function setWorkspaceViewerMode(mode) {
-        if (!['current', 'diff'].includes(mode)) return;
+        if (!['current', 'diff', 'settings', 'source'].includes(mode)) return;
         state.viewerMode = mode;
         ensureWorkspaceSelection();
         persistWorkspaceUiState();

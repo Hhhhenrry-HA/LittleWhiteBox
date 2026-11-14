@@ -84,7 +84,7 @@ export function initState3() {
     };
     // Every rule writeback, through CardFiles or this API, refreshes the description macros before it resolves.
     const stopRulesSaved = onRulesSaved(() => { updater.cancel(); return report(syncProjection().then(refresh)); });
-    const updater = createState3Updater({ service, adapter, available, changed: () => refresh(), rewound: async () => {
+    const updater = createState3Updater({ service, adapter, available, changed: () => { refresh(); afterGeneration(); }, rewound: async () => {
         lastResult = undefined; resultMessage = undefined; beforeResult = undefined;
         await syncProjection(); refresh();
     } });
@@ -137,7 +137,7 @@ export function initState3() {
         update: () => retain(updater.update(owned({ stage: 'after' as const }))),
         recomputeBefore: index => before.run(index), skipBefore: index => before.skip(index), undoBefore: index => before.undo(index),
         previewRequest: options => updater.previewRequest(owned(options)),
-        cancel: () => before.cancel(), updateStatus: () => before.status(),
+        cancel: () => { pendingGeneration = undefined; before.cancel(); }, updateStatus: () => before.status(),
         revokeExtensionTrust,
         extensionTrust: () => extensionTrust(adapter.bundle()),
         authorizeExtensions: options => authorizeExtensions(adapter.bundle(), owned(options).signal),
@@ -286,6 +286,9 @@ export function initState3() {
                 if (current.chat !== generation.chat || !message || !state3Selected()) {return;}
                 const messageId = current.chat.indexOf(message);
                 if (messageId < 0) {return;}
+                // Cancellation does not release an updater still awaiting persistence.
+                // Its changed callback resumes this turn once ownership is released.
+                if (updater.status().busy) {return;}
                 // Consume before awaiting the model, including failed requests.
                 pendingGeneration = undefined;
                 if (current.chatMetadata[CHAT_KEY] && readSettings().auto && adapter.bundle().definition.updates.includes('after')) {
@@ -298,7 +301,11 @@ export function initState3() {
     events.on(event_types.CHAT_CREATED, async () => {
         const ctx = getContext();
         if (inGroup(ctx) || !state3Selected() || ctx.chatMetadata?.[CHAT_KEY]) {return;}
-        if (ctx.characters?.[ctx.characterId]?.data?.extensions?.[CARD_EXTENSION]) {await api.enable({ signal: lifecycle.signal });}
+        if (ctx.characters?.[ctx.characterId]?.data?.extensions?.[CARD_EXTENSION]) {
+            const signal = lifecycle.signal;
+            const result = await api.enable({ signal });
+            if (!signal.aborted && !result.ok) {result.diagnostics.forEach(notifyError);}
+        }
     });
     window.LWB_StateV3 = api;
     runtime = { page, modeChanged, dispose() { stopRulesSaved(); lifecycle.abort(); clearSwipeRecovery(); topology.disconnect(); before.dispose(); macros.dispose(); events.cleanup(); page?.dispose(); delete window.LWB_StateV3; } };

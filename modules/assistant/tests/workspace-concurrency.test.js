@@ -214,6 +214,34 @@ test('model evidence advances only on its observed paths, not unrelated UI refre
     assert.equal(content(state.activeRun.workspaceBaseline), 'observed update');
 });
 
+test('a missing-path read lets the same run recreate a file deleted elsewhere', async t => {
+    const { ra, rb } = await setup(t);
+    const { state, controller } = editorWindow(t, rb);
+    state.activeRun = { id: 'run', toolRequestIds: new Set(), workspaceBaseline: normalizeLocalSources(initial) };
+    await commit(ra, 'Delete', { path: 'local/story' });
+    assert.equal((await controller.callHostTool('Write', { path: fileA, content: 'blind rebuild' }, { runId: 'run' })).error, 'workspace_conflict');
+    assert.equal((await controller.callHostTool('Read', { filePath: fileA, scope: 'local' }, { runId: 'run' })).ok, false);
+    assert.equal((await controller.callHostTool('Write', { path: fileA, content: 'rebuilt' }, { runId: 'run' })).ok, true);
+    assert.equal(content((await ra.readWorkspace()).localSources), 'rebuilt');
+    assert.equal(content((await ra.readWorkspace()).localSources, fileB), undefined);
+});
+
+// A missing child cannot authorize overwriting its unread parent file (lost concurrent edits).
+test('reading a missing child leaves an unseen parent file protected against write and delete', async t => {
+    const { ra, rb } = await setup(t);
+    const { state, controller } = editorWindow(t, rb);
+    state.activeRun = { id: 'run', toolRequestIds: new Set(), workspaceBaseline: normalizeLocalSources(initial) };
+    await commit(ra, 'Write', { path: fileA, content: 'unseen concurrent edit' });
+    const read = await controller.callHostTool('Read', { filePath: `${fileA}/missing.md`, scope: 'local' }, { runId: 'run' });
+    assert.equal(read.ok, false);
+    assert.equal(content(state.activeRun.workspaceBaseline), 'A0');
+    for (const name of ['Write', 'Delete']) {
+        const result = await controller.callHostTool(name, { path: fileA, content: 'overwrite' }, { runId: 'run' });
+        assert.equal(result.error, 'workspace_conflict');
+        assert.equal(content((await ra.readWorkspace()).localSources), 'unseen concurrent edit');
+    }
+});
+
 test('typing while a save is in flight drains the latest draft before close can proceed', async t => {
     const { rb } = await setup(t);
     let entered, release;

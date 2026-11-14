@@ -2,6 +2,8 @@
 
 This reference complements the definition format. Use the card's actual names and mechanics rather than adopting an example's categories.
 
+Every structure choice below answers one question first: why does this value need to be stored? A field earns its place when a later rule reads it, a choice depends on it, or the narrator must keep it true across turns — and it cannot be computed from other fields. Write that reason into the field's `access[].description` in terms the models can act on. When the reason is "the panel shows it", check whether the panel can derive it instead. The [解铃会 card](<examples/jieling.md#why-each-variable-exists>) lists the reason for each of its fields and the values it deliberately derives.
+
 ## Stable addresses, people and inventory
 
 Root names and paths are shared addresses for the updater, macros, rules and panels. Keep them stable while maintaining a card; renaming a definition field does not migrate an existing chat's values.

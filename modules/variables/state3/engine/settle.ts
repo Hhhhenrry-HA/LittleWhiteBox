@@ -49,24 +49,24 @@ export async function settle(compiled: Compiled, start: Json, input: unknown, { 
             for (const rule of compiled.rules) {
                 ruleId = rule.id;
                 const previous = clone(state);
-                const value = await evaluate(rule.value, context);
+                const value = await evaluate(rule.value, context, ['rules', String(compiled.definition.rules.indexOf(rule)), 'value']);
                 assertJson(value);
                 setAt(state, rule.path, value);
                 record(previous, { kind: rule.kind, id: rule.id });
             }
             for (const rule of compiled.rules.filter(item => item.kind === 'correct')) {
                 ruleId = rule.id;
-                const value = await evaluate(rule.value, context);
+                const value = await evaluate(rule.value, context, ['rules', String(compiled.definition.rules.indexOf(rule)), 'value']);
                 const candidate = clone(state);
                 setAt(candidate, rule.path, value);
                 if (!equal(candidate, state)) {reject('correction-unstable', { rule: rule.id });}
             }
             ruleId = undefined;
         };
-        const effects = async (items: Compiled['definition']['actions'][number]['effects']) => {
+        const effects = async (items: Compiled['definition']['actions'][number]['effects'], origin: Path) => {
             const values = [];
-            for (const effect of items) {
-                const value = await evaluate(effect.value, context);
+            for (const [index, effect] of items.entries()) {
+                const value = await evaluate(effect.value, context, [...origin, String(index), 'value']);
                 assertJson(value); values.push({ path: effect.path, value });
             }
             for (const effect of values) {setAt(state, effect.path, effect.value);}
@@ -85,9 +85,10 @@ export async function settle(compiled: Compiled, start: Json, input: unknown, { 
                 let changed = false;
                 for (const rule of selected) {
                     ruleId = rule.id;
-                    if (await evaluate(rule.when, context) !== true) {continue;}
+                    const origin = ['triggers', String(compiled.definition.triggers!.indexOf(rule))];
+                    if (await evaluate(rule.when, context, [...origin, 'when']) !== true) {continue;}
                     const previous = clone(state);
-                    await effects(rule.effects);
+                    await effects(rule.effects, [...origin, 'effects']);
                     if (equal(previous, state)) {continue;}
                     changed = true; chain.add(rule.id);
                     record(previous, { kind: 'trigger', id: rule.id });
@@ -120,18 +121,19 @@ export async function settle(compiled: Compiled, start: Json, input: unknown, { 
             }
             const action = compiled.actions.get(String(operation.action))!;
             ruleId = action.id;
+            const origin = ['actions', String(compiled.definition.actions.findIndex(item => item.id === action.id))];
             context.params = clone(operation.params as JsonObject);
-            for (const conversion of action.conversions) {
-                const value = await evaluate(conversion.value, context);
+            for (const [index, conversion] of action.conversions.entries()) {
+                const value = await evaluate(conversion.value, context, [...origin, 'conversions', String(index), 'value']);
                 assertJson(value);
                 setAt(context.params, conversion.path, value);
             }
             if (action.conversions.length) {validateActionParameters(action, context.params);}
-            if (await evaluate(action.requires, context) !== true) {reject('action-precondition', { action: action.id, actionTitle: action.title,
+            if (await evaluate(action.requires, context, [...origin, 'requires']) !== true) {reject('action-precondition', { action: action.id, actionTitle: action.title,
                 condition: await explainCondition(action.requires, context, action.parameters) });}
             const previous = clone(state);
             // One action's effects observe the same pre-action state.
-            await effects(action.effects);
+            await effects(action.effects, [...origin, 'effects']);
             authorize(compiled, previous, state, action.id);
             record(previous, { kind: 'action', id: action.id });
             actions.push({ id: action.id, params: clone(context.params) });

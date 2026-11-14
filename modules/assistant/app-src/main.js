@@ -68,7 +68,6 @@ import { observeBackgroundTask } from '../../../shared/common/async-errors.js';
 const SOURCE = 'xb-assistant-app';
 const ROOT_ID = 'xb-assistant-root';
 const REQUEST_TIMEOUT_MS = 180000;
-const MAX_TOOL_ROUNDS = 64;
 const MAX_CONTEXT_TOKENS = 258000;
 const SUMMARY_TRIGGER_TOKENS = 228000;
 const MAX_IMAGE_ATTACHMENTS = 3;
@@ -555,8 +554,12 @@ async function editCardFiles(path = '') {
     try {
         if (!await flushPendingWorkspaceChanges()) return;
         const result = await requestHostTool(TOOL_NAMES.CARD_FILES, path ? { action: 'save', paths: [path] } : { action: 'open' });
-        if (path) showToast(result.ok ? (result.results.some(item => item.hasUnsavedEdits) ? CARD_COPY.savedLater : CARD_COPY.saved)
-            : result.results.filter(item => !item.saved).map(item => item.error).join('\n'));
+        if (path) {
+            showToast(result.ok ? (result.results.some(item => item.hasUnsavedEdits) ? CARD_COPY.savedLater : CARD_COPY.saved)
+                : result.results.filter(item => !item.saved).map(item => item.error).join('\n'));
+            const moved = result.results.find(item => item.saved && item.fromPath === path);
+            if (moved) openWorkspacePanelTarget(moved.path);
+        }
         else openWorkspacePanelTarget(`${result.root}card.json`);
     } catch (error) { showToast(describeError(error)); }
 }
@@ -1287,7 +1290,6 @@ const runtime = createAssistantRuntime({
     HISTORY_SUMMARY_PREFIX,
     MAX_CONTEXT_TOKENS,
     SUMMARY_TRIGGER_TOKENS,
-    MAX_TOOL_ROUNDS,
     REQUEST_TIMEOUT_MS,
     TOOL_DEFINITIONS,
     TOOL_NAMES,
@@ -1296,6 +1298,7 @@ const runtime = createAssistantRuntime({
 const {
     resetCompactionState,
     buildContextMeterLabel,
+    compactionThreshold,
     updateContextStats,
     pushMessage,
     cancelActiveRun,
@@ -1420,7 +1423,7 @@ function buildSanitizedHtmlFragment(html) {
 
 function renderCurrentContextMeter(root = document.getElementById(ROOT_ID)) {
     if (!root?.firstChild) return;
-    renderContextMeter(root, state, { summaryTriggerTokens: SUMMARY_TRIGGER_TOKENS, buildContextMeterLabel });
+    renderContextMeter(root, state, { summaryTriggerTokens: compactionThreshold(), buildContextMeterLabel });
 }
 
 function runContextStatsUpdateForRender() {
@@ -1538,7 +1541,7 @@ function bindEvents(root) {
         return null;
     };
     const updateWorkspaceSelectionContextFromDom = () => {
-        if (state.viewerMode === 'current' && state.selectedFilePath) {
+        if (state.viewerMode !== 'diff' && state.selectedFilePath) {
             return;
         }
         const selection = selectionDocument.getSelection?.();
@@ -1622,7 +1625,12 @@ function bindEvents(root) {
 
     // Desktop keeps the sidebar visible; on narrow screens it is a drawer.
     root.querySelector('#xb-assistant-sidebar-toggle')?.addEventListener('click', () => {
-        state.sidebarCollapsed = !state.sidebarCollapsed;
+        if (state.isWorkspaceOpen) {
+            state.sidebarCollapsed = false;
+            closeWorkspace();
+        } else {
+            state.sidebarCollapsed = !state.sidebarCollapsed;
+        }
         render();
     });
 

@@ -2,7 +2,7 @@ import { observeBackgroundTask } from '../../../../shared/common/async-errors.js
 import styleText from './styles.css?inline';
 import controlsCss from '../../shared/update-controls.css?inline';
 import { COPY, errorText } from './copy.js';
-import { element, resultLabel } from './result.js';
+import { element, resultLabel, showDiagnostics } from './result.js';
 import { createResultDialog, type FloorResult } from './result-dialog.js';
 import { notifyInfo } from './notifications.js';
 import { DEFINITION_FILE } from '../definition/format.js';
@@ -143,6 +143,8 @@ export function createState3Page(api: State3Api) {
     async function renderPlay() {
         const status = await api.inspect();
         if (!status.ok) {
+            const last = api.lastResult();
+            if (last && !last.ok) {showDiagnostics(main, last.diagnostics);}
             main.append(element('p', COPY.notEnabled), button(COPY.enable, async signal => { const result = await api.enable({ signal }); await render(); resultDialog.show(result); }));
             return;
         }

@@ -21,9 +21,19 @@ export function parseSubmission(response: AgentChatResult): unknown[] {
     if (response.toolCalls?.length !== 1 || response.toolCalls[0].name !== SUBMIT_TOOL) {reject('model-submission', {
         response: response.text, message: 'Nothing in this batch executed. Submit write alone, with no other tool calls in the same batch.' });}
     let args;
-    try { args = JSON.parse(response.toolCalls[0].arguments); } catch { reject('model-submission'); }
-    if (!args || Object.keys(args).length !== 1 || !Array.isArray(args.state)) {reject('model-submission');}
+    try { args = JSON.parse(response.toolCalls[0].arguments); }
+    catch (error) { reject('model-submission', { reason: 'invalid-json', arguments: response.toolCalls[0].arguments, cause: diagnostic(error) }); }
+    if (!args || Object.keys(args).length !== 1 || !Array.isArray(args.state)) {
+        reject('model-submission', { reason: 'invalid-shape', actual: args, expected: { state: 'array', additionalProperties: false } });
+    }
     return args.state;
+}
+
+// The Agent API has already redacted credentials. Keep provider diagnostics as a
+// cause, never as settlement codes: a provider may use a code like "constraint".
+async function modelRequest<T>(request: () => Promise<T>): Promise<T> {
+    try { return await request(); }
+    catch (error) { reject('model-request', { cause: diagnostic(error) }); }
 }
 
 function correctionErrors(result: Failure): unknown[] {
@@ -138,7 +148,7 @@ export function createState3Updater({ service, adapter, available, changed, rewo
                 }
                 const prepared = await prepare(stage, index, signal);
                 if (!window.xiaobaixAgent?.openSession) {reject('agent-unavailable');}
-                session = await window.xiaobaixAgent.openSession({ api: readSettings().source, signal });
+                session = await modelRequest(() => window.xiaobaixAgent!.openSession({ api: readSettings().source, signal }));
                 let task = prepared.task;
                 const customNames = new Set(activeTools(prepared.staged.bundle, stage).map(([name]) => name));
                 let toolCalls = 0, attempt = 0;
@@ -150,7 +160,7 @@ export function createState3Updater({ service, adapter, available, changed, rewo
                 while (attempt < 2) {
                     setPhase(attempt ? 'correcting' : 'requesting');
                     modelRequests++;
-                    const response = await session.chat({ ...task, signal });
+                    const response = await modelRequest(() => session!.chat({ ...task, signal }));
                     prepared.staged.assertCurrent(); signal.throwIfAborted();
                     const calls = response.toolCalls || [];
                     if (!response.truncated && response.completion === 'complete' && calls.length && calls.every(call => customNames.has(call.name))) {

@@ -43,6 +43,9 @@ export const COPY = {
     conditionCompare: (left: string, symbol: string, right: string) => `${left}，需要 ${symbol} ${right}`,
     conditionAny: (items: string[]) => `以下条件至少满足一项：${items.join('；')}`,
     conditionFunction: (name: string, expected: boolean) => expected ? `函数 ${name} 判定不成立` : `函数 ${name} 判定成立，需要不成立`,
+    conditionUnavailable: '当前条件下无法执行',
+    providerStatus: (status: number) => `服务错误 ${status}`,
+    providerReason: (message: string) => `（${message}）`,
     conditionBefore: (name: string) => `本次操作前的${name}`,
     computedValue: '计算结果', trueValue: '是', falseValue: '否',
     comparisonSymbols: { eq: '=', ne: '≠', lt: '<', lte: '≤', gt: '>', gte: '≥' },
@@ -58,10 +61,9 @@ export const COPY = {
     directStageOnly: (name: string, stages: string) => `「${name}」只允许在${stages}直接修改。`,
     derivedField: (name: string) => `本次修改涉及自动计算的「${name}」。`,
     beforeOutcomes: { applied: '已结算', rejected: '行动未成立', failed: '结算失败', skipped: '已跳过结算', undone: '已撤销结算' },
+    actionsApplied: (count: number) => `已执行 ${count} 个动作`, valuesOnly: '已更新变量，未执行动作', noActions: '未执行动作，变量无变化',
     beforeEdited: '这条消息改过了，仍保留原结算。要按新内容计算，请点「重新结算」。',
     messageEdited: '消息已修改', retryCalculation: '重试结算',
-    hostSave: '结果已生效，随酒馆聊天保存。',
-    beforeFailure: '回复前结算失败，正文尚未生成。可以重试，或跳过这次结算。',
     settle: '手动结算', unsettled: '未结算', recompute: '重新结算', skipBefore: '跳过结算',
     sources: { main: '小白助手 · 主助手 API', delegate: '小白助手 · 分身 API' },
     undoReply: '撤销结算',
@@ -70,8 +72,8 @@ export const COPY = {
     added: '新增', removed: '删除', annotation: '提交说明',
     previewTitle: '试算结果', empty: '变量没有变化', success: '结算成功', previewLabel: '已试算', previewed: '执行后变量会这样变化：',
     noResult: '还没有结算结果', floorResult: (index: number) => `第 ${index + 1} 楼`,
-    failed: '本次未生效', saved: '已保存', unconfirmed: '结果已生效，但未确认保存。请重试保存，不要重复执行动作。',
-    technicalFailure: '结算遇到错误，本次变量没有生效。可以重试；如果仍然失败，请联系作者。',
+    failed: '本次未生效', unconfirmed: '结果已生效，但未确认保存。请重试保存，不要重复执行动作。',
+    technicalFailure: '执行出错，请联系作者。',
     restored: '已恢复变量', restoredConflict: '已恢复，但有规则冲突', restoredUnchecked: '已恢复，但规则检查失败',
     conflictHelp: '请切回原回复，或在后续剧情中解决这个冲突，否则变量更新会继续报错。',
     constraintConflict: (description: string) => `当前状态违反作者规则：“${description}”。`,
@@ -83,6 +85,13 @@ export const COPY = {
     functionRequest: '请按我需要的玩法添加自定义计算函数。先和我确认计算用途，再将函数源码及其声明写入当前规则草稿，检查并试算。',
     phases: { ready: '', preparing: '正在读取资料', requesting: '正在更新', tool: '正在执行工具', calculating: '正在结算', correcting: '正在重试', saving: '正在保存', success: '已更新', unsaved: '尚未保存', failed: '更新失败', cancelled: '已取消' } as Record<string, string>,
     reasons: { input: '直接修改', action: '动作', derive: '关联计算', correct: '规则修正', trigger: '状态触发', script: '计算脚本' },
+    modelErrors: {
+        AGENT_PROVIDER_ERROR: '模型服务返回错误，请检查供应商或中转服务。',
+        AGENT_NOT_CONFIGURED: '小白助手当前 API 没有选模型，请先在助手设置里选好模型。',
+        AGENT_DELEGATE_NOT_CONFIGURED: '变量更新设为使用分身 API，但分身 API 还没配置。',
+        AGENT_DISABLED: '小白X 已关闭，无法更新变量。',
+        AGENT_RESPONSE_REFUSED: '模型拒绝了这次更新请求，本次变量没有生效。',
+    },
     errors: {
         ...EXTENSION_COPY.errors,
         'stage-missing': '前后都更新的卡，需要给每个动作和可直接修改的字段指定阶段。',
@@ -105,6 +114,7 @@ export const COPY = {
         'path': '路径需要由字段名组成的数组。', 'json': '提交中有不能保存的值。',
         'missing-parent': '要写入的父对象不存在，请先创建它。', 'array-index': '数组位置不合法。',
         'function_exception': '自定义函数执行失败。', 'target-missing': '找不到要更新的回复。',
+        'model-request': '请求模型服务失败，本次变量没有生效。请检查小白助手的 API 地址、密钥和网络后重试。',
         'nothing-to-save': '没有等待重试保存的结果。',
         'state-schema': '结算后的状态不符合定义。', 'constraint': '结算未通过规则检查。',
         'action-precondition': '动作的前提不成立。', 'action-parameters': '动作参数不符合要求。', 'action-missing': '找不到这个动作。',
@@ -131,6 +141,18 @@ export const COPY = {
 export function playerErrorText(error: unknown, definition?: Definition): string {
     const detail = error && typeof error === 'object' && 'code' in error ? error as Diagnostic : diagnostic(error);
     if (detail.code === 'extension-after-failed') {return EXTENSION_COPY.afterFailureNotice;}
+    if (detail.code === 'model-request') {
+        const cause = detail.cause as Diagnostic;
+        const label = Object.hasOwn(COPY.modelErrors, cause.code)
+            ? COPY.modelErrors[cause.code as keyof typeof COPY.modelErrors] : COPY.errors['model-request'];
+        return [label,
+            typeof cause.status === 'number' ? COPY.providerStatus(cause.status) : undefined,
+            cause.message ? COPY.providerReason(cause.message) : undefined].filter(Boolean).join(' ');
+    }
+    if (detail.code === 'action-precondition' && detail.condition) {
+        return [detail.actionTitle || definition?.actions.find(action => action.id === detail.action)?.title,
+            COPY.conditionFailed(conditionText(detail.condition, false))].filter(Boolean).join(' · ');
+    }
     if (['action-precondition', 'action-parameters', 'direct-other-stage', 'action-other-stage', 'derived-write', 'direct-not-allowed'].includes(detail.code)) {return errorText(detail, definition);}
     return (COPY.errors as Record<string, string>)[detail.code] || COPY.technicalFailure;
 }
@@ -148,10 +170,10 @@ function conditionValueText(operand: ConditionValue): string {
     const name = operand.before ? COPY.conditionBefore(operand.name || COPY.computedValue) : operand.name;
     return [name, displayValue(operand.value)].filter(Boolean).join(' ');
 }
-export function conditionText(condition: Condition): string {
+export function conditionText(condition: Condition, author = true): string {
     switch (condition.kind) {
-        case 'any': return COPY.conditionAny(condition.conditions.map(conditionText));
-        case 'function': return [COPY.conditionFunction(condition.id, condition.expected), condition.description].filter(Boolean).join(' · ');
+        case 'any': return COPY.conditionAny(condition.conditions.map(item => conditionText(item, author)));
+        case 'function': return author ? [COPY.conditionFunction(condition.id, condition.expected), condition.description].filter(Boolean).join(' · ') : COPY.conditionUnavailable;
         case 'comparison': return COPY.conditionCompare(conditionValueText(condition.left), COPY.comparisonSymbols[condition.operator], conditionValueText(condition.right));
         case 'value': return COPY.conditionCompare(conditionValueText(condition.operand), '=', displayValue(condition.expected));
     }
@@ -190,5 +212,5 @@ export function errorText(error: unknown, definition?: Definition): string {
     }
     const label = (COPY.errors as Record<string, string>)[detail.code] || detail.message || detail.code || COPY.failed;
     return [typeof detail.operation === 'number' ? '第 ' + (detail.operation + 1) + ' 条操作' : '', Array.isArray(detail.path) ? detail.path.join(' → ') : typeof detail.path === 'string' ? detail.path : '', detail.rule,
-        Array.isArray(detail.rules) ? detail.rules.join(' → ') : '', detail.functionId, label, detail.message !== label ? detail.message : ''].filter(Boolean).join(' · ');
+        Array.isArray(detail.rules) ? detail.rules.join(' → ') : '', detail.functionId, label, detail.errorName, detail.message !== label ? detail.message : ''].filter(Boolean).join(' · ');
 }

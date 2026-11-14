@@ -5,6 +5,19 @@ description: Write variable 3.0 rules, model tools and stage scripts in the curr
 
 # Variable 3.0 rule authoring
 
+## Why a card has variables
+
+Prose models forget numbers, invent outcomes and let the player have whatever they ask for. Variables give a card the parts of a game that must hold: money that runs out, a room that needs three people, a deadline that arrives, a choice whose consequence lands three turns later. Use them when the player's decisions need consequences the story cannot quietly drop; a card without such decisions needs no variables.
+
+Design in this order, and do not skip ahead to fields:
+
+1. **The player's experience.** Who the player is, what they decide again and again, and why that decision is hard. A good decision trades one thing against another; a button that only adds a number is not a decision.
+2. **The mechanics.** For each decision, its condition, its consequence and whether it can repeat. Include how the game can be lost or won, and where resources come from and go.
+3. **The state.** Store a value only when a later rule or choice needs it and it cannot be computed from other values. For every stored field, be able to say why it exists in one sentence.
+4. **Ownership and display.** Decide who makes each change — the player through a panel or typed action, the updater from the story, or a script — and what the player sees before and after deciding.
+
+Explain these four steps to the author in plain terms before writing files. The [解铃会 card](<references/examples/jieling.md>) is worked through in this order, including a table of why each field exists and which values are deliberately derived rather than stored.
+
 ## What belongs to the card
 
 The card defines the update stages, variable structure, initial values, write permissions, actions, derived values, corrections, constraints, triggers and model views. Current values live in SillyTavern's native chat variables, one top-level definition key per native variable. The original variable panel reads and edits these same values. All submitted changes are calculated together; current chat values change only if the whole submission succeeds. Preview and draft checks calculate results without changing the chat.
@@ -135,7 +148,7 @@ The current-chat settings show the card's declared stages. Before updates run au
 
 For a panel that displays current values, follow the card-files reference on [reading and refreshing variables](<../../../card-workspace/skill/references/xiaobaix-capabilities.md#state-panel-refresh>). The native variable names are the top-level keys of this card's `initial`; the equipment starter uses `hero`. A panel reads these values for display; initialization and player actions use their separate state APIs.
 
-For buttons and tasks, read [card-side settlement](<references/card-side.md>): the `window.LWB_StateV3` / `window.parent.LWB_StateV3` entry points, target reply, asynchronous results, save-only retry and one-time feedback. Its [complete camp panel](<references/examples/camp/panel.html.txt>) pairs with a [definition](<references/examples/camp/definition.json>); reading these files does not install them. Sending ordinary player text follows the shared [message-button guidance](<../../../card-workspace/skill/references/xiaobaix-capabilities.md#message-buttons>).
+For buttons and tasks, read [card-side settlement](<references/card-side.md>): the `window.LWB_StateV3` / `window.parent.LWB_StateV3` entry points, target reply, asynchronous results, save-only retry and one-time feedback. Its [complete camp panel](<references/examples/camp/panel.html.txt>) pairs with a [definition](<references/examples/camp/definition.json>); reading these files does not install them. For a whole playable card — worldbook, regex marker, panel, before and after actions, derived rooms and phases, prepared randomness and a once-only trigger — read the annotated [解铃会 card](<references/examples/jieling.md>). Sending ordinary player text follows the shared [message-button guidance](<../../../card-workspace/skill/references/xiaobaix-capabilities.md#message-buttons>).
 
 ## From a design to a playable card
 

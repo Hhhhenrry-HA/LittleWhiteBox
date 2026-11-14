@@ -43,8 +43,17 @@ function harness() {
     return { ctx, message, exports, saves: () => saves };
 }
 
-function runtimeHarness(bundle: Bundle | null = equipmentExample(), initialMode = '3.0', ready: (chatId: string, signal: AbortSignal) => Promise<boolean> = async () => true) {
+function runtimeHarness(bundle: Bundle | null = equipmentExample(), initialMode = '3.0', ready: (chatId: string, signal: AbortSignal) => Promise<boolean> = async () => true, realBefore = false) {
     const h = harness(), pending = new Set<Promise<unknown>>(), handlers = new Map<string, (...args: unknown[]) => unknown>();
+    const listeners = new Map<string, ((...args: unknown[]) => unknown)[]>();
+    const createModuleEvents = () => ({
+        on(key: string, fn: (...args: unknown[]) => unknown) {
+            if (!realBefore) {handlers.set(key, fn); return;}
+            const registered = listeners.get(key) ?? []; registered.push(fn); listeners.set(key, registered);
+            handlers.set(key, async (...args) => { for (const listener of registered) {await listener(...args);} });
+        },
+        cleanup() { handlers.clear(); listeners.clear(); },
+    });
     if (bundle) {h.ctx.characters[0].data!.extensions![CARD_EXTENSION] = JSON.stringify(bundle);}
     else {delete h.ctx.characters[0].data!.extensions![CARD_EXTENSION];}
     const selector = { value: initialMode };
@@ -64,21 +73,30 @@ function runtimeHarness(bundle: Bundle | null = equipmentExample(), initialMode 
         AbortController, structuredClone, window: agentWindow, correctionTask() { throw new Error('unexpected correction'); },
     });
     const event_types = Object.fromEntries(['CHAT_CHANGED', 'MESSAGE_DELETED', 'MESSAGE_SWIPED', 'MESSAGE_EDITED', 'SETTINGS_UPDATED',
-        'CHARACTER_MESSAGE_RENDERED', 'GENERATION_STARTED', 'MESSAGE_RECEIVED', 'GENERATION_ENDED', 'CHAT_CREATED'].map(key => [key, key]));
+        'CHARACTER_MESSAGE_RENDERED', 'GENERATION_STARTED', 'GENERATION_AFTER_COMMANDS', 'GENERATION_STOPPED', 'MESSAGE_SENT', 'MESSAGE_RECEIVED', 'GENERATION_ENDED', 'CHAT_CREATED'].map(key => [key, key]));
     const emitted: { state: unknown }[] = [], resumed: number[] = [];
+    const beforeHost = {
+        ...settings, createModuleEvents, event_types, ...h.exports, getContext: () => h.ctx,
+        CHAT_KEY, digest, diagnostic, reject, beforeReceipt, beforeFloorOutcome, AbortController,
+        isGenerating: () => false, setExtensionPrompt() {}, extension_prompt_types: { IN_CHAT: 1 }, extension_prompt_roles: { SYSTEM: 0 },
+        Generate: async () => { resumed.push(h.ctx.chat.length - 1); },
+        registerGenerateInterceptor() {}, unregisterGenerateInterceptor() {}, GENERATE_INTERCEPTOR_ORDER: { VARIABLES: 0 },
+        document: { getElementById: () => ({ value: '' }) },
+    };
+    const realBeforeGeneration = realBefore ? runInNewContext(source('runtime/before-generation.ts') + '\ncreateBeforeGeneration', beforeHost) : undefined;
     const env = {
         authorizeExtensions: async () => {}, assertExtensionTrust: async () => {}, revokeExtensionTrust() {}, extensionTrust: () => 'unused',
-        ...settings, createModuleEvents: () => ({ on: (key: string, fn: (...args: unknown[]) => unknown) => handlers.set(key, fn), cleanup: () => handlers.clear() }), event_types,
+        ...settings, createModuleEvents, event_types,
         observeBackgroundTask(p: Promise<unknown>) { pending.add(p); p.then(() => pending.delete(p), () => pending.delete(p)); },
         isGenerating: () => false, waitForAfterAiReady: ready, createSettlementService,
         ...h.exports, getContext: () => h.ctx, compileDefinition, diagnostic, reject, recordResult, CHAT_KEY, CARD_EXTENSION, digest,
         exportRules() {}, prepareRuleImport() {}, importRules() {}, onRulesSaved: () => () => {},
         createState3Macros: () => ({ clear() {}, set() { if (disposed) {lateMacros++;} }, dispose() {} }),
         createState3Updater,
-        createBeforeGeneration: ({ updater }: { updater: ReturnType<typeof createState3Updater> }) => ({
+        createBeforeGeneration: realBeforeGeneration ?? (({ updater }: { updater: ReturnType<typeof createState3Updater> }) => ({
             status: updater.status, cancel: updater.cancel, changed: updater.cancel, dispose: updater.cancel,
             async resume(index: number) { resumed.push(index); },
-        }),
+        })),
         createState3Page: () => ({ mountControl() { controls = true; if (disposed) {lateControls++;} }, targetChanged() {}, dispose() { disposed = true; } }),
         notifyError(error: Error) { throw error; }, openDraft() {}, saveDraft() {}, checkDraft() {}, saveCardDraft() {},
         AbortController, structuredClone, mergeAbortSignals, CustomEvent: class { constructor(public type: string, public options: { detail: { state: unknown } }) {} },
@@ -135,6 +153,64 @@ test('A1: regeneration, continuation and new swipes each retain their own automa
         await h.drain(); assert.equal(h.requests(), count + 1, type);
         for (const event of ['MESSAGE_RECEIVED', 'GENERATION_ENDED', 'CHARACTER_MESSAGE_RENDERED']) {await h.handlers.get(event)!(index);}
         await h.drain(); assert.equal(h.requests(), count + 1, type);
+    }
+});
+
+// Generate(regenerate) does not wait for an extension's in-flight save: STARTED,
+// AFTER_COMMANDS, native suffix deletion, MESSAGE_DELETED, then reply notifications.
+// The real before owner cancels the old updater but persistence may still own it.
+// A replacement reply must receive one settlement, not lose its turn to commit-busy.
+test('regeneration waits for a cancelled updater still saving the previous reply', async t => {
+    for (const boundary of ['saved', 'save-failed', 'chat', 'generation', 'edit', 'cancel', 'dispose']) {
+        await t.test(boundary, async t => {
+            const h = runtimeHarness(equipmentExample(), '3.0', async () => true, true);
+            t.after(() => h.cleanup()); await h.drain(); accepted(await h.api.enable());
+            h.message.is_user = true;
+            h.ctx.chat.push({ mes: 'Old reply.', extra: {} });
+            h.finish({ completion: 'complete', truncated: false, text: '', toolCalls: [{ name: 'write', arguments: '{"state":[{"op":"inc","path":["hero","health"],"delta":-1}]}' }] });
+            let saving!: () => void, release!: () => void, saves = 0;
+            const started = new Promise<void>(resolve => { saving = resolve; });
+            const gate = new Promise<void>(resolve => { release = resolve; });
+            t.after(() => release());
+            h.ctx.saveChat = async () => {
+                const first = saves++ === 0; saving(); await gate;
+                if (first && boundary === 'save-failed') {throw new Error('save unavailable');}
+            };
+            const previous = h.api.update(); await started;
+            assert.equal(h.requests(), 1);
+            assert.equal((accepted(await h.api.inspect()).state as { hero: { health: number } }).hero.health, 79);
+            h.preferences.LittleWhiteBox.state3Updater.auto = true;
+            await h.handlers.get('GENERATION_STARTED')!('regenerate', {}, false);
+            await h.handlers.get('GENERATION_AFTER_COMMANDS')!('regenerate', {}, false);
+            h.ctx.chat.pop(); await h.handlers.get('MESSAGE_DELETED')!(h.ctx.chat.length);
+            assert.equal((accepted(await h.api.inspect()).state as { hero: { health: number } }).hero.health, 80);
+            h.ctx.chat.push({ mes: 'Replacement reply.', extra: {} });
+            for (const event of ['MESSAGE_RECEIVED', 'CHARACTER_MESSAGE_RENDERED', 'GENERATION_ENDED']) {await h.handlers.get(event)!(1);}
+            // Do not drain selection persistence before the generation completes.
+            await new Promise(resolve => setImmediate(resolve));
+            assert.equal(h.requests(), 1);
+            if (boundary === 'chat') {
+                h.ctx.chatId = 'other'; h.ctx.chat = [{ mes: 'Another chat.', extra: {} }];
+                h.ctx.chatMetadata = clone(h.ctx.chatMetadata); await h.handlers.get('CHAT_CHANGED')!();
+            }
+            if (boundary === 'generation') {await h.handlers.get('GENERATION_STARTED')!('normal', {}, false);}
+            if (boundary === 'edit') {await h.handlers.get('MESSAGE_EDITED')!(1);}
+            if (boundary === 'cancel') {h.api.cancel();}
+            if (boundary === 'dispose') {h.cleanup();}
+            release(); await previous; await h.drain();
+            if (!['saved', 'save-failed'].includes(boundary)) {
+                assert.equal(h.requests(), 1);
+                assert.equal(accepted(await h.api.inspect()).receipt, undefined);
+                assert.deepEqual(h.late(), { controls: 0, macros: 0 });
+                return;
+            }
+            assert.equal(h.requests(), 2);
+            const result = accepted(await h.api.inspect());
+            assert.equal((result.state as { hero: { health: number } }).hero.health, 79);
+            assert.equal(result.receipt?.source, modelSource('after'));
+            for (const event of ['MESSAGE_RECEIVED', 'CHARACTER_MESSAGE_RENDERED', 'GENERATION_ENDED']) {await h.handlers.get(event)!(1);}
+            await h.drain(); assert.equal(h.requests(), 2);
+        });
     }
 });
 

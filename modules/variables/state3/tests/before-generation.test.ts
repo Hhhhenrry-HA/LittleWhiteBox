@@ -11,6 +11,7 @@ import { modelSource } from '../definition/stages.js';
 import { beforeReceipt, beforeOutcome, beforeFloorOutcome } from '../runtime/before-result.js';
 import { buildUpdateTask, beforeProsePrompt } from '../model/prompts.js';
 import { correctionTask } from '../../updater/correction.js';
+import { readResponseCompletion } from '../../../agent-core/runtime/response-completion.js';
 import { mergeAbortSignals } from '../../../../shared/common/abort-utils.js';
 import { diagnostic, reject } from '../engine/diagnostics.js';
 import { runFunctionInVm, type FunctionOptions } from '../engine/functions-vm.js';
@@ -90,6 +91,7 @@ async function harness() {
     }
     return { f, updater, generate, append, requests, prose, captures, results, emit, event_types, disposedSessions: () => disposedSessions,
         before: () => before, chat: () => chat, answer: (next: typeof answer) => {answer = next;},
+        failOpen(error: unknown) {env.window.xiaobaixAgent.openSession = async () => {throw error;};},
         async drain() {while (pending.size) {await Promise.all([...pending]);}},
         reopen() {before.dispose(); f.load(f.saved()); chat = structuredClone(chat); before = create();},
         dispose() {selected = false; before.dispose();},
@@ -115,6 +117,87 @@ function localFailures(count: number) {
     }
     return { Worker: Worker as unknown as typeof globalThis.Worker, counts: () => ({ created, terminated }) };
 }
+
+// An explicit API failure cannot buy a model correction or publish a gameplay
+// change, in either phase (duplicate billing / false settlement).
+test('provider failures end before/after updates after one request with state unchanged', async t => {
+    for (const stage of ['before', 'after'] as const) {
+        const h = await harness(); t.after(() => h.dispose());
+        h.append({ mes: 'Player action', is_user: true, name: 'Player' });
+        if (stage === 'after') {h.append({ mes: 'Completed passage', name: 'Hero' });}
+        const start = h.f.saved().state;
+        h.answer(() => readResponseCompletion('openai', 'Proxy error (HTTP 400 Bad Request)', false, undefined, 'INVALID_ARGUMENT'));
+        const result = await h.updater.update({ stage, index: h.chat().length - 1 });
+        assert.equal(result.ok, false);
+        assert.equal(result.diagnostics[0].code, 'model-request');
+        assert.equal((result.diagnostics[0].cause as { code: string }).code, 'AGENT_PROVIDER_ERROR');
+        assert.equal((result.diagnostics[0].cause as { status: number }).status, 400);
+        assert.deepEqual(h.f.saved().state, start);
+        assert.equal(h.requests.length, 1);
+    }
+});
+
+// Provider codes are not settlement codes; session setup and network failures
+// preserve their cause, publish nothing, dispose ownership, and buy no correction.
+test('model boundary classifies arbitrary provider codes and session setup failures', async t => {
+    const errors = [
+        Object.assign(new Error('Connection error.'), { code: 'AGENT_REQUEST_FAILED' }),
+        Object.assign(new Error('Invalid API key'), { code: 'invalid_api_key', status: 401 }),
+        Object.assign(new Error('quota exhausted'), { code: 'resource_exhausted', status: 429 }),
+        Object.assign(new Error('provider constraint'), { code: 'constraint', status: 503 }),
+        new Error('Failed to fetch'),
+    ];
+    for (const stage of ['before', 'after'] as const) {
+        for (const error of errors) {
+            const h = await harness(); t.after(() => h.dispose());
+            h.append({ mes: 'Player action', is_user: true });
+            if (stage === 'after') {h.append({ mes: 'Completed passage' });}
+            const start = h.f.saved();
+            h.answer(() => {throw error;});
+            const result = await h.updater.update({ stage, index: h.chat().length - 1 });
+            assert.equal(result.ok, false);
+            assert.deepEqual(result.diagnostics[0], { code: 'model-request', cause: diagnostic(error) });
+            assert.deepEqual(h.f.saved(), start);
+            assert.equal(h.requests.length, 1);
+            assert.equal(h.disposedSessions(), 1);
+            assert.equal(h.updater.status().busy, false);
+        }
+        const h = await harness(); t.after(() => h.dispose());
+        h.append({ mes: 'Player action', is_user: true });
+        if (stage === 'after') {h.append({ mes: 'Completed passage' });}
+        const error = Object.assign(new Error('Select a model'), { code: 'AGENT_NOT_CONFIGURED' });
+        h.failOpen(error);
+        const start = h.f.saved();
+        const result = await h.updater.update({ stage, index: h.chat().length - 1 });
+        assert.equal(result.ok, false);
+        assert.deepEqual(result.diagnostics[0], { code: 'model-request', cause: diagnostic(error) });
+        assert.deepEqual(h.f.saved(), start);
+        assert.equal(h.requests.length, 0);
+        assert.equal(h.disposedSessions(), 0);
+        assert.equal(h.updater.status().busy, false);
+    }
+});
+
+// D9：JSON 解析与提交形状错误必须区分，纠正请求收到原始原因；代价：付费重试仍猜错协议。
+test('D9: malformed submissions preserve their cause in the sole correction request', async t => {
+    for (const [argument, reason] of [['{broken', 'invalid-json'], ['{"state":{}}', 'invalid-shape']]) {
+        const h = await harness(); t.after(() => h.dispose());
+        h.append({mes:'Remove the charm.', is_user:true});
+        h.answer(() => ({completion:'complete',truncated:false,text:'',toolCalls:[{name:'write',arguments:argument}]}));
+        const before = h.f.saved().state;
+        const result = await h.updater.update({stage:'before',index:1});
+        assert.equal(result.ok,false); assert.equal(result.diagnostics[0].reason,reason);
+        assert.equal(h.requests.length,2); assert.deepEqual(h.f.saved().state,before);
+        const content=String(h.requests[1].messages.at(-1)!.content);
+        const correction=JSON.parse(content.slice(content.indexOf('\n\n')+2));
+        assert.equal(correction.errors[0].reason,reason);
+        if (reason==='invalid-json') {
+            assert.equal(correction.errors[0].arguments,argument);
+            assert.equal(correction.errors[0].cause.errorName,'SyntaxError');
+            assert.ok(correction.errors[0].cause.message);
+        } else {assert.deepEqual(correction.errors[0].actual,{state:{}});}
+    }
+});
 function useFunction(h: Awaited<ReturnType<typeof harness>>) {
     const bundle = h.f.saved().card;
     bundle.definition.functions = { maximum: { reads: [['hero', 'amulet']], description: 'Equipment changes the health maximum.' } };

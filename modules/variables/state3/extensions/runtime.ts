@@ -3,7 +3,7 @@ import { mergeAbortSignals } from '../../../../shared/common/abort-utils.js';
 import { executeScript } from '../../../../shared/common/script-execution.js';
 import { activeScript, extensionPath } from './definition.js';
 import { assertJson, clone } from '../engine/data.js';
-import { reject } from '../engine/diagnostics.js';
+import { diagnostic, reject } from '../engine/diagnostics.js';
 import type { Bundle, ExtensionContext, ExtensionTrace, Json, Result, ScriptPhase, Success, UpdateStage } from '../types.js';
 import { compileDefinition } from '../definition/compile.js';
 
@@ -49,9 +49,10 @@ export function createExtensionRun(bundle: Bundle, basis: ExtensionBasis, host?:
         } catch (error) {
             signal?.throwIfAborted();
             basis.assertCurrent();
-            trace.error = error instanceof Error ? error.message : JSON.stringify(error);
+            const cause = diagnostic(error);
+            trace.error = cause.message || cause.code;
             if (error && typeof error === 'object' && 'code' in error && error.code === 'extension-untrusted') {throw error;}
-            reject('extension-execution', { path, extension: name, message: trace.error });
+            reject('extension-execution', { path, extension: name, message: trace.error, cause });
         }
     }
     return {

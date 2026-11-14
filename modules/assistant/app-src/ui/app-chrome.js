@@ -235,13 +235,14 @@ export function renderAppChrome(root, state, options = {}) {
     const sidebarToggle = root.querySelector('#xb-assistant-sidebar-toggle');
     const mobileBackdrop = root.querySelector('#xb-assistant-mobile-backdrop');
     const isMobile = window.matchMedia('(max-width: 900px)').matches;
-    shell?.classList.toggle('sidebar-collapsed', !!state.sidebarCollapsed);
-    sidebar?.classList.toggle('is-collapsed', !!state.sidebarCollapsed);
-    mobileBackdrop?.toggleAttribute('hidden', !isMobile || !!state.sidebarCollapsed);
+    const sidebarCollapsed = !!state.sidebarCollapsed || (isMobile && state.isWorkspaceOpen);
+    shell?.classList.toggle('sidebar-collapsed', sidebarCollapsed);
+    sidebar?.classList.toggle('is-collapsed', sidebarCollapsed);
+    mobileBackdrop?.toggleAttribute('hidden', !isMobile || sidebarCollapsed);
     if (sidebarToggle) {
-        sidebarToggle.setAttribute('aria-expanded', state.sidebarCollapsed ? 'false' : 'true');
-        sidebarToggle.setAttribute('aria-label', C.sidebarToggle(state.sidebarCollapsed));
-        sidebarToggle.title = C.sidebarToggle(state.sidebarCollapsed);
+        sidebarToggle.setAttribute('aria-expanded', sidebarCollapsed ? 'false' : 'true');
+        sidebarToggle.setAttribute('aria-label', C.sidebarToggle(sidebarCollapsed));
+        sidebarToggle.title = C.sidebarToggle(sidebarCollapsed);
         sidebarToggle.classList.toggle('has-changes', localSourceSummary.modifiedFileCount > 0);
     }
 

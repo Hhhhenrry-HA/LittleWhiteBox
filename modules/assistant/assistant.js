@@ -15,7 +15,7 @@ import { createAssistantHostWindow } from "./assistant-host-window.js";
 import { shouldAutoRevealWorkspace } from './shared/window-layout.js';
 import { TOOL_NAMES } from "./app-src/tooling.js";
 import { BUILTIN_SKILLS, skillCatalogLine } from './shared/skill-tools.js';
-import { CARD_SKILL, cardSkillContent } from '../card-workspace/assistant-contract.js';
+import { CARD_SKILL, FRONTEND_SKILL, cardSkillContent, frontendSkillContent } from '../card-workspace/assistant-contract.js';
 import { readableCardWorkspacePath, readableCardWorkspaceRelativePath } from '../card-workspace/paths.js';
 import { STATE3_SKILL, state3SkillContent, cardWorkspaceRequest } from '../variables/state3/skill/contract.js';
 import { STATE2_SKILL, state2SkillContent } from '../variables/state2/skill/contract.js';
@@ -2142,7 +2142,7 @@ async function readSkillTool(args = {}, options = {}) {
     if (builtin) {
         const filename = `${extensionFolderPath}/${builtin.path}`;
         const body = await readTextFile(filename, options);
-        const render = { [CARD_SKILL.id]: cardSkillContent, [STATE3_SKILL.id]: state3SkillContent, [STATE2_SKILL.id]: state2SkillContent, [LIVE_PAGE_SKILL.id]: livePageSkillContent }[builtin.id];
+        const render = { [CARD_SKILL.id]: cardSkillContent, [FRONTEND_SKILL.id]: frontendSkillContent, [STATE3_SKILL.id]: state3SkillContent, [STATE2_SKILL.id]: state2SkillContent, [LIVE_PAGE_SKILL.id]: livePageSkillContent }[builtin.id];
         return { ok: true, ...builtin, filename, content: render ? render(body, extensionFolderPath) : body.trim(), builtin: true };
     }
     const byFilename = normalizeSkillFileName(args.filename || '');

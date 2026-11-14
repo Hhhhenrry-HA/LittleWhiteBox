@@ -45,6 +45,8 @@ The [camp definition](<examples/camp/definition.json>) and [panel](<examples/cam
 
 The panel reads on mount; it does not call `enable` or write initial values. It uses a local busy flag and the current chat identity, and releases its own timer on `pagehide`. Initialization belongs to the chat; reopening a panel cannot grant another rest. Copy the mechanics and feedback flow, then adapt the names and appearance to the actual card.
 
+The [解铃会 card](<examples/jieling.md>) extends this to a whole game: player decisions in the panel, story facts from the update model, derived rooms, explained refusals, a season ending and a panel kept only on the latest message.
+
 <a id="effects"></a>
 ## One-time animation, sound and notifications
 

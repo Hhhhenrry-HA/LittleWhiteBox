@@ -39,11 +39,11 @@ export function createSettlementService<S extends Snapshot>(adapter: HostAdapter
         const save = adapter.publish(snapshot, { state: result.state, history, records, ...(invalidateFrom === undefined ? {} : { invalidateFrom }) });
         let persistence: Success['persistence'];
         try { if (!hostSaves) {await save();} }
-        catch (error) { persistence = { code: 'save-unconfirmed', message: error instanceof Error ? error.message : String(error) }; }
+        catch (error) { const cause = diagnostic(error); persistence = cause.code === 'save-unconfirmed' ? cause : { code: 'save-unconfirmed', cause }; }
         const published = { ...result, committed: true, ...(hostSaves ? {} : { saved: !persistence }), ...(persistence ? { persistence } : {}) };
         if (notify) {
             try { adapter.committed?.(published); }
-            catch (error) { published.diagnostics.push({ code: 'notification-failed', message: error instanceof Error ? error.message : String(error) }); }
+            catch (error) { published.diagnostics.push({ code: 'notification-failed', cause: diagnostic(error) }); }
         }
         return published;
     }

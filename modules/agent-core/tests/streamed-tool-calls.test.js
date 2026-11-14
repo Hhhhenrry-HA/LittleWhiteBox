@@ -4,10 +4,12 @@ import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { createAgentAdapter } from '../provider-config.js';
 import { accumulateStreamedAssistantSnapshot, getStreamedSnapshotToolCalls, extractTaggedToolCalls } from '../adapters/openai-compatible.js';
-import { normalizeToolCalls, resolveResultToolCalls } from '../runtime/protocol.js';
+import { normalizeToolCalls, resolveResultToolCalls, buildProviderAssistantToolCallMessage, buildProviderToolResultMessage } from '../runtime/protocol.js';
 
 // Acceptance contracts (cost: wrong file operations, broken tool history, paid retries):
 // - Indexed or ID-addressed fragments retain every call's identity and exact arguments.
+// - Reused relay indexes never override distinct call IDs; sequential anonymous tails
+//   continue the only unfinished call without another paid request.
 // - An ambiguous fragment never merges two calls or releases a corrupted executable batch.
 // - Concatenated argument objects remain invalid, rather than becoming plausible tool input.
 // - Literal JSON in file content and existing single-call streams remain intact.
@@ -27,6 +29,23 @@ function fragments(indexed, separate) {
         { choices: [{ delta: {}, finish_reason: 'tool_calls' }] }];
 }
 
+function relayFragments(reusedIndex, repeatedId) {
+    return calls.flatMap(call => [
+        event([{ ...(reusedIndex ? { index: 0 } : {}), ...native(call, call.arguments.slice(0, 20)) }]),
+        event([{ ...(reusedIndex ? { index: 0 } : {}), ...(repeatedId ? { id: call.id } : {}),
+            function: { arguments: call.arguments.slice(20) } }]),
+    ]).concat({ choices: [{ delta: {}, finish_reason: 'tool_calls' }] });
+}
+
+test('relay indexes and anonymous sequential tails preserve distinct call IDs', () => {
+    for (const reusedIndex of [false, true]) for (const repeatedId of [false, true]) {
+        const snapshot = {};
+        for (const chunk of relayFragments(reusedIndex, repeatedId)) accumulateStreamedAssistantSnapshot(snapshot, chunk.choices[0]);
+        assert.deepEqual(getStreamedSnapshotToolCalls(snapshot), calls);
+        assert.deepEqual(snapshot.tool_calls, calls.map(call => native(call)));
+    }
+});
+
 test('tool identities survive omitted indexes, separate chunks and interleaved same-name calls', () => {
     for (const indexed of [false, true]) for (const separate of [false, true]) {
         const snapshot = {};
@@ -43,15 +62,54 @@ test('a single call can still continue without repeated identity fields', () => 
     assert.deepEqual(getStreamedSnapshotToolCalls(snapshot), [calls[1]]);
 });
 
-test('ambiguous and conflicting identities cannot corrupt already received calls', () => {
-    for (const fragment of [
-        { function: { arguments: '"local"}' } },
-        { index: 0, id: 'different-call', function: { name: 'Read', arguments: '{}' } },
-    ]) {
+test('explicit indexes preserve out-of-order starts and IDs arriving after arguments', () => {
+    for (const delayedId of [false, true]) {
         const snapshot = {};
-        accumulateStreamedAssistantSnapshot(snapshot, { delta: { tool_calls: calls.map((call, index) => ({ index, ...native(call) })) } });
+        for (const index of [2, 0, 1]) {
+            const start = native(calls[index], calls[index].arguments.slice(0, 20));
+            if (delayedId) delete start.id;
+            accumulateStreamedAssistantSnapshot(snapshot, { delta: { tool_calls: [{ index, ...start }] } });
+        }
+        for (const index of [1, 2, 0]) {
+            accumulateStreamedAssistantSnapshot(snapshot, { delta: { tool_calls: [{ index,
+                ...(delayedId ? { id: calls[index].id } : {}),
+                function: { arguments: calls[index].arguments.slice(20) },
+            }] } });
+        }
+        assert.deepEqual(snapshot.tool_calls, calls.map(call => native(call)));
+    }
+});
+
+test('interleaved calls sharing a wire index require IDs until a unique tail remains', () => {
+    const snapshot = {};
+    for (const call of calls) {
+        accumulateStreamedAssistantSnapshot(snapshot, { delta: { tool_calls: [
+            { index: 0, ...native(call, call.arguments.slice(0, 20)) },
+        ] } });
+    }
+    const before = structuredClone(snapshot);
+    assert.throws(() => accumulateStreamedAssistantSnapshot(snapshot, { delta: { tool_calls: [
+        { index: 0, function: { arguments: '"local"}' } },
+    ] } }), { code: 'OPENAI_COMPATIBLE_TOOL_CALL_IDENTITY_INVALID' });
+    assert.deepEqual(snapshot, before);
+    for (const index of [1, 0, 2]) {
+        accumulateStreamedAssistantSnapshot(snapshot, { delta: { tool_calls: [{ index: 0,
+            ...(index === 2 ? {} : { id: calls[index].id }),
+            function: { arguments: calls[index].arguments.slice(20) },
+        }] } });
+    }
+    assert.deepEqual(snapshot.tool_calls, calls.map(call => native(call)));
+});
+
+test('ambiguous identities cannot corrupt already received calls', () => {
+    for (const unfinished of [false, true]) {
+        const snapshot = {};
+        accumulateStreamedAssistantSnapshot(snapshot, { delta: { tool_calls: calls.map((call, index) => ({ index,
+            ...native(call, unfinished ? call.arguments.slice(0, 20) : call.arguments) })) } });
         const before = structuredClone(snapshot);
-        assert.throws(() => accumulateStreamedAssistantSnapshot(snapshot, { delta: { tool_calls: [fragment] } }),
+        assert.throws(() => accumulateStreamedAssistantSnapshot(snapshot, { delta: { tool_calls: [
+            { function: { arguments: '"local"}' } },
+        ] } }),
             { code: 'OPENAI_COMPATIBLE_TOOL_CALL_IDENTITY_INVALID' });
         assert.deepEqual(snapshot, before);
     }
@@ -108,7 +166,11 @@ for (const target of ['direct', 'hosted', 'browser-bundle', 'backend-bundle']) {
         const hostClient = {
             buildHostChatCompletionGenerateRequest: async body => ({ body }),
             createHostChatCompletion: async () => { throw new Error('Unexpected non-streaming request'); },
-            streamHostChatCompletion: async (_request, accept) => { requests++; for (const chunk of wire) accept(chunk); },
+            streamHostChatCompletion: async (request, accept, options) => {
+                requests++;
+                options?.onRequest?.({ body: request });
+                for (const chunk of wire) accept(chunk);
+            },
         };
         const adapter = factory({ provider: target === 'hosted' ? 'sillytavern-openai-compatible' : 'openai-compatible',
             apiKey: 'unused', baseUrl: 'https://example.invalid/v1', model: 'fixture', toolMode: 'native' }, { hostClient });
@@ -124,6 +186,46 @@ for (const target of ['direct', 'hosted', 'browser-bundle', 'backend-bundle']) {
             assert.deepEqual(result.providerPayload.openaiCompatibleMessage.tool_calls, calls.map(call => native(call)));
             assert.equal(requests, before + 1);
         }
+        for (const reusedIndex of [false, true]) for (const repeatedId of [false, true]) {
+            wire = relayFragments(reusedIndex, repeatedId);
+            const before = requests;
+            const result = await adapter.chat(task);
+            assert.deepEqual(result.toolCalls, calls);
+            assert.deepEqual(resolveCalls(result), calls);
+            assert.deepEqual(result.providerPayload.openaiCompatibleMessage.tool_calls, calls.map(call => native(call)));
+            assert.equal(requests, before + 1);
+        }
+        // Redacted shape from a captured Gemini-4-argon response: a complete second
+        // call reuses index 0 after the first call's anonymous/null-type tail.
+        const receiptCalls = ['a.txt', 'b.txt'].map((path, index) => ({
+            id: 'receipt-' + index, name: 'Read', arguments: JSON.stringify({ path }),
+        }));
+        wire = [
+            event([{ index: 0, ...native(receiptCalls[0], '') }]),
+            event([{ index: 0, type: null, function: { arguments: receiptCalls[0].arguments } }]),
+            { choices: [{ delta: { tool_calls: [{ index: 0, ...native(receiptCalls[1]) }] }, finish_reason: 'tool_calls' }] },
+            { choices: [], usage: { total_tokens: 147 } },
+        ];
+        const beforeReceipt = requests;
+        const receiptResult = await adapter.chat(task);
+        assert.equal(requests, beforeReceipt + 1);
+        assert.deepEqual(receiptResult.toolCalls, receiptCalls);
+        assert.deepEqual(receiptResult.providerPayload.openaiCompatibleMessage.tool_calls, receiptCalls.map(call => native(call)));
+        const reloadedHistory = JSON.parse(JSON.stringify([
+            ...task.messages,
+            buildProviderAssistantToolCallMessage(receiptResult, receiptResult.toolCalls),
+            ...receiptResult.toolCalls.map(call => buildProviderToolResultMessage({
+                toolCallId: call.id, toolName: call.name, content: '{"ok":true}',
+            })),
+        ]));
+        wire = [{ choices: [{ delta: { content: 'OK' }, finish_reason: 'stop' }] }];
+        const continued = await adapter.chat({ ...task, messages: reloadedHistory });
+        assert.equal(requests, beforeReceipt + 2);
+        const sentHistory = continued.requestInspection.request.body.messages;
+        assert.deepEqual(sentHistory.find(message => message.role === 'assistant').tool_calls, receiptCalls.map(call => native(call)));
+        assert.deepEqual(sentHistory.filter(message => message.role === 'tool').map(message => message.tool_call_id),
+            receiptCalls.map(call => call.id));
+        assert.equal(continued.text, 'OK');
         wire = [event(calls.map((call, index) => ({ index, ...native(call) }))), event([{ function: { arguments: '{}' } }])];
         const before = requests;
         await assert.rejects(adapter.chat(task), { code: 'OPENAI_COMPATIBLE_TOOL_CALL_IDENTITY_INVALID' });

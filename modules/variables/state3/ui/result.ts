@@ -15,11 +15,11 @@ export function resultLabel(result: Result): string {
     if (!result.ok) {return COPY.failed;}
     if (!result.committed) {return COPY.previewLabel;}
     if (result.saved === false) {return COPY.phases.unsaved;}
-    if (result.diagnostics.some(issue => issue.code === 'extension-after-failed')) {return COPY.beforeOutcomes.applied;}
-    if (result.saved === undefined && result.receipt?.beforeUpdate) {return COPY.beforeOutcomes[result.receipt.beforeUpdate.outcome];}
-    if (result.restoration?.length) {return `${restorationLabel(result)} · ${COPY.saved}`;}
-    if (result.receipt?.beforeUpdate) {return `${COPY.beforeOutcomes[result.receipt.beforeUpdate.outcome]} · ${COPY.saved}`;}
-    return result.restoration ? `${restorationLabel(result)} · ${COPY.saved}` : `${COPY.beforeOutcomes.applied} · ${COPY.saved}`;
+    const applied = result.actions.length ? COPY.actionsApplied(result.actions.length) : result.changes.length ? COPY.valuesOnly : COPY.noActions;
+    const outcome = result.receipt?.beforeUpdate?.outcome;
+    const label = outcome && outcome !== 'applied' ? COPY.beforeOutcomes[outcome] : applied;
+    if (outcome === 'failed' || result.diagnostics.some(issue => issue.code === 'extension-after-failed') || result.saved === undefined) {return label;}
+    return result.restoration ? restorationLabel(result) : label;
 }
 export function showDiagnostics(root: HTMLElement, diagnostics: Diagnostic[], definition?: Definition, author = false) {
     for (const error of diagnostics) {
@@ -29,11 +29,9 @@ export function showDiagnostics(root: HTMLElement, diagnostics: Diagnostic[], de
             const fields = parameterIssues(error.code === 'state-schema' && definition ? definition.schema : {}, error.errors as ErrorObject[]);
             for (const field of fields) {root.append(element('p', parameterIssueText(field)));}
         }
-        if (author && (error.errors || error.response || error.cause)) {
+        if (author) {
             const details = element('details'); details.append(element('summary', COPY.details));
-            if (error.errors) {details.append(element('pre', JSON.stringify(error.errors, null, 2)));}
-            if (typeof error.response === 'string') {details.append(element('pre', error.response));}
-            if (error.cause) {details.append(element('pre', JSON.stringify(error.cause, null, 2)));}
+            details.append(element('pre', JSON.stringify(error, null, 2)));
             root.append(details);
         }
     }
@@ -55,7 +53,7 @@ export function showResult(root: HTMLElement, result: Result, definition?: Defin
     if (!result.committed) {
         if (result.changes.length) {root.append(element('p', COPY.previewed, 'lwb-state3-status'));}
     } else if (!restorationWarning || result.saved === false) {
-        const status = element('p', result.saved === false ? COPY.unconfirmed : result.saved === undefined ? COPY.hostSave : resultLabel(result), 'lwb-state3-status');
+        const status = element('p', result.saved === false ? COPY.unconfirmed : resultLabel(result), 'lwb-state3-status');
         status.setAttribute('role', 'status'); root.append(status);
     }
     if (result.restoration?.length) {
@@ -140,5 +138,7 @@ export function showResult(root: HTMLElement, result: Result, definition?: Defin
         for (const [key, value] of extras) {fields.append(element('dt', key), element('dd', typeof value === 'string' ? value : JSON.stringify(value, null, 2)));}
         section.append(fields); root.append(section);
     }
-    if (!shown.length) {root.append(element('p', COPY.empty));}
+    if (!shown.length && (!result.committed || result.actions.length || result.saved === false || result.restoration)) {
+        root.append(element('p', COPY.empty));
+    }
 }

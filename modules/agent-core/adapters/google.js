@@ -331,6 +331,8 @@ function buildToolResponseMessage(toolResponses = []) {
 
 function mapThinkingLevel(effort) {
     switch (effort) {
+        case 'xhigh':
+            return ThinkingLevel.XHIGH;
         case 'minimal':
             return ThinkingLevel.MINIMAL;
         case 'high':
@@ -589,7 +591,7 @@ export class GoogleAdapter {
                 includeThoughts: false,
                 thinkingBudget: 0,
             };
-        } else if (reasoning.mode === 'on' && reasoning.profileId.startsWith('google-gemini-2.5-')) {
+        } else if (reasoning.mode === 'on' && reasoning.budgetTokens !== undefined) {
             config.thinkingConfig = {
                 includeThoughts: isReasoningOutputVisible(reasoning),
                 thinkingBudget: reasoning.budgetTokens,

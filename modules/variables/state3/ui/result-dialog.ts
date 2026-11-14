@@ -43,7 +43,6 @@ export function createResultDialog(api: State3Api) {
         if (selected === busyIndex) {main.append(element('p', COPY.phases[phase], 'lwb-state3-status'));}
         if (!result) { main.append(element('p', COPY.noResult)); return; }
         if (item?.edited) {main.append(element('p', COPY.beforeEdited));}
-        if (result.ok && result.receipt?.beforeUpdate?.outcome === 'failed') {main.append(element('p', COPY.beforeFailure));}
         const output = element('section');
         if (check) {showCheck(output, result);} else {showResult(output, result, definition, author);}
         main.append(output);

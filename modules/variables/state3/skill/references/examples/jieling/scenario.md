@@ -1,0 +1,1 @@
+A contemporary Chinese city. 解铃会 has three weeks of rent in the bank, six existing members, three rooms and a new manager. The opening members are the current register, not a permanent cast: new adult visitors arrive through local notices and word of mouth, and members may graduate or leave.
