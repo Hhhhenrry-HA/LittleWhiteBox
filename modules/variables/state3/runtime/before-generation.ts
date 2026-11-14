@@ -19,10 +19,11 @@ interface Dispatch { input: { deferred: boolean; rebuild: boolean } }
 interface Dependencies {
     adapter: ReturnType<typeof createHostAdapter>; service: SettlementService; updater: ReturnType<typeof createState3Updater>;
     retain(result: Promise<Result>, index?: number): Promise<Result>; refresh(): void; report(promise: Promise<unknown>): unknown;
+    ready?(): boolean;
 }
 
 /** Owns only the current handoff to prose. Durable outcomes belong to USER receipts. */
-export function createBeforeGeneration({ adapter, service, updater, retain, refresh, report }: Dependencies) {
+export function createBeforeGeneration({ adapter, service, updater, retain, refresh, report, ready = () => true }: Dependencies) {
     const events = createModuleEvents(ID);
     let candidate: ChatMessage | undefined, eligible = false, generation = 0;
     let active: { controller: AbortController; message: ChatMessage; chatId: string; finished: Promise<void> } | undefined;
@@ -39,6 +40,7 @@ export function createBeforeGeneration({ adapter, service, updater, retain, refr
         signal.throwIfAborted();
     }
     function assertTarget(index: number) {
+        if (!ready()) {reject('commit-busy');}
         if (!supportsBefore()) {reject('stage-disabled', { stage: 'before' });}
         if (index !== latestUser() || !getContext().chat[index]?.mes?.trim()) {reject('target-missing');}
     }
@@ -89,8 +91,10 @@ export function createBeforeGeneration({ adapter, service, updater, retain, refr
     }
     async function intercept(_chat: unknown, _size: number, abort: (immediately: boolean) => void, type: string, dispatch: Dispatch) {
         clearPrompt();
-        if (!enabled() || ['quiet', 'impersonate'].includes(type)) {return;}
+        if (!state3Selected() || ['quiet', 'impersonate'].includes(type)) {return;}
         try {
+            if (!ready()) {reject('opening-start-required');}
+            if (!enabled()) {return;}
             if (!supportsBefore()) {return;}
             const index = latestUser(), ctx = getContext(), message = ctx.chat[index];
             if (!message) {return;}

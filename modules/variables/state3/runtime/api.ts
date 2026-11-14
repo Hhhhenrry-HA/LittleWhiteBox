@@ -9,7 +9,7 @@ export interface State3Api {
     stage: SettlementService['stage']; apply: SettlementService['apply']; preview: SettlementService['preview'];
     undo: SettlementService['undo']; inspect: SettlementService['inspect'];
     enable(options?: RunOptions): Promise<Result>;
-    tryDefinition(bundle: Bundle, input?: unknown, options?: RunOptions & { state?: Json }): Promise<Result>;
+    tryDefinition(bundle: Bundle, input?: unknown, options?: RunOptions & { state?: Json; opening?: number }): Promise<Result>;
     openDraft: typeof openDraft; saveDraft: typeof saveDraft; checkDraft: typeof checkDraft; saveCardDraft: typeof saveCardDraft;
     exportRules: typeof exportRules; prepareRuleImport: typeof prepareRuleImport; importRules: typeof importRules;
     lastResult(): Result | undefined;

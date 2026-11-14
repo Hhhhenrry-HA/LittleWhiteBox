@@ -7,7 +7,8 @@ import { settle } from '../engine/settle.js';
 import { variableRoots } from './variables.js';
 import { reject, diagnostic } from '../engine/diagnostics.js';
 import { validateState } from '../engine/validation.js';
-import { checkpoint, digest, makeReceipt, rebase, rewind } from './history.js';
+import { checkpoint, digest, makeReceipt, rebase, rewind, OPENING_SOURCE, isOpeningReceipt } from './history.js';
+import { initialState } from '../definition/openings.js';
 import type { BeforeUpdate, Compiled, History, HostAdapter, Json, JsonObject, Receipt, Result, RunOptions, Snapshot, Success, SwipeRecord } from '../types.js';
 import { modelSource } from '../definition/stages.js';
 import { createExtensionRun, type ExtensionHost } from '../extensions/runtime.js';
@@ -51,10 +52,10 @@ export function createSettlementService<S extends Snapshot>(adapter: HostAdapter
         const snapshot = adapter.capture(index), history = snapshot.history;
         adapter.assertMutable(snapshot); assertCurrent(snapshot); signal?.throwIfAborted();
         if (!history) {reject('not-enabled');}
-        const records = clone(snapshot.records), suffix = records.slice(snapshot.index).flatMap(record => record.entries);
+        const records = clone(snapshot.records), suffix = records.slice(snapshot.index).flatMap(record => record.entries.filter(entry => !isOpeningReceipt(entry)));
         if (snapshot.lastReceiptIndex < snapshot.index) {return { ...success(clone(snapshot.state)), saved: true };}
         const state = rewind(history, snapshot.state, suffix);
-        records.slice(snapshot.index).forEach(record => {record.entries = [];});
+        records.slice(snapshot.index).forEach(record => {record.entries = record.entries.filter(isOpeningReceipt);});
         // Persist the real rollback before any model call or new rule execution.
         // Failure/cancellation after this point leaves the rolled-back state intact.
         const publication = publish(snapshot, { ...clone(history), checkpoints: [] }, records,
@@ -73,7 +74,7 @@ export function createSettlementService<S extends Snapshot>(adapter: HostAdapter
         adapter.assertMutable(snapshot);
         // Replacement always means the whole floor and its suffix, not one source
         // merged back into already-confirmed later effects. Preview remains read-only.
-        const suffix = replace ? records.slice(snapshot.index).flatMap(record => record.entries) : [];
+        const suffix = replace ? records.slice(snapshot.index).flatMap(record => record.entries.filter(entry => !isOpeningReceipt(entry))) : [];
         const start = replace ? rewind(history, snapshot.state, suffix) : clone(snapshot.state);
         assertCurrent(snapshot);
         let consumed = false;
@@ -126,6 +127,7 @@ export function createSettlementService<S extends Snapshot>(adapter: HostAdapter
             },
             async run(input: unknown, { preview = true, source = 'api', signal: runSignal, stage: updateStage = preparedStage, beforeUpdate, prepared }: ApplyOptions = {}): Promise<Result> {
                 if (consumed) {reject('stage-consumed');}
+                if (source === OPENING_SOURCE) {reject('source-reserved', { source });}
                 assertCurrent(snapshot); adapter.assertMutable(snapshot);
                 const activeSignal = mergeAbortSignals(signal, runSignal) ?? undefined;
                 if (!preview && prepared !== undefined) {reject('prepared-preview-only');}
@@ -197,20 +199,47 @@ export function createSettlementService<S extends Snapshot>(adapter: HostAdapter
                 receipt: snapshot.records[snapshot.index]?.entries.at(-1) };
         },
         async enable({ signal }: RunOptions = {}): Promise<Result> {
-            const snapshot = adapter.capture();
+            let snapshot = adapter.capture();
             if (snapshot.history) {reject('already-enabled');}
             const compiled = compileDefinition(adapter.bundle());
+            if (compiled.definition.openings) {
+                const greeting = adapter.capture(0);
+                if (!greeting.opening) {reject('opening-start-required');}
+                snapshot = greeting;
+            }
             await authorize({ signal });
+            assertCurrent(snapshot); signal?.throwIfAborted();
             const existing = snapshot.state as JsonObject;
-            const start = { ...clone(compiled.definition.initial), ...Object.fromEntries(variableRoots(compiled.definition)
+            const base = { ...clone(compiled.definition.initial), ...Object.fromEntries(variableRoots(compiled.definition)
                 .filter(root => Object.hasOwn(existing, root)).map(root => [root, clone(existing[root])])) };
+            const opening = Boolean(compiled.definition.openings && snapshot.opening);
+            const start = opening ? initialState(compiled.definition, snapshot.target.swipeId, base) : base;
             const result = await settle(compiled, start, [], { signal, initialize: true });
             if (!result.ok) {return result;}
-            signal?.throwIfAborted();
+            assertCurrent(snapshot); signal?.throwIfAborted();
             const roots = variableRoots(compiled.definition);
             if (Object.keys(result.state as JsonObject).some(root => !roots.includes(root))) {reject('unowned-root');}
             const history: History = { format: 2, roots, version: digest(compiled.bundle), revision: 0, checkpoints: [] };
-            return publish(snapshot, history, snapshot.records, { ...result, version: history.version }, false);
+            const records = clone(snapshot.records);
+            if (opening) {records[0].entries.push(makeReceipt({ before: base, result, source: OPENING_SOURCE, revision: 1 }));}
+            return publish(snapshot, history, records, { ...result, version: history.version }, false);
+        },
+        async initializeOpening({ signal }: RunOptions = {}): Promise<Result | undefined> {
+            const snapshot = adapter.capture(0), history = snapshot.history;
+            if (!history || !snapshot.opening || snapshot.records[0]?.entries.length) {return;}
+            const compiled = compileDefinition(adapter.bundle());
+            if (!compiled.definition.openings) {return;}
+            await authorize({ signal });
+            assertCurrent(snapshot); signal?.throwIfAborted();
+            const start = initialState(compiled.definition, snapshot.target.swipeId, snapshot.state as JsonObject);
+            const result = await settle(compiled, start, [], { signal, initialize: true });
+            if (!result.ok) {return result;}
+            assertCurrent(snapshot); signal?.throwIfAborted();
+            if (Object.keys(result.state as JsonObject).some(root => !history.roots.includes(root))) {reject('unowned-root');}
+            const records = clone(snapshot.records), updated = { ...clone(history), version: digest(compiled.bundle), checkpoints: [] };
+            const receipt = makeReceipt({ before: snapshot.state, result, source: OPENING_SOURCE, revision: history.revision + 1 });
+            records[0].entries.push(receipt);
+            return publish(snapshot, updated, records, { ...result, version: updated.version, receipt }, true);
         },
         async apply(input: unknown, options: ApplyOptions = {}) {
             const staged = await stage(options);
@@ -223,10 +252,12 @@ export function createSettlementService<S extends Snapshot>(adapter: HostAdapter
         async undo({ index, signal, all = false }: RunOptions & { index?: number; all?: boolean } = {}): Promise<Result> {
             const snapshot = adapter.capture(index), history = snapshot.history, records = clone(snapshot.records);
             adapter.assertMutable(snapshot);
-            if (!history || !records[snapshot.index]?.entries.length) {reject('nothing-to-undo');}
+            const target = records[snapshot.index];
+            const removable = target ? target.entries.map(isOpeningReceipt).lastIndexOf(false) : -1;
+            if (!history || removable < 0) {reject('nothing-to-undo');}
             if (all) {return rollback({ index: snapshot.index, signal });}
-            const target = records[snapshot.index], later = records.slice(snapshot.index + 1).flatMap(record => record.entries);
-            const removed = target.entries.splice(-1);
+            const later = records.slice(snapshot.index + 1).flatMap(record => record.entries);
+            const removed = target.entries.splice(removable, 1);
             const state = rewind(history, snapshot.state, [...removed, ...later]);
             records.slice(snapshot.index + 1).forEach(record => {record.entries = [];});
             signal?.throwIfAborted();

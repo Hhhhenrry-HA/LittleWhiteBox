@@ -9,6 +9,7 @@ import { applyDirectInput, inputFields, inspectInput, validateActionParameters }
 import { validateState } from './validation.js';
 import { authorize } from './permissions.js';
 import { createFunctionRunner } from './functions.js';
+import { initialState } from '../definition/openings.js';
 import { activeScript, extensionPath } from '../extensions/definition.js';
 
 // A runaway, non-repeating trigger chain must also return control to the player.
@@ -197,4 +198,20 @@ export async function settle(compiled: Compiled, start: Json, input: unknown, { 
     } finally { functions.dispose(); }
 }
 
-export const initialize = (compiled: Compiled, options: RunOptions = {}) => settle(compiled, compiled.definition.initial, [], { ...options, initialize: true });
+export const initialize = (compiled: Compiled, options: RunOptions & { opening?: number } = {}) =>
+    settle(compiled, initialState(compiled.definition, options.opening), [], { ...options, initialize: true });
+
+/** Check every configured start without publishing state or running host scripts. */
+export async function checkOpenings(compiled: Compiled, options: RunOptions = {}): Promise<Result> {
+    let first: Result | undefined;
+    for (let opening = 0; opening < Math.max(1, compiled.definition.openings?.length || 0); opening++) {
+        const result = await initialize(compiled, { ...options, opening });
+        if (!result.ok) {return { ...result, diagnostics: result.diagnostics.map(issue => ({ ...issue, opening })) };}
+        first ??= result;
+    }
+    if (compiled.definition.openings?.length) {
+        const baseline = await settle(compiled, compiled.definition.initial, [], { ...options, initialize: true });
+        if (!baseline.ok) {return { ...baseline, diagnostics: baseline.diagnostics.map(issue => ({ ...issue, path: ['initial'] })) };}
+    }
+    return first!;
+}

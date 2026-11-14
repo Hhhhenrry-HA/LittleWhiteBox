@@ -10,7 +10,7 @@ import { CARD_EXTENSION, DEFINITION_FILE } from './format.js';
 import { variableBundleFromFiles, decodeBundle, type CardFile } from './card-files.js';
 import { digest } from './digest.js';
 import { compileDefinition } from './compile.js';
-import { initialize, settle } from '../engine/settle.js';
+import { checkOpenings, initialize, settle } from '../engine/settle.js';
 import { diagnostic, reject } from '../engine/diagnostics.js';
 
 export async function openDraft() {
@@ -50,12 +50,12 @@ export async function saveDraft(draft: Draft, updates: CardFile[]) {
 }
 
 export function draftBundle(draft: Draft) { return variableBundleFromFiles(draft.root, draft.files); }
-export async function checkDraft(draft: Draft, input: unknown = [], { signal, state, stage, prepared, checkOnly = false }: RunOptions & { state?: Json; checkOnly?: boolean } = {}): Promise<Result> {
+export async function checkDraft(draft: Draft, input: unknown = [], { signal, state, stage, prepared, opening, checkOnly = false }: RunOptions & { state?: Json; opening?: number; checkOnly?: boolean } = {}): Promise<Result> {
     try {
         const compiled = compileDefinition(draftBundle(draft));
-        if (checkOnly) {return initialize(compiled, { signal });}
+        if (checkOnly) {return checkOpenings(compiled, { signal });}
         if (state !== undefined) {return settle(compiled, state, input, { signal, stage, prepared });}
-        const initial = await initialize(compiled, { signal });
+        const initial = await initialize(compiled, { signal, opening });
         if (!initial.ok) {return initial;}
         return settle(compiled, initial.state, input, { signal, stage, prepared });
     } catch (error) {return { ok: false, diagnostics: [diagnostic(error)] };}

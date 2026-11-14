@@ -7,6 +7,8 @@ import { runInNewContext } from 'node:vm';
 import { EventEmitter } from 'node:events';
 import { parseHTML } from 'linkedom';
 import { compileDefinition } from '../definition/compile.js';
+import { initialize, settle } from '../engine/settle.js';
+import { accepted } from './fixture.js';
 import { variableBundleFromFiles } from '../definition/card-files.js';
 import { createGuideFixture } from './guide-fixture.js';
 import type { Bundle } from '../types.js';
@@ -64,6 +66,26 @@ test('解铃会 installs from its CardFiles layout; every worldbook entry can en
         assert.ok(settings.constant || settings.key.length, item.path);
     }
     for (const item of files.filter(entry => entry.path.startsWith('card/regex/'))) {parseItemDocument('regex', item.content);}
+});
+
+test('both club openings use the same rules with different funds, seats and incident state', async () => {
+    const compiled = compileDefinition(bundle);
+    const first = accepted(await initialize(compiled)).state as { club: Club };
+    const secondState = accepted(await initialize(compiled, { opening: 1 })).state;
+    const second = secondState as { club: Club };
+    assert.equal(first.club.funds, 6000);
+    assert.equal(first.club.incidents.length, 0);
+    assert.equal(first.club.rooms['一号室'].open, false);
+    assert.equal(second.club.funds, 2400);
+    assert.equal(second.club.exposure, 10);
+    assert.equal(second.club.incidents.filter(item => item.open).length, 1);
+    assert.equal(second.club.rooms['一号室'].open, true);
+    assert.equal(second.club.members['何小满'].control, first.club.members['何小满'].control);
+    const handled = accepted(await settle(compiled, secondState, [{ action: 'handle', params: { incident: 0 } }], { stage: 'before' })).state as { club: Club };
+    assert.equal(handled.club.funds, 1800);
+    assert.equal(handled.club.exposure, 0);
+    assert.equal(handled.club.incidents[0].open, false);
+    assert.equal(first.club.funds, 6000);
 });
 
 // The matching rule is the game: who is in a room decides whether it meets and how pairs relate.

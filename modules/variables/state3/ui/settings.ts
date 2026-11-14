@@ -125,6 +125,7 @@ export function createState3Page(api: State3Api) {
             }
         } catch {summary.append(element('p', EC.rulesInvalid));}
         main.append(summary);
+        main.append(element('p', COPY.openingHelp));
         const code = element('details'); code.open = sourceOpen;
         code.addEventListener('toggle', () => {sourceOpen = code.open;});
         code.append(element('summary', COPY.editSource), label(COPY.file, select), editor,

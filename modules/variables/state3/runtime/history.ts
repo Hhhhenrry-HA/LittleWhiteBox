@@ -8,6 +8,8 @@ import { modelSource } from '../definition/stages.js';
 export { difference, applyDifference } from '../engine/difference.js';
 export { digest } from '../definition/digest.js';
 
+export const OPENING_SOURCE = 'opening';
+export const isOpeningReceipt = (receipt: Receipt) => receipt.source === OPENING_SOURCE;
 export const effectiveDelta = (receipt: Receipt) => Object.hasOwn(receipt, 'applied') ? receipt.applied! : receipt.delta;
 
 export function makeReceipt({ before, result, revision, source = 'api', retainParams = false }: { before: Json; result: Success; revision: number; source?: string; retainParams?: boolean }): Receipt {

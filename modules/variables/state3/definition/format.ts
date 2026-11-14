@@ -22,6 +22,7 @@ export const definitionSchema = {
     required: ['format', 'name', 'updates', 'schema', 'initial', 'access', 'rules', 'actions', 'constraints', 'functions', 'views'],
     properties: {
         format: { const: FORMAT }, name: description, updates: stages, schema: { type: 'object' }, initial: { type: 'object' },
+        openings: { type: 'array', items: { type: 'object' } },
         access: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['path', 'direct', 'description'], properties: { path, direct: { type: 'boolean' }, stages, description, update: description } } },
         rules: { type: 'array', items: named({ kind: { enum: ['derive', 'correct'] }, path, value: expression, description }) },
         actions: { type: 'array', items: { ...action, properties: { ...action.properties, stages } } },

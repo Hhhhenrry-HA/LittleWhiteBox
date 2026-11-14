@@ -10,7 +10,7 @@ export const COPY = {
     packageHelp: '规则包包含这张卡的变量规则、工具和脚本。导出的是已存入角色卡的版本。',
     file: '文件', playHelp: '当前值在变量面板查看，仅最新一条用户消息和 AI 回复提供结算操作与「查看结果」。',
     draft: '规则草稿', saveDraft: '保存草稿', savedDraft: '草稿已保存', check: '检查规则',
-    checkTitle: '检查规则', checkPassed: '规则可以使用。开局变量：', checkFailed: '规则还不能使用：',
+    checkTitle: '检查规则', checkPassed: '规则检查通过。以下是主开场的开局变量：', checkFailed: '规则还不能使用：',
     saveCard: '存入角色卡', savedCard: '规则已保存到角色卡',
     enable: '启用规则',
     importRules: '导入规则包到此卡', exportRules: '导出卡上规则包',
@@ -92,7 +92,12 @@ export const COPY = {
         AGENT_DISABLED: '小白X 已关闭，无法更新变量。',
         AGENT_RESPONSE_REFUSED: '模型拒绝了这次更新请求，本次变量没有生效。',
     },
+    openingName: (index: number) => `第 ${index + 1} 条开场`,
+    openingHelp: '各开场的不同初值写在 openings，顺序与开场白一致；共用值写在 initial。',
     errors: {
+        'opening-start-required': '这张卡按开场设置初值，请在只有开场白的新聊天中启用规则。',
+        'source-reserved': '此来源名称由开场初始化使用，请为卡内提交选择其他名称。',
+        'opening-index': '开场序号需要是从 0 开始的整数。',
         ...EXTENSION_COPY.errors,
         'stage-missing': '前后都更新的卡，需要给每个动作和可直接修改的字段指定阶段。',
         'stage-unknown': '动作或字段使用了这张卡未启用的更新阶段。',
@@ -211,6 +216,6 @@ export function errorText(error: unknown, definition?: Definition): string {
         return [detail.actionTitle || detail.action || detail.rule, detail.parameters.map(parameterIssueText).join('；')].filter(Boolean).join(' · ');
     }
     const label = (COPY.errors as Record<string, string>)[detail.code] || detail.message || detail.code || COPY.failed;
-    return [typeof detail.operation === 'number' ? '第 ' + (detail.operation + 1) + ' 条操作' : '', Array.isArray(detail.path) ? detail.path.join(' → ') : typeof detail.path === 'string' ? detail.path : '', detail.rule,
+    return [typeof detail.opening === 'number' ? COPY.openingName(detail.opening) : '', typeof detail.operation === 'number' ? '第 ' + (detail.operation + 1) + ' 条操作' : '', Array.isArray(detail.path) ? detail.path.join(' → ') : typeof detail.path === 'string' ? detail.path : '', detail.rule,
         Array.isArray(detail.rules) ? detail.rules.join(' → ') : '', detail.functionId, label, detail.errorName, detail.message !== label ? detail.message : ''].filter(Boolean).join(' · ');
 }

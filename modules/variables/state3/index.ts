@@ -37,6 +37,8 @@ export function initState3() {
     let swipeRecovery: MutationObserver | undefined;
     let pendingGeneration: { chat: ChatMessage[]; message?: ChatMessage; waiting: boolean; replacement?: ChatMessage; length: number } | undefined;
     let lifecycle = new AbortController(), selectedMode = state3Selected();
+    let newChat: { chat: ChatMessage[]; metadata: object } | undefined;
+    let openingWork: { epoch: AbortController; promise: Promise<Result | undefined> } | undefined;
     let resultSequence = 0;
     const adapter = createHostAdapter();
     const topology = new MutationObserver(() => { if (adapter.rememberOrder()) {refresh();} });
@@ -49,7 +51,7 @@ export function initState3() {
         observeBackgroundTask(handled, { source: import.meta.url, operation: 'state3' });
         return handled;
     };
-    function available() { lifecycle.signal.throwIfAborted(); if (!state3Selected()) {reject('not-enabled');} if (isGenerating()) {reject('commit-busy');} }
+    function available() { lifecycle.signal.throwIfAborted(); if (!state3Selected()) {reject('not-enabled');} if (isGenerating() || openingWork?.epoch === lifecycle || !openingReady()) {reject('commit-busy');} }
     const owned = <T extends RunOptions>(options?: T) => ({ ...options, signal: mergeAbortSignals(lifecycle.signal, options?.signal)! });
     async function syncProjection() {
         if (lifecycle.signal.aborted) {return;}
@@ -88,7 +90,7 @@ export function initState3() {
         lastResult = undefined; resultMessage = undefined; beforeResult = undefined;
         await syncProjection(); refresh();
     } });
-    const before = createBeforeGeneration({ adapter, service, updater, retain, refresh, report });
+    const before = createBeforeGeneration({ adapter, service, updater, retain, refresh, report, ready: openingReady });
     const writable = () => { available(); if (before.status().busy) {reject('commit-busy');} };
     const api: State3Api = {
         stage(options) { writable(); return service.stage(owned(options)); },
@@ -107,15 +109,17 @@ export function initState3() {
             const epoch = lifecycle;
             return retain((async () => {
                 const result = await service.enable(owned(options));
-                if (result.ok && result.committed && epoch === lifecycle && !epoch.signal.aborted) { selectState3(); selectedMode = true; }
+                if (result.ok && result.committed && epoch === lifecycle && !epoch.signal.aborted) {
+                    selectState3(); selectedMode = true;
+                }
                 return result;
             })());
         },
-        async tryDefinition(bundle, input = [], { state, signal, stage, prepared } = {}) {
+        async tryDefinition(bundle, input = [], { state, signal, stage, prepared, opening } = {}) {
             try {
                 const compiled = compileDefinition(bundle);
                 if (state !== undefined) {return settle(compiled, state, input, { signal, stage, prepared });}
-                const initial = await initialize(compiled, { signal });
+                const initial = await initialize(compiled, { signal, opening });
                 return initial.ok ? settle(compiled, initial.state, input, { signal, stage, prepared }) : initial;
             } catch (error) { return { ok: false, diagnostics: [diagnostic(error)] }; }
         },
@@ -183,7 +187,39 @@ export function initState3() {
         }
         catch (error) { if (!['chat-missing', 'character-missing'].includes(diagnostic(error).code)) {throw error;} }
     }
+    function greetingNeedsInitialization() {
+        const ctx = getContext(), message = ctx.chat[0];
+        if (!state3Selected() || inGroup(ctx) || ctx.chat.length !== 1 || message?.is_user || message?.is_system) {return false;}
+        const snapshot = adapter.capture(0);
+        if (!snapshot.opening) {return false;}
+        if (!ctx.chatMetadata[CHAT_KEY]) {return newChat?.chat === ctx.chat && newChat.metadata === ctx.chatMetadata;}
+        return !snapshot.records[0]?.entries.length && Boolean(adapter.bundle().definition.openings);
+    }
+    function openingReady() {
+        const ctx = getContext();
+        if (inGroup(ctx) || !ctx.characters?.[ctx.characterId]?.data?.extensions?.[CARD_EXTENSION]) {return true;}
+        if (!adapter.bundle().definition.openings) {return true;}
+        return Boolean(ctx.chatMetadata[CHAT_KEY]) && adapter.capture(0).records.some(record => record.entries.length > 0);
+    }
+    function initializeGreeting() {
+        if (openingWork?.epoch === lifecycle) {return openingWork.promise;}
+        if (!greetingNeedsInitialization()) {return;}
+        const epoch = lifecycle, ctx = getContext();
+        const own = { epoch, promise: undefined as unknown as Promise<Result | undefined> };
+        own.promise = (async () => {
+            try {
+                const result = ctx.chatMetadata[CHAT_KEY]
+                    ? await service.initializeOpening({ signal: epoch.signal })
+                    : await service.enable({ signal: epoch.signal });
+                return result;
+            } finally { if (openingWork === own) {openingWork = undefined;} }
+        })();
+        openingWork = own;
+        return own.promise;
+    }
     function changed() {
+        const ctx = getContext();
+        if (newChat?.chat !== ctx.chat || newChat.metadata !== ctx.chatMetadata) {newChat = undefined;}
         clearSwipeRecovery(); pendingGeneration = undefined; lifecycle.abort(); lifecycle = new AbortController();
         before.changed(); macros.clear(); lastResult = undefined; resultMessage = undefined; beforeResult = undefined; adapter.remember();
         page?.targetChanged(); refresh(); observeBackgroundTask(report(syncProjection()), { source: import.meta.url, operation: 'projection' });
@@ -191,7 +227,7 @@ export function initState3() {
     function modeChanged() { if (state3Selected() !== selectedMode) { selectedMode = state3Selected(); changed(); } else {refresh();} }
     function invalidateResult(keepBefore = false) {
         lifecycle.abort(); lifecycle = new AbortController();
-        lastResult = undefined; resultMessage = undefined;
+        if (!keepBefore || !lastResult?.ok || lastResult.saved !== false) {lastResult = undefined; resultMessage = undefined;}
         // The before-generation owner handles generation cancellation/reuse.
         if (!keepBefore) {updater.cancel(); beforeResult = undefined;}
         page?.targetChanged();
@@ -219,16 +255,20 @@ export function initState3() {
         const change = adapter.selectionChange(kind, index);
         if (!state3Selected()) {return;}
         invalidateResult();
-        if (change.previous.length || change.next.length) {
-            // Restore before yielding, but never hold the native swipe event on
-            // disk I/O. retain owns save failures and ignores obsolete selections.
+        // Receipt restoration publishes synchronously. Initialization must start
+        // from that common baseline, without waiting for an older disk save.
+        const restoration = change.previous.length || change.next.length
+            ? service.restoreSelection(change.previous, change.next, { check: change.historical, signal: lifecycle.signal }) : undefined;
+        const initialization = initializeGreeting();
+        if (restoration || initialization) {
             observeBackgroundTask(report(retain((async () => {
-                const restored = await service.restoreSelection(change.previous, change.next, { check: change.historical, signal: lifecycle.signal });
-                if (!restored) {reject('nothing-to-undo');}
-                if (!restored.ok) {return restored;}
+                const [restored, initialized] = await Promise.all([restoration, initialization]);
+                const result = initialized ?? restored;
+                if (!result) {return service.inspect();}
+                if (!result.ok) {return result;}
                 const snapshot = adapter.capture(index);
                 const receipt = snapshot.records[snapshot.index]?.entries.at(-1);
-                return { ...restored, ...(receipt ? { receipt } : {}) };
+                return { ...result, ...(receipt ? { receipt } : {}) };
             })(), index)), { source: import.meta.url, operation: 'selection-save' });
             await syncProjection();
         }
@@ -255,9 +295,23 @@ export function initState3() {
     // The host emits MESSAGE_SWIPED after deleting the selected swipe; that event owns restoration.
     events.on(event_types.SETTINGS_UPDATED, modeChanged);
     events.on(event_types.CHARACTER_MESSAGE_RENDERED, (index: number) => { refresh(); afterGeneration(Number(index)); });
-    events.on(event_types.GENERATION_STARTED, (type: string, _options: unknown, dryRun: boolean) => {
+    events.on(event_types.GENERATION_STARTED, async (type: string, _options: unknown, dryRun: boolean) => {
         if (dryRun) {return syncProjection();}
         if (!state3Selected() || !['normal', 'regenerate', 'swipe', 'continue', undefined, ''].includes(type)) {return;}
+        const epoch = lifecycle, initialization = initializeGreeting();
+        if (initialization) {
+            let initialized: Result | undefined;
+            try { initialized = await initialization; }
+            catch (error) {
+                if (epoch !== lifecycle || epoch.signal.aborted) {throw error;}
+                initialized = { ok: false, diagnostics: [diagnostic(error)] };
+            }
+            if (epoch !== lifecycle || epoch.signal.aborted) {reject('stale-target');}
+            if (initialized && !initialized.ok) {
+                await retain(Promise.resolve(initialized), 0);
+                const { code, ...details } = initialized.diagnostics[0]; reject(code, details);
+            }
+        }
         invalidateResult(true); adapter.remember();
         const chat = getContext().chat;
         pendingGeneration = { chat, waiting: false, length: chat.length,
@@ -302,8 +356,10 @@ export function initState3() {
         const ctx = getContext();
         if (inGroup(ctx) || !state3Selected() || ctx.chatMetadata?.[CHAT_KEY]) {return;}
         if (ctx.characters?.[ctx.characterId]?.data?.extensions?.[CARD_EXTENSION]) {
-            const signal = lifecycle.signal;
-            const result = await api.enable({ signal });
+            newChat = { chat: ctx.chat, metadata: ctx.chatMetadata };
+            const signal = lifecycle.signal, initialization = initializeGreeting();
+            if (!initialization) {return;}
+            const result = await retain(initialization.then(async (result): Promise<Result> => result ?? await service.inspect()), 0);
             if (!signal.aborted && !result.ok) {result.diagnostics.forEach(notifyError);}
         }
     });

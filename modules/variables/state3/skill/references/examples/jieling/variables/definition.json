@@ -91,6 +91,15 @@
       "flags": {"firstGraduate": false}
     }
   },
+  "openings": [
+    {},
+    {"club": {
+      "funds": 2400,
+      "exposure": 10,
+      "members": {"何小满": {"room": "一号室", "note": "刚分到一号室，今天第一次参加互助。"}},
+      "incidents": [{"week": 1, "who": ["陈默", "苏曼"], "kind": "当场冲突", "summary": "陈默与苏曼在走廊起了争执，隔壁住户过来问了两次。", "open": true}]
+    }}
+  ],
   "access": [
     {"path": ["club", "week"], "direct": false, "description": "The current week of the season, 1 to 12. After week 12 closes, the value is 13 and the season is over."},
     {"path": ["club", "funds"], "direct": false, "description": "Money on hand in yuan. Each admission brings a 500 fee, each held room session brings 300 per attending member, and rent of 2000 is paid when a week closes. Below 0 the center cannot pay rent."},

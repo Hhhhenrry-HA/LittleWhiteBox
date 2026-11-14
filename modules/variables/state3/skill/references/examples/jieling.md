@@ -2,11 +2,11 @@
 
 A playable card built around variable 3.0: the story carries the people, the panel under the latest reply carries the decisions. Read it to see how a game's decisions become actions, derived values, prepared dice and a once-only reward. Its panel is deliberately plain; for presentation, read ReadSkill builtin-card-frontend.
 
-The [jieling folder](<jieling/>) is a whole character card in the CardFiles layout: card fields, an opening, a linked worldbook, three regex scripts and a variable 3.0 package with functions and a prepare script. Reading it installs nothing. To build a card from it, write each file to the same relative path under the root returned by CardFiles open, then save them. The executable acceptance test is `modules/variables/state3/tests/jieling-example.test.ts`.
+The [jieling folder](<jieling/>) is a whole character card in the CardFiles layout: card fields, two openings, a linked worldbook, three regex scripts and a variable 3.0 package with functions and a prepare script. Reading it installs nothing. To build a card from it, write each file to the same relative path under the root returned by CardFiles open, then save them. The executable acceptance test is `modules/variables/state3/tests/jieling-example.test.ts`.
 
 ## The game, from the player's seat
 
-The player has just taken over 解铃会, a peer-support center where people whose fetish has started to cost them something real meet in small rooms each week. The season is twelve weeks; the opening balance covers three weeks of rent before other income and expenses.
+The player has just taken over 解铃会, a peer-support center where people whose fetish has started to cost them something real meet in small rooms each week. The season is twelve weeks. The main opening leaves time to get acquainted; the alternative begins with tight funds and an unresolved argument.
 
 Every week the player faces the same three questions, and none of them has a clean answer:
 
@@ -15,6 +15,12 @@ Every week the player faces the same three questions, and none of them has a cle
 - **When to spend.** Rent is 2000 a week. Sessions pay 300 per member who attends. Hushing up an incident costs 600, and an incident left open keeps raising the outside world's attention until the center is shut down.
 
 Members graduate when they can live with their fetish without it running their life. Graduates leave, which is the point of the center and also the end of their fees. The story is where these people live: interviews, sessions and the week's consequences are narrated; the panel under the latest reply is where the player decides.
+
+## Two ways to start
+
+`message/0.md` starts with the keys and register: 6000 yuan, no open incidents, and 何小满 still waiting for a room. `message/1.md` starts with an argument in the corridor: 2400 yuan, exposure 10, one open incident, and 何小满 already in the first room.
+
+Both use the same people and gameplay rules. In `variables/definition.json`, `initial` holds their shared starting data, `openings[0]` is `{}`, and `openings[1]` supplies the different funds, incident and room assignment. The club's derived room list follows the member assignment. The player chooses with the greeting arrows; the panel reads the selected opening's variables. Read [alternate openings](<../state-design.md#alternate-openings>) when adapting this to another card.
 
 ## Why each variable exists
 
@@ -55,7 +61,7 @@ Every gameplay field has `direct: false`; actions own costs, limits and refusals
 | Path | Role |
 | --- | --- |
 | `card.json`, `description.md`, `scenario.md` | Identity, premise and tone. `world` links the primary book. |
-| `message/0.md` | Opening: the keys, the six members, the empty chair. Ends with the panel marker `【解铃会】`. |
+| `message/0.md`, `message/1.md` | Two openings: receiving the keys, or arriving during an unresolved argument. Both end with the panel marker `【解铃会】`. |
 | `world_book/解铃会/经营状态.md` | Constant entry: current values via `xbgetvar`, meanings via `xbvardesc`, and how to narrate a settled week. |
 | `world_book/解铃会/回复格式.md` | Constant entry at depth 0: every reply ends with the marker. |
 | `world_book/解铃会/面谈.md`, `互助室.md` | Keyword entries for interviews and sessions. |

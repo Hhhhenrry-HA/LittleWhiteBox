@@ -48,7 +48,18 @@ test('guide definition and documented dynamic-member batch are executable', asyn
     const unchanged = structuredClone(start);
     const guide = readFileSync(new URL('../skill/references/state-design.md', import.meta.url), 'utf8');
     for (const [, body] of guide.matchAll(/```json\r?\n([\s\S]*?)```/g)) {
-        const input = JSON.parse(body), result = accepted(await settle(compiled, start, input));
+        const input = JSON.parse(body);
+        if (!Array.isArray(input)) {
+            // This guide also teaches opening data fragments; execute those as
+            // starts, not as the dynamic-member operation batch below.
+            const openingBundle: Bundle = { definition: { ...bundle.definition, ...input,
+                schema: {}, rules: [], actions: [], access: [], views: {}, constraints: [] }, functions: {} };
+            const openingRules = compileDefinition(openingBundle);
+            assert.deepEqual(accepted(await initialize(openingRules)).state, { hero: { place: '营地', coins: 30, items: ['背包'] } });
+            assert.deepEqual(accepted(await initialize(openingRules, { opening: 1 })).state, { hero: { place: '港口', coins: 80, items: ['船票'] } });
+            continue;
+        }
+        const result = accepted(await settle(compiled, start, input));
         assert.ok(result.changes.length);
         assert.deepEqual(start, unchanged);
         const rejected = await settle(compiled, start, [input[1]]);

@@ -40,6 +40,8 @@ description: 制作或修改角色卡、世界书与提示词结构；按需接�
 
 两个变量技能负责结构、初值、更新规则和前端读写；世界书、开场白和提示词仍按本技能组织，界面按前端技能做。变量 3.0 里改变状态的后果写进规则与触发；结算成功后播放声音、通知等使用卡内“结算成功后”脚本。依据变量值选择世界书内容时，读[条件规则 `<varevent>`](<references/xiaobaix-capabilities.md#varevent>)。
 
+多条开场的地点、装备或人物不同，就按开场顺序配初值，做法见[3.0 多开场](<../../variables/state3/skill/references/state-design.md#alternate-openings>)；开场文字和初值一起写回，一起试玩。
+
 ## 按需读哪些资料
 
 | 这次要做什么 | 先读什么 |

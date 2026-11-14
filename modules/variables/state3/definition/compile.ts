@@ -36,6 +36,11 @@ export function compileDefinition(input: unknown): Compiled {
     if (Object.keys(bundle).some(key => !['definition', 'functions', 'tools', 'scripts'].includes(key))) {reject('definition-shape');}
     if (!definition || !functions || typeof functions !== 'object' || Array.isArray(functions)) {reject('definition-shape');}
     if (!validateDefinition(definition)) {reject('definition-schema', { errors: clone(validateDefinition.errors) });}
+    for (const [opening, values] of (definition.openings || []).entries()) {
+        for (const root of Object.keys(values)) {
+            if (!Object.hasOwn(definition.initial, root)) {reject('unowned-root', { path: ['openings', String(opening), root], opening });}
+        }
+    }
     checkStages(definition);
     checkExtensions(bundle);
     unique([...definition.rules, ...definition.actions, ...definition.constraints, ...(definition.triggers || [])]);

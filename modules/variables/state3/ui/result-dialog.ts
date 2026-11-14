@@ -8,6 +8,7 @@ import { replayExtension } from '../extensions/replay.js';
 import type { State3Api } from '../runtime/api.js';
 import { EXTENSION_COPY } from '../extensions/copy.js';
 import { DEFINITION_FILE } from '../definition/format.js';
+import { isOpeningReceipt } from '../runtime/history.js';
 
 export interface FloorResult { index: number; result: Result; stage?: UpdateStage; edited?: boolean }
 
@@ -96,7 +97,7 @@ export function createResultDialog(api: State3Api) {
             actions.append(action(index === retryIndex ? COPY.retryCalculation : COPY.recompute, () => api.recomputeBefore(index), COPY.recomputeConfirm));
             if (index === retryIndex || result.ok && result.receipt?.beforeUpdate?.outcome === 'failed') {actions.append(action(COPY.skipBefore, () => api.skipBefore(index), COPY.undoConfirm));}
             else if (result.ok && result.receipt?.beforeUpdate?.outcome !== 'undone') {actions.append(action(COPY.undoReply, () => api.undoBefore(index), COPY.undoConfirm));}
-        } else if (latest && index !== undefined && stage !== 'before' && result.ok && result.receipt && busyIndex < 0) {
+        } else if (latest && index !== undefined && stage !== 'before' && result.ok && result.receipt && !isOpeningReceipt(result.receipt) && busyIndex < 0) {
             actions.append(action(COPY.undoReply, () => api.undo({ index, all: true }), COPY.undoConfirm));
         } else if (latest && index !== undefined && stage === 'after' && !result.ok && busyIndex < 0) {
             actions.append(action(COPY.retryCalculation, () => api.update()));

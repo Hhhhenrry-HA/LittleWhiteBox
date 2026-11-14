@@ -53,16 +53,32 @@ Sources: `definition/compile.ts`, `engine/data.ts`, `engine/input.ts`, `engine/s
 <a id="alternate-openings"></a>
 ## Alternate greetings and initial state
 
-A card has one `initial` object. Enabling a chat fills missing native roots from it, retains existing roots and settles the result. These values are the chat's starting point; initialization is not recorded separately for each greeting. Selecting a different greeting restores that swipe's recorded settlements, if any; it does not select a different `initial` from the greeting text. Reopening a chat does not initialize it again. Calling `enable()` on an enabled chat fails rather than resetting it.
+Start by listing each greeting's location, equipment, resources, people and active objectives. Put their common starting values in `initial` in `variables/definition.json`; optional `openings` entries contain only each greeting's differences.
 
-Start by listing each greeting's location, equipment, resources, people and active objectives:
+The list follows native greeting swipe order. With a filled main greeting, `openings[0]` pairs with `message/0.md` (the main greeting), `openings[1]` with `message/1.md` (the first alternate), and so on. If the main greeting is empty, SillyTavern omits it, so `openings[0]` pairs with the first greeting actually displayed. Keep these entries together with their greetings when reordering the card. Greeting text is the story, not the selector; the selected swipe's position chooses its values.
 
-- If the openings share those facts, one baseline is sufficient. Each greeting can differ in prose without inventing a second initialization task.
-- If the openings require different facts, the card needs an explicit opening-selection design. One option is a common pre-choice state with a player-selected opening action that sets all opening-dependent fields together. If the native greeting swipe itself must select the state, that needs a card task connecting the selected greeting to its opening action; the definition alone does not provide that connection.
-- A native-swipe task must initialize only before subsequent turns, await the chat being enabled, associate changes with greeting floor `0` and its selected swipe, and recognize an already-recorded selection. It must serialize or cancel stale work when the selection changes, release its event subscription on task cleanup, and leave progressed/reopened chats intact. `apply` appends by default; repeatedly calling it on every mount is not initialization. The [submission reference](<card-side.md#submission>) explains explicit indices and named replacement. Test the complete task in the host before offering it as a working multi-opening card.
+Fields inside objects inherit the common values unless that opening supplies a replacement. Arrays, scalar values and `null` replace the whole value at that field. An empty entry `{}`, an absent entry or no `openings` list uses `initial` unchanged. All openings use the same `schema`, permissions, actions, calculations, triggers and constraints. Their top-level roots must already exist in `initial`.
 
-Changing `initial` while visiting another greeting edits the card's shared definition; it is not a per-greeting switch. Plain native-variable assignment also bypasses settlement history. Neither implements the opening journey above. Retain an existing working opening mechanism when repairing a card. If a requested multi-start design has no implemented and verified connection yet, report that missing part rather than claiming the greetings are ready.
+For example, this fragment belongs inside an existing definition, not a complete rule package:
 
-Acceptance: start each greeting directly in an isolated fresh chat, switch A → B → A before the first player turn, confirm each intended initial state and no duplicated reward, then play a turn and save/reopen. Reopening must preserve progress. Check the panel and both models' actual request data, not just the greeting prose.
+```json
+{
+  "initial": {
+    "hero": { "place": "营地", "coins": 30, "items": ["背包"] }
+  },
+  "openings": [
+    {},
+    { "hero": { "place": "港口", "coins": 80, "items": ["船票"] } }
+  ]
+}
+```
 
-Sources: `runtime/service.ts` (`enable`, `stage`, `restoreSelection`), `runtime/host.ts` (`capture`, `selectionChange`) and `index.ts` (`CHAT_CREATED`, `MESSAGE_SWIPED`), relative to `modules/variables/state3/`.
+The main greeting starts at the camp with 30 coins and a backpack; the first alternate starts at the port with 80 coins and a ticket. An opening that changes only `hero.place` retains the other `hero` fields. A different inventory supplies the complete list of items.
+
+Use `checkDraft(draft, [], {opening: 1})` or `tryDefinition(bundle, [], {opening: 1})` to start a trial at the first alternate. Without `opening`, trials start at the main greeting. An explicit `state` is the trial's starting point; `opening` selects starting values only when `state` is omitted. `checkDraft(draft, [], {checkOnly: true})` checks the main start and every configured opening. Play a route from each intended start by passing each result's state to the next trial.
+
+Opening values are initialized by 3.0; a panel reads the current state on mount. First enabling a card with `openings` requires a chat containing only its greeting. Revisiting a recorded opening restores its progress without repeating rewards. A progressed chat is not initialized again when reopened.
+
+Acceptance: start each greeting directly in an isolated fresh chat, switch A → B → A before the first player turn, confirm the intended starting values and no duplicated reward, then play a turn and save/reopen. Check the panel and both models' actual request data, not just the greeting prose.
+
+Sources: `definition/openings.ts`, `definition/compile.ts`, `runtime/service.ts`, `runtime/api.ts`, `runtime/host.ts` and `index.ts`, relative to `modules/variables/state3/`.

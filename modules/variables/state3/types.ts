@@ -17,6 +17,7 @@ export interface Action { id: string; title: string; stages?: UpdateStage[]; par
 export interface Trigger { id: string; description: string; timing?: 'batch' | 'action'; when: Expression; effects: Effect[] }
 export interface Definition {
     format: number; name: string; updates: UpdateStage[]; schema: Schema; initial: JsonObject;
+    openings?: JsonObject[];
     access: { path: Path; direct: boolean; stages?: UpdateStage[]; description: string; update?: string }[];
     rules: Rule[]; actions: Action[]; triggers?: Trigger[];
     constraints: { id: string; test: Expression; description: string }[];
@@ -90,9 +91,11 @@ export interface History {
 export interface Snapshot {
     state: Json;
     history?: History; records: SwipeRecord[]; index: number;
-    /** Last floor with receipts, including unselected reply alternatives; -1 if empty. */
+    /** Last floor with gameplay receipts, including unselected alternatives; opening initialization is excluded. */
     lastReceiptIndex: number;
     target: { floor: number; swipeId: number };
+    /** The chat contains only its non-system, non-user greeting. */
+    opening?: boolean;
 }
 export interface HostAdapter<S extends Snapshot = Snapshot> {
     bundle(): Bundle;
