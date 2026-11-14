@@ -2197,7 +2197,7 @@
       "publicPath": "scripts/extensions/third-party/LittleWhiteBox/modules/assistant/tests/skill-host-runtime.test.js",
       "relativePath": "modules/assistant/tests/skill-host-runtime.test.js",
       "extension": ".js",
-      "sizeBytes": 2546
+      "sizeBytes": 2612
     },
     {
       "source": "littlewhitebox",
