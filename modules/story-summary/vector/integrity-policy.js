@@ -6,7 +6,8 @@ export const L0_GAP_WARNING_THRESHOLD = 5;
 export function buildVectorIntegrityIssues({
     fingerprintMismatch = false,
     chunkFloorGap = 0,
-    incompleteL0FloorCount = 0,
+    incompleteL0AnchorFloorCount = 0,
+    missingL0VectorFloorCount = 0,
     missingEventVectorCount = 0,
     cacheInconsistent = false,
     cacheRepairable = false,
@@ -25,9 +26,14 @@ export function buildVectorIntegrityIssues({
         issues.push({ code: 'l1_gap', action: 'fill', message: copy.l1Gap(gap) });
     }
 
-    const l0Gap = Math.max(0, Math.trunc(Number(incompleteL0FloorCount) || 0));
-    if (l0Gap >= L0_GAP_WARNING_THRESHOLD) {
-        issues.push({ code: 'l0_gap', action: 'fill', message: copy.l0Gap(l0Gap) });
+    const anchorGap = Math.max(0, Math.trunc(Number(incompleteL0AnchorFloorCount) || 0));
+    if (anchorGap >= L0_GAP_WARNING_THRESHOLD) {
+        issues.push({ code: 'l0_gap', action: 'extract', message: copy.l0Gap(anchorGap) });
+    }
+
+    const vectorGap = Math.max(0, Math.trunc(Number(missingL0VectorFloorCount) || 0));
+    if (vectorGap >= L0_GAP_WARNING_THRESHOLD) {
+        issues.push({ code: 'l0_vectors_missing', action: 'fill', message: copy.l0VectorsMissing(vectorGap) });
     }
 
     const missingEvents = Math.max(0, Math.trunc(Number(missingEventVectorCount) || 0));

@@ -87,6 +87,7 @@ export function inspectCacheSourceCoverage(cache, operation) {
     // Daily usability and portable provenance are different contracts. Missing
     // digests do not prove corruption; a present digest must still match. Export
     // remains strict and never fabricates a digest for an existing vector.
+    let repairableMismatch;
     for (const [records, index, key, kind] of [
         [cache.chunkVectors, sources.chunks, 'chunkId', 'chunk'],
         [cache.stateVectors, sources.states, 'atomId', 'state'],
@@ -100,11 +101,16 @@ export function inspectCacheSourceCoverage(cache, operation) {
                 // An orphan's material may only be recovered from live prose
                 // when the original vector actually proves that input.
                 || (kind === 'chunk' && !cachedIds.has(record.chunkId) && !record.sourceHash)) {
-                throw packageError('source_mismatch', { kind, id: record[key],
+                const error = packageError('source_mismatch', { kind, id: record[key],
                     repairable: kind !== 'state' || !source || (Number.isInteger(source.floor) && source.floor >= 0 && source.floor < chat.length) });
+                // A fillable mismatch must not hide a later fault that filling
+                // cannot fix, whether in the same layer or a subsequent one.
+                if (!error.details.repairable) throw error;
+                repairableMismatch ??= error;
             }
         }
     }
+    if (repairableMismatch) throw repairableMismatch;
     const vectorIds = new Set(cache.chunkVectors.map(record => record.chunkId));
     const missingFloors = new Set();
     for (const [id, source] of sources.chunks) {

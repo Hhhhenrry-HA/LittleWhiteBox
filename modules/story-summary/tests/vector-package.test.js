@@ -414,6 +414,66 @@ test('daily checks distinguish absent proof from contradicted or mixed vector in
     assert.deepEqual(host.embeddingInputs, []);
 });
 
+for (const hardFirst of [false, true]) {
+    test(`daily checking prioritizes an unrepairable L0 source ${hardFirst ? 'before' : 'after'} a repairable L0 mismatch`, async () => {
+        memory().stateAtoms = ['atom-0-0', 'atom-0-1'].map(atomId => ({ ...structuredClone(fixture.atoms[0]), atomId }));
+        await seedCache();
+        const hard = memory().stateAtoms[hardFirst ? 0 : 1];
+        const soft = memory().stateAtoms[hardFirst ? 1 : 0];
+        hard.floor = host.context.chat.length;
+        soft.semantic += ' changed';
+        const metadata = structuredClone(host.metadata);
+        const cache = await cacheSnapshot();
+        const check = await mod.checkVectorCacheConsistency();
+        assert.equal(check.status, 'inconsistent');
+        assert.equal(check.repairable, false);
+        assert.equal(check.diagnostic.code, 'source_mismatch');
+        assert.deepEqual(check.diagnostic.details, { kind: 'state', id: hard.atomId, repairable: false });
+        assert.deepEqual(await cacheSnapshot(), cache);
+        assert.deepEqual(host.metadata, metadata);
+        assert.equal(host.metadataWrites, 0);
+        assert.deepEqual(host.embeddingInputs, []);
+    });
+}
+
+for (const repairableLayer of ['l1', 'l2']) {
+    test(`daily checking prioritizes an unrepairable L0 source over a repairable ${repairableLayer.toUpperCase()} mismatch`, async () => {
+        await seedCache();
+        memory().stateAtoms[0].floor = host.context.chat.length;
+        if (repairableLayer === 'l1') await db.chunks.update([fixture.chatId, 'c-0-0'], { text: 'Changed saved material.' });
+        else memory().storySummary.json.events[0].summary += ' changed';
+        const metadata = structuredClone(host.metadata);
+        const cache = await cacheSnapshot();
+        const check = await mod.checkVectorCacheConsistency();
+        assert.equal(check.status, 'inconsistent');
+        assert.equal(check.repairable, false);
+        assert.equal(check.diagnostic.code, 'source_mismatch');
+        assert.deepEqual(check.diagnostic.details, { kind: 'state', id: fixture.atoms[0].atomId, repairable: false });
+        assert.deepEqual(await cacheSnapshot(), cache);
+        assert.deepEqual(host.metadata, metadata);
+        assert.equal(host.metadataWrites, 0);
+        assert.deepEqual(host.embeddingInputs, []);
+    });
+}
+
+test('daily checking keeps the first diagnostic when every source mismatch is repairable', async () => {
+    await seedCache();
+    await db.chunks.update([fixture.chatId, 'c-0-0'], { text: 'Changed saved material.' });
+    memory().stateAtoms[0].semantic += ' changed';
+    memory().storySummary.json.events[0].summary += ' changed';
+    const metadata = structuredClone(host.metadata);
+    const cache = await cacheSnapshot();
+    const check = await mod.checkVectorCacheConsistency();
+    assert.equal(check.status, 'inconsistent');
+    assert.equal(check.repairable, true);
+    assert.equal(check.diagnostic.code, 'source_mismatch');
+    assert.deepEqual(check.diagnostic.details, { kind: 'chunk', id: 'c-0-0', repairable: true });
+    assert.deepEqual(await cacheSnapshot(), cache);
+    assert.deepEqual(host.metadata, metadata);
+    assert.equal(host.metadataWrites, 0);
+    assert.deepEqual(host.embeddingInputs, []);
+});
+
 for (const missing of ['vector', 'material', 'both']) {
     test(`automatic L1 maintenance repairs a ${missing} gap behind a complete watermark without rebuying healthy vectors`, async () => {
         host.context.chat.push({ mes: 'Middle floor.' }, { mes: 'Healthy later floor.' });

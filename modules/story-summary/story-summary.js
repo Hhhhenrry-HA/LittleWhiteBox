@@ -935,6 +935,7 @@ async function handleAnchorGenerate() {
     } finally {
         release();
         postToFrame({ type: "ANCHOR_GEN_PROGRESS", current: -1, total: 0 });
+        if (!isChatStale(targetChatId)) await refreshVectorIntegrity();
     }
 }
 
@@ -2159,8 +2160,8 @@ async function checkVectorIntegrity({ allowEventRepair = true, allowChunkRepair 
         cacheRepairable: cacheCheck.repairable === true,
         fingerprintMismatch,
         chunkFloorGap: cacheCheck.missingChunkFloors?.length || 0,
-        incompleteL0FloorCount: Number(anchorStats.incomplete || 0)
-            + (l0VectorStatus.success ? Number(l0VectorStatus.missingFloors || 0) : 0),
+        incompleteL0AnchorFloorCount: Number(anchorStats.incomplete || 0),
+        missingL0VectorFloorCount: l0VectorStatus.success ? Number(l0VectorStatus.missingFloors || 0) : 0,
         missingEventVectorCount: missingEventPairs.length,
     });
 
