@@ -14,6 +14,7 @@ export const NovelDrawStorage = createStorage('LittleWhiteBox_NovelDraw.json', {
 export const SdDrawStorage = createStorage('LittleWhiteBox_SdDraw.json', { debounceMs: 800 });
 export const ComfyDrawStorage = createStorage('LittleWhiteBox_ComfyDraw.json', { debounceMs: 800 });
 export const AssistantStorage = createStorage('LittleWhiteBox_Assistant.json', { debounceMs: 800 });
+export const AssistantPermissionStorage = createStorage('LittleWhiteBox_AssistantPermission.json', { readTimeoutMs: 5000 });
 export const TtsStorage = createStorage('LittleWhiteBox_TTS.json', { debounceMs: 800 });
 export const EnaPlannerStorage = createStorage('LittleWhiteBox_EnaPlanner.json', { debounceMs: 800 });
 export const CommonSettingStorage = createStorage('LittleWhiteBox_CommonSettings.json', { debounceMs: 1000, readTimeoutMs: 5000 });

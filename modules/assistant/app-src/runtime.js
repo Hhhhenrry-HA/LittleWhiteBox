@@ -28,6 +28,8 @@ import { settleAssistantRunFailure } from './runtime/run-failure.js';
 import { callReadableWorkspaceTool } from '../shared/workspace-tool-paths.js';
 import { filterSkillTools, isSkillTool, loadedSkillIds } from '../shared/skill-tools.js';
 import { createResponseDelivery, DELIVERY_FINAL_STEP, isDeliveryTool, TOOL_DELIVER } from '../plugins/delivery/protocol.js';
+import { loadCardIntoConversation } from './runtime/card-load.js';
+import { COMPOSER_COPY } from './ui/composer-copy.js';
 
 const JSAPI_MANIFEST_URL = pluginAsset('modules/assistant/st-jsapi-manifest.json');
 let jsApiManifestPromise = null;
@@ -93,7 +95,6 @@ export function createAssistantRuntime(deps) {
         isAbortError,
         createAdapter,
         getToolDefinitions,
-        isJsApiEnabled,
         getActiveProviderConfig,
         getDelegateProviderConfig,
         getSystemPrompt,
@@ -146,21 +147,6 @@ export function createAssistantRuntime(deps) {
             ? getToolDefinitions({ ...options, role, skillIds })
             : TOOL_DEFINITIONS;
         return filterSkillTools(definitions, skillIds, { role });
-    }
-
-    function isJsApiToolEnabled() {
-        if (typeof isJsApiEnabled === 'function') {
-            return !!isJsApiEnabled();
-        }
-        return true;
-    }
-
-    function buildJsApiPermissionDeniedResult() {
-        return {
-            ok: false,
-            error: 'jsapi_permission_denied',
-            message: '用户在设置中关闭了 RunJavaScriptApi 权限。',
-        };
     }
 
     function resolveSystemPrompt(options = {}) {
@@ -379,7 +365,7 @@ export function createAssistantRuntime(deps) {
         updateContextStats,
         toProviderMessages,
         prepareRetained: async (context, options, signal) => {
-            if (options.imageInput) await runImageProjection(state.activeRun).load(toProviderMessages(context, { ...options, projectImages: false }), signal);
+            if (options.imageInput && !options.estimateImages) await runImageProjection(state.activeRun).load(toProviderMessages(context, { ...options, projectImages: false }), signal);
             return toProviderMessages(context, options);
         },
         mapMessageCosts: (messages, costs) => state.activeRun?.imageProjection?.collapseCosts(messages, costs) ?? costs,
@@ -564,12 +550,6 @@ export function createAssistantRuntime(deps) {
             }
 
             if (isJsApiRun && !toolResult) {
-                if (!isJsApiToolEnabled()) {
-                    toolResult = buildJsApiPermissionDeniedResult();
-                }
-            }
-
-            if (isJsApiRun && !toolResult) {
                 try {
                     const manifest = await loadJsApiManifest();
                     jsApiAnalysis = analyzeJavaScriptApiRequest({
@@ -587,7 +567,7 @@ export function createAssistantRuntime(deps) {
                     && !jsApiAnalysis.analysisError
                     && Array.isArray(jsApiAnalysis.validationErrors)
                     && jsApiAnalysis.validationErrors.length > 0
-                ) && shouldRequireJsApiApproval(jsApiAnalysis?.requestKind || 'unknown', state.config?.permissionMode);
+                ) && shouldRequireJsApiApproval(jsApiAnalysis?.requestKind || 'unknown', state.permissionMode);
 
                 if (jsApiNeedsApproval) {
                     state.progressLabel = '确认中';
@@ -1016,6 +996,19 @@ export function createAssistantRuntime(deps) {
     }
 
     return {
+        loadCurrentCard: (run, openCard) => loadCardIntoConversation(run, { state, appendMessage, callHostTool, openCard, buildToolFailureResult, createRequestId, persistSession, render, setToolActivity }),
+        async compactConversation(run) {
+            run.providerConfig = getActiveProviderConfig();
+            try {
+                const previousCount = state.compactions?.length || 0;
+                await ensureContextBudget(createAdapter(run.providerConfig), run.controller.signal,
+                    { ...mainRequestContext(null), manual: true, estimateImages: true });
+                if ((state.compactions?.length || 0) === previousCount) showToast(COMPOSER_COPY.noHistory);
+            } finally {
+                delete run.providerConfig;
+                delete run.imageProjection;
+            }
+        },
         getToolActivity,
         resetCompactionState,
         buildContextMeterLabel,

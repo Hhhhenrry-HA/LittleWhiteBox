@@ -622,11 +622,11 @@ export function createLocalSourcesManager(deps) {
             state.viewerMode = 'current';
         }
         onWorkspaceSelectionChanged?.();
-        persistWorkspaceUiStateImmediately();
+        if (options.persist !== false) persistWorkspaceUiStateImmediately();
         return true;
     }
 
-    function selectWorkspaceDirectory(targetPath) {
+    function selectWorkspaceDirectory(targetPath, options = {}) {
         const match = findLocalDirectoryByPath(state.localSources, targetPath);
         if (!match) return false;
 
@@ -645,7 +645,7 @@ export function createLocalSourcesManager(deps) {
                 isModifiedFile: isLocalSourceFileModified,
             }).nodes));
         onWorkspaceSelectionChanged?.();
-        persistWorkspaceUiStateImmediately();
+        if (options.persist !== false) persistWorkspaceUiStateImmediately();
         return true;
     }
 
@@ -1279,19 +1279,20 @@ export function createLocalSourcesManager(deps) {
 
     function openWorkspace(targetPath = '') {
         if (targetPath) {
-            const opened = (isLocalRootPath(targetPath) && selectWorkspaceDirectory(LOCAL_SOURCE_PREFIX))
-                || selectWorkspaceFile(targetPath)
-                || selectWorkspaceDirectory(targetPath);
+            const selectionOptions = { persist: false };
+            const opened = (isLocalRootPath(targetPath) && selectWorkspaceDirectory(LOCAL_SOURCE_PREFIX, selectionOptions))
+                || selectWorkspaceFile(targetPath, selectionOptions)
+                || selectWorkspaceDirectory(targetPath, selectionOptions);
             if (!opened) {
                 showToast?.(`没有找到 ${displayCardWorkspacePath(targetPath)}`);
                 return false;
             }
-            render?.();
-            return true;
+        } else {
+            state.isWorkspaceOpen = true;
+            ensureWorkspaceSelection();
         }
 
-        state.isWorkspaceOpen = true;
-        ensureWorkspaceSelection();
+        state.workspacePanelMode = 'workspace';
         persistWorkspaceUiStateImmediately();
         render?.();
         return true;

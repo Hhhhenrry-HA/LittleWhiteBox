@@ -1,9 +1,8 @@
 import { normalizeWebSettings } from './web/settings.js';
-import { upgradeAgentSettings } from './settings-migration.js';
+import { migrateAssistantPermission, upgradeAgentSettings } from './settings-migration.js';
 import {
     AGENT_SETTINGS_CONFIG_VERSION,
     normalizeAgentSettings,
-    normalizeJsApiPermission,
     normalizePresetName,
 } from './config.js';
 
@@ -45,7 +44,6 @@ export function mergeSharedAgentSettings(current = {}, patch = {}, options = {})
     return normalizeAgentSettings({
         ...normalizedCurrent,
         workspaceFileName: patch.workspaceFileName ?? normalizedCurrent.workspaceFileName,
-        jsApiPermission: normalizeJsApiPermission(patch.jsApiPermission ?? normalizedCurrent.jsApiPermission),
         ...normalizeWebSettings(patch, normalizedCurrent),
         currentPresetName: normalizePresetName(patch.currentPresetName || normalizedCurrent.currentPresetName),
         delegatePresetName: normalizePresetName(
@@ -92,31 +90,23 @@ export async function loadSharedAgentSettingsResult(options = {}) {
 export async function saveSharedAgentSettings(patch = {}, options = {}) {
     const storage = await resolveStorage(options.storage);
     const normalizeOptions = options.normalizeOptions || {};
-    let current;
+    /** @type {{ current: ReturnType<typeof normalizeAgentSettings> | null, next: ReturnType<typeof normalizeAgentSettings> | null }} */
+    const config = { current: null, next: null };
     try {
-        current = await readSharedAgentSettings({ storage });
-    } catch (error) {
-        return {
-            ok: false,
-            config: null,
-            error: `共享 Agent API 配置读取失败：${describeError(error)}`,
-        };
-    }
-    const normalizedCurrent = normalizeAgentSettings(current || {}, normalizeOptions);
-    const next = mergeSharedAgentSettings(normalizedCurrent, patch, options);
-    try {
-        if (typeof storage.setAndSave !== 'function') {
-            throw new Error('共享 Agent 设置存储不支持原子保存');
-        }
-        const saved = await storage.setAndSave(SHARED_AGENT_SETTINGS_KEY, next, {
-            silent: options.silent !== false,
-        });
+        const saved = await storage.updateAndSave(async record => {
+            const previous = record[SHARED_AGENT_SETTINGS_KEY] || {};
+            config.current = normalizeAgentSettings(upgradeAgentSettings(previous), normalizeOptions);
+            config.next = mergeSharedAgentSettings(config.current, patch, options);
+            await migrateAssistantPermission(previous, async () =>
+                options.permissionStorage ?? (await import('../../core/server-storage.js')).AssistantPermissionStorage);
+            record[SHARED_AGENT_SETTINGS_KEY] = config.next;
+        }, { silent: options.silent !== false });
         if (saved !== true) throw new Error('共享 Agent API 配置保存失败');
-        return { ok: true, config: next };
+        return { ok: true, config: config.next };
     } catch (error) {
         return {
             ok: false,
-            config: normalizedCurrent,
+            config: config.current,
             error: describeError(error),
         };
     }

@@ -1,0 +1,63 @@
+{
+  "workspaceFileName": "LittleWhiteBox_Assistant_Worklog.md",
+  "jsApiPermission": "deny",
+  "currentPresetName": "默认",
+  "delegatePresetName": "默认",
+  "delegateConfig": {
+    "provider": "openai-compatible",
+    "baseUrl": "https://api.openai.com/v1",
+    "model": "gpt-4o-mini",
+    "apiKey": "",
+    "vertex": {
+      "authMode": "relay",
+      "projectId": "",
+      "location": "global",
+      "serviceAccountJson": "",
+      "streamFunctionCallArguments": true
+    },
+    "modelListAuth": "bearer",
+    "temperature": 1,
+    "maxTokens": 32000,
+    "sendTemperature": true,
+    "toolMode": "tagged-json",
+    "imageInput": true,
+    "reasoning": {
+      "mode": "inherit"
+    },
+    "sampling": {}
+  },
+  "delegateConfigured": false,
+  "presets": {
+    "默认": {
+      "provider": "openai-compatible",
+      "baseUrl": "https://api.openai.com/v1",
+      "model": "gpt-4o-mini",
+      "apiKey": "",
+      "vertex": {
+        "authMode": "relay",
+        "projectId": "",
+        "location": "global",
+        "serviceAccountJson": "",
+        "streamFunctionCallArguments": true
+      },
+      "modelListAuth": "bearer",
+      "temperature": 1,
+      "maxTokens": 32000,
+      "sendTemperature": true,
+      "toolMode": "tagged-json",
+      "imageInput": true,
+      "reasoning": {
+        "mode": "inherit"
+      },
+      "sampling": {},
+      "permissionMode": "default"
+    }
+  },
+  "webProvider": "tavily",
+  "tavilyApiKey": "",
+  "tavilyBaseUrl": "https://api.tavily.com",
+  "exaApiKey": "",
+  "exaBaseUrl": "https://api.exa.ai",
+  "updatedAt": 0,
+  "configVersion": 3
+}

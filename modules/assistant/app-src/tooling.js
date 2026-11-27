@@ -670,11 +670,11 @@ export function isWebTool(name) {
     return name === TOOL_NAMES.WEB_SEARCH || name === TOOL_NAMES.WEB_FETCH;
 }
 
-/** @param {{ providerConfig?: object, jsApiEnabled?: boolean, imageInput?: boolean, skillIds?: string[], role?: string }} options */
-export function getAssistantToolDefinitions({ providerConfig = {}, jsApiEnabled = false, imageInput = true, skillIds = [], role = 'main' } = {}) {
+/** @param {{ providerConfig?: object, imageInput?: boolean, skillIds?: string[], role?: string }} options */
+export function getAssistantToolDefinitions({ providerConfig = {}, imageInput = true, skillIds = [], role = 'main' } = {}) {
     const webEnabled = isWebConfigured(providerConfig);
     return filterSkillTools(buildToolDefinitions({ imageInput }), skillIds, { role }).filter(({ function: { name } }) =>
-        (jsApiEnabled || name !== TOOL_NAMES.RUN_JAVASCRIPT_API) && (webEnabled || !isWebTool(name)));
+        webEnabled || !isWebTool(name));
 }
 
 function safeJsonParse(text, fallback = null) {

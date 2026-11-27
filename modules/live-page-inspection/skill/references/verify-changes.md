@@ -25,7 +25,7 @@ Both calls concern the selected floor's display. They neither save chat text nor
 
 These two calls are the refresh path. MESSAGE_UPDATED, MESSAGE_EDITED and generation events have other listeners that settle variables or run scheduled tasks, and reloading the whole chat reruns every floor.
 
-When JS execution is disabled, InspectPage still works. Explain that writeback has completed but live rebuilding is pending, and point to the assistant's JavaScript API permission setting rather than claiming that the repair is verified.
+In Default permission mode, rebuilding the page requests confirmation in the chat. If writeback succeeded and the user declines the rebuild, report that the changes were saved and the live page has not been verified.
 
 ## Verify the replacement
 

@@ -12,6 +12,7 @@ const realImports = new Set([
     '../agent-core/runtime/ordered-concurrent-read.js', './shared/workspace-protocol.js', './shared/read-window.js',
     '../../shared/common/async-errors.js',
     '../../shared/common/json-candidate.js',
+    './shared/permission-settings.js',
     '../card-workspace/paths.js',
 ]);
 

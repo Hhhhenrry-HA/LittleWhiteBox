@@ -18,11 +18,11 @@ const operations = () => [
     done,
 ];
 
-function harness(t, { mode, enabled, role = 'main', approve = true, nextMode }) {
+function harness(t, { mode, role = 'main', approve = true, nextMode }) {
     t.mock.method(console, 'info', () => {});
     t.mock.method(globalThis, 'fetch', async () => Response.json(manifest));
     const run = { id: 'permissions', controller: new AbortController(), toolRequestIds: new Set(), workspaceBaseline: [] };
-    const state = { config: { permissionMode: mode }, activeRun: run, messages: [{ role: 'user', content: 'Inspect the isolated fixture.' }], archivedTurnCount: 0,
+    const state = { permissionMode: mode, activeRun: run, messages: [{ role: 'user', content: 'Inspect the isolated fixture.' }], archivedTurnCount: 0,
         archivedSkillIds: role === 'delegate' ? ['builtin-planning'] : [] };
     const approvals = [], dispatched = [], requests = [], pendingApprovals = new Map(), pendingToolCalls = new Map();
     const ctx = { chatMetadata: { count: 0 } };
@@ -40,18 +40,18 @@ function harness(t, { mode, enabled, role = 'main', approve = true, nextMode }) 
         persistSession() {}, createRequestId: () => 'permission-' + (++sequence),
         safeJsonParse: JSON.parse, describeError: error => error.message, formatToolResultDisplay,
         normalizeAttachments: () => [], normalizeThoughtBlocks: () => [], buildUserContentParts: message => message.content,
-        normalizeSlashCommand, shouldRequireSlashCommandApproval: command => shouldRequireSlashCommandApproval(command, state.config.permissionMode),
+        normalizeSlashCommand, shouldRequireSlashCommandApproval: command => shouldRequireSlashCommandApproval(command, state.permissionMode),
         buildSlashApprovalResult: (_command, approved) => ({ ok: approved, approved, skipped: !approved }),
         buildJsApiApprovalResult: (_args, approved) => ({ ok: approved, approved, skipped: !approved }),
         getActiveProviderConfig: () => ({ provider: 'openai-compatible' }), getDelegateProviderConfig: () => ({ provider: 'openai-compatible', model: 'delegate-fixture' }),
-        getToolDefinitions: options => getAssistantToolDefinitions({ ...options, jsApiEnabled: enabled }), isJsApiEnabled: () => enabled,
+        getToolDefinitions: options => getAssistantToolDefinitions(options),
         SYSTEM_PROMPT: '', MAX_CONTEXT_TOKENS: 100000, SUMMARY_TRIGGER_TOKENS: 90000, REQUEST_TIMEOUT_MS: 1000,
         isAbortError: error => error.name === 'AbortError',
         createAdapter: config => {
             const target = config.model === 'delegate-fixture' ? 'delegate' : 'main';
             return { async chat(request) {
                 requests.push({ role: target, messages: structuredClone(request.messages || []) });
-                if (nextMode && queues[target].length === 3) state.config.permissionMode = nextMode;
+                if (nextMode && queues[target].length === 3) state.permissionMode = nextMode;
                 assert.ok(queues[target].length, 'No unplanned model retries');
                 return queues[target].shift();
             } };
@@ -69,30 +69,28 @@ function harness(t, { mode, enabled, role = 'main', approve = true, nextMode }) 
     return { state, approvals, dispatched, requests, ctx, start: () => runtime.runAssistantLoop(run) };
 }
 
-// 验收：两种执行权限下，JS禁用都不能执行；完全权限不逐条审批，默认权限保留原审批。代价：越权执行或审批风暴。
-test('execution mode governs slash and enabled JS for main and delegate, without overriding JS denial', async t => {
-    for (const role of ['main', 'delegate']) for (const mode of ['default', 'full']) for (const enabled of [false, true]) {
-        const h = harness(t, { role, mode, enabled });
+// 验收：默认权限确认修改和未知调用，完全权限直接执行；代价：越权执行或审批风暴。
+test('execution mode governs slash and JS for main and delegate', async t => {
+    for (const role of ['main', 'delegate']) for (const mode of ['default', 'full']) {
+        const h = harness(t, { role, mode });
         await h.start();
-        assert.equal(h.approvals.length, mode === 'full' ? 0 : enabled ? 3 : 1, JSON.stringify({ role, mode, enabled }));
+        assert.equal(h.approvals.length, mode === 'full' ? 0 : 3, JSON.stringify({ role, mode }));
         assert.equal(h.dispatched.filter(call => call.name === TOOL_NAMES.RUN_SLASH_COMMAND).length, 1);
-        assert.equal(h.dispatched.filter(call => call.name === TOOL_NAMES.RUN_JAVASCRIPT_API).length, enabled ? 3 : 0);
-        assert.equal(h.ctx.chatMetadata.count, enabled ? 1 : 0);
+        assert.equal(h.dispatched.filter(call => call.name === TOOL_NAMES.RUN_JAVASCRIPT_API).length, 3);
+        assert.equal(h.ctx.chatMetadata.count, 1);
         const receipts = h.requests.filter(request => request.role === role).at(-1).messages.filter(message => message.role === 'tool')
             .map(message => JSON.parse(message.content));
-        const denied = role === 'main' ? 'jsapi_permission_denied' : 'delegate_tool_not_available';
-        assert.equal(receipts.filter(result => result.error === denied).length, enabled ? 0 : 3);
         if (mode === 'full') assert.equal(receipts.some(result => result.approval), false, 'Automatic execution must not claim per-call approval');
     }
 });
 
 // 验收：拒绝仍不派发；切换回默认权限后的调用重新确认，不沿用旧信任。代价：越权执行。
-test('decline prevents dispatch and changing presets does not retain full permission', async t => {
-    const declined = harness(t, { mode: 'default', enabled: true, approve: false });
+test('decline prevents dispatch and switching to default requires confirmation on subsequent calls', async t => {
+    const declined = harness(t, { mode: 'default', approve: false });
     await declined.start();
     assert.equal(declined.dispatched.length, 1); // Only the recognized read.
     assert.equal(declined.ctx.chatMetadata.count, 0);
-    const switched = harness(t, { mode: 'full', enabled: true, nextMode: 'default' });
+    const switched = harness(t, { mode: 'full', nextMode: 'default' });
     await switched.start();
     assert.equal(switched.approvals.length, 2); // Effect and unresolved call after switching.
     assert.equal(switched.ctx.chatMetadata.count, 1);

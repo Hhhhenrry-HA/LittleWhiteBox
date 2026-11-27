@@ -21,7 +21,7 @@ function harness(t, options = {}) {
     t.mock.method(console, 'info', () => {});
     const run = { id: 'delivery-test', controller: new AbortController(), deliverySettings: options.settings };
     const user = { role: 'user', content: 'Answer the question.' };
-    const state = { activeRun: run, compactions: [], messages: [user], config: { permissionMode: 'default' },
+    const state = { activeRun: run, compactions: [], messages: [user], permissionMode: 'default',
         archivedSkillIds: options.delegateSteps ? ['builtin-planning'] : [] };
     const requests = [], delegateRequests = [], saved = [];
     const delegateConfig = options.delegateSteps ? { provider: 'google', model: 'delegate-fixture' } : undefined;
@@ -36,7 +36,6 @@ function harness(t, options = {}) {
         getActiveProviderConfig: () => options.provider ?? { provider: 'google', model: 'fixture' },
         getToolDefinitions: ({ role }) => delegateConfig && role === 'main' ? [{ function: { name: 'DelegateRun' } }] : [],
         getDelegateProviderConfig: () => delegateConfig,
-        isJsApiEnabled: () => false,
         SYSTEM_PROMPT: systemInstructions, MAX_CONTEXT_TOKENS: 100000, SUMMARY_TRIGGER_TOKENS: 90000,
         TOOL_NAMES: { RUN_JAVASCRIPT_API: 'RunJavaScriptApi', RUN_SLASH_COMMAND: 'RunSlashCommand', DELEGATE_RUN: 'DelegateRun' },
         createAdapter: config => config !== delegateConfig && options.adapter ? options.adapter : ({ supportsSessionToolLoop: options.session !== false, async chat(task) {
@@ -138,14 +137,14 @@ test('enabled native delivery records local read and scoped acknowledgement, the
         assert.deepEqual(receipts(task.messages, TOOL_READ), [{ ok: true, status: READ_RESULT }]);
         assert.deepEqual(receipts(task.messages, TOOL_APPROVAL), [{ ok: true, status: APPROVAL_RESULT }]);
         return { text: '', toolCallsAreNative: true, toolCalls: [makeCall('deliver', body), makeCall('repeat', 'No'), {
-            id: 'js', name: 'RunJavaScriptApi', arguments: '{"code":"return 1"}',
+            id: 'js', name: 'CardFiles', arguments: '{"code":"return 1"}',
         }] };
     }] });
     await h.start();
     assert.equal(h.requests.length, 1);
     const stored = h.saved.at(-1);
     assert.deepEqual(receipts(stored, TOOL_DELIVER), [{ ok: true }, { ok: false, error: 'reply_already_delivered' }]);
-    assert.deepEqual(receipts(stored, 'RunJavaScriptApi').map(receipt => receipt.error), ['jsapi_permission_denied']);
+    assert.deepEqual(receipts(stored, 'CardFiles').map(receipt => receipt.error), ['skill_tool_not_available']);
     assert.equal(stored.some(message => message.role === 'assistant' && message.content === body), false);
     assert.equal(JSON.stringify(stored).includes(requirements), false);
 });
@@ -295,7 +294,7 @@ test('native and tagged deliveries finish once and replay one copy of the body o
 
 test('SillyTavern tagged retry can deliver immediately without changing ordinary tool permissions', async t => {
     for (const taggedDelta of [
-        { content: textCall(TOOL_DELIVER, { body: 'Tagged body' }) + textCall('RunJavaScriptApi', { code: 'return 1' }) },
+        { content: textCall(TOOL_DELIVER, { body: 'Tagged body' }) + textCall('CardFiles', { code: 'return 1' }) },
         { tool_calls: [nativeDelivery] }, // Structured fields on the fallback response do not change the request's protocol.
     ]) {
         const provider = { provider: 'sillytavern-openai-compatible', model: 'fixture', toolMode: 'native' };
@@ -321,7 +320,7 @@ test('SillyTavern tagged retry can deliver immediately without changing ordinary
             assert.ok(requests[1].messages.some(message => typeof message.content === 'string' && message.content.startsWith(content)), 'Fallback must retain the sampled prose');
         }
         assert.deepEqual(receipts(h.state.messages, TOOL_DELIVER), [{ ok: true }]);
-        if (taggedDelta.content) assert.deepEqual(receipts(h.state.messages, 'RunJavaScriptApi').map(receipt => receipt.error), ['jsapi_permission_denied']);
+        if (taggedDelta.content) assert.deepEqual(receipts(h.state.messages, 'CardFiles').map(receipt => receipt.error), ['skill_tool_not_available']);
     }
 });
 

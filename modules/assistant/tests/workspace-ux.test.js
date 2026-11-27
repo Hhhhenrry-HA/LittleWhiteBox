@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createLocalSourcesManager } from '../app-src/workspace/local-sources.js';
+import { buildWorkspaceUserContextTextForState } from '../app-src/context/current-context.js';
 import { WORKSPACE_COPY } from '../app-src/workspace/workspace-copy.js';
 import { flattenLocalSourceFiles, normalizeLocalSources, upsertLocalSourceFile } from '../shared/local-workspace-kernel.js';
 import { createLocalSourcesToolRuntime } from '../shared/local-sources-tool-runtime.js';
@@ -32,6 +33,21 @@ function setup(t, deps = {}) {
     });
     return { manager, state, toasts, progress };
 }
+
+test('opening a file from memory changes the saved panel and the context passed to the model', t => {
+    const persisted = [];
+    const { manager, state } = setup(t, {
+        persistWorkspaceUiState: async () => { persisted.push(state.workspacePanelMode); },
+    });
+    Object.assign(state, { workspacePanelMode: 'memory', selectedSkillFilePath: 'memory/identity.md', isWorkspaceOpen: true });
+    assert.equal(manager.openWorkspace('local/absent.json'), false);
+    assert.equal(state.workspacePanelMode, 'memory');
+    assert.equal(manager.openWorkspace(path), true);
+    assert.equal(state.selectedFilePath, path);
+    assert.deepEqual(persisted, ['workspace']);
+    assert.ok(buildWorkspaceUserContextTextForState(state).includes(path));
+    assert.ok(!buildWorkspaceUserContextTextForState(state).includes('identity.md'));
+});
 
 // UI failures must use the shared translator, retain structured validation,
 // and leave authoritative files untouched. Copy itself is not a contract.

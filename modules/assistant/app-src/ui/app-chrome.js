@@ -1,8 +1,8 @@
-import { describeMemoryFile, findMemoryFileByPath } from '../memory/memory-files.js';
+import { renderComposerActions } from './composer.js';
 import { ACTIVITY_COPY as C } from './activity-copy.js';
 import { renderApiSummary } from './api-entry.js';
-import { displayCardWorkspacePath } from '../../../card-workspace/paths.js';
-import { describeCardWorkspaceFiles } from '../../../card-workspace/display.js';
+import { updateChromeIcon } from './chrome-icons.js';
+import { COMPOSER_COPY } from './composer-copy.js';
 
 function appendSvgPath(svg, d) {
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -36,105 +36,18 @@ function createSaveIcon(status = 'idle') {
     return svg;
 }
 
-export function collectContextHintItems(state = {}) {
-    const workspaceSelection = state.workspaceSelectionContext || {};
-    const externalEditorContext = state.externalEditorContext || null;
-    const contextItems = [];
-    const isMemoryPanel = state.workspacePanelMode === 'memory';
-    const selectedFilePath = isMemoryPanel
-        ? String(state.selectedSkillFilePath || '').trim()
-        : String(state.selectedFilePath || '').trim();
-    const selectedTreePath = isMemoryPanel ? '' : String(state.selectedTreePath || '').trim();
-    const formatContextHint = (text) => `上下文：${text}`;
-
-    if (externalEditorContext && (externalEditorContext.filePath || externalEditorContext.note || externalEditorContext.selectionText)) {
-        const parts = [];
-        if (externalEditorContext.filePath) {
-            parts.push(`外部编辑器：${externalEditorContext.filePath}`);
-        } else {
-            parts.push('外部编辑器上下文');
-        }
-        if (externalEditorContext.lineStart) {
-            parts.push(
-                externalEditorContext.lineEnd && externalEditorContext.lineEnd !== externalEditorContext.lineStart
-                    ? `第 ${externalEditorContext.lineStart}-${externalEditorContext.lineEnd} 行`
-                    : `第 ${externalEditorContext.lineStart} 行`,
-            );
-        }
-        if (externalEditorContext.selectionText) {
-            parts.push('含选中文本');
-        }
-        contextItems.push(formatContextHint(parts.join(' · ')));
-    }
-
-    if (state.isWorkspaceOpen) {
-        if (selectedTreePath && String(selectedTreePath).endsWith('/') && (!selectedFilePath || selectedTreePath !== selectedFilePath)) {
-            const parts = [`工作区目录：${displayCardWorkspacePath(selectedTreePath)}`];
-            if (!selectedFilePath) {
-                parts.push('未锁定具体文件');
-            }
-            contextItems.push(formatContextHint(parts.join(' · ')));
-        } else if (selectedFilePath) {
-            const memoryFile = isMemoryPanel ? findMemoryFileByPath(state.skillFiles, selectedFilePath) : null;
-            const memoryDescriptor = isMemoryPanel ? describeMemoryFile(memoryFile, selectedFilePath) : null;
-            const cardDescriptor = isMemoryPanel ? null : describeCardWorkspaceFiles((state.localSources || []).flatMap(source => source.files)).get(selectedFilePath);
-            const parts = [isMemoryPanel
-                ? `记忆区${memoryDescriptor.kindLabel}：${memoryDescriptor.displayName}`
-                : `工作区文件：${cardDescriptor?.title || displayCardWorkspacePath(selectedFilePath)}`];
-            if (workspaceSelection.filePath === selectedFilePath && (workspaceSelection.text || workspaceSelection.lineStart)) {
-                if (workspaceSelection.lineStart) {
-                    parts.push(
-                        workspaceSelection.lineEnd && workspaceSelection.lineEnd !== workspaceSelection.lineStart
-                            ? `已选第 ${workspaceSelection.lineStart}-${workspaceSelection.lineEnd} 行`
-                            : `已选第 ${workspaceSelection.lineStart} 行`,
-                    );
-                } else if (workspaceSelection.text) {
-                    parts.push('含选中文本');
-                }
-            }
-            contextItems.push(formatContextHint(parts.join(' · ')));
-        }
-    }
-
-    return contextItems;
-}
-
-export function renderContextHint(root, state) {
-    if (!root) return;
-    const contextHint = root.querySelector('#xb-assistant-context-hint');
-    if (!contextHint) return;
-
-    const contextItems = collectContextHintItems(state);
-    contextHint.toggleAttribute('hidden', !contextItems.length);
-    if (!contextItems.length) {
-        contextHint.replaceChildren();
-        return;
-    }
-
-    contextHint.replaceChildren();
-    contextItems.forEach((item) => {
-        const pill = document.createElement('div');
-        pill.className = 'xb-assistant-context-hint-item';
-        pill.textContent = item;
-        contextHint.appendChild(pill);
-    });
-}
-
 export function resolveWorkspaceWidth(mainBody, requestedWidth) {
     const numericWidth = Number(requestedWidth);
     const desiredWidth = Number.isFinite(numericWidth) ? Math.round(numericWidth) : 520;
     const minWorkspaceWidth = 360;
-    const minConversationWidth = 120;
+    const minConversationWidth = 336;
 
     if (!mainBody) {
         return Math.max(minWorkspaceWidth, Math.min(960, desiredWidth));
     }
 
-    const maxWorkspaceWidth = Math.max(
-        minWorkspaceWidth,
-        Math.round(mainBody.clientWidth - minConversationWidth),
-    );
-    return Math.max(minWorkspaceWidth, Math.min(maxWorkspaceWidth, desiredWidth));
+    const maxWorkspaceWidth = Math.max(0, Math.round(mainBody.clientWidth - minConversationWidth));
+    return Math.min(maxWorkspaceWidth, Math.max(minWorkspaceWidth, desiredWidth));
 }
 
 export function renderAppChrome(root, state, options = {}) {
@@ -152,9 +65,11 @@ export function renderAppChrome(root, state, options = {}) {
     const sendButton = root.querySelector('#xb-assistant-send');
     sendButton.disabled = !!state.isClearingConversation || !!state.isClosingAssistant;
     sendButton.classList.toggle('is-busy', state.isBusy);
-    sendButton.textContent = state.isBusy ? '■' : '➤';
-    sendButton.title = state.isBusy ? '终止' : '发送';
-    sendButton.setAttribute('aria-label', state.isBusy ? '终止' : '发送');
+    updateChromeIcon(sendButton, state.isBusy ? 'stop' : 'send');
+    renderComposerActions(root, state);
+    const sendLabel = state.isBusy ? COMPOSER_COPY.stop : COMPOSER_COPY.send;
+    sendButton.title = sendLabel;
+    sendButton.setAttribute('aria-label', sendLabel);
 
     const composeMenuToggle = root.querySelector('#xb-assistant-compose-menu-toggle');
     const composeMenu = root.querySelector('#xb-assistant-compose-menu');
@@ -163,8 +78,6 @@ export function renderAppChrome(root, state, options = {}) {
     }
     composeMenuToggle.disabled = state.isBusy;
     composeMenuToggle.setAttribute('aria-expanded', state.composeMenuOpen ? 'true' : 'false');
-    composeMenuToggle.title = state.composeMenuOpen ? '收起更多操作' : '展开更多操作';
-    composeMenuToggle.setAttribute('aria-label', state.composeMenuOpen ? '收起更多操作' : '展开更多操作');
     composeMenu.toggleAttribute('hidden', !state.composeMenuOpen);
 
     const addImageButton = root.querySelector('#xb-assistant-add-image');
@@ -253,7 +166,6 @@ export function renderAppChrome(root, state, options = {}) {
         },
     });
 
-    renderContextHint(root, state);
 
     const importProgress = root.querySelector('#xb-assistant-import-progress');
     const importState = state.localImportProgress || {};

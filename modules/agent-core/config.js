@@ -8,18 +8,12 @@ import { normalizeVertexConfig } from './vertex-config.js';
 export const DEFAULT_PROVIDER = 'openai-compatible';
 export const DEFAULT_PRESET_NAME = '默认';
 export const DEFAULT_PERMISSION_MODE = 'default';
-export const DEFAULT_JSAPI_PERMISSION = 'deny';
 export const AGENT_PERMISSION_MODE_LABEL = '执行权限';
-export const AGENT_JSAPI_PERMISSION_LABEL = 'JavaScript API 权限';
 export const DEFAULT_MAX_TOKENS = 32000;
-export const AGENT_SETTINGS_CONFIG_VERSION = 3;
+export const AGENT_SETTINGS_CONFIG_VERSION = 5;
 export const AGENT_PERMISSION_MODE_OPTIONS = Object.freeze([
     { value: 'default', label: '默认权限' },
     { value: 'full', label: '完全权限' },
-]);
-export const AGENT_JSAPI_PERMISSION_OPTIONS = Object.freeze([
-    { value: 'deny', label: '禁止' },
-    { value: 'allow', label: '允许' },
 ]);
 const IMAGE_INPUT_LABEL = '发送图片给模型';
 export const AGENT_IMAGE_INPUT_COPY = Object.freeze({
@@ -34,17 +28,11 @@ export function buildDefaultPreset() {
 
 export function buildDefaultDelegateConfig(sourcePreset = buildDefaultPreset()) {
     const preset = sourcePreset && typeof sourcePreset === 'object' ? sourcePreset : buildDefaultPreset();
-    const config = normalizeAgentPreset(preset);
-    delete config.permissionMode;
-    return config;
+    return normalizeAgentPreset(preset);
 }
 
 export function normalizePermissionMode(value) {
     return value === 'full' ? 'full' : DEFAULT_PERMISSION_MODE;
-}
-
-export function normalizeJsApiPermission(value) {
-    return value === 'allow' ? 'allow' : DEFAULT_JSAPI_PERMISSION;
 }
 
 export function normalizeMaxTokens(value, fallback = DEFAULT_MAX_TOKENS) {
@@ -80,7 +68,6 @@ export function normalizeAgentPreset(source = {}) {
         imageInput: source.imageInput !== false,
         reasoning: normalizeReasoningConfig(source.reasoning),
         sampling: normalizeSampling(source.sampling),
-        permissionMode: normalizePermissionMode(source.permissionMode),
     };
 }
 
@@ -231,7 +218,6 @@ export function normalizeAgentSettings(saved = {}, options = {}) {
 
     return {
         workspaceFileName: normalizeWorkspaceName(saved.workspaceFileName || defaultWorkspaceFileName),
-        jsApiPermission: normalizeJsApiPermission(saved.jsApiPermission),
         currentPresetName,
         delegatePresetName,
         delegateConfig,
@@ -259,7 +245,6 @@ export function normalizeAgentConfig(config = {}) {
         configVersion: AGENT_SETTINGS_CONFIG_VERSION,
         workspaceFileName: String(config.workspaceFileName || ''),
         updatedAt: Number(config.updatedAt) || 0,
-        jsApiPermission: normalizeJsApiPermission(config.jsApiPermission),
         currentPresetName,
         delegatePresetName,
         delegateConfig,

@@ -9,6 +9,26 @@ import { createEventRun, removeLegacyEventQueue } from '../varevent/run.js';
 const evaluate = (source, variables = {}) => executeCondition(parseCondition(source), () => ({ chatMetadata: { variables } }));
 const block = (id, display) => `<varevent>\r\n[event.${id}]\r\ndisplay: ${JSON.stringify(display)}\r\n</varevent>`;
 
+// 报错须指向原条件里的符号，不能把错条件当成真、误导作者改合法内容（选错剧情）。
+test('condition diagnostics point into the original source without correcting or executing it', () => {
+    for (const [source, mark] of [
+        ['(\n var("women[0]") and true)', 'and'],
+        ['true and false and true', 'and'],
+        ['var(\n  "women[0])', '"'],
+        ["val('women[0])", "'"],
+    ]) {
+        assert.throws(() => parseCondition(source), error => {
+            const start = source.indexOf(mark);
+            assert.deepEqual(error.conditionRange, [start, start + mark.length]);
+            return error instanceof SyntaxError;
+        });
+    }
+    for (const source of ['true andy', 'let x and y', 'true "closed"', String.raw`val("\x")`]) {
+        assert.throws(() => parseCondition(source), error => error instanceof SyntaxError && !error.conditionRange);
+    }
+    assert.equal(evaluate('var("women[0]") == val("and") && ({and:true}).and', {women:['and']}), true);
+});
+
 test('condition grammar preserves quoted text, arbitrary JS and numeric/nullish ordering', () => {
     const vars = { zero: 0, nil: null, empty: '', negative: '-0.5', tiny: '9e-7', text: 'a"b\\c', obj: '{"x":null}' };
     for (const [source, expected] of [

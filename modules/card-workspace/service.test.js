@@ -15,23 +15,114 @@ import { ASSET_FIELD } from './asset-task.js';
 import { createCardLifecycle } from './lifecycle.js';
 import { workspaceRepository } from '../assistant/shared/workspace-repository.js';
 import { applyWorkspaceObservations, buildWorkspacePreconditions, findWorkspaceConflicts } from '../assistant/shared/workspace-preconditions.js';
-import { createLocalSourceRecord, flattenLocalSourceFiles, normalizeLocalSourceFile, upsertLocalSourceFile } from '../assistant/shared/local-workspace-kernel.js';
+import { createLocalSourceRecord, findLocalDirectoryByPath, flattenLocalSourceFiles, isLocalSourceFileModified, normalizeLocalSourceFile, removeLocalSourcePath, upsertLocalSourceFile } from '../assistant/shared/local-workspace-kernel.js';
+import { CARD_EXTENSION, FUNCTION_DIRECTORY } from '../variables/state3/definition/format.js';
 
 const root = files.rootFor('fixture.png'), path = root + files.DESIGN_FILE;
-async function edit(content) {
-    const args = { path, content };
+async function edit(content, target = path) {
+    const args = { path: target, content };
     await workspaceRepository.commitWorkspaceMutation({ name: 'Write', args,
         preconditions: buildWorkspacePreconditions('Write', args, (await workspaceRepository.readWorkspace()).localSources),
-        execute: async sources => ({ result: { ok: true }, nextSources: upsertLocalSourceFile(sources, path, content).nextSources }) });
+        execute: async sources => ({ result: { ok: true }, nextSources: upsertLocalSourceFile(sources, target, content).nextSources }) });
 }
-function harness(readDesign, saveFile, data = {}) {
+function harness(readDesign, saveFile, data = {}, host = {}) {
     const source = readFileSync(new URL('./service.js', import.meta.url), 'utf8').replace(/^import .*;\r?\n/gm, '').replace(/^export /gm, '');
-    return runInNewContext(source + '\nrunCardFiles', { ...workspace, ...files, ...documents, equalText, COPY, Set, SET_CARD_AVATAR_ACTION,
-        saveFile, flattenLocalSourceFiles, normalizeLocalSourceFile,
+    return runInNewContext(source + '\nObject.assign(runCardFiles, { prepareCardReload, applyCardReload })', { ...workspace, ...files, ...documents, equalText, COPY, Set, SET_CARD_AVATAR_ACTION,
+        saveFile, flattenLocalSourceFiles, isLocalSourceFileModified, normalizeLocalSourceFile,
         currentCard: () => ({ avatar: 'fixture.png', name: 'fixture' }),
         readCharacter: async () => ({ data }), linkedBooks: () => [], readDesign,
-        cardFileDirectory, cardLifecycle: createCardLifecycle() });
+        cardFileDirectory, cardLifecycle: createCardLifecycle(), ...host });
 }
+
+// Lost work: a deletion survives cancel/reopen, while a newly published
+// sibling or a deletion already saved on the card must not be called a draft.
+test('reload distinguishes a local deletion from a server addition and keeps unrelated reference folders', async () => {
+    await db.delete(); await db.open();
+    try {
+        const bundle = { definition: {}, functions: { heal: 'old' } };
+        const data = { name: 'fixture', extensions: { [CARD_EXTENSION]: bundle } };
+        let books = ['Old', 'WithNotes'];
+        const run = harness(async () => '', null, data, { linkedBooks: () => books,
+            readBook: async () => ({ entries: { 1: { comment: 'entry', content: 'entry' } } }) });
+        await run({ action: 'open' });
+        const fn = root + FUNCTION_DIRECTORY + 'heal.js', desc = root + 'description.md';
+        const remove = async path => {
+            const args = { path };
+            await workspaceRepository.commitWorkspaceMutation({ name: 'Delete', args, preconditions: await workspace.observeTree(path),
+                execute: async sources => ({ result: { ok: true }, nextSources: removeLocalSourcePath(sources, args.path).nextSources }) });
+        };
+        await remove(fn); await remove(path); await edit('draft', desc);
+        await edit('private note', root + 'world_book/WithNotes/notes.txt');
+        bundle.functions.newOnServer = 'new'; books = ['New'];
+        db.close(); await db.open();
+        await run({ action: 'open' });
+        assert.equal((await workspace.readFiles()).some(file => file.path === path), false);
+        for (let attempt = 0; attempt < 2; attempt++) {
+            const plan = await run.prepareCardReload();
+            assert.deepEqual(Array.from(plan.drafts, f => f.path).sort(), [fn, path, desc].sort());
+            assert.equal((await workspace.readFiles()).some(f => f.path === fn), false);
+            if (attempt) await run.applyCardReload(plan);
+        }
+        const latest = await workspaceRepository.readWorkspace();
+        assert.equal(findLocalDirectoryByPath(latest.localSources, root + 'world_book/Old/'), null);
+        assert.ok(findLocalDirectoryByPath(latest.localSources, root + 'world_book/WithNotes/'));
+        assert.equal(flattenLocalSourceFiles(latest.localSources).find(f => f.path === fn).content, 'old');
+        assert.deepEqual(latest.deletedCardFiles ?? [], []);
+
+        await remove(fn); delete bundle.functions.heal;
+        const agreed = await run.prepareCardReload();
+        assert.equal(agreed.drafts.length, 0);
+        await run.applyCardReload(agreed);
+        bundle.functions.heal = 'added again';
+        assert.equal((await run.prepareCardReload()).drafts.length, 0);
+    } finally { await db.delete(); }
+});
+
+// Cost: lost work or the model using a stale card. A preview never writes;
+// only confirmed reload replaces card files in place and keeps other files.
+test('manual reload replaces just the card projection, and identifies drafts it will discard', async () => {
+    await db.delete(); await db.open();
+    try {
+        let data = { name: 'Old name', description: 'old', alternate_greetings: ['old opening'] };
+        let book = { entries: { 1: { comment: 'old entry', content: 'old' } } };
+        const run = harness(async () => '', null, {}, {
+            readCharacter: async () => ({ data }), linkedBooks: () => ['Lore'],
+            async readBook() { if (!book) throw new Error('book unavailable'); return book; },
+        });
+        const initial = await run({ action: 'open' });
+        const oldEntry = initial.files.find(file => file.kind === 'world').path;
+        const description = root + 'description.md', opening = root + 'message/1.md', newDraft = root + 'world_book/Lore/draft.md';
+        const reference = root + 'reference.md', other = files.rootFor('other.png') + 'description.md';
+        await edit('draft description', description);
+        await edit(documents.serializeItemDocument('world', { comment: 'draft', content: 'draft' }), newDraft);
+        await edit('reference material', reference);
+        await workspace.storeFiles([{ path: other, content: 'other card' }]);
+        data = { name: 'New name', description: 'latest' };
+        const before = await workspace.readFiles();
+        book = null;
+        await assert.rejects(run.prepareCardReload(), /book unavailable/);
+        assert.deepEqual(await workspace.readFiles(), before);
+        book = { entries: { 2: { comment: 'new entry', content: 'latest lore' } } };
+        const preview = await run.prepareCardReload();
+        assert.equal(preview.loaded, true);
+        assert.equal(preview.selected.name, 'New name');
+        assert.deepEqual(Array.from(preview.drafts, file => file.path).sort(), [description, newDraft].sort());
+        assert.deepEqual(await workspace.readFiles(), before);
+        assert.equal((await run({ action: 'open' })).reused, true);
+        assert.deepEqual(await workspace.readFiles(), before);
+        const result = await run.applyCardReload(preview);
+        assert.equal(result.root, initial.root);
+        const current = new Map((await workspace.readFiles()).map(file => [file.path, file]));
+        assert.equal(current.get(description).content, 'latest');
+        assert.equal(current.get(description).originalContent, 'latest');
+        assert.equal(current.get(reference).content, 'reference material');
+        assert.equal(current.get(other).content, 'other card');
+        for (const removed of [opening, oldEntry, newDraft]) assert.equal(current.has(removed), false);
+        const world = result.files.filter(file => file.kind === 'world');
+        assert.equal(world.length, 1);
+        assert.match(current.get(world[0].path).content, /latest lore/);
+    } finally { await db.delete(); }
+});
 
 test('first open and reopening a damaged card identify its file and key without exporting the bad payload', async () => {
     await db.delete(); await db.open();

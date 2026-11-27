@@ -1,5 +1,5 @@
 import { currentCard, linkedBooks, readCharacter, readBook, readTarget, refreshVariableFiles, saveFile } from './host.js';
-import { readFiles, storeFiles, observePaths, observeTree, storeItemReceipt } from './workspace.js';
+import { readFiles, storeFiles, observePaths, observeCardReload, storeItemReceipt } from './workspace.js';
 import { cardFiles, locateFile, rootFor, DESIGN_FILE } from './files.js';
 import { COPY } from './copy.js';
 import { ITEM_KINDS, resolveItemTarget, parseItemDocument } from './item-document.js';
@@ -8,7 +8,7 @@ import { readDesign } from './design.js';
 import { cardLifecycle } from './lifecycle.js';
 import { equalText } from './comparison.js';
 import { variableFileGroup, variableGroupChanged } from '../variables/state3/definition/card-files.js';
-import { flattenLocalSourceFiles, normalizeLocalSourceFile } from '../assistant/shared/local-workspace-kernel.js';
+import { flattenLocalSourceFiles, isLocalSourceFileModified, normalizeLocalSourceFile } from '../assistant/shared/local-workspace-kernel.js';
 import { workspaceRepository } from '../assistant/shared/workspace-repository.js';
 import { createCardAssetActions } from './asset-actions.js';
 import { SET_CARD_AVATAR_ACTION } from './assistant-contract.js';
@@ -45,31 +45,77 @@ export async function runCardFiles(args, options = {}) {
 
 async function openFiles(selected, signal) {
     const avatar = selected.avatar, root = rootFor(avatar);
-    const observed = await observeTree(root);
-    const present = (await readFiles()).filter(file => file.path.startsWith(root));
-    if (present.length) return reuseFiles(selected, root, signal);
-    const card = await readCharacter(avatar, signal), books = [];
-    for (const name of linkedBooks(card)) {
+    const { observed, entry, deleted } = await observeCardReload(root, root + DESIGN_FILE);
+    if (observed.find(item => item.scope === 'tree').expected.files?.length || deleted.length) {
+        return reuseFiles(selected, root, signal, entry, deleted);
+    }
+    const { name, files } = await readCardWorkspaceFiles(avatar, signal);
+    await storeOpenedFiles(files, { observed, scopeRoot: root });
+    return openResult({ avatar, name: name ?? selected.name }, root, files, false);
+}
+
+async function readCardWorkspaceFiles(avatar, signal) {
+    const card = await readCharacter(avatar, signal), books = [], bookNames = linkedBooks(card);
+    for (const name of bookNames) {
         const book = await readBook(name, signal);
         if (book) books.push([name, book]);
     }
-    const files = cardFiles(avatar, card.data, books, await readDesign(avatar, signal) ?? '');
-    await storeOpenedFiles(files, { observed, scopeRoot: root });
-    return openResult(selected, root, files, false);
+    return { name: card.data.name, bookNames, files: cardFiles(avatar, card.data, books, await readDesign(avatar, signal) ?? '') };
+}
+
+// A button reload previews one exact replacement. The ordinary tool open still
+// reuses workspace drafts. The preview never writes to the card or workspace.
+export async function prepareCardReload(signal) {
+    const selected = currentCard(), root = rootFor(selected.avatar);
+    return cardLifecycle.run([selected.avatar], async () => {
+        const { observed, deleted } = await observeCardReload(root);
+        const tree = observed.find(item => item.scope === 'tree').expected;
+        const present = tree.files ?? [];
+        const { name, files, bookNames } = await readCardWorkspaceFiles(selected.avatar, signal);
+        signal?.throwIfAborted();
+        const incoming = new Map(files.map(file => [file.path, file]));
+        const managed = present.filter(file => file.kind !== 'image' && locateFile(file.path));
+        const replacedDrafts = managed.filter(file => (file.originalContent === null || isLocalSourceFileModified(file))
+            && incoming.get(file.path)?.content !== file.content);
+        const presentPaths = new Set(present.map(file => file.path));
+        const deletedPaths = new Set(deleted);
+        // A matching saved bundle also proves membership for variable files
+        // deleted before individual removals were recorded.
+        const definition = files.find(file => file.originalGroupHash);
+        const sameBundle = definition && present.some(file => file.path === definition.path && file.originalGroupHash === definition.originalGroupHash);
+        const restored = files.filter(file => !presentPaths.has(file.path) && (deletedPaths.has(file.path)
+            || (sameBundle && locateFile(file.path)?.kind === 'variables')));
+        const booksRoot = root + 'world_book/';
+        const linked = new Set(bookNames.map(book => booksRoot + encodeURIComponent(book)));
+        const obsoleteBooks = (tree.directories || []).filter(path => path.startsWith(booksRoot)
+            && !path.slice(booksRoot.length).includes('/') && !linked.has(path));
+        return { selected: { avatar: selected.avatar, name: name ?? selected.name }, root, observed, files,
+            removePaths: managed.filter(file => !incoming.has(file.path)).map(file => file.path),
+            obsoleteBooks, loaded: present.length > 0 || deleted.length > 0, drafts: cardFileDirectory([...replacedDrafts, ...restored]) };
+    });
+}
+
+export async function applyCardReload(plan, signal) {
+    const { selected, root, observed, files, removePaths, obsoleteBooks } = plan;
+    return cardLifecycle.run([selected.avatar], async () => {
+        if (currentCard().avatar !== selected.avatar) throw new Error(COPY.changedCard);
+        const localSources = await storeOpenedFiles(files, { observed, scopeRoot: root, removePaths, obsoleteBooks, signal });
+        const present = flattenLocalSourceFiles(localSources).filter(file => file.path.startsWith(root));
+        return openResult(selected, root, present, false);
+    });
 }
 
 async function storeOpenedFiles(files, options) {
-    try { await storeFiles(files, options); } catch (error) {
+    try { return await storeFiles(files, options); } catch (error) {
         if (error.message === 'workspace_conflict') throw new Error(COPY.designWorkspaceChanged);
         throw error;
     }
 }
 
 // A clean design follows server updates; a draft keeps its original baseline.
-async function reuseFiles(selected, root, signal) {
+async function reuseFiles(selected, root, signal, observed, deleted) {
     const path = root + DESIGN_FILE;
     const warnings = [];
-    const observed = await observePaths([path]);
     const file = observed.find(item => item.path === path)?.expected?.file;
     const content = await readDesign(selected.avatar, signal) ?? '';
     if (file && !equalText(file.content, file.originalContent)) {
@@ -78,7 +124,7 @@ async function reuseFiles(selected, root, signal) {
         } else if (!equalText(content, file.originalContent ?? '')) {
             warnings.push({ path, message: COPY.designDraftConflict });
         }
-    } else {
+    } else if (file || !deleted.includes(path)) {
         await storeOpenedFiles([{ path, content }], { observed });
     }
     const present = (await readFiles()).filter(file => file.path.startsWith(root));
@@ -159,7 +205,8 @@ async function saveFiles(paths, { signal, onWorkspaceObserved }) {
             }
             const receipts = entries.map((item, index) => ({ path: item.file.path, content: result.contents?.[index] ?? result.content,
                 ...(result.originalGroupHash && item.target.settings ? { originalGroupHash: result.originalGroupHash } : {}) }));
-            const latest = flattenLocalSourceFiles(await storeFiles(receipts, { baselineOnly: true }));
+            const latest = flattenLocalSourceFiles(await storeFiles(receipts, { baselineOnly: true,
+                ...(first.target.kind === 'variables' ? { savedGroupScope: first.target.root + 'variables/' } : {}) }));
             const groupChanged = first.target.kind === 'variables' && variableGroupChanged(first.target.root, entries, latest);
             receipts.forEach((item, index) => {
                 const submitted = entries[index].file, stored = latest.find(file => file.path === item.path);

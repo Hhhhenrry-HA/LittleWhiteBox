@@ -1,5 +1,3 @@
-import { AGENT_JSAPI_PERMISSION_LABEL, AGENT_JSAPI_PERMISSION_OPTIONS } from '../../../agent-core/config.js';
-
 // ============================================================
 // 身份与环境
 // ============================================================
@@ -200,18 +198,14 @@ export function buildImageInputPrompt(imageInput = true) {
 // ============================================================
 // 权限模式提示词
 // ============================================================
-export function buildPermissionModePrompt(permissionMode = 'default', jsApiPermission = 'deny') {
+export function buildPermissionModePrompt(permissionMode = 'default') {
     const executionPermissionLine = permissionMode === 'full'
-        ? 'Execution permission: full. RunSlashCommand and an enabled RunJavaScriptApi execute without per-call confirmation. Proceed with the requested work rather than asking the user to approve each tool call again.'
-        : 'Execution permission: default. RunSlashCommand requests confirmation. An enabled RunJavaScriptApi requests confirmation for state-changing or unresolved operations; recognized reads run directly.';
-    const jsApiLine = jsApiPermission === 'deny'
-        ? `RunJavaScriptApi is a supported assistant tool. The user's "${AGENT_JSAPI_PERMISSION_LABEL}" setting is "${AGENT_JSAPI_PERMISSION_OPTIONS.find(option => option.value === 'deny').label}", so this run does not offer it. To enable it, the user can open the assistant's API settings, change this setting to "${AGENT_JSAPI_PERMISSION_OPTIONS.find(option => option.value === 'allow').label}", and save.`
-        : 'RunJavaScriptApi is enabled.';
+        ? 'Execution permission: full. RunSlashCommand and RunJavaScriptApi execute without per-call confirmation. Proceed with the requested work rather than asking the user to approve each tool call again.'
+        : 'Execution permission: default. RunSlashCommand requests confirmation. RunJavaScriptApi requests confirmation for state-changing or unresolved operations; recognized reads run directly.';
 
     return [
         '# Permission Mode',
         executionPermissionLine,
-        jsApiLine,
         'Keep execution within the requested task. Obtain explicit consent for unrelated or irreversible changes that the user has not already authorized.',
     ].filter(Boolean).join('\n');
 }

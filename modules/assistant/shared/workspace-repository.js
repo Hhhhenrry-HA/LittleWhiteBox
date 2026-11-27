@@ -1,4 +1,5 @@
 import db, { workspaceImageBlobsTable, workspaceTable } from './session-db.js';
+import { reconcileDeletedCardFiles } from '../../card-workspace/deleted-files.js';
 import { normalizeWorkspaceState, normalizeWorkspaceUiState, WORKSPACE_RECORD_ID } from './workspace-state.js';
 import { findLocalSourceFileByPath, normalizeLocalSources, validateLocalSourcesSnapshot } from './local-workspace-kernel.js';
 import { applyWorkspaceObservations, findWorkspaceConflicts, reconcileEditorWriteRetry, WORKSPACE_CONFLICT } from './workspace-preconditions.js';
@@ -62,11 +63,14 @@ export function createWorkspaceRepository(database = db) {
             };
             // Mutation handlers stage changes from this snapshot only; no fetch,
             // UI callback, or host message may run inside this transaction.
-            const { result, nextSources, newImageBlobs } = await execute(replaySources ?? current.localSources);
+            const { result, nextSources, newImageBlobs, cardSync, filesUnchanged } = await execute(replaySources ?? current.localSources);
             if (signal?.aborted) throw new Error('tool_aborted');
             if (result?.ok === false || nextSources === null) return { result, committed: false };
             if (replaySources) return { result, committed: true, localSources: current.localSources };
-            const localSources = normalizeLocalSources(nextSources);
+            const localSources = filesUnchanged ? current.localSources : normalizeLocalSources(nextSources);
+            const deleted = reconcileDeletedCardFiles(current.deletedCardFiles || [], current.localSources, localSources, cardSync);
+            if (filesUnchanged && deleted.length === (current.deletedCardFiles?.length || 0)
+                && deleted.every((path, index) => path === current.deletedCardFiles[index])) return { result, committed: true, localSources };
             const validation = validateLocalSourcesSnapshot(localSources);
             if (!validation.ok) throw new Error('workspace_invariant_failed');
             const previousImages = imageReferences(current.localSources);
@@ -86,7 +90,10 @@ export function createWorkspaceRepository(database = db) {
             const removedIds = [...previousImages.keys()].filter(id => !nextImages.has(id));
             if (removedIds.length) await imageTable.bulkDelete(removedIds);
             if (signal?.aborted) throw new Error('tool_aborted');
-            await table.put({ ...current, localSources, id: WORKSPACE_RECORD_ID, updatedAt: Date.now() });
+            const record = { ...current, localSources, id: WORKSPACE_RECORD_ID, updatedAt: Date.now() };
+            if (deleted.length) record.deletedCardFiles = deleted;
+            else delete record.deletedCardFiles;
+            await table.put(record);
             if (signal?.aborted) throw new Error('tool_aborted');
             return { result, committed: true, localSources };
         });

@@ -6,16 +6,16 @@ import { createAssistantRuntime } from '../app-src/runtime.js';
 import { TOOL_NAMES, getAssistantToolDefinitions, formatToolResultDisplay } from '../app-src/tooling.js';
 import { TOOL_RESULT_PAGE_CHARS } from '../../agent-core/runtime/tool-result-pages.js';
 
-// 验收契约见 debug-panel/README.md：禁用 JS 仍可读取；只读；长结果完整进入模型下一轮。
+// 验收契约见 debug-panel/README.md：默认权限无需确认；只读；长结果完整进入模型下一轮。
 for (const session of [false, true]) {
     for (const paged of [false, true]) {
-        test(`ReadLogs reaches the model without JS permission (session=${session}, paged=${paged})`, async t => {
+        test(`ReadLogs reaches the model under default permission (session=${session}, paged=${paged})`, async t => {
             t.mock.method(console, 'info', () => {});
             xbLog.clear();
             xbLog.error('scheduledTasks', paged ? 'e'.repeat(TOOL_RESULT_PAGE_CHARS + 500) : 'task failed', new Error('fixture'));
             const before = xbLog.getAll();
             const run = { id: 'read-logs', controller: new AbortController(), toolRequestIds: new Set(), workspaceBaseline: [] };
-            const state = { activeRun: run, config: { permissionMode: 'default' }, messages: [{ role: 'user', content: 'Read the error logs.' }], archivedTurnCount: 0 };
+            const state = { activeRun: run, permissionMode: 'default', messages: [{ role: 'user', content: 'Read the error logs.' }], archivedTurnCount: 0 };
             const pending = new Map(), requests = [], hostCalls = [], receipts = [];
             let sequence = 0;
             const call = (name, args) => ({ text: '', toolCalls: [{ id: String(++sequence), name, arguments: JSON.stringify(args) }] });
@@ -25,15 +25,14 @@ for (const session of [false, true]) {
                 safeJsonParse: JSON.parse, describeError: error => error.message,
                 formatToolResultDisplay, normalizeAttachments: () => [], normalizeThoughtBlocks: () => [],
                 buildUserContentParts: message => message.content,
-                getActiveProviderConfig: () => ({}), getToolDefinitions: () => getAssistantToolDefinitions({ jsApiEnabled: false }),
-                isJsApiEnabled: () => false,
+                getActiveProviderConfig: () => ({}), getToolDefinitions: () => getAssistantToolDefinitions({}),
                 SYSTEM_PROMPT: '', MAX_CONTEXT_TOKENS: 100000, SUMMARY_TRIGGER_TOKENS: 90000,
                 REQUEST_TIMEOUT_MS: 1000,
                 isAbortError: error => error.name === 'AbortError',
                 createAdapter: () => ({ supportsSessionToolLoop: session, async chat(task) {
                     requests.push(task);
                     assert.ok(task.tools.some(tool => tool.function.name === TOOL_NAMES.READ_LOGS));
-                    assert.ok(!task.tools.some(tool => tool.function.name === TOOL_NAMES.RUN_JAVASCRIPT_API));
+                    assert.ok(task.tools.some(tool => tool.function.name === TOOL_NAMES.RUN_JAVASCRIPT_API));
                     if (requests.length === 1) return call(TOOL_NAMES.READ_LOGS, {});
                     const message = session ? task.toolResponses.at(-1) : task.messages.filter(item => item.role === 'tool').at(-1);
                     const receipt = session ? message.response : JSON.parse(message.content);

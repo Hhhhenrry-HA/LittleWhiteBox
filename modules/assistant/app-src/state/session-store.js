@@ -26,6 +26,7 @@ function serializeMessage(message, normalizeAttachments, normalizeThoughtBlocks,
         sessionId,
         order,
         role: message.role,
+        ...(message.localOperation === true ? { localOperation: true } : {}),
         ...(message.compactionEpoch ? { compactionEpoch: message.compactionEpoch } : {}),
         content: String(message.content || ''),
         ...(message.error === true ? { error: true } : {}),
@@ -63,6 +64,7 @@ function normalizeRestoredMessage(message, deps) {
 
     return {
         role: message.role,
+        ...(message.localOperation === true ? { localOperation: true } : {}),
         ...(message.compactionEpoch ? { compactionEpoch: message.compactionEpoch } : {}),
         content: String(message.content || ''),
         ...(message.error === true ? { error: true } : {}),

@@ -3,6 +3,8 @@ import { buildAgentSettingsPanelMarkup } from '../../../agent-core/ui/settings-m
 import { ACTIVITY_COPY as C } from './activity-copy.js';
 import { chromeIcon } from './chrome-icons.js';
 import { contextMeterMarkup } from './context-meter.js';
+import { cardReloadDialogMarkup, composerActionsMarkup } from './composer.js';
+import { COMPOSER_COPY } from './composer-copy.js';
 
 // Sidebar: API summary row (opens the full settings popover) above the
 // workspace tree. The right column only ever shows the selected file.
@@ -44,6 +46,7 @@ export function buildAppMarkup(state) {
                                 inlineToastText: state.toast,
                                 showInlineToast: false,
                                 showImageInput: true,
+                                showAssistantPermissions: false,
                                 isBusy: state.isBusy,
                                 canDeletePreset: (state.config?.presetNames || []).length > 1,
                                 activePage: state.configPage,
@@ -72,30 +75,32 @@ export function buildAppMarkup(state) {
                         <form class="xb-assistant-compose" id="xb-assistant-form">
                             <div class="xb-assistant-toast xb-assistant-chat-toast" id="xb-assistant-toast" aria-live="polite"></div>
                             <div class="xb-assistant-compose-row">
-                                <div class="xb-assistant-compose-more" id="xb-assistant-compose-more">
-                                    <button id="xb-assistant-compose-menu-toggle" type="button" class="secondary ghost xb-assistant-compose-menu-toggle" aria-expanded="false" aria-haspopup="true" title="更多操作">+</button>
-                                    <div class="xb-assistant-compose-menu" id="xb-assistant-compose-menu" hidden>
-                                        <button id="xb-assistant-add-image" type="button" class="xb-assistant-compose-menu-item">
-                                            <span class="xb-assistant-compose-menu-icon" aria-hidden="true">📷</span>
-                                            <span class="xb-assistant-compose-menu-label">发送图片</span>
-                                        </button>
-                                        <button id="xb-assistant-add-local-files" type="button" class="xb-assistant-compose-menu-item">
-                                            <span class="xb-assistant-compose-menu-icon" aria-hidden="true">📄</span>
-                                            <span class="xb-assistant-compose-menu-label">选择文件</span>
-                                        </button>
-                                        <button id="xb-assistant-add-local-directory" type="button" class="xb-assistant-compose-menu-item">
-                                            <span class="xb-assistant-compose-menu-icon" aria-hidden="true">📁</span>
-                                            <span class="xb-assistant-compose-menu-label">选择文件夹</span>
-                                        </button>
-                                    </div>
-                                </div>
                                 <div class="xb-assistant-compose-main">
                                     <textarea id="xb-assistant-input" rows="1" aria-label="${C.input}" placeholder=""></textarea>
                                 </div>
-                                <button id="xb-assistant-send" type="submit">发送</button>
+                                <div class="xb-assistant-compose-controls">
+                                    <div class="xb-assistant-compose-more" id="xb-assistant-compose-more">
+                                        <button id="xb-assistant-compose-menu-toggle" type="button" class="xb-assistant-compose-control" aria-expanded="false" aria-controls="xb-assistant-compose-menu" aria-label="${COMPOSER_COPY.attach}" title="${COMPOSER_COPY.attach}">${chromeIcon('plus')}</button>
+                                        <div class="xb-assistant-compose-menu" id="xb-assistant-compose-menu" hidden>
+                                            <button id="xb-assistant-add-image" type="button" class="xb-assistant-compose-menu-item">
+                                                ${chromeIcon('image')}
+                                                <span class="xb-assistant-compose-menu-label">发送图片</span>
+                                            </button>
+                                            <button id="xb-assistant-add-local-files" type="button" class="xb-assistant-compose-menu-item">
+                                                ${chromeIcon('file')}
+                                                <span class="xb-assistant-compose-menu-label">选择文件</span>
+                                            </button>
+                                            <button id="xb-assistant-add-local-directory" type="button" class="xb-assistant-compose-menu-item">
+                                                ${chromeIcon('folder')}
+                                                <span class="xb-assistant-compose-menu-label">选择文件夹</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    ${composerActionsMarkup()}
+                                    <button id="xb-assistant-send" type="submit" aria-label="${COMPOSER_COPY.send}">${chromeIcon('send')}</button>
+                                </div>
                             </div>
                             <div class="xb-assistant-compose-extras">
-                                <div class="xb-assistant-context-hint" id="xb-assistant-context-hint" hidden></div>
                                 <div class="xb-assistant-import-progress" id="xb-assistant-import-progress" hidden></div>
                                 <div class="xb-assistant-attachment-gallery xb-assistant-draft-gallery" id="xb-assistant-draft-gallery" style="display:none;"></div>
                                 <input id="xb-assistant-image-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden />
@@ -111,6 +116,7 @@ export function buildAppMarkup(state) {
                     </aside>
                 </div>
             </main>
+            ${cardReloadDialogMarkup()}
         </div>
     `;
     return markup;

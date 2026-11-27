@@ -1,5 +1,6 @@
 import { parse, tokenizer } from 'acorn';
 import { lwbSplitPathWithBrackets } from '../../../core/variable-path.js';
+import { VAREVENT_COPY } from './copy.js';
 
 const ORDERING = new Set(['>', '>=', '<', '<=']);
 const COMPARISONS = new Set([...ORDERING, '==', '!=']);
@@ -7,8 +8,7 @@ const NUMBER = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i;
 const options = { ecmaVersion: 'latest' };
 
 // Keep offsets stable while making the historical var(...) syntax valid JavaScript.
-function normalizeMacros(source) {
-    const tokens = [...tokenizer(source, options)];
+function normalizeMacros(source, tokens) {
     const edits = tokens.filter((token, index) =>
         token.value === 'var' && tokens[index + 1]?.type.label === '('
         && !['.', '?.'].includes(tokens[index - 1]?.type.label));
@@ -43,10 +43,39 @@ function compileNode(node, source) {
     return output + source.slice(cursor, node.end);
 }
 
+function locatedError(cause, length, hint) {
+    const message = VAREVENT_COPY.conditionAt(cause.loc.line, cause.loc.column + 1, hint);
+    return Object.assign(new SyntaxError(message, { cause }), { conditionRange: [cause.pos, cause.pos + length] });
+}
+
 export function parseCondition(source) {
-    const normalized = normalizeMacros(String(source));
-    const program = parse(normalized, options);
-    return { program, code: compileNode(program, String(source)) };
+    source = String(source);
+    const lexer = tokenizer(source, options);
+    let tokens;
+    try { tokens = [...lexer]; }
+    catch (error) {
+        const quote = source[error.pos];
+        if (error instanceof SyntaxError && error.pos === lexer.start && (quote === '"' || quote === "'")) {
+            throw locatedError(error, 1, VAREVENT_COPY.openQuote(quote));
+        }
+        throw error;
+    }
+    const normalized = normalizeMacros(source, tokens);
+    let program;
+    try { program = parse(normalized, options); }
+    catch (error) {
+        const isAndAt = pos => tokens.some(t => t.start === pos && t.type.label === 'name' && source.slice(t.start, t.end) === 'and');
+        if (!(error instanceof SyntaxError) || !isAndAt(error.pos)) throw error;
+        // Check the suggestion without evaluating it. Padding preserves offsets, even in chains of "and".
+        const corrected = normalized.slice(0, error.pos) + '&& ' + normalized.slice(error.pos + 3);
+        try { parse(corrected, options); }
+        catch (next) {
+            if (!(next instanceof SyntaxError)) throw next;
+            if (next.pos <= error.pos + 3 || !isAndAt(next.pos)) throw error;
+        }
+        throw locatedError(error, 3, VAREVENT_COPY.andOperator);
+    }
+    return { program, code: compileNode(program, source) };
 }
 
 export function readConditionVariable(variables, path, readRoot, readProjectedRoot) {

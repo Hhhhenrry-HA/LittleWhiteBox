@@ -1,16 +1,12 @@
 import { pullModelsForProvider } from '../model-list.js';
 export { pullModelsForProvider } from '../model-list.js';
 import {
-    AGENT_JSAPI_PERMISSION_OPTIONS,
-    AGENT_PERMISSION_MODE_OPTIONS,
     AGENT_SETTINGS_CONFIG_VERSION,
     DEFAULT_PRESET_NAME,
     buildDefaultPreset,
     normalizeAgentConfig,
-    normalizeJsApiPermission,
     normalizeMaxTokens,
     normalizeAgentPreset,
-    normalizePermissionMode,
     normalizePresetName,
 } from '../config.js';
 import {
@@ -273,8 +269,6 @@ export function createAgentSettingsPanel(deps = {}) {
             provider,
             ...providerDraftFields,
             ...normalizeWebSettings(sourceConfig),
-            permissionMode: normalizePermissionMode(sourcePreset.permissionMode),
-            jsApiPermission: normalizeJsApiPermission(sourceConfig?.jsApiPermission),
             ...delegateDraft,
         };
     }
@@ -367,8 +361,6 @@ export function createAgentSettingsPanel(deps = {}) {
             imageInput: providerConfig.imageInput,
             sampling: providerConfig.sampling,
             ...readWebSettingsForm(root, draft),
-            permissionMode: normalizePermissionMode(root.querySelector('#xb-assistant-permission-mode')?.value || draft.permissionMode),
-            jsApiPermission: normalizeJsApiPermission(root.querySelector('#xb-assistant-jsapi-permission')?.value || draft.jsApiPermission),
             delegatePresetName: resolveExistingPresetName(root.querySelector('#xb-assistant-delegate-preset-select')?.value || draft.delegatePresetName, draft.currentPresetName),
             delegateProvider,
             delegateBaseUrl: delegateProviderConfig.baseUrl,
@@ -683,8 +675,6 @@ export function createAgentSettingsPanel(deps = {}) {
         const apiKeyInput = root.querySelector('#xb-assistant-api-key');
         const toolModeWrap = root.querySelector('#xb-assistant-tool-mode-wrap');
         const toolModeSelect = root.querySelector('#xb-assistant-tool-mode');
-        const permissionModeSelect = root.querySelector('#xb-assistant-permission-mode');
-        const jsApiPermissionSelect = root.querySelector('#xb-assistant-jsapi-permission');
         const pulledSelect = root.querySelector('#xb-assistant-model-pulled');
         const maxTokensInput = root.querySelector('#xb-assistant-max-tokens');
         const presetSelect = root.querySelector('#xb-assistant-preset-select');
@@ -730,14 +720,6 @@ export function createAgentSettingsPanel(deps = {}) {
         }
         const imageInputToggle = root.querySelector('#xb-assistant-model-image-input');
         if (imageInputToggle) imageInputToggle.checked = draft.imageInput !== false;
-        if (permissionModeSelect) {
-            refillSelect(permissionModeSelect, AGENT_PERMISSION_MODE_OPTIONS);
-            permissionModeSelect.value = normalizePermissionMode(draft.permissionMode);
-        }
-        if (jsApiPermissionSelect) {
-            refillSelect(jsApiPermissionSelect, AGENT_JSAPI_PERMISSION_OPTIONS);
-            jsApiPermissionSelect.value = normalizeJsApiPermission(draft.jsApiPermission);
-        }
         syncReasoningControls(root);
         if (pulledSelect) {
             refillSelect(pulledSelect, pulledModels.map((model) => ({ value: model, label: model })), '手动填写');
@@ -1040,7 +1022,6 @@ export function createAgentSettingsPanel(deps = {}) {
         return {
             configVersion: AGENT_SETTINGS_CONFIG_VERSION,
             workspaceFileName: config?.workspaceFileName || '',
-            jsApiPermission: normalizeJsApiPermission(config?.jsApiPermission),
             ...normalizeWebSettings(config),
             currentPresetName: config?.currentPresetName || DEFAULT_PRESET_NAME,
             delegatePresetName: config?.delegatePresetName || config?.currentPresetName || DEFAULT_PRESET_NAME,
@@ -1074,7 +1055,6 @@ export function createAgentSettingsPanel(deps = {}) {
         return {
             ...currentPreset,
             provider: draft.provider,
-            permissionMode: normalizePermissionMode(draft.permissionMode),
             ...buildProviderConfigFromDraft(draft),
         };
     }
@@ -1083,7 +1063,6 @@ export function createAgentSettingsPanel(deps = {}) {
         const nextPresetName = normalizePresetName(options.presetName || draft.presetDraftName);
         return {
             ...state.config,
-            jsApiPermission: normalizeJsApiPermission(draft.jsApiPermission),
             ...normalizeWebSettings(draft),
             currentPresetName: nextPresetName,
             delegatePresetName: resolveExistingPresetName(draft.delegatePresetName, nextPresetName),
@@ -1161,12 +1140,11 @@ export function createAgentSettingsPanel(deps = {}) {
         deletePreset(root, draft.currentPresetName);
     }
 
-    // 切换预设时把草稿里的全局项（Web 设置 / JS 权限 / 分身）带进 state.config，预设内容则换成目标预设的已保存内容。
+    // 切换预设时把草稿里的全局项（Web 设置 / 分身）带进 state.config，预设内容则换成目标预设的已保存内容。
     function buildSelectionConfig(draft, nextPresetName, baseConfig = state.config) {
         return normalizeAgentConfig({
             ...baseConfig,
             ...normalizeWebSettings(draft),
-            jsApiPermission: normalizeJsApiPermission(draft.jsApiPermission),
             currentPresetName: nextPresetName,
             delegatePresetName: resolveExistingPresetName(draft.delegatePresetName, nextPresetName, baseConfig.presets),
             delegateConfig: buildDelegateConfigFromDraft(draft),
@@ -1351,14 +1329,6 @@ export function createAgentSettingsPanel(deps = {}) {
                 render?.();
             });
         }
-
-        root.querySelector('#xb-assistant-permission-mode')?.addEventListener('change', () => {
-            syncConfigDraft(root);
-        });
-
-        root.querySelector('#xb-assistant-jsapi-permission')?.addEventListener('change', () => {
-            syncConfigDraft(root);
-        });
 
         root.querySelector('#xb-assistant-delegate-preset-select')?.addEventListener('change', (event) => {
             const nextPresetName = resolveExistingPresetName(

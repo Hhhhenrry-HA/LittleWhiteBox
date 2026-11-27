@@ -457,15 +457,15 @@ const UI = {
     addConditionRow(container, params) { const row = UI.createConditionRow(params, () => UI.refreshLopDisplay(container)); container.appendChild(row); UI.refreshLopDisplay(container); return row; },
     parseConditionIntoUI(block, condStr) {
         const groupWrap = block.querySelector('.lwb-ve-condgroups');
-        let groups;
-        try { groups = conditionGroups(condStr); } catch { groups = null; }
+        let groups, diagnostic;
+        try { groups = conditionGroups(condStr); } catch (error) { if (error.conditionRange) diagnostic = error; }
         groupWrap.replaceChildren();
         if (!groups) {
             const label = U.el('label', 'lwb-ve-label'); label.textContent = VAREVENT_COPY.rawCondition;
             const input = U.el('textarea', 'lwb-ve-text lwb-ve-condition-source'); input.value = condStr;
             label.appendChild(input); groupWrap.appendChild(label);
             block.querySelector('.lwb-ve-add-group').style.display = 'none';
-            return;
+            return diagnostic;
         }
         groups.forEach((group, index) => {
             const element = UI.makeConditionGroup(); groupWrap.appendChild(element);
@@ -585,11 +585,15 @@ export function openVarEditor(entryEl, uid) {
                 flush(); active.events.splice(active.events.indexOf(event), 1); render();
             });
             block.querySelector('.lwb-ve-idx').textContent = event.values.id;
-            if (event.values.condition?.trim()) UI.parseConditionIntoUI(block, event.values.condition);
+            const diagnostic = event.values.condition?.trim() && UI.parseConditionIntoUI(block, event.values.condition);
             block.querySelector('.lwb-ve-display').value = String(event.values.display ?? '').replace(/^\r?\n/, '').replace(/\r?\n$/, '');
             block.querySelector('.lwb-ve-js').value = event.values.js ?? '';
             const error = U.el('div', 'lwb-ve-condition-error'); error.setAttribute('role', 'alert'); error.hidden = true;
-            block.appendChild(error); eventList.appendChild(block);
+            if (diagnostic) {
+                error.textContent = diagnostic.message; error.hidden = false;
+                block.querySelector('.lwb-ve-condition-source').addEventListener('input', () => { error.hidden = true; }, { once: true });
+            }
+            block.querySelector('.lwb-ve-condgroups').after(error); eventList.appendChild(block);
             views.set(event, { block, initial: UI.processEventBlock(block), baseline: { ...event.values }, error });
         });
         UI.refreshEventIndices(eventList);
@@ -612,8 +616,10 @@ export function openVarEditor(entryEl, uid) {
             if (!error) continue;
             active = group; render();
             const view = views.get(event);
-            view.error.hidden = false; view.error.textContent = VAREVENT_COPY.saveError;
-            (view.block.querySelector('.lwb-ve-condition-source') || view.block.querySelector('.lwb-ve-var'))?.focus();
+            if (!error.conditionRange) { view.error.textContent = VAREVENT_COPY.saveError; view.error.hidden = false; }
+            const field = view.block.querySelector('.lwb-ve-condition-source') || view.block.querySelector('.lwb-ve-var');
+            field?.focus();
+            if (error.conditionRange) field.setSelectionRange(...error.conditionRange);
             return;
         }
         const output = serializeEventDocument(model);

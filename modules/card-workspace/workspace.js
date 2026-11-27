@@ -6,6 +6,7 @@ import { itemDocumentPath, parseItemDocument } from './item-document.js';
 import { rootFor } from './paths.js';
 import { COPY } from './copy.js';
 import { rebaseCardName } from './rename.js';
+import { stageCardProjection } from './reload-projection.js';
 
 export async function readFiles() {
     return flattenLocalSourceFiles((await workspaceRepository.readWorkspace()).localSources);
@@ -15,18 +16,17 @@ export async function readFiles() {
 // only advances originalContent; text typed during a server save stays intact.
 /**
  * @param {{path: string, content: string, originalGroupHash?: string}[]} files
- * @param {{baselineOnly?: boolean, observed?: ReturnType<typeof buildWorkspacePreconditions> | null, scopeRoot?: string | null, removePaths?: string[]}} [options]
+ * @param {{baselineOnly?: boolean, observed?: ReturnType<typeof buildWorkspacePreconditions> | null, scopeRoot?: string | null, removePaths?: string[], obsoleteBooks?: string[], savedGroupScope?: string, signal?: AbortSignal}} [options]
  */
-export async function storeFiles(files, { baselineOnly = false, observed = null, scopeRoot = null, removePaths = [] } = {}) {
+export async function storeFiles(files, { baselineOnly = false, observed = null, scopeRoot = null, removePaths = [], obsoleteBooks = [], savedGroupScope, signal } = {}) {
     const name = scopeRoot ? 'Delete' : INTERNAL_WORKSPACE_TOOL_NAMES.BATCH_WRITE_FILES;
     const args = scopeRoot ? { path: scopeRoot } : { files };
-    const sources = (await workspaceRepository.readWorkspace()).localSources;
     const saved = await workspaceRepository.commitWorkspaceMutation({
-        name, args,
-        preconditions: observed || buildWorkspacePreconditions(name, args, sources),
+        name, args, signal,
+        preconditions: observed || buildWorkspacePreconditions(name, args, (await workspaceRepository.readWorkspace()).localSources),
         execute: async sources => {
+            if (scopeRoot) return stageCardProjection(sources, files, scopeRoot, removePaths, obsoleteBooks);
             let nextSources = structuredClone(sources);
-            for (const path of removePaths) nextSources = removeLocalSourcePath(nextSources, path).nextSources;
             for (const file of files) {
                 if (!baselineOnly) nextSources = upsertLocalSourceFile(nextSources, file.path, file.content).nextSources;
                 for (const source of nextSources) {
@@ -37,11 +37,11 @@ export async function storeFiles(files, { baselineOnly = false, observed = null,
                     }
                 }
             }
-            return { result: { ok: true }, nextSources };
+            return { result: { ok: true }, nextSources, ...(savedGroupScope ? { cardSync: { scope: savedGroupScope, stillOnCard: new Set(files.map(f => f.path)) } } : {}) };
         },
     });
     if (!saved.committed) {
-        if (baselineOnly && saved.result.error === 'workspace_conflict') return storeFiles(files, { baselineOnly });
+        if (baselineOnly && saved.result.error === 'workspace_conflict') return storeFiles(files, { baselineOnly, savedGroupScope });
         throw new Error(saved.result.error);
     }
     return saved.localSources;
@@ -50,6 +50,13 @@ export async function storeFiles(files, { baselineOnly = false, observed = null,
 export async function observeTree(path) {
     const { localSources } = await workspaceRepository.readWorkspace();
     return buildWorkspacePreconditions('Delete', { path }, localSources);
+}
+
+export async function observeCardReload(root, entryPath = '') {
+    const { localSources, deletedCardFiles } = await workspaceRepository.readWorkspace();
+    return { observed: buildWorkspacePreconditions('Delete', { path: root }, localSources),
+        entry: entryPath ? buildWorkspacePreconditions(INTERNAL_WORKSPACE_TOOL_NAMES.BATCH_WRITE_FILES, { files: [{ path: entryPath }] }, localSources) : null,
+        deleted: (deletedCardFiles || []).filter(path => path.startsWith(root)) };
 }
 
 export async function observePaths(paths) {
@@ -79,7 +86,7 @@ export async function changeCardDirectory(from, to, readName = async () => undef
                     nextSources = upsertLocalSourceFile(nextSources, toPath + 'card.json', rebased.content,
                         { originalContent: rebased.originalContent }).nextSources;
                 }
-                return { result: { ok: true }, nextSources };
+                return { result: { ok: true }, nextSources, cardSync: { move: { from: fromPath, to: toPath } } };
             } });
         if (result.committed) return;
         if (result.result.error !== 'workspace_conflict') throw new Error(result.result.error);
@@ -102,7 +109,8 @@ export async function storeItemReceipt(file, content, kind, recordSave) {
             if (unchangedDraft) path = itemDocumentPath(path.slice(0, path.lastIndexOf('/') + 1), parseItemDocument(kind, content).name, new Set(all.map(item => item.path)), path);
             let nextSources = path === file.path ? localSources : moveLocalSourcePath(localSources, file.path, path).nextSources;
             nextSources = upsertLocalSourceFile(nextSources, path, draft, { originalContent: content }).nextSources;
-            return { result: { path, ...(path !== file.path ? { fromPath: file.path } : {}), hasUnsavedEdits: !unchangedDraft && draft !== content }, nextSources };
+            return { result: { path, ...(path !== file.path ? { fromPath: file.path } : {}), hasUnsavedEdits: !unchangedDraft && draft !== content }, nextSources,
+                ...(path !== file.path ? { cardSync: { removed: new Set([file.path]) } } : {}) };
         },
     });
     if (!saved.committed) {

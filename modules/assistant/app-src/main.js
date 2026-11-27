@@ -17,13 +17,12 @@ import {
     createAgentAdapter,
 } from '../../agent-core/provider-config.js';
 import { buildWorkspaceUserContextTextForState } from './context/current-context.js';
-import { readableCardWorkspacePath } from '../../card-workspace/paths.js';
+import { readableCardWorkspacePath, storedCardWorkspacePath } from '../../card-workspace/paths.js';
 import { INVALID_LOOKUP_SCOPE, describeInvalidLookupScope } from '../shared/lookup-scope.js';
 import { normalizeMemoryFiles } from './memory/memory-files.js';
 import {
     AGENT_IMAGE_INPUT_COPY,
     DEFAULT_PRESET_NAME,
-    normalizeJsApiPermission,
     normalizeAssistantConfig,
 } from '../../agent-core/config.js';
 import {
@@ -35,12 +34,14 @@ import { createSessionStore } from './state/session-store.js';
 import { createWorkspaceStore } from './workspace/workspace-store.js';
 import { closeAssistantWorkspace } from './workspace/workspace-lifecycle.js';
 import { ACTIVITY_COPY } from './ui/activity-copy.js';
+import { bindComposerActions, confirmCardReload } from './ui/composer.js';
+import { COMPOSER_COPY } from './ui/composer-copy.js';
 import { isAssistantMobileDevice, shouldAutoRevealWorkspace } from '../shared/window-layout.js';
 import { isLocalSourceFileModified } from '../shared/local-workspace-kernel.js';
 import { locateFile } from '../../card-workspace/files.js';
 import { COPY as CARD_COPY } from '../../card-workspace/copy.js';
 import { createAttachmentsManager } from './attachments.js';
-import { applyWorkspaceLayout, renderAppChrome, renderContextHint, resolveWorkspaceWidth } from './ui/app-chrome.js';
+import { applyWorkspaceLayout, renderAppChrome, resolveWorkspaceWidth } from './ui/app-chrome.js';
 import { createSettingsPopoverGroup } from './ui/settings-popover-group.js';
 import { bindDeliveryPanel } from '../plugins/delivery/panel.js';
 import { deliverySettingsForRun, loadDeliverySettings, saveDeliverySettings } from '../plugins/delivery/settings.js';
@@ -98,6 +99,7 @@ const state = {
     configLoadError: '',
     configDraft: null,
     configDirty: false,
+    permissionMode: null,
     runtime: null,
     workspaceDrafts: {},
     pendingApproval: null,
@@ -340,7 +342,6 @@ function renderWorkspaceOnly() {
         disabled: state.isBusy || state.isClosingAssistant,
         onEditorSelectionChange: handleWorkspaceEditorSelectionChange,
     });
-    renderContextHint(root, state);
 }
 
 function normalizeSkillFiles(skillFiles = []) {
@@ -419,7 +420,6 @@ function setWorkspacePanelMode(mode = 'workspace', options = {}) {
     }
     if (options.render !== false) {
         renderWorkspaceOnly();
-        renderContextHint(document.getElementById(ROOT_ID), state);
     }
 }
 
@@ -713,8 +713,7 @@ function openVariableWorkbench(path, tab) {
 function openWorkspacePanelTarget(targetPath = '') {
     const normalizedPath = String(targetPath || '').trim().replace(/\\/g, '/');
     if (!normalizedPath) {
-        openWorkspace(state.selectedFilePath);
-        return true;
+        return openWorkspace();
     }
     if (normalizedPath.startsWith('memory/') || normalizedPath.startsWith('skills/')) {
         const opened = selectSkillFile(normalizedPath);
@@ -963,7 +962,6 @@ const localSourcesManager = createLocalSourcesManager({
     },
     onWorkspaceSelectionChanged: () => {
         clearWorkspaceSelectionContext();
-        renderContextHint(document.getElementById(ROOT_ID), state);
     },
     post,
     callHostTool: (...args) => workspaceToolBridge.callHostTool?.(...args),
@@ -1053,14 +1051,10 @@ function getApiSummary() {
     return { presetName, model: state.config?.presets?.[presetName]?.model || '' };
 }
 
-function isJsApiPermissionEnabled() {
-    return normalizeJsApiPermission(state.config?.jsApiPermission) === 'allow';
-}
-
 function getEnabledToolDefinitions(options = {}) {
     const role = options.role === 'delegate' ? 'delegate' : 'main';
     const providerConfig = getActiveProviderConfig(role === 'delegate' ? { role: 'delegate' } : {});
-    return getAssistantToolDefinitions({ providerConfig, jsApiEnabled: isJsApiPermissionEnabled(),
+    return getAssistantToolDefinitions({ providerConfig,
         imageInput: options.imageInput ?? settingsPanel.isImageInputEnabled({ role }), role, skillIds: options.skillIds || [] });
 }
 
@@ -1104,7 +1098,7 @@ function createAdapter(providerConfig = getActiveProviderConfig()) {
 function getInjectedSystemPrompt({ role = 'main', imageInput = settingsPanel.isImageInputEnabled({ role }) } = {}) {
     const identityContent = String(state.runtime?.identityContent || '').trim();
     const skillsPromptSummary = String(state.runtime?.skillsPromptSummary || '').trim();
-    const permissionPrompt = buildPermissionModePrompt(state.config?.permissionMode, state.config?.jsApiPermission);
+    const permissionPrompt = buildPermissionModePrompt(state.permissionMode);
     const sections = [SYSTEM_PROMPT, buildImageInputPrompt(imageInput)];
     if (permissionPrompt) {
         sections.push(permissionPrompt);
@@ -1161,7 +1155,6 @@ function resolveTextareaSelectionLines(value = '', selectionStart = 0, selection
 
 function handleWorkspaceEditorSelectionChange(payload = {}) {
     const filePath = String(payload.filePath || '').trim();
-    const root = document.getElementById(ROOT_ID);
     const activeFilePath = state.workspacePanelMode === 'memory'
         ? String(state.selectedSkillFilePath || '').trim()
         : String(state.selectedFilePath || '').trim();
@@ -1184,13 +1177,11 @@ function handleWorkspaceEditorSelectionChange(payload = {}) {
             const prevSelectionContext = normalizeWorkspaceSelectionContext(state.workspaceSelectionContext);
             if (JSON.stringify(prevSelectionContext) !== JSON.stringify(nextSelectionContext)) {
                 state.workspaceSelectionContext = nextSelectionContext;
-                renderContextHint(root, state);
             }
             return;
         }
         if (state.workspaceSelectionContext?.text) {
             clearWorkspaceSelectionContext();
-            renderContextHint(root, state);
             return;
         }
         return;
@@ -1202,7 +1193,6 @@ function handleWorkspaceEditorSelectionChange(payload = {}) {
     if (!selectedText) {
         if (state.workspaceSelectionContext?.text) {
             clearWorkspaceSelectionContext();
-            renderContextHint(root, state);
         }
         return;
     }
@@ -1219,7 +1209,6 @@ function handleWorkspaceEditorSelectionChange(payload = {}) {
         return;
     }
     state.workspaceSelectionContext = nextSelectionContext;
-    renderContextHint(root, state);
 }
 
 function normalizeExternalEditorContext(payload = null) {
@@ -1323,13 +1312,12 @@ const runtime = createAssistantRuntime({
     normalizeThoughtBlocks,
     normalizeSlashCommand,
     normalizeSlashSkillTrigger,
-    shouldRequireSlashCommandApproval: (command) => shouldRequireSlashCommandApproval(command, state.config?.permissionMode),
+    shouldRequireSlashCommandApproval: (command) => shouldRequireSlashCommandApproval(command, state.permissionMode),
     buildSlashApprovalResult,
     buildJsApiApprovalResult,
     isAbortError,
     createAdapter,
     getToolDefinitions: getEnabledToolDefinitions,
-    isJsApiEnabled: isJsApiPermissionEnabled,
     getActiveProviderConfig,
     getDelegateProviderConfig: () => getActiveProviderConfig({ role: 'delegate' }),
     getSystemPrompt: getInjectedSystemPrompt,
@@ -1379,6 +1367,55 @@ function applyConfig(config) {
     state.configDirty = false;
     requestConfigFormSync();
     render();
+}
+
+function changeComposerPermission(permissionMode) {
+    if (permissionMode === state.permissionMode) return;
+    state.permissionMode = permissionMode;
+    post('xb-assistant:set-permission', { permissionMode });
+    render();
+}
+
+async function reloadCurrentCard(run) {
+    const requestType = WORKSPACE_MESSAGE_TYPES.CARD_RELOAD;
+    const signal = run.controller.signal;
+    const preview = await callHostTool(TOOL_NAMES.CARD_FILES, { action: 'prepare' }, { runId: run.id, requestType, signal });
+    try {
+        const dialog = document.getElementById('xb-assistant-card-reload-dialog');
+        if (!await confirmCardReload(dialog, preview, signal)) return;
+        const card = await runtime.loadCurrentCard(run, options =>
+            callHostTool(TOOL_NAMES.CARD_FILES, { action: 'apply', id: preview.id }, { ...options, requestType }));
+        openWorkspacePanelTarget(storedCardWorkspacePath(`${card.root}card.json`));
+        if (card.warnings?.length) showToast(card.warnings.map(item => item.message).join('\n'));
+    } finally {
+        post('xb-assistant:discard-card-reload', { id: preview.id });
+    }
+}
+
+async function executeComposerAction(action) {
+    if (state.isBusy || state.isPreparingRun || state.isClearingConversation || state.isClosingAssistant) return;
+    const run = { id: createRequestId('composer'), controller: new AbortController(), toolRequestIds: new Set(),
+        workspaceBaseline: captureRunWorkspaceBaseline() };
+    state.activeRun = run;
+    state.isBusy = true;
+    state.progressLabel = action === 'card' ? COMPOSER_COPY.loadingCard : ACTIVITY_COPY.compacting;
+    state.autoScroll = true;
+    resetMessageWindow(state);
+    render();
+    try {
+        if (action === 'card') {
+            if (!await flushPendingWorkspaceChanges()) return;
+            await reloadCurrentCard(run);
+        } else await runtime.compactConversation(run);
+    } catch (error) {
+        if (!error.compactionReported && !isAbortError(error) && !run.controller.signal.aborted) showToast(describeError(error));
+        await persistSession();
+    } finally {
+        if (state.activeRun === run) state.activeRun = null;
+        state.isBusy = false;
+        state.progressLabel = '';
+        render();
+    }
 }
 
 async function createAssistantRun() {
@@ -1530,6 +1567,8 @@ function render() {
 
 function bindEvents(root) {
     bindContextMeter(root);
+    bindComposerActions(root, { state, loadCard: () => executeComposerAction('card'),
+        compact: () => executeComposerAction('compact'), changePermission: changeComposerPermission });
     const input = root.querySelector('#xb-assistant-input');
     const imageInput = root.querySelector('#xb-assistant-image-input');
     const localFileInput = root.querySelector('#xb-assistant-local-file-input');
@@ -1547,9 +1586,6 @@ function bindEvents(root) {
     let workspaceResizeStartWidth = 0;
     let workspaceResizeLastWidth = Number(state.workspaceWidth) || 520;
     const selectionDocument = root.ownerDocument || document;
-    const refreshContextHint = () => {
-        renderContextHint(root, state);
-    };
     const isSelectionInsideWorkspace = (selection) => !!(
         selection
         && workspacePanel
@@ -1578,7 +1614,6 @@ function bindEvents(root) {
         if (selection.isCollapsed) {
             if (selectionInsideWorkspace && state.workspaceSelectionContext?.text) {
                 clearWorkspaceSelectionContext();
-                refreshContextHint();
             }
             return;
         }
@@ -1589,7 +1624,6 @@ function bindEvents(root) {
         if (!selectedText) {
             if (state.workspaceSelectionContext?.text) {
                 clearWorkspaceSelectionContext();
-                refreshContextHint();
             }
             return;
         }
@@ -1598,7 +1632,6 @@ function bindEvents(root) {
         if (!anchorRow || !focusRow) {
             if (state.workspaceSelectionContext?.text) {
                 clearWorkspaceSelectionContext();
-                refreshContextHint();
             }
             return;
         }
@@ -1618,7 +1651,6 @@ function bindEvents(root) {
             return;
         }
         state.workspaceSelectionContext = nextSelectionContext;
-        refreshContextHint();
     };
     const resizeComposer = () => {
         input.style.height = 'auto';
@@ -2089,6 +2121,12 @@ window.addEventListener('message', (event) => {
         return;
     }
 
+    if (data.type === 'xb-assistant:permission') {
+        state.permissionMode ??= data.payload.permissionMode;
+        render();
+        return;
+    }
+
     if (data.type === 'xb-assistant:compose') {
         const input = document.querySelector('#xb-assistant-input');
         const text = String(data.payload?.text || '').trim();
@@ -2160,7 +2198,6 @@ window.addEventListener('message', (event) => {
 
     if (data.type === 'xb-assistant:editor-context') {
         state.externalEditorContext = normalizeExternalEditorContext(data.payload);
-        renderContextHint(document.getElementById(ROOT_ID), state);
         return;
     }
 

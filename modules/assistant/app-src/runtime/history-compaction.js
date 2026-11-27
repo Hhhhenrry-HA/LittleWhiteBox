@@ -166,7 +166,7 @@ export function createHistoryCompactionController(deps) {
         const tools = options.requestTools ?? getToolDefinitions();
         updateContextStats(original, tools);
         const before = state.contextStats.usedTokens;
-        if (before <= compactionThreshold()) return original;
+        if (!options.manual && before <= compactionThreshold()) return original;
 
         const limit = requestInputLimit();
         const checkLimit = used => {
@@ -180,7 +180,10 @@ export function createHistoryCompactionController(deps) {
         checkLimit(fixed);
         const costs = mapMessageCosts(original, estimateMessageTokenCosts(original, tools, providerConfig));
         const tailCapacity = Math.max(0, limit - fixed - (providerConfig.maxTokens || 0));
-        const { archived, retained, priorCount } = selectCompactionRange(context, costs.slice(costs.length - context.length), limit, tailCapacity, pinnedMessages);
+        const recentStart = context.findLastIndex(message => message.role === 'user');
+        const { archived, retained, priorCount } = options.manual
+            ? { archived: context.slice(0, Math.max(0, recentStart)), retained: context.slice(Math.max(0, recentStart)), priorCount: Math.max(0, recentStart) }
+            : selectCompactionRange(context, costs.slice(costs.length - context.length), limit, tailCapacity, pinnedMessages);
         if (!archived.length || skippedThrough.get(adapter) === archived.at(-1)) {
             checkLimit(before);
             return original;

@@ -6,6 +6,7 @@ export const WORKSPACE_RECORD_ID = 'main';
 export function normalizeWorkspaceState(value = {}) {
     return {
         localSources: normalizeLocalSources(value.localSources),
+        ...(value.deletedCardFiles?.length ? { deletedCardFiles: value.deletedCardFiles } : {}),
         ...normalizeWorkspaceUiState(value),
     };
 }

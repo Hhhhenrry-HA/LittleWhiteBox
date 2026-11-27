@@ -57,9 +57,9 @@ test('provider-style delegate receipts enable tools locally, while coordination 
     for (const tool of [...LIVE_PAGE_SKILL.tools, ...SKILL_MANAGEMENT_SKILL.tools]) assert.ok(enabled.includes(tool));
 });
 
-test('skill activation preserves execution permission filtering and installed skill bodies are readable', async () => {
-    const tools = names(getAssistantToolDefinitions({ skillIds: BUILTIN_SKILLS.map(skill => skill.id), jsApiEnabled: false }));
-    assert.ok(!tools.includes(TOOL_NAMES.RUN_JAVASCRIPT_API));
+test('skill activation retains the JS tool and installed skill bodies are readable', async () => {
+    const tools = names(getAssistantToolDefinitions({ skillIds: BUILTIN_SKILLS.map(skill => skill.id) }));
+    assert.ok(tools.includes(TOOL_NAMES.RUN_JAVASCRIPT_API));
     assert.ok(tools.includes(TOOL_NAMES.CARD_FILES));
     for (const skill of BUILTIN_SKILLS) {
         const body = await readFile(new URL('../../../' + skill.path, import.meta.url), 'utf8');

@@ -48,6 +48,23 @@ export function injectAssistantStyles(rootId) {
             overflow-x: hidden;
         }
         #${rootId} { width: 100%; height: 100%; overflow: hidden; box-sizing: border-box; background: var(--xb-assistant-surface); }
+        .xb-assistant-card-reload-dialog {
+            box-sizing: border-box; width: min(420px, calc(100% - 32px)); max-height: calc(100% - 32px);
+            padding: 22px; border: 1px solid var(--xb-assistant-border); border-radius: 16px;
+            background: var(--xb-assistant-surface); color: var(--xb-assistant-text);
+            box-shadow: 0 16px 48px var(--xb-assistant-shadow); overflow: auto; overflow-wrap: anywhere;
+        }
+        .xb-assistant-card-reload-dialog::backdrop { background: rgba(47, 43, 38, .34); }
+        .xb-assistant-card-reload-dialog h2 { margin: 0; font-size: 17px; line-height: 1.45; }
+        .xb-assistant-card-reload-dialog p { margin: 14px 0 6px; color: var(--xb-assistant-text-soft); }
+        .xb-assistant-card-reload-dialog ul { margin: 0; padding-inline-start: 20px; max-height: 30vh; overflow: auto; }
+        .xb-assistant-card-reload-dialog form { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+        .xb-assistant-card-reload-dialog button {
+            min-height: 40px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--xb-assistant-border);
+            font: inherit; color: inherit; background: var(--xb-assistant-surface-soft); cursor: pointer;
+        }
+        .xb-assistant-card-reload-dialog button[value="reload"] { background: var(--xb-assistant-accent-strong); color: var(--xb-assistant-surface); }
+        .xb-assistant-card-reload-dialog button:focus-visible { outline: 2px solid var(--xb-assistant-accent); outline-offset: 2px; }
         .xb-assistant-shell {
             position: relative;
             display: grid;
@@ -303,8 +320,7 @@ export function injectAssistantStyles(rootId) {
             transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
         }
         .xb-assistant-config input:focus,
-        .xb-assistant-config select:focus,
-        .xb-assistant-compose textarea:focus {
+        .xb-assistant-config select:focus {
             outline: none;
             border-color: rgba(167, 95, 67, 0.42);
             background: var(--xb-assistant-surface);
@@ -465,7 +481,7 @@ export function injectAssistantStyles(rootId) {
             animation: xb-assistant-spin 0.85s linear infinite;
         }
         .xb-assistant-toolbar button:hover,
-        .xb-assistant-compose button:hover {
+        .xb-assistant-compose #xb-assistant-send:hover:not(:disabled) {
             background: var(--xb-assistant-accent);
         }
         .xb-assistant-toolbar button.is-active {
@@ -1787,8 +1803,8 @@ export function injectAssistantStyles(rootId) {
         }
         .xb-assistant-compose {
             --xb-assistant-compose-size: 40px;
+            --xb-assistant-compose-control-padding: 8px;
             display: grid;
-            gap: 10px;
             margin-top: 2px;
             background: var(--xb-assistant-surface);
             border-radius: 0;
@@ -1803,9 +1819,101 @@ export function injectAssistantStyles(rootId) {
         }
         .xb-assistant-compose-row {
             display: grid;
-            grid-template-columns: auto minmax(0, 1fr) auto;
-            gap: 8px;
-            align-items: end;
+            gap: 2px;
+            min-width: 0;
+            border: 1px solid var(--xb-assistant-border);
+            border-radius: 22px;
+            background: var(--xb-assistant-surface-soft);
+            padding: 8px;
+        }
+        .xb-assistant-compose-row:focus-within {
+            border-color: color-mix(in srgb, var(--xb-assistant-accent) 55%, transparent);
+        }
+        .xb-assistant-compose-controls {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            min-width: 0;
+        }
+        .xb-assistant-compose .xb-assistant-compose-control {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            box-sizing: border-box;
+            height: var(--xb-assistant-compose-size);
+            min-height: var(--xb-assistant-compose-size);
+            padding: 0 var(--xb-assistant-compose-control-padding);
+            border: 0;
+            border-radius: 10px;
+            box-shadow: none;
+            color: var(--xb-assistant-text-soft);
+            background: transparent;
+            font: inherit;
+            font-size: 13px;
+            line-height: 1;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        .xb-assistant-compose .xb-assistant-compose-control:hover:not(:disabled),
+        .xb-assistant-compose .xb-assistant-compose-control[aria-expanded="true"] {
+            background: var(--xb-assistant-accent-soft);
+            color: var(--xb-assistant-accent-strong);
+        }
+        .xb-assistant-compose :is(button, select):focus-visible {
+            outline: 2px solid var(--xb-assistant-accent);
+            outline-offset: -2px;
+        }
+        .xb-assistant-compose-permission {
+            position: relative;
+            min-width: 0;
+            color: var(--xb-assistant-text-soft);
+        }
+        .xb-assistant-compose-permission:has(select:disabled) {
+            opacity: 0.52;
+        }
+        .xb-assistant-compose-permission:has(option[value="full"]:checked) {
+            color: var(--xb-assistant-accent-strong);
+        }
+        .xb-assistant-compose .xb-assistant-compose-permission select {
+            appearance: none;
+            padding-inline-end: calc(16px + var(--xb-assistant-compose-control-padding));
+            max-width: 100%;
+            width: 100%;
+            color: inherit;
+            text-overflow: ellipsis;
+        }
+        .xb-assistant-compose .xb-assistant-compose-permission select:disabled {
+            cursor: default;
+        }
+        .xb-assistant-compose-permission > svg {
+            position: absolute;
+            inset-inline-end: var(--xb-assistant-compose-control-padding);
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
+        .xb-assistant-compose .xb-assistant-compose-permission option {
+            color: var(--xb-assistant-text);
+            background: var(--xb-assistant-surface);
+        }
+        .xb-assistant-compose svg {
+            display: block;
+            flex: none;
+            width: 17px;
+            height: 17px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .xb-assistant-compose :is(#xb-assistant-actions-toggle, .xb-assistant-compose-permission) > svg {
+            width: 12px;
+            height: 12px;
+        }
+        @media (pointer: coarse) {
+            .xb-assistant-compose { --xb-assistant-compose-size: 44px; }
         }
         .xb-assistant-compose-main {
             min-width: 0;
@@ -1817,75 +1925,75 @@ export function injectAssistantStyles(rootId) {
             gap: 0;
             min-width: 0;
         }
+        .xb-assistant-compose-extras > :is(.xb-assistant-import-progress, .xb-assistant-draft-gallery) {
+            margin-top: 8px;
+        }
         .xb-assistant-compose-more {
             position: relative;
             flex: 0 0 auto;
         }
-        .xb-assistant-compose-row > button,
-        .xb-assistant-compose .xb-assistant-compose-menu-toggle {
+        .xb-assistant-compose #xb-assistant-compose-menu-toggle,
+        .xb-assistant-compose #xb-assistant-send {
             width: var(--xb-assistant-compose-size);
             min-width: var(--xb-assistant-compose-size);
             height: var(--xb-assistant-compose-size);
             min-height: var(--xb-assistant-compose-size);
             padding: 0;
-            border-radius: 10px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
-            line-height: 1;
-            font-weight: 600;
         }
-        #xb-assistant-send {
-            font-size: 16px;
+        .xb-assistant-compose #xb-assistant-send {
+            margin-inline-start: auto;
+            border-radius: 50%;
+        }
+        .xb-assistant-compose #xb-assistant-send svg {
+            width: 19px;
+            height: 19px;
+            stroke-width: 2.2;
         }
         .xb-assistant-compose-menu {
             position: absolute;
-            left: 0;
-            bottom: calc(100% + 10px);
-            min-width: 168px;
-            max-width: min(240px, calc(100vw - 32px));
-            padding: 8px;
-            border-radius: 16px;
-            background: rgba(255, 255, 255, 0.98);
-            border: 1px solid rgba(67, 55, 43, 0.10);
-            box-shadow: 0 18px 36px rgba(67, 55, 43, 0.16);
-            backdrop-filter: blur(12px);
+            inset-inline-start: 0;
+            bottom: calc(100% + 6px);
+            box-sizing: border-box;
+            width: max-content;
+            min-width: 160px;
+            max-width: min(240px, calc(100vw - 84px));
+            padding: 4px;
+            border-radius: 12px;
+            background: var(--xb-assistant-surface);
+            border: 1px solid var(--xb-assistant-border);
+            box-shadow: 0 6px 20px var(--xb-assistant-shadow);
             display: grid;
-            gap: 4px;
+            gap: 2px;
             z-index: 15;
         }
-        .xb-assistant-compose-menu[hidden] {
+        .xb-assistant-compose-menu[hidden],
+        .xb-assistant-compose .xb-assistant-compose-menu-item[hidden] {
             display: none;
         }
-        .xb-assistant-compose-menu-item {
+        .xb-assistant-compose .xb-assistant-compose-menu-item {
             display: flex;
             align-items: center;
             gap: 10px;
             width: 100%;
-            min-height: 40px;
-            padding: 0 12px;
+            min-height: var(--xb-assistant-compose-size);
+            padding: 4px 10px;
             border: none;
-            border-radius: 12px;
+            border-radius: 8px;
             background: transparent;
-            color: #3a352f;
+            color: var(--xb-assistant-text);
             cursor: pointer;
             font: inherit;
             font-size: 13px;
-            font-weight: 600;
-            text-align: left;
+            text-align: start;
         }
-        .xb-assistant-compose-menu-item:hover:not(:disabled) {
-            background: rgba(167, 95, 67, 0.10);
+        .xb-assistant-compose .xb-assistant-compose-menu-item:hover:not(:disabled) {
+            background: var(--xb-assistant-accent-soft);
         }
-        .xb-assistant-compose-menu-item:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        .xb-assistant-compose-menu-icon {
-            flex: 0 0 auto;
-            font-size: 16px;
-            line-height: 1;
+        .xb-assistant-compose-menu-item svg {
+            color: var(--xb-assistant-text-soft);
         }
         .xb-assistant-compose-menu-label {
             min-width: 0;
@@ -1895,37 +2003,17 @@ export function injectAssistantStyles(rootId) {
             display: block;
             min-height: var(--xb-assistant-compose-size);
             max-height: min(160px, 32vh);
-            padding: 8px 12px;
+            padding: 8px;
             line-height: 1.375;
             resize: none;
             max-width: 100%;
             overflow-x: hidden;
-            border-radius: 16px;
-            background: var(--xb-assistant-surface-soft);
+            border: 0;
+            border-radius: 12px;
+            box-shadow: none;
+            background: transparent;
         }
-        .xb-assistant-context-hint {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 10px;
-        }
-        .xb-assistant-context-hint[hidden] {
-            display: none;
-        }
-        .xb-assistant-context-hint-item {
-            max-width: 100%;
-            padding: 6px 10px;
-            border: none;
-            border-radius: 999px;
-            background: var(--xb-assistant-accent-soft);
-            color: var(--xb-assistant-accent-strong);
-            font-size: 12px;
-            font-weight: 600;
-            line-height: 1.4;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
+        .xb-assistant-compose textarea:focus { outline: none; }
         .xb-assistant-import-progress {
             display: grid;
             gap: 6px;
@@ -2094,11 +2182,6 @@ export function injectAssistantStyles(rootId) {
             .xb-assistant-compose {
                 padding: 0 12px;
                 padding-bottom: calc(12px + env(safe-area-inset-bottom));
-            }
-            .xb-assistant-compose-menu {
-                left: 0;
-                min-width: 180px;
-                max-width: min(240px, calc(100vw - 40px));
             }
             .xb-assistant-toolbar {
                 gap: 8px;

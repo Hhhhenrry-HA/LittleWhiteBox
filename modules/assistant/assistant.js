@@ -10,7 +10,8 @@ import { ARGUMENT_TYPE, SlashCommandArgument, SlashCommandNamedArgument } from "
 import { SlashCommandParser } from "../../../../../slash-commands/SlashCommandParser.js";
 import { extensionFolderPath } from "../../core/constants.js";
 import { isTrustedIframeEvent, postToIframe } from "../../core/iframe-messaging.js";
-import { AssistantStorage } from "../../core/server-storage.js";
+import { AssistantPermissionStorage, AssistantStorage } from "../../core/server-storage.js";
+import { createAssistantPermissionPreference } from './shared/permission-settings.js';
 import { createAssistantHostWindow } from "./assistant-host-window.js";
 import { shouldAutoRevealWorkspace } from './shared/window-layout.js';
 import { TOOL_NAMES } from "./app-src/tooling.js";
@@ -46,8 +47,6 @@ import {
     AGENT_SETTINGS_CONFIG_VERSION,
     DEFAULT_PRESET_NAME,
     buildDefaultPreset,
-    normalizeJsApiPermission,
-    normalizePermissionMode,
     normalizeAssistantSettings,
     normalizePresetName,
 } from "../agent-core/config.js";
@@ -55,6 +54,7 @@ import { createPlanLedger, isPlanToolName } from "../agent-core/plan-ledger.js";
 import {
     loadSharedAgentSettings,
     saveSharedAgentSettings,
+    SHARED_AGENT_SETTINGS_KEY,
 } from "../agent-core/settings-repository.js";
 import { plansTable as assistantPlansTable } from "./shared/session-db.js";
 import {
@@ -132,6 +132,8 @@ let settingsCache = null;
 let settingsLoaded = false;
 let localSourcesCache = [];
 let editorContextCache = null;
+let pendingCardReload = null;
+const assistantPermission = createAssistantPermissionPreference(AssistantPermissionStorage, () => AssistantStorage.getStrict(SHARED_AGENT_SETTINGS_KEY));
 let localSourcesToolRuntime = null;
 let assistantFrameReady = false;
 let pendingOpenSettingsReveal = false;
@@ -270,8 +272,6 @@ function buildRuntimeConfig() {
         updatedAt: Number(settings.updatedAt) || 0,
         provider: currentPreset.provider || 'openai-compatible',
         workspaceFileName: settings.workspaceFileName || DEFAULT_WORKSPACE_FILE,
-        jsApiPermission: normalizeJsApiPermission(settings.jsApiPermission),
-        permissionMode: normalizePermissionMode(currentPreset.permissionMode),
         currentPresetName: settings.currentPresetName || DEFAULT_PRESET_NAME,
         delegatePresetName: settings.delegatePresetName || settings.currentPresetName || DEFAULT_PRESET_NAME,
         delegateConfig: settings.delegateConfig || {},
@@ -3347,6 +3347,30 @@ function closeAssistant() {
     assistantFrameReady = false;
     pendingOpenSettingsReveal = false;
     pendingDraftMessage = '';
+    pendingCardReload = null;
+}
+
+async function reloadCardFromComposer(iframe, args, requestId, options) {
+    const { prepareCardReload, applyCardReload } = await import('../card-workspace/service.js');
+    const { signal, onLocalSourcesUpdated } = options;
+    if (args.action === 'prepare') {
+        pendingCardReload = null;
+        const plan = await prepareCardReload(signal);
+        signal.throwIfAborted();
+        if (!iframe.isConnected) throw new Error('tool_aborted');
+        pendingCardReload = { iframe, id: requestId, plan };
+        return { id: requestId, name: plan.selected.name, loaded: plan.loaded, drafts: plan.drafts };
+    }
+    const pending = pendingCardReload;
+    if (args.action !== 'apply' || pending?.iframe !== iframe || pending.id !== args.id) throw new Error('tool_aborted');
+    pendingCardReload = null;
+    const card = await applyCardReload(pending.plan, signal);
+    const { localSources } = await workspaceRepository.readWorkspace();
+    const workspace = getLocalSourcesToolRuntime();
+    await workspace.hydrateLocalSources(localSources);
+    onLocalSourcesUpdated(localSources, workspace.getWorkspaceState());
+    if (editorContextCache?.source === 'card-files') clearAssistantEditorContext();
+    return card;
 }
 
 async function handleIframeMessage(event) {
@@ -3359,6 +3383,9 @@ async function handleIframeMessage(event) {
     switch (type) {
         case 'xb-assistant:ready': {
             assistantFrameReady = true;
+            observeBackgroundTask(assistantPermission.read().then(permissionMode => {
+                if (iframe.isConnected) postToIframe(iframe, { type: 'xb-assistant:permission', payload: { permissionMode } });
+            }), { source: import.meta.url, operation: 'loadAssistantPermission' });
             await pushAssistantConfigToIframe();
             postEditorContextToIframe();
             revealDraftMessage();
@@ -3395,7 +3422,6 @@ async function handleIframeMessage(event) {
             const next = normalizeAssistantSettings({
                 ...current,
                 workspaceFileName: normalizeWorkspaceName(patch.workspaceFileName || current.workspaceFileName),
-                jsApiPermission: normalizeJsApiPermission(patch.jsApiPermission ?? current.jsApiPermission),
                 ...normalizeWebSettings(patch, current),
                 currentPresetName: normalizePresetName(patch.currentPresetName || current.currentPresetName),
                 delegatePresetName: normalizePresetName(patch.delegatePresetName || current.delegatePresetName || patch.currentPresetName || current.currentPresetName),
@@ -3433,6 +3459,13 @@ async function handleIframeMessage(event) {
             }
             break;
         }
+        case 'xb-assistant:set-permission': {
+            await assistantPermission.select(payload?.permissionMode);
+            break;
+        }
+        case 'xb-assistant:discard-card-reload':
+            if (pendingCardReload?.iframe === iframe && pendingCardReload.id === payload?.id) pendingCardReload = null;
+            break;
         case 'xb-assistant:get-host-request-headers':
             replyAssistantHostResult(String(payload?.requestId || ''), {
                 ok: true,
@@ -3447,6 +3480,7 @@ async function handleIframeMessage(event) {
             await getLocalSourcesToolRuntime().flush();
             replyAssistantHostResult(String(payload?.requestId || ''), { ok: true });
             break;
+        case WORKSPACE_MESSAGE_TYPES.CARD_RELOAD:
         case 'xb-assistant:tool-call': {
             const requestId = payload?.requestId || '';
             const toolName = payload?.name || '';
@@ -3467,7 +3501,19 @@ async function handleIframeMessage(event) {
             try {
                 let workspaceObservations = [];
                 let workspaceConflictSnapshot;
-                let result = isPlanToolName(toolName)
+                const onLocalSourcesUpdated = (nextSources, workspaceState) => {
+                    postToIframe(iframe, {
+                        type: LOCAL_SOURCES_UPDATED,
+                        payload: {
+                            localSources: nextSources,
+                            workspaceVersion: workspaceState?.version,
+                            kernelVersion: workspaceState?.kernelVersion || WORKSPACE_KERNEL_VERSION,
+                        },
+                    });
+                };
+                let result = type === WORKSPACE_MESSAGE_TYPES.CARD_RELOAD
+                    ? await reloadCardFromComposer(iframe, args, requestId, { signal: controller.signal, onLocalSourcesUpdated })
+                    : isPlanToolName(toolName)
                     ? await executeToolCall(toolName, args, {
                         signal: controller.signal,
                         assistantSessionId,
@@ -3478,16 +3524,7 @@ async function handleIframeMessage(event) {
                         isRecipientActive: () => iframe.isConnected,
                         onWorkspaceObserved: observations => { workspaceObservations = observations; },
                         onWorkspaceConflict: snapshot => { workspaceConflictSnapshot = snapshot; },
-                        onLocalSourcesUpdated: (nextSources, workspaceState) => {
-                            postToIframe(getAssistantHostWindow().getIframe(), {
-                                type: LOCAL_SOURCES_UPDATED,
-                                payload: {
-                                    localSources: nextSources,
-                                    workspaceVersion: workspaceState?.version,
-                                    kernelVersion: workspaceState?.kernelVersion || WORKSPACE_KERNEL_VERSION,
-                                },
-                            });
-                        },
+                        onLocalSourcesUpdated,
                     });
                 if (toolName === TOOL_NAMES.WRITE_IDENTITY) {
                     const identityFile = await readIdentityNote({}, {

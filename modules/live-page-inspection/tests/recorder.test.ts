@@ -49,10 +49,9 @@ test('console capture does not call getters, swallow events or replace console r
     assert.equal(entries.length, 2);
 });
 
-test('read-only page tool remains offered without JS permission and reports cancellation honestly', () => {
-    const definitions = getAssistantToolDefinitions({ jsApiEnabled: false, skillIds: [LIVE_PAGE_SKILL.id] });
+test('read-only page tool is enabled by its skill and reports cancellation honestly', () => {
+    const definitions = getAssistantToolDefinitions({ skillIds: [LIVE_PAGE_SKILL.id] });
     assert.ok(definitions.some(tool => tool.function.name === TOOL_NAMES.INSPECT_PAGE));
-    assert.ok(!definitions.some(tool => tool.function.name === TOOL_NAMES.RUN_JAVASCRIPT_API));
     assert.equal(toolOutcome({ error: 'tool_aborted' }, TOOL_NAMES.INSPECT_PAGE).status, 'stopped');
     assert.equal(toolOutcome({ error: 'tool_timeout' }, TOOL_NAMES.INSPECT_PAGE).status, 'failed');
 });

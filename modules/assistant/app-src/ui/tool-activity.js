@@ -26,6 +26,9 @@ export function toolOutcome(result, toolName = result?.toolName) {
                 ? { status: 'failed', note: ACTIVITY_COPY.searchTimeout }
                 : { status: 'stopped', note: '' };
         }
+        if (toolName === TOOL_NAMES.CARD_FILES || toolName === TOOL_NAMES.READ_SKILL) {
+            return { status: 'unconfirmed', note: shortText(result.message) };
+        }
         return { status: 'unconfirmed', note: [TOOL_NAMES.RUN_JAVASCRIPT_API, TOOL_NAMES.DRAW_IMAGE].includes(toolName) ? shortText(result.message) : '' };
     }
     if (result.skipped === true || result.approved === false) return { status: 'skipped', note: '' };

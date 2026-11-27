@@ -45,8 +45,34 @@ function harness(respond) {
         updateContextStats(messages) { state.contextStats = { usedTokens: estimateConversationTokens({ messages, providerConfig }) }; },
     });
     const adapter = { chat: async request => { requests.push(request); return respond(request, requests.length); } };
-    return { state, requests, stages, run: signal => controller.ensureContextBudget(adapter, signal), saves: () => saves };
+    return { state, requests, stages, run: (signal, options) => controller.ensureContextBudget(adapter, signal, options), saves: () => saves };
 }
+
+// Manual action contracts (paid requests / lost conversation): below the threshold,
+// archive only older turns; no older turn means no request; failure leaves history intact.
+test('manual compaction works below threshold and preserves the latest user and complete tool group', async () => {
+    const h = harness(() => summaryResult('memory'));
+    h.state.messages[0].content = 'earlier '.repeat(100);
+    const latest = structuredClone(h.state.messages.slice(4));
+    await h.run(new AbortController().signal);
+    assert.equal(h.requests.length, 0);
+    await h.run(new AbortController().signal, { manual: true });
+    assert.equal(h.requests.length, 1);
+    assert.deepEqual(h.state.messages, latest);
+    await h.run(new AbortController().signal, { manual: true });
+    assert.equal(h.requests.length, 1);
+});
+
+for (const cancel of [false, true]) test(`manual compaction keeps history on ${cancel ? 'cancellation' : 'failure'}`, async () => {
+    const abort = new AbortController();
+    const h = harness(() => { if (cancel) abort.abort(); throw new Error('fixture failure'); });
+    h.state.messages[0].content = 'earlier '.repeat(100);
+    const original = structuredClone(h.state.messages);
+    await assert.rejects(h.run(abort.signal, { manual: true }));
+    assert.deepEqual(h.state.messages, original);
+    assert.equal(currentHistorySummary(h.state), 'original memory');
+    assert.equal(h.saves(), 0);
+});
 
 for (const reason of ['stop', 'tool_calls', undefined]) {
     test(`one checkpoint for all chunks after ${reason || 'missing completion'}; next call continues with original user and tool pair`, async () => {

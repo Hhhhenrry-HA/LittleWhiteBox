@@ -156,7 +156,6 @@ declare module '*.js' {
     export const AGENT_SETTINGS_CONFIG_VERSION: number;
     export function normalizeAgentSettings(settings: Record<string, unknown>): Record<string, unknown>;
     export function normalizeAgentConfig(settings: Record<string, unknown>): Record<string, unknown>;
-    export function normalizeJsApiPermission(value: unknown): string;
     export function normalizePresetName(value: unknown): string;
     export function loadSharedAgentSettings(options?: Record<string, unknown>): Promise<Record<string, unknown>>;
     export function saveSharedAgentSettings(

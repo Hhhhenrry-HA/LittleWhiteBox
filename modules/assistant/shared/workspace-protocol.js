@@ -5,6 +5,7 @@ export const WORKSPACE_MESSAGE_TYPES = Object.freeze({
     UPDATED: 'xb-assistant:local-sources-updated',
     FLUSH: 'xb-assistant:workspace-flush',
     DIRECTORY_CHANGED: 'xb-assistant:workspace-directory-changed',
+    CARD_RELOAD: 'xb-assistant:card-reload',
 });
 
 export const WORKSPACE_SOURCES = Object.freeze({

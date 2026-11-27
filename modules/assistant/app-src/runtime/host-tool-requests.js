@@ -63,13 +63,13 @@ export function createHostToolRequestController(deps) {
         });
     }
 
-    function postHostToolCall(requestId, name, args, workspaceMeta) {
+    function postHostToolCall(requestId, name, args, workspaceMeta, requestType = 'xb-assistant:tool-call') {
         console.info('[Assistant][ToolCall] iframe->host', {
             requestId,
             toolName: String(name || ''),
             args: summarizeToolArguments(args),
         });
-        post('xb-assistant:tool-call', {
+        post(requestType, {
             requestId,
             name,
             arguments: args,
@@ -167,7 +167,7 @@ export function createHostToolRequestController(deps) {
                 if (settled) return;
                 const workspaceMeta = buildWorkspaceRequestMeta(name, args, options);
                 dispatched = true;
-                postHostToolCall(requestId, name, args, workspaceMeta);
+                postHostToolCall(requestId, name, args, workspaceMeta, options.requestType);
                 options.onDispatched?.();
             };
             void dispatch().catch(finishReject);
