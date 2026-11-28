@@ -65,7 +65,7 @@ export function buildAppMarkup(state) {
                 <div class="xb-assistant-main-body">
                     <section class="xb-assistant-conversation">
                         <section class="xb-assistant-chat-wrap">
-                            <section class="xb-assistant-chat" id="xb-assistant-chat"></section>
+                            <section class="xb-assistant-chat" id="xb-assistant-chat" tabindex="0"><div class="xb-assistant-chat-content"></div></section>
                             <div class="xb-assistant-scroll-helpers" id="xb-assistant-scroll-helpers">
                                 <button id="xb-assistant-scroll-top" type="button" class="xb-assistant-scroll-btn" title="回到顶部" aria-label="回到顶部">▲</button>
                                 <button id="xb-assistant-scroll-bottom" type="button" class="xb-assistant-scroll-btn" title="回到底部" aria-label="回到底部">▼</button>

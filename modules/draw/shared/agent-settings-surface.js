@@ -52,6 +52,7 @@ export function buildDrawAgentSettingsSurfaceMarkup(state = {}) {
         return `<div class="draw-agent-settings-state is-error"><i class="fa-solid fa-triangle-exclamation"></i><span>${escapeHtml(state.loadError)}</span><button type="button" data-draw-agent-settings-retry>重新读取</button></div>`;
     }
     return buildAgentSettingsPanelMarkup({
+            directProviderLabel: '直连 API',
             configSave: state.configSave,
             runtimeText: '',
             inlineToastText: state.inlineToastText,

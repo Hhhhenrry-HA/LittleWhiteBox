@@ -1,6 +1,4 @@
-// Google's documented marker for manually constructed function-call history:
-// https://ai.google.dev/gemini-api/docs/generate-content/thought-signatures?hl=en
-export const GOOGLE_SYNTHETIC_HISTORY_SIGNATURE = 'skip_thought_signature_validator';
+import { GOOGLE_SYNTHETIC_HISTORY_SIGNATURE } from '../../../shared/host-llm/google-tool-history.js';
 
 /** Google replay data is derived from the standard call, never a separate history source. */
 export function buildScenePlannerGoogleHistory(message) {

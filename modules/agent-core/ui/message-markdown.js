@@ -448,7 +448,8 @@ export function enhanceMarkdownCodeBlocks(rootNode, options = {}) {
             event.preventDefault();
             event.stopPropagation();
             const codeText = pre.querySelector('code')?.textContent || pre.textContent || '';
-            const copied = await copyText(codeText, doc);
+            // A template's nodes belong to the live chat document only after mounting.
+            const copied = await copyText(codeText, copyButton.ownerDocument);
             copyButton.textContent = copied ? '✓' : '!';
             copyButton.title = copied ? copySuccessTitle : copyFailureTitle;
             copyButton.setAttribute('aria-label', copied ? copySuccessTitle : copyFailureTitle);

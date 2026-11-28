@@ -6,6 +6,46 @@ import { setHostChatCompletionsRequestHeadersProvider } from '../../../shared/ho
 import { normalizeAgentPreset } from '../config.js';
 import { resolveActiveProviderConfig } from '../provider-resolution.js';
 
+test('OpenAI model listing and chat share the same base without rewriting saved addresses', async t => {
+    setHostChatCompletionsRequestHeadersProvider(() => ({}));
+    t.after(() => setHostChatCompletionsRequestHeadersProvider(null));
+    for (const provider of ['openai-compatible', 'openai-responses', 'sillytavern-openai-compatible']) {
+        for (const [path, expectedPath, preResolved] of [
+            ['', '/v1', false], ['/','/v1', false], ['/v1', '/v1', false], ['/v3', '/v3', false],
+            ['/gateway/openai', '/gateway/openai', false], ['', '', true],
+        ]) {
+            await t.test(`${provider}/${path || '(domain)'}${preResolved ? ' (explicit unversioned base)' : ''}`, async t => {
+                const origin = 'https://relay.test';
+                const baseUrl = origin + path;
+                const expectedBase = origin + expectedPath;
+                const isHosted = provider === 'sillytavern-openai-compatible';
+                const isResponses = provider === 'openai-responses';
+                const endpoint = isResponses ? '/responses' : '/chat/completions';
+                const requests = [];
+                t.mock.method(globalThis, 'fetch', async (url, options) => {
+                    const target = String(url);
+                    const listing = target.endsWith(isHosted ? '/status' : '/models');
+                    const actual = isHosted ? `${JSON.parse(options.body).reverse_proxy}${listing ? '/models' : endpoint}` : target;
+                    requests.push(actual);
+                    if (actual !== expectedBase + (listing ? '/models' : endpoint)) {
+                        return Response.json({ error: { message: 'route not found' } }, { status: 404 });
+                    }
+                    if (listing) return Response.json({ data: [{ id: 'fixture-model' }] });
+                    return Response.json(isResponses
+                        ? { status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: 'OK' }] }] }
+                        : { choices: [{ message: { role: 'assistant', content: 'OK' }, finish_reason: 'stop' }] });
+                });
+                const config = Object.freeze({ provider, baseUrl, model: 'fixture-model', apiKey: 'fixture',
+                    ...(preResolved ? { resolvedBaseUrl: baseUrl } : {}) });
+                assert.deepEqual(await pullModelsForProvider(config, { baseUrlResolved: preResolved }), ['fixture-model']);
+                const adapter = createAgentAdapter(config);
+                assert.equal((await adapter.chat({ messages: [{ role: 'user', content: 'fixture' }] })).text, 'OK');
+                assert.deepEqual(requests, [expectedBase + '/models', expectedBase + endpoint]);
+            });
+        }
+    }
+});
+
 // Google discovery contracts (credential disclosure/protocol failure): selected
 // auth survives saved config; Bearer never duplicates the key in the URL or Google
 // headers; hosted discovery preserves the endpoint/key and generation protocol;

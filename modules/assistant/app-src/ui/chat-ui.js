@@ -70,6 +70,8 @@ export function createChatUi(deps) {
 
     let chatScrollTicking = false;
     let bottomFollowPending = false;
+    let userScrollDirection = 0;
+    let lastChatScrollTop = 0;
     let chatScrollHideTimer = null;
     let renderCache = {
         kind: '',
@@ -78,56 +80,6 @@ export function createChatUi(deps) {
     const projectTools = createToolActivityProjection(getToolActivity, getToolActions);
     const processViews = new WeakMap();
     const appendMessageActions = createMessageActions(state);
-
-    async function copyText(text) {
-        const normalized = String(text || '');
-        if (!normalized) return false;
-
-        try {
-            const textarea = document.createElement('textarea');
-            try {
-                textarea.value = normalized;
-                textarea.setAttribute('readonly', 'readonly');
-                textarea.style.position = 'fixed';
-                textarea.style.left = '0';
-                textarea.style.top = '0';
-                textarea.style.width = '2em';
-                textarea.style.height = '2em';
-                textarea.style.padding = '0';
-                textarea.style.border = '0';
-                textarea.style.outline = '0';
-                textarea.style.boxShadow = 'none';
-                textarea.style.background = 'transparent';
-                textarea.style.opacity = '0';
-                textarea.style.pointerEvents = 'none';
-                textarea.style.fontSize = '16px';
-                document.body.appendChild(textarea);
-                try {
-                    textarea.focus({ preventScroll: true });
-                } catch {
-                    textarea.focus();
-                }
-                textarea.select();
-                textarea.setSelectionRange(0, textarea.value.length);
-                const copied = document.execCommand('copy');
-                if (copied) return true;
-            } finally {
-                textarea.remove();
-            }
-        } catch (caughtError) {
-            console.debug({ source: import.meta.url, operation: "copyText" }, caughtError);
-        }
-
-        try {
-            if (navigator.clipboard?.writeText) {
-                await navigator.clipboard.writeText(normalized);
-                return true;
-            }
-        } catch (caughtError) {
-            console.warn({ source: import.meta.url, operation: "copyText" }, caughtError);
-        }
-        return false;
-    }
 
     function buildTextSignature(text) {
         const value = String(text || '');
@@ -497,7 +449,7 @@ export function createChatUi(deps) {
         return units;
     }
 
-    function createHistoryGateRenderUnit(hiddenBefore = 0) {
+    function createHistoryGateRenderUnit(container, hiddenBefore) {
         const signature = `history-gate:${hiddenBefore}`;
         return {
             key: 'history-gate',
@@ -510,7 +462,8 @@ export function createChatUi(deps) {
                 gate.textContent = `较早记录 ${hiddenBefore} 轮`;
                 gate.addEventListener('click', () => {
                     state.autoScroll = false;
-                    revealOlderMessages(gate.parentElement);
+                    userScrollDirection = 0;
+                    revealOlderMessages(container);
                 });
                 return gate;
             },
@@ -536,15 +489,16 @@ export function createChatUi(deps) {
 
     function renderMessages(container) {
         if (!container) return;
+        const content = container.firstElementChild;
         container.classList.toggle('is-busy', !!state.isBusy);
         if (!state.messages.length && !state.compactions?.some(isTimelineCompaction)) {
             if (renderCache.kind === 'empty') return;
             for (const unit of renderCache.units || []) unit.dispose?.();
-            container.replaceChildren();
+            content.replaceChildren();
             const empty = document.createElement('div');
             empty.className = 'xb-assistant-empty';
             empty.innerHTML = '<h2>你好！我是小白助手</h2><p>我是 SillyTavern 中 LittleWhiteBox（小白X）插件的内置技术支持助手。</p><p>我可以帮你做很多事情，比如：</p><ul><li><strong>解答问题与排查报错</strong>：解答关于 SillyTavern 或小白X插件的代码、设置、模块行为等问题，帮你排查报错。</li><li><strong>编写与创作辅助</strong>：辅助你写角色卡、写插件、写 STscript 脚本、整理设定或构思剧情。</li><li><strong>查询实例状态</strong>：我可以执行斜杠命令，帮你查询当前酒馆的 API、模型、角色状态等实时信息。</li><li><strong>查阅文档与源码</strong>：我可以读取酒馆和插件的前端源码及参考文档，为你提供准确的技术支持。</li></ul><p>另外，如果你希望我以特定的性格、语气和你交流，或者有特定的工作习惯要求，你可以随时告诉我，我可以将这些设定保存到我的专属身份设定文件中跨会话记住。</p><p>今天有什么我可以帮你的吗？</p>';
-            container.appendChild(empty);
+            content.appendChild(empty);
             renderCache = {
                 kind: 'empty',
                 units: [],
@@ -556,7 +510,7 @@ export function createChatUi(deps) {
         const visibleUnitSpecs = collectRenderUnits(messageWindow.visibleStartIndex, messageWindow.visibleEndIndex);
         const unitSpecs = messageWindow.hiddenBefore
             ? [
-                createHistoryGateRenderUnit(messageWindow.hiddenBefore),
+                createHistoryGateRenderUnit(container, messageWindow.hiddenBefore),
                 ...visibleUnitSpecs,
             ]
             : visibleUnitSpecs;
@@ -569,7 +523,7 @@ export function createChatUi(deps) {
         }
 
         const previousScrollTop = container.scrollTop;
-        const nextUnits = applyRenderUnits(container, previousUnits, unitSpecs);
+        const nextUnits = applyRenderUnits(content, previousUnits, unitSpecs);
         renderCache = {
             kind: 'messages',
             units: nextUnits,
@@ -600,11 +554,90 @@ export function createChatUi(deps) {
         }
     }
 
-    function trackChatScroll(container) {
-        if (!container) return;
-        // A short conversation can be at the bottom and inside the history-loading band.
-        state.autoScroll = container.scrollHeight - container.scrollTop - container.clientHeight <= 48;
-        if (!state.autoScroll) revealOlderMessages(container);
+    function atChatBottom(container) {
+        return container.scrollHeight - container.clientHeight - container.scrollTop <= 1;
+    }
+
+    function resumeChatFollowing() {
+        userScrollDirection = 0;
+        state.autoScroll = true;
+    }
+
+    function noteChatScrollInput(container, direction) {
+        userScrollDirection = direction;
+        // The compositor may already have moved the chat before the passive input event.
+        pauseIfChatMovedUp(container);
+        lastChatScrollTop = container.scrollTop;
+    }
+
+    function pauseIfChatMovedUp(container) {
+        if (userScrollDirection < 0 && container.scrollTop < lastChatScrollTop) state.autoScroll = false;
+    }
+
+    function bindChatScrollInput(container) {
+        let touch = null;
+        let scrollbarTop = null;
+        lastChatScrollTop = container.scrollTop;
+        container.addEventListener('wheel', event => {
+            if (!event.defaultPrevented && !event.ctrlKey && !event.shiftKey && Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
+                noteChatScrollInput(container, Math.sign(event.deltaY));
+            }
+        }, { passive: true });
+        container.addEventListener('keydown', event => {
+            if (event.defaultPrevented || event.altKey || event.metaKey
+                || (event.ctrlKey && event.key !== 'Home' && event.key !== 'End')
+                || event.target.closest('input, textarea, select, [contenteditable]')
+                || (event.key === ' ' && event.target.closest('button, summary'))) return;
+            const direction = event.key === ' ' ? (event.shiftKey ? -1 : 1)
+                : ['ArrowUp', 'PageUp', 'Home'].includes(event.key) ? -1
+                    : ['ArrowDown', 'PageDown', 'End'].includes(event.key) ? 1 : 0;
+            if (direction) noteChatScrollInput(container, direction);
+        });
+        container.addEventListener('touchstart', event => {
+            touch = event.touches.length === 1 ? event.touches[0] : null;
+        }, { passive: true });
+        container.addEventListener('touchmove', event => {
+            const point = event.touches.length === 1 ? event.touches[0] : null;
+            if (!event.defaultPrevented && point && touch) {
+                const dy = touch.clientY - point.clientY;
+                if (Math.abs(dy) > Math.abs(touch.clientX - point.clientX)) noteChatScrollInput(container, Math.sign(dy));
+            }
+            touch = point;
+        }, { passive: true });
+        container.addEventListener('pointerdown', event => {
+            scrollbarTop = null;
+            if (event.button !== 0 || event.target !== container || container.offsetWidth <= container.clientWidth) return;
+            const gutter = container.getBoundingClientRect().left + container.clientLeft + container.clientWidth;
+            if (event.clientX >= gutter) scrollbarTop = container.scrollTop;
+        });
+        const trackScroll = () => {
+            if (scrollbarTop !== null && scrollbarTop !== container.scrollTop) {
+                userScrollDirection = Math.sign(container.scrollTop - scrollbarTop);
+                lastChatScrollTop = scrollbarTop;
+                scrollbarTop = container.scrollTop;
+            }
+            pauseIfChatMovedUp(container);
+            if (userScrollDirection > 0 && atChatBottom(container)) resumeChatFollowing();
+            else if (!state.autoScroll && userScrollDirection < 0 && revealOlderMessages(container)) {
+                userScrollDirection = 0;
+                if (scrollbarTop !== null) scrollbarTop = container.scrollTop;
+            }
+            lastChatScrollTop = container.scrollTop;
+        };
+        container.addEventListener('scroll', event => {
+            if (event.target === container) trackScroll();
+            // A nested code pane consumed the input; later chat layout changes are unrelated.
+            else if (container.scrollTop === lastChatScrollTop) userScrollDirection = 0;
+        }, true);
+        container.addEventListener('pointerup', () => {
+            if (scrollbarTop !== null) trackScroll();
+            scrollbarTop = null;
+        });
+        container.addEventListener('pointercancel', () => { scrollbarTop = null; });
+        container.addEventListener('scrollend', () => {
+            userScrollDirection = 0;
+            scrollbarTop = null;
+        });
     }
 
     function followChatToBottom(container) {
@@ -613,12 +646,19 @@ export function createChatUi(deps) {
         // Finish the synchronous render (including the composer) before browser scroll events.
         queueMicrotask(() => {
             bottomFollowPending = false;
-            if (state.autoScroll && container.isConnected) container.scrollTop = container.scrollHeight;
+            // A render can run after the browser moved the chat but before its scroll event.
+            pauseIfChatMovedUp(container);
+            if (state.autoScroll && container.isConnected) {
+                container.scrollTop = container.scrollHeight;
+                lastChatScrollTop = container.scrollTop;
+            }
         });
     }
 
     function scrollChatToTop(container) {
-        if (!container) return;
+        state.autoScroll = false;
+        userScrollDirection = -1;
+        if (revealOlderMessages(container)) userScrollDirection = 0;
         container.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
@@ -670,10 +710,10 @@ export function createChatUi(deps) {
         renderMessages,
         renderApprovalPanel,
         followChatToBottom,
-        trackChatScroll,
+        bindChatScrollInput,
+        resumeChatFollowing,
         scrollChatToTop,
         updateChatScrollButtonsVisibility,
         handleAssistantChatScroll,
-        copyText,
     };
 }

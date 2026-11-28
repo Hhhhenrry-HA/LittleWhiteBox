@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { parseHTML } from 'linkedom';
-import { enhanceHtmlBlocks, renderMarkdownToHtml } from '../ui/message-markdown.js';
+import { enhanceHtmlBlocks, enhanceMarkdownCodeBlocks, renderMarkdownToHtml } from '../ui/message-markdown.js';
 
 // Acceptance (missing or misread chat content): existing underline, image sizes,
 // emoji, code and mixed HTML remain readable, including repeated/partial renders.
@@ -108,6 +108,33 @@ test('a YAML fence starts on the next line without a blank paragraph', () => {
         assert.equal(body.querySelector('h1'), null);
         if (ending) assert.equal(body.lastElementChild.textContent, '后文');
     }
+});
+
+// Clicking a mounted code block must copy only its literal source even without
+// the async Clipboard API (otherwise pasting silently reuses older content).
+test('code copy uses the displayed message document after template adoption', () => {
+    const yaml = 'roles:\n  - name: "小白 & <朋友>"\n';
+    const templateBody = content('说明\n\n```yaml\n' + yaml + '```');
+    enhanceMarkdownCodeBlocks(templateBody);
+    const { document: page } = parseHTML('<html><body></body></html>');
+    const block = templateBody.querySelector('button').parentElement;
+    page.body.appendChild(block);
+    // Linkedom does not implement the browser's cross-document node adoption.
+    for (const node of [block, ...block.querySelectorAll('*')]) node.ownerDocument = page;
+    const createElement = page.createElement.bind(page);
+    page.createElement = tag => {
+        const node = createElement(tag);
+        if (tag === 'textarea') Object.assign(node, { select() {}, setSelectionRange() {} });
+        return node;
+    };
+    let clipboard = 'previous';
+    page.execCommand = command => {
+        if (command !== 'copy') return false;
+        clipboard = page.querySelector('textarea').value;
+        return true;
+    };
+    block.querySelector('button').click();
+    assert.equal(clipboard, yaml);
 });
 
 test('placeholder-looking text remains literal beside real HTML and previews', () => {

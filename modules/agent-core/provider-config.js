@@ -9,6 +9,7 @@ import { SillyTavernGoogleAdapter } from './adapters/sillytavern-google.js';
 import { SillyTavernOpenAICompatibleAdapter } from './adapters/sillytavern-openai-compatible.js';
 import { assertRuntimeReasoning } from './reasoning-capabilities.js';
 import { assertHostChatCompletionsClient } from '../../shared/host-llm/chat-completions/client.js';
+import { resolveOpenAIRequestBaseUrl } from '../../shared/common/openai-url-utils.js';
 
 export * from './provider-resolution.js';
 
@@ -22,25 +23,29 @@ function createSillyTavernAdapter(Adapter, providerConfig, options) {
     );
 }
 
+function withOpenAIRequestBaseUrl(config) {
+    return { ...config, baseUrl: config.resolvedBaseUrl ?? resolveOpenAIRequestBaseUrl(config.baseUrl) };
+}
+
 export function createAgentAdapter(providerConfig = {}, options = {}) {
     assertRuntimeReasoning(providerConfig.reasoning || {});
     switch (providerConfig.provider) {
         case VERTEX_PROVIDER:
             return new GoogleVertexAdapter(providerConfig);
         case 'sillytavern-openai-compatible':
-            return createSillyTavernAdapter(SillyTavernOpenAICompatibleAdapter, providerConfig, options);
+            return createSillyTavernAdapter(SillyTavernOpenAICompatibleAdapter, withOpenAIRequestBaseUrl(providerConfig), options);
         case 'sillytavern-claude':
             return createSillyTavernAdapter(SillyTavernClaudeAdapter, providerConfig, options);
         case 'sillytavern-google':
             return createSillyTavernAdapter(SillyTavernGoogleAdapter, providerConfig, options);
         case 'openai-responses':
-            return new OpenAIResponsesAdapter(providerConfig);
+            return new OpenAIResponsesAdapter(withOpenAIRequestBaseUrl(providerConfig));
         case 'anthropic':
             return new AnthropicAdapter(providerConfig);
         case 'google':
             return new GoogleAdapter(providerConfig);
         case 'openai-compatible':
         default:
-            return new OpenAICompatibleAdapter(providerConfig);
+            return new OpenAICompatibleAdapter(withOpenAIRequestBaseUrl(providerConfig));
     }
 }

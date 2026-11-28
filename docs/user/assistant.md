@@ -40,7 +40,7 @@
 | --- | --- |
 | `已存预设` | 可以存多套配置，用旁边的按钮新增、重命名、保存、删除 |
 | `Provider` | 接口类型，例如 OpenAI 兼容、OpenAI Responses、Anthropic、Google AI、Google Vertex AI，以及沿用酒馆连接的「酒馆 OpenAI 兼容」「酒馆 Claude」「酒馆 Google AI」 |
-| `Base URL` / `API Key` / `Model` | 接口地址、密钥、模型名 |
+| `Base URL` / `API Key` / `Model` | 接口地址、密钥、模型名。OpenAI 渠道只填域名会自动补 `/v1`；已填的路径原样使用。 |
 | `拉取模型` | 从接口读取模型列表，选中后填入；也可以选 `手动填写` 自己输入 |
 | `最大输出 Token` | 单次回复的长度上限，默认 32000 |
 | `Tool 调用格式` | 一般用 `原生 Tool Calling`；模型不支持工具调用时改用 `Tagged JSON 兼容模式` |
@@ -48,6 +48,8 @@
 | `联网渠道（全局）` | 见 [联网](#联网) |
 
 保存时按钮会显示“正在保存配置”，成功后显示“配置已保存”；失败显示“保存失败”，请检查后重试。
+
+**酒馆 1.14.0：** 使用「酒馆 Google AI」遇到工具调用缺少 `thought_signature` 时，可改用「Google AI」直连。要继续走酒馆后端，在酒馆根目录执行 `git apply public/scripts/extensions/third-party/LittleWhiteBox/integrations/sillytavern-1.14/google-tool-signatures.patch` 并重启酒馆。1.18 无需此补丁。
 
 ### 联网
 

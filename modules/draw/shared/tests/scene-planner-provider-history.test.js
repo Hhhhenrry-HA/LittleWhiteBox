@@ -9,7 +9,7 @@ import { OpenAICompatibleAdapter } from '../../../agent-core/adapters/openai-com
 import { buildScenePlannerTask, prepareScenePlannerInput } from '../scene-planner.js';
 import { executePreparedScenePlanner } from '../scene-planner-executor.js';
 import { callDrawScenePlannerAgentRuntime } from '../draw-agent-runtime.js';
-import { GOOGLE_SYNTHETIC_HISTORY_SIGNATURE } from '../scene-planner-messages.js';
+import { GOOGLE_SYNTHETIC_HISTORY_SIGNATURE } from '../../../../shared/host-llm/google-tool-history.js';
 import { addBlock, createCustomBlock, createDefaultLayout } from '../scene-planner-layout.js';
 import { ScenePlannerError } from '../scene-plan-contract.js';
 

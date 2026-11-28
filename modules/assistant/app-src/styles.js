@@ -480,8 +480,7 @@ export function injectAssistantStyles(rootId) {
         .xb-assistant-save-button.is-saving svg {
             animation: xb-assistant-spin 0.85s linear infinite;
         }
-        .xb-assistant-toolbar button:hover,
-        .xb-assistant-compose #xb-assistant-send:hover:not(:disabled) {
+        .xb-assistant-toolbar button:hover {
             background: var(--xb-assistant-accent);
         }
         .xb-assistant-toolbar button.is-active {
@@ -1110,16 +1109,17 @@ export function injectAssistantStyles(rootId) {
             overflow: auto;
             overflow-x: hidden;
             padding: 24px max(24px, calc((100% - var(--xb-assistant-chat-width)) / 2)) 20px;
-            display: grid;
-            grid-template-columns: minmax(0, 1fr);
-            gap: 14px;
-            align-content: start;
-            justify-items: start;
-            grid-auto-rows: max-content;
             width: 100%;
             min-width: 0;
             max-width: 100%;
             overscroll-behavior: contain;
+        }
+        .xb-assistant-chat-content {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 14px;
+            justify-items: start;
+            grid-auto-rows: max-content;
         }
         .xb-assistant-scroll-helpers {
             position: absolute;
@@ -1235,15 +1235,6 @@ export function injectAssistantStyles(rootId) {
             background: transparent;
             padding-inline: 4px;
         }
-        @supports (content-visibility: auto) {
-            .xb-assistant-bubble {
-                content-visibility: auto;
-                contain-intrinsic-size: auto 180px;
-            }
-            .xb-assistant-bubble:last-child {
-                content-visibility: visible;
-            }
-        }
         .xb-assistant-meta-row {
             display: flex;
             align-items: flex-start;
@@ -1310,7 +1301,6 @@ export function injectAssistantStyles(rootId) {
             width: 100%;
             max-width: 100%;
             justify-self: stretch;
-            content-visibility: visible;
         }
         .xb-assistant-bubble.is-editing .xb-assistant-message-actions {
             justify-content: flex-end;
@@ -1944,13 +1934,29 @@ export function injectAssistantStyles(rootId) {
             justify-content: center;
         }
         .xb-assistant-compose #xb-assistant-send {
+            position: relative;
             margin-inline-start: auto;
             border-radius: 50%;
+            background: transparent;
+        }
+        .xb-assistant-compose #xb-assistant-send::before {
+            content: "";
+            position: absolute;
+            inset: 3px;
+            border-radius: inherit;
+            background: var(--xb-assistant-accent-strong);
+            pointer-events: none;
+            transition: background 0.16s ease;
+        }
+        .xb-assistant-compose #xb-assistant-send.is-busy::before {
+            background: #8d442b;
+        }
+        .xb-assistant-compose #xb-assistant-send:hover:not(:disabled)::before {
+            background: var(--xb-assistant-accent);
         }
         .xb-assistant-compose #xb-assistant-send svg {
-            width: 19px;
-            height: 19px;
-            stroke-width: 2.2;
+            position: relative;
+            stroke-width: 2;
         }
         .xb-assistant-compose-menu {
             position: absolute;
@@ -2064,7 +2070,6 @@ export function injectAssistantStyles(rootId) {
             background: linear-gradient(90deg, #c47a58, #9a5a40);
             transition: width 0.12s ease;
         }
-        .xb-assistant-compose button.is-busy { background: #8d442b; }
         .xb-assistant-toast {
             white-space: pre-wrap;
             overflow-wrap: anywhere;

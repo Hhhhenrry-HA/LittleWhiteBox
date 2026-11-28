@@ -1,4 +1,4 @@
-import { getDefaultApiPrefix, hasExplicitApiVersion, resolveApiBaseUrl } from '../../shared/common/openai-url-utils.js';
+import { getDefaultApiPrefix, hasExplicitApiVersion, joinApiUrl, normalizeApiBaseUrl, resolveApiBaseUrl, resolveOpenAIRequestBaseUrl } from '../../shared/common/openai-url-utils.js';
 import { extractModelListIds } from '../../shared/common/model-list.js';
 import {
  HOST_CHAT_COMPLETIONS_SOURCE_CLAUDE, HOST_CHAT_COMPLETIONS_SOURCE_MAKERSUITE,
@@ -45,11 +45,6 @@ function filterModels(models = [], filter = 'chat') {
     });
     return filtered.length ? filtered : normalized;
 }
-function normalizeBaseUrl(rawBaseUrl) {
-    return String(rawBaseUrl || '').trim().replace(/\/+$/, '');
-}
-
-
 function getSillyTavernChatCompletionSource(provider = '') {
     if (provider === 'sillytavern-claude') return HOST_CHAT_COMPLETIONS_SOURCE_CLAUDE;
     if (provider === 'sillytavern-google') return HOST_CHAT_COMPLETIONS_SOURCE_MAKERSUITE;
@@ -61,7 +56,7 @@ function uniqueUrls(urls = []) {
 }
 
 function buildVersionedCandidateUrls(baseUrl, prefix, exact) {
-    const normalized = normalizeBaseUrl(baseUrl);
+    const normalized = normalizeApiBaseUrl(baseUrl);
     if (!normalized) return [];
     if (exact || hasExplicitApiVersion(normalized)) return [`${normalized}/models`];
     return uniqueUrls([`${normalized}${prefix}/models`, `${normalized}/models`]);
@@ -182,8 +177,8 @@ async function pullAnthropicModels(baseUrl, providerConfig, options = {}) {
 
 async function pullSillyTavernClaudeModels(providerConfig, options = {}) {
     const auth = resolveAgentAuth('anthropic', providerConfig.apiKey);
-    const customBaseUrl = normalizeBaseUrl(providerConfig.baseUrl || '');
-    const baseUrl = normalizeBaseUrl(
+    const customBaseUrl = normalizeApiBaseUrl(providerConfig.baseUrl || '');
+    const baseUrl = normalizeApiBaseUrl(
         customBaseUrl || HOST_CHAT_COMPLETIONS_DEFAULT_REVERSE_PROXY[HOST_CHAT_COMPLETIONS_SOURCE_CLAUDE],
     );
 
@@ -222,7 +217,9 @@ export async function pullModelsForProvider(providerConfig, options = {}) {
         const { pullVertexModels } = await import('./adapters/google-vertex.js');
         return pullVertexModels(providerConfig, options);
     }
-    const baseUrl = normalizeBaseUrl(providerConfig.baseUrl || '');
+    const baseUrl = normalizeApiBaseUrl(providerConfig.baseUrl || '');
+    const openAIBaseUrl = options.baseUrlResolved ? baseUrl
+        : providerConfig.resolvedBaseUrl ?? resolveOpenAIRequestBaseUrl(baseUrl);
     const auth = resolveAgentAuth(provider, providerConfig.apiKey);
 
     if (provider === 'sillytavern-claude') {
@@ -240,7 +237,7 @@ export async function pullModelsForProvider(providerConfig, options = {}) {
             googleBearer ? {
                 ...providerConfig,
                 baseUrl: options.baseUrlResolved ? baseUrl : resolveApiBaseUrl(baseUrl, getModelListApiPrefix(providerConfig)),
-            } : providerConfig,
+            } : provider === 'sillytavern-openai-compatible' ? { ...providerConfig, baseUrl: openAIBaseUrl } : providerConfig,
             googleBearer ? HOST_CHAT_COMPLETIONS_SOURCE_OPENAI : getSillyTavernChatCompletionSource(provider),
             { signal: options.signal },
         ));
@@ -272,12 +269,12 @@ export async function pullModelsForProvider(providerConfig, options = {}) {
 
     if (provider === 'openai-responses' && options.viaHost) {
         return filterModels(await fetchHostChatCompletionsModels({
-            ...providerConfig, baseUrl: options.baseUrlResolved ? baseUrl : resolveApiBaseUrl(baseUrl, '/v1'),
+            ...providerConfig, baseUrl: openAIBaseUrl,
         }, HOST_CHAT_COMPLETIONS_SOURCE_OPENAI, { signal: options.signal }), options.filter);
     }
 
     return await tryCandidateFetches({
-        urls: buildVersionedCandidateUrls(baseUrl, '/v1', options.baseUrlResolved),
+        urls: [joinApiUrl(openAIBaseUrl, '/models')],
         requestOptionsList: [{
             headers: {
                 ...auth.headers,

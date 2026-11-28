@@ -1,4 +1,5 @@
 import { resolveApiBaseUrl } from '../../../shared/common/openai-url-utils.js';
+import { GOOGLE_SYNTHETIC_HISTORY_SIGNATURE } from '../../../shared/host-llm/google-tool-history.js';
 import { FunctionCallingConfigMode, GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { buildSamplingParameters } from '../sampling.js';
 import { resolveAgentAuth } from '../provider-auth.js';
@@ -500,7 +501,7 @@ function buildConversation(messages) {
                     ...message.tool_calls.map((toolCall) => ({
                         // Hand-built or cross-provider history has no Gemini signature.
                         // Genuine Google responses use preservedContents above.
-                        thoughtSignature: 'skip_thought_signature_validator',
+                        thoughtSignature: GOOGLE_SYNTHETIC_HISTORY_SIGNATURE,
                         functionCall: {
                             ...(() => {
                                 const providerId = Object.prototype.hasOwnProperty.call(toolCall, 'providerToolCallId')

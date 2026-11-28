@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
+import { GOOGLE_SYNTHETIC_HISTORY_SIGNATURE } from '../../../../shared/host-llm/google-tool-history.js';
 import * as drawRuntime from '../../node-entry.js';
 import {
     beginDrawScenePlannerDiagnostic,
@@ -10,7 +11,6 @@ import { createPreparedScenePlannerTask } from '../scene-planner-executor.js';
 import {
     assertScenePlannerMessages,
     buildScenePlannerGoogleHistory,
-    GOOGLE_SYNTHETIC_HISTORY_SIGNATURE,
 } from '../scene-planner-messages.js';
 import { createSubmitScenePlanTool } from '../scene-plan-tool.js';
 import { createSceneSource } from '../scene-source.js';

@@ -22,18 +22,20 @@ export const TOOL_MODE_OPTIONS = Object.freeze([
 export const PROVIDER_OPTIONS = Object.freeze([
     { value: 'openai-responses', label: 'OpenAI Responses' },
     { value: 'openai-compatible', label: 'OpenAI 兼容' },
-    { value: 'sillytavern-openai-compatible', label: '酒馆 OpenAI 兼容' },
-    { value: 'sillytavern-claude', label: '酒馆 Claude' },
-    { value: 'sillytavern-google', label: '酒馆 Google AI' },
+    { value: 'sillytavern-openai-compatible', label: '酒馆 OpenAI 兼容', directProvider: 'openai-compatible' },
+    { value: 'sillytavern-claude', label: '酒馆 Claude', directProvider: 'anthropic' },
+    { value: 'sillytavern-google', label: '酒馆 Google AI', directProvider: 'google' },
     { value: 'anthropic', label: 'Anthropic' },
     { value: 'google', label: 'Google AI' },
     { value: VERTEX_PROVIDER, label: VERTEX_LABEL },
 ]);
 
+export function getDirectProvider(provider) {
+    return PROVIDER_OPTIONS.find(item => item.value === provider)?.directProvider;
+}
+
 export function isSillyTavernProvider(provider = '') {
-    return provider === 'sillytavern-openai-compatible'
-        || provider === 'sillytavern-claude'
-        || provider === 'sillytavern-google';
+    return Boolean(getDirectProvider(provider));
 }
 
 export function normalizeTemperature(value, fallback = 1) {

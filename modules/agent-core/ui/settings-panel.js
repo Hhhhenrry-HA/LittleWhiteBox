@@ -33,6 +33,7 @@ import { SAMPLING_PARAMETERS, normalizeSampling } from '../sampling.js';
 import { readSamplingForm, syncSamplingForm, bindSamplingSettings, validateSamplingForm } from './sampling-settings.js';
 import { normalizeVertexConfig, vertexRuntimeFields, VERTEX_PROVIDER } from '../vertex-config.js';
 import { readVertexSettings, syncVertexSettings, bindVertexSettings } from './vertex-settings.js';
+import { syncHostedProviderHint } from './settings-markup.js';
 
 function refillSelect(select, options, placeholderLabel = '') {
     select.replaceChildren();
@@ -705,6 +706,7 @@ export function createAgentSettingsPanel(deps = {}) {
         }
         presetNameInput.value = draft.presetDraftName || draft.currentPresetName || DEFAULT_PRESET_NAME;
         if (providerSelect) providerSelect.value = provider;
+        syncHostedProviderHint(providerSelect);
         if (baseUrlInput) baseUrlInput.value = draft.baseUrl || '';
         if (modelInput) modelInput.value = draft.model || '';
         if (apiKeyInput) apiKeyInput.value = draft.apiKey || '';
@@ -726,6 +728,7 @@ export function createAgentSettingsPanel(deps = {}) {
             pulledSelect.value = pulledModels.includes(draft.model) ? draft.model : '';
         }
         if (delegateProviderSelect) delegateProviderSelect.value = delegateProvider;
+        syncHostedProviderHint(delegateProviderSelect);
         if (delegateBaseUrlInput) delegateBaseUrlInput.value = draft.delegateBaseUrl || '';
         if (delegateModelInput) delegateModelInput.value = draft.delegateModel || '';
         if (delegateApiKeyInput) delegateApiKeyInput.value = draft.delegateApiKey || '';

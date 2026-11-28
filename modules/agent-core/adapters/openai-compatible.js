@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { GOOGLE_SYNTHETIC_HISTORY_SIGNATURE, googleSignatureFromToolId } from '../../../shared/host-llm/google-tool-history.js';
 import { buildSamplingParameters } from '../sampling.js';
 import { resolveAgentAuth } from '../provider-auth.js';
 import { attachRequestInspection, readResponseCompletion } from '../runtime/response-completion.js';
@@ -103,8 +104,6 @@ function normalizeToolCallsForReplay(toolCalls = [], fallbackPrefix = 'openai-to
         .filter(Boolean);
 }
 
-const THOUGHT_SIGNATURE_ID_MARKER = '__thought__';
-
 function hasThoughtSignatureMatching(value, predicate) {
     if (Array.isArray(value)) {
         return value.some((item) => hasThoughtSignatureMatching(item, predicate));
@@ -112,8 +111,8 @@ function hasThoughtSignatureMatching(value, predicate) {
     if (!isPlainObject(value)) return false;
     // Some relays carry the signature only in the ID; keep both its bytes and
     // the complete parallel batch opaque, just like an explicit signature field.
-    const signedIdOffset = typeof value.id === 'string' ? value.id.indexOf(THOUGHT_SIGNATURE_ID_MARKER) : -1;
-    if (signedIdOffset >= 0 && predicate(value.id.slice(signedIdOffset + THOUGHT_SIGNATURE_ID_MARKER.length))) return true;
+    const idSignature = googleSignatureFromToolId(value.id);
+    if (idSignature !== undefined && predicate(idSignature)) return true;
     return Object.entries(value).some(([key, nestedValue]) => {
         const normalizedKey = String(key || '').replace(/[_-]/g, '').toLowerCase();
         if (normalizedKey === 'thoughtsignature') return predicate(nestedValue);
@@ -413,10 +412,6 @@ export function normalizeFinalClaudeLikeMessageRole(messages = [], model = '') {
     ));
 }
 
-// Google's documented marker for function calls that carry no model-issued signature.
-// https://ai.google.dev/gemini-api/docs/thought-signatures
-const GOOGLE_UNSIGNED_CALL_SIGNATURE = 'skip_thought_signature_validator';
-
 export const TOOL_HISTORY_REASONING_MISSING = Object.freeze({
     code: 'AGENT_TOOL_HISTORY_REASONING_MISSING',
     message: 'DeepSeek 思考模式下调用工具时，历史里每次工具调用都必须带非空思考内容；'
@@ -439,8 +434,8 @@ function signUnsignedGeminiToolCalls(message, model = '') {
                 // Google OpenAI-compatible uses snake_case; Gemini relay conversions also use camelCase.
                 // Both carry the same marker. Real signed batches never pass through this projection.
                 google: { ...toolCall.extra_content?.google,
-                    thought_signature: GOOGLE_UNSIGNED_CALL_SIGNATURE,
-                    thoughtSignature: GOOGLE_UNSIGNED_CALL_SIGNATURE },
+                    thought_signature: GOOGLE_SYNTHETIC_HISTORY_SIGNATURE,
+                    thoughtSignature: GOOGLE_SYNTHETIC_HISTORY_SIGNATURE },
             },
         })),
     };

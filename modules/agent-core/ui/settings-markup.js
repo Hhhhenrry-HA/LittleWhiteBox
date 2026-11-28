@@ -1,7 +1,7 @@
 import { buildWebSettingsMarkup } from './web-settings.js';
 import { buildSamplingSettingsMarkup } from './sampling-settings.js';
 import { buildVertexSettingsMarkup } from './vertex-settings.js';
-import { PROVIDER_OPTIONS } from '../provider-resolution.js';
+import { getDirectProvider, getProviderLabel, PROVIDER_OPTIONS } from '../provider-resolution.js';
 import { AGENT_IMAGE_INPUT_COPY, AGENT_PERMISSION_MODE_LABEL } from '../config.js';
 function escapeHtml(text = '') {
     return String(text || '')
@@ -10,6 +10,43 @@ function escapeHtml(text = '') {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+}
+
+export function getProviderOptionGroups(directLabel = '前端直连') {
+    return [
+        { label: directLabel, options: PROVIDER_OPTIONS.filter(item => !item.directProvider) },
+        { label: '酒馆后端', options: PROVIDER_OPTIONS.filter(item => item.directProvider) },
+    ];
+}
+
+export function syncHostedProviderHint(select) {
+    if (!select) return;
+    const direct = getDirectProvider(select.value);
+    const id = `${select.id}-hint`;
+    let hint = select.nextElementSibling?.id === id ? select.nextElementSibling : null;
+    if (!direct) {
+        hint?.remove();
+        select.removeAttribute('aria-describedby');
+        return;
+    }
+    if (!hint) {
+        hint = select.ownerDocument.createElement('small');
+        hint.id = id;
+        select.after(hint);
+        select.setAttribute('aria-describedby', id);
+    }
+    hint.textContent = `酒馆后端的兼容性因版本而异。遇到 400 错误时，可试试直连「${getProviderLabel(direct)}」。`;
+}
+
+function buildProviderMarkup(scope, directLabel) {
+    const id = scope === 'delegate' ? 'xb-assistant-delegate-provider' : 'xb-assistant-provider';
+    const providerOptionsMarkup = getProviderOptionGroups(directLabel).map(({ label, options }) => `<optgroup label="${escapeHtml(label)}">${
+        options.map(item => `<option value="${escapeHtml(item.value)}">${escapeHtml(item.label)}</option>`).join('')
+    }</optgroup>`).join('');
+    return `<label>
+        <span>连接方式</span>
+        <select id="${id}">${providerOptionsMarkup}</select>
+    </label>`;
 }
 
 function buildModelListAuthMarkup(scope = 'main') {
@@ -193,12 +230,7 @@ export function buildAgentSettingsPanelMarkup(options = {}) {
                         <button id="xb-assistant-delegate-save" type="button" class="xb-assistant-icon-button ${saveButton.className}" title="${saveButton.title}" aria-label="${saveButton.title}" ${saveDisabled}>${buildPresetActionIcon(saveIcon)}</button>
                     </div>
                 </div>
-                <label>
-                    <span>Provider</span>
-                    <select id="xb-assistant-delegate-provider">
-                        ${PROVIDER_OPTIONS.map(item => `<option value="${item.value}">${item.label}</option>`).join('')}
-                    </select>
-                </label>
+                ${buildProviderMarkup('delegate', options.directProviderLabel)}
                 ${buildBaseUrlMarkup('delegate')}
                 <label>
                     <span>API Key</span>
@@ -273,12 +305,7 @@ export function buildAgentSettingsPanelMarkup(options = {}) {
             ${tabsMarkup}
             <div class="xb-assistant-config-page" data-config-page-panel="main" ${mainActive ? '' : 'hidden'}>
             ${presetRowMarkup}
-            <label>
-                <span>Provider</span>
-                <select id="xb-assistant-provider">
-                    ${PROVIDER_OPTIONS.map(item => `<option value="${item.value}">${item.label}</option>`).join('')}
-                </select>
-            </label>
+            ${buildProviderMarkup('main', options.directProviderLabel)}
             ${buildBaseUrlMarkup()}
             <label>
                 <span>API Key</span>

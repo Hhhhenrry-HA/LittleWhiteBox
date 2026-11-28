@@ -13,7 +13,7 @@
 .text-api svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .text-api label { display: flex; flex-direction: column; gap: 7px; margin-bottom: 15px; font-size: 13px; }
 .text-api input:not([type=checkbox]), .text-api select { width: 100%; min-width: 0; height: 40px; padding: 8px 10px; color: inherit; background: var(--bg2, var(--surface, transparent)); border: 1px solid var(--bdr, var(--border, #8885)); border-radius: 6px; font: inherit; }
-.text-api option { color: var(--txt, var(--text, #222)); background: var(--bg2, var(--surface, #fff)); }
+.text-api :is(option, optgroup) { color: var(--txt, var(--text, #222)); background: var(--bg2, var(--surface, #fff)); }
 .text-api .text-api-inline { display: flex; align-items: center; gap: 8px; }
 .text-api .text-api-inline input { flex: 1; }
 .text-api .text-api-inline button { flex: none; }

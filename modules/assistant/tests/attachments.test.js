@@ -28,7 +28,7 @@ test('disabled uploads retain user text, context and filenames without modifying
 });
 
 test('draft and cached chat previews update the disabled notice without hiding or deleting images', t => {
-    const { document } = parseHTML('<html><body><main></main><section></section></body></html>');
+    const { document } = parseHTML('<html><body><main><div></div></main><section></section></body></html>');
     const previousDocument = globalThis.document;
     globalThis.document = document;
     document.getSelection = () => ({ isCollapsed: true });

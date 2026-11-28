@@ -61,7 +61,7 @@ export const MULTIMODAL_COPY = Object.freeze({
     duplicate: '复制', copyName: name => `${name} 副本`,
     presetSelected: name => `已切换到「${name}」`, presetDeleted: '已删除预设', presetRenamed: '预设已重命名',
     topSystem: '开场补充', sceneRules: '场景要求', tagGuideContent: '画面描述指南', fieldDescriptions: '场景字段说明',
-    promptCustomization: '正文、角色描述、画风、排除项和修改要求一起交给 Agent 改编。遇到露骨场景，会改画成衣着完整、拥抱等非露骨画面；聊天正文保持原样。',
+    promptCustomization: '保留正文中的衣着和动作，只调整超出画面尺度的部分。',
     fixedSystemRule: '固定系统规则（只读）', requestPreview: '请求预览',
     importPrompt: '导入为新预设', exportPrompt: '导出当前预设', restorePrompt: '全部恢复默认',
     resetPromptConfirm: '恢复当前提示词模板和请求结构的默认值？保存后生效。',

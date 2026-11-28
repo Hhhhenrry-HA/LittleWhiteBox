@@ -1,0 +1,16 @@
+diff --git a/src/prompt-converters.js b/src/prompt-converters.js
+--- a/src/prompt-converters.js
++++ b/src/prompt-converters.js
+@@ -531,5 +531,6 @@
+                         functionCall: {
+                             name: toolCall.function.name,
+                             args: tryParse(toolCall.function.arguments) ?? toolCall.function.arguments,
+                         },
++                        ...(toolCall.signature ? { thoughtSignature: toolCall.signature } : {}),
+                     });
+@@ -553,4 +554,4 @@
+             const skipSignatureMagic = 'skip_thought_signature_validator';
+             parts.filter(p => p.functionCall).forEach(p => {
+-                p.thoughtSignature = skipSignatureMagic;
++                p.thoughtSignature ??= skipSignatureMagic;
+             });

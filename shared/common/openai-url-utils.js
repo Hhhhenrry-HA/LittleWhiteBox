@@ -27,6 +27,12 @@ export function resolveApiBaseUrl(url, defaultPrefix = '') {
     return `${baseUrl}${prefix}`;
 }
 
+export function resolveOpenAIRequestBaseUrl(url) {
+    const baseUrl = normalizeApiBaseUrl(url);
+    // Only an origin gets the default; any configured path is the relay's API base.
+    return /^https?:\/\/[^/?#]+$/i.test(baseUrl) ? `${baseUrl}${getDefaultApiPrefix('openai')}` : baseUrl;
+}
+
 export function joinApiUrl(baseUrl, path) {
     const normalizedBase = normalizeApiBaseUrl(baseUrl);
     const normalizedPath = String(path || '').startsWith('/') ? String(path || '') : `/${String(path || '')}`;

@@ -41,7 +41,7 @@ test('user and assistant rerolls target the same user across tools, approvals an
 
 // Acceptance: cached bubbles revoke old destructive actions after a new turn and restore them after deletion (cost: deleting the wrong turn).
 test('rendered action eligibility follows appended and removed turns instead of stale bubble caches', () => {
-    const { document, window } = parseHTML('<html><body><div id="chat"></div></body></html>');
+    const { document, window } = parseHTML('<html><body><div id="chat"><div></div></div></body></html>');
     const previousDocument = globalThis.document;
     globalThis.document = document;
     document.getSelection = () => ({ isCollapsed: true });

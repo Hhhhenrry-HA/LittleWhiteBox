@@ -12,6 +12,7 @@ import { isModelRefusal } from './runtime/model-retry.js';
 import { settleAssistantRunFailure } from './runtime/run-failure.js';
 import { buildCurrentPlansContextText } from '../../agent-core/current-plans.js';
 import { mergeThoughtBlocks } from '../../agent-core/runtime/protocol.js';
+import { copyText } from '../../agent-core/ui/message-markdown.js';
 import { resetMessageWindow } from '../../agent-core/ui/message-windowing.js';
 import {
     createAgentAdapter,
@@ -21,10 +22,10 @@ import { readableCardWorkspacePath, storedCardWorkspacePath } from '../../card-w
 import { INVALID_LOOKUP_SCOPE, describeInvalidLookupScope } from '../shared/lookup-scope.js';
 import { normalizeMemoryFiles } from './memory/memory-files.js';
 import {
-    AGENT_IMAGE_INPUT_COPY,
     DEFAULT_PRESET_NAME,
     normalizeAssistantConfig,
 } from '../../agent-core/config.js';
+import { describeModelRequestFailure } from './runtime/model-request-error.js';
 import {
     normalizeSlashCommand,
     normalizeSlashSkillTrigger,
@@ -1084,11 +1085,11 @@ const {
     renderMessages,
     renderApprovalPanel,
     followChatToBottom,
-    trackChatScroll,
+    bindChatScrollInput,
+    resumeChatFollowing,
     scrollChatToTop,
     updateChatScrollButtonsVisibility,
     handleAssistantChatScroll,
-    copyText,
 } = chatUi;
 
 function createAdapter(providerConfig = getActiveProviderConfig()) {
@@ -1399,7 +1400,7 @@ async function executeComposerAction(action) {
     state.activeRun = run;
     state.isBusy = true;
     state.progressLabel = action === 'card' ? COMPOSER_COPY.loadingCard : ACTIVITY_COPY.compacting;
-    state.autoScroll = true;
+    resumeChatFollowing();
     resetMessageWindow(state);
     render();
     try {
@@ -1450,16 +1451,17 @@ async function executeAssistantRun(run) {
     state.isBusy = true;
     state.currentRound = 0;
     state.progressLabel = '生成中';
-    state.autoScroll = true;
+    resumeChatFollowing();
     resetMessageWindow(state);
     render();
 
     try {
         await runAssistantLoop(run);
     } catch (error) {
-        const failure = isAbortError(error) ? run.cancelNotice : error.compactionReported ? '' : describeError(error);
+        const notice = isAbortError(error) ? run.cancelNotice : error.compactionReported ? ''
+            : describeModelRequestFailure(describeError(error), error, run);
         settleAssistantRunFailure({ messages: state.messages,
-            notice: failure && run.requestHadImages && !isAbortError(error) ? `${failure}\n\n${AGENT_IMAGE_INPUT_COPY.requestFailed}` : failure,
+            notice,
             pushMessage, persistSession });
     } finally {
         if (state.activeRun?.id === run.id) {
@@ -1731,15 +1733,22 @@ function bindEvents(root) {
     });
 
     const chat = root.querySelector('#xb-assistant-chat');
+    chat.addEventListener('click', event => {
+        if (!event.target.closest('summary, button[aria-expanded]')) return;
+        // A user opening a disclosure is reading at this position, even at the old bottom.
+        state.autoScroll = false;
+        requestAnimationFrame(() => {
+            if (chat.scrollHeight - chat.clientHeight - chat.scrollTop <= 1) state.autoScroll = true;
+        });
+    }, true);
     const chatResizeObserver = new ResizeObserver(() => {
         followChatToBottom(chat);
         updateChatScrollButtonsVisibility(root);
     });
     chatResizeObserver.observe(chat);
-    chat.addEventListener('scroll', () => {
-        trackChatScroll(chat);
-        handleAssistantChatScroll(root);
-    });
+    chatResizeObserver.observe(chat.firstElementChild);
+    bindChatScrollInput(chat);
+    chat.addEventListener('scroll', () => handleAssistantChatScroll(root));
 
     const flashMessageActionButton = (messageIndex, action, copied) => {
         if (!Number.isInteger(messageIndex) || messageIndex < 0 || !action) return;
@@ -1795,7 +1804,7 @@ function bindEvents(root) {
         if (requiredAction !== action && state.editingMessageIndex !== messageIndex) return;
 
         if (action === 'copy') {
-            const copied = await copyText(deliveredText(state.messages, messageIndex) ?? String(message.content || ''));
+            const copied = await copyText(deliveredText(state.messages, messageIndex) ?? String(message.content || ''), actionButton.ownerDocument);
             flashMessageActionButton(messageIndex, action, copied);
             showToast(copied ? MESSAGE_ACTION_COPY.copied : MESSAGE_ACTION_COPY.error.label);
             return;
@@ -1958,12 +1967,11 @@ function bindEvents(root) {
     });
 
     root.querySelector('#xb-assistant-scroll-top').addEventListener('click', () => {
-        state.autoScroll = false;
         scrollChatToTop(root.querySelector('#xb-assistant-chat'));
     });
 
     root.querySelector('#xb-assistant-scroll-bottom').addEventListener('click', () => {
-        state.autoScroll = true;
+        resumeChatFollowing();
         followChatToBottom(root.querySelector('#xb-assistant-chat'));
         updateChatScrollButtonsVisibility(root);
     });
@@ -2023,7 +2031,7 @@ function bindEvents(root) {
         try {
             const run = await createAssistantRun();
             if (!run) return;
-            state.autoScroll = true;
+            resumeChatFollowing();
             resetMessageWindow(state);
             pushMessage({ role: 'user', content: value, attachments });
             input.value = '';

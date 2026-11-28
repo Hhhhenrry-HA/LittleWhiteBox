@@ -13,7 +13,7 @@ import { createHostToolRequestController } from '../app-src/runtime/host-tool-re
 // User contract: history can preview a returned image, opens its renamed file,
 // and cannot keep downloading a deleted workspace image. No provider is called.
 test('chat image previews follow workspace move/delete and release object URLs', async t => {
-    const { document } = parseHTML('<html><body><main></main></body></html>');
+    const { document } = parseHTML('<html><body><main><div></div></main></body></html>');
     const previousDocument = globalThis.document; globalThis.document = document;
     document.getSelection = () => ({ isCollapsed: true });
     const created = [], revoked = [], opened = [];

@@ -1,4 +1,5 @@
 import { createIdentifier } from '../../../shared/common/identifier.js';
+import { GOOGLE_SYNTHETIC_HISTORY_SIGNATURE, googleSignatureFromToolId } from '../../../shared/host-llm/google-tool-history.js';
 import { readResponseCompletion } from '../runtime/response-completion.js';
 import { buildSamplingParameters } from '../sampling.js';
 import {
@@ -89,6 +90,16 @@ function buildMediaPartFromInlineData(inlineData = {}) {
     return null;
 }
 
+// Gemini requires a signature on the first call in a parallel batch.
+function signHostToolBatch(calls) {
+    if (calls?.length && !calls[0].signature) calls[0].signature = GOOGLE_SYNTHETIC_HISTORY_SIGNATURE;
+}
+
+function openAiGoogleSignature(call) {
+    const google = call.extra_content?.google;
+    return google?.thought_signature || google?.thoughtSignature || googleSignatureFromToolId(call.id);
+}
+
 function buildHostGoogleMessageFromContent(content = {}, index = 0) {
     const normalized = normalizeContent(content);
     if (!normalized.parts.length) return null;
@@ -135,6 +146,7 @@ function buildHostGoogleMessageFromContent(content = {}, index = 0) {
     });
 
     if (toolCalls.length) {
+        signHostToolBatch(toolCalls);
         hostMessage.content.push({
             type: 'tool_calls',
             tool_calls: toolCalls,
@@ -162,6 +174,17 @@ function buildHostGoogleMessages(task = {}) {
         }
         const cloned = cloneJson(message) || {};
         delete cloned.providerPayload;
+        if (cloned.role === 'assistant' && cloned.tool_calls?.length) {
+            const savedCalls = message.providerPayload?.openaiCompatibleMessage?.tool_calls;
+            const signedBatch = savedCalls?.some(openAiGoogleSignature) ? savedCalls : [];
+            for (const call of cloned.tool_calls) {
+                const original = signedBatch.find(saved => saved.id === call.id);
+                if (original) call.function = cloneJson(original.function);
+                const signature = openAiGoogleSignature(original || call);
+                if (signature && !call.signature) call.signature = signature;
+            }
+            signHostToolBatch(cloned.tool_calls);
+        }
         messages.push(cloned);
     });
     const systemPrompt = typeof task.systemPrompt === 'string' ? task.systemPrompt : '';

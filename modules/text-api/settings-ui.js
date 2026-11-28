@@ -1,8 +1,7 @@
 import './settings-ui.css';
 import { createIdentifier } from '../../shared/common/identifier.js';
-import { buildPresetActionIcon, syncConfigSaveButton } from '../agent-core/ui/settings-markup.js';
+import { buildPresetActionIcon, getProviderOptionGroups, syncConfigSaveButton, syncHostedProviderHint } from '../agent-core/ui/settings-markup.js';
 import { createSaveFeedback } from '../agent-core/ui/save-feedback.js';
-import { PROVIDER_OPTIONS } from '../agent-core/provider-resolution.js';
 import { samplingParametersFor } from '../agent-core/sampling.js';
 import { resolveReasoningCapability, getReasoningModeOptions, getReasoningEffortOptions } from '../agent-core/reasoning-capabilities.js';
 import { getModelListAuthOptions, normalizeModelListAuth, supportsModelListAuth } from '../agent-core/model-list-auth.js';
@@ -68,10 +67,17 @@ export function mountTextApiSettings(root, { feature, namespace }) {
         node.oninput = () => { source[key] = type === 'number' ? (node.value === '' ? null : Number(node.value)) : node.value; revision++; feedback(''); };
         return node;
     }
-    function select(options, value, change) {
-        const node = element('select');
+    function appendOptions(container, options) {
         for (const option of options) {
-            const item = element('option', option.label); item.value = option.value; item.disabled = !!option.disabled; node.append(item);
+            const item = element('option', option.label); item.value = option.value; item.disabled = !!option.disabled; container.append(item);
+        }
+    }
+    function select(options, value, change, groups = []) {
+        const node = element('select');
+        appendOptions(node, options);
+        for (const { label, options: groupedOptions } of groups) {
+            const group = element('optgroup'); group.label = label;
+            appendOptions(group, groupedOptions); node.append(group);
         }
         node.value = value ?? '';
         node.onchange = () => { revision++; feedback(''); change(node.value); };
@@ -194,7 +200,13 @@ export function mountTextApiSettings(root, { feature, namespace }) {
             if (feature === 'planner') fields.append(element('p', COPY.plannerKey, 'text-api-status'));
             return;
         }
-        control(COPY.provider, select([{ value: HOST_PROVIDER, label: COPY.host }, ...PROVIDER_OPTIONS], draft.provider, value => { draft.provider = value; render(); }));
+        const providerSelect = select([{ value: HOST_PROVIDER, label: COPY.host }], draft.provider, value => {
+            draft.provider = value;
+            render();
+        }, getProviderOptionGroups());
+        providerSelect.id = `${feature}-text-api-provider`;
+        control(COPY.provider, providerSelect);
+        syncHostedProviderHint(providerSelect);
         if (draft.provider !== HOST_PROVIDER) {
             const vertex = draft.provider === VERTEX_PROVIDER;
             if (!vertex || normalizeVertexConfig(draft.vertex).authMode === 'relay') {

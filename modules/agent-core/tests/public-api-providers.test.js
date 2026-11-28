@@ -180,7 +180,7 @@ function assertRequest(provider, streaming, request, wires, round) {
     } else if (protocol === 'google') {
         assert.equal(request.url, `/v1beta/models/fixture-model:${streaming ? 'streamGenerateContent?alt=sse' : 'generateContent'}`);
     } else {
-        assert.equal(request.url, { 'openai-compatible': '/chat/completions', 'openai-responses': '/responses', anthropic: '/v1/messages' }[protocol]);
+        assert.equal(request.url, { 'openai-compatible': '/v1/chat/completions', 'openai-responses': '/v1/responses', anthropic: '/v1/messages' }[protocol]);
         assert.equal(body.stream === true, streaming);
     }
     if (protocol === 'openai-responses') assert.equal(body.instructions, system.content);

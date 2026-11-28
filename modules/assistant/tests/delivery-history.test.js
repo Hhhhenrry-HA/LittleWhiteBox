@@ -16,7 +16,7 @@ function session() {
 }
 
 test('a successful delivery is one Markdown reply after disabling and reopening; failed receipts never become replies', async () => {
-    const { document } = parseHTML('<html><body><div id="chat"></div></body></html>');
+    const { document } = parseHTML('<html><body><div id="chat"><div></div></div></body></html>');
     const previous = globalThis.document;
     globalThis.document = document;
     try {
