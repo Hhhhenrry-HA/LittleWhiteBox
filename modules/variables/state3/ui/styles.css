@@ -14,6 +14,7 @@
 .lwb-state3-dialog .lwb-state3-author-tabs button{background:none;border:0;border-radius:0;padding:8px 2px}
 .lwb-state3-dialog .lwb-state3-author-tabs [aria-selected=true]{outline:none;border-bottom:2px solid var(--SmartThemeQuoteColor,#9cf)}
 .lwb-state3-consent{width:min(520px,94vw);line-height:1.7}
+.lwb-state3-consent details{margin-bottom:16px}
 .lwb-state3-dialog label{display:block;margin:12px 0}
 .lwb-state3-dialog .lwb-state3-check{display:flex;gap:8px;align-items:center}
 .lwb-state3-dialog section>h3{font-size:16px;margin:0 0 8px}

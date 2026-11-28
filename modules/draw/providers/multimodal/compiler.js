@@ -1,9 +1,10 @@
 import references from '../../shared/reference-image-contract.cjs';
 import protocol from '../../shared/multimodal-image-protocol.cjs';
 import { MediaApiError } from '../../../../shared/media-api.js';
-import { getEffectiveParams, providerDefinition, validateParams, isSupportedSize, validateOpenAiImageApi } from './settings-model.js';
+import { getActiveParamsPreset, getEffectiveParams, providerDefinition, validateParams, isSupportedSize, validateOpenAiImageApi } from './settings-model.js';
 import { MULTIMODAL_COPY as COPY } from './copy.js';
 import { formatOpenAiImageError } from './openai-image-errors.js';
+import { assembleNaturalPrompt } from './prompt-assembly.js';
 
 export function openAiImageMetadata({ imageApi, responsesModel }, requestedOutputFormat) {
     return { imageApi, ...(imageApi === 'responses' ? { responsesModel } : {}),
@@ -63,6 +64,7 @@ export function createGenerationRecipe(provider, settings, overrides = {}) {
         ...(provider === 'openai' ? validateOpenAiImageApi(settings) : {}),
         params: getEffectiveParams(provider, settings, overrides.params || overrides.paramsOverride || {}),
         referenceImages: references.validateReferenceImages(overrides.referenceImages),
+        positivePrefix: overrides.positivePrefix ?? getActiveParamsPreset(settings).positivePrefix,
     };
 }
 
@@ -73,9 +75,9 @@ export function compileMultimodalBatch(provider, scenePlan, recipe) {
     const params = validateParams(provider, recipe.params);
     const context = { url: recipe.apiBaseUrl, key: recipe.apiKey, ...(provider === 'openai' ? validateOpenAiImageApi(recipe) : {}) };
     const artifacts = tasks.map(task => {
-        if (task.chars?.length || task.characterPrompts?.length) throw new TypeError(COPY.unadaptedInput);
-        const input = { prompt: task.scene, params, referenceImages: task.referenceImages ?? recipe.referenceImages };
-        return { task, tags: input.prompt, promptData: { positive: input.prompt, negative: '', characterPrompts: [] },
+        const promptData = assembleNaturalPrompt(task, recipe);
+        const input = { prompt: promptData.positive, params, referenceImages: task.referenceImages ?? recipe.referenceImages };
+        return { task, tags: task.scene, promptData,
             ...(provider === 'openai' ? { providerMetadata: openAiImageMetadata(context, params.outputFormat) } : {}),
             request: buildMultimodalRequest(provider, input) };
     });

@@ -116,7 +116,7 @@ export async function executePreparedSlots({ items, backend, store, remove, sele
             for (const [index, item] of items.entries()) {
                 signal?.throwIfAborted();
                 if (!available(item)) { await discard(index); continue; }
-                try { prepared.set(index, await prepareItem(index)); }
+                try { prepared.set(index, await prepareItem(index, item)); }
                 catch (error) {
                     signal?.throwIfAborted();
                     if (available(item)) await fail(index, error);

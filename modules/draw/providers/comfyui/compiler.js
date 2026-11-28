@@ -354,7 +354,7 @@ export function compileComfyPromptForTask(task, recipe = {}) {
     const characterPrompts = Array.isArray(task?.characterPrompts)
         ? task.characterPrompts.filter(Boolean)
         : assembleCharacterPrompts(task?.chars || [], recipe.knownCharacters || [], {
-            preserveDanbooruCanonical: true,
+            preserveDanbooruCanonical: true, resolvedForms: task?.resolvedForms,
         });
     const promptOverride = String(recipe.promptOverride || '').trim();
     const negativeOverride = String(recipe.negativePromptOverride || '').trim();

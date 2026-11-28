@@ -1054,14 +1054,13 @@ async function handleDrawImageRefresh(payload: Record<string, unknown> = {}): Pr
         const characterPrompts = getDrawPreviewCharacterPrompts(preview);
         const negativePrompt = getDrawPromptNegativeInput(facade, preview);
         if (!tags) {throw new Error('image_prompt_missing');}
-        const promptData = typeof facade.buildPromptData === 'function'
-            ? facade.buildPromptData({ prompt: tags, tags, negativePrompt, characterPrompts })
-            : { positive: tags, negativePrompt };
+        const promptData: Record<string, unknown> = {};
         const generated = await facade.generateImage({
             prompt: tags,
             tags,
             negativePrompt,
             characterPrompts,
+            onPromptData: (compiled: Record<string, unknown>) => Object.assign(promptData, compiled),
         });
         const base64 = extractGeneratedImageBase64(generated);
         if (!base64) {throw new Error('image_data_missing');}
@@ -1071,10 +1070,10 @@ async function handleDrawImageRefresh(payload: Record<string, unknown> = {}): Pr
             slotId,
             messageId: getDrawPreviewStorageMessageId(preview, slotId),
             base64,
-            tags,
-            positive: String(promptData.positive || tags),
-            characterPrompts,
-            negativePrompt: String(promptData.negativePrompt || negativePrompt || ''),
+            tags: promptData.tags,
+            positive: promptData.positive,
+            characterPrompts: promptData.characterPrompts,
+            negativePrompt: promptData.negativePrompt,
             source: 'tavern',
         });
         await setSlotSelection(slotId, imgId);

@@ -2,11 +2,11 @@ import { buildScenePlannerTask, generateAndParseScenePlan } from '../../shared/s
 import { createSceneSource, normalizeMessageSceneSourceText } from '../../shared/scene-source.js';
 import { detectPresentCharacters, DEFAULT_MESSAGE_FILTER_RULES, toScenePlannerProgress } from '../../shared/draw-common.js';
 import { characterLibraryFromSettings } from '../../shared/character-library.js';
-import { loadSharedDrawSettings } from '../../shared/draw-settings.js';
+import { getSharedDrawSettings, loadSharedDrawSettings } from '../../shared/draw-settings.js';
 import { WorldbookProcessor } from '../../shared/worldbook-processor.js';
 import { resolveEffectiveMaxImages } from '../../shared/max-images-override.js';
 import { getActiveParamsPreset } from './settings-model.js';
-import { naturalPlannerOptions, adaptedDirectInput } from './planning-input.js';
+import { naturalPlannerOptions, adaptedDirectInput, directCharacterRoster } from './planning-input.js';
 import { validateMultimodalInput } from './compiler.js';
 import { collectToolBlocks } from '../../shared/custom-tools.js';
 import { normalizeLayout } from '../../shared/scene-planner-layout.js';
@@ -35,13 +35,13 @@ export async function buildPlannerOptions(provider, { message, settings, sharedS
     } };
 }
 
-function directPlannerOptions(provider, input, settings) {
+function directPlannerOptions(provider, input, settings, presentCharacters) {
     return { ...naturalPlannerOptions(provider, settings, input),
-        sceneSource: createSceneSource(input.prompt), maxImages: 1, presentCharacters: [], useWorldInfo: false };
+        sceneSource: createSceneSource(input.prompt), maxImages: 1, presentCharacters, useWorldInfo: false };
 }
 
 export function previewDirectInput(provider, input, settings, options = {}) {
-    return buildScenePlannerTask({ ...directPlannerOptions(provider, input, settings), ...options, preview: true });
+    return buildScenePlannerTask({ ...directPlannerOptions(provider, input, settings, directCharacterRoster(input, getSharedDrawSettings())), ...options, preview: true });
 }
 
 export function runMultimodalScenePlan(options, plan = generateAndParseScenePlan) {
@@ -51,14 +51,15 @@ export function runMultimodalScenePlan(options, plan = generateAndParseScenePlan
         : options);
 }
 
-export async function planDirectInput(provider, input, settings, { signal, onStateChange, sceneConfig, onAgentRequest,
+export async function planDirectInput(provider, input, settings, { signal, onStateChange, sceneConfig, onAgentRequest, presentCharacters,
     plan = generateAndParseScenePlan } = {}) {
     validateMultimodalInput(provider, input);
     signal?.throwIfAborted();
     const shared = await loadSharedDrawSettings();
     signal?.throwIfAborted();
     onStateChange?.('llm', toScenePlannerProgress());
-    const tasks = await runMultimodalScenePlan({ ...directPlannerOptions(provider, input, settings),
+    const options = directPlannerOptions(provider, input, settings, presentCharacters ?? directCharacterRoster(input, shared));
+    const tasks = await runMultimodalScenePlan({ ...options,
         signal, timeout: settings.timeout, plannerRetry: plannerRetry(shared),
         ...(sceneConfig ? { agentOptions: { providerConfig: sceneConfig } } : {}),
         onAgentRequest,

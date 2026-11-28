@@ -205,7 +205,7 @@ export function buildNovelAIRequestBody({
 export function compileNovelPromptForTask(task, recipe = {}) {
     const characterPrompts = Array.isArray(task?.characterPrompts)
         ? task.characterPrompts.filter(Boolean)
-        : assembleCharacterPrompts(task?.chars || [], recipe.knownCharacters || [], { acceptGrid: false })
+        : assembleCharacterPrompts(task?.chars || [], recipe.knownCharacters || [], { acceptGrid: false, resolvedForms: task?.resolvedForms })
             .map(({ prompt, uc, center }) => ({ prompt, uc, center }));
     return {
         scene: joinTags(recipe.positivePrefix, task?.scene),

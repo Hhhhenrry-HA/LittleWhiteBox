@@ -1,7 +1,7 @@
 import { MULTIMODAL_COPY as COPY } from './copy.js';
 import { normalizeMaxImagesOverride } from '../../shared/max-images-override.js';
 import { normalizeLayout } from '../../shared/scene-planner-layout.js';
-import { NATURAL_PROMPT_DEFAULTS } from './prompts.js';
+import { NATURAL_PROMPT_DEFAULTS, normalizeNaturalFieldDescriptions } from './prompts.js';
 import protocol from '../../shared/multimodal-image-protocol.cjs';
 import { formatOpenAiImageError } from './openai-image-errors.js';
 
@@ -137,7 +137,7 @@ export function normalizeSettings(provider, saved) {
             const prompt = { id: item.id, name: item.name.trim() };
             for (const field of Object.keys(NATURAL_PROMPT_DEFAULTS)) {
                 if (typeof item[field] !== 'string') throw new TypeError(COPY.invalidParameter(field));
-                prompt[field] = item[field];
+                prompt[field] = field === 'fieldDescriptions' ? normalizeNaturalFieldDescriptions(item[field]) : item[field];
             }
             if (item.layout !== undefined) prompt.layout = normalizeLayout(item.layout).layout;
             return prompt;

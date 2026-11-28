@@ -264,7 +264,7 @@ function normalizeCenter(value, path, centerMode) {
     return { x: GRID_COL[match[1]], y: GRID_ROW[match[2]] };
 }
 
-function normalizeCharacter(value, path, presentCharacters, centerMode) {
+function normalizeCharacter(value, path, presentCharacters, centerMode, resolvedForms) {
     assertRequiredFields(value, ['name'], path);
     const returnedName = requireString(value.name, `${path}.name`);
     // 已录入角色：name 按正式名称 / 别名归一；多形态角色再按 form 选形态（缺省 / 不存在 / 已停用回落第一个启用形态）。
@@ -275,6 +275,12 @@ function normalizeCharacter(value, path, presentCharacters, centerMode) {
     const appear = optionalString(value, 'appear', path);
     if (!canonicalName && !appear) failSchema(`${path}.appear`, '未知角色必须填写外貌', value.appear);
     const center = normalizeCenter(value.center, `${path}.center`, centerMode);
+    // Keep the exact match for this depicted person. A canonical name can also
+    // be someone else's alias. These bindings belong to the plan, not the gallery.
+    resolvedForms.push(known ? {
+        name: known.name, type: known.type, appearance: known.appearance,
+        danbooruTag: known.danbooruTag, negativeTags: known.negativeTags,
+    } : null);
 
     return {
         name: canonicalName || returnedName,
@@ -344,14 +350,12 @@ function normalizeImages(images, options = {}) {
             );
         }
         if (!Array.isArray(image.characters)) failSchema(`${path}.characters`, '必须是 array', image.characters);
-        if (options.promptStyle === 'natural' && image.characters.length) {
-            failSchema(`${path}.characters`, '必须为空数组，完整画面写入 scene', image.characters);
-        }
         if (maxCharactersPerImage && image.characters.length > maxCharactersPerImage) {
             failSchema(`${path}.characters`, `最多包含 ${maxCharactersPerImage} 人`, image.characters.length);
         }
+        const resolvedForms = [];
         const chars = image.characters.map((character, characterIndex) => (
-            normalizeCharacter(character, `${path}.characters[${characterIndex}]`, presentCharacters, centerMode)
+            normalizeCharacter(character, `${path}.characters[${characterIndex}]`, presentCharacters, centerMode, resolvedForms)
         ));
         // 整图正向提示词的追加位：可选字段，编译器拼在所有角色之后（整条提示词最末尾）。
         // 不进 REQUIRED_IMAGE_FIELDS、不影响 maxCharactersPerImage；未提交时不出键（无感知）。
@@ -364,6 +368,7 @@ function normalizeImages(images, options = {}) {
             ...(title ? { title } : {}),
             orientation: normalizeOrientation(image.orientation),
             chars,
+            resolvedForms,
             ...(postPrompt ? { post_prompt: postPrompt } : {}),
             placement: {
                 mode: 'source',

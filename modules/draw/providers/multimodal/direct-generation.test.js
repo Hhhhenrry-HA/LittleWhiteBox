@@ -91,7 +91,7 @@ for (const provider of ['gemini', 'openai']) {
             assert.equal((await adapter.generate({ prompt: 'draw a river', referenceImages }, makeSettings(provider))).length, 1);
         });
     }
-    test(`${provider}: public edit adapts all guidance before sending and collects charged partial results`, async () => {
+    test(`${provider}: public edit retains fixed style and collects charged partial results`, async () => {
         const settings = makeSettings(provider);
         const stages = [];
         let collected;
@@ -114,7 +114,7 @@ for (const provider of ['gemini', 'openai']) {
                 assert.equal(job.items.length, 1);
                 assert.equal(handlers.retryCreate, false);
                 const { request } = job.items[0];
-                assert.equal(wireText(provider, request), description);
+                assert.equal(wireText(provider, request), `art direction\n\n${description}\n\nDawn\n\nsilver coat`);
                 assert.equal(request.resultMode, 'all');
                 assert.deepEqual(request.referenceImages, refs);
                 assert.equal(provider === 'gemini' ? request.payload.generationConfig.imageConfig.aspectRatio : request.payload.size,
@@ -134,7 +134,7 @@ for (const provider of ['gemini', 'openai']) {
         assert.equal(collected.metadata.presetId, settings.selectedParamsPresetId);
     });
 
-    test(`${provider}: registered compilers preserve native and redraw placement and consume only adapted text`, async () => {
+    test(`${provider}: registered compilers preserve native and redraw placement and use the planned scene`, async () => {
         const settings = makeSettings(provider);
         const placements = [{ mode: 'replace', marker: '[img]original[/img]', start: 11, end: 30 }, { mode: 'existing', slotId: 'original-slot' }];
         const prompts = [];

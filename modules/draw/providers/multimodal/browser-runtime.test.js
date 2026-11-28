@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { fixture } from '../../shared/tests/helpers/draw-journey.js';
 import { decodeFixtureImage } from '../../shared/tests/helpers/image-decoder.js';
+import { parseSubmittedScenePlan } from '../../shared/scene-plan-contract.js';
 
 const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
 const webp = 'UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEADsD+JaQAA3AAAAAA';
@@ -188,6 +189,67 @@ for (const provider of ['gemini', 'openai']) {
 
 // Actual browser runtime/registered chat or API entry, with no responses or
 // requests from a provider or planner service (only fixed fixtures).
+// Acceptance: direct, floor and repeated redraw requests retain author style and
+// selected library appearance; gallery positive equals the paid request (wrong-image cost).
+for (const provider of ['gemini', 'openai']) for (const sendMode of ['frontend', 'backend']) {
+    test(`${provider} ${sendMode}: author text survives direct, floor and repeated redraw with the same gallery request`, async () => {
+        const style = '90s film snapshot.authentic grain，平涂上色，干净无噪点';
+        const scene = 'Morning light in an orphanage doorway.';
+        const shared = { characterTags: [{ id: 'robin', name: 'Robin', aliases: ['Rob'], enabled: true,
+            type: 'boy', appearance: 'chestnut hair，dark brown eyes', outfits: [{ name: 'coat', tags: 'unused coat' }] }] };
+        const h = await setup(['Rob adjusts a collar in the doorway.'], {
+            'planning.js': null,
+            'server-storage.js': `export const NovelDrawStorage={getStrict:async()=>(${JSON.stringify(shared)})};`,
+            'scene-planner.js': `export const buildScenePlannerTask=()=>({});export const prepareScenePlannerInput=async()=>({});
+                export async function generateAndParseScenePlan(options) {
+                    const host=globalThis.__drawJourneyReview;
+                    host.plannerInputs.push(options);
+                    return host.parsePlan({toolCalls:[{name:'submit_scene_plan',arguments:{images:[{insert_after:1,scene:${JSON.stringify(scene)},characters:[{name:'Rob',appear:'blond hair',costume:'school blazer',action:'straightening a collar'}]}]}}]},options).tasks;
+                }`,
+        });
+        const { api, host } = h;
+        host.parsePlan = parseSubmittedScenePlan;
+        host.sendMode = sendMode;
+        host.defaultSettings = id => {
+            const settings = api.createDefaultSettings(id);
+            settings.paramsPresets[0].positivePrefix = style;
+            return settings;
+        };
+        const sent = [];
+        if (sendMode === 'frontend') globalThis.fetch = async (_url, options) => {
+            const payload = JSON.parse(options.body);
+            sent.push(provider === 'gemini' ? payload.contents[0].parts[0].text : payload.prompt);
+            return Response.json(provider === 'gemini' ? { candidates: [{ content: { parts: [{ inlineData: { mimeType: 'image/png', data: png } }] } }] }
+                : { data: [{ b64_json: png }] });
+        };
+        else host.onSubmit = job => sent.push(...job.items.map(({ request: { payload } }) => provider === 'gemini' ? payload.contents[0].parts[0].text : payload.prompt));
+        const runtime = api.multimodalProviders[provider];
+        try {
+            await runtime.init();
+            await runtime.publicGeneration.generate({ prompt: 'Rob adjusts a collar.' }, { ...host.defaultSettings(provider), apiKey: 'offline', sendMode });
+            const floor = await runtime.facade.generateImagesFromText({ source: 'tavern', text: 'Rob adjusts a collar.', messageId: 0 });
+            let { preview } = await api.getDisplayPreviewForSlot(floor.images[0].slotId);
+            assert.equal(preview.positive, sent.at(-1));
+            // Redraw twice from saved scene and character input, never from positive.
+            for (let repeat = 0; repeat < 2; repeat++) {
+                const slotId = floor.images[0].slotId;
+                if (!h.messages[0].mes.includes(`[image:${slotId}]`)) h.messages[0].mes += ` [image:${slotId}]`;
+                await api.generatePreparedChatImages(provider, { ctx: h.ctx, message: h.messages[0], messageId: 0,
+                    sourceText: h.messages[0].mes, tasks: [{ scene: preview.tags, characterPrompts: preview.characterPrompts,
+                        placement: { mode: 'existing', slotId } }] });
+                ({ preview } = await api.getDisplayPreviewForSlot(slotId));
+                assert.equal(preview.positive, sent.at(-1));
+            }
+            assert.equal(sent.length, 4);
+            for (const prompt of sent) {
+                for (const text of [style, 'chestnut hair，dark brown eyes', 'school blazer', 'straightening a collar']) assert.equal(prompt.split(text).length - 1, 1);
+                for (const text of ['blond hair', 'unused coat']) assert.equal(prompt.includes(text), false);
+            }
+            assert.ok(host.plannerInputs.every(options => options.presentCharacters.some(character => character.name === 'Robin')));
+        } finally { runtime.cleanup(); h.stop(); }
+    });
+}
+
 test('multimodal browser test edit, native tag and existing-card reroll share the adaptation boundary', async () => {
     const before = 'First paragraph. [img:native scene] Last paragraph.';
     const h = await setup([before]);
@@ -212,7 +274,7 @@ test('multimodal browser test edit, native tag and existing-card reroll share th
         assert.deepEqual(firstRequest.items[0].request.referenceImages, [{ mimeType: 'image/png', data: png }]);
         const records = (await h.api.getGalleryMetadata({ charName: 'review' })).filter(record => record.displayable);
         assert.equal(records.length, 1);
-        assert.equal((await h.api.getPreview(records[0].imgId)).tags, 'edit uploaded landscape');
+        assert.equal((await h.api.getPreview(records[0].imgId)).positive, firstRequest.items[0].request.payload.contents[0].parts[0].text);
 
         const marker = '[img:native scene]';
         const start = before.indexOf(marker);
@@ -280,7 +342,7 @@ test('a native reply shows all slots while planning waits; removed and failed sl
         assert.equal(h.host.imageRequests[0].items.length, 1);
         assert.deepEqual(h.host.lastPlan.items.map(item => item.slotId), [slots[0]]);
         assert.equal(h.host.lastPlan.gallery.chatId, h.ctx.chatId);
-        assert.equal((await h.api.getDisplayPreviewForSlot(slots[0])).preview.tags, 'first');
+        assert.equal((await h.api.getDisplayPreviewForSlot(slots[0])).preview.positive, finalPrompt('first'));
         assert.equal((await h.api.getPreviewsBySlot(slots[1])).length, 0);
         const failed = await h.api.getDisplayPreviewForSlot(slots[2]);
         assert.equal(failed.isFailed, true);
@@ -373,7 +435,7 @@ for (const [provider, count, removed, boundary] of [
         for (const [index, slot] of slots.entries()) {
             const records = await h.api.getPreviewsBySlot(slot);
             assert.deepEqual(records.map(r => [r.tags, r.status, r.base64]), removed.includes(index)
-                ? [] : [[prompts[index], 'success', btoa(finalPrompt(prompts[index]))]]);
+                ? [] : [[finalPrompt(prompts[index]), 'success', btoa(finalPrompt(prompts[index]))]]);
         }
     } finally { release.resolve(); runtime.cleanup(); h.stop(); }
 });
@@ -405,7 +467,7 @@ test('shared cache and active requests are separated by the scene snapshot; fing
     const imageSettings = { ...h.api.createDefaultSettings(provider), apiKey: 'image-private', sendMode: 'backend' };
     const planGate = Promise.withResolvers();
     let model = 'model-A';
-    const snapshot = execution => h.api.captureMultimodalGeneration(execution,
+    const snapshot = execution => h.api.captureMultimodalGeneration(execution, { prompt: 'stone bridge' },
         async () => ({ providerConfig: { provider: 'google', model, apiKey: 'scene-private' } }));
     window.xiaobaixDraw.prepareGeneration = async ({ prompt }) => {
         const { execution, sceneConfig, fingerprint } = await snapshot(imageSettings);
@@ -435,6 +497,47 @@ test('shared cache and active requests are separated by the scene snapshot; fing
             ['An adapted illustration of stone bridge. model-A', 'An adapted illustration of stone bridge. model-B']);
         assert.ok(h.host.imageRequests.every(job => job.context.key === imageSettings.apiKey));
     } finally { planGate.resolve(); h.stop(); }
+});
+
+// A paid image may be reused only while the referenced character has not changed.
+test('shared images reuse unrelated edits, and a queued draw keeps its own character snapshot', async () => {
+    const h = await setup(['Rob at the window.'], {
+        'planning.js': null,
+        'draw-agent.js': 'export const resolveDrawAgentProviderConfig=async()=>({providerConfig:{provider:"google",model:"fixture"}});',
+        'server-storage.js': `const root={settings:{characterTags:[{name:'Robin',aliases:['Rob'],appearance:'brown hair'},{name:'Mia',appearance:'hat'}]}};
+            export const NovelDrawStorage={getStrict:async()=>root.settings,updateAndSave:async fn=>{await fn(root);return true;}};`,
+        'scene-planner.js': `export const buildScenePlannerTask=()=>({}),prepareScenePlannerInput=async()=>({});
+            export async function generateAndParseScenePlan(options){const host=globalThis.__drawJourneyReview;
+                return host.parsePlan({toolCalls:[{name:'submit_scene_plan',arguments:{images:[
+                    {insert_after:1,scene:'window',characters:[{name:'Rob',action:'standing',costume:'coat'}]}]}}]},options).tasks;}`,
+    });
+    const { api, host } = h, facade = api.multimodalProviders.gemini.facade;
+    const request = { prompt: 'Rob at the window.', cacheNamespace: 'os-messages' };
+    host.parsePlan = parseSubmittedScenePlan;
+    window.xiaobaixDraw.prepareGeneration = async input => {
+        const { execution, sceneConfig, presentCharacters, fingerprint } = await facade.getGenerationSnapshot(input);
+        return { fingerprint: { prompt: input.prompt, fingerprint },
+            execute: options => facade.generateImage({ prompt: input.prompt, generationConfig: execution, sceneConfig, presentCharacters, ...options }) };
+    };
+    try {
+        const queued = await window.xiaobaixDraw.prepareGeneration(request);
+        await api.generateSharedImage(request);
+        const change = (index, appearance) => api.updateSharedDrawSettingsPersistent(draft => { draft.characterTags[index].appearance = appearance; });
+        assert.equal(await change(1, 'glasses'), true);
+        await api.generateSharedImage(request);
+        assert.equal(host.imageRequests.length, 1);
+        assert.equal(await change(0, 'silver hair'), true);
+        await api.generateSharedImage(request);
+        let receipt;
+        await queued.execute({ onPromptData: data => { receipt = data; } });
+        const prompts = host.imageRequests.map(job => job.items[0].request.payload.contents[0].parts[0].text);
+        assert.equal(prompts.length, 3);
+        assert.ok(prompts[0].includes('brown hair') && prompts[1].includes('silver hair'));
+        assert.equal(prompts[2], prompts[0]);
+        assert.equal(receipt.positive, prompts[2]);
+        assert.equal(receipt.tags, 'window');
+        assert.ok(receipt.characterPrompts[0].prompt.includes('brown hair'));
+    } finally { h.stop(); }
 });
 
 test('try and redraw use the stored scene retry limit; retrying or cancelling never repeats an image submission', async t => {
@@ -514,7 +617,7 @@ test('try and redraw use the stored scene retry limit; retrying or cancelling ne
             attempts = 0;
             const placement = { mode: 'existing', slotId: 'original-slot' };
             const redraw = options => api.adaptUnplannedTask(provider, { scene: request.prompt, placement }, settings, { plan, ...options });
-            assert.deepEqual(await redraw(), { scene, placement, title: undefined, orientation: undefined, referenceImages: undefined });
+            assert.deepEqual(await redraw(), { scene, characterPrompts: [], placement, title: undefined, orientation: undefined, referenceImages: undefined });
             assert.equal(attempts, 3);
             attempts = 0;
             const controller = new AbortController();

@@ -7,6 +7,7 @@ import { createSettingsRepository } from './settings-repository.js';
 import { createSubmitScenePlanTool } from '../../shared/scene-plan-tool.js';
 import { parseSubmittedScenePlan } from '../../shared/scene-plan-contract.js';
 import { createSceneSource } from '../../shared/scene-source.js';
+import { detectPresentCharacters } from '../../shared/present-characters.js';
 import { normalizeScenePlannerProfile } from '../../shared/scene-planner-profile.js';
 import { prepareScenePlannerInput } from '../../shared/scene-planner.js';
 import { createPreparedScenePlannerTask, executePreparedScenePlanner } from '../../shared/scene-planner-executor.js';
@@ -14,32 +15,45 @@ import { NON_EXPLICIT_ILLUSTRATION_INSTRUCTION } from './prompts.js';
 
 const ref = { mimeType: 'image/png', data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aN3sAAAAASUVORK5CYII=' };
 const finalScene = 'Two fully clothed adults embrace beside a rain-streaked window.';
+const authorStyle = 'captured in a spontaneous 90s film snapshot.authentic disposable-camera grain, imperfect vintage composition, nostalgic photography, subtle realistic skin texture, 平涂上色，干净无噪点';
+const knownCharacters = [{ name: 'Robin', aliases: ['Rob'], type: 'boy', appearance: 'chestnut hair，dark brown eyes', enabled: true },
+    { name: 'Absent', appearance: 'silver hair', enabled: true }];
+function planned(scene, characters, roster = knownCharacters) {
+    return parseSubmittedScenePlan({ toolCalls: [{ name: 'submit_scene_plan',
+        arguments: { images: [{ insert_after: 1, scene, characters }] } }] },
+    { sceneSource: createSceneSource(scene), presentCharacters: roster }).tasks;
+}
+// Acceptance: author text survives once; only selected characters appear, with
+// fixed library looks and planned clothing/actions. Failure costs a paid wrong image.
 for (const provider of ['gemini', 'openai']) {
-    test(`${provider}: a complete adapted description is the only upstream text`, () => {
+    test(`${provider}: direct planning preserves style and library looks while adapting the moment`, () => {
         const settings = createDefaultSettings(provider);
-        settings.paramsPresets[0].positivePrefix = 'RAW_STYLE';
+        settings.paramsPresets[0].positivePrefix = authorStyle;
         const original = { prompt: 'RAW_SCENE', negativePrompt: 'RAW_EXCLUSIONS', characterPrompts: [{ prompt: 'RAW_CHARACTER', uc: 'RAW_CHARACTER_EXCLUSION' }], referenceImages: [ref] };
         assert.deepEqual(JSON.parse(generationGuidance(settings, original)), {
-            styleRequest: 'RAW_STYLE', exclusions: 'RAW_EXCLUSIONS', characters: original.characterPrompts, referenceImageCount: 1,
+            styleRequest: authorStyle, exclusions: 'RAW_EXCLUSIONS', characters: original.characterPrompts, referenceImageCount: 1,
         });
-        const adapted = adaptedDirectInput(original, [{ scene: finalScene, chars: [] }]);
-        const request = buildMultimodalRequest(provider, { ...adapted, params: getEffectiveParams(provider, settings) });
-        assert.equal(provider === 'gemini' ? request.payload.contents[0].parts[0].text : request.payload.prompt, finalScene);
+        const adapted = adaptedDirectInput(original, planned(finalScene,
+            [{ name: 'Rob', appear: 'blond hair', costume: 'school blazer', action: 'straightening a collar' }]));
+        const batch = compileMultimodalBatchFor(provider, [{ scene: adapted.prompt, characterPrompts: adapted.characterPrompts }], createGenerationRecipe(provider, settings, original));
+        const request = batch.items[0].request;
+        const text = provider === 'gemini' ? request.payload.contents[0].parts[0].text : request.payload.prompt;
+        for (const value of [authorStyle, 'chestnut hair，dark brown eyes', 'school blazer', 'straightening a collar']) assert.equal(text.split(value).length - 1, 1);
+        for (const value of ['blond hair', 'silver hair', 'RAW_CHARACTER', 'RAW_EXCLUSIONS']) assert.equal(text.includes(value), false);
         assert.deepEqual(request.referenceImages, [ref]);
         assert.equal(original.prompt, 'RAW_SCENE');
         assert.throws(() => buildMultimodalRequest(provider, { ...original, params: getEffectiveParams(provider, settings) }));
     });
-    test(`${provider}: recipe cannot append raw character or preset text after planning`, () => {
+    test(`${provider}: scenery keeps the author style without inserting unused characters`, () => {
         const settings = createDefaultSettings(provider);
         settings.paramsPresets[0].positivePrefix = 'RAW_PRESET';
-        const recipe = createGenerationRecipe(provider, settings, { promptOverride: 'RAW_OVERRIDE', knownCharacters: [{ appearance: 'RAW_APPEARANCE' }], referenceImages: [ref] });
+        const recipe = createGenerationRecipe(provider, settings, { referenceImages: [ref] });
         const compile = provider === 'gemini' ? compileGemini : compileOpenAi;
-        const batch = compile([{ scene: finalScene, chars: [], placement: { mode: 'tail' } }], recipe);
+        const batch = compile(planned(finalScene, []), recipe);
         const payload = batch.items[0].request.payload;
-        assert.equal(provider === 'gemini' ? payload.contents[0].parts[0].text : payload.prompt, finalScene);
+        assert.equal(provider === 'gemini' ? payload.contents[0].parts[0].text : payload.prompt, `RAW_PRESET\n\n${finalScene}`);
         assert.deepEqual(batch.artifacts[0].promptData.characterPrompts, []);
         assert.deepEqual(batch.items[0].request.referenceImages, [ref]);
-        assert.throws(() => compile([{ scene: finalScene, chars: [{ appear: 'RAW_APPEARANCE' }] }], recipe));
     });
     test(`${provider}: settings roundtrip preserves shared control choices and parameter overrides`, () => {
         const settings = createDefaultSettings(provider);
@@ -55,22 +69,56 @@ for (const provider of ['gemini', 'openai']) {
         assert.equal(getEffectiveParams(provider, restored, { [field]: explicit })[field], explicit);
         assert.equal(getSizeOptions(provider)[0].value, 'default');
     });
-    test(`${provider}: planner exposes complete scene rather than unadapted character fields`, () => {
+    test(`${provider}: planner selects library characters and supplies appearance only for new characters`, () => {
         const settings = createDefaultSettings(provider);
         const options = naturalPlannerOptions(provider, settings);
         assert.ok(options.systemInstruction.length);
         assert.equal(options.plannerProfile.promptStyle, 'natural');
         const tool = createSubmitScenePlanTool({ profile: options.plannerProfile });
-        assert.equal(tool.function.parameters.properties.images.items.properties.characters.maxItems, 0);
+        const properties = tool.function.parameters.properties.images.items.properties.characters.items.properties;
+        assert.ok(properties.name && properties.form && properties.appear && properties.costume && properties.action);
+        assert.equal(properties.center, undefined);
+        assert.equal(properties.uc, undefined);
         const sceneSource = createSceneSource('A scene to illustrate.');
         const args = { images: [{ insert_after: 1, scene: finalScene, characters: [] }] };
         const result = { toolCalls: [{ name: 'submit_scene_plan', arguments: args }] };
         const parsed = parseSubmittedScenePlan(result, { sceneSource, promptStyle: 'natural', centerMode: 'none' });
         assert.equal(parsed.tasks[0].scene, finalScene);
-        args.images[0].characters.push({ name: 'person', appear: 'RAW_CHARACTER' });
-        assert.throws(() => parseSubmittedScenePlan(result, { sceneSource, promptStyle: 'natural', centerMode: 'none' }), error => error.code === 'TOOL_ARGUMENTS_SCHEMA_INVALID');
+        args.images[0].characters.push({ name: 'Rob', appear: 'blond hair', costume: 'school blazer', action: 'smiling' },
+            { name: 'Traveler', appear: 'black hair', costume: 'raincoat', action: 'waving' });
+        const selected = parseSubmittedScenePlan(result, { sceneSource, presentCharacters: knownCharacters, promptStyle: 'natural', centerMode: 'none' });
+        assert.equal(selected.tasks[0].chars[0].name, 'Robin');
+        assert.equal(selected.tasks[0].chars[0].appear, '');
+        assert.equal(selected.tasks[0].chars[1].appear, 'black hair');
     });
 }
+const compileMultimodalBatchFor = (provider, tasks, recipe) => (provider === 'gemini' ? compileGemini : compileOpenAi)(tasks, recipe);
+
+test('selected forms and new characters retain their own appearances without pulling library outfits into the picture', () => {
+    const library = [{ name: 'Robin', appearance: 'chestnut hair', formName: 'Human',
+        outfits: [{ name: 'coat', tags: 'unused coat' }], forms: [{ name: 'Wolf', appearance: 'grey fur', type: 'other' }] }];
+    const tasks = planned('At a doorway.', [
+        { name: 'Robin', form: 'Wolf', appear: 'wrong fur', costume: '', action: 'sitting' },
+        { name: 'Visitor', appear: 'black hair', costume: 'raincoat', action: 'waving' },
+    ], detectPresentCharacters('Robin', library));
+    const settings = createDefaultSettings('openai');
+    const { artifacts: [artifact] } = compileOpenAi(tasks, createGenerationRecipe('openai', settings));
+    const prompt = artifact.promptData.positive;
+    for (const value of ['grey fur', 'black hair', 'raincoat', 'sitting', 'waving']) assert.equal(prompt.includes(value), true);
+    for (const value of ['chestnut hair', 'wrong fur', 'unused coat']) assert.equal(prompt.includes(value), false);
+});
+
+test('saved stock field overrides follow the new contract while custom instructions survive', () => {
+    const settings = createDefaultSettings('openai');
+    settings.promptPresets[0].fieldDescriptions = JSON.stringify({
+        'images[].scene': 'A complete visible scene in natural language, including people, their appearance and actions, composition and visual style. This text is the image request.',
+        'images[].title': 'user-title-instruction',
+    });
+    const restored = normalizeSettings('openai', settings);
+    assert.deepEqual(JSON.parse(restored.promptPresets[0].fieldDescriptions), { 'images[].title': 'user-title-instruction' });
+    settings.promptPresets[0].fieldDescriptions = JSON.stringify({ 'images[].scene': 'user-scene-instruction' });
+    assert.equal(normalizeSettings('openai', settings).promptPresets[0].fieldDescriptions, settings.promptPresets[0].fieldDescriptions);
+});
 
 test('old tag-based providers keep their existing character contract', () => {
     const profile = normalizeScenePlannerProfile({ imageModelName: 'existing' });
@@ -101,18 +149,18 @@ test('GPT Image presets default to JPEG without losing saved transparency or a s
 });
 
 test('invalid or incomplete adaptation never yields an image request', () => {
-    for (const tasks of [[], [{ scene: '' }], [{ scene: finalScene }, { scene: finalScene }], [{ scene: finalScene, chars: [{}] }]]) {
+    for (const tasks of [[], [{ scene: '' }], [{ scene: finalScene }, { scene: finalScene }]]) {
         assert.throws(() => adaptedDirectInput({ prompt: 'source' }, tasks));
     }
 });
 
-test('prepared natural planning retains its instruction and complete-scene contract across server transfer', async () => {
+test('prepared natural planning retains style and selected library characters across server transfer', async () => {
     const settings = createDefaultSettings('gemini');
     settings.paramsPresets[0].positivePrefix = 'RAW_STYLE_FIXTURE';
     const options = naturalPlannerOptions('gemini', settings, { negativePrompt: 'RAW_EXCLUSION_FIXTURE' });
     const prepared = await prepareScenePlannerInput({ ...options,
         messageText: 'A quiet scene in a room.', maxImages: 1,
-        presentCharacters: [{ name: 'Alex', appearance: 'RAW_APPEARANCE_FIXTURE', outfits: [{ name: 'robe', tags: 'RAW_CLOTHING_FIXTURE' }] }],
+        presentCharacters: [{ name: 'Alex', appearance: 'RAW_APPEARANCE_FIXTURE', negativeTags: 'CHARACTER_EXCLUSION_FIXTURE', outfits: [{ name: 'robe', tags: 'RAW_CLOTHING_FIXTURE' }] }],
         expansionOptions: { runtime: { substituteParams: text => text } },
         agentCaller: async () => undefined,
     });
@@ -123,14 +171,14 @@ test('prepared natural planning retains its instruction and complete-scene contr
     assert.equal(transferred.planner.validationContext.centerMode, 'none');
     const documents = task.tools.slice(1).flatMap(tool => Object.values(tool.function.parameters.properties)
         .map(field => field.description)).join('\n');
-    for (const source of ['RAW_STYLE_FIXTURE', 'RAW_EXCLUSION_FIXTURE', 'RAW_APPEARANCE_FIXTURE', 'RAW_CLOTHING_FIXTURE']) {
+    for (const source of ['RAW_STYLE_FIXTURE', 'RAW_EXCLUSION_FIXTURE', 'RAW_APPEARANCE_FIXTURE', 'RAW_CLOTHING_FIXTURE', 'CHARACTER_EXCLUSION_FIXTURE']) {
         assert.equal(documents.split(source).length - 1, 1);
     }
     const tasks = await executePreparedScenePlanner(transferred, { agentCaller: async () => ({ result: {
         toolCalls: [{ name: 'submit_scene_plan', arguments: { images: [{ insert_after: 1, scene: finalScene, characters: [] }] } }],
     } }), logger: () => undefined });
     const batch = compileGemini(tasks, createGenerationRecipe('gemini', settings));
-    assert.equal(batch.items[0].request.payload.contents[0].parts[0].text, finalScene);
+    assert.equal(batch.items[0].request.payload.contents[0].parts[0].text, `RAW_STYLE_FIXTURE\n\n${finalScene}`);
 });
 
 test('settings writes serialize mutators and publish only confirmed changes', async () => {

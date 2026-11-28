@@ -25,9 +25,10 @@ export function capturePublicGallery(request, provider) {
             try {
                 await storePreview({
                     ...owner, slotId, imgId, source: PUBLIC_DRAW_SOURCE,
-                    base64: await blobToDataUrl(blob), tags: request.prompt,
-                    negativePrompt: request.negativePrompt,
-                    characterPrompts: request.characterPrompts,
+                    base64: await blobToDataUrl(blob), tags: metadata.promptData?.tags ?? request.prompt,
+                    positive: metadata.promptData?.positive,
+                    negativePrompt: metadata.promptData?.negativePrompt ?? request.negativePrompt,
+                    characterPrompts: metadata.promptData?.characterPrompts ?? request.characterPrompts,
                     presetId: metadata.presetId ?? request.paramsPresetId,
                     vibeNames: metadata.vibeNames || '',
                     providerMetadata: metadata.providerMetadata,

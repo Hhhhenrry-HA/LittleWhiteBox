@@ -15,10 +15,9 @@ export const AGENT_PERMISSION_MODE_OPTIONS = Object.freeze([
     { value: 'default', label: '默认权限' },
     { value: 'full', label: '完全权限' },
 ]);
-const IMAGE_INPUT_LABEL = '发送图片给模型';
+const IMAGE_INPUT_LABEL = '模型支持识图';
 export const AGENT_IMAGE_INPUT_COPY = Object.freeze({
     label: IMAGE_INPUT_LABEL,
-    hint: '模型不能看图时关闭；上传附件和工作区图片都不发给模型，你仍可查看原图。',
     requestFailed: `可在 API 预设里关闭「${IMAGE_INPUT_LABEL}」。`,
 });
 

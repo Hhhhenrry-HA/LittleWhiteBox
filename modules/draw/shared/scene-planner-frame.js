@@ -36,7 +36,7 @@ export function buildScenePlannerFrameText(profile) {
 - Generation requirements provide style preferences and image-count limits.
 
 ## Where your output goes
-Each scene is the complete description sent to ${imageModelName}. Include the relevant character appearance and style in that description. Reference material informs the depiction; it is not appended to the image request. Placement fields keep their shared meanings in submit_scene_plan.`;
+The app combines your scene and character states with the selected characters' library appearances and the user's exact style text to build the request for ${imageModelName}. The supplied style helps you choose clothing and contact appropriate to the image service. Field meanings are described in submit_scene_plan.`;
     return `## 你收到的材料
 - <worldInfo>：世界书。其中的 tag 组合、同人角色资料、姿势库是写提示词时的参考来源；未知角色的外貌优先参考其中的数据。
 - <content>：本次唯一的叙事来源。开头是【已录入角色】列表；固定外貌由角色库自动写入，你只写本图中的状态，不要重复固定外貌里已有的 tag；正文里每个可插图的位置已标为【插图点 N】。

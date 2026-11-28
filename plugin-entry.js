@@ -407,7 +407,15 @@ function installDrawFacade() {
                 promptData,
                 providerConfig,
             },
-            async execute({ signal, onQueueStateChange } = {}) {
+            async execute({ signal, onQueueStateChange, onPromptData } = {}) {
+                if (Object.hasOwn(multimodalProviders, provider) && providerFacade?.isEnabled()) {
+                    return providerFacade.generateImage({ prompt: promptData.tags, positivePrefix: promptData.positivePrefix,
+                        negativePrompt: promptData.negativePrompt, characterPrompts: promptData.characterPrompts,
+                        params: promptData.params, referenceImages: promptData.referenceImages, overrideSize: promptData.overrideSize,
+                        generationConfig, sceneConfig: providerSnapshot.sceneConfig, presentCharacters: providerSnapshot.presentCharacters,
+                        signal, onQueueStateChange, onPromptData });
+                }
+                onPromptData?.(promptData);
                 if (provider === 'novelai') {
                     const novelDraw = window.xiaobaixNovelDraw;
                     if (!novelDraw?.generateNovelImage) throw new Error('NovelAI 画图模块未初始化');
@@ -449,12 +457,6 @@ function installDrawFacade() {
                     });
                 }
 
-                if (Object.hasOwn(multimodalProviders, provider) && providerFacade?.isEnabled()) {
-                    return providerFacade.generateImage({ prompt: promptData.tags, positivePrefix: promptData.positivePrefix,
-                        negativePrompt: promptData.negativePrompt, characterPrompts: promptData.characterPrompts,
-                        params: promptData.params, referenceImages: promptData.referenceImages, overrideSize: promptData.overrideSize,
-                        generationConfig, sceneConfig: providerSnapshot.sceneConfig, signal, onQueueStateChange });
-                }
                 throw new Error('未启用画图后端');
             },
         };
@@ -503,6 +505,7 @@ function installDrawFacade() {
             return await plan.execute({
                 signal: payload.signal,
                 onQueueStateChange: payload.onQueueStateChange,
+                onPromptData: payload.onPromptData,
             });
         },
         generateSharedImage(input = {}) {

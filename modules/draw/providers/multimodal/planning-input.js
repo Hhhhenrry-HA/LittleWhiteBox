@@ -1,6 +1,15 @@
 import { getActiveParamsPreset, providerDefinition } from './settings-model.js';
 import { NON_EXPLICIT_ILLUSTRATION_INSTRUCTION, NATURAL_PROMPT_DEFAULTS } from './prompts.js';
 import { MULTIMODAL_COPY as COPY } from './copy.js';
+import { assembleNaturalCharacters } from './prompt-assembly.js';
+import { detectPresentCharacters } from '../../shared/present-characters.js';
+import { characterLibraryFromSettings } from '../../shared/character-library.js';
+
+export function directCharacterRoster(input, shared) {
+    const text = [input.prompt ?? input.tags, ...(input.characterPrompts || []).map(character =>
+        `${character.name || ''} ${character.prompt || ''}`)].join('\n');
+    return detectPresentCharacters(text, characterLibraryFromSettings(shared));
+}
 
 function getMultimodalPlannerProfile(provider) {
     return { imageModelName: providerDefinition(provider).label, promptStyle: 'natural', centerMode: 'none', interactSyntax: 'plain', ucScope: 'global' };
@@ -24,10 +33,8 @@ export function naturalPlannerOptions(provider, settings, input = {}) {
     };
 }
 
-// Only model-produced scene text crosses the image request boundary. Raw styling,
-// characters and exclusions remain inputs to planning, never suffixes to its output.
 export function adaptedDirectInput(input, tasks) {
-    if (!Array.isArray(tasks) || tasks.length !== 1 || typeof tasks[0].scene !== 'string' || !tasks[0].scene.trim()
-        || tasks[0].chars?.length) throw new TypeError(COPY.unadaptedInput);
-    return { ...input, prompt: tasks[0].scene.trim(), positivePrefix: '', negativePrompt: '', characterPrompts: [] };
+    if (!Array.isArray(tasks) || tasks.length !== 1 || typeof tasks[0].scene !== 'string' || !tasks[0].scene.trim()) throw new TypeError(COPY.unadaptedInput);
+    return { ...input, prompt: tasks[0].scene.trim(), negativePrompt: '',
+        characterPrompts: assembleNaturalCharacters(tasks[0]) };
 }

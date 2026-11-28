@@ -85,6 +85,29 @@ test('background GPT Image floors keep the selected Responses calling model sepa
     assert.throws(() => validate(envelope), { code: 'invalid_draw_run' });
 });
 
+// Acceptance: the shipped backend parses the character plan and sends the same
+// author-owned text as the browser. A mismatch would buy the wrong image.
+for (const provider of ['gemini', 'openai']) test(`${provider}: built backend retains author style and selected appearance through the real envelope`, async () => {
+    const settings = { ...createDefaultSettings(provider), apiKey: 'offline-key' };
+    const style = '90s film snapshot，细腻皮肤，干净无噪点';
+    settings.paramsPresets[0].positivePrefix = style;
+    const knownCharacters = [{ name: 'Robin', appearance: 'chestnut hair', type: 'boy' }, { name: 'Absent', appearance: 'silver hair' }];
+    const prepared = await preparedFor('openai-compatible', {}, { ...naturalPlannerOptions(provider, settings), presentCharacters: knownCharacters });
+    const accepted = validate(createScenePlannerEnvelope({ runId: `author-style-${provider}`, imageProvider: provider, prepared,
+        generationRecipe: createGenerationRecipe(provider, settings) })).envelope;
+    const result = { toolCalls: [{ name: 'submit_scene_plan', arguments: { images: [{ insert_after: 1,
+        scene: 'Morning in a doorway.', characters: [{ name: 'Robin', appear: 'blond hair', costume: 'school blazer', action: 'straightening a collar' }] }] } }] };
+    const tasks = await runtime.executePreparedScenePlanner(accepted, { agentCaller: async () => ({ result }), logger: () => {} });
+    const batch = runtime.compileDrawRunImages(provider, tasks, accepted.generationRecipe);
+    const payload = batch.items[0].request.payload;
+    const text = provider === 'gemini' ? payload.contents[0].parts[0].text : payload.prompt;
+    for (const value of [style, 'chestnut hair', 'school blazer', 'straightening a collar']) assert.equal(text.split(value).length - 1, 1);
+    for (const value of ['blond hair', 'silver hair']) assert.equal(text.includes(value), false);
+    const metadata = runtime.buildDisplayMetadata(batch.artifacts[0]);
+    assert.equal(metadata.positive, text);
+    assert.equal(metadata.tags, tasks[0].scene);
+});
+
 // Acceptance (protocol mismatch / lost paid reference): background requests carry
 // the same Vibe encodings and preset provenance as direct generation.
 test('background NovelAI accepts Vibe selections and retains them through validation', async () => {

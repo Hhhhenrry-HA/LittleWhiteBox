@@ -106,7 +106,7 @@ export const FORM_ROSTER_NOTE ='有多个形态：form 写其中一个，同一�
 const NAME_LEGEND = '（name、form 照抄下面的值；别名只是正文里的叫法，不要写进 name）';
 
 /** Registered characters as plain facts; what to do with them is defined by the Tool schema. */
-export function buildCharacterInfoForLLM(presentCharacters, { hasContinuity = false } = {}) {
+export function buildCharacterInfoForLLM(presentCharacters, { hasContinuity = false, includeExclusions = false } = {}) {
     if (!presentCharacters?.length) {
         return '【已录入角色】: 无';
     }
@@ -135,6 +135,7 @@ export function buildCharacterInfoForLLM(presentCharacters, { hasContinuity = fa
         const pad = multi ? '    ' : '  ';
         const outfits = formatReferenceList(character.outfits, '服装');
         if (character.appearance) lines.push(`${pad}固定外貌: ${character.appearance}`);
+        if (includeExclusions && character.negativeTags) lines.push(`${pad}排除项: ${character.negativeTags}`);
         if (outfits) lines.push(`${pad}服装参考: ${outfits}`);
         if (dynamicStates) lines.push(`${pad}动态标签: ${dynamicStates}`);
     }
@@ -288,9 +289,7 @@ async function buildScenePlannerRequest(options = {}) {
         );
         const continuityBlock = String(continuityText || '').trim();
         const expandedCharacterInfo = await expandScenePromptText(
-            profile.promptStyle === 'natural'
-                ? JSON.stringify({ characters: presentCharacters })
-                : buildCharacterInfoForLLM(presentCharacters, { hasContinuity: Boolean(continuityBlock) }),
+            buildCharacterInfoForLLM(presentCharacters, { hasContinuity: Boolean(continuityBlock), includeExclusions: profile.promptStyle === 'natural' }),
             runtime,
         );
         const expandedContinuity = continuityBlock

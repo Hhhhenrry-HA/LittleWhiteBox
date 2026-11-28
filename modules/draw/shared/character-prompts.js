@@ -72,9 +72,9 @@ function normalizeCharacterCenter(center, { acceptGrid = true } = {}) {
 export function assembleCharacterPrompts(sceneCharacters = [], knownCharacters = [], options = {}) {
     const characters = Array.isArray(sceneCharacters) ? sceneCharacters : [];
     // 多形态角色在这里展开：name（原名称 / 别名）按 form 选形态，缺省 / 不存在 / 已停用回落第一个启用形态。
-    const expandedKnown = expandCharacterForms(knownCharacters);
-    return characters.map((character) => {
-        const known = findEnabledCharacterForm(character?.name, character?.form, expandedKnown);
+    const expandedKnown = options.resolvedForms ? null : expandCharacterForms(knownCharacters);
+    return characters.map((character, index) => {
+        const known = options.resolvedForms ? options.resolvedForms[index] : findEnabledCharacterForm(character?.name, character?.form, expandedKnown);
         const center = normalizeCharacterCenter(character?.center, options);
         if (known) {
             // [K2] 场景 type（可携带方位）非空时打头并顶替库 type；为空（原生合同会清空已录入

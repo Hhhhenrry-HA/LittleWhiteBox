@@ -21,9 +21,10 @@ export function dedupeTaskTags(tasks, { presentCharacters } = {}) {
     return tasks.map((task) => {
         if (!Array.isArray(task?.chars) || !task.chars.length) return task;
         const kept = [];
-        const chars = task.chars.map((char) => {
+        const chars = task.chars.map((char, index) => {
             if (!char || typeof char !== 'object') return char;
-            const above = joinTags(fixedLookOf(char, presentCharacters), char.appear, char.costume);
+            const fixed = task.resolvedForms ? task.resolvedForms[index]?.appearance : fixedLookOf(char, presentCharacters);
+            const above = joinTags(fixed, char.appear, char.costume);
             const action = char.action && above ? removeDuplicateTags(char.action, above) : char.action;
             kept.push(joinTags(above, action));
             return action === char.action ? char : { ...char, action };

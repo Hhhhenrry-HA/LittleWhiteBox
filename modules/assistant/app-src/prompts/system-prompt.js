@@ -184,7 +184,7 @@ export const SYSTEM_PROMPT = [
 export const HISTORY_SUMMARY_PREFIX = '[历史摘要]';
 
 // ============================================================
-// 图片输入提示词（随本次请求所用 API 预设的「发送图片给模型」）
+// 图片输入提示词随本次请求所用 API 预设的识图开关切换。
 // ============================================================
 export function buildImageInputPrompt(imageInput = true) {
     return [

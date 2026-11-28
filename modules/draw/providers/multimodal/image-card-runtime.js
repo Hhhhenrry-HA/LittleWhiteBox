@@ -15,6 +15,9 @@ import { getPreview, getPreviewsBySlot, openGallery, savePreviewImage, setSlotSe
 import { imageFilePrefix } from '../../shared/image-autosave.js';
 import { IMAGE_SAVE_COPY } from '../../shared/image-save-core.js';
 import { DRAW_SLOT_COPY, hasPreviewImage } from '../../shared/image-record.js';
+import { assembleNaturalPrompt } from './prompt-assembly.js';
+import { getSettings } from './settings.js';
+import { getActiveParamsPreset } from './settings-model.js';
 import {
     appendTagEditGroup, clearDrawSavedEntry, renderPreviewsForMessage, showDrawTagEditor, syncDrawSavedFromPreview,
 } from '../../shared/draw-common.js';
@@ -66,7 +69,8 @@ export function bindMultimodalImageCards(provider) {
         if (panel) panel.style.display = 'none';
     }
     async function saveTags(container) {
-        const { notice } = await persistCardTagEdits(container, tags => ({ positive: tags }));
+        const { notice } = await persistCardTagEdits(container, (tags, characterPrompts) =>
+            ({ positive: assembleNaturalPrompt({ scene: tags, characterPrompts }, getActiveParamsPreset(getSettings(provider))).positive }));
         // Editing stores a draft, never invokes either API; save-and-retry
         // uses the same registered direct-adaptation path as all card actions.
         closeEditor(container);

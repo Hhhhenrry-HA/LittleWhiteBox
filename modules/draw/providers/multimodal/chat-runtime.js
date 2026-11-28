@@ -144,14 +144,16 @@ export function createMultimodalChatRuntime(provider, client, { openSettings, cl
                 // The original input belongs to the chat slot, survives reload,
                 // and stays editable even when the scene model fails.
                 metadata: input.tasks.map(task => ({ tags: task.scene, providerMetadata })),
-                prepareItem: index => {
+                prepareItem: async (index, metadata) => {
                     checkChat();
                     signal.throwIfAborted();
                     if (!recipe) {
                         recipe = recipeFor(config, input);
                         if (providerMetadata) providerMetadata.requestedOutputFormat = recipe.params.outputFormat;
                     }
-                    return adapt(input.tasks[index], recipe);
+                    const task = await adapt(input.tasks[index], recipe);
+                    Object.assign(metadata, prepareImageInput(provider, [task], recipe).metadata[0]);
+                    return task;
                 },
                 run: ({ preparedItems, ...handlers }) => {
                     const compiledBatch = compileMultimodalBatch(provider, preparedItems, recipe);
@@ -230,6 +232,7 @@ export function createMultimodalChatRuntime(provider, client, { openSettings, cl
         const monitorGeneration = monitors.captureGeneration();
         const signal = options.signal;
         const config = await loadSettings(provider);
+        const sharedSettings = await loadSharedDrawSettings();
         const recipe = recipeFor(config, options);
         const text = String(options.text || '');
         if (!text.trim()) throw new Error(COPY.missingPrompt);
@@ -239,7 +242,7 @@ export function createMultimodalChatRuntime(provider, client, { openSettings, cl
                 { ...options, signal, negativePrompt: options.negativePromptOverride, referenceImages: recipe.referenceImages })];
         } else {
             options.onStateChange?.('llm', toScenePlannerProgress());
-            const planned = await buildPlannerOptions(provider, { ...options, settings: config, message: { mes: text },
+            const planned = await buildPlannerOptions(provider, { ...options, settings: config, sharedSettings, message: { mes: text },
                 useWorldbook: false, stripImageMarkers: false, negativePrompt: options.negativePromptOverride,
                 referenceImages: recipe.referenceImages });
             sceneSource = planned.sceneSource;

@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { parseSubmittedScenePlan } from '../scene-plan-contract.js';
+import { detectPresentCharacters } from '../present-characters.js';
+import { assembleNaturalPrompt } from '../../providers/multimodal/prompt-assembly.js';
 
 import {
     compile as compileComfy,
@@ -29,6 +32,27 @@ const SCENE_PLAN = [{
     }],
     placement: { insertAfter: 1 },
 }];
+
+// A paid illustration must use the exact form selected by the planner, even
+// when a second library entry has the same name or an overlapping alias.
+test('all drawing providers keep the selected person and form across name collisions', () => {
+    const library = [
+        { name: 'Mia', aliases: ['Robin'], appearance: 'silver hair' },
+        { name: 'Robin', aliases: ['Rob'], formName: 'human', appearance: 'brown hair',
+            forms: [{ name: 'wolf', type: 'other', appearance: 'grey fur' }] },
+        { name: 'Guest', appearance: 'pink hair' },
+    ];
+    const roster = detectPresentCharacters('Rob opens the door.', library);
+    const { tasks: [task] } = parseSubmittedScenePlan({ toolCalls: [{ name: 'submit_scene_plan', arguments: { images: [
+        { insert_after: 1, scene: 'doorway', characters: [{ name: 'Rob', form: 'wolf', action: 'sitting' },
+            { name: 'Guest', appear: 'black hair', action: 'walking' }] },
+    ] } }] }, { presentCharacters: roster, sceneSource: { points: [{ number: 1, offset: 0 }] } });
+    for (const compile of [compileNovelPromptForTask, compileSdPromptForTask, compileComfyPromptForTask, assembleNaturalPrompt]) {
+        const { characterPrompts: [wolf, guest] } = compile(task, { knownCharacters: library });
+        assert.ok(wolf.prompt.includes('grey fur') && !wolf.prompt.includes('silver hair'));
+        assert.ok(guest.prompt.includes('black hair') && !guest.prompt.includes('pink hair'));
+    }
+});
 
 test('all providers preserve explicitly empty character groups and edited negative input', () => {
     for (const compile of [compileNovelPromptForTask, compileSdPromptForTask, compileComfyPromptForTask]) {

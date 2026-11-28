@@ -184,12 +184,15 @@ export function createSubmitScenePlanTool(options = {}) {
     };
 
     if (profile.promptStyle === 'natural') {
-        // A complete description prevents raw character-library/preset text being
-        // appended after the planner has adapted the scene for this image model.
-        charactersSchema.maxItems = 0;
-        charactersSchema.description = 'An empty array. Each scene contains the complete image description, including all visible characters.';
-        charactersSchema.items = { type: 'object', properties: {}, additionalProperties: false };
-        imagesSchema.items.properties.scene.description = 'The complete natural-language image description: visible characters and their appearance, clothing, actions and relationships, setting, composition, light and style. It is sent to the image model as written; the app does not append the character library or generation instructions.';
+        charactersSchema.description = 'Visible characters, ordered by importance; an empty array for scenery or objects alone. Each character combines the library appearance (or appear for an unregistered character) with the clothing, action and interaction you supply in natural language.';
+        const fields = charactersSchema.items.properties;
+        fields.type.description = 'Category or species for an unregistered character. Registered characters use the library value.';
+        fields.costume.description = 'Clothing, accessories and other lasting visible state beyond the fixed appearance, in natural language. Use the current story outfit; otherwise use the supplied previous depiction or choose one library outfit. Apply the image-service clothing guidance here. An empty string means there is no such visible state.';
+        fields.action.description = 'This character’s momentary pose, movement, gaze and expression, in natural language.';
+        fields.interact.description = 'Contact with another visible character, naming the partner and describing their spatial relationship in natural language. Apply the image-service contact guidance here. Omit when there is no interaction.';
+        delete fields.danbooru;
+        delete fields.uc;
+        imagesSchema.items.properties.scene.description = 'The overall scene in natural language: subject count and relationships, framing, viewpoint, setting, light and atmosphere. Individual appearance, clothing and actions belong to characters.';
     }
     const tool = {
         type: 'function',

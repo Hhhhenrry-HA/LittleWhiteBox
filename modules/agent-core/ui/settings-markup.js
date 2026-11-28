@@ -211,7 +211,7 @@ export function buildAgentSettingsPanelMarkup(options = {}) {
             </label>` : '';
     const imageInputMarkup = (scope) => showImageInput ? `
             <label class="xb-assistant-checkbox-row">
-                <span>${escapeHtml(AGENT_IMAGE_INPUT_COPY.label)}<small>${escapeHtml(AGENT_IMAGE_INPUT_COPY.hint)}</small></span>
+                <span>${escapeHtml(AGENT_IMAGE_INPUT_COPY.label)}</span>
                 <span class="xb-assistant-checkbox-control">
                     <input id="${scope === 'delegate' ? 'xb-assistant-delegate-model-image-input' : 'xb-assistant-model-image-input'}" type="checkbox" />
                 </span>

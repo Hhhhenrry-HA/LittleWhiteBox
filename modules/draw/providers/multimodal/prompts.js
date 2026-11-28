@@ -1,5 +1,5 @@
 // This instruction belongs to the image request, not to the chat narrative.
-export const NON_EXPLICIT_ILLUSTRATION_INSTRUCTION = `Turn a story moment into an image request using the narrative, character descriptions and clothing, world information, style, exclusions and requested edits.
+export const NON_EXPLICIT_ILLUSTRATION_INSTRUCTION = `Plan a story moment and each character's visible state using the narrative, character and clothing references, world information, style, exclusions and requested edits.
 
 The image service reviews the finished picture and accepts adult romance within these limits:
 - Clothing: swimwear, bikinis, bras and panties, lace-trimmed camisoles and shorts, unbuttoned or slipped-off outer garments, bare-chested men.
@@ -12,7 +12,6 @@ Use the current story outfit over the character-library outfit. Keep the origina
 - Nudity becomes the closest clothing above for the style and setting, keeping removed outer layers off or slipped down the arms.
 - Sex, touching breasts or genitals, and lying on top of a partner become the closest contact above, with blush, breathing and closeness carrying the intensity.
 - Foot-focused intimacy becomes an embrace.
-Describe bodies by overall silhouette: height, build, waist and legs.
 Describe only what is visible.
 Reference images go directly to the image service. In this text-planning step you have the user's description and edit request, so specify the visual properties the request asks to retain or change.`;
 
@@ -20,7 +19,15 @@ export const NATURAL_PROMPT_DEFAULTS = Object.freeze({
     topSystem: 'Frame each illustration around a specific moment the reader can recognize.',
     sceneRules: 'Choose a moment with a visible change in action, expression or setting. Let pose, distance and lighting carry the mood.',
     tagGuideContent: 'Write in natural sentences. Introduce the subject and action, then describe the framing, surroundings and light. For an edit, name what should stay the same and what should look different.',
-    fieldDescriptions: JSON.stringify({
-        'images[].scene': 'A complete visible scene in natural language, including people, their appearance and actions, composition and visual style. This text is the image request.',
-    }, null, 2),
+    fieldDescriptions: '',
 });
+
+// Upgrade only the shipped field override; user-authored descriptions stay intact.
+export function normalizeNaturalFieldDescriptions(value) {
+    if (!value.trim()) return value;
+    let fields;
+    try { fields = JSON.parse(value); } catch { return value; }
+    if (fields?.['images[].scene'] !== 'A complete visible scene in natural language, including people, their appearance and actions, composition and visual style. This text is the image request.') return value;
+    delete fields['images[].scene'];
+    return Object.keys(fields).length ? JSON.stringify(fields, null, 2) : '';
+}

@@ -365,8 +365,9 @@ function validateGenerationRecipe(provider, value, imageCount) {
         requireString(recipe.promptOverride, `${path}.promptOverride`, { allowEmpty: true });
         requireString(recipe.negativePromptOverride, `${path}.negativePromptOverride`, { allowEmpty: true });
     } else if (NATURAL_IMAGE_PROVIDERS.has(provider)) {
-        const fields = ['apiBaseUrl', 'apiKey', 'timeout', 'delayMs', 'params', 'referenceImages'];
+        const fields = ['apiBaseUrl', 'apiKey', 'timeout', 'delayMs', 'params', 'referenceImages', 'positivePrefix'];
         recipe = assertExactKeys(value, provider === 'openai' ? [...fields, 'imageApi', 'responsesModel'] : fields, path, fields);
+        requireString(recipe.positivePrefix, `${path}.positivePrefix`, { allowEmpty: true });
         requirePositiveNumber(recipe.timeout, `${path}.timeout`);
         requireImageDelay(recipe.delayMs, `${path}.delayMs`);
         assertPlainObject(recipe.params, `${path}.params`);

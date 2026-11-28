@@ -9,6 +9,8 @@ import { generateCollectedDrawResult } from '../../shared/public-api.js';
 import { createDirectGeneration } from './direct-generation.js';
 import { createMultimodalChatRuntime } from './chat-runtime.js';
 import { planDirectInput } from './planning.js';
+import { directCharacterRoster } from './planning-input.js';
+import { loadSharedDrawSettings } from '../../shared/draw-settings.js';
 import { getActiveParamsPreset, PROVIDERS } from './settings-model.js';
 import { getSettings, loadSettings } from './settings.js';
 import { createMultimodalFrontendTransport } from './frontend-transport.js';
@@ -21,10 +23,12 @@ export function createMultimodalPublicGeneration(provider, jobs = client, plan =
     return createDirectGeneration(provider, { jobs, frontend, plan, snapshot: () => loadSettings(provider) });
 }
 
-export async function captureMultimodalGeneration(execution, resolveScene = resolveDrawAgentProviderConfig) {
+export async function captureMultimodalGeneration(execution, input, resolveScene = resolveDrawAgentProviderConfig) {
     const { apiBaseUrl, apiKey, timeout, sendMode, imageApi, responsesModel, overrideSize, paramsPresets, selectedParamsPresetId, promptPresets, selectedPromptPresetId } = execution;
-    const { providerConfig: sceneConfig } = await resolveScene({ timeout });
-    return { execution, sceneConfig, fingerprint: {
+    const [{ providerConfig: sceneConfig }, shared] = await Promise.all([resolveScene({ timeout }), loadSharedDrawSettings()]);
+    const presentCharacters = directCharacterRoster(input, shared);
+    return { execution, sceneConfig, presentCharacters, fingerprint: {
+        characterRoster: sha256(stableSerialize(presentCharacters)),
         imageConnection: sha256(stableSerialize({ apiBaseUrl, apiKey, sendMode, imageApi, responsesModel })),
         sceneConfig: sha256(stableSerialize(sceneConfig)),
         timeout, overrideSize,
@@ -51,13 +55,16 @@ export const multimodalProviders = Object.fromEntries(Object.keys(PROVIDERS).map
                 referenceImages: input.referenceImages, params: input.params,
                 overrideSize: input.overrideSize };
         },
-        getGenerationSnapshot() {
-            return captureMultimodalGeneration(getSettings(provider));
+        getGenerationSnapshot(input = {}) {
+            return captureMultimodalGeneration(getSettings(provider), input);
         },
-        async generateImage({ generationConfig = getSettings(provider), sceneConfig, onQueueStateChange, signal, ...request } = {}) {
+        async generateImage({ generationConfig = getSettings(provider), sceneConfig, presentCharacters, onPromptData, onQueueStateChange, signal, ...request } = {}) {
             let requested;
-            const [image] = await publicGeneration.generate(request, generationConfig, { signal, sceneConfig,
-                onPrepared: ({ providerMetadata }) => { requested = providerMetadata?.requestedOutputFormat; },
+            const [image] = await publicGeneration.generate(request, generationConfig, { signal, sceneConfig, presentCharacters,
+                onPrepared: ({ providerMetadata, promptData }) => {
+                    requested = providerMetadata?.requestedOutputFormat;
+                    onPromptData?.(promptData);
+                },
                 onProgress: ({ state, ...info }) => onQueueStateChange?.(state === 'progress' ? 'start' : state, info) });
             const notice = formatOpenAiImageMismatch(requested, image.type);
             if (notice) drawNotify.warning(notice);
